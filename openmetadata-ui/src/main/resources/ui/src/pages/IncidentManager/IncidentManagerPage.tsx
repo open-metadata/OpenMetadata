@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Col, Row, Typography } from 'antd';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import IncidentManager from '../../components/IncidentManager/IncidentManager.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -33,12 +33,12 @@ const IncidentManagerPage = () => {
             className="m-b-md"
             data-testid="page-title"
             level={5}>
-            {PAGE_HEADERS.INCIDENT_MANAGER.header}
+            {t(PAGE_HEADERS.INCIDENT_MANAGER.header)}
           </Typography.Title>
           <Typography.Paragraph
             className="text-grey-muted"
             data-testid="page-sub-title">
-            {PAGE_HEADERS.INCIDENT_MANAGER.subHeader}
+            {t(PAGE_HEADERS.INCIDENT_MANAGER.subHeader)}
           </Typography.Paragraph>
         </Col>
 

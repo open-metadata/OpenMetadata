@@ -14,17 +14,18 @@ import Icon from '@ant-design/icons';
 import { Button, Col, Input, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
 import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
 import { ENTITY_PATH } from '../../../constants/constants';
+import { ENTITY_PATH_TO_SEARCH_INDEX } from '../../../constants/SearchSettings.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { SearchSettings } from '../../../generated/api/search/previewSearchRequest';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { searchPreview } from '../../../rest/searchAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
@@ -32,7 +33,6 @@ import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.inte
 import ExploreSearchCard from '../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import './search-preview.less';
-
 interface SearchPreviewProps {
   searchConfig: SearchSettings;
   handleRestoreDefaults: () => void;
@@ -49,7 +49,7 @@ const SearchPreview = ({
   disabledSave,
 }: SearchPreviewProps) => {
   const { t } = useTranslation();
-  const { fqn } = useParams<{ fqn: keyof typeof ENTITY_PATH }>();
+  const { fqn } = useRequiredParams<{ fqn: keyof typeof ENTITY_PATH }>();
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<SearchedDataProps['data']>([]);
   const [searchValue, setSearchValue] = useState<string>('');
@@ -63,7 +63,11 @@ const SearchPreview = ({
     showPagination,
   } = usePaging();
 
-  const entityType = useMemo(() => ENTITY_PATH[fqn], [fqn]);
+  const entityType = useMemo(() => {
+    const entityKey = ENTITY_PATH[fqn as keyof typeof ENTITY_PATH];
+
+    return ENTITY_PATH_TO_SEARCH_INDEX[entityKey];
+  }, [fqn]);
 
   const fetchAssets = useCallback(
     async ({

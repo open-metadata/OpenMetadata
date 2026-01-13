@@ -11,20 +11,20 @@
  *  limitations under the License.
  */
 
-import React, { ComponentType, PropsWithChildren } from 'react';
+import { FC } from 'react';
 import Loader from '../components/common/Loader/Loader';
 
-export interface ComponentProps<T> {
-  [key: string]: T;
+export interface LoaderProps {
+  isLoading?: boolean;
+  size?: 'small' | 'default' | 'x-small';
 }
 
-export function withLoader<T>(Component: ComponentType<T>) {
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-  const WithLoader = (props: T & PropsWithChildren<ComponentProps<any>>) => {
-    return props.isLoading ? (
-      <Loader size={props.size} />
+export function withLoader<T>(Component: FC<T>) {
+  const WithLoader: FC<T & LoaderProps> = ({ isLoading, size, ...props }) => {
+    return isLoading ? (
+      <Loader size={size ?? 'default'} />
     ) : (
-      <Component {...(props as T)} />
+      <Component {...(props as T & JSX.IntrinsicAttributes)} />
     );
   };
 

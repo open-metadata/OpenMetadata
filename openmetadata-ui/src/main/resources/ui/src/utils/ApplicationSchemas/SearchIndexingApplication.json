@@ -95,8 +95,9 @@
           "dataProduct",
           "databaseService",
           "dashboardService",
+          "driveService",
           "query",
-          "queryCostResult",
+          "queryCostRecord",
           "apiService",
           "searchIndex",
           "testCaseResult",
@@ -117,7 +118,11 @@
           "topic",
           "chart",
           "user",
-          "testCase"
+          "testCase",
+          "directory",
+          "file",
+          "spreadsheet",
+          "worksheet"
         ]
       },
       "default": ["all"],
@@ -127,14 +132,14 @@
     "recreateIndex": {
       "title": "Recreate Indexes",
       "type": "boolean",
-      "default": false
+      "default": true
     },
     "searchIndexMappingLanguage": {
       "description": "Recreate Indexes with updated Language",
       "title": "Search Index Language",
       "javaType": "org.openmetadata.schema.type.IndexMappingLanguage",
       "type": "string",
-      "enum": ["EN", "JP", "ZH"],
+      "enum": ["EN", "JP", "RU", "ZH"],
       "default": "EN"
     },
     "autoTune": {

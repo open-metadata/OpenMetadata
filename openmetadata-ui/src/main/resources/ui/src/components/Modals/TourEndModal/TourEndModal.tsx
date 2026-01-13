@@ -13,12 +13,14 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Modal, Row, Typography } from 'antd';
-import { t } from 'i18next';
-import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as LogoMonogram } from '../../../assets/svg/logo-monogram.svg';
+import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import { TourEndModalProps } from './TourEndModal.interface';
 
 const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
+  const { t } = useTranslation();
+
   return (
     <Modal
       closable={false}
@@ -50,7 +52,9 @@ const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
             data-testid="tour-complete-message">
             {t('message.successfully-completed-the-tour')}
             <br />
-            {t('message.get-started-with-open-metadata')}
+            {t('message.get-started-with-open-metadata', {
+              brandName: brandClassBase.getPageTitle(),
+            })}
           </Typography>
         </Col>
       </Row>

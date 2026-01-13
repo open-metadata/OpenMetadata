@@ -25,6 +25,7 @@ class DocumentationLinksClassBase {
   public getDocsURLS() {
     return {
       WORKFLOWS_PROFILER_DOCS: `${this.docsBaseURL}how-to-guides/data-quality-observability/profiler/workflow`,
+      TEST_SUITE_DOCS: `${this.docsBaseURL}how-to-guides/data-quality-observability/quality/adding-test-suites`,
       GLOSSARIES_DOCS: `${this.docsBaseURL}main-concepts/metadata-standard/schemas/entity/data/glossary`,
       CONNECTORS_DOCS: `${this.docsBaseURL}connectors`,
       WORKFLOWS_METADATA_DOCS: `${this.docsBaseURL}connectors/ingestion/workflows/metadata`,
@@ -63,6 +64,7 @@ class DocumentationLinksClassBase {
       COLLATE_AI_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#generated-data-with-collate-ai-collate-only`,
       MOST_USED_ASSETS_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#most-used-assets`,
       MOST_EXPENSIVE_QUERIES_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#most-expensive-queries`,
+      METRICS_DOCS: `${this.docsBaseURL}latest/how-to-guides/data-governance/metrics`,
     };
   }
 }

@@ -22,7 +22,7 @@ import { DatabaseServiceType } from '../generated/entity/data/database';
 import { ConfigType } from '../generated/entity/services/databaseService';
 import {
   AuthProvider,
-  ConfigType as AirflowConfigType,
+  FluffyType as AirflowConfigType,
   IngestionPipeline,
   LogLevels,
   OpenmetadataType,
@@ -152,7 +152,7 @@ const mockPagingCursor = {
     cursorType: CursorType.AFTER,
     cursorValue: 'mockCursorValue',
   },
-  currentPage: 1,
+  currentPage: '1',
   pageSize: 10,
 };
 const mockPagingInfoObj = {

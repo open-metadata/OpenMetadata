@@ -12,7 +12,6 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { mockPipelineStatus } from '../../../mocks/Ingestion.mock';
 import IngestionRunDetailsModal from './IngestionRunDetailsModal';
 

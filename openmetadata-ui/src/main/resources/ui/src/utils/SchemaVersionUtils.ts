@@ -30,6 +30,7 @@ import {
   getDiffByFieldName,
   getEntityDescriptionDiff,
   getEntityTagDiff,
+  getStringEntityDiff,
   getTextDiff,
   isEndsWithField,
 } from './EntityVersionUtils';
@@ -83,6 +84,7 @@ export function createAddedSchemasDiff(
   const newField: Array<Field> = JSON.parse(
     schemaFieldsDiff.added?.newValue ?? '[]'
   );
+
   newField.forEach((field) => {
     const formatSchemaFieldsData = (arr: Array<Field>, updateAll?: boolean) => {
       arr?.forEach((i) => {
@@ -213,6 +215,32 @@ export const getVersionedSchema = (
     } else if (isEndsWithField(EntityField.TAGS, changedEntityName)) {
       const formattedSchema = getEntityTagDiff(
         schemaFieldDiff,
+        changedSchemaFieldName,
+        schemaFields
+      );
+
+      clonedMessageSchema = {
+        ...clonedMessageSchema,
+        schemaFields: formattedSchema,
+      };
+    } else if (isEndsWithField(EntityField.DISPLAYNAME, changedEntityName)) {
+      const formattedSchema = getStringEntityDiff(
+        schemaFieldDiff,
+        EntityField.DISPLAYNAME,
+        changedSchemaFieldName,
+        schemaFields
+      );
+
+      clonedMessageSchema = {
+        ...clonedMessageSchema,
+        schemaFields: formattedSchema,
+      };
+    } else if (
+      isEndsWithField(EntityField.DATA_TYPE_DISPLAY, changedEntityName)
+    ) {
+      const formattedSchema = getStringEntityDiff(
+        schemaFieldDiff,
+        EntityField.DATA_TYPE_DISPLAY,
         changedSchemaFieldName,
         schemaFields
       );

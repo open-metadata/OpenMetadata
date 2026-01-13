@@ -20,7 +20,6 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import React from 'react';
 import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
 import { MOCK_TEST_CASE } from '../../../../mocks/TestSuite.mock';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
@@ -248,6 +247,7 @@ describe.skip('DataQualityTab test', () => {
               id: 'testSuiteId',
               name: 'testSuiteName',
             },
+            isAllowed: true,
           }}
           {...mockProps}
         />

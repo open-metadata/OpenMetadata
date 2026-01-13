@@ -10,11 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AntdConfig, BasicConfig } from '@react-awesome-query-builder/antd';
 import { Registry } from '@rjsf/utils';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { BasicConfig } from 'react-awesome-query-builder';
-import AntdConfig from 'react-awesome-query-builder/lib/config/antd';
 import QueryBuilderWidget from './QueryBuilderWidget';
 
 const mockOnFocus = jest.fn();

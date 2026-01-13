@@ -24,6 +24,8 @@ import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.UriInfo;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -42,10 +44,15 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.LandingPageSettings;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.UserCreationException;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -157,10 +164,66 @@ public final class UserUtil {
             .withConfig(new BasicAuthMechanism().withPassword(hashedPwd)));
   }
 
+  /**
+   * Create and persist a ChangeEvent for SSO/LDAP user operations.
+   * Pattern follows TestSuiteRepository.createTestSuiteCompletionChangeEvent()
+   */
+  private static void createUserChangeEvent(User user, EventType eventType) {
+    try {
+      ChangeEvent changeEvent =
+          new ChangeEvent()
+              .withId(UUID.randomUUID())
+              .withEventType(eventType)
+              .withEntityId(user.getId())
+              .withEntityType(Entity.USER)
+              .withEntityFullyQualifiedName(user.getFullyQualifiedName())
+              .withUserName(user.getName())
+              .withTimestamp(user.getUpdatedAt())
+              .withCurrentVersion(user.getVersion())
+              .withPreviousVersion(
+                  user.getChangeDescription() != null
+                      ? user.getChangeDescription().getPreviousVersion()
+                      : (eventType == EventType.ENTITY_CREATED ? null : user.getVersion()))
+              .withEntity(user);
+
+      // Include changeDescription if present (for updates)
+      if (user.getChangeDescription() != null) {
+        changeEvent.withChangeDescription(user.getChangeDescription());
+      }
+
+      // Populate domains if available
+      if (user.getDomains() != null && !user.getDomains().isEmpty()) {
+        changeEvent.withDomains(
+            user.getDomains().stream().map(EntityReference::getId).collect(Collectors.toList()));
+      }
+
+      // Insert directly into change event DAO
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+    } catch (Exception e) {
+      // Don't fail user creation if ChangeEvent fails
+      LOG.error("Failed to create ChangeEvent for user {}: {}", user.getName(), e.getMessage(), e);
+    }
+  }
+
   public static User addOrUpdateUser(User user) {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     try {
+      // Check if user exists BEFORE createOrUpdate to determine event type
+      User existingUser = null;
+      try {
+        existingUser = userRepository.findByNameOrNull(user.getFullyQualifiedName(), NON_DELETED);
+      } catch (Exception e) {
+        // User doesn't exist, will be created
+      }
+      boolean isCreate = (existingUser == null);
+
+      // Perform the actual create/update
       PutResponse<User> addedUser = userRepository.createOrUpdate(null, user, ADMIN_USER_NAME);
+
+      // Create ChangeEvent for EventSubscription evaluation
+      EventType eventType = isCreate ? EventType.ENTITY_CREATED : EventType.ENTITY_UPDATED;
+      createUserChangeEvent(addedUser.getEntity(), eventType);
+
       // should not log the user auth details in LOGS
       LOG.debug("Added user entry: {}", addedUser.getEntity().getName());
       return addedUser.getEntity();
@@ -358,5 +421,19 @@ public final class UserUtil {
         .withDomains(EntityUtil.getEntityReferences(Entity.DOMAIN, create.getDomains()))
         .withExternalId(create.getExternalId())
         .withScimUserName(create.getScimUserName());
+  }
+
+  public static void validateUserPersonaPreferencesImage(LandingPageSettings settings) {
+    if (settings.getHeaderImage() != null && !settings.getHeaderImage().isEmpty()) {
+      try {
+        new URI(settings.getHeaderImage());
+        if (!settings.getHeaderImage().startsWith("http://")
+            && !settings.getHeaderImage().startsWith("https://")) {
+          throw new BadRequestException("Header image must be a valid HTTP or HTTPS URL");
+        }
+      } catch (URISyntaxException e) {
+        throw new BadRequestException("Header image must be a valid URL: " + e.getMessage());
+      }
+    }
   }
 }

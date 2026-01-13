@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDetailsUtils';
 
@@ -30,11 +30,19 @@ jest.mock(
       .mockImplementation(() => <div>ManageButtonItemLabel</div>),
   })
 );
+
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
+  useNavigate: jest.fn(),
 }));
 
+const mockNavigate = jest.fn();
+
 describe('ExtraDatabaseSchemaDropdownOptions', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
+  });
+
   it('should render import button when user has editAll permission', () => {
     const permission = {
       ViewAll: false,
@@ -44,7 +52,8 @@ describe('ExtraDatabaseSchemaDropdownOptions', () => {
     const result = ExtraDatabaseSchemaDropdownOptions(
       'databaseSchemaFqn',
       permission,
-      false
+      false,
+      mockNavigate
     );
 
     expect(result).toHaveLength(1);
@@ -60,7 +69,8 @@ describe('ExtraDatabaseSchemaDropdownOptions', () => {
     const result = ExtraDatabaseSchemaDropdownOptions(
       'databaseSchemaFqn',
       permission,
-      false
+      false,
+      mockNavigate
     );
 
     expect(result).toHaveLength(1);
@@ -76,7 +86,8 @@ describe('ExtraDatabaseSchemaDropdownOptions', () => {
     const result = ExtraDatabaseSchemaDropdownOptions(
       'databaseSchemaFqn',
       permission,
-      false
+      false,
+      mockNavigate
     );
 
     expect(result).toHaveLength(2);
@@ -92,7 +103,8 @@ describe('ExtraDatabaseSchemaDropdownOptions', () => {
     const result = ExtraDatabaseSchemaDropdownOptions(
       'databaseSchemaFqn',
       permission,
-      false
+      false,
+      mockNavigate
     );
 
     expect(result).toHaveLength(0);
@@ -107,7 +119,8 @@ describe('ExtraDatabaseSchemaDropdownOptions', () => {
     const result = ExtraDatabaseSchemaDropdownOptions(
       'databaseSchemaFqn',
       permission,
-      true
+      true,
+      mockNavigate
     );
 
     expect(result).toHaveLength(0);

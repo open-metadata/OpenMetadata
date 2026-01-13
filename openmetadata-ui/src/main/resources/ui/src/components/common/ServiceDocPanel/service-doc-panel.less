@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import url('../../../styles/variables.less');
+@import '../../../styles/variables.less';
 
 .service-doc-panel {
   .toastui-editor-contents {
@@ -22,6 +22,15 @@
 
     & > * {
       padding: 4px 24px !important;
+    }
+  }
+
+  // Styling for EntitySummaryPanel when embedded in documentation
+  .entity-summary-in-docs {
+    margin: @margin-md -@margin-md;
+
+    .ant-card-bordered {
+      border: none;
     }
   }
 }

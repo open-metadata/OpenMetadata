@@ -14,7 +14,7 @@
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Col, Row, Switch, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -103,7 +103,13 @@ const SearchRBACSettingsPage = () => {
         <Col span={24}>
           <Row align="middle" justify="space-between">
             <Col>
-              <PageHeader isBeta data={PAGE_HEADERS.SEARCH_RBAC} />
+              <PageHeader
+                isBeta
+                data={{
+                  header: t(PAGE_HEADERS.SEARCH_RBAC.header),
+                  subHeader: t(PAGE_HEADERS.SEARCH_RBAC.subHeader),
+                }}
+              />
             </Col>
           </Row>
         </Col>

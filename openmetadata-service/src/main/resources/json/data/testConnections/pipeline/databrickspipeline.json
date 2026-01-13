@@ -9,6 +9,13 @@
             "errorMessage": "Failed to fetch pipelines, please validate the credentials or validate if user has access to fetch pipelines",
             "shortCircuit": true,
             "mandatory": true
+        },
+        {
+            "name": "GetLineage",
+            "description":  "Get lineage for the pipelines",
+            "errorMessage": "Failed to fetch lineage, please validate the credentials or validate if user has access to system.access.table_lineage and system.access.column_lineage tables",
+            "shortCircuit": false,
+            "mandatory": false
         }
     ]
 }

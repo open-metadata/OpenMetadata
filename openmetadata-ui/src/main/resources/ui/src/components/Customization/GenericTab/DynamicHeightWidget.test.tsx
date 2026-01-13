@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /*
  *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { DynamicHeightWidget } from './DynamicHeightWidget';
 

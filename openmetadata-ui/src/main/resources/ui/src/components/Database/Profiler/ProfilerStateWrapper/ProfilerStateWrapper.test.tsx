@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
+import '../../../../test/unit/mocks/mui.mock';
 import ProfilerStateWrapper from './ProfilerStateWrapper.component';
 
 // Mock ProfilerLatestValue component
@@ -50,9 +50,12 @@ describe('ProfilerStateWrapper', () => {
   it('shows loading state when isLoading is true', () => {
     render(<ProfilerStateWrapper {...defaultProps} isLoading />);
 
-    const card = screen.getByTestId('profiler-details-card-container');
+    const skeleton = screen.getByTestId('skeleton');
 
-    expect(card).toHaveClass('ant-card-loading');
+    expect(skeleton).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('profiler-details-card-container')
+    ).not.toBeInTheDocument();
   });
 
   it('renders with custom data-testid', () => {

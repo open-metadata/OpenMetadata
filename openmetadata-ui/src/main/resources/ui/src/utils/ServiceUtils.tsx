@@ -13,7 +13,6 @@
 
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { t } from 'i18next';
 import { startCase } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
@@ -38,6 +37,7 @@ import {
   DashboardServiceType,
 } from '../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
+import { DriveServiceType } from '../generated/entity/services/driveService';
 import { PipelineType as IngestionPipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
   MessagingService,
@@ -48,8 +48,10 @@ import {
   PipelineService,
   PipelineServiceType,
 } from '../generated/entity/services/pipelineService';
+import { DatabaseServiceSearchSource } from '../interface/search.interface';
 import { ServicesType } from '../interface/service.interface';
 import { getEntityCount } from '../rest/miscAPI';
+import { searchService } from '../rest/serviceAPI';
 import {
   getEntityDeleteMessage,
   pluralize,
@@ -57,6 +59,7 @@ import {
 } from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
+import { t } from './i18next/LocalUtil';
 import { getBrokers } from './MessagingServiceUtils';
 import { getSettingPath } from './RouterUtils';
 import { showErrorToast } from './ToastUtils';
@@ -104,7 +107,8 @@ export const shouldTestConnection = (serviceType: string) => {
     serviceType !== DashboardServiceType.CustomDashboard &&
     serviceType !== MlModelServiceType.CustomMlModel &&
     serviceType !== PipelineServiceType.CustomPipeline &&
-    serviceType !== StorageServiceType.CustomStorage
+    serviceType !== StorageServiceType.CustomStorage &&
+    serviceType !== DriveServiceType.CustomDrive
   );
 };
 
@@ -115,35 +119,6 @@ export const getServiceTypesFromServiceCategory = (
   serviceCat: ServiceCategory
 ) => {
   return SERVICE_TYPES_ENUM[serviceCat];
-};
-
-export const getServiceCreatedLabel = (serviceCategory: ServiceCategory) => {
-  let serviceCat;
-  switch (serviceCategory) {
-    case ServiceCategory.DATABASE_SERVICES:
-      serviceCat = t('label.database-lowercase');
-
-      break;
-    case ServiceCategory.MESSAGING_SERVICES:
-      serviceCat = t('label.messaging-lowercase');
-
-      break;
-    case ServiceCategory.DASHBOARD_SERVICES:
-      serviceCat = t('label.dashboard-lowercase');
-
-      break;
-
-    case ServiceCategory.PIPELINE_SERVICES:
-      serviceCat = t('label.pipeline-lowercase');
-
-      break;
-    default:
-      serviceCat = '';
-
-      break;
-  }
-
-  return [serviceCat, t('label.service-lowercase')].join(' ');
 };
 
 export const setServiceSchemaCount = (
@@ -157,11 +132,11 @@ export const setServiceSchemaCount = (
   Promise.allSettled(promises)
     .then((results) => {
       let count = 0;
-      results.forEach((result) => {
+      for (const result of results) {
         if (result.status === PROMISE_STATE.FULFILLED) {
           count += result.value?.paging?.total || 0;
         }
-      });
+      }
       callback(count);
     })
     .catch((err: AxiosError) => showErrorToast(err));
@@ -178,11 +153,11 @@ export const setServiceTableCount = (
   Promise.allSettled(promises)
     .then((results) => {
       let count = 0;
-      results.forEach((result) => {
+      for (const result of results) {
         if (result.status === PROMISE_STATE.FULFILLED) {
           count += result.value?.paging?.total || 0;
         }
-      });
+      }
       callback(count);
     })
     .catch((err: AxiosError) => showErrorToast(err));
@@ -198,7 +173,7 @@ export const getOptionalFields = (
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
-          <label className="m-b-0">{t('label.broker-plural')}:</label>
+          <label className="m-b-0">{t('label.broker-plural') + ':'}</label>
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="brokers">
@@ -212,7 +187,7 @@ export const getOptionalFields = (
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
-          <label className="m-b-0">{t('label.url-uppercase')}:</label>
+          <label className="m-b-0">{t('label.url-uppercase') + ':'}</label>
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="dashboard-url">
@@ -226,7 +201,7 @@ export const getOptionalFields = (
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
-          <label className="m-b-0">{t('label.url-uppercase')}:</label>
+          <label className="m-b-0">{t('label.url-uppercase') + ':'}</label>
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="pipeline-url">
@@ -323,39 +298,68 @@ export const getDeleteEntityMessage = (
         pluralize(instanceCount, t('label.collection'))
       );
 
+    case ServiceCategory.DRIVE_SERVICES:
+      return getEntityDeleteMessage(
+        service || t('label.service'),
+        pluralize(instanceCount, t('label.directory'))
+      );
+
     default:
       return;
   }
 };
 
 export const getServiceRouteFromServiceType = (type: ServiceTypes) => {
-  if (type === 'messagingServices') {
-    return GlobalSettingOptions.MESSAGING;
+  switch (type) {
+    case ServiceCategory.MESSAGING_SERVICES:
+      return GlobalSettingOptions.MESSAGING;
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return GlobalSettingOptions.DASHBOARDS;
+    case ServiceCategory.PIPELINE_SERVICES:
+      return GlobalSettingOptions.PIPELINES;
+    case ServiceCategory.ML_MODEL_SERVICES:
+      return GlobalSettingOptions.MLMODELS;
+    case ServiceCategory.METADATA_SERVICES:
+      return GlobalSettingOptions.METADATA;
+    case ServiceCategory.STORAGE_SERVICES:
+      return GlobalSettingOptions.STORAGES;
+    case ServiceCategory.SEARCH_SERVICES:
+      return GlobalSettingOptions.SEARCH;
+    case ServiceCategory.API_SERVICES:
+      return GlobalSettingOptions.APIS;
+    case ServiceCategory.DRIVE_SERVICES:
+      return GlobalSettingOptions.DRIVES;
+    case ServiceCategory.SECURITY_SERVICES:
+      return GlobalSettingOptions.SECURITY;
+    case ServiceCategory.DATABASE_SERVICES:
+    default:
+      return GlobalSettingOptions.DATABASES;
   }
-  if (type === 'dashboardServices') {
-    return GlobalSettingOptions.DASHBOARDS;
-  }
-  if (type === 'pipelineServices') {
-    return GlobalSettingOptions.PIPELINES;
-  }
-  if (type === 'mlmodelServices') {
-    return GlobalSettingOptions.MLMODELS;
-  }
-  if (type === 'metadataServices') {
-    return GlobalSettingOptions.METADATA;
-  }
-  if (type === 'storageServices') {
-    return GlobalSettingOptions.STORAGES;
-  }
-  if (type === 'searchServices') {
-    return GlobalSettingOptions.SEARCH;
-  }
+};
 
-  if (type === ServiceCategory.API_SERVICES) {
-    return GlobalSettingOptions.APIS;
+export const getSearchIndexForService = (type: ServiceTypes): SearchIndex => {
+  switch (type) {
+    case ServiceCategory.DATABASE_SERVICES:
+      return SearchIndex.DATABASE;
+    case ServiceCategory.MESSAGING_SERVICES:
+      return SearchIndex.TOPIC;
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return SearchIndex.DASHBOARD;
+    case ServiceCategory.PIPELINE_SERVICES:
+      return SearchIndex.PIPELINE;
+    case ServiceCategory.ML_MODEL_SERVICES:
+      return SearchIndex.MLMODEL;
+    case ServiceCategory.STORAGE_SERVICES:
+      return SearchIndex.CONTAINER;
+    case ServiceCategory.SEARCH_SERVICES:
+      return SearchIndex.SEARCH_INDEX;
+    case ServiceCategory.API_SERVICES:
+      return SearchIndex.API_COLLECTION_INDEX;
+    case ServiceCategory.DRIVE_SERVICES:
+      return SearchIndex.DIRECTORY_SEARCH_INDEX;
+    default:
+      return SearchIndex.DATABASE;
   }
-
-  return GlobalSettingOptions.DATABASES;
 };
 
 export const getResourceEntityFromServiceCategory = (
@@ -396,6 +400,13 @@ export const getResourceEntityFromServiceCategory = (
 
     case ServiceCategory.API_SERVICES:
       return ResourceEntity.API_SERVICE;
+
+    case 'directories':
+    case 'files':
+    case 'spreadsheets':
+    case 'worksheets':
+    case ServiceCategory.DRIVE_SERVICES:
+      return ResourceEntity.DRIVE_SERVICE;
   }
 
   return ResourceEntity.DATABASE_SERVICE;
@@ -417,6 +428,8 @@ export const getCountLabel = (serviceName: ServiceTypes) => {
       return t('label.search-index-plural');
     case ServiceCategory.API_SERVICES:
       return t('label.collection-plural');
+    case ServiceCategory.DRIVE_SERVICES:
+      return t('label.directory-plural');
     case ServiceCategory.DATABASE_SERVICES:
     default:
       return t('label.database-plural');
@@ -450,6 +463,10 @@ export const getServiceCategoryFromEntityType = (
       return ServiceCategory.SEARCH_SERVICES;
     case EntityType.API_SERVICE:
       return ServiceCategory.API_SERVICES;
+    case EntityType.DRIVE_SERVICE:
+      return ServiceCategory.DRIVE_SERVICES;
+    case EntityType.SECURITY_SERVICE:
+      return ServiceCategory.SECURITY_SERVICES;
     case EntityType.DATABASE_SERVICE:
     default:
       return ServiceCategory.DATABASE_SERVICES;
@@ -476,6 +493,10 @@ export const getEntityTypeFromServiceCategory = (
       return EntityType.SEARCH_SERVICE;
     case ServiceCategory.API_SERVICES:
       return EntityType.API_SERVICE;
+    case ServiceCategory.DRIVE_SERVICES:
+      return EntityType.DRIVE_SERVICE;
+    case ServiceCategory.SECURITY_SERVICES:
+      return EntityType.SECURITY_SERVICE;
     case ServiceCategory.DATABASE_SERVICES:
     default:
       return EntityType.DATABASE_SERVICE;
@@ -504,6 +525,9 @@ export const getLinkForFqn = (serviceCategory: ServiceTypes, fqn: string) => {
 
     case ServiceCategory.API_SERVICES:
       return entityUtilClassBase.getEntityLink(EntityType.API_COLLECTION, fqn);
+
+    case ServiceCategory.DRIVE_SERVICES:
+      return entityUtilClassBase.getEntityLink(EntityType.DIRECTORY, fqn);
 
     case ServiceCategory.DATABASE_SERVICES:
     default:
@@ -584,4 +608,66 @@ export const getAddServiceEntityBreadcrumb = (
       activeTitle: true,
     },
   ];
+};
+
+export const getSearchIndexFromService = (serviceName: string): SearchIndex => {
+  const mapping: Partial<Record<string, SearchIndex>> = {
+    [ServiceCategory.DATABASE_SERVICES]: SearchIndex.DATABASE_SERVICE,
+    [ServiceCategory.DASHBOARD_SERVICES]: SearchIndex.DASHBOARD_SERVICE,
+    [ServiceCategory.MESSAGING_SERVICES]: SearchIndex.MESSAGING_SERVICE,
+    [ServiceCategory.PIPELINE_SERVICES]: SearchIndex.PIPELINE_SERVICE,
+    [ServiceCategory.ML_MODEL_SERVICES]: SearchIndex.ML_MODEL_SERVICE,
+    [ServiceCategory.STORAGE_SERVICES]: SearchIndex.STORAGE_SERVICE,
+    [ServiceCategory.SEARCH_SERVICES]: SearchIndex.SEARCH_SERVICE,
+    [ServiceCategory.API_SERVICES]: SearchIndex.API_SERVICE_INDEX,
+    [ServiceCategory.DRIVE_SERVICES]: SearchIndex.DRIVE_SERVICE,
+  };
+
+  return mapping[serviceName] ?? SearchIndex.DATABASE_SERVICE;
+};
+
+// Perform an exact search for services by name within a given service category
+export const searchServiceByExactName = async (
+  name: string,
+  serviceName: string
+) => {
+  try {
+    const {
+      hits: { hits },
+    } = await searchService({
+      search: name,
+      searchIndex: getSearchIndexFromService(serviceName),
+    });
+
+    const services = hits.map(
+      ({ _source }) => _source as DatabaseServiceSearchSource
+    );
+
+    return services;
+  } catch {
+    return [];
+  }
+};
+
+// Validate if a service name already exists in the given category
+export const validateServiceName = async (
+  name: string,
+  serviceName: string
+): Promise<string | null> => {
+  if (!name || !serviceName) {
+    return null;
+  }
+  const searchedServices = await searchServiceByExactName(name, serviceName);
+
+  const isServiceNamePresent = searchedServices.some(
+    (service) => service.name === name
+  );
+
+  if (isServiceNamePresent) {
+    return t('message.entity-already-exists', {
+      entity: t('label.name'),
+    });
+  }
+
+  return null;
 };

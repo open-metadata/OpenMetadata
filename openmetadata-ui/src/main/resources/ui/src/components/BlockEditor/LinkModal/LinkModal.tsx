@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Form, FormProps, Input, Modal } from 'antd';
-import React, { FC } from 'react';
+import { FC } from 'react';
 
 export interface LinkData {
   href: string;

@@ -194,7 +194,11 @@ export class UserClass {
   }
 
   getUserName() {
-    return `${this.data.firstName}${this.data.lastName}`;
+    return this.responseData.name;
+  }
+
+  getUserDisplayName() {
+    return this.responseData.displayName;
   }
 
   async login(
@@ -203,10 +207,14 @@ export class UserClass {
     password = this.data.password
   ) {
     await page.goto('/');
-    await page.fill('input[id="email"]', userName);
+    await page.waitForURL('**/signin');
+    await page.waitForLoadState('networkidle');
+    const emailInput = page.locator('input[id="email"]');
+    await emailInput.waitFor({ state: 'visible' });
+    await emailInput.fill(userName);
     await page.locator('#email').press('Tab');
     await page.fill('input[id="password"]', password);
-    const loginRes = page.waitForResponse('/api/v1/users/login');
+    const loginRes = page.waitForResponse('/api/v1/auth/login');
     await page.getByTestId('login').click();
     await loginRes;
 
@@ -220,10 +228,50 @@ export class UserClass {
     if (modal) {
       await page.getByRole('dialog').getByRole('img').first().click();
     }
+
+    // Collapse the left side bar after logging in if it's open
+    const leftNavBar = page.locator('[data-testid="left-sidebar"]');
+
+    const hasOpenClass = await leftNavBar.evaluate((el) =>
+      el.classList.contains('sidebar-open')
+    );
+
+    if (hasOpenClass) {
+      await page.getByTestId('sidebar-toggle').click();
+    }
   }
 
   async logout(page: Page) {
     await page.getByRole('menuitem', { name: 'Logout' }).click();
+
+    // Wait for logout confirmation modal specifically
+    await page
+      .locator('.ant-modal-body')
+      .filter({ hasText: 'Are you sure you want' })
+      .waitFor({ state: 'visible' });
+
+    const waitLogout = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users/logout') &&
+        response.request().method() === 'POST'
+    );
+    const waitSigninNavigation = page.waitForURL('**/signin');
+
+    // Block analytics collect calls to prevent 401 errors that cause
+    // page context to close in fast environments (AUT)
+    await page.route('**/analytics/web/events/collect', (route) => {
+      route.abort();
+    });
+
     await page.getByTestId('confirm-logout').click();
+
+    // Wait for both logout API and navigation to complete
+    await Promise.all([waitLogout, waitSigninNavigation]);
+
+    // Ensure all network requests complete
+    await page.waitForLoadState('networkidle');
+
+    // Clean up the route interception
+    await page.unroute('**/analytics/web/events/collect');
   }
 }

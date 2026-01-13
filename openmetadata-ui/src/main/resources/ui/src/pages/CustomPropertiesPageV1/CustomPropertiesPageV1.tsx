@@ -15,15 +15,9 @@ import { Button, Card, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, startCase } from 'lodash';
-import {
-  default as React,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -34,7 +28,6 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { CustomPropertyTable } from '../../components/Settings/CustomProperty/CustomPropertyTable';
 import { ENTITY_PATH } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -43,16 +36,19 @@ import {
 import { EntityTabs } from '../../enums/entity.enum';
 import { Type } from '../../generated/entity/type';
 import { getTypeByFQN, updateType } from '../../rest/metadataTypeAPI';
+import { getCustomPropertyPageHeaderFromEntity } from '../../utils/CustomProperty.utils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getAddCustomPropertyPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import './custom-properties-pageV1.less';
 
 const CustomEntityDetailV1 = () => {
   const { t } = useTranslation();
-  const { tab } = useParams<{ tab: keyof typeof ENTITY_PATH }>();
-  const history = useHistory();
+  const { tab } = useRequiredParams<{ tab: keyof typeof ENTITY_PATH }>();
+  const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<EntityTabs>(
     EntityTabs.CUSTOM_PROPERTIES
@@ -115,7 +111,7 @@ const CustomEntityDetailV1 = () => {
 
   const handleAddProperty = useCallback(() => {
     const path = getAddCustomPropertyPath(tabAttributePath);
-    history.push(path);
+    navigate(path);
   }, [tabAttributePath, history]);
 
   const updateEntityType = useCallback(
@@ -142,62 +138,16 @@ const CustomEntityDetailV1 = () => {
   );
 
   const customPageHeader = useMemo(() => {
-    switch (tabAttributePath) {
-      case ENTITY_PATH.tables:
-        return PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
+    const pageHeader = getCustomPropertyPageHeaderFromEntity(tabAttributePath);
 
-      case ENTITY_PATH.topics:
-        return PAGE_HEADERS.TOPICS_CUSTOM_ATTRIBUTES;
-
-      case ENTITY_PATH.dashboards:
-        return PAGE_HEADERS.DASHBOARD_CUSTOM_ATTRIBUTES;
-
-      case ENTITY_PATH.dashboardDataModels:
-        return PAGE_HEADERS.DASHBOARD_DATA_MODEL_CUSTOM_ATTRIBUTES;
-
-      case ENTITY_PATH.dataProducts:
-        return PAGE_HEADERS.DATA_PRODUCT_CUSTOM_ATTRIBUTES;
-
-      case ENTITY_PATH.metrics:
-        return PAGE_HEADERS.METRIC_CUSTOM_ATTRIBUTES;
-
-      case ENTITY_PATH.pipelines:
-        return PAGE_HEADERS.PIPELINES_CUSTOM_ATTRIBUTES;
-
-      case ENTITY_PATH.mlmodels:
-        return PAGE_HEADERS.ML_MODELS_CUSTOM_ATTRIBUTES;
-
-      case ENTITY_PATH.containers:
-        return PAGE_HEADERS.CONTAINER_CUSTOM_ATTRIBUTES;
-
-      case ENTITY_PATH.searchIndexes:
-        return PAGE_HEADERS.SEARCH_INDEX_CUSTOM_ATTRIBUTES;
-
-      case ENTITY_PATH.storedProcedures:
-        return PAGE_HEADERS.STORED_PROCEDURE_CUSTOM_ATTRIBUTES;
-
-      case ENTITY_PATH.domains:
-        return PAGE_HEADERS.DOMAIN_CUSTOM_ATTRIBUTES;
-
-      case ENTITY_PATH.glossaryTerm:
-        return PAGE_HEADERS.GLOSSARY_TERM_CUSTOM_ATTRIBUTES;
-
-      case ENTITY_PATH.databases:
-        return PAGE_HEADERS.DATABASE_CUSTOM_ATTRIBUTES;
-
-      case ENTITY_PATH.databaseSchemas:
-        return PAGE_HEADERS.DATABASE_SCHEMA_CUSTOM_ATTRIBUTES;
-
-      case ENTITY_PATH.apiEndpoints:
-        return PAGE_HEADERS.API_ENDPOINT_CUSTOM_ATTRIBUTES;
-
-      case ENTITY_PATH.apiCollections:
-        return PAGE_HEADERS.API_COLLECTION_CUSTOM_ATTRIBUTES;
-
-      default:
-        return PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
-    }
-  }, [tabAttributePath]);
+    return {
+      header: t(pageHeader.header),
+      subHeader: translateWithNestedKeys(
+        pageHeader.subHeader,
+        pageHeader.subHeaderParams
+      ),
+    };
+  }, [tabAttributePath, t]);
 
   useEffect(() => {
     if (!isUndefined(tab)) {

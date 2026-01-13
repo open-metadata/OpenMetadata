@@ -20,7 +20,7 @@ import {
   screen,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { Column } from '../../../generated/entity/data/container';
 import ContainerDataModel from './ContainerDataModel';
 
@@ -102,19 +102,25 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   }),
 }));
 
-jest.mock('../../../utils/TableUtils', () => ({
-  getTableExpandableConfig: jest.fn(),
-  getTableColumnConfigSelections: jest
-    .fn()
-    .mockReturnValue([
-      'name',
-      'description',
-      'dataTypeDisplay',
-      'tags',
-      'glossary',
-    ]),
-  handleUpdateTableColumnSelections: jest.fn(),
-}));
+jest.mock('../../../utils/TableUtils', () => {
+  const actual = jest.requireActual('../../../utils/TableUtils');
+
+  return {
+    ...actual,
+    getTableExpandableConfig: jest.fn(),
+    getTableColumnConfigSelections: jest
+      .fn()
+      .mockReturnValue([
+        'name',
+        'description',
+        'dataTypeDisplay',
+        'tags',
+        'glossary',
+      ]),
+    handleUpdateTableColumnSelections: jest.fn(),
+    pruneEmptyChildren: jest.fn().mockImplementation((value) => value),
+  };
+});
 
 jest.mock('../../../utils/TableTags/TableTags.utils', () => ({
   ...jest.requireActual('../../../utils/TableTags/TableTags.utils'),
@@ -164,9 +170,37 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
     ))
 );
 
+jest.mock(
+  '../../Database/ColumnDetailPanel/ColumnDetailPanel.component',
+  () => ({
+    ColumnDetailPanel: jest
+      .fn()
+      .mockImplementation(() => <div data-testid="column-detail-panel" />),
+  })
+);
+
+jest.mock('../../Database/ColumnFilter/ColumnFilter.component', () => ({
+  ColumnFilter: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="column-filter" />),
+}));
+
+jest.mock(
+  '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider',
+  () => ({
+    EntityAttachmentProvider: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+  })
+);
+
 describe('ContainerDataModel', () => {
   it('Should render the Container data model component', async () => {
-    render(<ContainerDataModel {...props} />);
+    render(
+      <MemoryRouter>
+        <ContainerDataModel {...props} />
+      </MemoryRouter>
+    );
 
     const containerDataModel = await screen.findByTestId(
       'container-data-model-table'
@@ -192,7 +226,11 @@ describe('ContainerDataModel', () => {
   });
 
   it('On edit description button click modal editor should render', async () => {
-    render(<ContainerDataModel {...props} />);
+    render(
+      <MemoryRouter>
+        <ContainerDataModel {...props} />
+      </MemoryRouter>
+    );
 
     const rows = await screen.findAllByRole('row');
 
@@ -211,11 +249,13 @@ describe('ContainerDataModel', () => {
 
   it('Should not render the edit action if isReadOnly', async () => {
     render(
-      <ContainerDataModel
-        {...props}
-        isReadOnly
-        hasDescriptionEditAccess={false}
-      />
+      <MemoryRouter>
+        <ContainerDataModel
+          {...props}
+          isReadOnly
+          hasDescriptionEditAccess={false}
+        />
+      </MemoryRouter>
     );
 
     const rows = await screen.findAllByRole('row');

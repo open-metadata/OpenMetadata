@@ -15,9 +15,9 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Row, Space, Table, Tabs, TabsProps } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { DATA_ASSET_ICON_DIMENSION } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -26,6 +26,7 @@ import {
   ChangeDescription,
   EntityReference,
 } from '../../../generated/entity/data/dashboard';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
@@ -33,11 +34,13 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
+import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
+import { descriptionTableObject } from '../../../utils/TableColumn.util';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import Loader from '../../common/Loader/Loader';
-import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
@@ -58,12 +61,12 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   backHandler,
   versionHandler,
   entityPermissions,
-  domain,
+  domains,
   dataProducts,
 }: DashboardVersionProp) => {
   const { t } = useTranslation();
-  const history = useHistory();
-  const { tab } = useParams<{ tab: EntityTabs }>();
+  const navigate = useNavigate();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
@@ -75,13 +78,13 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
           changeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [changeDescription, owners, tier, domain]
+      [changeDescription, owners, tier, domains]
     );
 
   const handleTabChange = (activeKey: string) => {
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.DASHBOARD,
         currentVersionData.fullyQualifiedName ?? '',
@@ -106,7 +109,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
         dataIndex: 'name',
         key: 'name',
         render: (text, record) => (
-          <Link target="_blank" to={{ pathname: text }}>
+          <Link target="_blank" to={text}>
             <Space>
               <span>{getEntityName(record)}</span>
 
@@ -126,17 +129,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
         dataIndex: 'type',
         key: 'type',
       },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        render: (text) =>
-          text ? (
-            <RichTextEditorPreviewerNew markdown={text} />
-          ) : (
-            <span className="text-grey-muted">{t('label.no-description')}</span>
-          ),
-      },
+      ...descriptionTableObject(),
       {
         title: t('label.tag-plural'),
         dataIndex: 'tags',
@@ -170,6 +163,13 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
       currentVersionData.displayName
     );
   }, [currentVersionData, changeDescription]);
+
+  const viewCustomPropertiesPermission = useMemo(() => {
+    return getPrioritizedViewPermission(
+      entityPermissions,
+      Operation.ViewCustomFields
+    );
+  }, [entityPermissions]);
 
   const tabItems: TabsProps['items'] = useMemo(
     () => [
@@ -208,7 +208,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
                 />
@@ -240,12 +240,17 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
             isVersionView
             entityType={EntityType.DASHBOARD}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },
     ],
-    [description, tableColumn, currentVersionData, entityPermissions]
+    [
+      description,
+      tableColumn,
+      currentVersionData,
+      viewCustomPropertiesPermission,
+    ]
   );
 
   return (
@@ -293,7 +298,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
       )}
 
       <EntityVersionTimeLine
-        currentVersion={version}
+        currentVersion={version ?? ''}
         entityType={EntityType.DASHBOARD}
         versionHandler={versionHandler}
         versionList={versionList}

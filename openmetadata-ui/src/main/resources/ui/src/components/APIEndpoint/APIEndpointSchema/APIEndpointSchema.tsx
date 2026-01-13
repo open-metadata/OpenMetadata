@@ -15,14 +15,7 @@ import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import React, {
-  FC,
-  Key,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { FC, Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {} from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
@@ -42,7 +35,7 @@ import {
 import { APISchema } from '../../../generated/type/apiSchema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
@@ -88,6 +81,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     data: apiEndpointDetails,
     permissions,
     onUpdate: onApiEndpointUpdate,
+    openColumnDetailPanel,
   } = useGenericContext<APIEndpoint>();
 
   const viewTypeOptions = [
@@ -204,8 +198,20 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     }
   };
 
+  const handleFieldClick = useCallback(
+    (field: Field, event: React.MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const isExpandIcon = target.closest('.table-expand-icon') !== null;
+
+      if (!isExpandIcon) {
+        openColumnDetailPanel(field);
+      }
+    },
+    [openColumnDetailPanel]
+  );
+
   const renderSchemaName = useCallback(
-    (_, record: Field) => (
+    (_: string, record: Field) => (
       <div className="d-inline-flex w-max-90 vertical-align-inherit">
         <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
           <span className="break-word">
@@ -218,7 +224,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
         </Tooltip>
       </div>
     ),
-    [isVersionView]
+    [isVersionView, handleFieldClick]
   );
 
   const renderDataType = useCallback(
@@ -288,11 +294,16 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     () => [
       {
         title: t('label.name'),
+        className: 'cursor-pointer',
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
-        accessor: TABLE_COLUMNS_KEYS.NAME,
         fixed: 'left',
         width: 220,
+        sorter: getColumnSorter<Field, 'name'>('name'),
+        onCell: (record: Field) => ({
+          onClick: (event) => handleFieldClick(record, event),
+          'data-testid': 'column-name-cell',
+        }),
         render: renderSchemaName,
       },
       {
@@ -329,7 +340,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
         title: t('label.tag-plural'),
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.TAGS,
-        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 300,
         filterIcon: columnFilterIcon,
         render: (tags: TagLabel[], record: Field, index: number) => (
@@ -353,7 +363,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
         title: t('label.glossary-term-plural'),
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.GLOSSARY,
-        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 300,
         filterIcon: columnFilterIcon,
         render: (tags: TagLabel[], record: Field, index: number) => (
@@ -384,6 +393,9 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
       tagFilter,
       theme,
       handleFieldTagsChange,
+      handleFieldClick,
+      permissions,
+      isVersionView,
     ]
   );
 
@@ -427,7 +439,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           }
           key={viewType}
           pagination={false}
-          rowKey="name"
+          rowKey="fullyQualifiedName"
           scroll={TABLE_SCROLL_VALUE}
           size="small"
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}

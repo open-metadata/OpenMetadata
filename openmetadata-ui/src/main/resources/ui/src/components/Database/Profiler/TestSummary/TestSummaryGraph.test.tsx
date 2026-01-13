@@ -18,7 +18,6 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import React from 'react';
 import { Payload } from 'recharts/types/component/DefaultLegendContent';
 import TestSummaryGraph from './TestSummaryGraph';
 import { TestSummaryGraphProps } from './TestSummaryGraph.interface';
@@ -56,11 +55,6 @@ const mockProps: TestSummaryGraphProps = {
     },
   ] as TestSummaryGraphProps['testCaseResults'],
   selectedTimeRange: 'Last 30 days',
-};
-
-const mockHistory = {
-  push: jest.fn(),
-  goBack: jest.fn(),
 };
 
 jest.mock('recharts', () => ({
@@ -111,13 +105,6 @@ jest.mock('recharts', () => ({
   YAxis: jest.fn().mockImplementation(() => <div>YAxis</div>),
 }));
 
-jest.mock('react-router-dom', () => {
-  return {
-    ...jest.requireActual('react-router-dom'),
-    useHistory: jest.fn().mockImplementation(() => mockHistory),
-  };
-});
-
 jest.mock('../../../common/DatePickerMenu/DatePickerMenu.component', () => {
   return jest
     .fn()
@@ -134,13 +121,16 @@ jest.mock('../../../common/Loader/Loader', () => {
 jest.mock('../../SchemaEditor/SchemaEditor', () => {
   return jest.fn().mockImplementation(() => <div>SchemaEditor.component</div>);
 });
-jest.mock('../../../../utils/date-time/DateTimeUtils', () => {
-  return {
-    formatDateTime: jest.fn(),
-    getCurrentMillis: jest.fn(),
-    getEpochMillisForPastDays: jest.fn(),
-  };
-});
+jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
+  formatDateTime: jest.fn().mockReturnValue('Jan 01, 2024'),
+  getCurrentMillis: jest.fn().mockReturnValue(1711583974000),
+  getEpochMillisForPastDays: jest.fn().mockReturnValue(1709424034000),
+  getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  convertSecondsToHumanReadableFormat: jest
+    .fn()
+    .mockImplementation((val) => `${val}ms`),
+}));
 
 jest.mock(
   '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
@@ -181,7 +171,7 @@ describe('TestSummaryGraph', () => {
     expect(screen.getByText('Legend')).toBeInTheDocument();
     expect(screen.getByTestId('min')).toBeInTheDocument();
     expect(screen.getByTestId('max')).toBeInTheDocument();
-    expect(screen.getByTestId('Incident')).toBeInTheDocument();
+    expect(screen.getByTestId('label.incident')).toBeInTheDocument();
   });
 
   it("legend filter should update the graph's activeKeys", async () => {
@@ -206,7 +196,7 @@ describe('TestSummaryGraph', () => {
 
   it('legend should not filter on Incident click', async () => {
     render(<TestSummaryGraph {...mockProps} />);
-    const incidentButton = screen.getByTestId('Incident');
+    const incidentButton = screen.getByTestId('label.incident');
     const minLineChart = screen.getByTestId('line-min');
     const maxLineChart = screen.getByTestId('line-max');
 
@@ -228,5 +218,91 @@ describe('TestSummaryGraph', () => {
     render(<TestSummaryGraph {...mockProps} />);
 
     expect(mockSetShowAILearningBanner).toHaveBeenCalledWith(false);
+  });
+
+  it('should display selectedTimeRange in error message when no results', () => {
+    render(
+      <TestSummaryGraph
+        {...mockProps}
+        selectedTimeRange="Last 7 days"
+        testCaseResults={[]}
+      />
+    );
+
+    expect(screen.getByText('ErrorPlaceHolder.component')).toBeInTheDocument();
+  });
+
+  it('should render with minHeight prop', () => {
+    render(<TestSummaryGraph {...mockProps} minHeight={500} />);
+
+    expect(
+      queryByAttribute('id', document.body, `${mockProps.testCaseName}_graph`)
+    ).toBeInTheDocument();
+  });
+
+  it('should handle testDefinitionName for freshness tests', () => {
+    render(
+      <TestSummaryGraph
+        {...mockProps}
+        testDefinitionName="tableDataToBeFresh"
+      />
+    );
+
+    expect(
+      queryByAttribute('id', document.body, `${mockProps.testCaseName}_graph`)
+    ).toBeInTheDocument();
+  });
+
+  it('should handle mouse enter and leave on legend', async () => {
+    render(<TestSummaryGraph {...mockProps} />);
+    const minButton = screen.getByTestId('min');
+
+    await act(async () => {
+      fireEvent.mouseEnter(minButton);
+    });
+
+    expect(minButton).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.mouseLeave(minButton);
+    });
+
+    expect(minButton).toBeInTheDocument();
+  });
+
+  it('should render reference line when single parameter value', () => {
+    render(
+      <TestSummaryGraph
+        {...mockProps}
+        testCaseParameterValue={[
+          {
+            name: 'threshold',
+            value: '100',
+          },
+        ]}
+      />
+    );
+
+    expect(
+      queryByAttribute('id', document.body, `${mockProps.testCaseName}_graph`)
+    ).toBeInTheDocument();
+  });
+
+  it('should render incident areas when entity threads exist', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    expect(
+      queryByAttribute('id', document.body, `${mockProps.testCaseName}_graph`)
+    ).toBeInTheDocument();
+  });
+
+  it('should handle empty testCaseParameterValue', () => {
+    render(
+      <TestSummaryGraph {...mockProps} testCaseParameterValue={undefined} />
+    );
+
+    expect(
+      queryByAttribute('id', document.body, `${mockProps.testCaseName}_graph`)
+    ).toBeInTheDocument();
   });
 });

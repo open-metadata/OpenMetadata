@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import React from 'react';
 import { Constraint } from '../../../../generated/entity/data/table';
 import {
   LabelType,

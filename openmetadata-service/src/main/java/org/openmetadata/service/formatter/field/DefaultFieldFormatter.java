@@ -27,14 +27,14 @@ import jakarta.json.stream.JsonParsingException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.entity.feed.FeedInfo;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
-import org.openmetadata.service.util.JsonUtils;
 
 public class DefaultFieldFormatter implements FieldFormatter {
   protected final Thread thread;

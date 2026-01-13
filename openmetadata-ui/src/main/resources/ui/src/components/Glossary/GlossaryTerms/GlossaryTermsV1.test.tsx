@@ -12,22 +12,33 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityTabs } from '../../../enums/entity.enum';
+import { EntityReference } from '../../../generated/entity/type';
 import {
   mockedGlossaryTerms,
   MOCK_ASSETS_DATA,
   MOCK_PERMISSIONS,
 } from '../../../mocks/Glossary.mock';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import GlossaryTerms from './GlossaryTermsV1.component';
+
+const mockPush = jest.fn();
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  useParams: jest.fn().mockImplementation(() => ({
-    glossaryName: 'glossary',
-    tab: 'terms',
+  useNavigate: jest.fn().mockImplementation(() => mockPush),
+}));
+
+jest.mock('../../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest.fn().mockReturnValue({
+    tab: undefined,
     version: 'glossaryVersion',
-  })),
+  }),
+}));
+
+jest.mock('../../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockReturnValue({ fqn: 'glossaryTerm' }),
 }));
 
 jest.mock(
@@ -39,10 +50,13 @@ jest.mock(
   })
 );
 
-jest.mock('../../../rest/miscAPI', () => ({
-  searchData: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve(MOCK_ASSETS_DATA)),
+jest.mock('../../../rest/searchAPI', () => ({
+  searchQuery: jest.fn().mockResolvedValue({
+    hits: {
+      hits: MOCK_ASSETS_DATA.data?.hits?.hits || [],
+      total: { value: MOCK_ASSETS_DATA.data?.hits?.total?.value || 0 },
+    },
+  }),
 }));
 
 jest.mock('./tabs/AssetsTabs.component', () =>
@@ -54,9 +68,9 @@ jest.mock('../GlossaryTermTab/GlossaryTermTab.component', () =>
 jest.mock('../GlossaryHeader/GlossaryHeader.component', () =>
   jest.fn().mockReturnValue(<div>GlossaryHeader.component</div>)
 );
-jest.mock('../../Customization/GenericTab/GenericTab', () =>
-  jest.fn().mockReturnValue(<div>GenericTab</div>)
-);
+jest.mock('../../Customization/GenericTab/GenericTab', () => ({
+  GenericTab: jest.fn().mockImplementation(() => <div>GenericTab</div>),
+}));
 
 const mockProps = {
   isSummaryPanelOpen: false,
@@ -69,7 +83,28 @@ const mockProps = {
     EditDisplayName: true,
     EditCustomFields: true,
   } as OperationPermission,
-  glossaryTerm: mockedGlossaryTerms[0],
+  glossaryTerm: {
+    ...mockedGlossaryTerms[0],
+    children: mockedGlossaryTerms[0].children?.map(
+      (child: {
+        id: string;
+        name: string;
+        displayName: string;
+        description: string;
+        fullyQualifiedName: string;
+        deleted?: boolean;
+      }) =>
+        ({
+          id: child.id,
+          name: child.name,
+          displayName: child.displayName,
+          description: child.description,
+          fullyQualifiedName: child.fullyQualifiedName,
+          type: 'glossaryTerm', // Required field for EntityReference
+          deleted: child.deleted || false,
+        } as EntityReference)
+    ),
+  },
   termsLoading: false,
   handleGlossaryTermUpdate: jest.fn(),
   onRelatedTermClick: jest.fn(),
@@ -98,12 +133,33 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => {
   };
 });
 
-jest.mock('../../../utils/TableColumn.util', () => ({
-  ownerTableObject: jest.fn().mockReturnValue({}),
-}));
-
 describe('Test Glossary-term component', () => {
-  it('Should render GenericTab component', async () => {
+  it('Should render overview tab when activeTab is undefined', async () => {
+    render(<GlossaryTerms {...mockProps} />);
+
+    expect(screen.getByTestId('glossary-term')).toBeInTheDocument();
+
+    const tabs = await screen.findAllByRole('tab');
+
+    expect(tabs).toHaveLength(5);
+    expect(tabs[0].textContent).toBe('label.overview');
+
+    tabs
+      .filter((tab) => tab.textContent !== 'label.overview')
+      .forEach((tab) => {
+        expect(tab).not.toHaveAttribute('aria-selected', 'true');
+      });
+
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('Should render GlossaryTermTab component', async () => {
+    const useRequiredParamsMock = useRequiredParams as jest.Mock;
+    useRequiredParamsMock.mockReturnValue({
+      tab: EntityTabs.GLOSSARY_TERMS,
+      version: 'glossaryVersion',
+    });
+
     render(<GlossaryTerms {...mockProps} />);
 
     const tabs = await screen.findAllByRole('tab');
@@ -113,7 +169,7 @@ describe('Test Glossary-term component', () => {
     expect(tabs).toHaveLength(5);
     expect(tabs.map((tab) => tab.textContent)).toStrictEqual([
       'label.overview',
-      'label.glossary-term-plural0',
+      'label.glossary-term-plural2',
       'label.asset-plural0',
       'label.activity-feed-and-task-plural0',
       'label.custom-property-plural',

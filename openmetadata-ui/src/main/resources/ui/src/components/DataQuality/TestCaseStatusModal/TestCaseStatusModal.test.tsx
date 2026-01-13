@@ -12,7 +12,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React, { forwardRef } from 'react';
+import { forwardRef } from 'react';
 import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
 import { TestCaseStatusModal } from './TestCaseStatusModal.component';
 import { TestCaseStatusModalProps } from './TestCaseStatusModal.interface';
@@ -43,7 +43,7 @@ describe('TestCaseStatusModal component', () => {
     expect(await screen.findByTestId('update-status-form')).toBeInTheDocument();
     expect(await screen.findByLabelText('label.status')).toBeInTheDocument();
     expect(await screen.findByText('label.cancel')).toBeInTheDocument();
-    expect(await screen.findByText('label.submit')).toBeInTheDocument();
+    expect(await screen.findByText('label.save')).toBeInTheDocument();
   });
 
   it.skip('should render test case reason and comment field, if status is resolved', async () => {
@@ -80,7 +80,7 @@ describe('TestCaseStatusModal component', () => {
 
   it.skip('should call onSubmit function, on click of save button', async () => {
     render(<TestCaseStatusModal {...mockProps} />);
-    const submitBtn = await screen.findByText('label.submit');
+    const submitBtn = await screen.findByText('label.save');
     const status = await screen.findByLabelText('label.status');
 
     await act(async () => {

@@ -12,7 +12,6 @@
  */
 
 import { getByTestId, getByText, render } from '@testing-library/react';
-import React from 'react';
 import ErrorPlaceHolder from './ErrorPlaceHolder';
 
 jest.mock('./AssignErrorPlaceHolder', () => ({

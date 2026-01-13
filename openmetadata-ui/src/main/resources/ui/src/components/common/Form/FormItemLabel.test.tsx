@@ -12,7 +12,6 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { HelperTextType } from '../../../interface/FormUtils.interface';
 import { FormItemLabelProps } from './Form.interface';
 import FormItemLabel from './FormItemLabel';

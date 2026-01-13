@@ -17,8 +17,9 @@ No sample data is required beforehand
 """
 
 import json
+import time
 from typing import List
-from unittest import TestCase
+from unittest import TestCase, TestLoader
 
 from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.configuration.profilerConfiguration import (
@@ -29,6 +30,7 @@ from metadata.generated.schema.configuration.profilerConfiguration import (
 from metadata.generated.schema.entity.data.table import DataType, Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.settings.settings import Settings, SettingType
+from metadata.generated.schema.type.entityProfile import EntityProfile, ProfileTypeEnum
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 
@@ -37,6 +39,8 @@ from ..integration_base import (
     METADATA_INGESTION_CONFIG_TEMPLATE,
     PROFILER_INGESTION_CONFIG_TEMPLATE,
 )
+
+TestLoader.sortTestMethodsUsing = None  # type: ignore
 
 
 class TestSQAProfiler(TestCase):
@@ -180,3 +184,28 @@ class TestSQAProfiler(TestCase):
                     self.assertIsNone(column.profile.mean)
                     self.assertIsNone(column.profile.valuesCount)
                     self.assertIsNone(column.profile.distinctCount)
+
+    def test_list_entity_profiles(self):
+        """fetch recent profiles via API and ensure we receive entity profiles"""
+        # Use a 24h window ending now
+        end_ts = int(time.time() * 1000)
+        start_ts = end_ts - 24 * 60 * 60 * 1000
+
+        get_profiles = getattr(self.metadata, "get_profile_data_by_type")
+        profiles_all = get_profiles(Table, start_ts, end_ts)
+
+        self.assertTrue(hasattr(profiles_all, "total"))
+        self.assertTrue(hasattr(profiles_all, "entities"))
+
+        if profiles_all.entities:
+            first = profiles_all.entities[0]
+            self.assertIsInstance(first, EntityProfile)
+            self.assertIsNotNone(first.id)
+            self.assertIsNotNone(first.entityReference)
+            self.assertIsNotNone(first.timestamp)
+            self.assertIsNotNone(first.profileData)
+
+        profiles_table = get_profiles(Table, start_ts, end_ts, ProfileTypeEnum.table)
+        self.assertGreater(len(profiles_table.entities), 0)
+        types = {ep.profileType for ep in profiles_table.entities}
+        self.assertEqual(types, {ProfileTypeEnum.table})

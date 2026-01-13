@@ -12,8 +12,8 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class MigrationUtil {
@@ -33,19 +33,24 @@ public class MigrationUtil {
       }
       offset += pageSize;
       for (String json : jsons) {
-        TestCase testCase = JsonUtils.readValue(json, TestCase.class);
-        TestDefinition td = getTestDefinition(daoCollection, testCase);
-        if (Objects.nonNull(td) && Objects.equals(td.getName(), TABLE_DIFF)) {
-          LOG.debug("Adding caseSensitiveColumns=true table diff test case: {}", testCase.getId());
-          if (!hasCaseSensitiveColumnsParam(testCase.getParameterValues())) {
-            testCase
-                .getParameterValues()
-                .add(
-                    new TestCaseParameterValue()
-                        .withName("caseSensitiveColumns")
-                        .withValue("true"));
+        try {
+          TestCase testCase = JsonUtils.readValue(json, TestCase.class);
+          TestDefinition td = getTestDefinition(daoCollection, testCase);
+          if (Objects.nonNull(td) && Objects.equals(td.getName(), TABLE_DIFF)) {
+            LOG.debug(
+                "Adding caseSensitiveColumns=true table diff test case: {}", testCase.getId());
+            if (!hasCaseSensitiveColumnsParam(testCase.getParameterValues())) {
+              testCase
+                  .getParameterValues()
+                  .add(
+                      new TestCaseParameterValue()
+                          .withName("caseSensitiveColumns")
+                          .withValue("true"));
+            }
+            daoCollection.testCaseDAO().update(testCase);
           }
-          daoCollection.testCaseDAO().update(testCase);
+        } catch (Exception e) {
+          LOG.error("Error migrating test definition: ", e);
         }
       }
     }

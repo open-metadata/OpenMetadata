@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -45,10 +45,10 @@ export interface EventSubscription {
      */
     displayName?: string;
     /**
-     * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+     * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
      * it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Is the event Subscription enabled.
      */
@@ -82,6 +82,11 @@ export interface EventSubscription {
      * Name that uniquely identifies this Event Subscription.
      */
     name: string;
+    /**
+     * Optional custom notification template for this subscription. When not set, system default
+     * template will be used. Only USER templates can be assigned.
+     */
+    notificationTemplate?: EntityReference;
     /**
      * Owners of this Event Subscription.
      */
@@ -201,6 +206,11 @@ export interface Destination {
     category: SubscriptionCategory;
     config?:  Webhook;
     /**
+     * Maximum depth for downstream stakeholder notification traversal. If null, traverses
+     * without depth limit (with cycle protection).
+     */
+    downstreamDepth?: number | null;
+    /**
      * Is the subscription enabled.
      */
     enabled?: boolean;
@@ -208,6 +218,12 @@ export interface Destination {
      * Unique identifier that identifies this Event Subscription.
      */
     id?: string;
+    /**
+     * Enable notification of downstream entity stakeholders. When true, notifications will
+     * traverse lineage to include stakeholders of entities that consume data from the affected
+     * entity.
+     */
+    notifyDownstream?: boolean;
     /**
      * Read timeout in seconds. (Default 12s).
      */
@@ -408,20 +424,21 @@ export enum SubscriptionType {
 }
 
 /**
- * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+ * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
  * it belongs to.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Owners of this Event Subscription.
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
+ * Optional custom notification template for this subscription. When not set, system default
+ * template will be used. Only USER templates can be assigned.
  */
 export interface EntityReference {
     /**

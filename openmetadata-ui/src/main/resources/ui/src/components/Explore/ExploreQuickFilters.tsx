@@ -13,14 +13,10 @@
 
 import { Space } from 'antd';
 import { AxiosError } from 'axios';
-import { isEqual, isUndefined, uniqWith } from 'lodash';
+import { isEqual, isUndefined, toLower, uniqWith } from 'lodash';
 import { Bucket } from 'Models';
 import Qs from 'qs';
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  MISC_FIELDS,
-  OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY,
-} from '../../constants/AdvancedSearch.constants';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { TIER_FQN_KEY } from '../../constants/explore.constants';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -34,6 +30,7 @@ import {
   getQuickFilterWithDeletedFlag,
 } from '../../utils/ExplorePage/ExplorePageUtils';
 import { getAggregationOptions } from '../../utils/ExploreUtils';
+import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
@@ -49,6 +46,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   onFieldValueSelect,
   fieldsWithNullValues = [],
   defaultQueryFilter,
+  showSelectedCounts = false,
+  optionPageSize,
 }) => {
   const location = useCustomLocation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
@@ -94,7 +93,9 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           key,
           '',
           JSON.stringify(combinedQueryFilter),
-          independent
+          independent,
+          showDeleted,
+          optionPageSize
         ),
         key === TIER_FQN_KEY
           ? getTags({ parent: 'Tier', limit: 50 })
@@ -106,7 +107,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
       if (key === TIER_FQN_KEY && tierTags) {
         const options = tierTags.data.map((option) => {
           const bucketItem = buckets.find(
-            (item) => item.key === option.fullyQualifiedName
+            (item) => toLower(item.key) === toLower(option.fullyQualifiedName)
           );
 
           return {
@@ -129,14 +130,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     setIsOptionsLoading(true);
     setOptions([]);
     try {
-      if (key === MISC_FIELDS[0]) {
-        await fetchDefaultOptions(
-          [SearchIndex.USER, SearchIndex.TEAM],
-          OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY
-        );
-      } else {
-        await fetchDefaultOptions(index, key);
-      }
+      await fetchDefaultOptions(index, key);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -159,7 +153,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           key,
           value,
           JSON.stringify(combinedQueryFilter),
-          independent
+          independent,
+          showDeleted
         );
 
         const buckets = res.data.aggregations[`sterms#${key}`].buckets;
@@ -204,14 +199,16 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             highlight
             fixedOrderOptions={field.key === TIER_FQN_KEY}
             hasNullOption={hasNullOption}
+            hideCounts={field.hideCounts ?? false}
             independent={independent}
             index={index as ExploreSearchIndex}
             isSuggestionsLoading={isOptionsLoading}
             key={field.key}
-            label={field.label}
+            label={translateWithNestedKeys(field.label, field.labelKeyOptions)}
             options={options ?? []}
             searchKey={field.key}
             selectedKeys={selectedKeys ?? []}
+            showSelectedCounts={showSelectedCounts}
             triggerButtonSize="middle"
             onChange={(updatedValues) => {
               onFieldValueSelect({ ...field, value: updatedValues });

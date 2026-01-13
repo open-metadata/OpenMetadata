@@ -15,7 +15,9 @@ package org.openmetadata.service.resources.datamodels;
 
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -26,38 +28,52 @@ import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.resources.databases.TableResourceTest.getColumn;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
+import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel;
 import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.services.DashboardService;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.DataModelType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
-import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class DashboardDataModelResourceTest
     extends EntityResourceTest<DashboardDataModel, CreateDashboardDataModel> {
 
@@ -68,6 +84,7 @@ public class DashboardDataModelResourceTest
         DashboardDataModelResource.DashboardDataModelList.class,
         "dashboard/datamodels",
         DashboardDataModelResource.FIELDS);
+    supportsBulkAPI = true;
   }
 
   @Test
@@ -97,6 +114,45 @@ public class DashboardDataModelResourceTest
         assertEquals(service, dashboardDataModel.getService().getName());
       }
     }
+  }
+
+  @Test
+  void post_dataModelWithServiceNameContainingDots_200_ok(TestInfo test) throws IOException {
+    // Create a dashboard service with dots in its name
+    DashboardServiceResourceTest serviceTest = new DashboardServiceResourceTest();
+    String serviceNameWithDots = "service.with.dots." + test.getDisplayName();
+    CreateDashboardService createService = serviceTest.createRequest(serviceNameWithDots);
+    DashboardService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+
+    // Create a data model under the service with dots in its name
+    CreateDashboardDataModel createDataModel =
+        createRequest(test.getDisplayName() + "_datamodel")
+            .withService(service.getFullyQualifiedName());
+    DashboardDataModel dataModel = createAndCheckEntity(createDataModel, ADMIN_AUTH_HEADERS);
+
+    // Verify we can list data models by filtering on service name containing dots
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("service", service.getFullyQualifiedName());
+    ResultList<DashboardDataModel> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+
+    // Should find at least one data model
+    assertFalse(list.getData().isEmpty(), "Should find data models for service with dots in name");
+
+    // Find our created data model in the list
+    boolean found = list.getData().stream().anyMatch(dm -> dm.getId().equals(dataModel.getId()));
+    assertTrue(
+        found, "Should find the created data model when filtering by service name with dots");
+
+    // Verify all returned data models belong to the correct service
+    for (DashboardDataModel dm : list.getData()) {
+      assertEquals(
+          service.getFullyQualifiedName(),
+          dm.getService().getFullyQualifiedName(),
+          "All data models should belong to the service with dots in name");
+    }
+
+    // Cleanup
+    serviceTest.deleteEntity(service.getId(), true, true, ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -234,6 +290,32 @@ public class DashboardDataModelResourceTest
   }
 
   @Override
+  protected EntityReference createContainerWithDotsInName(String name) throws IOException {
+    DashboardServiceResourceTest serviceTest = new DashboardServiceResourceTest();
+    CreateDashboardService createService = serviceTest.createRequest(name);
+    DashboardService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+    return service.getEntityReference();
+  }
+
+  @Override
+  protected CreateDashboardDataModel createRequestUnderContainer(
+      String name, EntityReference container) {
+    return new CreateDashboardDataModel()
+        .withName(name)
+        .withService(container.getFullyQualifiedName())
+        .withServiceType(CreateDashboardDataModel.DashboardServiceType.Metabase)
+        .withSql("SELECT * FROM tab1;")
+        .withDataModelType(DataModelType.MetabaseDataModel)
+        .withColumns(COLUMNS);
+  }
+
+  @Override
+  protected void deleteContainerWithDotsInName(EntityReference container) throws IOException {
+    DashboardServiceResourceTest serviceTest = new DashboardServiceResourceTest();
+    serviceTest.deleteEntity(container.getId(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Override
   public void validateCreatedEntity(
       DashboardDataModel dashboardDataModel,
       CreateDashboardDataModel createRequest,
@@ -288,5 +370,345 @@ public class DashboardDataModelResourceTest
     assertEquals(
         8, mixedFieldsDataModel.getColumns().size(), "Should return all columns in mixed request");
     assertNotNull(mixedFieldsDataModel.getOwners(), "Should also return other requested fields");
+  }
+
+  @Test
+  @Order(1)
+  void test_paginationFetchesTagsAtBothEntityAndFieldLevels(TestInfo test) throws IOException {
+    TagLabel dataModelTagLabel = USER_ADDRESS_TAG_LABEL;
+    TagLabel columnTagLabel = PERSONAL_DATA_TAG_LABEL;
+
+    List<DashboardDataModel> createdDataModels = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      List<Column> columns =
+          Arrays.asList(
+              getColumn("column1_" + i, BIGINT, columnTagLabel),
+              getColumn("column2_" + i, BIGINT, null),
+              getColumn("column3_" + i, INT, null));
+
+      CreateDashboardDataModel createDataModel =
+          createRequest(test.getDisplayName() + "_pagination_" + i)
+              .withColumns(columns)
+              .withTags(List.of(dataModelTagLabel));
+
+      DashboardDataModel dataModel = createEntity(createDataModel, ADMIN_AUTH_HEADERS);
+      createdDataModels.add(dataModel);
+    }
+
+    // Test pagination with fields=tags (should fetch data model-level tags only)
+    WebTarget target =
+        getResource("dashboard/datamodels").queryParam("fields", "tags").queryParam("limit", "10");
+
+    DashboardDataModelResource.DashboardDataModelList dataModelList =
+        TestUtils.get(
+            target, DashboardDataModelResource.DashboardDataModelList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(dataModelList.getData());
+
+    // Verify at least one of our created data models is in the response
+    List<DashboardDataModel> ourDataModels =
+        dataModelList.getData().stream()
+            .filter(
+                dm -> createdDataModels.stream().anyMatch(cdm -> cdm.getId().equals(dm.getId())))
+            .collect(java.util.stream.Collectors.toList());
+
+    assertFalse(
+        ourDataModels.isEmpty(),
+        "Should find at least one of our created data models in pagination");
+
+    // Verify data model-level tags are fetched
+    for (DashboardDataModel dataModel : ourDataModels) {
+      assertNotNull(
+          dataModel.getTags(),
+          "Data model-level tags should not be null when fields=tags in pagination");
+      assertEquals(1, dataModel.getTags().size(), "Should have exactly one data model-level tag");
+      assertEquals(dataModelTagLabel.getTagFQN(), dataModel.getTags().get(0).getTagFQN());
+
+      // DashboardDataModel returns columns by default even when not explicitly requested
+      // The columns retain their tags from creation. This is different from Table behavior
+      // but is the expected behavior for DashboardDataModel.
+      // The important part is that the entity-level tags are properly fetched.
+    }
+
+    // Test pagination with fields=columns,tags (should fetch both data model and column tags)
+    target =
+        getResource("dashboard/datamodels")
+            .queryParam("fields", "columns,tags")
+            .queryParam("limit", "10");
+
+    dataModelList =
+        TestUtils.get(
+            target, DashboardDataModelResource.DashboardDataModelList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(dataModelList.getData());
+
+    // Verify at least one of our created data models is in the response
+    ourDataModels =
+        dataModelList.getData().stream()
+            .filter(
+                dm -> createdDataModels.stream().anyMatch(cdm -> cdm.getId().equals(dm.getId())))
+            .collect(java.util.stream.Collectors.toList());
+
+    assertFalse(
+        ourDataModels.isEmpty(),
+        "Should find at least one of our created data models in pagination");
+
+    // Verify both data model-level and column-level tags are fetched
+    for (DashboardDataModel dataModel : ourDataModels) {
+      // Verify data model-level tags
+      assertNotNull(
+          dataModel.getTags(),
+          "Data model-level tags should not be null in pagination with columns,tags");
+      assertEquals(1, dataModel.getTags().size(), "Should have exactly one data model-level tag");
+      assertEquals(dataModelTagLabel.getTagFQN(), dataModel.getTags().get(0).getTagFQN());
+
+      // Verify column-level tags
+      assertNotNull(
+          dataModel.getColumns(), "Columns should not be null when fields includes columns");
+      assertFalse(dataModel.getColumns().isEmpty(), "Columns should not be empty");
+
+      Column column1 =
+          dataModel.getColumns().stream()
+              .filter(c -> c.getName().startsWith("column1_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find column1 column"));
+
+      assertNotNull(
+          column1.getTags(),
+          "Column tags should not be null when fields=columns,tags in pagination");
+      assertEquals(1, column1.getTags().size(), "Column should have exactly one tag");
+      assertEquals(columnTagLabel.getTagFQN(), column1.getTags().get(0).getTagFQN());
+
+      // column2 and column3 should not have tags
+      Column column2 =
+          dataModel.getColumns().stream()
+              .filter(c -> c.getName().startsWith("column2_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find column2 column"));
+
+      assertTrue(
+          column2.getTags() == null || column2.getTags().isEmpty(), "column2 should not have tags");
+
+      Column column3 =
+          dataModel.getColumns().stream()
+              .filter(c -> c.getName().startsWith("column3_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find column3 column"));
+
+      assertTrue(
+          column3.getTags() == null || column3.getTags().isEmpty(), "column3 should not have tags");
+    }
+  }
+
+  @Test
+  void test_getColumnsForSoftDeletedDataModel_200() throws IOException {
+    // Create a dashboard data model with columns for testing soft-delete column retrieval
+    List<Column> columns = new ArrayList<>();
+    for (int i = 1; i <= 5; i++) {
+      columns.add(getColumn("datamodel_col" + i, INT, null));
+    }
+
+    CreateDashboardDataModel create =
+        createRequest("test_soft_delete_datamodel_columns").withColumns(columns);
+    DashboardDataModel dataModel = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Verify columns can be retrieved for active data model using the columns endpoint
+    WebTarget target =
+        getResource("dashboard/datamodels/" + dataModel.getId() + "/columns")
+            .queryParam("include", "all");
+    DashboardDataModelResource.DataModelColumnList response =
+        TestUtils.get(
+            target, DashboardDataModelResource.DataModelColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(5, response.getData().size());
+    assertEquals(5, response.getPaging().getTotal());
+
+    // Soft delete the data model
+    deleteEntity(dataModel.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify columns can still be retrieved for soft-deleted data model using include=all
+    target =
+        getResource("dashboard/datamodels/" + dataModel.getId() + "/columns")
+            .queryParam("include", "all");
+    response =
+        TestUtils.get(
+            target, DashboardDataModelResource.DataModelColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(5, response.getData().size());
+    assertEquals(5, response.getPaging().getTotal());
+
+    // Also test by FQN for soft-deleted data model
+    target =
+        getResource(
+                "dashboard/datamodels/name/"
+                    + URLEncoder.encode(dataModel.getFullyQualifiedName(), StandardCharsets.UTF_8)
+                    + "/columns")
+            .queryParam("include", "all");
+    response =
+        TestUtils.get(
+            target, DashboardDataModelResource.DataModelColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(5, response.getData().size());
+    assertEquals(5, response.getPaging().getTotal());
+
+    // Verify that without include=all parameter, it should fail for soft-deleted data model
+    WebTarget targetWithoutInclude =
+        getResource("dashboard/datamodels/" + dataModel.getId() + "/columns");
+    assertResponse(
+        () ->
+            TestUtils.get(
+                targetWithoutInclude,
+                DashboardDataModelResource.DataModelColumnList.class,
+                ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound("dashboardDataModel", dataModel.getId()));
+
+    // Cleanup: Hard delete the test entity to avoid affecting other tests
+    deleteEntity(dataModel.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testBulk_PreservesUserEditsOnUpdate(TestInfo test) throws IOException {
+    // Critical test: Verify that bulk updates preserve user-made changes
+    // and only update the fields sent in the bulk request (incremental updates)
+
+    // Step 1: Bot creates initial dashboarddatamodel (using regular create, not bulk)
+    CreateDashboardDataModel botCreate =
+        createRequest(test.getDisplayName())
+            .withDescription("Bot initial description")
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL));
+
+    DashboardDataModel entity = createEntity(botCreate, INGESTION_BOT_AUTH_HEADERS);
+    assertEquals("Bot initial description", entity.getDescription());
+    assertEquals(1, entity.getTags().size());
+
+    // Step 2: User edits description and adds tag
+    String originalJson = JsonUtils.pojoToJson(entity);
+    String userDescription = "User-edited description - should be preserved";
+    entity.setDescription(userDescription);
+    entity.setTags(List.of(USER_ADDRESS_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+
+    DashboardDataModel userEditedEntity =
+        patchEntity(entity.getId(), originalJson, entity, ADMIN_AUTH_HEADERS);
+    assertEquals(userDescription, userEditedEntity.getDescription());
+    assertEquals(2, userEditedEntity.getTags().size());
+
+    // Step 3: Bot sends bulk update with new tag and different description
+    // Bot's description should be IGNORED (bot protection)
+    // Bot's tag should be MERGED (added to existing)
+    CreateDashboardDataModel botUpdate =
+        createRequest(test.getDisplayName())
+            .withDescription("Bot trying to overwrite - should be ignored")
+            .withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult updateResult =
+        TestUtils.put(
+            bulkTarget,
+            List.of(botUpdate),
+            BulkOperationResult.class,
+            OK,
+            INGESTION_BOT_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, updateResult.getStatus());
+    assertEquals(1, updateResult.getNumberOfRowsPassed());
+
+    // Step 4: Verify user edits were preserved
+    DashboardDataModel verifyEntity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+
+    // Description should still be user's (bot protection)
+    assertEquals(
+        userDescription,
+        verifyEntity.getDescription(),
+        "Bot should NOT be able to overwrite user-edited description");
+
+    // Tags should be merged (original 2 + new 1 from bot)
+    assertEquals(3, verifyEntity.getTags().size(), "Tags should be merged, not replaced");
+
+    List<String> tagFqns =
+        verifyEntity.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
+    assertTrue(tagFqns.contains(USER_ADDRESS_TAG_LABEL.getTagFQN()));
+    assertTrue(tagFqns.contains(PERSONAL_DATA_TAG_LABEL.getTagFQN()));
+    assertTrue(tagFqns.contains(PII_SENSITIVE_TAG_LABEL.getTagFQN()));
+
+    // Cleanup
+    deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testBulk_TagMergeBehavior(TestInfo test) throws IOException {
+    // Test that bulk updates MERGE tags (add new, keep existing)
+    // NOT replace tags completely
+
+    // Step 1: Create dashboarddatamodel with initial tags
+    CreateDashboardDataModel createRequest =
+        createRequest(test.getDisplayName())
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+
+    DashboardDataModel entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+    assertEquals(2, entity.getTags().size());
+
+    // Step 2: Send bulk update with additional tag (not replacing existing)
+    CreateDashboardDataModel updateRequest =
+        createRequest(test.getDisplayName()).withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget, List.of(updateRequest), BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    // Step 3: Verify tags were merged (original 2 + new 1 = 3 total)
+    DashboardDataModel updatedEntity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        3, updatedEntity.getTags().size(), "Tags should be merged: 2 original + 1 new = 3 total");
+
+    List<String> tagFqns =
+        updatedEntity.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
+
+    assertTrue(
+        tagFqns.contains(USER_ADDRESS_TAG_LABEL.getTagFQN()),
+        "Original tag USER_ADDRESS should still exist");
+    assertTrue(
+        tagFqns.contains(PERSONAL_DATA_TAG_LABEL.getTagFQN()),
+        "Original tag PERSONAL_DATA should still exist");
+    assertTrue(
+        tagFqns.contains(PII_SENSITIVE_TAG_LABEL.getTagFQN()),
+        "New tag PII_SENSITIVE should be added");
+
+    // Cleanup
+    deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testBulk_AdminCanOverrideDescription(TestInfo test) throws IOException {
+    // Test that while bots cannot overwrite user descriptions,
+    // admins CAN update descriptions via bulk
+
+    // Step 1: User creates dashboarddatamodel
+    CreateDashboardDataModel createRequest =
+        createRequest(test.getDisplayName()).withDescription("User-created description");
+
+    DashboardDataModel entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+    assertEquals("User-created description", entity.getDescription());
+
+    // Step 2: Admin updates description via bulk
+    String adminDescription = "Admin-updated description via bulk";
+    CreateDashboardDataModel adminUpdate =
+        createRequest(test.getDisplayName()).withDescription(adminDescription);
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget, List.of(adminUpdate), BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    // Step 3: Verify admin's description was applied
+    DashboardDataModel updatedEntity = getEntity(entity.getId(), "", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        adminDescription,
+        updatedEntity.getDescription(),
+        "Admin should be able to update description via bulk");
+
+    // Cleanup
+    deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
   }
 }

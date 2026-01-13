@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -37,6 +37,10 @@ export interface Thread {
      */
     cardStyle?: CardStyle;
     /**
+     * Change that led to this version of the Thread.
+     */
+    changeDescription?: ChangeDescription;
+    /**
      * Details about the Chatbot conversation. This is only applicable if thread is of type
      * Chatbot.
      */
@@ -48,7 +52,7 @@ export interface Thread {
     /**
      * Domain the entity belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Reference to the entity in `about` that the thread belongs to.
      */
@@ -77,6 +81,10 @@ export interface Thread {
      * Unique identifier that identifies an entity instance.
      */
     id: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * The main message of the thread in Markdown format.
      */
@@ -151,6 +159,71 @@ export enum CardStyle {
 }
 
 /**
+ * Change that led to this version of the Thread.
+ *
+ * Description of the change.
+ */
+export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
+    /**
+     * Names of fields added during the version changes.
+     */
+    fieldsAdded?: FieldChange[];
+    /**
+     * Fields deleted during the version changes with old value before deleted.
+     */
+    fieldsDeleted?: FieldChange[];
+    /**
+     * Fields modified during the version changes with old and new values.
+     */
+    fieldsUpdated?: FieldChange[];
+    /**
+     * When a change did not result in change, this could be same as the current version.
+     */
+    previousVersion?: number;
+}
+
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
+}
+
+export interface FieldChange {
+    /**
+     * Name of the entity field that changed.
+     */
+    name?: string;
+    /**
+     * New value of the field. Note that this is a JSON string and use the corresponding field
+     * type to deserialize it.
+     */
+    newValue?: any;
+    /**
+     * Previous value of the field. Note that this is a JSON string and use the corresponding
+     * field type to deserialize it.
+     */
+    oldValue?: any;
+}
+
+/**
  * Details about the Chatbot conversation. This is only applicable if thread is of type
  * Chatbot.
  */
@@ -175,9 +248,7 @@ export interface ChatbotDetails {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Previous Domain.
- *
- * Updated Domain.
+ * Reference to the test case for efficient querying of dimensional time series
  *
  * Test case that this result is for.
  *
@@ -277,13 +348,13 @@ export interface Info {
      */
     previousDescription?: string;
     /**
-     * Previous Domain.
+     * Previous Domains.
      */
-    previousDomain?: EntityReference;
+    previousDomains?: EntityReference[];
     /**
-     * Updated Domain.
+     * Updated Domains.
      */
-    updatedDomain?: EntityReference;
+    updatedDomains?: EntityReference[];
     /**
      * Entity Details in case of Creation , Soft Deletion and Deletion.
      */
@@ -322,6 +393,8 @@ export interface EntityTestResultSummaryObject {
  * Status of the test case.
  *
  * Status of Test Case run.
+ *
+ * Status of the test for this dimension combination
  */
 export enum TestCaseStatus {
     Aborted = "Aborted",
@@ -350,6 +423,11 @@ export interface TestCaseParameterValue {
  * Schema to capture test case result.
  */
 export interface TestCaseResult {
+    /**
+     * List of dimensional test results. Only populated when the test case has dimensionColumns
+     * specified.
+     */
+    dimensionResults?: TestCaseDimensionResult[];
     /**
      * Number of rows that failed.
      */
@@ -413,6 +491,86 @@ export interface TestCaseResult {
      */
     timestamp: number;
     [property: string]: any;
+}
+
+/**
+ * Test case result for dimensional analysis - supports both single and multi-dimensional
+ * groupings
+ */
+export interface TestCaseDimensionResult {
+    /**
+     * Composite key for API filtering: 'region=mumbai' or 'region=mumbai,product=laptop'
+     */
+    dimensionKey: string;
+    /**
+     * Array of dimension name-value pairs for this result (e.g., [{'name': 'region', 'value':
+     * 'mumbai'}, {'name': 'product', 'value': 'laptop'}])
+     */
+    dimensionValues: DimensionValue[];
+    /**
+     * Number of rows that failed for this dimension combination
+     */
+    failedRows?: number;
+    /**
+     * Percentage of rows that failed for this dimension combination
+     */
+    failedRowsPercentage?: number;
+    /**
+     * Unique identifier of this dimensional result instance
+     */
+    id: string;
+    /**
+     * Impact score indicating the significance of this dimension for revealing data quality
+     * variations. Higher scores indicate dimensions with more significant quality issues
+     * considering both failure rate and data volume.
+     */
+    impactScore?: number;
+    /**
+     * Number of rows that passed for this dimension combination
+     */
+    passedRows?: number;
+    /**
+     * Percentage of rows that passed for this dimension combination
+     */
+    passedRowsPercentage?: number;
+    /**
+     * Details of test case results for this dimension combination
+     */
+    result?: string;
+    /**
+     * Reference to the test case for efficient querying of dimensional time series
+     */
+    testCase?: EntityReference;
+    /**
+     * Reference to the parent TestCaseResult execution that generated this dimensional result
+     */
+    testCaseResultId: string;
+    /**
+     * Status of the test for this dimension combination
+     */
+    testCaseStatus: TestCaseStatus;
+    /**
+     * Test result values for this dimension combination
+     */
+    testResultValue?: TestResultValue[];
+    /**
+     * Timestamp when the dimensional test result was captured (same as parent TestCaseResult)
+     */
+    timestamp: number;
+}
+
+/**
+ * A single dimension name-value pair for dimensional test results
+ */
+export interface DimensionValue {
+    /**
+     * Name of the dimension (e.g., 'column', 'region', 'tier')
+     */
+    name: string;
+    /**
+     * Value for this dimension (e.g., 'address', 'US', 'gold')
+     */
+    value: string;
 }
 
 /**

@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import { renderHook } from '@testing-library/react-hooks';
-import { useParams } from 'react-router-dom';
+import { useRequiredParams } from '../utils/useRequiredParams';
 import { useFqn } from './useFqn';
 
-jest.mock('react-router-dom', () => ({
-  useParams: jest.fn(),
+jest.mock('../utils/useRequiredParams', () => ({
+  useRequiredParams: jest.fn(),
 }));
 
 jest.mock('../utils/StringsUtils', () => ({
@@ -24,10 +24,10 @@ jest.mock('../utils/StringsUtils', () => ({
 
 describe('useFqn', () => {
   it('returns decoded fqn and ingestionFQN', () => {
-    (useParams as jest.Mock).mockReturnValue({
-      fqn: 'sample_data.db_sample.schema_sample.dim%2Fclient.',
-      ingestionFQN: 'sample_data.db_sample.schema_sample.dim%2Fclient.',
-      ruleName: 'testing%20%2F%20policy%20rule%20do%20not%20use',
+    (useRequiredParams as jest.Mock).mockReturnValue({
+      fqn: 'sample_data.db_sample.schema_sample.dim/client.',
+      ingestionFQN: 'sample_data.db_sample.schema_sample.dim/client.',
+      ruleName: 'testing / policy rule do not use',
     });
 
     const { result } = renderHook(() => useFqn());
@@ -40,7 +40,7 @@ describe('useFqn', () => {
   });
 
   it('returns empty strings when fqn and ingestionFQN are not provided', () => {
-    (useParams as jest.Mock).mockReturnValue({});
+    (useRequiredParams as jest.Mock).mockReturnValue({});
 
     const { result } = renderHook(() => useFqn());
 

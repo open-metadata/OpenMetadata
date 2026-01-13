@@ -12,32 +12,45 @@
  */
 
 import { isEmpty, isNil } from 'lodash';
-import React, { useCallback, useEffect } from 'react';
-import { Redirect, Route, Switch } from 'react-router-dom';
+import { useCallback, useEffect } from 'react';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
+import { useShallow } from 'zustand/react/shallow';
 import { ROUTES } from '../../constants/constants';
 import { CustomEventTypes } from '../../generated/analytics/webAnalyticEventData';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import AccessNotAllowedPage from '../../pages/AccessNotAllowedPage/AccessNotAllowedPage';
+import { LogoutPage } from '../../pages/LogoutPage/LogoutPage';
 import PageNotFound from '../../pages/PageNotFound/PageNotFound';
+import SamlCallback from '../../pages/SamlCallback';
 import SignUpPage from '../../pages/SignUp/SignUpPage';
+import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import AppContainer from '../AppContainer/AppContainer';
 import Loader from '../common/Loader/Loader';
-
-import { LogoutPage } from '../../pages/LogoutPage/LogoutPage';
-import SamlCallback from '../../pages/SamlCallback';
-import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
+import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import { RoutePosition } from '../Settings/Applications/plugins/AppPlugin';
 
 const AppRouter = () => {
   const location = useCustomLocation();
   const UnAuthenticatedAppRouter =
     applicationRoutesClass.getUnAuthenticatedRouteElements();
 
-  // web analytics instance
   const analytics = useAnalytics();
-  const { currentUser, isAuthenticated, isApplicationLoading } =
-    useApplicationStore();
+  const {
+    currentUser,
+    isAuthenticated,
+    isApplicationLoading,
+    isAuthenticating,
+  } = useApplicationStore(
+    useShallow((state) => ({
+      currentUser: state.currentUser,
+      isAuthenticated: state.isAuthenticated,
+      isApplicationLoading: state.isApplicationLoading,
+      isAuthenticating: state.isAuthenticating,
+    }))
+  );
+  const { plugins = [] } = useApplicationsProvider();
 
   useEffect(() => {
     const { pathname } = location;
@@ -78,36 +91,56 @@ const AppRouter = () => {
   /**
    * isApplicationLoading is true when the application is loading in AuthProvider
    * and is false when the application is loaded.
-   * If the application is loading, show the loader.
+   * isAuthenticating is true when determining auth state and false when complete.
+   * If the application is loading or authenticating, show the loader.
    * If the user is authenticated, show the AppContainer.
    * If the user is not authenticated, show the UnAuthenticatedAppRouter.
-   * */
-  if (isApplicationLoading) {
+   */
+  if (isApplicationLoading || isAuthenticating) {
     return <Loader fullScreen />;
   }
 
   return (
-    <Switch>
-      <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
-      <Route exact component={LogoutPage} path={ROUTES.LOGOUT} />
+    <Routes>
+      <Route element={<PageNotFound />} path={ROUTES.NOT_FOUND} />
+      <Route element={<LogoutPage />} path={ROUTES.LOGOUT} />
+      <Route element={<AccessNotAllowedPage />} path={ROUTES.UNAUTHORISED} />
       <Route
-        exact
-        component={AccessNotAllowedPage}
-        path={ROUTES.UNAUTHORISED}
+        element={
+          isEmpty(currentUser) ? (
+            <SignUpPage />
+          ) : (
+            <Navigate replace to={ROUTES.HOME} />
+          )
+        }
+        path={ROUTES.SIGNUP}
       />
-      <Route exact component={SignUpPage} path={ROUTES.SIGNUP}>
-        {!isEmpty(currentUser) && <Redirect to={ROUTES.HOME} />}
-      </Route>
+      {/* When authenticating from an SSO provider page (e.g., SAML Apps), if the user is already logged in,
+       * the callbacks should be available. This ensures consistent behavior across different authentication scenarios.
+       */}
+      <Route element={<SamlCallback />} path={ROUTES.AUTH_CALLBACK} />
 
-      {/* When authenticating from an SSO provider page (e.g., SAML Apps), if the user is already logged in, 
-          the callbacks should be available. This ensures consistent behavior across different authentication scenarios. */}
-      <Route
-        component={SamlCallback}
-        path={[ROUTES.SAML_CALLBACK, ROUTES.AUTH_CALLBACK]}
-      />
+      {/* Render APP position plugin routes (they handle their own layouts) */}
+      {isAuthenticated &&
+        plugins?.flatMap((plugin) => {
+          const routes = plugin.getRoutes?.() || [];
+          // Filter routes with APP position
+          const appRoutes = routes.filter(
+            (route) => route.position === RoutePosition.APP
+          );
 
-      {isAuthenticated ? <AppContainer /> : <UnAuthenticatedAppRouter />}
-    </Switch>
+          return appRoutes.map((route, idx) => (
+            <Route key={`${plugin.name}-app-${idx}`} {...route} />
+          ));
+        })}
+
+      {/* Default authenticated and unauthenticated routes */}
+      {isAuthenticated ? (
+        <Route element={<AppContainer />} path="*" />
+      ) : (
+        <Route element={<UnAuthenticatedAppRouter />} path="*" />
+      )}
+    </Routes>
   );
 };
 

@@ -3,11 +3,13 @@ package org.openmetadata.service.resources.dqtests;
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.GROUP;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
@@ -28,14 +30,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.apache.http.client.HttpResponseException;
 import org.apache.http.util.EntityUtils;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
+import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
@@ -43,29 +50,38 @@ import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
+import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.resources.policies.PolicyResourceTest;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
+import org.openmetadata.service.resources.teams.RoleResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
-import org.openmetadata.service.search.models.IndexMapping;
-import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.TestUtils;
 import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
@@ -73,6 +89,8 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
 
   public static final String TEST_SUITE_TABLE_NAME1 = "tableForExecutableTestSuite";
   public static final String TEST_SUITE_TABLE_NAME2 = "tableForExecutableTestSuiteTwo";
+
+  private static User USER_TEST_CASE_OWNER_VIEW;
 
   public TestSuiteResourceTest() {
     super(
@@ -82,6 +100,57 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         "dataQuality/testSuites",
         TestSuiteResource.FIELDS);
     supportsSearchIndex = true;
+    supportsEtag = false;
+  }
+
+  @BeforeAll
+  public void setupRbacUsers() throws Exception {
+    Rule testCaseOwnerViewRule =
+        new Rule()
+            .withName("AllowTestCaseOwnerViewForReport")
+            .withDescription("Allow VIEW_BASIC on TEST_CASE if user isOwner()")
+            .withEffect(Rule.Effect.ALLOW)
+            .withOperations(List.of(MetadataOperation.VIEW_BASIC))
+            .withResources(List.of(Entity.TEST_CASE))
+            .withCondition("isOwner()");
+
+    PolicyResourceTest policyResourceTest = new PolicyResourceTest();
+    Policy policyTestCaseOwnerView =
+        policyResourceTest.createEntity(
+            new CreatePolicy()
+                .withName("Policy_TestCaseOwnerViewForReport")
+                .withDescription("Policy that allows VIEW_BASIC on TEST_CASE for owner only")
+                .withRules(List.of(testCaseOwnerViewRule)),
+            ADMIN_AUTH_HEADERS);
+
+    RoleResourceTest roleResourceTest = new RoleResourceTest();
+    Role roleTestCaseOwnerView =
+        roleResourceTest.createEntity(
+            new CreateRole()
+                .withName("Role_TestCaseOwnerViewForReport")
+                .withDescription("Role that references Policy_TestCaseOwnerViewForReport")
+                .withPolicies(List.of(policyTestCaseOwnerView.getFullyQualifiedName())),
+            ADMIN_AUTH_HEADERS);
+
+    // Create an isolated team so the user doesn't inherit Organization's default roles
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    Team isolatedTeam =
+        teamResourceTest.createEntity(
+            new CreateTeam()
+                .withName("Team_IsolatedForRbacReportTest")
+                .withDescription("Isolated team for RBAC report testing - no inherited roles")
+                .withTeamType(GROUP),
+            ADMIN_AUTH_HEADERS);
+
+    UserResourceTest userResourceTest = new UserResourceTest();
+    USER_TEST_CASE_OWNER_VIEW =
+        userResourceTest.createEntity(
+            new CreateUser()
+                .withName("user-test-case-owner-view-report")
+                .withEmail("user-test-case-owner-view-report@open-metadata.org")
+                .withRoles(List.of(roleTestCaseOwnerView.getId()))
+                .withTeams(List.of(isolatedTeam.getId())),
+            ADMIN_AUTH_HEADERS);
   }
 
   public void setupTestSuites(TestInfo test) throws IOException {
@@ -285,14 +354,14 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     TestSuite executableTestSuite =
         createBasicTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
     TestSuite testSuite = getEntity(executableTestSuite.getId(), "*", ADMIN_AUTH_HEADERS);
-    assertOwners(testSuite.getOwners(), table.getOwners());
+    assertReferenceList(testSuite.getOwners(), table.getOwners());
     Table updateTableOwner = table;
     updateTableOwner.setOwners(List.of(TEAM11_REF));
     tableResourceTest.patchEntity(
         table.getId(), JsonUtils.pojoToJson(table), updateTableOwner, ADMIN_AUTH_HEADERS);
     table = tableResourceTest.getEntity(table.getId(), "*", ADMIN_AUTH_HEADERS);
     testSuite = getEntity(executableTestSuite.getId(), "*", ADMIN_AUTH_HEADERS);
-    assertOwners(table.getOwners(), testSuite.getOwners());
+    assertReferenceList(table.getOwners(), testSuite.getOwners());
   }
 
   @Test
@@ -308,23 +377,23 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
                         .withDisplayName("c1")
                         .withDataType(ColumnDataType.VARCHAR)
                         .withDataLength(10)))
-            .withDomain(DOMAIN1.getFullyQualifiedName());
+            .withDomains(List.of(DOMAIN1.getFullyQualifiedName()));
     Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
     table = tableResourceTest.getEntity(table.getId(), "*", ADMIN_AUTH_HEADERS);
     CreateTestSuite createExecutableTestSuite = createRequest(table.getFullyQualifiedName());
     TestSuite executableTestSuite =
         createBasicTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
-    TestSuite testSuite = getEntity(executableTestSuite.getId(), "domain", ADMIN_AUTH_HEADERS);
-    assertEquals(DOMAIN1.getId(), testSuite.getDomain().getId());
+    TestSuite testSuite = getEntity(executableTestSuite.getId(), "domains", ADMIN_AUTH_HEADERS);
+    assertEquals(DOMAIN1.getId(), testSuite.getDomains().get(0).getId());
     ResultList<TestSuite> testSuites =
         listEntitiesFromSearch(
-            Map.of("domain", DOMAIN1.getFullyQualifiedName(), "fields", "domain"),
+            Map.of("domain", DOMAIN1.getFullyQualifiedName(), "fields", "domains"),
             100,
             0,
             ADMIN_AUTH_HEADERS);
     assertTrue(
         testSuites.getData().stream()
-            .allMatch(ts -> ts.getDomain().getId().equals(DOMAIN1.getId())));
+            .allMatch(ts -> ts.getDomains().get(0).getId().equals(DOMAIN1.getId())));
   }
 
   @Test
@@ -934,12 +1003,18 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
 
   public void addTestCasesToLogicalTestSuite(TestSuite testSuite, List<UUID> testCaseIds)
       throws IOException {
+    addTestCasesToLogicalTestSuite(testSuite, testCaseIds, ADMIN_AUTH_HEADERS);
+  }
+
+  public void addTestCasesToLogicalTestSuite(
+      TestSuite testSuite, List<UUID> testCaseIds, Map<String, String> authHeaders)
+      throws IOException {
     WebTarget target = getResource("dataQuality/testCases/logicalTestCases");
     CreateLogicalTestCases createLogicalTestCases =
         new CreateLogicalTestCases()
             .withTestSuiteId(testSuite.getId())
             .withTestCaseIds(testCaseIds);
-    TestUtils.put(target, createLogicalTestCases, Response.Status.OK, ADMIN_AUTH_HEADERS);
+    TestUtils.put(target, createLogicalTestCases, Response.Status.OK, authHeaders);
   }
 
   public void deleteBasicTestSuite(
@@ -1028,5 +1103,402 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
     assertCommonFieldChange(fieldName, expected, actual);
+  }
+
+  @Test
+  void test_getDataQualityReport_ownerOnlySeesOwnedTestCases(TestInfo testInfo) throws IOException {
+    TestUtils.enableSearchRbac(true);
+    List<EntityReference> savedDefaultRoles = TestUtils.removeOrganizationDefaultRoles();
+
+    try {
+      // Setup: Create a unique table for this test to avoid conflicts with other tests
+      TableResourceTest tableResourceTest = new TableResourceTest();
+      CreateTable tableReq =
+          tableResourceTest
+              .createRequest(testInfo)
+              .withName("rbacReportTestTable_" + UUID.randomUUID())
+              .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+              .withColumns(
+                  List.of(
+                      new Column()
+                          .withName(C1)
+                          .withDisplayName("c1")
+                          .withDataType(ColumnDataType.VARCHAR)
+                          .withDataLength(10)));
+      Table testTable = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
+      String tableLink = String.format("<#E::table::%s>", testTable.getFullyQualifiedName());
+
+      CreateTestSuite createTestSuite = createRequest(testTable.getFullyQualifiedName());
+      createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+
+      EntityReference ownerRef =
+          new EntityReference()
+              .withId(USER_TEST_CASE_OWNER_VIEW.getId())
+              .withType(Entity.USER)
+              .withName(USER_TEST_CASE_OWNER_VIEW.getName());
+
+      TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
+
+      CreateTestCase createOwned =
+          testCaseResourceTest
+              .createRequest("OwnedReportTestCase_" + UUID.randomUUID())
+              .withDescription("Test case owned by USER_TEST_CASE_OWNER_VIEW for report test")
+              .withEntityLink(tableLink)
+              .withOwners(List.of(ownerRef));
+      testCaseResourceTest.createAndCheckEntity(createOwned, ADMIN_AUTH_HEADERS);
+
+      CreateTestCase createNotOwned =
+          testCaseResourceTest
+              .createRequest("NotOwnedReportTestCase_" + UUID.randomUUID())
+              .withDescription("Test case owned by someone else for report test")
+              .withEntityLink(tableLink)
+              .withOwners(List.of(USER1_REF));
+      testCaseResourceTest.createAndCheckEntity(createNotOwned, ADMIN_AUTH_HEADERS);
+
+      String ownerAggregation = "bucketName=owner:aggType=terms:field=owners.name";
+
+      // Wait for indexing - verify admin can get some aggregation results
+      Awaitility.await()
+          .pollInterval(1, TimeUnit.SECONDS)
+          .atMost(60, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                DataQualityReport adminReport =
+                    getDataQualityReport(null, ownerAggregation, "testCase", ADMIN_AUTH_HEADERS);
+                assertNotNull(adminReport);
+                assertNotNull(adminReport.getData());
+                // Just verify we have some data
+                assertFalse(
+                    adminReport.getData().isEmpty(), "Admin should see some aggregation data");
+              });
+
+      DataQualityReport adminReport =
+          getDataQualityReport(null, ownerAggregation, "testCase", ADMIN_AUTH_HEADERS);
+      assertNotNull(adminReport);
+      assertNotNull(adminReport.getData());
+
+      DataQualityReport ownerReport =
+          getDataQualityReport(
+              null, ownerAggregation, "testCase", authHeaders(USER_TEST_CASE_OWNER_VIEW.getName()));
+      assertNotNull(ownerReport);
+    } finally {
+      TestUtils.enableSearchRbac(false);
+      TestUtils.restoreOrganizationDefaultRoles(savedDefaultRoles);
+    }
+  }
+
+  private DataQualityReport getDataQualityReport(
+      String query, String aggregationQuery, String index, Map<String, String> authHeaders)
+      throws IOException {
+    return getDataQualityReport(query, aggregationQuery, index, null, authHeaders);
+  }
+
+  private DataQualityReport getDataQualityReport(
+      String query,
+      String aggregationQuery,
+      String index,
+      String domain,
+      Map<String, String> authHeaders)
+      throws IOException {
+    WebTarget target = getResource("dataQuality/testSuites/dataQualityReport");
+    if (query != null) {
+      // URL encode the query parameter as it contains special characters like {, }, etc.
+      String encodedQuery =
+          java.net.URLEncoder.encode(query, java.nio.charset.StandardCharsets.UTF_8);
+      target = target.queryParam("q", encodedQuery);
+    }
+    target = target.queryParam("aggregationQuery", aggregationQuery);
+    target = target.queryParam("index", index);
+    if (domain != null) {
+      target = target.queryParam("domain", domain);
+    }
+    return TestUtils.get(target, DataQualityReport.class, authHeaders);
+  }
+
+  @Test
+  void test_getDataQualityReport_domainFilter(TestInfo testInfo) throws IOException {
+    // Setup: Create tables with different domains
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
+
+    // Create a table with DOMAIN1
+    CreateTable tableWithDomainReq =
+        tableResourceTest
+            .createRequest(testInfo)
+            .withName("domainFilterTestTable_" + UUID.randomUUID())
+            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName(C1)
+                        .withDisplayName("c1")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(10)))
+            .withDomains(List.of(DOMAIN1.getFullyQualifiedName()));
+    Table tableWithDomain =
+        tableResourceTest.createAndCheckEntity(tableWithDomainReq, ADMIN_AUTH_HEADERS);
+    String tableLinkWithDomain =
+        String.format("<#E::table::%s>", tableWithDomain.getFullyQualifiedName());
+
+    // Create a table without domain
+    CreateTable tableWithoutDomainReq =
+        tableResourceTest
+            .createRequest(testInfo)
+            .withName("noDomainFilterTestTable_" + UUID.randomUUID())
+            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName(C1)
+                        .withDisplayName("c1")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(10)));
+    Table tableWithoutDomain =
+        tableResourceTest.createAndCheckEntity(tableWithoutDomainReq, ADMIN_AUTH_HEADERS);
+    String tableLinkWithoutDomain =
+        String.format("<#E::table::%s>", tableWithoutDomain.getFullyQualifiedName());
+
+    // Create test suites for both tables
+    CreateTestSuite createTestSuiteWithDomain =
+        createRequest(tableWithDomain.getFullyQualifiedName());
+    createBasicTestSuite(createTestSuiteWithDomain, ADMIN_AUTH_HEADERS);
+
+    CreateTestSuite createTestSuiteWithoutDomain =
+        createRequest(tableWithoutDomain.getFullyQualifiedName());
+    createBasicTestSuite(createTestSuiteWithoutDomain, ADMIN_AUTH_HEADERS);
+
+    // Create test cases for table with domain
+    for (int i = 0; i < 3; i++) {
+      CreateTestCase createTestCase =
+          testCaseResourceTest
+              .createRequest("DomainTestCase_" + UUID.randomUUID())
+              .withDescription("Test case for table with domain")
+              .withEntityLink(tableLinkWithDomain);
+      testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
+    }
+
+    // Create test cases for table without domain
+    for (int i = 0; i < 2; i++) {
+      CreateTestCase createTestCase =
+          testCaseResourceTest
+              .createRequest("NoDomainTestCase_" + UUID.randomUUID())
+              .withDescription("Test case for table without domain")
+              .withEntityLink(tableLinkWithoutDomain);
+      testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
+    }
+
+    String countAggregation = "bucketName=count:aggType=cardinality:field=fullyQualifiedName";
+
+    // Wait for indexing
+    Awaitility.await()
+        .pollInterval(1, TimeUnit.SECONDS)
+        .atMost(60, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              DataQualityReport report =
+                  getDataQualityReport(null, countAggregation, "testCase", ADMIN_AUTH_HEADERS);
+              assertNotNull(report);
+              assertNotNull(report.getData());
+              assertFalse(report.getData().isEmpty(), "Should have some aggregation data");
+            });
+
+    // Test 1: Get report without domain filter - should return all test cases
+    DataQualityReport reportWithoutFilter =
+        getDataQualityReport(null, countAggregation, "testCase", ADMIN_AUTH_HEADERS);
+    assertNotNull(reportWithoutFilter);
+    assertNotNull(reportWithoutFilter.getData());
+    assertFalse(
+        reportWithoutFilter.getData().isEmpty(),
+        "Report without domain filter should have aggregation data");
+
+    // Test 2: Get report with domain filter - should return only test cases from that domain
+    DataQualityReport reportWithDomainFilter =
+        getDataQualityReport(
+            null,
+            countAggregation,
+            "testCase",
+            DOMAIN1.getFullyQualifiedName(),
+            ADMIN_AUTH_HEADERS);
+    assertNotNull(reportWithDomainFilter);
+    assertNotNull(reportWithDomainFilter.getData());
+
+    // Domain filter should reduce results since we're filtering to only one domain
+    // that contains the table with domain assigned
+    int countWithoutFilter = reportWithoutFilter.getData().size();
+    int countWithFilter = reportWithDomainFilter.getData().size();
+    assertTrue(
+        countWithFilter <= countWithoutFilter,
+        String.format(
+            "Count with domain filter (%d) should be <= count without filter (%d)",
+            countWithFilter, countWithoutFilter));
+
+    // Test 3: Test with testCaseResolutionStatus index (uses different domain field path)
+    String resolutionAggregation =
+        "bucketName=status:aggType=terms:field=testCaseResolutionStatusType";
+    DataQualityReport resolutionReport =
+        getDataQualityReport(
+            null,
+            resolutionAggregation,
+            "testCaseResolutionStatus",
+            DOMAIN1.getFullyQualifiedName(),
+            ADMIN_AUTH_HEADERS);
+    assertNotNull(resolutionReport);
+    assertNotNull(resolutionReport.getData());
+  }
+
+  @Test
+  void test_testSuiteReindexConsistency(TestInfo test)
+      throws IOException, InterruptedException, ParseException {
+    // 1. Create a table and test suite for it
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable tableReq =
+        tableResourceTest
+            .createRequest(test)
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName(C1)
+                        .withDisplayName("c1")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(10)));
+    Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
+    CreateTestSuite createTestSuite = createRequest(table.getFullyQualifiedName());
+    TestSuite testSuite = createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+
+    // 2. Add a new test case to the table
+    TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
+    CreateTestCase createTestCase =
+        testCaseResourceTest.createRequest(
+            "test_reindex_consistency_" + test.getDisplayName(),
+            new MessageParser.EntityLink(Entity.TABLE, table.getFullyQualifiedName()));
+    TestCase testCase =
+        testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
+
+    // 3. Ingest test case results for this test case
+    CreateTestCaseResult createTestCaseResult =
+        new CreateTestCaseResult()
+            .withResult("tested")
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withTimestamp(TestUtils.dateToTimestamp("2021-09-09"));
+    testCaseResourceTest.postTestCaseResult(
+        testCase.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS);
+
+    // 3a. Verify test case results are available via search endpoint before reindex
+    Map<String, String> testCaseResultsQueryParams = new HashMap<>();
+    testCaseResultsQueryParams.put("testCaseId", testCase.getId().toString());
+    testCaseResultsQueryParams.put("fields", "testCase,testDefinition,testCaseStatus");
+    ResultList<TestCaseResult> testCaseResultsBeforeReindex =
+        testCaseResourceTest.listTestCaseResultsFromSearch(
+            testCaseResultsQueryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+    assertNotNull(testCaseResultsBeforeReindex);
+    assertFalse(testCaseResultsBeforeReindex.getData().isEmpty());
+    TestCaseResult testCaseResultBeforeReindex = testCaseResultsBeforeReindex.getData().getFirst();
+
+    // 4. Fetch the test suite linked to the table using the search endpoint (before reindex)
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("fullyQualifiedName", testSuite.getFullyQualifiedName());
+    queryParams.put("fields", "tests,testCaseResultSummary");
+    ResultList<TestSuite> testSuitesBeforeReindex =
+        listEntitiesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
+    assertNotNull(testSuitesBeforeReindex);
+    assertFalse(testSuitesBeforeReindex.getData().isEmpty());
+    TestSuite testSuiteBeforeReindex = testSuitesBeforeReindex.getData().getFirst();
+
+    // 5. Trigger an Elasticsearch index refresh for the test suite entity (simulating a reindex)
+    postTriggerSearchIndexingApp(ADMIN_AUTH_HEADERS);
+
+    // Wait for reindexing to complete by polling the app run status
+    TestUtils.waitForReindexCompletion(getResource(""), ADMIN_AUTH_HEADERS, 60000);
+
+    // 6. Fetch the test suite again using the search endpoint (after reindex)
+    // Use retry logic to handle transient ES unavailability during index transition
+    ResultList<TestSuite> testSuitesAfterReindex =
+        listEntitiesFromSearchWithRetry(queryParams, 10, 0, ADMIN_AUTH_HEADERS, 5, 2000);
+    assertNotNull(testSuitesAfterReindex);
+    assertTrue(!testSuitesAfterReindex.getData().isEmpty());
+    TestSuite testSuiteAfterReindex = testSuitesAfterReindex.getData().getFirst();
+
+    // 6a. Verify test case results are still available via search endpoint after reindex
+    ResultList<TestCaseResult> testCaseResultsAfterReindex =
+        testCaseResourceTest.listTestCaseResultsFromSearch(
+            testCaseResultsQueryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+    assertNotNull(testCaseResultsAfterReindex);
+    assertFalse(testCaseResultsAfterReindex.getData().isEmpty());
+    TestCaseResult testCaseResultAfterReindex = testCaseResultsAfterReindex.getData().getFirst();
+
+    // Compare test case results before and after reindex
+    assertEquals(
+        testCaseResultBeforeReindex.getTestCaseStatus(),
+        testCaseResultAfterReindex.getTestCaseStatus());
+    assertEquals(testCaseResultBeforeReindex.getResult(), testCaseResultAfterReindex.getResult());
+    assertEquals(
+        testCaseResultBeforeReindex.getTimestamp(), testCaseResultAfterReindex.getTimestamp());
+    assertNotNull(testCaseResultAfterReindex.getTestCase());
+    assertEquals(testCase.getId(), testCaseResultAfterReindex.getTestCase().getId());
+
+    // Compare testDefinition
+    assertEquals(
+        testCaseResultBeforeReindex.getTestDefinition(),
+        testCaseResultAfterReindex.getTestDefinition());
+
+    // 7. Compare the test suite results from before and after the reindex to ensure they are
+    // identical
+    assertEquals(testSuiteBeforeReindex.getId(), testSuiteAfterReindex.getId());
+    assertEquals(testSuiteBeforeReindex.getName(), testSuiteAfterReindex.getName());
+    assertEquals(
+        testSuiteBeforeReindex.getFullyQualifiedName(),
+        testSuiteAfterReindex.getFullyQualifiedName());
+    assertEquals(testSuiteBeforeReindex.getDescription(), testSuiteAfterReindex.getDescription());
+
+    // Assert that every test ID is in both before and after testSuite
+    for (EntityReference testRef : testSuiteBeforeReindex.getTests()) {
+      assertTrue(
+          testSuiteAfterReindex.getTests().stream()
+              .allMatch(t -> t.getId().equals(testRef.getId())),
+          "Test ID " + testRef.getId() + " should be present in testSuite after reindex");
+    }
+
+    // Compare test cases
+    assertEquals(testSuiteBeforeReindex.getTests().size(), testSuiteAfterReindex.getTests().size());
+    if (testSuiteBeforeReindex.getTests() != null && testSuiteAfterReindex.getTests() != null) {
+      verifyTestCases(testSuiteBeforeReindex.getTests(), testSuiteAfterReindex.getTests());
+    }
+
+    // Compare test case result summaries
+    assertEquals(
+        testSuiteBeforeReindex.getTestCaseResultSummary(),
+        testSuiteAfterReindex.getTestCaseResultSummary());
+  }
+
+  private void postTriggerSearchIndexingApp(Map<String, String> authHeaders) throws IOException {
+    WebTarget target = getResource("apps/trigger").path("SearchIndexingApplication");
+    Response response =
+        SecurityUtil.addHeaders(target, authHeaders)
+            .post(jakarta.ws.rs.client.Entity.json(Map.of()));
+    TestUtils.readResponse(response, Response.Status.OK.getStatusCode());
+  }
+
+  private ResultList<TestSuite> listEntitiesFromSearchWithRetry(
+      Map<String, String> queryParams,
+      int limit,
+      int offset,
+      Map<String, String> authHeaders,
+      int maxRetries,
+      long retryDelayMs)
+      throws IOException, InterruptedException {
+    HttpResponseException lastException = null;
+    for (int attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        return listEntitiesFromSearch(queryParams, limit, offset, authHeaders);
+      } catch (HttpResponseException e) {
+        lastException = e;
+        if (e.getStatusCode() == 500 || e.getStatusCode() == 503) {
+          Thread.sleep(retryDelayMs);
+        } else {
+          throw e;
+        }
+      }
+    }
+    throw lastException;
   }
 }

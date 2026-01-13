@@ -8,8 +8,8 @@ import java.util.UUID;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.services.connections.TestConnectionDefinition;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.OpenMetadataApplicationTest;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 /*

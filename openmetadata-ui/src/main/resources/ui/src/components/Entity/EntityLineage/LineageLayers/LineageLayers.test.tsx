@@ -10,9 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, queryByText, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import {
+  act,
+  fireEvent,
+  queryByText,
+  render,
+  screen,
+} from '@testing-library/react';
 import { ReactFlowProvider } from 'reactflow';
 import { EntityType } from '../../../../enums/entity.enum';
 import { LineageLayer } from '../../../../generated/settings/settings';
@@ -98,12 +102,8 @@ describe('LineageLayers component', () => {
     const layerBtn = screen.getByTestId('lineage-layer-btn');
 
     await act(async () => {
-      userEvent.click(layerBtn);
+      fireEvent.click(layerBtn);
     });
-
-    const popover = screen.getByRole('tooltip');
-
-    expect(popover).toBeInTheDocument();
 
     const columnButton = screen.getByText('label.column');
     const dataObservabilityBtn = screen.getByText('label.observability');
@@ -111,13 +111,13 @@ describe('LineageLayers component', () => {
     expect(columnButton).toBeInTheDocument();
     expect(dataObservabilityBtn).toBeInTheDocument();
 
-    userEvent.click(columnButton as HTMLElement);
+    fireEvent.click(columnButton as HTMLElement);
 
     expect(onMockUpdateLayerView).toHaveBeenCalledWith([
       LineageLayer.ColumnLevelLineage,
     ]);
 
-    userEvent.click(dataObservabilityBtn as HTMLElement);
+    fireEvent.click(dataObservabilityBtn as HTMLElement);
 
     expect(onMockUpdateLayerView).toHaveBeenCalledWith([
       LineageLayer.DataObservability,

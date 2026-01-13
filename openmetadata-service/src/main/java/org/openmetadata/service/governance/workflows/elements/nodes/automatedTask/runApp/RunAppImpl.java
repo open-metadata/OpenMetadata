@@ -26,8 +26,10 @@ import org.openmetadata.schema.entity.applications.configuration.internal.Servic
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -38,7 +40,6 @@ import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
 @Slf4j
@@ -175,7 +176,7 @@ public class RunAppImpl {
             .triggerApplicationOnDemand(
                 app, Entity.getCollectionDAO(), Entity.getSearchRepository(), config);
         break;
-      } catch (UnhandledServerException e) {
+      } catch (JsonParsingException | UnhandledServerException e) {
         if (e.getMessage().contains("Job is already running")) {
           attempt++;
           if (attempt >= maxRetries) {

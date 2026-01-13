@@ -30,7 +30,7 @@ import 'codemirror/mode/javascript/javascript';
 import 'codemirror/mode/python/python';
 import 'codemirror/mode/sql/sql';
 import 'codemirror/mode/yaml/yaml';
-import { t } from 'i18next';
+
 import katex from 'katex';
 import React from 'react';
 import ReactDOMServer from 'react-dom/server';
@@ -40,6 +40,7 @@ import {
   MARKDOWN_MATCH_ID,
 } from '../../../../constants/regex.constants';
 import { MarkdownToHTMLConverter } from '../../../../utils/FeedUtils';
+import i18n from '../../../../utils/i18next/LocalUtil';
 import {
   HTMLToken,
   OpenTagToken,
@@ -97,6 +98,12 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
   info(node) {
     return getHTMLTokens(node);
   },
+  htmlInline(_, { origin }) {
+    // This handles inline HTML elements like <span data-id="value">
+    const originResult = origin && origin();
+
+    return originResult || null;
+  },
   tip(node) {
     return getHTMLTokens(node);
   },
@@ -107,7 +114,7 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
     const { fenceLength, info } = node as CodeBlockMdNode;
     const infoWords = info ? info.split(/\s+/) : [];
     const preClasses = ['relative', 'code-block'];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const codeAttrs: Record<string, any> = {};
 
     const codeText = node.literal ?? '';
@@ -157,7 +164,7 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
               className="code-copy-message"
               data-copied="false"
               data-testid="copied-message">
-              {t('label.copied')}
+              {i18n.t('label.copied').toString()}
             </span>
             <img
               className="code-copy-button"

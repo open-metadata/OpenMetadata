@@ -11,10 +11,6 @@
  *  limitations under the License.
  */
 
-export type EditorContentRef = {
-  getEditorContent: () => string;
-};
-
 export interface ModalWithMarkdownEditorProps {
   header: string;
   value: string;

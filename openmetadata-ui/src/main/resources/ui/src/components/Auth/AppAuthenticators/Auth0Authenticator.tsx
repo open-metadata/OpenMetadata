@@ -12,13 +12,8 @@
  */
 
 import { useAuth0 } from '@auth0/auth0-react';
-import React, {
-  forwardRef,
-  Fragment,
-  ReactNode,
-  useImperativeHandle,
-} from 'react';
-import { setOidcToken } from '../../../utils/LocalStorageUtils';
+import { forwardRef, Fragment, ReactNode, useImperativeHandle } from 'react';
+import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 
@@ -62,7 +57,7 @@ const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
         const claims = await getIdTokenClaims();
         if (claims) {
           idToken = claims.__raw;
-          setOidcToken(idToken);
+          await setOidcToken(idToken);
         }
 
         return idToken;

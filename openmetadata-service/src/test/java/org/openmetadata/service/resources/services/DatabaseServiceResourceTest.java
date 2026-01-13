@@ -15,7 +15,7 @@ package org.openmetadata.service.resources.services;
 
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.OK;
-import static org.apache.commons.lang.StringEscapeUtils.escapeCsv;
+import static org.apache.commons.lang3.StringEscapeUtils.escapeCsv;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -82,6 +82,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Schedule;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.DatabaseResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResourceTest;
@@ -92,7 +93,6 @@ import org.openmetadata.service.resources.services.ingestionpipelines.IngestionP
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -437,7 +437,8 @@ public class DatabaseServiceResourceTest
     assertEquals("new-dsc2", updatedDb.getDescription());
     assertTrue(listOrEmpty(updatedDb.getOwners()).isEmpty(), "Owner should be cleared");
     assertTrue(listOrEmpty(updatedDb.getTags()).isEmpty(), "Tags should be empty after clearing");
-    assertNull(updatedDb.getDomain(), "Domain should be null after clearing");
+    assertTrue(
+        listOrEmpty(updatedDb.getDomains()).isEmpty(), "Domain should be null after clearing");
   }
 
   @Test
@@ -741,5 +742,39 @@ public class DatabaseServiceResourceTest
       assertEquals(
           expectedSnowflakeConnection.getPassword(), actualSnowflakeConnection.getPassword());
     }
+  }
+
+  @Test
+  void test_softDeleteWithConnection_preservesSecrets(TestInfo test) throws IOException {
+    CreateDatabaseService createRequest =
+        createRequest(test)
+            .withServiceType(DatabaseServiceType.Mysql)
+            .withConnection(TestUtils.MYSQL_DATABASE_CONNECTION);
+    DatabaseService service = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(service.getConnection(), "Service should have connection");
+
+    deleteEntity(service.getId(), false, false, ADMIN_AUTH_HEADERS);
+
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("include", Include.DELETED.value());
+    DatabaseService deletedService =
+        getEntity(service.getId(), queryParams, "", ADMIN_AUTH_HEADERS);
+    assertTrue(deletedService.getDeleted(), "Service should be marked as deleted");
+    assertNotNull(
+        deletedService.getConnection(), "Connection should be preserved after soft delete");
+  }
+
+  @Test
+  void test_hardDeleteWithConnection_deletesSecrets(TestInfo test) throws IOException {
+    CreateDatabaseService createRequest =
+        createRequest(test)
+            .withServiceType(DatabaseServiceType.Mysql)
+            .withConnection(TestUtils.MYSQL_DATABASE_CONNECTION);
+    DatabaseService service = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+
+    deleteEntity(service.getId(), false, true, ADMIN_AUTH_HEADERS);
+
+    assertEntityDeleted(service.getId(), true);
   }
 }

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -134,6 +134,10 @@ export interface AssetTypeConfiguration {
      */
     highlightFields?: string[];
     /**
+     * Multipliers applied to different match types to control their relative importance.
+     */
+    matchTypeBoostMultipliers?: MatchTypeBoostMultipliers;
+    /**
      * How to combine function scores if multiple boosts are applied.
      */
     scoreMode?: ScoreMode;
@@ -151,11 +155,15 @@ export interface Aggregation {
     /**
      * The field on which this aggregation is performed.
      */
-    field: string;
+    field?: string;
     /**
      * A descriptive name for the aggregation.
      */
     name: string;
+    /**
+     * Optional script to apply on the terms aggregation.
+     */
+    script?: string;
     /**
      * The type of aggregation to perform.
      */
@@ -248,6 +256,24 @@ export enum Modifier {
 }
 
 /**
+ * Multipliers applied to different match types to control their relative importance.
+ */
+export interface MatchTypeBoostMultipliers {
+    /**
+     * Multiplier for exact match queries (term queries on .keyword fields)
+     */
+    exactMatchMultiplier?: number;
+    /**
+     * Multiplier for fuzzy match queries
+     */
+    fuzzyMatchMultiplier?: number;
+    /**
+     * Multiplier for phrase match queries
+     */
+    phraseMatchMultiplier?: number;
+}
+
+/**
  * How to combine function scores if multiple boosts are applied.
  */
 export enum ScoreMode {
@@ -268,6 +294,24 @@ export interface FieldBoost {
      * Field name to search/boost.
      */
     field: string;
+    /**
+     * Type of matching to use for this field. 'exact' uses term query for .keyword fields,
+     * 'phrase' uses match_phrase, 'fuzzy' allows fuzzy matching, 'standard' uses the default
+     * behavior.
+     */
+    matchType?: MatchType;
+}
+
+/**
+ * Type of matching to use for this field. 'exact' uses term query for .keyword fields,
+ * 'phrase' uses match_phrase, 'fuzzy' allows fuzzy matching, 'standard' uses the default
+ * behavior.
+ */
+export enum MatchType {
+    Exact = "exact",
+    Fuzzy = "fuzzy",
+    Phrase = "phrase",
+    Standard = "standard",
 }
 
 export interface TermBoost {

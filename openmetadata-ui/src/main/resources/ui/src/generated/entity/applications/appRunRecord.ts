@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -197,6 +197,7 @@ export enum Status {
     Pending = "pending",
     Running = "running",
     Started = "started",
+    StopInProgress = "stopInProgress",
     Stopped = "stopped",
     Success = "success",
 }
@@ -224,12 +225,24 @@ export interface Stats {
      * Stats for the job
      */
     jobStats?: StepStats;
+    /**
+     * Stats for the reader step (reading from database)
+     */
+    readerStats?: StepStats;
+    /**
+     * Stats for the sink step (writing to search index)
+     */
+    sinkStats?: StepStats;
 }
 
 /**
  * Stats for Different Steps Reader, Processor, Writer.
  *
  * Stats for the job
+ *
+ * Stats for the reader step (reading from database)
+ *
+ * Stats for the sink step (writing to search index)
  */
 export interface StepStats {
     /**

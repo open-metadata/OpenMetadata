@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import React, {
+import {
   FunctionComponent,
   useCallback,
   useEffect,
@@ -20,6 +20,7 @@ import React, {
   useState,
 } from 'react';
 import { Link } from 'react-router-dom';
+import { ReactComponent as RightArrowIcon } from '../../../assets/svg/right-arrow.svg';
 import { BREADCRUMB_SEPARATOR } from '../../../constants/constants';
 import TitleBreadcrumbSkeleton from '../Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import './title-breadcrumb.less';
@@ -31,6 +32,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   noLink = false,
   loading = false,
   widthDeductions,
+  useCustomArrow = false,
 }: TitleBreadcrumbProps) => {
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);
 
@@ -79,9 +81,15 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
           }}>
           {link.name}
         </span>
-        {noLink && index < titleLinks.length - 1 && (
-          <span className="text-xss text-grey-muted">{'>'}</span>
-        )}
+        {noLink &&
+          index < titleLinks.length - 1 &&
+          (useCustomArrow ? (
+            <span className="custom-separator">
+              <RightArrowIcon />
+            </span>
+          ) : (
+            <span className="text-xss text-grey-muted">{'>'}</span>
+          ))}
       </>
     );
   };
@@ -109,6 +117,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                 className="d-flex items-center breadcrumb-item"
                 data-testid="breadcrumb-link"
                 key={link.name}>
+                {link.icon}
                 {link.imgSrc ? (
                   <img alt="" className="inline h-5 m-r-xs" src={link.imgSrc} />
                 ) : null}
@@ -117,9 +126,15 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                     <Link className={classes} to={link.url}>
                       {link.name}
                     </Link>
-                    <span className="text-sm font-regular p-x-xs text-grey-muted">
-                      {BREADCRUMB_SEPARATOR}
-                    </span>
+                    {useCustomArrow ? (
+                      <span className="custom-separator">
+                        <RightArrowIcon />
+                      </span>
+                    ) : (
+                      <span className="text-sm font-regular p-x-xs text-grey-muted">
+                        {BREADCRUMB_SEPARATOR}
+                      </span>
+                    )}
                   </>
                 ) : (
                   renderBreadcrumb(index, link, classes)

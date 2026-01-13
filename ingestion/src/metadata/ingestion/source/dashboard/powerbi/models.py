@@ -71,6 +71,7 @@ class PowerBIReport(BaseModel):
     datasetId: Optional[str] = None
     users: Optional[List[PowerBIUser]] = []
     modifiedBy: Optional[str] = None
+    description: Optional[str] = None
 
 
 class DashboardsResponse(BaseModel):
@@ -135,7 +136,7 @@ class PowerBiMeasures(BaseModel):
     name: str
     expression: str
     description: Optional[str] = None
-    isHidden: bool
+    isHidden: Optional[bool] = False
 
 
 class PowerBITableSource(BaseModel):
@@ -302,3 +303,59 @@ class DataModelSchema(BaseModel):
 
     tables: Optional[List[PowerBiTable]] = None
     connectionFile: Optional[ConnectionFile] = None
+
+
+class ReportPage(BaseModel):
+    """
+    PowerBI report pages API response
+    single report Page object
+    """
+
+    name: str
+    displayName: Optional[str] = None
+
+
+class ReportPagesAPIResponse(BaseModel):
+    """
+    PowerBI report pages API response
+    """
+
+    odata_context: str = Field(alias="@odata.context")
+    value: Optional[List[ReportPage]] = None
+
+
+class DataflowEntityAttribute(BaseModel):
+    """
+    PowerBI Dataflow Entity Attribute Model
+    Represents a column/attribute within a dataflow entity
+    API doc: https://learn.microsoft.com/en-us/rest/api/power-bi/admin/dataflows-export-dataflow-as-admin
+    """
+
+    name: str
+    dataType: Optional[str] = None
+    description: Optional[str] = None
+
+
+class DataflowEntity(BaseModel):
+    """
+    PowerBI Dataflow Entity Model
+    Represents a table/entity within a dataflow
+    API doc: https://learn.microsoft.com/en-us/rest/api/power-bi/admin/dataflows-export-dataflow-as-admin
+    """
+
+    name: str
+    description: Optional[str] = None
+    attributes: Optional[List[DataflowEntityAttribute]] = []
+
+
+class DataflowExportResponse(BaseModel):
+    """
+    PowerBI Dataflow Export API Response Model
+    API: https://api.powerbi.com/v1.0/myorg/admin/dataflows/{dataflowId}/export
+    API doc: https://learn.microsoft.com/en-us/rest/api/power-bi/admin/dataflows-export-dataflow-as-admin
+    """
+
+    name: Optional[str] = None
+    description: Optional[str] = None
+    version: Optional[str] = None
+    entities: Optional[List[DataflowEntity]] = []

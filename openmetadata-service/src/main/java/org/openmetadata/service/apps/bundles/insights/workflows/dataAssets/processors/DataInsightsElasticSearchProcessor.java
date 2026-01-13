@@ -3,22 +3,22 @@ package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.proc
 import static org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow.DATA_STREAM_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
-import es.org.elasticsearch.action.bulk.BulkRequest;
-import es.org.elasticsearch.action.index.IndexRequest;
-import es.org.elasticsearch.xcontent.XContentType;
+import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.SearchIndexException;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.workflows.interfaces.Processor;
 
 @Slf4j
 public class DataInsightsElasticSearchProcessor
-    implements Processor<BulkRequest, List<Map<String, Object>>> {
+    implements Processor<List<BulkOperation>, List<Map<String, Object>>> {
 
   private final StepStats stats = new StepStats();
 
@@ -27,14 +27,15 @@ public class DataInsightsElasticSearchProcessor
   }
 
   @Override
-  public BulkRequest process(List<Map<String, Object>> input, Map<String, Object> contextData)
+  public List<BulkOperation> process(
+      List<Map<String, Object>> input, Map<String, Object> contextData)
       throws SearchIndexException {
     String index = (String) contextData.get(DATA_STREAM_KEY);
     LOG.debug(
         "[EsEntitiesProcessor] Processing a Batch of Size: {}, Index: {} ", input.size(), index);
-    BulkRequest requests;
+    List<BulkOperation> operations;
     try {
-      requests = buildBulkRequests(index, input);
+      operations = buildBulkOperations(index, input);
       LOG.debug(
           "[EsEntitiesProcessor] Batch Stats :- Submitted : {} Success: {} Failed: {}",
           input.size(),
@@ -49,30 +50,29 @@ public class DataInsightsElasticSearchProcessor
               .withFailedCount(input.size())
               .withSuccessCount(0)
               .withMessage(
-                  "Data Insights ElasticSearch Processor Encountered Failure. Converting requests to ES Request.")
+                  "Data Insights ElasticSearch Processor Encountered Failure. Converting requests to BulkOperation.")
               .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
       LOG.debug(
           "[DataInsightsElasticSearchProcessor] Failed. Details: {}", JsonUtils.pojoToJson(error));
       updateStats(0, input.size());
       throw new SearchIndexException(error);
     }
-    return requests;
+    return operations;
   }
 
-  private static BulkRequest buildBulkRequests(String index, List<Map<String, Object>> input) {
-    BulkRequest bulkRequests = new BulkRequest();
+  private static List<BulkOperation> buildBulkOperations(
+      String index, List<Map<String, Object>> input) {
+    List<BulkOperation> operations = new ArrayList<>();
     for (Map<String, Object> entity : input) {
-      IndexRequest request = getIndexRequest(index, entity);
-      bulkRequests.add(request);
+      BulkOperation operation = getCreateOperation(index, entity);
+      operations.add(operation);
     }
-    return bulkRequests;
+    return operations;
   }
 
-  private static IndexRequest getIndexRequest(String index, Map<String, Object> entity) {
-    IndexRequest indexRequest = new IndexRequest(index);
-    indexRequest.source(JsonUtils.pojoToJson(entity), XContentType.JSON);
-    indexRequest.opType("create");
-    return indexRequest;
+  private static BulkOperation getCreateOperation(String index, Map<String, Object> entity) {
+    String doc = JsonUtils.pojoToJson(entity);
+    return BulkOperation.of(b -> b.create(c -> c.index(index).document(EsUtils.toJsonData(doc))));
   }
 
   @Override

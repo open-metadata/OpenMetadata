@@ -13,13 +13,14 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -35,6 +36,7 @@ import {
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import {
@@ -42,6 +44,7 @@ import {
   updateTierTag,
 } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
@@ -66,9 +69,9 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.SCHEMA } =
-    useParams<{ tab: EntityTabs }>();
+    useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: decodedApiEndpointFqn } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -131,7 +134,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
+      navigate(
         getEntityDetailsPath(
           EntityType.API_ENDPOINT,
           decodedApiEndpointFqn,
@@ -174,14 +177,15 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     );
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
-    []
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
+    [navigate]
   );
 
   const {
     editCustomAttributePermission,
     editLineagePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editCustomAttributePermission:
@@ -193,6 +197,10 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
           apiEndpointPermissions.EditLineage) &&
         !deleted,
       viewAllPermission: apiEndpointPermissions.ViewAll,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        apiEndpointPermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [apiEndpointPermissions, deleted]
   );
@@ -213,6 +221,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
       handleFeedCount,
       editCustomAttributePermission,
       viewAllPermission,
+      viewCustomPropertiesPermission,
       editLineagePermission,
     });
 
@@ -230,6 +239,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     handleFeedCount,
     editCustomAttributePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
     editLineagePermission,
     customizedPage,
   ]);
@@ -262,10 +272,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.api-endpoint'),
-      })}>
+    <PageLayoutV1 pageTitle={getEntityName(apiEndpointDetails)}>
       <Row gutter={[0, 12]}>
         <Col span={24}>
           <DataAssetsHeader

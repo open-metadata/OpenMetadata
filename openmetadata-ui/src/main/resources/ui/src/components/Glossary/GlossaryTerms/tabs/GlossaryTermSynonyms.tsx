@@ -13,9 +13,9 @@
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Select, Space, Typography } from 'antd';
-import { t } from 'i18next';
 import { cloneDeep, isEmpty, isEqual } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
@@ -43,6 +43,7 @@ const GlossaryTermSynonyms = () => {
     isVersionView,
     permissions,
   } = useGenericContext<GlossaryTerm>();
+  const { t } = useTranslation();
 
   const getSynonyms = () =>
     !permissions.EditAll || !isEmpty(synonyms) ? (

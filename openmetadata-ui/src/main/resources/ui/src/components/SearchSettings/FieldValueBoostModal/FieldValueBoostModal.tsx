@@ -12,7 +12,7 @@
  */
 import { Form, Input, Modal, Select, Slider, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   FieldValueBoost,

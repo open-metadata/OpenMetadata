@@ -1,0 +1,14 @@
+{
+    "name": "SSAS",
+    "displayName": "SSAS Test Connection",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction of pipelines.",
+    "steps": [
+        {
+            "name": "CheckAccess",
+            "description":  "Check if the database is reachable.",
+            "errorMessage": "Failed to connect to ssas, please validate the credentials",
+            "shortCircuit": true,
+            "mandatory": true
+        }
+    ]
+}

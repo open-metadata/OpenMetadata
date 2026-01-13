@@ -14,8 +14,12 @@
 package org.openmetadata.service.resources.metadata;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL_COLUMN;
+import static org.openmetadata.service.Entity.TABLE_COLUMN;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -49,12 +53,12 @@ import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.customProperties.EnumConfig;
 import org.openmetadata.schema.type.customProperties.TableConfig;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.types.TypeResource;
 import org.openmetadata.service.resources.types.TypeResource.TypeList;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 import org.skyscreamer.jsonassert.JSONAssert;
@@ -87,6 +91,9 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     SQLQUERY_TYPE = getEntityByName("sqlQuery", "", ADMIN_AUTH_HEADERS);
     TIMESTAMP_TYPE = getEntityByName("timestamp", "", ADMIN_AUTH_HEADERS);
     TABLE_TYPE = getEntityByName("table-cp", "", ADMIN_AUTH_HEADERS);
+    TABLE_COLUMN_TYPE = getEntityByName(TABLE_COLUMN, "", ADMIN_AUTH_HEADERS);
+    DASHBOARD_DATA_MODEL_COLUMN_TYPE =
+        getEntityByName(DASHBOARD_DATA_MODEL_COLUMN, "", ADMIN_AUTH_HEADERS);
   }
 
   @Override
@@ -424,6 +431,162 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
         "Only entity types can be extended and field types can't be extended");
   }
 
+  @Test
+  void put_patch_tableColumnCustomProperty_200() throws IOException {
+    Type tableColumnEntity = getEntityByName(TABLE_COLUMN, "customProperties", ADMIN_AUTH_HEADERS);
+    assertTrue(listOrEmpty(tableColumnEntity.getCustomProperties()).isEmpty());
+
+    // Add a custom property with name tcProp1 with type string with PUT
+    CustomProperty fieldA =
+        new CustomProperty()
+            .withName("tcProp1")
+            .withDescription("tcProp1")
+            .withPropertyType(STRING_TYPE.getEntityReference())
+            .withDisplayName("Table Column String Property");
+    ChangeDescription change = getChangeDescription(tableColumnEntity, MINOR_UPDATE);
+    fieldAdded(change, "customProperties", new ArrayList<>(List.of(fieldA)));
+    tableColumnEntity =
+        addCustomPropertyAndCheck(
+            tableColumnEntity.getId(), fieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertCustomProperties(
+        new ArrayList<>(List.of(fieldA)), tableColumnEntity.getCustomProperties());
+
+    // Changing custom property description and displayName with PUT
+    fieldA.withDescription("updated").withDisplayName("Updated Table Column String Property");
+    change = getChangeDescription(tableColumnEntity, MINOR_UPDATE);
+    fieldUpdated(change, EntityUtil.getCustomField(fieldA, "description"), "tcProp1", "updated");
+    fieldUpdated(
+        change,
+        EntityUtil.getCustomField(fieldA, "displayName"),
+        "Table Column String Property",
+        "Updated Table Column String Property");
+    tableColumnEntity =
+        addCustomPropertyAndCheck(
+            tableColumnEntity.getId(), fieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertCustomProperties(
+        new ArrayList<>(List.of(fieldA)), tableColumnEntity.getCustomProperties());
+
+    // Add a second property with name tcProp2 with type integer
+    EntityReference typeRef =
+        new EntityReference()
+            .withType(INT_TYPE.getEntityReference().getType())
+            .withId(INT_TYPE.getEntityReference().getId());
+    CustomProperty fieldB =
+        new CustomProperty()
+            .withName("tcProp2")
+            .withDescription("tcProp2")
+            .withPropertyType(typeRef)
+            .withDisplayName("Table Column Integer Property");
+    change = getChangeDescription(tableColumnEntity, MINOR_UPDATE);
+    fieldAdded(change, "customProperties", new ArrayList<>(List.of(fieldB)));
+    tableColumnEntity =
+        addCustomPropertyAndCheck(
+            tableColumnEntity.getId(), fieldB, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    fieldB.setPropertyType(INT_TYPE.getEntityReference());
+    assertEquals(2, tableColumnEntity.getCustomProperties().size());
+    assertCustomProperties(
+        new ArrayList<>(List.of(fieldA, fieldB)), tableColumnEntity.getCustomProperties());
+  }
+
+  @Test
+  void put_patch_dashboardDataModelColumnCustomProperty_200() throws IOException {
+    Type dashboardColumnEntity =
+        getEntityByName(DASHBOARD_DATA_MODEL_COLUMN, "customProperties", ADMIN_AUTH_HEADERS);
+    assertTrue(listOrEmpty(dashboardColumnEntity.getCustomProperties()).isEmpty());
+
+    // Add a custom property with name dashboardProp1 with type string with PUT
+    CustomProperty fieldA =
+        new CustomProperty()
+            .withName("dashboardProp1")
+            .withDescription("dashboardProp1")
+            .withPropertyType(STRING_TYPE.getEntityReference())
+            .withDisplayName("Dashboard Column String Property");
+    ChangeDescription change = getChangeDescription(dashboardColumnEntity, MINOR_UPDATE);
+    fieldAdded(change, "customProperties", new ArrayList<>(List.of(fieldA)));
+    dashboardColumnEntity =
+        addCustomPropertyAndCheck(
+            dashboardColumnEntity.getId(), fieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertCustomProperties(
+        new ArrayList<>(List.of(fieldA)), dashboardColumnEntity.getCustomProperties());
+
+    // Changing custom property description and displayName with PUT
+    fieldA.withDescription("updated").withDisplayName("Updated Dashboard Column String Property");
+    change = getChangeDescription(dashboardColumnEntity, MINOR_UPDATE);
+    fieldUpdated(
+        change, EntityUtil.getCustomField(fieldA, "description"), "dashboardProp1", "updated");
+    fieldUpdated(
+        change,
+        EntityUtil.getCustomField(fieldA, "displayName"),
+        "Dashboard Column String Property",
+        "Updated Dashboard Column String Property");
+    dashboardColumnEntity =
+        addCustomPropertyAndCheck(
+            dashboardColumnEntity.getId(), fieldA, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertCustomProperties(
+        new ArrayList<>(List.of(fieldA)), dashboardColumnEntity.getCustomProperties());
+
+    // Add a second property with name dashboardProp2 with type number
+    EntityReference typeRef =
+        new EntityReference()
+            .withType(NUMBER_TYPE.getEntityReference().getType())
+            .withId(NUMBER_TYPE.getEntityReference().getId());
+    CustomProperty fieldB =
+        new CustomProperty()
+            .withName("dashboardProp2")
+            .withDescription("dashboardProp2")
+            .withPropertyType(typeRef)
+            .withDisplayName("Dashboard Column Number Property");
+    change = getChangeDescription(dashboardColumnEntity, MINOR_UPDATE);
+    fieldAdded(change, "customProperties", new ArrayList<>(List.of(fieldB)));
+    dashboardColumnEntity =
+        addCustomPropertyAndCheck(
+            dashboardColumnEntity.getId(), fieldB, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    fieldB.setPropertyType(NUMBER_TYPE.getEntityReference());
+    assertEquals(2, dashboardColumnEntity.getCustomProperties().size());
+    assertCustomProperties(
+        new ArrayList<>(List.of(fieldA, fieldB)), dashboardColumnEntity.getCustomProperties());
+  }
+
+  @Test
+  void put_customPropertyToColumnContextTypes_200() throws IOException {
+    // Test that tableColumn type allows custom properties (should not throw exception)
+    Type tableColumnType = getEntityByName(TABLE_COLUMN, "", ADMIN_AUTH_HEADERS);
+    assertEquals(Category.Entity, tableColumnType.getCategory());
+
+    // Test that dashboardDataModelColumn type allows custom properties (should not throw exception)
+    Type dashboardColumnType = getEntityByName(DASHBOARD_DATA_MODEL_COLUMN, "", ADMIN_AUTH_HEADERS);
+    assertEquals(Category.Entity, dashboardColumnType.getCategory());
+  }
+
+  @Test
+  void put_customPropertyToRegularFieldType_4xx() {
+    // Test that regular field types still cannot have custom properties
+    Type intType = INT_TYPE; // This is a regular field type
+
+    CustomProperty fieldProp =
+        new CustomProperty()
+            .withName("invalidProp")
+            .withDescription("This should fail")
+            .withPropertyType(STRING_TYPE.getEntityReference());
+
+    assertResponse(
+        () -> addCustomProperty(intType.getId(), fieldProp, Status.CREATED, ADMIN_AUTH_HEADERS),
+        Status.BAD_REQUEST,
+        "Only entity types can be extended and field types can't be extended");
+  }
+
+  @Test
+  void test_columnTypesExist() throws IOException {
+    // Verify that our column types can be retrieved
+    Type tableColumnType = getEntityByName(TABLE_COLUMN, "", ADMIN_AUTH_HEADERS);
+    assertEquals(Category.Entity, tableColumnType.getCategory());
+    assertEquals(TABLE_COLUMN, tableColumnType.getName());
+
+    Type dashboardColumnType = getEntityByName(DASHBOARD_DATA_MODEL_COLUMN, "", ADMIN_AUTH_HEADERS);
+    assertEquals(Category.Entity, dashboardColumnType.getCategory());
+    assertEquals(DASHBOARD_DATA_MODEL_COLUMN, dashboardColumnType.getName());
+  }
+
   @Override
   public Type validateGetWithDifferentFields(Type type, boolean byName)
       throws HttpResponseException {
@@ -478,6 +641,7 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     return new CreateType()
         .withName(name)
         .withCategory(Category.Field)
+        .withDescription("Type Test Description")
         .withSchema(INT_TYPE.getSchema());
   }
 
@@ -503,6 +667,165 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     } catch (Exception e) {
       throw new IllegalStateException(e.getMessage());
     }
+  }
+
+  @Test
+  void test_getEntityTypeFields_internalSchemaReferences() throws HttpResponseException {
+    // Test that internal schema references like #/definitions/column are handled correctly
+    WebTarget target = getCollection().path("/fields/table");
+    List<Map<String, Object>> fields = TestUtils.get(target, List.class, ADMIN_AUTH_HEADERS);
+
+    // Find the columns field
+    Map<String, Object> columnsField =
+        fields.stream()
+            .filter(field -> "columns".equals(field.get("name")))
+            .findFirst()
+            .orElse(null);
+
+    // Verify columns field exists and has correct type
+    assertNotNull(columnsField, "columns field should be present");
+    assertEquals(
+        "array<column>",
+        columnsField.get("type"),
+        "columns field should be of type array<column>, not array<string>");
+
+    // Verify that nested column properties are exposed
+    boolean hasColumnName =
+        fields.stream().anyMatch(field -> "columns.name".equals(field.get("name")));
+    boolean hasColumnDescription =
+        fields.stream().anyMatch(field -> "columns.description".equals(field.get("name")));
+    boolean hasColumnDataType =
+        fields.stream().anyMatch(field -> "columns.dataType".equals(field.get("name")));
+
+    assertTrue(hasColumnName, "columns.name field should be exposed");
+    assertTrue(hasColumnDescription, "columns.description field should be exposed");
+    assertTrue(hasColumnDataType, "columns.dataType field should be exposed");
+
+    // Test other internal schema references
+    Map<String, Object> dataModelField =
+        fields.stream()
+            .filter(field -> "dataModel".equals(field.get("name")))
+            .findFirst()
+            .orElse(null);
+
+    assertNotNull(dataModelField, "dataModel field should be present");
+    assertEquals("dataModel", dataModelField.get("type"), "dataModel should be of type object");
+
+    // Verify nested dataModel properties are exposed
+    boolean hasDataModelColumns =
+        fields.stream().anyMatch(field -> "dataModel.columns".equals(field.get("name")));
+    assertTrue(hasDataModelColumns, "dataModel.columns field should be exposed");
+  }
+
+  @Test
+  void test_getEntityTypeFields_classificationEntities() throws HttpResponseException {
+    // Test that classification entities (classification and tag) are properly recognized
+    // and their fields are correctly extracted
+
+    // Test Classification entity fields
+    WebTarget classificationTarget = getCollection().path("/fields/classification");
+    List<Map<String, Object>> classificationFields =
+        TestUtils.get(classificationTarget, List.class, ADMIN_AUTH_HEADERS);
+
+    // Verify essential Classification fields are present
+    assertNotNull(classificationFields, "Classification fields should not be null");
+    assertFalse(classificationFields.isEmpty(), "Classification should have fields");
+
+    // Check for key Classification fields
+    boolean hasName =
+        classificationFields.stream().anyMatch(field -> "name".equals(field.get("name")));
+    boolean hasDescription =
+        classificationFields.stream().anyMatch(field -> "description".equals(field.get("name")));
+    boolean hasDisabled =
+        classificationFields.stream().anyMatch(field -> "disabled".equals(field.get("name")));
+    boolean hasMutuallyExclusive =
+        classificationFields.stream()
+            .anyMatch(field -> "mutuallyExclusive".equals(field.get("name")));
+    boolean hasOwners =
+        classificationFields.stream().anyMatch(field -> "owners".equals(field.get("name")));
+    boolean hasReviewers =
+        classificationFields.stream().anyMatch(field -> "reviewers".equals(field.get("name")));
+    boolean hasEntityStatus =
+        classificationFields.stream().anyMatch(field -> "entityStatus".equals(field.get("name")));
+
+    assertTrue(hasName, "Classification should have 'name' field");
+    assertTrue(hasDescription, "Classification should have 'description' field");
+    assertTrue(hasDisabled, "Classification should have 'disabled' field");
+    assertTrue(hasMutuallyExclusive, "Classification should have 'mutuallyExclusive' field");
+    assertTrue(hasOwners, "Classification should have 'owners' field");
+    assertTrue(hasReviewers, "Classification should have 'reviewers' field");
+    assertTrue(hasEntityStatus, "Classification should have 'entityStatus' field");
+
+    // Test Tag entity fields
+    WebTarget tagTarget = getCollection().path("/fields/tag");
+    List<Map<String, Object>> tagFields = TestUtils.get(tagTarget, List.class, ADMIN_AUTH_HEADERS);
+
+    // Verify essential Tag fields are present
+    assertNotNull(tagFields, "Tag fields should not be null");
+    assertFalse(tagFields.isEmpty(), "Tag should have fields");
+
+    // Check for key Tag fields
+    boolean hasTagName = tagFields.stream().anyMatch(field -> "name".equals(field.get("name")));
+    boolean hasTagDescription =
+        tagFields.stream().anyMatch(field -> "description".equals(field.get("name")));
+    boolean hasClassification =
+        tagFields.stream().anyMatch(field -> "classification".equals(field.get("name")));
+    boolean hasParent = tagFields.stream().anyMatch(field -> "parent".equals(field.get("name")));
+    boolean hasTagDisabled =
+        tagFields.stream().anyMatch(field -> "disabled".equals(field.get("name")));
+    boolean hasTagMutuallyExclusive =
+        tagFields.stream().anyMatch(field -> "mutuallyExclusive".equals(field.get("name")));
+    boolean hasTagOwners = tagFields.stream().anyMatch(field -> "owners".equals(field.get("name")));
+    boolean hasTagReviewers =
+        tagFields.stream().anyMatch(field -> "reviewers".equals(field.get("name")));
+    boolean hasTagEntityStatus =
+        tagFields.stream().anyMatch(field -> "entityStatus".equals(field.get("name")));
+    boolean hasRecognizers =
+        tagFields.stream().anyMatch(field -> "recognizers".equals(field.get("name")));
+    boolean hasAutoClassificationEnabled =
+        tagFields.stream().anyMatch(field -> "autoClassificationEnabled".equals(field.get("name")));
+
+    assertTrue(hasTagName, "Tag should have 'name' field");
+    assertTrue(hasTagDescription, "Tag should have 'description' field");
+    assertTrue(hasClassification, "Tag should have 'classification' field");
+    assertTrue(hasParent, "Tag should have 'parent' field");
+    assertTrue(hasTagDisabled, "Tag should have 'disabled' field");
+    assertTrue(hasTagMutuallyExclusive, "Tag should have 'mutuallyExclusive' field");
+    assertTrue(hasTagOwners, "Tag should have 'owners' field");
+    assertTrue(hasTagReviewers, "Tag should have 'reviewers' field");
+    assertTrue(hasTagEntityStatus, "Tag should have 'entityStatus' field");
+    assertTrue(hasRecognizers, "Tag should have 'recognizers' field");
+    assertTrue(hasAutoClassificationEnabled, "Tag should have 'autoClassificationEnabled' field");
+
+    // Verify the field types are correct
+    Map<String, Object> ownersField =
+        classificationFields.stream()
+            .filter(field -> "owners".equals(field.get("name")))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(ownersField, "owners field should be present in Classification");
+    assertEquals(
+        "array<entityReference>",
+        ownersField.get("type"),
+        "owners field should be of type array<entityReference>");
+
+    Map<String, Object> reviewersField =
+        tagFields.stream()
+            .filter(field -> "reviewers".equals(field.get("name")))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(reviewersField, "reviewers field should be present in Tag");
+    assertEquals(
+        "array<entityReference>",
+        reviewersField.get("type"),
+        "reviewers field should be of type array<entityReference>");
+
+    Map<String, Object> entityStatusField =
+        tagFields.stream()
+            .filter(field -> "entityStatus".equals(field.get("name")))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(entityStatusField, "entityStatus field should be present in Tag");
   }
 
   @Override

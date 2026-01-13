@@ -12,10 +12,11 @@
  */
 
 import { isEmpty } from 'lodash';
-import React, { FC, useEffect } from 'react';
+import { FC, useEffect, useMemo } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { I18nextProvider } from 'react-i18next';
-import { Router } from 'react-router-dom';
+import { BrowserRouter } from 'react-router-dom';
+import { useShallow } from 'zustand/react/shallow';
 import AppRouter from './components/AppRouter/AppRouter';
 import { AuthProvider } from './components/Auth/AuthProviders/AuthProvider';
 import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
@@ -29,23 +30,55 @@ import PermissionProvider from './context/PermissionProvider/PermissionProvider'
 import TourProvider from './context/TourProvider/TourProvider';
 import WebSocketProvider from './context/WebSocketProvider/WebSocketProvider';
 import { useApplicationStore } from './hooks/useApplicationStore';
-import { getCustomUiThemePreference } from './rest/settingConfigAPI';
+import {
+  getCustomUiThemePreference,
+  getSystemConfig,
+} from './rest/settingConfigAPI';
+import { getBasePath } from './utils/HistoryUtils';
 
-import { history } from './utils/HistoryUtils';
+import GlobalStyles from '@mui/material/GlobalStyles';
+import { ThemeProvider } from '@mui/material/styles';
+import {
+  createMuiTheme,
+  SnackbarContent,
+} from '@openmetadata/ui-core-components';
+import { SnackbarProvider } from 'notistack';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+import { DEFAULT_THEME } from './constants/Appearance.constants';
+import RuleEnforcementProvider from './context/RuleEnforcementProvider/RuleEnforcementProvider';
 import i18n from './utils/i18next/LocalUtil';
 import { getThemeConfig } from './utils/ThemeUtils';
-
 const App: FC = () => {
-  const { applicationConfig, setApplicationConfig } = useApplicationStore();
+  const { applicationConfig, setApplicationConfig, setRdfEnabled } =
+    useApplicationStore(
+      useShallow((state) => ({
+        applicationConfig: state.applicationConfig,
+        setApplicationConfig: state.setApplicationConfig,
+        setRdfEnabled: state.setRdfEnabled,
+      }))
+    );
+
+  // Create dynamic MUI theme based on user customizations
+  const muiTheme = useMemo(
+    () => createMuiTheme(applicationConfig?.customTheme, DEFAULT_THEME),
+    [applicationConfig?.customTheme]
+  );
 
   const fetchApplicationConfig = async () => {
     try {
-      const data = await getCustomUiThemePreference();
+      const [themeData, systemConfig] = await Promise.all([
+        getCustomUiThemePreference(),
+        getSystemConfig(),
+      ]);
 
       setApplicationConfig({
-        ...data,
-        customTheme: getThemeConfig(data.customTheme),
+        ...themeData,
+        customTheme: getThemeConfig(themeData.customTheme),
       });
+
+      // Set RDF enabled state
+      setRdfEnabled(systemConfig.rdfEnabled || false);
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(error);
@@ -75,35 +108,57 @@ const App: FC = () => {
   return (
     <div className="main-container">
       <div className="content-wrapper" data-testid="content-wrapper">
-        <Router history={history}>
+        <BrowserRouter basename={getBasePath()}>
           <I18nextProvider i18n={i18n}>
             <HelmetProvider>
               <ErrorBoundary>
                 <AntDConfigProvider>
-                  <AuthProvider childComponentType={AppRouter}>
-                    <TourProvider>
-                      <WebAnalyticsProvider>
-                        <PermissionProvider>
-                          <WebSocketProvider>
-                            <ApplicationsProvider>
-                              <AsyncDeleteProvider>
-                                <EntityExportModalProvider>
-                                  <AirflowStatusProvider>
-                                    <AppRouter />
-                                  </AirflowStatusProvider>
-                                </EntityExportModalProvider>
-                              </AsyncDeleteProvider>
-                            </ApplicationsProvider>
-                          </WebSocketProvider>
-                        </PermissionProvider>
-                      </WebAnalyticsProvider>
-                    </TourProvider>
-                  </AuthProvider>
+                  <ThemeProvider theme={muiTheme}>
+                    <GlobalStyles styles={{ html: { fontSize: '14px' } }} />
+                    <SnackbarProvider
+                      Components={{
+                        default: SnackbarContent,
+                        error: SnackbarContent,
+                        success: SnackbarContent,
+                        warning: SnackbarContent,
+                        info: SnackbarContent,
+                      }}
+                      anchorOrigin={{
+                        vertical: 'top',
+                        horizontal: 'right',
+                      }}
+                      autoHideDuration={6000}
+                      maxSnack={3}>
+                      <AuthProvider childComponentType={AppRouter}>
+                        <TourProvider>
+                          <WebAnalyticsProvider>
+                            <PermissionProvider>
+                              <WebSocketProvider>
+                                <ApplicationsProvider>
+                                  <AsyncDeleteProvider>
+                                    <EntityExportModalProvider>
+                                      <AirflowStatusProvider>
+                                        <RuleEnforcementProvider>
+                                          <DndProvider backend={HTML5Backend}>
+                                            <AppRouter />
+                                          </DndProvider>
+                                        </RuleEnforcementProvider>
+                                      </AirflowStatusProvider>
+                                    </EntityExportModalProvider>
+                                  </AsyncDeleteProvider>
+                                </ApplicationsProvider>
+                              </WebSocketProvider>
+                            </PermissionProvider>
+                          </WebAnalyticsProvider>
+                        </TourProvider>
+                      </AuthProvider>
+                    </SnackbarProvider>
+                  </ThemeProvider>
                 </AntDConfigProvider>
               </ErrorBoundary>
             </HelmetProvider>
           </I18nextProvider>
-        </Router>
+        </BrowserRouter>
       </div>
     </div>
   );

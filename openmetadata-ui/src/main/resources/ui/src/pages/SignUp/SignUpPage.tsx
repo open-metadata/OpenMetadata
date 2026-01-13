@@ -14,9 +14,9 @@
 import { Button, Card, Form, FormProps, Input, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { UserProfile } from '../../components/Auth/AuthProviders/AuthProvider.interface';
 import TeamsSelectable from '../../components/Settings/Team/TeamsSelectable/TeamsSelectable';
 import {
@@ -40,7 +40,7 @@ const cookieStorage = new CookieStorage();
 
 const SignUp = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const {
     setIsSigningUp,
     jwtPrincipalClaims = [],
@@ -71,7 +71,7 @@ const SignUp = () => {
         setUrlPathnameExpiryAfterRoute(urlPathname);
       }
       setIsSigningUp(false);
-      history.push(ROUTES.HOME);
+      navigate(ROUTES.HOME);
     } catch (error) {
       showErrorToast(
         error as AxiosError,

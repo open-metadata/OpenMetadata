@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -33,11 +33,11 @@ export interface OidcClientConfig {
     /**
      * Discovery Uri for the Client.
      */
-    discoveryUri?: string;
+    discoveryUri: string;
     /**
      * Client ID.
      */
-    id?: string;
+    id: string;
     /**
      * Validity for the JWT Token created from SAML Response
      */
@@ -65,15 +65,19 @@ export interface OidcClientConfig {
     /**
      * Client Secret.
      */
-    secret?: string;
+    secret: string;
     /**
      * Server Url.
      */
     serverUrl?: string;
     /**
+     * Validity for the Session in case of confidential clients
+     */
+    sessionExpiry?: number;
+    /**
      * Tenant in case of Azure.
      */
-    tenant?: string;
+    tenant: string;
     /**
      * Validity for the JWT Token created from SAML Response
      */

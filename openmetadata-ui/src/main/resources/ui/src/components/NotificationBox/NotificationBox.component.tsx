@@ -15,7 +15,7 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Badge, Button, List, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconMentions } from '../../assets/svg/ic-mentions.svg';
 import { ReactComponent as IconTask } from '../../assets/svg/ic-task.svg';
@@ -38,6 +38,7 @@ import { getFilters, tabsInfo } from './NotificationBox.utils';
 import NotificationFeedCard from './NotificationFeedCard.component';
 
 const NotificationBox = ({
+  activeTab,
   hasMentionNotification,
   hasTaskNotification,
   onMarkTaskNotificationRead,
@@ -68,23 +69,50 @@ const NotificationBox = ({
       const entityType = getEntityType(feed.about);
       const entityFQN = getEntityFQN(feed.about);
 
+      // For mention notifications, get the actual user who made the mention from posts
+      let actualUser = mainFeed.from;
+      let actualTimestamp = mainFeed.postTs;
+      let feedType = feed.type || ThreadType.Conversation;
+      const isConversationFeed = feed.type === ThreadType.Conversation;
+
+      if (
+        activeTab === ThreadType.Conversation &&
+        feed.posts &&
+        feed.posts.length > 0
+      ) {
+        // Find the most recent post that contains a mention
+        const mentionPost = feed.posts
+          .filter(
+            (post) =>
+              post.message.includes('<#E::user::') && post.postTs !== undefined
+          )
+          .sort((a, b) => (b.postTs ?? 0) - (a.postTs ?? 0))[0];
+
+        if (mentionPost?.postTs !== undefined) {
+          actualUser = mentionPost.from;
+          actualTimestamp = mentionPost.postTs;
+          feedType = ThreadType.Conversation;
+        }
+      }
+
       return (
         <NotificationFeedCard
-          createdBy={mainFeed.from}
+          createdBy={actualUser}
           entityFQN={entityFQN as string}
           entityType={entityType as string}
-          feedType={feed.type || ThreadType.Conversation}
-          key={`${mainFeed.from} ${mainFeed.id}`}
+          feedType={feedType}
+          isConversationFeed={isConversationFeed}
+          key={`${actualUser} ${mainFeed.id}`}
           task={feed}
-          timestamp={mainFeed.postTs}
+          timestamp={actualTimestamp}
         />
       );
     });
   }, [notifications]);
 
   const getNotificationData = (
-    threadType: ThreadType,
-    feedFilter: FeedFilter
+    feedFilter: FeedFilter,
+    threadType?: ThreadType
   ) => {
     setIsLoading(true);
     getFeedsWithFilter(currentUser?.id, feedFilter, undefined, threadType)
@@ -109,7 +137,7 @@ const NotificationBox = ({
       onTabChange(key);
       const { threadType, feedFilter } = getFilters(key as ThreadType);
 
-      getNotificationData(threadType, feedFilter);
+      getNotificationData(feedFilter, threadType);
 
       setViewAllPath(
         getUserPath(
@@ -133,7 +161,7 @@ const NotificationBox = ({
   );
 
   useEffect(() => {
-    getNotificationData(ThreadType.Task, FeedFilter.ASSIGNED_TO);
+    getNotificationData(FeedFilter.ASSIGNED_TO, ThreadType.Task);
   }, []);
 
   const getTabTitle = (name: string, key: string) => {

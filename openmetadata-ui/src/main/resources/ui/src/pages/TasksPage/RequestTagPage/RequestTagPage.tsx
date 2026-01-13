@@ -15,9 +15,9 @@ import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
@@ -43,7 +43,6 @@ import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
 } from '../../../utils/EntityUtils';
-import i18n from '../../../utils/i18next/LocalUtil';
 import {
   fetchEntityDetail,
   fetchOptions,
@@ -53,6 +52,7 @@ import {
   getTaskMessage,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Assignees from '../shared/Assignees';
 import TagSuggestion from '../shared/TagSuggestion';
 import '../task-page.style.less';
@@ -62,9 +62,9 @@ const RequestTag = () => {
   const { currentUser } = useApplicationStore();
   const { t } = useTranslation();
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [form] = useForm();
-  const { entityType } = useParams<{ entityType: EntityType }>();
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { fqn } = useFqn();
   const queryParams = new URLSearchParams(location.search);
 
@@ -94,7 +94,7 @@ const RequestTag = () => {
     [value, entityType, field, entityData]
   );
 
-  const back = () => history.goBack();
+  const back = () => navigate(-1);
 
   const onSearch = (query: string) => {
     const data = {
@@ -136,7 +136,7 @@ const RequestTag = () => {
             entity: t('label.task'),
           })
         );
-        history.push(
+        navigate(
           entityUtilClassBase.getEntityLink(
             entityType,
             entityFQN,
@@ -263,7 +263,7 @@ const RequestTag = () => {
                       htmlType="submit"
                       loading={isLoading}
                       type="primary">
-                      {suggestion ? t('label.suggest') : t('label.submit')}
+                      {suggestion ? t('label.suggest') : t('label.save')}
                     </Button>
                   </Space>
                 </Form.Item>
@@ -295,4 +295,4 @@ const RequestTag = () => {
   );
 };
 
-export default withPageLayout(i18n.t('label.request-tag-plural'))(RequestTag);
+export default withPageLayout(RequestTag);

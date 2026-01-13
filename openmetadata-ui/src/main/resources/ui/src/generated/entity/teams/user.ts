@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -16,6 +16,11 @@
  * more data assets. A user can also follow zero or more data assets.
  */
 export interface User {
+    /**
+     * When true, this bot is allowed to impersonate users (subject to policy checks). Only
+     * applicable for bot users.
+     */
+    allowImpersonation?:      boolean;
     authenticationMechanism?: AuthenticationMechanism;
     /**
      * Change that lead to this version of the entity.
@@ -66,6 +71,10 @@ export interface User {
      */
     id: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * Change that lead to this version of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
@@ -87,6 +96,10 @@ export interface User {
      */
     isEmailVerified?: boolean;
     /**
+     * Last time the user was active in the system.
+     */
+    lastActivityTime?: number;
+    /**
      * Last time the user logged in.
      */
     lastLoginTime?: number;
@@ -99,6 +112,11 @@ export interface User {
      * List of entities owned by the user.
      */
     owns?: EntityReference[];
+    /**
+     * User's personal preferences for each persona. Users can customize certain UI elements per
+     * persona while inheriting base persona configuration.
+     */
+    personaPreferences?: PersonaPreferences[];
     /**
      * Personas that the user assigned to.
      */
@@ -294,7 +312,7 @@ export interface SsoClientConfig {
  */
 export interface Idp {
     /**
-     * Authority URL to redirect the users on Sign In page
+     * Authority URL (deprecated, use entityId instead).
      */
     authorityUrl?: string;
     /**
@@ -306,7 +324,7 @@ export interface Idp {
      */
     idpX509Certificate?: string;
     /**
-     * Authority URL to redirect the users on Sign In page
+     * Name ID format for SAML assertions
      */
     nameId?: string;
     /**
@@ -527,6 +545,40 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * User-specific preferences for a persona that override default persona UI customization.
+ * These are limited customizations that users can apply to personalize their experience
+ * while still inheriting the base persona configuration.
+ */
+export interface PersonaPreferences {
+    /**
+     * User's personal customizations for the landing page.
+     */
+    landingPageSettings?: LandingPageSettings;
+    /**
+     * UUID of the persona these preferences belong to.
+     */
+    personaId: string;
+    /**
+     * Name of the persona for quick reference and linking.
+     */
+    personaName: string;
+}
+
+/**
+ * User's personal customizations for the landing page.
+ */
+export interface LandingPageSettings {
+    /**
+     * Custom header background color for the landing page.
+     */
+    headerColor?: string;
+    /**
+     * Reference to a custom header background image (reserved for future use).
+     */
+    headerImage?: string;
 }
 
 /**

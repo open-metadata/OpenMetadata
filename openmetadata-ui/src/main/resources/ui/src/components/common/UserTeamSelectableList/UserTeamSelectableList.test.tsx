@@ -12,7 +12,6 @@
  */
 import { render, screen } from '@testing-library/react';
 import { Popover } from 'antd';
-import React from 'react';
 import { UserTeamSelectableList } from './UserTeamSelectableList.component';
 
 const mockOnUpdate = jest.fn();

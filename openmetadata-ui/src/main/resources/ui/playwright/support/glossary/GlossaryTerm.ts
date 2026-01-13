@@ -22,32 +22,41 @@ import {
 } from './Glossary.interface';
 
 export class GlossaryTerm extends EntityClass {
-  randomName = getRandomLastName();
-  data: GlossaryTermData = {
-    name: `PW.${uuid()}%${this.randomName}`,
-    displayName: `PW ${uuid()}%${this.randomName}`,
-    description: 'A bank account number.',
-    mutuallyExclusive: false,
-    glossary: '',
-    synonyms: '',
-    fullyQualifiedName: '',
-    reviewers: [],
-  };
+  randomName: string;
+  data: GlossaryTermData;
+  glossary: Glossary;
+  createGlossary = true;
 
   responseData: GlossaryTermResponseDataType =
     {} as GlossaryTermResponseDataType;
 
-  constructor(glossary: Glossary, parent?: string, name?: string) {
+  constructor(glossary?: Glossary, parent?: string, name?: string) {
     super(EntityTypeEndpoint.GlossaryTerm);
-    this.data.glossary = glossary.data.name;
+
+    this.randomName = getRandomLastName();
+    const id1 = uuid();
+    const id2 = uuid();
+
+    this.glossary = glossary ?? new Glossary();
+    this.createGlossary = !glossary;
+
+    this.data = {
+      name: name ?? `PW.${id1}%${this.randomName}`,
+      displayName: name ?? `PW ${id2}%${this.randomName}`,
+      description: 'A bank account number.',
+      mutuallyExclusive: false,
+      glossary: this.glossary.data.name,
+      synonyms: '',
+      fullyQualifiedName: '',
+      reviewers: this.glossary.data.reviewers,
+    };
+
     if (parent) {
       this.data.parent = parent;
     }
 
-    this.data.name = name ?? this.data.name;
     // eslint-disable-next-line no-useless-escape
     this.data.fullyQualifiedName = `\"${this.data.glossary}\".\"${this.data.name}\"`;
-    this.data.reviewers = glossary.data.reviewers;
   }
 
   async visitEntityPage(page: Page) {
@@ -81,6 +90,10 @@ export class GlossaryTerm extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
+    if (this.createGlossary) {
+      await this.glossary.create(apiContext);
+    }
+
     const apiData = omit(this.data, [
       'fullyQualifiedName',
       'synonyms',
@@ -116,13 +129,26 @@ export class GlossaryTerm extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
+    const fqn = this.responseData.fullyQualifiedName;
     const response = await apiContext.delete(
       `/api/v1/glossaryTerms/name/${encodeURIComponent(
-        this.responseData.fullyQualifiedName
+        fqn
       )}?recursive=true&hardDelete=true`
     );
 
+    if (!response.ok()) {
+      const errorText = await response.text();
+
+      throw new Error(
+        `Failed to delete glossary term "${fqn}": ${response.status()} ${response.statusText()} - ${errorText}`
+      );
+    }
+
     return await response.json();
+  }
+
+  getTermDisplayName() {
+    return this.responseData.displayName;
   }
 
   rename(newTermName: string, newTermFqn: string) {

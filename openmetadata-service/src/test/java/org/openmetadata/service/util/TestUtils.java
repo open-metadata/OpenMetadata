@@ -51,21 +51,29 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.ImmutableTriple;
 import org.apache.http.client.HttpResponseException;
 import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.function.Executable;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.services.MetadataConnection;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.entity.type.Style;
@@ -76,6 +84,7 @@ import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.services.connections.llm.OpenAIConnection;
 import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.services.connections.messaging.RedpandaConnection;
 import org.openmetadata.schema.services.connections.metadata.AmundsenConnection;
@@ -86,8 +95,11 @@ import org.openmetadata.schema.services.connections.pipeline.GluePipelineConnect
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.search.OpenSearchConnection;
 import org.openmetadata.schema.services.connections.storage.S3Connection;
+import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.ApiConnection;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.LLMConnection;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.type.MlModelConnection;
 import org.openmetadata.schema.type.PipelineConnection;
@@ -95,10 +107,14 @@ import org.openmetadata.schema.type.SearchConnection;
 import org.openmetadata.schema.type.StorageConnection;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.opentest4j.AssertionFailedError;
 
 @Slf4j
@@ -195,6 +211,13 @@ public final class TestUtils {
               new RestConnection()
                   .withOpenAPISchemaURL(getUri("http://localhost:8585/swagger.json")));
 
+  public static final LLMConnection OPENAI_CONNECTION =
+      new LLMConnection()
+          .withConfig(
+              new OpenAIConnection()
+                  .withApiKey("test-api-key")
+                  .withBaseURL("https://api.openai.com/v1"));
+
   public static final MetadataConnection AMUNDSEN_CONNECTION =
       new MetadataConnection()
           .withConfig(
@@ -217,6 +240,23 @@ public final class TestUtils {
               .waitDuration(Duration.ofMillis(100))
               .retryExceptions(RetryableAssertionError.class)
               .build());
+
+  /**
+   * Simulates work by performing a CPU-intensive operation
+   * that takes approximately the specified milliseconds.
+   * This is more reliable than Thread.sleep() for testing
+   * as it doesn't block threads and is more predictable.
+   */
+  public static void simulateWork(long targetMillis) {
+    long startTime = System.nanoTime();
+    long targetNanos = targetMillis * 1_000_000L;
+
+    // Perform busy work until target time is reached
+    while ((System.nanoTime() - startTime) < targetNanos) {
+      // Perform some computation to consume CPU time
+      Math.sqrt(Math.random());
+    }
+  }
 
   public static void assertCustomProperties(
       List<CustomProperty> expected, List<CustomProperty> actual) {
@@ -500,7 +540,15 @@ public final class TestUtils {
       assertEquals(limit, actual.getData().size());
     }
     for (int i = 0; i < actual.getData().size(); i++) {
-      assertEquals(allEntities.get(offset + i), actual.getData().get(i));
+      if (actual.getData().get(i) instanceof EntityTimeSeriesInterface) {
+        assertEquals(
+            ((EntityTimeSeriesInterface) allEntities.get(offset + i)).getId(),
+            ((EntityTimeSeriesInterface) actual.getData().get(i)).getId());
+      } else {
+        assertEquals(
+            ((EntityInterface) allEntities.get(offset + i)).getId(),
+            ((EntityInterface) actual.getData().get(i)).getId());
+      }
     }
     // Ensure total count returned in paging is correct
     assertEquals(allEntities.size(), actual.getPaging().getTotal());
@@ -554,19 +602,38 @@ public final class TestUtils {
     return readResponse(response, clz, Status.OK.getStatusCode());
   }
 
-  public static <K> void put(
-      WebTarget target, K request, Status expectedStatus, Map<String, String> headers)
+  public static <T> T patch(
+      WebTarget target,
+      JsonNode patch,
+      Class<T> clz,
+      Map<String, String> headers,
+      String ifMatchHeader)
       throws HttpResponseException {
     Response response =
         SecurityUtil.addHeaders(target, headers)
-            .method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
+            .header("If-Match", ifMatchHeader)
+            .method(
+                "PATCH",
+                Entity.entity(patch.toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
+    return readResponse(response, clz, Status.OK.getStatusCode());
+  }
+
+  public static <K> void put(
+      WebTarget target, K request, Status expectedStatus, Map<String, String> headers)
+      throws HttpResponseException {
+    // Use empty string when request is null - Jersey requires non-null entity for PUT
+    Object body = request != null ? request : "";
+    Response response =
+        SecurityUtil.addHeaders(target, headers)
+            .method("PUT", Entity.entity(body, MediaType.APPLICATION_JSON));
     readResponse(response, expectedStatus.getStatusCode());
   }
 
   public static void put(WebTarget target, Status expectedStatus, Map<String, String> headers)
       throws HttpResponseException {
     Invocation.Builder builder = SecurityUtil.addHeaders(target, headers);
-    Response response = builder.method("PUT");
+    // Send empty string entity for PUT without body - Jersey requires entity for PUT method
+    Response response = builder.method("PUT", Entity.entity("", MediaType.APPLICATION_JSON));
     readResponse(response, expectedStatus.getStatusCode());
   }
 
@@ -732,7 +799,7 @@ public final class TestUtils {
         EntityUtil.mergeTags(updatedExpectedList, derived);
       }
     }
-    assertTrue(compareListsIgnoringOrder(updatedExpectedList, actualList));
+    assertTrue(compareTagsIgnoringOrder(updatedExpectedList, actualList));
   }
 
   public static void validateTagLabel(TagLabel label) {
@@ -919,6 +986,25 @@ public final class TestUtils {
     return actual.size() == exists;
   }
 
+  private static List<ImmutableTriple<String, TagSource, TagLabel.LabelType>>
+      convertTagLabelsToComparableTriples(List<TagLabel> tagLabels) {
+    return tagLabels.stream()
+        .map(
+            label ->
+                new ImmutableTriple<>(label.getTagFQN(), label.getSource(), label.getLabelType()))
+        .collect(Collectors.toList());
+  }
+
+  public static boolean compareTagsIgnoringOrder(List<TagLabel> expected, List<TagLabel> actual) {
+    return compareListsIgnoringOrder(
+        convertTagLabelsToComparableTriples(expected), convertTagLabelsToComparableTriples(actual));
+  }
+
+  public static boolean isTagsSuperSet(List<TagLabel> superset, List<TagLabel> subset) {
+    return convertTagLabelsToComparableTriples(superset)
+        .containsAll(convertTagLabelsToComparableTriples(subset));
+  }
+
   public static void assertStyle(Style expected, Style actual) {
     if (expected == null) return;
     assertEquals(expected.getIconURL(), actual.getIconURL());
@@ -995,5 +1081,214 @@ public final class TestUtils {
     form.param("contentType", contentType);
     form.param("size", String.valueOf(size));
     return form;
+  }
+
+  public static <T, L extends ResultList<T>> List<T> getAllPages(
+      WebTarget target,
+      Class<L> clazz,
+      String startQueryParam,
+      String limitQueryParam,
+      Integer pageSize,
+      Map<String, String> headers)
+      throws HttpResponseException {
+    List<T> results = new ArrayList<>();
+    String after = null;
+
+    do {
+      WebTarget pageTarget = target.queryParam(limitQueryParam, pageSize);
+      if (after != null) {
+        pageTarget = pageTarget.queryParam(startQueryParam, after);
+      }
+
+      L resultList = get(pageTarget, clazz, headers);
+
+      if (resultList == null || resultList.getData() == null) {
+        break;
+      }
+
+      results.addAll(resultList.getData());
+      after = resultList.getPaging() != null ? resultList.getPaging().getAfter() : null;
+
+    } while (after != null);
+
+    return results;
+  }
+
+  /**
+   * Wait for the SearchIndexingApplication reindex job to complete by polling app run status.
+   *
+   * @param target WebTarget for the base resource URL
+   * @param authHeaders authentication headers
+   * @param timeoutMs maximum time to wait in milliseconds
+   */
+  public static void waitForReindexCompletion(
+      WebTarget target, Map<String, String> authHeaders, long timeoutMs)
+      throws InterruptedException {
+    long startTime = System.currentTimeMillis();
+    long pollIntervalMs = 1000;
+
+    while (System.currentTimeMillis() - startTime < timeoutMs) {
+      AppRunRecord latestRun = getLatestAppRun(target, "SearchIndexingApplication", authHeaders);
+      if (latestRun != null) {
+        AppRunRecord.Status status = latestRun.getStatus();
+        if (status == AppRunRecord.Status.SUCCESS
+            || status == AppRunRecord.Status.COMPLETED
+            || status == AppRunRecord.Status.FAILED
+            || status == AppRunRecord.Status.ACTIVE_ERROR) {
+          return;
+        }
+      }
+      Thread.sleep(pollIntervalMs);
+    }
+    throw new RuntimeException("Reindex did not complete within " + timeoutMs + "ms timeout");
+  }
+
+  /**
+   * Get the latest app run record for a given application.
+   *
+   * @param target WebTarget for the base resource URL
+   * @param appName name of the application
+   * @param authHeaders authentication headers
+   * @return AppRunRecord or null if not found
+   */
+  public static AppRunRecord getLatestAppRun(
+      WebTarget target, String appName, Map<String, String> authHeaders) {
+    try {
+      WebTarget appTarget = target.path(String.format("apps/name/%s/runs/latest", appName));
+      return get(appTarget, AppRunRecord.class, authHeaders);
+    } catch (HttpResponseException e) {
+      return null;
+    }
+  }
+
+  public static void enableSearchRbac(boolean enable) throws HttpResponseException {
+    WebTarget target =
+        OpenMetadataApplicationTest.getResource(
+            "system/settings/" + SettingsType.SEARCH_SETTINGS.value());
+    Settings searchSettings = TestUtils.get(target, Settings.class, ADMIN_AUTH_HEADERS);
+    SearchSettings searchConfig =
+        JsonUtils.convertValue(searchSettings.getConfigValue(), SearchSettings.class);
+
+    searchConfig.getGlobalSettings().setEnableAccessControl(enable);
+
+    Settings updatedSettings =
+        new Settings().withConfigType(SettingsType.SEARCH_SETTINGS).withConfigValue(searchConfig);
+    WebTarget updateTarget = OpenMetadataApplicationTest.getResource("system/settings");
+    TestUtils.put(updateTarget, updatedSettings, Response.Status.OK, ADMIN_AUTH_HEADERS);
+  }
+
+  /**
+   * Removes the default roles from the Organization team. This is useful for RBAC tests where you
+   * need users to NOT inherit the DataConsumer role which provides broad VIEW permissions.
+   *
+   * @return the list of default roles that were removed (to restore later)
+   */
+  public static List<EntityReference> removeOrganizationDefaultRoles()
+      throws HttpResponseException {
+    WebTarget target =
+        OpenMetadataApplicationTest.getResource("teams/name/Organization?fields=defaultRoles");
+    Team organization = TestUtils.get(target, Team.class, ADMIN_AUTH_HEADERS);
+
+    List<EntityReference> originalDefaultRoles = organization.getDefaultRoles();
+    if (originalDefaultRoles == null || originalDefaultRoles.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    List<EntityReference> savedRoles = new ArrayList<>(originalDefaultRoles);
+
+    String originalJson = JsonUtils.pojoToJson(organization);
+    organization.setDefaultRoles(new ArrayList<>());
+    String updatedJson = JsonUtils.pojoToJson(organization);
+
+    JsonNode patch = getJsonPatch(originalJson, updatedJson);
+    WebTarget patchTarget =
+        OpenMetadataApplicationTest.getResource("teams/" + organization.getId());
+    TestUtils.patch(patchTarget, patch, Team.class, ADMIN_AUTH_HEADERS);
+    SubjectCache.invalidateAll();
+
+    return savedRoles;
+  }
+
+  /**
+   * Restores the default roles to the Organization team.
+   *
+   * @param defaultRoles the list of default roles to restore
+   */
+  public static void restoreOrganizationDefaultRoles(List<EntityReference> defaultRoles)
+      throws HttpResponseException {
+    if (defaultRoles == null || defaultRoles.isEmpty()) {
+      return;
+    }
+
+    WebTarget target =
+        OpenMetadataApplicationTest.getResource("teams/name/Organization?fields=defaultRoles");
+    Team organization = TestUtils.get(target, Team.class, ADMIN_AUTH_HEADERS);
+
+    String originalJson = JsonUtils.pojoToJson(organization);
+    organization.setDefaultRoles(new ArrayList<>(defaultRoles));
+    String updatedJson = JsonUtils.pojoToJson(organization);
+
+    JsonNode patch = getJsonPatch(originalJson, updatedJson);
+    WebTarget patchTarget =
+        OpenMetadataApplicationTest.getResource("teams/" + organization.getId());
+    TestUtils.patch(patchTarget, patch, Team.class, ADMIN_AUTH_HEADERS);
+    SubjectCache.invalidateAll();
+  }
+
+  /**
+   * Removes policies directly attached to the Organization team. This is needed for RBAC testing to
+   * prevent policy inheritance through team hierarchy.
+   *
+   * @return the list of original policies that were removed (to be restored later)
+   */
+  public static List<EntityReference> removeOrganizationPolicies() throws HttpResponseException {
+    WebTarget target =
+        OpenMetadataApplicationTest.getResource("teams/name/Organization?fields=policies");
+    Team organization = TestUtils.get(target, Team.class, ADMIN_AUTH_HEADERS);
+
+    List<EntityReference> originalPolicies = organization.getPolicies();
+    if (originalPolicies == null || originalPolicies.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    List<EntityReference> savedPolicies = new ArrayList<>(originalPolicies);
+
+    String originalJson = JsonUtils.pojoToJson(organization);
+    organization.setPolicies(new ArrayList<>());
+    String updatedJson = JsonUtils.pojoToJson(organization);
+
+    JsonNode patch = getJsonPatch(originalJson, updatedJson);
+    WebTarget patchTarget =
+        OpenMetadataApplicationTest.getResource("teams/" + organization.getId());
+    TestUtils.patch(patchTarget, patch, Team.class, ADMIN_AUTH_HEADERS);
+    SubjectCache.invalidateAll();
+
+    return savedPolicies;
+  }
+
+  /**
+   * Restores the direct policies to the Organization team.
+   *
+   * @param policies the list of policies to restore
+   */
+  public static void restoreOrganizationPolicies(List<EntityReference> policies)
+      throws HttpResponseException {
+    if (policies == null || policies.isEmpty()) {
+      return;
+    }
+
+    WebTarget target =
+        OpenMetadataApplicationTest.getResource("teams/name/Organization?fields=policies");
+    Team organization = TestUtils.get(target, Team.class, ADMIN_AUTH_HEADERS);
+
+    String originalJson = JsonUtils.pojoToJson(organization);
+    organization.setPolicies(new ArrayList<>(policies));
+    String updatedJson = JsonUtils.pojoToJson(organization);
+
+    JsonNode patch = getJsonPatch(originalJson, updatedJson);
+    WebTarget patchTarget =
+        OpenMetadataApplicationTest.getResource("teams/" + organization.getId());
+    TestUtils.patch(patchTarget, patch, Team.class, ADMIN_AUTH_HEADERS);
+    SubjectCache.invalidateAll();
   }
 }

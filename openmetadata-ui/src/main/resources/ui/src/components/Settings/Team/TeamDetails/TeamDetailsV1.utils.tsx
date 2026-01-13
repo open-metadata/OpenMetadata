@@ -11,40 +11,42 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
 import { Team } from '../../../../generated/entity/teams/team';
-import { TeamsPageTab } from './team.interface';
+import i18n from '../../../../utils/i18next/LocalUtil';
+import { TeamsPageTab, TeamTab } from './team.interface';
 
 export const getTabs = (
   currentTeam: Team,
   isGroupType: boolean,
   isOrganization: boolean,
   teamsCount: number,
-  assetsCount: number
-) => {
-  const tabs = {
+  assetsCount: number,
+  isTeamsLoading: boolean
+): TeamTab[] => {
+  const tabs: Record<string, TeamTab> = {
     teams: {
-      name: t('label.team-plural'),
+      name: i18n.t('label.team-plural'),
       count: teamsCount,
       key: TeamsPageTab.TEAMS,
+      isLoading: isTeamsLoading,
     },
     users: {
-      name: t('label.user-plural'),
+      name: i18n.t('label.user-plural'),
       count: currentTeam.users?.length ?? 0,
       key: TeamsPageTab.USERS,
     },
     assets: {
-      name: t('label.asset-plural'),
+      name: i18n.t('label.asset-plural'),
       count: assetsCount,
       key: TeamsPageTab.ASSETS,
     },
     roles: {
-      name: t('label.role-plural'),
+      name: i18n.t('label.role-plural'),
       count: currentTeam?.defaultRoles?.length,
       key: TeamsPageTab.ROLES,
     },
     policies: {
-      name: t('label.policy-plural'),
+      name: i18n.t('label.policy-plural'),
       count: currentTeam?.policies?.length,
       key: TeamsPageTab.POLICIES,
     },

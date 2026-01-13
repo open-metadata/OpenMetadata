@@ -12,7 +12,6 @@
  */
 
 import { render } from '@testing-library/react';
-import React from 'react';
 import { TAG_CONSTANT } from '../../../constants/Tag.constants';
 import TableDataCardBody from './TableDataCardBody';
 
@@ -56,6 +55,34 @@ describe('Test TableDataCardBody Component', () => {
     const tableBody = getByTestId('table-body');
 
     expect(tableBody).toBeInTheDocument();
+  });
+
+  it('should handle undefined description gracefully', () => {
+    const { getByTestId, getByText } = render(
+      <TableDataCardBody
+        description={undefined as unknown as string}
+        extraInfo={extraInfo}
+        tags={tags}
+      />
+    );
+    const tableBody = getByTestId('table-body');
+
+    expect(tableBody).toBeInTheDocument();
+    expect(getByText('label.no-description')).toBeInTheDocument();
+  });
+
+  it('should handle null description gracefully', () => {
+    const { getByTestId, getByText } = render(
+      <TableDataCardBody
+        description={null as unknown as string}
+        extraInfo={extraInfo}
+        tags={tags}
+      />
+    );
+    const tableBody = getByTestId('table-body');
+
+    expect(tableBody).toBeInTheDocument();
+    expect(getByText('label.no-description')).toBeInTheDocument();
   });
 
   it('Tags should render if provided', () => {

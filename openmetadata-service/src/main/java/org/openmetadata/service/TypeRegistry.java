@@ -17,21 +17,22 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.resources.types.TypeResource.PROPERTIES_FIELD;
 
-import com.networknt.schema.JsonSchema;
+import com.networknt.schema.Schema;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 /** Type registry used for storing Types in OpenMetadata and customProperties of entity types. */
 @Slf4j
@@ -43,8 +44,7 @@ public class TypeRegistry {
   protected static final Map<String, CustomProperty> CUSTOM_PROPERTIES = new ConcurrentHashMap<>();
 
   /** Custom property map (fully qualified customPropertyName) to (jsonSchema) */
-  protected static final Map<String, JsonSchema> CUSTOM_PROPERTY_SCHEMAS =
-      new ConcurrentHashMap<>();
+  protected static final Map<String, Schema> CUSTOM_PROPERTY_SCHEMAS = new ConcurrentHashMap<>();
 
   private static final TypeRegistry INSTANCE = new TypeRegistry();
 
@@ -95,9 +95,13 @@ public class TypeRegistry {
   }
 
   public void removeType(String typeName) {
-    TYPES.remove(typeName);
+    var removedType = TYPES.remove(typeName);
     LOG.info("Deleted type {}", typeName);
-    // TODO cleanup custom properties
+
+    // Cleanup custom properties for removed type using Optional for cleaner null handling
+    Optional.ofNullable(removedType).map(Type::getCustomProperties).stream()
+        .flatMap(List::stream)
+        .forEach(property -> removeCustomProperty(typeName, property.getName()));
   }
 
   private void addCustomProperty(
@@ -106,7 +110,7 @@ public class TypeRegistry {
     CUSTOM_PROPERTIES.put(customPropertyFQN, customProperty);
 
     try {
-      JsonSchema jsonSchema =
+      Schema jsonSchema =
           JsonUtils.getJsonSchema(
               TYPES.get(customProperty.getPropertyType().getName()).getSchema());
       CUSTOM_PROPERTY_SCHEMAS.put(customPropertyFQN, jsonSchema);
@@ -118,7 +122,14 @@ public class TypeRegistry {
     }
   }
 
-  public JsonSchema getSchema(String entityType, String propertyName) {
+  public void removeCustomProperty(String entityType, String propertyName) {
+    String customPropertyFQN = getCustomPropertyFQN(entityType, propertyName);
+    CUSTOM_PROPERTIES.remove(customPropertyFQN);
+    CUSTOM_PROPERTY_SCHEMAS.remove(customPropertyFQN);
+    LOG.info("Removed custom property {} from TypeRegistry cache", customPropertyFQN);
+  }
+
+  public Schema getSchema(String entityType, String propertyName) {
     String customPropertyFQN = getCustomPropertyFQN(entityType, propertyName);
     return CUSTOM_PROPERTY_SCHEMAS.get(customPropertyFQN);
   }

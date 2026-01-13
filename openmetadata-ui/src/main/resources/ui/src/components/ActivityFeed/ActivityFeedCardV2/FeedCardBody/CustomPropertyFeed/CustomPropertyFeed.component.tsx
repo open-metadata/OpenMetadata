@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { getTextDiffCustomProperty } from '../../../../../utils/EntityVersionUtils';
 import RichTextEditorPreviewerV1 from '../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { CustomPropertyFeedProps } from './CustomPropertyFeed.interface';

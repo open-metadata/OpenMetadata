@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,6 +14,11 @@
  * PowerBI Connection Config
  */
 export interface PowerBIConnection {
+    /**
+     * API URL to call powerbi rest apis to extract metadata. Default to
+     * `https://api.powerbi.com`. You can provide youw own in case of different environment
+     */
+    apiURL?: string;
     /**
      * Authority URI for the PowerBI service.
      */
@@ -38,6 +43,10 @@ export interface PowerBIConnection {
      * Regex exclude or include data models that matches the pattern.
      */
     dataModelFilterPattern?: FilterPattern;
+    /**
+     * Display Table Name from source instead of renamed table name for datamodel tables
+     */
+    displayTableNameFromSource?: boolean;
     /**
      * Dashboard URL for PowerBI service.
      */

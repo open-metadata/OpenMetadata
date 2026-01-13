@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { WidgetProps } from '@rjsf/utils';
-import React from 'react';
 import { SearchIndex } from '../../../../../enums/search.enum';
 import DataAssetAsyncSelectList from '../../../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
 import { DataAssetOption } from '../../../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';

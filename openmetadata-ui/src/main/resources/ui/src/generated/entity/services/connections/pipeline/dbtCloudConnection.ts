@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -23,6 +23,10 @@ export interface DbtCloudConnection {
      */
     discoveryAPI: string;
     /**
+     * List of IDs of your DBT cloud environments separated by comma `,`
+     */
+    environmentIds?: string[];
+    /**
      * DBT cloud Access URL.
      */
     host: string;
@@ -41,7 +45,8 @@ export interface DbtCloudConnection {
     /**
      * List of IDs of your DBT cloud projects seperated by comma `,`
      */
-    projectIds?: string[];
+    projectIds?:                 string[];
+    supportsMetadataExtraction?: boolean;
     /**
      * Generated Token to connect to DBTCloud.
      */

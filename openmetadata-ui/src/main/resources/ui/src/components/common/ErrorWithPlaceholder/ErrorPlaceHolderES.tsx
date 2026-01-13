@@ -13,9 +13,9 @@
 
 import { Col, Row, Space, Typography } from 'antd';
 import Qs from 'qs';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import {
   CONNECTORS_DOCS,
@@ -33,8 +33,10 @@ import {
 } from '../../../enums/common.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
+import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import { Transi18next } from '../../../utils/CommonUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolder from './ErrorPlaceHolder';
 
 type Props = {
@@ -73,9 +75,9 @@ const stepsData = [
 
 const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
   const { showDeleted, search, queryFilter, quickFilter } = query ?? {};
-  const { tab } = useParams<{ tab: string }>();
+  const { tab } = useRequiredParams<{ tab: string }>();
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { activeDomain } = useDomainStore();
   const { theme } = useApplicationStore();
 
@@ -111,7 +113,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
             size={size}
             type={ERROR_PLACEHOLDER_TYPE.CREATE}
             onClick={() =>
-              history.push(tab === 'tags' ? ROUTES.TAGS : ROUTES.GLOSSARY)
+              navigate(tab === 'tags' ? ROUTES.TAGS : ROUTES.GLOSSARY)
             }
           />
         </div>
@@ -171,7 +173,11 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
       <div data-testid="es-error">
         <div className="m-b-lg text-center">
           <p>
-            <span>{t('message.welcome-to-open-metadata')} </span>
+            <span>
+              {t('message.welcome-to-open-metadata', {
+                brandName: brandClassBase.getPageTitle(),
+              })}{' '}
+            </span>
             <span data-testid="error-text">
               {t('message.unable-to-error-elasticsearch', { error: errorText })}
             </span>

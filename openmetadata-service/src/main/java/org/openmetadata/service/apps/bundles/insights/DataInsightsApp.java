@@ -14,7 +14,7 @@ import java.util.Optional;
 import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
@@ -31,6 +31,8 @@ import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
@@ -45,9 +47,7 @@ import org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics.Web
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.socket.WebSocketManager;
-import org.openmetadata.service.util.JsonUtils;
 import org.quartz.JobExecutionContext;
 
 @Slf4j
@@ -149,7 +149,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     }
   }
 
-  private void createDataQualityDataIndex() {
+  public void createDataQualityDataIndex() {
     try {
       createIndexInternal(Entity.TEST_CASE_RESULT);
       createIndexInternal(Entity.TEST_CASE_RESOLUTION_STATUS);
@@ -160,15 +160,15 @@ public class DataInsightsApp extends AbstractNativeApplication {
     }
   }
 
-  private void deleteDataQualityDataIndex() {
+  public void deleteDataQualityDataIndex() {
     deleteIndexInternal(Entity.TEST_CASE_RESULT);
     deleteIndexInternal(Entity.TEST_CASE_RESOLUTION_STATUS);
   }
 
-  private void createOrUpdateDataAssetsDataStream() {
+  public void createOrUpdateDataAssetsDataStream() {
     DataInsightsSearchInterface searchInterface = getSearchInterface();
 
-    ElasticSearchConfiguration config = searchRepository.getElasticSearchConfiguration();
+    ElasticSearchConfiguration config = searchRepository.getSearchConfiguration();
     String language =
         config != null && config.getSearchIndexMappingLanguage() != null
             ? config.getSearchIndexMappingLanguage().value()
@@ -193,7 +193,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     }
   }
 
-  private void deleteDataAssetsDataStream() {
+  public void deleteDataAssetsDataStream() {
     DataInsightsSearchInterface searchInterface = getSearchInterface();
 
     try {

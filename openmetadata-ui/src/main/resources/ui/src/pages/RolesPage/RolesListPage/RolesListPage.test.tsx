@@ -12,17 +12,14 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { ROUTES } from '../../../constants/constants';
 import { ROLES_LIST_WITH_PAGING } from '../Roles.mock';
 import RolesListPage from './RolesListPage';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 const mockLocationPathname = '/mock-path';
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useLocation: jest.fn().mockImplementation(() => ({
     pathname: mockLocationPathname,
   })),
@@ -42,11 +39,6 @@ jest.mock('../../../components/common/DeleteWidget/DeleteWidgetModal', () =>
   jest
     .fn()
     .mockReturnValue(<div data-testid="delete-modal">DeletWdigetModal</div>)
-);
-
-jest.mock(
-  '../../../components/common/RichTextEditor/RichTextEditorPreviewNew',
-  () => jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
 );
 
 jest.mock('../../../components/common/NextPrevious/NextPrevious', () =>
@@ -96,6 +88,24 @@ jest.mock(
   }
 );
 
+jest.mock('../../../utils/TableColumn.util', () => ({
+  columnFilterIcon: jest.fn(),
+  ownerTableObject: jest.fn(() => []),
+  domainTableObject: jest.fn(() => []),
+  dataProductTableObject: jest.fn(() => []),
+  tagTableObject: jest.fn(() => []),
+  descriptionTableObject: jest.fn(() => [
+    {
+      title: 'label.description',
+      dataIndex: 'description',
+      key: 'description',
+      render: (text: string) => (
+        <div data-testid="viewer-container">{text}</div>
+      ),
+    },
+  ]),
+}));
+
 describe('Test Roles List Page', () => {
   it('Should render the list component', async () => {
     render(<RolesListPage />);
@@ -121,7 +131,9 @@ describe('Test Roles List Page', () => {
 
     fireEvent.click(addRoleButton);
 
-    expect(mockPush).toHaveBeenCalledWith('/settings/access/roles/add-role');
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/settings/access/roles/add-role'
+    );
   });
 
   it('Should render all table columns', async () => {
@@ -147,7 +159,7 @@ describe('Test Roles List Page', () => {
     const container = await screen.findByTestId('roles-list-table');
 
     const nameRows = await screen.findAllByTestId('role-name');
-    const descriptionRows = await screen.findAllByTestId('previewer');
+    const descriptionRows = await screen.findAllByTestId('viewer-container');
     const policiesRows = await screen.findAllByTestId('policy-link');
     const actionsRows = await screen.findAllByTestId('delete-action-data');
 

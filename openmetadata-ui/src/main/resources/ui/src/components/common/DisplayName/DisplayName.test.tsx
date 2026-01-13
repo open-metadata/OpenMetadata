@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import DisplayName from './DisplayName';
 import { DisplayNameProps } from './DisplayName.interface';
@@ -48,105 +47,93 @@ const mockProps: DisplayNameProps = {
 
 describe('Test DisplayName Component', () => {
   it('Should render the component with the display name', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <DisplayName {...mockProps} />
-        </MemoryRouter>
-      );
+    render(
+      <MemoryRouter>
+        <DisplayName {...mockProps} />
+      </MemoryRouter>
+    );
 
-      const displayNameField = await screen.getByTestId('column-display-name');
+    const displayNameField = await screen.getByTestId('column-display-name');
 
-      expect(displayNameField).toBeInTheDocument();
-      expect(displayNameField).toHaveTextContent('Sample Display Name');
+    expect(displayNameField).toBeInTheDocument();
+    expect(displayNameField).toHaveTextContent('Sample Display Name');
 
-      const editButton = screen.queryByTestId('edit-displayName-button');
+    const editButton = screen.queryByTestId('edit-displayName-button');
 
-      expect(editButton).toBeInTheDocument();
-    });
+    expect(editButton).toBeInTheDocument();
   });
 
   it('Should render the component with name when display name is empty', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <DisplayName {...mockProps} displayName={undefined} />
-        </MemoryRouter>
-      );
+    render(
+      <MemoryRouter>
+        <DisplayName {...mockProps} displayName={undefined} />
+      </MemoryRouter>
+    );
 
-      const nameField = screen.getByTestId('column-name');
+    const nameField = screen.getByTestId('column-name');
 
-      expect(nameField).toBeInTheDocument();
-      expect(nameField).toHaveTextContent('Sample Entity');
-    });
+    expect(nameField).toBeInTheDocument();
+    expect(nameField).toHaveTextContent('Sample Entity');
   });
 
   it('Should open the edit modal on edit button click', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <DisplayName {...mockProps} />
-        </MemoryRouter>
-      );
-      const editButton = screen.getByTestId('edit-displayName-button');
-      fireEvent.click(editButton);
+    render(
+      <MemoryRouter>
+        <DisplayName {...mockProps} />
+      </MemoryRouter>
+    );
+    const editButton = screen.getByTestId('edit-displayName-button');
+    fireEvent.click(editButton);
 
-      const nameField = await screen.findByTestId('column-name');
+    const nameField = await screen.findByTestId('column-name');
 
-      expect(nameField).toBeInTheDocument();
+    expect(nameField).toBeInTheDocument();
 
-      const displayNameField = await screen.findByTestId('column-display-name');
+    const displayNameField = await screen.findByTestId('column-display-name');
 
-      expect(displayNameField).toBeInTheDocument();
-    });
+    expect(displayNameField).toBeInTheDocument();
   });
 
   it('Should render a link when link prop is provided', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <DisplayName {...mockProps} />
-        </MemoryRouter>
-      );
+    render(
+      <MemoryRouter>
+        <DisplayName {...mockProps} />
+      </MemoryRouter>
+    );
 
-      const linkElement = screen.getByTestId('Sample Entity');
+    const linkElement = screen.getByTestId('Sample Entity');
 
-      expect(linkElement.tagName).toBe('SPAN');
-      expect(linkElement).toHaveTextContent('Sample Display Name');
-    });
+    expect(linkElement.tagName).toBe('SPAN');
+    expect(linkElement).toHaveTextContent('Sample Display Name');
   });
 
   it('Should render plain text when link prop is not provided', async () => {
     const propsWithoutLink = { ...mockProps, link: undefined };
 
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <DisplayName {...propsWithoutLink} />
-        </MemoryRouter>
-      );
+    render(
+      <MemoryRouter>
+        <DisplayName {...propsWithoutLink} />
+      </MemoryRouter>
+    );
 
-      const nameElement = screen.getByTestId('Sample Entity');
+    const nameElement = screen.getByTestId('Sample Entity');
 
-      expect(nameElement.tagName).toBe('SPAN');
-      expect(nameElement).toHaveTextContent('Sample Display Name');
-    });
+    expect(nameElement.tagName).toBe('SPAN');
+    expect(nameElement).toHaveTextContent('Sample Display Name');
   });
 
   it('Should render name as a link when displayName is empty and link is provided', async () => {
     const props = { ...mockProps, displayName: '', link: '/entity/1' };
 
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <DisplayName {...props} />
-        </MemoryRouter>
-      );
+    render(
+      <MemoryRouter>
+        <DisplayName {...props} />
+      </MemoryRouter>
+    );
 
-      const nameElement = screen.getByTestId('Sample Entity');
+    const nameElement = screen.getByTestId('Sample Entity');
 
-      expect(nameElement).toBeInTheDocument();
-      expect(nameElement).toHaveTextContent('Sample Entity');
-    });
+    expect(nameElement).toBeInTheDocument();
+    expect(nameElement).toHaveTextContent('Sample Entity');
   });
 });

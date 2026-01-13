@@ -11,13 +11,25 @@
  *  limitations under the License.
  */
 
+import { createTheme, Theme, ThemeProvider } from '@mui/material/styles';
 import { fireEvent, getByTestId, render } from '@testing-library/react';
-import React from 'react';
 import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
 import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import TagsV1 from './TagsV1.component';
 
 const mockLinkButton = jest.fn();
+
+const theme: Theme = createTheme({
+  palette: {
+    allShades: {
+      brand: {
+        50: '#EFF8FF',
+        100: '#D1E9FF',
+        900: '#194185',
+      },
+    },
+  },
+});
 
 jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ children, ...rest }) => (
@@ -36,13 +48,18 @@ jest.mock('../../../utils/CommonUtils', () => ({
   reduceColorOpacity: jest.fn().mockReturnValue('#00000'),
 }));
 
+const Wrapper = ({ children }: { children: React.ReactNode }) => (
+  <ThemeProvider theme={theme}>{children}</ThemeProvider>
+);
+
 describe('Test tags Component', () => {
   it('Component should render', () => {
     const { container } = render(
       <TagsV1
         startWith={TAG_START_WITH.SOURCE_ICON}
         tag={{ ...TAG_CONSTANT, tagFQN: 'test' }}
-      />
+      />,
+      { wrapper: Wrapper }
     );
     const tags = getByTestId(container, 'tags');
 
@@ -54,7 +71,8 @@ describe('Test tags Component', () => {
       <TagsV1
         startWith={TAG_START_WITH.PLUS}
         tag={{ ...TAG_CONSTANT, tagFQN: 'add tag' }}
-      />
+      />,
+      { wrapper: Wrapper }
     );
     const addTags = getByTestId(container, 'add-tag');
 
@@ -71,7 +89,8 @@ describe('Test tags Component', () => {
           state: State.Confirmed,
           tagFQN: 'testTag.Test1',
         }}
-      />
+      />,
+      { wrapper: Wrapper }
     );
     const tag = getByTestId(container, 'tag-redirect-link');
 
@@ -91,7 +110,8 @@ describe('Test tags Component', () => {
           state: State.Confirmed,
           tagFQN: 'glossaryTag.Test1',
         }}
-      />
+      />,
+      { wrapper: Wrapper }
     );
     const tag = getByTestId(container, 'tag-redirect-link');
 
@@ -112,7 +132,8 @@ describe('Test tags Component', () => {
           state: State.Confirmed,
           tagFQN: 'glossaryTag.Test1',
         }}
-      />
+      />,
+      { wrapper: Wrapper }
     );
     const tag = getByTestId(container, 'tags');
 

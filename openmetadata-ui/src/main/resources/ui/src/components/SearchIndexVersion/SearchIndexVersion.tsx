@@ -14,9 +14,9 @@
 import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { toString } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
@@ -26,6 +26,7 @@ import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
 import { ChangeDescription } from '../../generated/entity/data/searchIndex';
+import { Operation } from '../../generated/entity/policies/policy';
 import { TagSource } from '../../generated/type/tagLabel';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
@@ -33,8 +34,10 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
+import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { getUpdatedSearchIndexFields } from '../../utils/SearchIndexVersionUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import Loader from '../common/Loader/Loader';
 import TabsLabel from '../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../Customization/GenericProvider/GenericProvider';
@@ -47,7 +50,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
   currentVersionData,
   isVersionLoading,
   owners,
-  domain,
+  domains,
   dataProducts,
   tier,
   breadCrumbList,
@@ -58,8 +61,8 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
   entityPermissions,
 }: SearchIndexVersionProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
-  const { tab } = useParams<{ tab: EntityTabs }>();
+  const navigate = useNavigate();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
@@ -76,9 +79,9 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
           changeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [changeDescription, owners, tier, domain]
+      [changeDescription, owners, tier, domains]
     );
 
   const fields = useMemo(() => {
@@ -86,7 +89,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
   }, [currentVersionData, changeDescription]);
 
   const handleTabChange = (activeKey: string) => {
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.SEARCH_INDEX,
         entityFqn,
@@ -121,6 +124,15 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
       currentVersionData.displayName
     );
   }, [currentVersionData, changeDescription]);
+
+  const viewCustomPropertiesPermission = useMemo(
+    () =>
+      getPrioritizedViewPermission(
+        entityPermissions,
+        Operation.ViewCustomFields
+      ),
+    [entityPermissions]
+  );
 
   const tabItems: TabsProps['items'] = useMemo(
     () => [
@@ -160,7 +172,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
                 />
@@ -192,12 +204,18 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
             isVersionView
             entityType={EntityType.SEARCH_INDEX}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },
     ],
-    [description, entityFqn, fields, currentVersionData, entityPermissions]
+    [
+      description,
+      entityFqn,
+      fields,
+      currentVersionData,
+      viewCustomPropertiesPermission,
+    ]
   );
 
   return (

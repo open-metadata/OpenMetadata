@@ -3,16 +3,16 @@ In this section, we provide guides and references to use the DBTCloud connector.
 
 ## Requirements
 
-OpenMetadata is integrated with DBT cloud up to version [1.8](https://docs.getdbt.com/docs/get-started-dbt) and will continue to work for future DBT cloud versions.
+OpenMetadata is integrated with DBT cloud up to version <a href="https://docs.getdbt.com/docs/get-started-dbt" target="_blank">1.8</a> and will continue to work for future DBT cloud versions.
 
-The Ingestion framework uses [DBT Cloud APIs](https://docs.getdbt.com/dbt-cloud/api-v2#/) to connect to the dbtcloud  and fetch metadata.
+The Ingestion framework uses <a href="https://docs.getdbt.com/dbt-cloud/api-v2#/" target="_blank">DBT Cloud APIs</a> to connect to the dbtcloud  and fetch metadata.
 
-You can find further information on the dbtcloud connector in the [docs](https://docs.open-metadata.org/connectors/pipeline/dbtcloud).
+You can find further information on the dbtcloud connector in the <a href="https://docs.open-metadata.org/connectors/pipeline/dbtcloud" target="_blank">docs</a>.
 
 ## Connection Details
 $$section
 ### Host $(id="host")
-DBT cloud Access URL eg.`https://abc12.us1.dbt.com`. Go to your dbt cloud account settings then go to the Access URLs section. In there you will find various URLs we need the `Access URL` from that section as the Host. For more info visit [here](https://docs.getdbt.com/docs/cloud/about-cloud/access-regions-ip-addresses#api-access-urls).
+DBT cloud Access URL eg.`https://abc12.us1.dbt.com`. Go to your dbt cloud account settings then go to the Access URLs section. In there you will find various URLs we need the `Access URL` from that section as the Host. For more info visit <a href="https://docs.getdbt.com/docs/cloud/about-cloud/access-regions-ip-addresses#api-access-urls" target="_blank">here</a>.
 $$
 
 $$section
@@ -32,13 +32,20 @@ $$
 
 $$section
 ### Project Ids $(id="projectIds")
-Project IDs of your DBT cloud Account to fetch metadata for. Look for the segment after "projects" in the URL. For instance, in a URL like `https://cloud.getdbt.com/accounts/123/projects/87477/jobs/73659994`, the job ID is `87477`. This will be a numeric value but in openmetadata we parse it as a string. If not passed all Projects under the Account Id will be ingested. `Optional`
+Project IDs of your DBT cloud Account to fetch metadata for. Look for the segment after "projects" in the URL. For instance, in a URL like `https://cloud.getdbt.com/accounts/123/projects/87477/jobs/73659994`, the project ID is `87477`. This will be a numeric value but in openmetadata we parse it as a string. If not passed all Projects under the Account Id will be ingested. `Optional`
 
-Note that if both `Job Ids` and `Project Ids` are passed then it will filter out the jobs from the passed projects. any `Job Ids` not belonging to the `Project Ids` will also be filtered out.
+Note: If `Job Ids` are specified, they take precedence and `Project Ids` filter is ignored. `Project Ids` can be combined with `Environment Ids` to filter jobs matching both criteria.
+$$
+
+$$section
+### Environment Ids $(id="environmentIds")
+Environment IDs of your DBT cloud Account to fetch metadata for. You can find the environment ID in the URL when viewing an environment in dbt Cloud. For instance, in a URL like `https://cloud.getdbt.com/accounts/123/projects/87477/environments/45678`, the environment ID is `45678`. This will be a numeric value but in openmetadata we parse it as a string. If not passed all Environments under the Account Id will be ingested. `Optional`
+
+Note: If `Job Ids` are specified, they take precedence and `Environment Ids` filter is ignored. `Environment Ids` can be combined with `Project Ids` to filter jobs matching both criteria.
 $$
 
 $$section
 ### Token $(id="token")
-The Authentication Token of your DBT cloud API Account. To get your access token you can follow the docs [here](https://docs.getdbt.com/docs/dbt-cloud-apis/authentication).
+The Authentication Token of your DBT cloud API Account. To get your access token you can follow the docs <a href="https://docs.getdbt.com/docs/dbt-cloud-apis/authentication" target="_blank">here</a>.
 Make sure you have the necessary permissions on the token to run graphql queries and get job and run details. 
 $$

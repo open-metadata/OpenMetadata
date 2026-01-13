@@ -45,6 +45,8 @@ ENTITY_LINK_NAME = "<#E::table::service.db.users::columns::name>"
 ENTITY_LINK_USER = "<#E::table::service.db.users>"
 ENTITY_LINK_INSERTED_DATE = "<#E::table::service.db.users::columns::inserted_date>"
 ENTITY_LINK_EXPECTED_LOCATION = "<#E::table::service.db.users::columns::postal_code>"
+ENTITY_LINK_IS_ACTIVE = "<#E::table::service.db.users::columns::is_active>"
+
 
 TABLE = Table(
     id=uuid4(),
@@ -61,6 +63,7 @@ TABLE = Table(
         Column(name="postal_code", dataType=DataType.INT),  # type: ignore
         Column(name="lat", dataType=DataType.DECIMAL),  # type: ignore
         Column(name="lon", dataType=DataType.DECIMAL),  # type: ignore
+        Column(name="is_active", dataType=DataType.BOOLEAN),  # type: ignore
     ],
     database=EntityReference(id=uuid4(), name="db", type="database"),  # type: ignore
 )  # type: ignore
@@ -78,6 +81,7 @@ class User(Base):
     postal_code = sqa.Column(sqa.INT)
     lat = sqa.Column(sqa.DECIMAL)
     lon = sqa.Column(sqa.DECIMAL)
+    is_active = sqa.Column(sqa.BOOLEAN)
 
 
 @pytest.fixture
@@ -122,6 +126,7 @@ def create_sqlite_table():
                 postal_code=60001,
                 lat=49.6852237,
                 lon=1.7743058,
+                is_active=True,
             ),
             User(
                 name="Jane",
@@ -133,6 +138,7 @@ def create_sqlite_table():
                 postal_code=19005,
                 lat=45.2589385,
                 lon=1.4731471,
+                is_active=False,
             ),
             User(
                 name="John",
@@ -144,15 +150,80 @@ def create_sqlite_table():
                 postal_code=11008,
                 lat=42.9974445,
                 lon=2.2518325,
+                is_active=None,
+            ),
+            User(
+                name="Alice",
+                first_name="Al",
+                fullname="Alice Smith",
+                nickname="Ally",
+                age=30,
+                inserted_date=datetime.today() - timedelta(days=i),
+                postal_code=60001,
+                lat=49.6852237,
+                lon=1.7743058,
+                is_active=True,
+            ),
+            User(
+                name="Bob",
+                first_name="Bo",
+                fullname="Bob Johnson",
+                nickname="Bobby",
+                age=31,
+                inserted_date=datetime.today() - timedelta(days=i),
+                postal_code=60001,
+                lat=49.6852237,
+                lon=1.7743058,
+                is_active=True,
+            ),
+            User(
+                name="Charlie",
+                first_name="Ch",
+                fullname="Charlie Brown",
+                nickname="Chuck",
+                age=30,
+                inserted_date=datetime.today() - timedelta(days=i),
+                postal_code=60001,
+                lat=49.6852237,
+                lon=1.7743058,
+                is_active=False,
+            ),
+            User(
+                name="Diana",
+                first_name="Di",
+                fullname="Diana Prince",
+                nickname="Di",
+                age=31,
+                inserted_date=datetime.today() - timedelta(days=i),
+                postal_code=60001,
+                lat=49.6852237,
+                lon=1.7743058,
+                is_active=True,
+            ),
+            User(
+                name="Eve",
+                first_name="Ev",
+                fullname="Eve Wilson",
+                nickname="Evie",
+                age=None,
+                inserted_date=datetime.today() - timedelta(days=i),
+                postal_code=60001,
+                lat=49.6852237,
+                lon=1.7743058,
+                is_active=False,
             ),
         ]
         session.add_all(data)
         session.commit()
 
+    runner.service_connection = sqlite_conn
+    runner.entity = TABLE
+
     yield runner
-    # clean up
+
     User.__table__.drop(bind=engine)
-    os.remove(db_path)
+    if os.path.exists(db_path):
+        os.remove(db_path)
 
 
 @pytest.fixture
@@ -444,6 +515,7 @@ def test_case_column_values_to_be_unique():
         testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
         computePassedFailedRowCount=True,
+        dimensionColumns=None,
     )  # type: ignore
 
 
@@ -597,7 +669,7 @@ def test_case_table_custom_sql_query_with_threshold_success():
             ),
             TestCaseParameterValue(
                 name="threshold",
-                value="20",
+                value="50",
             ),
         ],
     )  # type: ignore
@@ -629,6 +701,31 @@ def test_case_table_custom_sql_unsafe_query_aborted():
 
 
 @pytest.fixture
+def test_case_table_custom_sql_with_partition_condition():
+    """Test case for test column_value_median_to_be_between"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_USER,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(
+                name="sqlExpression",
+                value="SELECT * FROM users WHERE age > 20 AND name = 'John'",
+            ),
+            TestCaseParameterValue(
+                name="strategy",
+                value="ROWS",
+            ),
+            TestCaseParameterValue(
+                name="partitionExpression",
+                value="name = 'John'",
+            ),
+        ],
+    )  # type: ignore
+
+
+@pytest.fixture
 def test_case_table_row_count_to_be_between():
     """Test case for test column_value_median_to_be_between"""
     return TestCase(
@@ -637,8 +734,8 @@ def test_case_table_row_count_to_be_between():
         testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
         parameterValues=[
-            TestCaseParameterValue(name="minValue", value="10"),
-            TestCaseParameterValue(name="maxValue", value="35"),
+            TestCaseParameterValue(name="minValue", value="40"),
+            TestCaseParameterValue(name="maxValue", value="90"),
         ],
     )  # type: ignore
 
@@ -703,6 +800,23 @@ def test_case_table_custom_sql_query_success_dl():
 
 
 @pytest.fixture
+def test_case_table_custom_sql_query_success_dl_with_partition_expression():
+    """Test case for test custom SQL table test"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_USER,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="sqlExpression", value="age < 0"),
+            TestCaseParameterValue(
+                name="partitionExpression", value="nickname == 'johnny b goode'"
+            ),
+        ],
+    )
+
+
+@pytest.fixture
 def test_case_column_values_to_be_between_date():
     return TestCase(
         name=TEST_CASE_NAME,
@@ -744,5 +858,367 @@ def test_case_column_values_to_be_at_expected_location():
             TestCaseParameterValue(name="latitudeColumnName", value="lat"),
             TestCaseParameterValue(name="radius", value="1000"),
         ],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_value_in_set_boolean():
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_IS_ACTIVE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="allowedValues", value="[True, False]"),
+        ],
+        computePassedFailedRowCount=True,
+    )
+
+
+@pytest.fixture
+def test_case_column_values_to_be_in_set_dimensional_match_enum():
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_NAME,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="allowedValues", value='["John"]'),
+            TestCaseParameterValue(name="matchEnum", value="true"),
+        ],
+        dimensionColumns=["fullname"],  # Enable dimensional analysis on fullname column
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_values_to_be_in_set_dimensional_no_match_enum():
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_NAME,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="allowedValues", value='["John"]'),
+            TestCaseParameterValue(name="matchEnum", value="false"),
+        ],
+        dimensionColumns=["fullname"],  # Enable dimensional analysis on fullname column
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_values_to_be_unique_dimensional():
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_FNAME,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=None,
+        dimensionColumns=["name"],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_value_mean_to_be_between_dimensional():
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_AGE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="minValueForMeanInCol", value="1"),
+            TestCaseParameterValue(name="maxValueForMeanInCol", value="15"),
+        ],
+        dimensionColumns=["name"],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_value_mean_to_be_between_dimensional_without_max():
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_AGE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="minValueForMeanInCol", value="31"),
+        ],
+        dimensionColumns=["name"],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_value_max_to_be_between_dimensional():
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_AGE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="minValueForMaxInCol", value="20"),
+            TestCaseParameterValue(name="maxValueForMaxInCol", value="30"),
+        ],
+        dimensionColumns=["name"],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_value_max_to_be_between_dimensional_without_max():
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_AGE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="minValueForMaxInCol", value="31"),
+        ],
+        dimensionColumns=["name"],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_value_min_to_be_between_dimensional():
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_AGE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="minValueForMinInCol", value="20"),
+            TestCaseParameterValue(name="maxValueForMinInCol", value="30"),
+        ],
+        dimensionColumns=["name"],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_value_min_to_be_between_dimensional_without_min():
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_AGE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="maxValueForMinInCol", value="30"),
+        ],
+        dimensionColumns=["name"],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_value_length_to_be_between_dimensional():
+    """Test case for test column_value_length_to_be_between"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_NICKNAME,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="minLength", value="1"),
+            TestCaseParameterValue(name="maxLength", value="10"),
+        ],
+        dimensionColumns=["name"],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_value_length_to_be_between_dimensional_without_min():
+    """Test case for test column_value_length_to_be_between"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_FNAME,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="maxLength", value="10"),
+        ],
+        dimensionColumns=["name"],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_value_median_to_be_between_dimensional():
+    """Test case for test column_value_median_to_be_between"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_AGE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="minValueForMedianInCol", value="1"),
+            TestCaseParameterValue(name="maxValueForMedianInCol", value="10"),
+        ],
+        dimensionColumns=["name"],
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_sum_to_be_between_dimensional():
+    """Test case for test column_value_median_to_be_between"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_AGE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="minValueForColSum", value="10"),
+            TestCaseParameterValue(name="maxValueForColSum", value="300"),
+        ],
+        dimensionColumns=["name"],
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_values_not_in_set_dimensional():
+    """Test case for test column_value_median_to_be_between"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_NAME,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="forbiddenValues", value="['John']"),
+        ],
+        dimensionColumns=["age"],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_values_to_match_regex_dimensional():
+    """Test case for test column_value_median_to_be_between"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_NAME,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="regex", value="J.*"),
+        ],
+        dimensionColumns=["age"],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_values_to_not_match_regex_dimensional():
+    """Test case for test column_value_median_to_be_between"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_NAME,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="forbiddenRegex", value="X%"),
+        ],
+        dimensionColumns=["age"],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_values_to_be_not_null_dimensional():
+    """Test case for test column_values_to_be_not_null with dimensional analysis"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_AGE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        dimensionColumns=["name"],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_values_missing_count_to_be_equal_dimensional():
+    """Test case for test column_values_missing_count with dimensional analysis"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_NICKNAME,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="missingCountValue", value="2000"),
+        ],
+        dimensionColumns=["name"],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_values_missing_count_to_be_equal_missing_values_dimensional():
+    """Test case for test column_values_missing_count with custom missing values and dimensional analysis"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_NICKNAME,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="missingCountValue", value="2000"),
+            TestCaseParameterValue(name="missingValueMatch", value="['Johnny d']"),
+        ],
+        dimensionColumns=["name"],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_values_to_be_between_dimensional():
+    """Test case for test column_values_to_be_between with dimensional analysis"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_AGE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="minValue", value="30"),
+            TestCaseParameterValue(name="maxValue", value="30"),
+        ],
+        dimensionColumns=["name"],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_value_stddev_to_be_between_dimensional():
+    """Test case for test column_value_median_to_be_between"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_AGE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="minValueForStdDevInCol", value="20"),
+            TestCaseParameterValue(name="maxValueForStdDevInCol", value="40"),
+        ],
+        dimensionColumns=["name"],
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_values_to_be_at_expected_location_dimensional():
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_EXPECTED_LOCATION,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="locationReferenceType", value="POSTAL_CODE"),
+            TestCaseParameterValue(name="longitudeColumnName", value="lon"),
+            TestCaseParameterValue(name="latitudeColumnName", value="lat"),
+            TestCaseParameterValue(name="radius", value="1000"),
+        ],
+        dimensionColumns=["name"],
         computePassedFailedRowCount=True,
     )  # type: ignore

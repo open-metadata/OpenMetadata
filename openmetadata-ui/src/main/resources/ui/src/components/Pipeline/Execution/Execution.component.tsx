@@ -12,21 +12,12 @@
  */
 
 import Icon, { CloseCircleOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Col,
-  DatePicker,
-  Dropdown,
-  MenuProps,
-  Row,
-  Segmented,
-  Space,
-} from 'antd';
-import { RangePickerProps } from 'antd/lib/date-picker';
+import { Button, Col, Dropdown, MenuProps, Row, Segmented, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isNaN, map } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { MenuInfo } from 'rc-menu/lib/interface';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Calendar } from '../../../assets/svg/calendar.svg';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/filter.svg';
@@ -42,6 +33,9 @@ import {
   getEpochMillisForPastDays,
 } from '../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import DatePicker, {
+  RangePickerProps,
+} from '../../common/DatePicker/DatePicker';
 import './execution.less';
 import ListView from './ListView/ListViewTab.component';
 import TreeViewTab from './TreeView/TreeViewTab.component';
@@ -85,7 +79,8 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
   };
 
   const handleMenuClick: MenuProps['onClick'] = useCallback(
-    (event) => setStatus(MenuOptions[event.key as keyof typeof MenuOptions]),
+    (event: MenuInfo) =>
+      setStatus(MenuOptions[event.key as keyof typeof MenuOptions]),
     []
   );
 

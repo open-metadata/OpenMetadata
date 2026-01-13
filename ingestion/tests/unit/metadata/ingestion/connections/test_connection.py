@@ -44,7 +44,7 @@ def test_connection(mock_service_connection):
     class TestConnection(BaseConnection):
         """Concrete implementation of BaseConnection for testing"""
 
-        def get_client(self):
+        def _get_client(self):
             return MagicMock()
 
         def test_connection(
@@ -63,6 +63,9 @@ def test_connection(mock_service_connection):
                 ],
                 lastUpdatedAt=Timestamp(int(datetime.now().timestamp() * 1000)),
             )
+
+        def get_connection_dict(self):
+            return {}
 
     return TestConnection(mock_service_connection)
 
@@ -100,7 +103,7 @@ class TestBaseConnection:
         mock_client = MagicMock()
 
         class TestConnectionWithMockClient(BaseConnection):
-            def get_client(self):
+            def _get_client(self):
                 return mock_client
 
             def test_connection(
@@ -120,6 +123,9 @@ class TestBaseConnection:
                     lastUpdatedAt=Timestamp(int(datetime.now().timestamp() * 1000)),
                 )
 
+            def get_connection_dict(self):
+                return {}
+
         connection = TestConnectionWithMockClient(test_connection.service_connection)
-        client = connection.get_client()
+        client = connection.client
         assert client == mock_client

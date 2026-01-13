@@ -12,17 +12,15 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { ROUTES } from '../../../constants/constants';
+import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import { POLICY_LIST_WITH_PAGING } from '../../RolesPage/Roles.mock';
 import PoliciesListPage from './PoliciesListPage';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 const mockLocationPathname = '/mock-path';
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useLocation: jest.fn().mockImplementation(() => ({
     pathname: mockLocationPathname,
   })),
@@ -135,7 +133,7 @@ describe('Test Policies List Page', () => {
 
     fireEvent.click(addPolicyButton);
 
-    expect(mockPush).toHaveBeenCalledWith(
+    expect(mockNavigate).toHaveBeenCalledWith(
       '/settings/access/policies/add-policy'
     );
   });
@@ -146,13 +144,12 @@ describe('Test Policies List Page', () => {
     const container = await screen.findByTestId('policies-list-table');
 
     const nameCol = await screen.findByText('label.name');
-    const descriptionCol = await screen.findByText('label.description');
     const rolesCol = await screen.findByText('label.role-plural');
     const actionsCol = await screen.findByText('label.action-plural');
 
     expect(container).toBeInTheDocument();
     expect(nameCol).toBeInTheDocument();
-    expect(descriptionCol).toBeInTheDocument();
+    expect(descriptionTableObject).toHaveBeenCalledWith();
     expect(rolesCol).toBeInTheDocument();
     expect(actionsCol).toBeInTheDocument();
   });

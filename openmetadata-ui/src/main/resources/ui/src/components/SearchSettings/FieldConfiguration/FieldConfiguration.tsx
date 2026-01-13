@@ -11,11 +11,21 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Collapse, Divider, Slider, Switch, Typography } from 'antd';
-import React, { useEffect, useState } from 'react';
+import {
+  Badge,
+  Button,
+  Collapse,
+  Divider,
+  Select,
+  Slider,
+  Switch,
+  Typography,
+} from 'antd';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/setting-colored.svg';
+import { MatchType } from '../../../generated/settings/settings';
 import './field-configuration.less';
 import { FieldConfigurationProps } from './fieldConfiguration.interface';
 
@@ -27,6 +37,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
   initialOpen,
   onHighlightFieldsChange,
   onFieldWeightChange,
+  onMatchTypeChange,
   onDeleteSearchField,
 }) => {
   const { t } = useTranslation();
@@ -34,6 +45,9 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
     Record<number, string[]>
   >({});
   const [fieldWeight, setFieldWeight] = useState(field.weight);
+  const [fieldMatchType, setFieldMatchType] = useState(
+    field.matchType || MatchType.Standard
+  );
 
   const fieldDescription = entityFields.find(
     (entityField) => entityField.name === field.fieldName
@@ -61,6 +75,18 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
     onFieldWeightChange(field.fieldName, value);
   };
 
+  const handleMatchTypeChange = (value: MatchType) => {
+    setFieldMatchType(value);
+    onMatchTypeChange(field.fieldName, value);
+  };
+
+  const matchTypeOptions = [
+    { label: t('label.exact-match'), value: MatchType.Exact },
+    { label: t('label.phrase-match'), value: MatchType.Phrase },
+    { label: t('label.fuzzy-match'), value: MatchType.Fuzzy },
+    { label: t('label.standard-match'), value: MatchType.Standard },
+  ];
+
   return (
     <Collapse
       activeKey={activeFieldKeys[index] || []}
@@ -81,9 +107,19 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
                 : 'white',
             }}>
             <div className="d-flex items-center justify-between">
-              <Typography.Text data-testid="field-name">
-                {field.fieldName}
-              </Typography.Text>
+              <div className="d-flex items-center gap-2">
+                <Typography.Text data-testid="field-name">
+                  {field.fieldName}
+                </Typography.Text>
+                {field.fieldName.startsWith('extension.') && (
+                  <Badge
+                    className="custom-property-badge"
+                    color="blue"
+                    count={t('label.custom')}
+                    data-testid="custom-property-badge"
+                  />
+                )}
+              </div>
               <Button
                 className="delete-search-field"
                 data-testid="delete-search-field"
@@ -97,7 +133,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
 
             <div className="d-flex items-center justify-between gap-2 m-y-xss">
               <span className="text-grey-muted text-xs font-normal">
-                {fieldDescription}
+                {fieldDescription ?? t('label.no-description')}
               </span>
               <span
                 className="p-x-xs font-semibold text-primary d-flex items-center field-weightage"
@@ -145,6 +181,20 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
               tooltip={{ open: false }}
               value={fieldWeight}
               onChange={handleWeightChange}
+            />
+          </div>
+          <Divider />
+
+          {/* Match Type Section */}
+          <div className="m-y-md m-b-lg d-flex items-center justify-between">
+            <Typography.Text>{t('label.match-type')}</Typography.Text>
+            <Select
+              className="m-l-xlg"
+              data-testid="match-type-select"
+              options={matchTypeOptions}
+              style={{ width: 150 }}
+              value={fieldMatchType}
+              onChange={handleMatchTypeChange}
             />
           </div>
         </div>

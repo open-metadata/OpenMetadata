@@ -14,9 +14,9 @@ import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -43,11 +43,13 @@ import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const QueryPage = () => {
-  const { queryId } = useParams<{ queryId: string }>();
+  const { queryId } = useRequiredParams<{ queryId: string }>();
   const { fqn: datasetFQN } = useFqn();
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const [titleBreadcrumb, setTitleBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -175,7 +177,7 @@ const QueryPage = () => {
   };
 
   const afterDeleteAction = () => {
-    history.back();
+    navigate(-1);
   };
 
   if (isLoading.permission || isLoading.query) {

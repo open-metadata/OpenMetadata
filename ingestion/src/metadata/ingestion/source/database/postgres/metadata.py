@@ -40,7 +40,11 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+)
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -300,9 +304,15 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         """List stored procedures"""
         if self.source_config.includeStoredProcedures:
             yield from self._get_stored_procedures_internal(
-                POSTGRES_GET_STORED_PROCEDURES
+                POSTGRES_GET_STORED_PROCEDURES.format(
+                    schema_name=self.context.get().database_schema
+                )
             )
-            yield from self._get_stored_procedures_internal(POSTGRES_GET_FUNCTIONS)
+            yield from self._get_stored_procedures_internal(
+                POSTGRES_GET_FUNCTIONS.format(
+                    schema_name=self.context.get().database_schema
+                )
+            )
 
     def yield_stored_procedure(
         self, stored_procedure
@@ -311,7 +321,9 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
                 name=EntityName(stored_procedure.name),
-                description=None,
+                description=Markdown(stored_procedure.description)
+                if stored_procedure.description
+                else None,
                 storedProcedureCode=StoredProcedureCode(
                     language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
                     code=stored_procedure.definition,

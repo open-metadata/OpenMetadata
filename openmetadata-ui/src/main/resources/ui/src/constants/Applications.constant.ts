@@ -10,16 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { t } from 'i18next';
+
 import { StepperStepType } from 'Models';
 
 export const STEPS_FOR_APP_INSTALL: Array<StepperStepType> = [
   {
-    name: t('label.detail-plural'),
+    name: 'label.detail-plural',
     step: 1,
   },
-  { name: t('label.configure'), step: 2 },
-  { name: t('label.schedule'), step: 3 },
+  { name: 'label.configure', step: 2 },
+  { name: 'label.schedule', step: 3 },
 ];
 
 export const AUTO_PILOT_APP_NAME = 'AutoPilotApplication';
+export const COLLATE_DOCUMENTATION_APP_NAME = 'CollateAIApplication';
+export const COLLATE_DATA_QUALITY_APP_NAME = 'CollateAIQualityAgentApplication';
+export const COLLATE_AUTO_TIER_APP_NAME = 'CollateAITierAgentApplication';

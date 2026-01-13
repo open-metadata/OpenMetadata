@@ -3,10 +3,12 @@ package org.openmetadata.service.governance.workflows.elements.nodes.userTask;
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.EndEvent;
+import org.flowable.bpmn.model.ExclusiveGateway;
 import org.flowable.bpmn.model.FieldExtension;
 import org.flowable.bpmn.model.FlowableListener;
 import org.flowable.bpmn.model.Message;
@@ -20,18 +22,21 @@ import org.flowable.bpmn.model.TerminateEventDefinition;
 import org.flowable.bpmn.model.UserTask;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
+import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.ApprovalTaskCompletionValidator;
+import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.AutoApproveServiceTaskImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.CreateApprovalTaskImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.SetApprovalAssigneesImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.SetCandidateUsersImpl;
 import org.openmetadata.service.governance.workflows.flowable.builders.EndEventBuilder;
+import org.openmetadata.service.governance.workflows.flowable.builders.ExclusiveGatewayBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.FieldExtensionBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.FlowableListenerBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.ServiceTaskBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.StartEventBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.SubProcessBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.UserTaskBuilder;
-import org.openmetadata.service.util.JsonUtils;
 
 public class UserApprovalTask implements NodeInterface {
   private final SubProcess subProcess;
@@ -57,7 +62,23 @@ public class UserApprovalTask implements NodeInterface {
     FieldExtension inputNamespaceMapExpr =
         new FieldExtensionBuilder()
             .fieldName("inputNamespaceMapExpr")
-            .fieldValue(JsonUtils.pojoToJson(nodeDefinition.getInputNamespaceMap()))
+            .fieldValue(
+                JsonUtils.pojoToJson(
+                    nodeDefinition.getInputNamespaceMap() != null
+                        ? nodeDefinition.getInputNamespaceMap()
+                        : new HashMap<>()))
+            .build();
+
+    FieldExtension approvalThresholdExpr =
+        new FieldExtensionBuilder()
+            .fieldName("approvalThresholdExpr")
+            .fieldValue(String.valueOf(nodeDefinition.getConfig().getApprovalThreshold()))
+            .build();
+
+    FieldExtension rejectionThresholdExpr =
+        new FieldExtensionBuilder()
+            .fieldName("rejectionThresholdExpr")
+            .fieldValue(String.valueOf(nodeDefinition.getConfig().getRejectionThreshold()))
             .build();
 
     SubProcess subProcess = new SubProcessBuilder().id(subProcessId).build();
@@ -67,15 +88,41 @@ public class UserApprovalTask implements NodeInterface {
 
     ServiceTask setAssigneesVariable =
         getSetAssigneesVariableServiceTask(
-            subProcessId, assigneesExpr, assigneesVarNameExpr, inputNamespaceMapExpr);
+            subProcessId,
+            assigneesExpr,
+            assigneesVarNameExpr,
+            inputNamespaceMapExpr,
+            approvalThresholdExpr,
+            rejectionThresholdExpr);
 
-    UserTask userTask = getUserTask(subProcessId, assigneesVarNameExpr, inputNamespaceMapExpr);
+    // Exclusive Gateway to check if there are assignees
+    ExclusiveGateway hasAssigneesGateway =
+        new ExclusiveGatewayBuilder()
+            .id(getFlowableElementId(subProcessId, "hasAssigneesGateway"))
+            .name("Check if has assignees")
+            .build();
+
+    UserTask userTask =
+        getUserTask(
+            subProcessId,
+            assigneesVarNameExpr,
+            inputNamespaceMapExpr,
+            approvalThresholdExpr,
+            rejectionThresholdExpr);
+
+    // Auto-approve service task for when there are no assignees
+    ServiceTask autoApproveTask =
+        new ServiceTaskBuilder()
+            .id(getFlowableElementId(subProcessId, "autoApproveUserTask"))
+            .implementation(AutoApproveServiceTaskImpl.class.getName())
+            .addFieldExtension(inputNamespaceMapExpr)
+            .build();
 
     EndEvent endEvent =
         new EndEventBuilder().id(getFlowableElementId(subProcessId, "endEvent")).build();
 
     // NOTE: If the Task is killed instead of Resolved, the Workflow is Finished.
-    BoundaryEvent terminationEvent = getTerminationEvent();
+    BoundaryEvent terminationEvent = getTerminationEvent(subProcessId);
     terminationEvent.setAttachedToRef(userTask);
 
     TerminateEventDefinition terminateEventDefinition = new TerminateEventDefinition();
@@ -88,15 +135,44 @@ public class UserApprovalTask implements NodeInterface {
 
     subProcess.addFlowElement(startEvent);
     subProcess.addFlowElement(setAssigneesVariable);
+    subProcess.addFlowElement(hasAssigneesGateway);
     subProcess.addFlowElement(userTask);
+    subProcess.addFlowElement(autoApproveTask);
     subProcess.addFlowElement(endEvent);
 
     subProcess.addFlowElement(terminationEvent);
     subProcess.addFlowElement(terminatedEvent);
 
+    // Start -> SetAssignees
     subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), setAssigneesVariable.getId()));
-    subProcess.addFlowElement(new SequenceFlow(setAssigneesVariable.getId(), userTask.getId()));
+
+    // SetAssignees -> Gateway
+    subProcess.addFlowElement(
+        new SequenceFlow(setAssigneesVariable.getId(), hasAssigneesGateway.getId()));
+
+    // Gateway -> UserTask (when hasAssignees = true)
+    SequenceFlow toUserTask = new SequenceFlow(hasAssigneesGateway.getId(), userTask.getId());
+    toUserTask.setConditionExpression("${hasAssignees}");
+    toUserTask.setName("Has assignees");
+    subProcess.addFlowElement(toUserTask);
+
+    // Gateway -> AutoApprove (when hasAssignees = false)
+    SequenceFlow toAutoApprove =
+        new SequenceFlow(hasAssigneesGateway.getId(), autoApproveTask.getId());
+    toAutoApprove.setConditionExpression("${!hasAssignees}");
+    toAutoApprove.setName("No assignees");
+    subProcess.addFlowElement(toAutoApprove);
+
+    // Set default flow for safety
+    hasAssigneesGateway.setDefaultFlow(toAutoApprove.getId());
+
+    // UserTask -> EndEvent
     subProcess.addFlowElement(new SequenceFlow(userTask.getId(), endEvent.getId()));
+
+    // AutoApprove -> EndEvent
+    subProcess.addFlowElement(new SequenceFlow(autoApproveTask.getId(), endEvent.getId()));
+
+    // Termination boundary event flow
     subProcess.addFlowElement(new SequenceFlow(terminationEvent.getId(), terminatedEvent.getId()));
 
     if (config.getStoreStageStatus()) {
@@ -117,7 +193,9 @@ public class UserApprovalTask implements NodeInterface {
       String subProcessId,
       FieldExtension assigneesExpr,
       FieldExtension assigneesVarNameExpr,
-      FieldExtension inputNamespaceMapExpr) {
+      FieldExtension inputNamespaceMapExpr,
+      FieldExtension approvalThresholdExpr,
+      FieldExtension rejectionThresholdExpr) {
     return new ServiceTaskBuilder()
         .id(getFlowableElementId(subProcessId, "setAssigneesVariable"))
         .implementation(SetApprovalAssigneesImpl.class.getName())
@@ -130,7 +208,9 @@ public class UserApprovalTask implements NodeInterface {
   private UserTask getUserTask(
       String subProcessId,
       FieldExtension assigneesVarNameExpr,
-      FieldExtension inputNamespaceMapExpr) {
+      FieldExtension inputNamespaceMapExpr,
+      FieldExtension approvalThresholdExpr,
+      FieldExtension rejectionThresholdExpr) {
     FlowableListener setCandidateUsersListener =
         new FlowableListenerBuilder()
             .event("create")
@@ -143,26 +223,37 @@ public class UserApprovalTask implements NodeInterface {
             .event("create")
             .implementation(CreateApprovalTaskImpl.class.getName())
             .addFieldExtension(inputNamespaceMapExpr)
+            .addFieldExtension(approvalThresholdExpr)
+            .addFieldExtension(rejectionThresholdExpr)
+            .build();
+
+    FlowableListener completionValidatorListener =
+        new FlowableListenerBuilder()
+            .event("complete")
+            .implementation(ApprovalTaskCompletionValidator.class.getName())
             .build();
 
     return new UserTaskBuilder()
         .id(getFlowableElementId(subProcessId, "approvalTask"))
         .addListener(setCandidateUsersListener)
         .addListener(createOpenMetadataTaskListener)
+        .addListener(completionValidatorListener)
         .build();
   }
 
-  private BoundaryEvent getTerminationEvent() {
+  private BoundaryEvent getTerminationEvent(String subProcessId) {
+    String uniqueMessageName = getFlowableElementId(subProcessId, "terminateProcess");
+
     Message terminationMessage = new Message();
-    terminationMessage.setId("terminateProcess");
-    terminationMessage.setName("terminateProcess");
+    terminationMessage.setId(uniqueMessageName);
+    terminationMessage.setName(uniqueMessageName);
     messages.add(terminationMessage);
 
     MessageEventDefinition terminationMessageDefinition = new MessageEventDefinition();
-    terminationMessageDefinition.setMessageRef("terminateProcess");
+    terminationMessageDefinition.setMessageRef(uniqueMessageName);
 
     BoundaryEvent terminationEvent = new BoundaryEvent();
-    terminationEvent.setId("terminationEvent");
+    terminationEvent.setId(getFlowableElementId(subProcessId, "terminationEvent"));
     terminationEvent.addEventDefinition(terminationMessageDefinition);
     return terminationEvent;
   }

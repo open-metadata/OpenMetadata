@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import AddObservabilityPage from './AddObservabilityPage';
 
@@ -46,8 +45,20 @@ const MOCK_DATA = [
     provider: 'user',
   },
 ];
-const mockPush = jest.fn();
-const mockGoBack = jest.fn();
+const mockNavigate = jest.fn();
+const mockHandleAlertSave = jest.fn();
+const mockGetModifiedAlertDataForForm = jest.fn();
+
+jest.mock('../../utils/AlertsClassBase', () => ({
+  __esModule: true,
+  default: {
+    handleAlertSave: (...args: unknown[]) => mockHandleAlertSave(...args),
+    getModifiedAlertDataForForm: (...args: unknown[]) =>
+      mockGetModifiedAlertDataForForm(...args),
+    getAddAlertFormExtraWidgets: jest.fn().mockReturnValue({}),
+    getAddAlertFormExtraButtons: jest.fn().mockReturnValue({}),
+  },
+}));
 
 jest.mock('../../rest/observabilityAPI', () => ({
   getObservabilityAlertByFQN: jest.fn().mockImplementation(() =>
@@ -70,16 +81,7 @@ jest.mock('../../rest/observabilityAPI', () => ({
 }));
 
 jest.mock('../../hoc/withPageLayout', () => ({
-  withPageLayout: jest.fn().mockImplementation(
-    () =>
-      (Component: React.FC) =>
-      (
-        props: JSX.IntrinsicAttributes & {
-          children?: React.ReactNode | undefined;
-        }
-      ) =>
-        <Component {...props} />
-  ),
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
 }));
 
 jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
@@ -93,16 +95,47 @@ jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-    goBack: mockGoBack,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
+
+jest.mock(
+  '../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(() => (
+        <div data-testid="source-select">Source Select</div>
+      ))
+);
+
+jest.mock(
+  '../../components/Alerts/DestinationFormItem/DestinationFormItem.component',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(() => (
+        <div data-testid="destination-category-select">Destination Select</div>
+      ))
+);
+
+jest.mock(
+  '../../components/Alerts/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem',
+  () => jest.fn().mockImplementation(() => <div>Filters</div>)
+);
+
+jest.mock(
+  '../../components/Alerts/ObservabilityFormTriggerItem/ObservabilityFormTriggerItem',
+  () => jest.fn().mockImplementation(() => <div>Triggers</div>)
+);
+
+const mockProps = {
+  pageTitle: 'add-observability',
+};
 
 describe('Add ObservabilityPage Alerts Page Tests', () => {
   it('should render Add Observability Page', async () => {
     await act(async () => {
-      render(<AddObservabilityPage />, {
+      render(<AddObservabilityPage {...mockProps} />, {
         wrapper: MemoryRouter,
       });
     });
@@ -112,7 +145,7 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
 
   it('should display SubTitle', async () => {
     await act(async () => {
-      render(<AddObservabilityPage />, {
+      render(<AddObservabilityPage {...mockProps} />, {
         wrapper: MemoryRouter,
       });
     });
@@ -124,7 +157,7 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
 
   it('should render Add alert button', async () => {
     await act(async () => {
-      render(<AddObservabilityPage />, {
+      render(<AddObservabilityPage {...mockProps} />, {
         wrapper: MemoryRouter,
       });
     });
@@ -134,7 +167,7 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
 
   it('should display the correct breadcrumb', async () => {
     await act(async () => {
-      render(<AddObservabilityPage />, {
+      render(<AddObservabilityPage {...mockProps} />, {
         wrapper: MemoryRouter,
       });
     });
@@ -147,7 +180,7 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
 
   it('should navigate back when the cancel button is clicked', async () => {
     await act(async () => {
-      render(<AddObservabilityPage />, {
+      render(<AddObservabilityPage {...mockProps} />, {
         wrapper: MemoryRouter,
       });
     });
@@ -158,6 +191,91 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
       fireEvent.click(cancelButton);
     });
 
-    expect(mockGoBack).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith(-1);
+  });
+
+  it('should render form field for name', async () => {
+    await act(async () => {
+      render(<AddObservabilityPage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    await screen.findByText('label.observability');
+
+    expect(screen.getByPlaceholderText('label.name')).toBeInTheDocument();
+  });
+
+  it('should render save button', async () => {
+    await act(async () => {
+      render(<AddObservabilityPage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    await screen.findByText('label.observability');
+
+    const saveButton = screen.getByTestId('save-button');
+
+    expect(saveButton).toBeInTheDocument();
+    expect(saveButton).toHaveTextContent('label.save');
+  });
+
+  it('should render AlertFormSourceItem component', async () => {
+    await act(async () => {
+      render(<AddObservabilityPage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    await screen.findByText('label.observability');
+
+    expect(screen.getByTestId('source-select')).toBeInTheDocument();
+  });
+
+  it('should render DestinationFormItem component', async () => {
+    await act(async () => {
+      render(<AddObservabilityPage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    await screen.findByText('label.observability');
+
+    expect(
+      screen.getByTestId('destination-category-select')
+    ).toBeInTheDocument();
+  });
+
+  it('should call getAddAlertFormExtraWidgets from alertsClassBase', async () => {
+    const { default: alertsClassBase } = await import(
+      '../../utils/AlertsClassBase'
+    );
+
+    await act(async () => {
+      render(<AddObservabilityPage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    await screen.findByText('label.observability');
+
+    expect(alertsClassBase.getAddAlertFormExtraWidgets).toHaveBeenCalled();
+  });
+
+  it('should call getAddAlertFormExtraButtons from alertsClassBase', async () => {
+    const { default: alertsClassBase } = await import(
+      '../../utils/AlertsClassBase'
+    );
+
+    await act(async () => {
+      render(<AddObservabilityPage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    await screen.findByText('label.observability');
+
+    expect(alertsClassBase.getAddAlertFormExtraButtons).toHaveBeenCalled();
   });
 });

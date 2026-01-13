@@ -12,12 +12,13 @@
  */
 
 import { CloseCircleOutlined } from '@ant-design/icons';
-import { Button, DatePicker, Dropdown, MenuProps, Space } from 'antd';
-import { RangePickerProps } from 'antd/lib/date-picker';
+import { Button, Dropdown, MenuProps, Space } from 'antd';
+import { SizeType } from 'antd/lib/config-provider/SizeContext';
 import { isUndefined, pick } from 'lodash';
+import { DateTime } from 'luxon';
 import { DateFilterType, DateRangeObject } from 'Models';
 import { MenuInfo } from 'rc-menu/lib/interface';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropdownIcon } from '../../../assets/svg/drop-down.svg';
 import {
@@ -32,6 +33,9 @@ import {
   getDaysCount,
   getTimestampLabel,
 } from '../../../utils/DatePickerMenuUtils';
+import { getPopupContainer } from '../../../utils/formUtils';
+import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
+import MyDatePicker from '../DatePicker/DatePicker';
 import './date-picker-menu.less';
 
 interface DatePickerMenuProps {
@@ -41,6 +45,7 @@ interface DatePickerMenuProps {
   options?: DateFilterType;
   allowCustomRange?: boolean;
   handleSelectedTimeRange?: (value: string) => void;
+  size?: SizeType;
 }
 
 const DatePickerMenu = ({
@@ -50,9 +55,32 @@ const DatePickerMenu = ({
   handleSelectedTimeRange,
   options,
   allowCustomRange = true,
+  size,
 }: DatePickerMenuProps) => {
+  const { t } = useTranslation();
+  const translatedProfileFilterRange = useMemo(() => {
+    return Object.fromEntries(
+      Object.entries(PROFILER_FILTER_RANGE).map(([key, value]) => [
+        key,
+        {
+          ...value,
+          title: translateWithNestedKeys(value.title, value.titleData),
+        },
+      ])
+    );
+  }, [t]);
+
+  const translatedDefaultRange = useMemo(() => {
+    return {
+      ...DEFAULT_SELECTED_RANGE,
+      title: translateWithNestedKeys(
+        DEFAULT_SELECTED_RANGE.title,
+        DEFAULT_SELECTED_RANGE.titleData
+      ),
+    };
+  }, [t]);
   const { menuOptions, defaultOptions } = useMemo(() => {
-    const defaultOptions = pick(DEFAULT_SELECTED_RANGE, ['title', 'key']);
+    const defaultOptions = pick(translatedDefaultRange, ['title', 'key']);
 
     if (defaultDateRange?.key) {
       defaultOptions.key = defaultDateRange.key;
@@ -64,20 +92,19 @@ const DatePickerMenu = ({
       ) {
         defaultOptions.title = options[defaultDateRange.key].title;
       } else if (
-        !isUndefined(PROFILER_FILTER_RANGE[defaultDateRange.key]?.title)
+        !isUndefined(translatedProfileFilterRange[defaultDateRange.key]?.title)
       ) {
         defaultOptions.title =
-          PROFILER_FILTER_RANGE[defaultDateRange.key].title;
+          translatedProfileFilterRange[defaultDateRange.key].title;
       }
     }
 
     return {
-      menuOptions: options ?? PROFILER_FILTER_RANGE,
+      menuOptions: options ?? translatedProfileFilterRange,
       defaultOptions,
     };
   }, [options]);
 
-  const { t } = useTranslation();
   // State to display the label for selected range value
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>(
     defaultOptions.title
@@ -89,14 +116,14 @@ const DatePickerMenu = ({
 
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
 
-  const handleCustomDateChange: RangePickerProps['onChange'] = (
-    values,
-    dateStrings
+  const handleCustomDateChange = (
+    values: [start: DateTime | null, end: DateTime | null] | null,
+    dateStrings: [string, string]
   ) => {
     if (values) {
-      const startTs = (values[0]?.set({ h: 0, m: 0 }).utc().unix() ?? 0) * 1000;
+      const startTs = values[0]?.startOf('day').valueOf() ?? 0;
 
-      const endTs = (values[1]?.set({ h: 23, m: 59 }).utc().unix() ?? 0) * 1000;
+      const endTs = values[1]?.endOf('day').valueOf() ?? 0;
 
       const daysCount = getDaysCount(dateStrings[0], dateStrings[1]);
 
@@ -159,10 +186,11 @@ const DatePickerMenu = ({
         children: [
           {
             label: (
-              <DatePicker.RangePicker
+              <MyDatePicker.RangePicker
+                allowClear
                 bordered={false}
                 clearIcon={<CloseCircleOutlined />}
-                format={(value) => value.utc().format('YYYY-MM-DD')}
+                format={(value) => value.toUTC().toFormat('YYYY-MM-DD')}
                 open={isMenuOpen}
                 placement="bottomRight"
                 suffixIcon={null}
@@ -183,6 +211,7 @@ const DatePickerMenu = ({
   return (
     <Dropdown
       destroyPopupOnHide
+      getPopupContainer={getPopupContainer}
       menu={{
         items,
         triggerSubMenuAction: 'click',
@@ -192,7 +221,7 @@ const DatePickerMenu = ({
       open={isMenuOpen}
       trigger={['click']}
       onOpenChange={(value) => setIsMenuOpen(value)}>
-      <Button data-testid="date-picker-menu">
+      <Button data-testid="date-picker-menu" size={size}>
         <Space align="center" size={8}>
           {selectedTimeRange}
           <DropdownIcon className="align-middle" height={14} width={14} />

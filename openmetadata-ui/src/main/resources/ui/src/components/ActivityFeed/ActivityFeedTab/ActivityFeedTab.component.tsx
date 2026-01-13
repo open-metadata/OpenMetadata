@@ -14,16 +14,9 @@ import { Button, Dropdown, Menu, Segmented, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import {
-  default as React,
-  RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { RefObject, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as TaskCloseIconBlue } from '../../../assets/svg/ic-close-task.svg';
@@ -62,6 +55,7 @@ import {
   getEntityUserLink,
 } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../common/Loader/Loader';
 import { TaskTabNew } from '../../Entity/Task/TaskTab/TaskTabNew.component';
@@ -92,19 +86,21 @@ export const ActivityFeedTab = ({
   subTab,
   layoutType,
   feedCount,
+  urlFqn = '',
 }: ActivityFeedTabProps) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { isAdminUser } = useAuth();
-  const { fqn } = useFqn();
+  const { fqn: hookFqn } = useFqn();
+  const fqn = hookFqn || urlFqn || '';
   const [elementRef, isInView] = useElementInView({
     ...observerOptions,
     root: document.querySelector('#center-container'),
     rootMargin: '0px 0px 2px 0px',
   });
   const { subTab: activeTab = subTab } =
-    useParams<{ tab: EntityTabs; subTab: ActivityFeedTabs }>();
+    useRequiredParams<{ tab: EntityTabs; subTab: ActivityFeedTabs }>();
   const [taskFilter, setTaskFilter] = useState<ThreadTaskStatus>(
     ThreadTaskStatus.Open
   );
@@ -158,13 +154,14 @@ export const ActivityFeedTab = ({
 
   const handleTabChange = (subTab: string) => {
     setIsFirstLoad(true);
-    history.replace(
+    navigate(
       entityUtilClassBase.getEntityLink(
         entityType,
         fqn,
         EntityTabs.ACTIVITY_FEED,
         subTab
-      )
+      ),
+      { replace: true }
     );
     setActiveThread();
     setIsFullWidth(false);
@@ -235,7 +232,7 @@ export const ActivityFeedTab = ({
     setCountData((prev) => ({ ...prev, loading: false }));
   };
 
-  const getThreadType = useCallback((activeTab) => {
+  const getThreadType = useCallback((activeTab?: ActivityFeedTabs) => {
     if (activeTab === ActivityFeedTabs.TASKS) {
       return ThreadType.Task;
     } else if (activeTab === ActivityFeedTabs.ALL) {

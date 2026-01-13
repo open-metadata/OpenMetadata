@@ -28,17 +28,33 @@ test.describe('Login configuration', () => {
     // Click the edit button
     await page.click('[data-testid="edit-button"]');
 
-    // Update JWT Token Expiry Time
-    await page.fill('[data-testid="jwtTokenExpiryTime"]', '5000');
+    // Clear and update JWT Token Expiry Time
+    await page.locator('[data-testid="jwtTokenExpiryTime"]').clear();
+    await page.locator('[data-testid="jwtTokenExpiryTime"]').fill('5000');
+    await page.locator('[data-testid="jwtTokenExpiryTime"]').press('Tab');
 
-    // Update Access Block Time
-    await page.fill('[data-testid="accessBlockTime"]', '500');
+    // Clear and update Access Block Time
+    await page.locator('[data-testid="accessBlockTime"]').clear();
+    await page.locator('[data-testid="accessBlockTime"]').fill('500');
+    await page.locator('[data-testid="accessBlockTime"]').press('Tab');
 
-    // Update Max Login Fail Attempts
-    await page.fill('[data-testid="maxLoginFailAttempts"]', '5');
+    // Clear and update Max Login Fail Attempts
+    await page.locator('[data-testid="maxLoginFailAttempts"]').clear();
+    await page.locator('[data-testid="maxLoginFailAttempts"]').fill('5');
+    await page.locator('[data-testid="maxLoginFailAttempts"]').press('Tab');
+
+    // Wait for the settings API call to complete
+    const settingsResponsePromise = page.waitForResponse(
+      '/api/v1/system/settings'
+    );
 
     // Click the save button
     await page.click('[data-testid="save-button"]');
+
+    // Wait for the API response to complete
+    await settingsResponsePromise;
+
+    await page.waitForLoadState('networkidle');
 
     // Assert the updated values
     await expect(

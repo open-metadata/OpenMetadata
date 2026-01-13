@@ -73,6 +73,25 @@ def get_view_definition(
     )
 
 
+@reflection.cache
+def get_all_view_definitions(self, connection, query):
+    """
+    Method to fetch view definition of all available views
+    """
+    self.all_view_definitions = {}
+    self.current_db: str = connection.engine.url.database  # type: ignore
+    result = connection.execute(query)
+    for view in result:
+        if hasattr(view, "view_def") and hasattr(view, "schema"):
+            self.all_view_definitions[
+                (view.view_name, view.schema)
+            ] = f"CREATE OR REPLACE VIEW {view.view_name} AS {view.view_def}"
+        elif hasattr(view, "VIEW_DEF") and hasattr(view, "SCHEMA"):
+            self.all_view_definitions[
+                (view.VIEW_NAME, view.SCHEMA)
+            ] = f"CREATE OR REPLACE VIEW {view.VIEW_NAME} AS {view.VIEW_DEF}"
+
+
 def _get_col_type(
     self, coltype, precision, scale, length, colname
 ):  # pylint: disable=too-many-branches

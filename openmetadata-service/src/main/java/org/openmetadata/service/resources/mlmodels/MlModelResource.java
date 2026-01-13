@@ -54,6 +54,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MlModelRepository;
@@ -61,7 +62,6 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/mlmodels")
 @Tag(
@@ -75,7 +75,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   public static final String COLLECTION_PATH = "v1/mlmodels/";
   private final MlModelMapper mapper = new MlModelMapper();
   static final String FIELDS =
-      "owners,dashboard,followers,tags,usageSummary,extension,domain,sourceHash";
+      "owners,dashboard,followers,tags,usageSummary,extension,domains,sourceHash";
 
   @Override
   public MlModel addHref(UriInfo uriInfo, MlModel mlmodel) {
@@ -253,6 +253,45 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
       @Valid CreateMlModel create) {
     MlModel mlModel = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, mlModel);
+  }
+
+  @PUT
+  @Path("/bulk")
+  @Operation(
+      operationId = "bulkCreateOrUpdateMlModels",
+      summary = "Bulk create or update ML models",
+      description =
+          "Create or update multiple ML models in a single operation. "
+              + "Returns a BulkOperationResult with success/failure details for each ML model.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Bulk operation results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.schema.type.api.BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Bulk operation accepted for async processing",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.schema.type.api.BulkOperationResult.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response bulkCreateOrUpdate(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @DefaultValue("false") @QueryParam("async") boolean async,
+      List<CreateMlModel> createRequests) {
+    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
   @PATCH

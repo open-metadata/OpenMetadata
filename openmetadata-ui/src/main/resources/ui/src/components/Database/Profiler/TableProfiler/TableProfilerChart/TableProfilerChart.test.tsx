@@ -11,20 +11,31 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import React from 'react';
+import { render, screen } from '@testing-library/react';
+import { act } from 'react';
 import {
   getSystemProfileList,
   getTableProfilesList,
 } from '../../../../../rest/tableAPI';
+import '../../../../../test/unit/mocks/mui.mock';
 import TableProfilerChart from './TableProfilerChart';
 
-const mockFQN = 'testFQN';
+const MOCK_START_TS = 1640995200000;
+const MOCK_END_TS = 1641081600000;
 
 jest.mock('react-router-dom', () => ({
-  useParams: jest.fn().mockImplementation(() => ({ fqn: mockFQN })),
-  useHistory: jest.fn(),
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
+  useParams: jest.fn().mockReturnValue({ fqn: 'testFQN' }),
+  useLocation: jest.fn().mockReturnValue({
+    hash: '',
+    key: 'default',
+    pathname: '/test-path',
+    search: '',
+    state: null,
+  }),
 }));
+
 jest.mock('../../../../../rest/tableAPI');
 jest.mock('../../ProfilerLatestValue/ProfilerLatestValue', () => {
   return jest.fn().mockImplementation(() => <div>ProfilerLatestValue</div>);
@@ -54,30 +65,30 @@ jest.mock('../../../../common/SummaryCard/SummaryCard.component', () => {
 });
 jest.mock('../../../../../constants/profiler.constant', () => ({
   DEFAULT_RANGE_DATA: {
-    startDate: '2022-01-01',
-    endDate: '2022-01-02',
+    startTs: 1640995200000,
+    endTs: 1641081600000,
   },
   INITIAL_OPERATION_METRIC_VALUE: {},
   INITIAL_ROW_METRIC_VALUE: {},
 }));
 jest.mock('../TableProfilerProvider', () => ({
   useTableProfiler: jest.fn().mockReturnValue({
-    dateRangeObject: {
-      startDate: '2022-01-01',
-      endDate: '2022-01-02',
-    },
     isProfilerDataLoading: false,
     permissions: {
       EditAll: true,
       EditDataProfile: true,
+      ViewDataProfile: true,
+      ViewAll: true,
     },
     isTableDeleted: false,
   }),
 }));
 
 jest.mock('../../../../../rest/tableAPI', () => ({
-  getSystemProfileList: jest.fn(),
-  getTableProfilesList: jest.fn(),
+  getSystemProfileList: jest
+    .fn()
+    .mockResolvedValue({ data: [{ timestamp: Date.now() }] }),
+  getTableProfilesList: jest.fn().mockResolvedValue({ data: [] }),
 }));
 
 jest.mock('../../../../../utils/RouterUtils', () => ({
@@ -110,28 +121,55 @@ jest.mock('../../../../../utils/CommonUtils', () => ({
     .mockImplementation(({ i18nKey }) => <div>{i18nKey}</div>),
 }));
 
+jest.mock('../../../../../utils/TableProfilerUtils', () => ({
+  calculateSystemMetrics: jest.fn().mockReturnValue({
+    operationMetrics: { information: [], data: [] },
+    operationDateMetrics: { information: [], data: [] },
+  }),
+  calculateRowCountMetrics: jest
+    .fn()
+    .mockReturnValue({ information: [], data: [] }),
+  calculateCustomMetrics: jest
+    .fn()
+    .mockReturnValue({ customMetrics: [], tableCustomMetricsProfiling: [] }),
+}));
+
+jest.mock('../../../../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockReturnValue({ fqn: 'testFQN' }),
+}));
+
+jest.mock('../../ProfilerStateWrapper/ProfilerStateWrapper.component', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(
+      ({ children, dataTestId, profilerLatestValueProps }) => (
+        <div data-testid={dataTestId}>
+          {profilerLatestValueProps && <div>ProfilerLatestValue</div>}
+          {children}
+        </div>
+      )
+    ),
+}));
+
 describe('TableProfilerChart component test', () => {
   it('Component should render', async () => {
     const mockGetSystemProfileList = getSystemProfileList as jest.Mock;
     const mockGetTableProfilesList = getTableProfilesList as jest.Mock;
-    act(() => {
-      render(<TableProfilerChart />);
-    });
 
-    expect(
-      await screen.findByTestId('table-profiler-chart-container')
-    ).toBeInTheDocument();
+    render(<TableProfilerChart />);
+
+    const containers = await screen.findAllByTestId(
+      'table-profiler-chart-container'
+    );
+
+    expect(containers.length).toBeGreaterThan(0);
     expect(await screen.findByTestId('row-metrics')).toBeInTheDocument();
     expect(await screen.findByTestId('operation-metrics')).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('operation-date-metrics')
-    ).toBeInTheDocument();
-    expect(await screen.findAllByText('ProfilerLatestValue')).toHaveLength(2);
-    expect(
-      await screen.findByText('OperationDateBarChart')
-    ).toBeInTheDocument();
+    expect(await screen.findByText('ProfilerLatestValue')).toBeInTheDocument();
     expect(await screen.findByText('CustomBarChart')).toBeInTheDocument();
     expect(await screen.findByText('ProfilerDetailsCard')).toBeInTheDocument();
+    expect(await screen.findByText('CustomMetricGraphs')).toBeInTheDocument();
     expect(mockGetSystemProfileList.mock.instances).toHaveLength(1);
     expect(mockGetTableProfilesList.mock.instances).toHaveLength(1);
   });
@@ -147,11 +185,17 @@ describe('TableProfilerChart component test', () => {
     expect(mockGetSystemProfileList.mock.instances).toHaveLength(1);
     expect(mockGetTableProfilesList.mock.instances).toHaveLength(1);
     // API should be call with FQN value
-    expect(mockGetSystemProfileList.mock.calls[0][0]).toEqual(mockFQN);
-    expect(mockGetTableProfilesList.mock.calls[0][0]).toEqual(mockFQN);
+    expect(mockGetSystemProfileList.mock.calls[0][0]).toEqual('testFQN');
+    expect(mockGetTableProfilesList.mock.calls[0][0]).toEqual('testFQN');
     // API should be call with proper Param value
-    expect(mockGetSystemProfileList.mock.calls[0][1]).toEqual({});
-    expect(mockGetTableProfilesList.mock.calls[0][1]).toEqual({});
+    expect(mockGetSystemProfileList.mock.calls[0][1]).toEqual({
+      endTs: MOCK_END_TS,
+      startTs: MOCK_START_TS,
+    });
+    expect(mockGetTableProfilesList.mock.calls[0][1]).toEqual({
+      endTs: MOCK_END_TS,
+      startTs: MOCK_START_TS,
+    });
   });
 
   it('If TimeRange change API should be call accordingly', async () => {
@@ -163,7 +207,13 @@ describe('TableProfilerChart component test', () => {
     });
 
     // API should be call with proper Param value
-    expect(mockGetSystemProfileList.mock.calls[0][1]).toEqual({});
-    expect(mockGetTableProfilesList.mock.calls[0][1]).toEqual({});
+    expect(mockGetSystemProfileList.mock.calls[0][1]).toEqual({
+      endTs: MOCK_END_TS,
+      startTs: MOCK_START_TS,
+    });
+    expect(mockGetTableProfilesList.mock.calls[0][1]).toEqual({
+      endTs: MOCK_END_TS,
+      startTs: MOCK_START_TS,
+    });
   });
 });

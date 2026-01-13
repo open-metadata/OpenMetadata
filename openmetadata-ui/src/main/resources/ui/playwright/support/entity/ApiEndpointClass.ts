@@ -24,124 +24,64 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class ApiEndpointClass extends EntityClass {
-  private serviceName = `pw-api-service-${uuid()}`;
-  private apiCollectionName = `pw-api-collection-${uuid()}`;
-  service = {
-    name: this.serviceName,
-    serviceType: 'Rest',
+  private serviceName: string;
+  private apiCollectionName: string;
+  service: {
+    name: string;
+    displayName: string;
+    serviceType: string;
     connection: {
       config: {
-        type: 'Rest',
-        openAPISchemaURL: 'https://sandbox-beta.open-metadata.org/swagger.json',
-      },
-    },
+        type: string;
+        openAPISchemaURL: string;
+      };
+    };
   };
 
-  apiCollection = {
-    name: this.apiCollectionName,
-    service: this.service.name,
+  apiCollection: {
+    name: string;
+    displayName: string;
+    service: string;
   };
 
-  private apiEndpointName = `pw-api-endpoint-${uuid()}`;
-  private fqn = `${this.service.name}.${this.apiCollection.name}.${this.apiEndpointName}`;
+  private apiEndpointName: string;
+  private fqn: string;
 
-  children = [
-    {
-      name: 'default',
-      dataType: 'RECORD',
-      fullyQualifiedName: `${this.fqn}.default`,
-      tags: [],
-      children: [
-        {
-          name: 'name',
-          dataType: 'RECORD',
-          fullyQualifiedName: `${this.fqn}.default.name`,
-          tags: [],
-          children: [
-            {
-              name: 'first_name',
-              dataType: 'STRING',
-              description: 'Description for schema field first_name',
-              fullyQualifiedName: `${this.fqn}.default.name.first_name`,
-              tags: [],
-            },
-            {
-              name: 'last_name',
-              dataType: 'STRING',
-              fullyQualifiedName: `${this.fqn}.default.name.last_name`,
-              tags: [],
-            },
-          ],
-        },
-        {
-          name: 'age',
-          dataType: 'INT',
-          fullyQualifiedName: `${this.fqn}.default.age`,
-          tags: [],
-        },
-        {
-          name: 'club_name',
-          dataType: 'STRING',
-          fullyQualifiedName: `${this.fqn}.default.club_name`,
-          tags: [],
-        },
-      ],
-    },
-  ];
+  children: Array<{
+    name: string;
+    dataType: string;
+    fullyQualifiedName: string;
+    tags: unknown[];
+    children: Array<{
+      name: string;
+      dataType: string;
+      fullyQualifiedName: string;
+      tags: unknown[];
+      description?: string;
+      children?: Array<{
+        name: string;
+        dataType: string;
+        fullyQualifiedName: string;
+        tags: unknown[];
+        description?: string;
+      }>;
+    }>;
+  }>;
 
-  entity = {
-    name: this.apiEndpointName,
-    apiCollection: `${this.service.name}.${this.apiCollection.name}`,
-    endpointURL: 'https://sandbox-beta.open-metadata.org/swagger.json',
+  entity: {
+    name: string;
+    displayName: string;
+    description: string;
+    apiCollection: string;
+    endpointURL: string;
     requestSchema: {
-      schemaType: 'JSON',
-      schemaFields: this.children,
-    },
+      schemaType: string;
+      schemaFields: unknown[];
+    };
     responseSchema: {
-      schemaType: 'JSON',
-      schemaFields: [
-        {
-          name: 'default',
-          dataType: 'RECORD',
-          fullyQualifiedName: `${this.fqn}.default`,
-          tags: [],
-          children: [
-            {
-              name: 'name',
-              dataType: 'RECORD',
-              fullyQualifiedName: `${this.fqn}.default.name`,
-              tags: [],
-              children: [
-                {
-                  name: 'first_name',
-                  dataType: 'STRING',
-                  fullyQualifiedName: `${this.fqn}.default.name.first_name`,
-                  tags: [],
-                },
-                {
-                  name: 'last_name',
-                  dataType: 'STRING',
-                  fullyQualifiedName: `${this.fqn}.default.name.last_name`,
-                  tags: [],
-                },
-              ],
-            },
-            {
-              name: 'age',
-              dataType: 'INT',
-              fullyQualifiedName: `${this.fqn}.default.age`,
-              tags: [],
-            },
-            {
-              name: 'club_name',
-              dataType: 'STRING',
-              fullyQualifiedName: `${this.fqn}.default.club_name`,
-              tags: [],
-            },
-          ],
-        },
-      ],
-    },
+      schemaType: string;
+      schemaFields: unknown[];
+    };
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
@@ -152,12 +92,138 @@ export class ApiEndpointClass extends EntityClass {
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.API_ENDPOINT);
-    this.service.name = name ?? this.service.name;
+
+    this.serviceName = name ?? `pw-api-service-${uuid()}`;
+    this.apiCollectionName = `pw-api-collection-${uuid()}`;
+
+    this.service = {
+      name: this.serviceName,
+      displayName: this.serviceName,
+      serviceType: 'Rest',
+      connection: {
+        config: {
+          type: 'Rest',
+          openAPISchemaURL:
+            'https://sandbox-beta.open-metadata.org/swagger.json',
+        },
+      },
+    };
+
+    this.apiCollection = {
+      name: this.apiCollectionName,
+      displayName: this.apiCollectionName,
+      service: this.service.name,
+    };
+
+    this.apiEndpointName = `pw-api-endpoint-${uuid()}`;
+    this.fqn = `${this.service.name}.${this.apiCollection.name}.${this.apiEndpointName}.requestSchema`;
+
+    this.children = [
+      {
+        name: 'default',
+        dataType: 'RECORD',
+        fullyQualifiedName: `${this.fqn}.default`,
+        tags: [],
+        children: [
+          {
+            name: 'name',
+            dataType: 'RECORD',
+            fullyQualifiedName: `${this.fqn}.default.name`,
+            tags: [],
+            children: [
+              {
+                name: 'first_name',
+                dataType: 'STRING',
+                description: 'Description for schema field first_name',
+                fullyQualifiedName: `${this.fqn}.default.name.first_name`,
+                tags: [],
+              },
+              {
+                name: 'last_name',
+                dataType: 'STRING',
+                fullyQualifiedName: `${this.fqn}.default.name.last_name`,
+                tags: [],
+              },
+            ],
+          },
+          {
+            name: 'age',
+            dataType: 'INT',
+            fullyQualifiedName: `${this.fqn}.default.age`,
+            tags: [],
+          },
+          {
+            name: 'club_name',
+            dataType: 'STRING',
+            fullyQualifiedName: `${this.fqn}.default.club_name`,
+            tags: [],
+          },
+        ],
+      },
+    ];
+
+    this.entity = {
+      name: this.apiEndpointName,
+      displayName: this.apiEndpointName,
+      apiCollection: `${this.service.name}.${this.apiCollection.name}`,
+      endpointURL: 'https://sandbox-beta.open-metadata.org/swagger.json',
+      description: `Description for ${this.apiEndpointName}`,
+      requestSchema: {
+        schemaType: 'JSON',
+        schemaFields: this.children,
+      },
+      responseSchema: {
+        schemaType: 'JSON',
+        schemaFields: [
+          {
+            name: 'default',
+            dataType: 'RECORD',
+            fullyQualifiedName: `${this.fqn}.default`,
+            tags: [],
+            children: [
+              {
+                name: 'name',
+                dataType: 'RECORD',
+                fullyQualifiedName: `${this.fqn}.default.name`,
+                tags: [],
+                children: [
+                  {
+                    name: 'first_name',
+                    dataType: 'STRING',
+                    fullyQualifiedName: `${this.fqn}.default.name.first_name`,
+                    tags: [],
+                  },
+                  {
+                    name: 'last_name',
+                    dataType: 'STRING',
+                    fullyQualifiedName: `${this.fqn}.default.name.last_name`,
+                    tags: [],
+                  },
+                ],
+              },
+              {
+                name: 'age',
+                dataType: 'INT',
+                fullyQualifiedName: `${this.fqn}.default.age`,
+                tags: [],
+              },
+              {
+                name: 'club_name',
+                dataType: 'STRING',
+                fullyQualifiedName: `${this.fqn}.default.club_name`,
+                tags: [],
+              },
+            ],
+          },
+        ],
+      },
+    };
+
     this.serviceCategory = SERVICE_TYPE.ApiService;
     this.serviceType = ServiceTypes.API_SERVICES;
     this.type = 'ApiEndpoint';
     this.childrenTabId = 'schema';
-    this.childrenSelectorId = this.children[0].name;
+    this.childrenSelectorId = this.children[0].fullyQualifiedName;
   }
 
   async create(apiContext: APIRequestContext) {
@@ -214,7 +280,7 @@ export class ApiEndpointClass extends EntityClass {
     };
   }
 
-  async get() {
+  get() {
     return {
       service: this.serviceResponseData,
       entity: this.entityResponseData,
@@ -222,11 +288,23 @@ export class ApiEndpointClass extends EntityClass {
     };
   }
 
+  public set(data: {
+    entity: ResponseDataWithServiceType;
+    service: ResponseDataType;
+    apiCollection: ResponseDataWithServiceType;
+  }): void {
+    this.entityResponseData = data.entity;
+    this.serviceResponseData = data.service;
+    this.apiCollectionResponseData = data.apiCollection;
+  }
+
   async visitEntityPage(page: Page) {
     await visitEntityPage({
       page,
       searchTerm: this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.service.name}-${this.entity.name}`,
+      dataTestId: `${
+        this.entityResponseData.service.name ?? this.service.name
+      }-${this.entityResponseData.name ?? this.entity.name}`,
     });
   }
 

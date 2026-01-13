@@ -81,7 +81,7 @@ const DisplayName: React.FC<DisplayNameProps> = ({
   }, [displayName, name, renderNameWithOptionalLink]);
 
   return (
-    <div className="flex-column hover-icon-group w-max-full">
+    <div className="d-inline-flex flex-column hover-icon-group w-max-full vertical-align-inherit">
       <Typography.Text className="m-b-0 d-block" data-testid="column-name">
         {renderMainContent}
       </Typography.Text>
@@ -94,7 +94,10 @@ const DisplayName: React.FC<DisplayNameProps> = ({
             data-testid="edit-displayName-button"
             icon={<IconEdit color={DE_ACTIVE_COLOR} {...ICON_DIMENSION} />}
             type="text"
-            onClick={() => setIsDisplayNameEditing(true)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsDisplayNameEditing(true);
+            }}
           />
         </Tooltip>
       ) : null}

@@ -132,7 +132,7 @@ export const getContainerVersions = async (id: string) => {
   return response.data;
 };
 
-export const getContainerVersion = async (id: string, version: string) => {
+export const getContainerVersion = async (id: string, version?: string) => {
   const url = `${BASE_URL}/${id}/versions/${version}`;
 
   const response = await APIClient.get<Container>(url);

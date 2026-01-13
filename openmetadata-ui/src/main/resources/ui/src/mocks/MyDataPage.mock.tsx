@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import React from 'react';
 import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
 import { Document } from '../generated/entity/docStore/document';
 import { Thread, ThreadType } from '../generated/entity/feed/thread';
@@ -39,7 +38,7 @@ export const mockDefaultLayout: Array<WidgetConfig> = [
   {
     h: 6,
     i: LandingPageWidgetKeys.ACTIVITY_FEED,
-    w: 3,
+    w: 2,
     x: 0,
     y: 0,
     static: false,
@@ -63,7 +62,7 @@ export const mockDefaultLayout: Array<WidgetConfig> = [
   {
     h: 3,
     i: LandingPageWidgetKeys.TOTAL_DATA_ASSETS,
-    w: 3,
+    w: 2,
     x: 0,
     y: 9,
     static: false,
@@ -90,7 +89,7 @@ export const mockCustomizedLayout: Array<WidgetConfig> = [
   {
     h: 6,
     i: LandingPageWidgetKeys.ACTIVITY_FEED,
-    w: 3,
+    w: 2,
     x: 0,
     y: 0,
     static: false,
@@ -117,7 +116,7 @@ export const mockCustomizePageClassBase = {
   defaultLayout: mockDefaultLayout,
   announcementWidget: {
     h: 3,
-    i: LandingPageWidgetKeys.ANNOUNCEMENTS,
+    i: LandingPageWidgetKeys.ACTIVITY_FEED,
     w: 1,
     x: 3,
     y: 0,
@@ -126,7 +125,7 @@ export const mockCustomizePageClassBase = {
   landingPageMaxGridSize: 4,
   landingPageWidgetMargin: 16,
   landingPageRowHeight: 200,
-  getWidgetsFromKey: (i: string) => () => <div>{i}</div>,
+  getWidgetsFromKey: (i: string) => () => <div data-testid={i}>{i}</div>,
 };
 
 export const mockDocumentData: Document = {

@@ -28,7 +28,7 @@ import {
 } from 'antd';
 import classNames from 'classnames';
 import { debounce, isEmpty, isUndefined } from 'lodash';
-import React, {
+import {
   FC,
   ReactNode,
   useCallback,
@@ -68,6 +68,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   independent = false,
   hideCounts = false,
   hasNullOption = false,
+  showSelectedCounts = false,
   triggerButtonSize = 'small',
 }) => {
   const tabsInfo = searchClassBase.getTabsInfo();
@@ -79,9 +80,8 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     SearchDropdownOption[]
   >([]);
   const [nullOptionSelected, setNullOptionSelected] = useState<boolean>(false);
-  const nullLabelText = t('label.no-entity', {
-    entity: label,
-  });
+
+  const nullLabelText = t('label.no-entity', { entity: label });
 
   // derive menu props from options and selected keys
   const menuOptions: MenuProps['items'] = useMemo(() => {
@@ -349,7 +349,11 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
           className="quick-filter-dropdown-trigger-btn"
           size={triggerButtonSize}>
           <Space data-testid={`search-dropdown-${label}`} size={4}>
-            <Space size={0}>
+            <Space
+              className={classNames({
+                active: selectedKeys.length > 0,
+              })}
+              size={0}>
               <Typography.Text className="filters-label font-medium">
                 {label}
               </Typography.Text>
@@ -357,7 +361,9 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
                 <span>
                   {': '}
                   <Typography.Text className="text-primary font-medium">
-                    {getSelectedOptionLabelString(selectedKeys)}
+                    {showSelectedCounts
+                      ? `(${selectedKeys.length})`
+                      : getSelectedOptionLabelString(selectedKeys)}
                   </Typography.Text>
                 </span>
               )}

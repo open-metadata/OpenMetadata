@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../../../generated/settings/settings';
@@ -42,23 +41,6 @@ jest.mock('react-router-dom', () => ({
 jest.mock('../../../rest/rolesAPIV1', () => ({
   getRoles: jest.fn().mockImplementation(() => Promise.resolve(mockUserRole)),
 }));
-
-jest.mock(
-  './UsersProfile/UserProfileDetails/UserProfileDetails.component',
-  () => {
-    return jest.fn().mockImplementation((props) => (
-      <div data-testid="user-profile-details">
-        <div>UserProfileDetails</div>
-        <button onClick={props.afterDeleteAction}>
-          AfterDeleteActionButton
-        </button>
-        <button onClick={props.updateUserDetails}>
-          UpdateUserDetailsButton
-        </button>
-      </div>
-    ));
-  }
-);
 
 jest.mock(
   './UsersProfile/UserProfileInheritedRoles/UserProfileInheritedRoles.component',
@@ -136,6 +118,12 @@ jest.mock('../../../hooks/useApplicationStore', () => ({
       name: 'test',
     },
   })),
+}));
+
+jest.mock('../Applications/ApplicationsProvider/ApplicationsProvider', () => ({
+  useApplicationsProvider: () => ({
+    extensionRegistry: { getContributions: jest.fn().mockReturnValue([]) },
+  }),
 }));
 
 jest.mock('../../PageLayoutV1/PageLayoutV1', () =>
@@ -244,9 +232,7 @@ describe('Test User Component', () => {
       });
     });
 
-    await act(async () => {
-      userEvent.click(screen.getByText('AfterDeleteActionButton'));
-    });
+    fireEvent.click(screen.getByText('AfterDeleteActionButton'));
 
     expect(mockProp.afterDeleteAction).toHaveBeenCalled();
   });
@@ -258,9 +244,7 @@ describe('Test User Component', () => {
       });
     });
 
-    await act(async () => {
-      userEvent.click(screen.getByText('UpdateUserDetailsButton'));
-    });
+    fireEvent.click(screen.getByText('UpdateUserDetailsButton'));
 
     expect(mockProp.updateUserDetails).toHaveBeenCalled();
   });

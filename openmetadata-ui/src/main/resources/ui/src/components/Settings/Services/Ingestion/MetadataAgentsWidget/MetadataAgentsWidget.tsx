@@ -13,9 +13,8 @@
 import { Card, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
 import { ReactComponent as MetadataAgentIcon } from '../../../../../assets/svg/application.svg';
 import { DISABLED } from '../../../../../constants/constants';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
@@ -29,6 +28,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../../../utils/useRequiredParams';
 import ButtonSkeleton from '../../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import AddIngestionButton from '../AddIngestionButton.component';
 import IngestionListTable from '../IngestionListTable/IngestionListTable';
@@ -49,7 +49,7 @@ function MetadataAgentsWidget({
   searchText,
 }: Readonly<MetadataAgentsWidgetProps>) {
   const { t } = useTranslation();
-  const { serviceCategory } = useParams<{
+  const { serviceCategory } = useRequiredParams<{
     serviceCategory: ServiceCategory;
   }>();
   const [pipelineIdToFetchStatus, setPipelineIdToFetchStatus] =

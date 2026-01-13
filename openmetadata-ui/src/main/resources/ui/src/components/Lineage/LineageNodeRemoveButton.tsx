@@ -12,7 +12,6 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button } from 'antd';
-import React from 'react';
 import { ReactComponent as IconTimesCircle } from '../../assets/svg/ic-times-circle.svg';
 
 interface LineageNodeRemoveButtonProps {

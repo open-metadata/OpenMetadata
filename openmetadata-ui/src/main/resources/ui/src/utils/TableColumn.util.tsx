@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType, ColumnType } from 'antd/lib/table';
 import classNames from 'classnames';
-import React from 'react';
 import { ReactComponent as FilterIcon } from '../assets/svg/ic-filter.svg';
 import { DomainLabel } from '../components/common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
+import RichTextEditorPreviewerNew from '../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import DataProductsContainer from '../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
 import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';
 import { TAG_LIST_SIZE } from '../constants/constants';
@@ -40,10 +40,10 @@ export const ownerTableObject = <
   T extends { owners?: EntityReference[] }
 >(): ColumnsType<T> => [
   {
-    title: i18n.t('label.owner-plural'),
+    title: i18n.t('label.owner-plural').toString(),
     dataIndex: TABLE_COLUMNS_KEYS.OWNERS,
     key: TABLE_COLUMNS_KEYS.OWNERS,
-    width: 180,
+    width: 280,
     filterIcon: columnFilterIcon,
     render: (owners: EntityReference[]) => (
       <OwnerLabel
@@ -57,16 +57,16 @@ export const ownerTableObject = <
 ];
 
 export const domainTableObject = <
-  T extends { domain?: EntityReference }
+  T extends { domains?: EntityReference[] }
 >(): ColumnsType<T> => [
   {
-    title: i18n.t('label.domain'),
-    dataIndex: TABLE_COLUMNS_KEYS.DOMAIN,
-    key: TABLE_COLUMNS_KEYS.DOMAIN,
+    title: i18n.t('label.domain-plural').toString(),
+    dataIndex: TABLE_COLUMNS_KEYS.DOMAINS,
+    key: TABLE_COLUMNS_KEYS.DOMAINS,
     width: 200,
-    render: (domain: EntityReference) => (
+    render: (domains: EntityReference[]) => (
       <DomainLabel
-        domain={domain}
+        domains={domains}
         entityFqn=""
         entityId=""
         entityType={EntityType.TABLE}
@@ -80,7 +80,7 @@ export const dataProductTableObject = <
   T extends { dataProducts?: EntityReference[] }
 >(): ColumnsType<T> => [
   {
-    title: i18n.t('label.data-product-plural'),
+    title: i18n.t('label.data-product-plural').toString(),
     dataIndex: TABLE_COLUMNS_KEYS.DATA_PRODUCTS,
     key: TABLE_COLUMNS_KEYS.DATA_PRODUCTS,
     width: 200,
@@ -98,12 +98,29 @@ export const tagTableObject = <
   T extends { tags?: TagLabel[] }
 >(): ColumnsType<T> => [
   {
-    title: i18n.t('label.tag-plural'),
+    title: i18n.t('label.tag-plural').toString(),
     dataIndex: TABLE_COLUMNS_KEYS.TAGS,
     width: 240,
     key: TABLE_COLUMNS_KEYS.TAGS,
     render: (_, record: T) => (
       <TagsViewer sizeCap={TAG_LIST_SIZE} tags={record.tags ?? []} />
     ),
+  },
+];
+
+/**
+ * Generates a table column configuration for the description field.
+ * @param args - Additional column properties to be merged
+ * @returns A ColumnsType<T> array with the description column configuration
+ */
+export const descriptionTableObject = <T extends { description?: string }>(
+  args: ColumnType<T> = {}
+): ColumnsType<T> => [
+  {
+    title: i18n.t('label.description').toString(),
+    dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
+    key: TABLE_COLUMNS_KEYS.DESCRIPTION,
+    render: (text: string) => <RichTextEditorPreviewerNew markdown={text} />,
+    ...args,
   },
 ];

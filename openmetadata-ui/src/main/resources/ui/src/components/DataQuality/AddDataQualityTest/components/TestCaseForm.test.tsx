@@ -12,14 +12,18 @@
  */
 import {
   findByRole,
+  fireEvent,
   render,
   screen,
-  waitForElement,
+  waitFor,
 } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React, { forwardRef } from 'react';
-import { act } from 'react-dom/test-utils';
+import { act, forwardRef } from 'react';
 import { ProfilerDashboardType } from '../../../../enums/table.enum';
+import {
+  LabelType,
+  State,
+  TagSource,
+} from '../../../../generated/type/tagLabel';
 import { MOCK_TABLE } from '../../../../mocks/TableData.mock';
 import { getListTestDefinitions } from '../../../../rest/testAPI';
 import TestCaseForm from './TestCaseForm';
@@ -75,10 +79,10 @@ const mockTestDefinition = {
     },
   ],
 };
-const mockUseHistory = { push: jest.fn() };
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => mockUseHistory),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 jest.mock('../../../../utils/DataQuality/DataQualityUtils', () => {
@@ -104,6 +108,14 @@ jest.mock('./ParameterForm', () =>
 );
 jest.mock('crypto-random-string-with-promisify-polyfill', () =>
   jest.fn().mockImplementation(() => '4B3B')
+);
+jest.mock('../../../../pages/TasksPage/shared/TagSuggestion', () =>
+  jest.fn().mockImplementation(({ children, ...props }) => (
+    <div data-testid={props.selectProps?.['data-testid']}>
+      TagSuggestion Component
+      {children}
+    </div>
+  ))
 );
 
 describe('TestCaseForm', () => {
@@ -152,17 +164,16 @@ describe('TestCaseForm', () => {
       'combobox'
     );
     await act(async () => {
-      userEvent.click(typeSelector);
+      fireEvent.focus(typeSelector);
+      fireEvent.keyDown(typeSelector, { key: 'ArrowDown', code: 'ArrowDown' });
     });
 
     expect(typeSelector).toBeInTheDocument();
 
-    await waitForElement(() =>
-      screen.findByText('Column Value Lengths To Be Between')
-    );
+    await waitFor(() => screen.getByText('Column Value Lengths To Be Between'));
 
     await act(async () => {
-      userEvent.click(
+      fireEvent.click(
         await screen.findByText('Column Value Lengths To Be Between')
       );
     });
@@ -183,6 +194,7 @@ describe('TestCaseForm', () => {
       entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
       name: 'dim_address_column_value_lengths_to_be_between_4B3B',
       parameterValues: [],
+      tags: [],
       testDefinition: 'columnValueLengthsToBeBetween',
     });
   });
@@ -223,18 +235,19 @@ describe('TestCaseForm', () => {
       'combobox'
     );
     await act(async () => {
-      userEvent.click(column);
+      fireEvent.focus(column);
+      fireEvent.keyDown(column, { key: 'ArrowDown', code: 'ArrowDown' });
     });
 
     expect(column).toBeInTheDocument();
 
-    await waitForElement(() => screen.findByText('last_name'));
+    await waitFor(() => screen.getByText('last_name'));
 
     await act(async () => {
-      userEvent.click(await screen.findByText('last_name'));
+      fireEvent.click(await screen.findByText('last_name'));
     });
 
-    expect(mockUseHistory.push).toHaveBeenCalledWith({
+    expect(mockNavigate).toHaveBeenCalledWith({
       search:
         'activeColumnFqn=sample_data.ecommerce_db.shopify.dim_address.last_name',
     });
@@ -258,17 +271,16 @@ describe('TestCaseForm', () => {
       'combobox'
     );
     await act(async () => {
-      userEvent.click(typeSelector);
+      fireEvent.focus(typeSelector);
+      fireEvent.keyDown(typeSelector, { key: 'ArrowDown', code: 'ArrowDown' });
     });
 
     expect(typeSelector).toBeInTheDocument();
 
-    await waitForElement(() =>
-      screen.findByText('Column Value Lengths To Be Between')
-    );
+    await waitFor(() => screen.getByText('Column Value Lengths To Be Between'));
 
     await act(async () => {
-      userEvent.click(
+      fireEvent.click(
         await screen.findByText('Column Value Lengths To Be Between')
       );
     });
@@ -276,5 +288,208 @@ describe('TestCaseForm', () => {
     expect(
       await screen.findByTestId('compute-passed-failed-row-count')
     ).toBeInTheDocument();
+  });
+
+  // Tags and Glossary Terms functionality tests
+  it('should render tags and glossary terms fields', async () => {
+    await act(async () => {
+      render(<TestCaseForm {...mockProps} />);
+    });
+
+    // Check if tags field is rendered
+    expect(await screen.findByTestId('tags-selector')).toBeInTheDocument();
+
+    // Check if glossary terms field is rendered
+    expect(
+      await screen.findByTestId('glossary-terms-selector')
+    ).toBeInTheDocument();
+
+    // Verify TagSuggestion components are rendered
+    const tagComponents = screen.getAllByText('TagSuggestion Component');
+
+    expect(tagComponents).toHaveLength(2); // One for tags, one for glossary terms
+  });
+
+  it('should include both tags and glossary terms in form submission', async () => {
+    await act(async () => {
+      render(<TestCaseForm {...mockProps} />);
+    });
+
+    // Select a test type first
+    const typeSelector = await findByRole(
+      await screen.findByTestId('test-type'),
+      'combobox'
+    );
+    await act(async () => {
+      fireEvent.focus(typeSelector);
+      fireEvent.keyDown(typeSelector, { key: 'ArrowDown', code: 'ArrowDown' });
+    });
+
+    await waitFor(() => screen.getByText('Column Value Lengths To Be Between'));
+
+    await act(async () => {
+      fireEvent.click(
+        await screen.findByText('Column Value Lengths To Be Between')
+      );
+    });
+
+    // Submit form
+    const submitBtn = await screen.findByTestId('submit-test');
+    await act(async () => {
+      submitBtn.click();
+    });
+
+    // Verify that onSubmit is called with tags array (empty in this case since no tags selected)
+    expect(mockProps.onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tags: [], // Will be empty when no tags/glossary terms are selected
+      })
+    );
+  });
+
+  it('should combine tags and glossary terms when creating test case object', async () => {
+    const mockTags = [
+      {
+        tagFQN: 'PII.Sensitive',
+        source: TagSource.Classification,
+        labelType: LabelType.Manual,
+        state: State.Confirmed,
+      },
+    ];
+
+    const mockWithValues = {
+      ...mockProps,
+      initialValue: {
+        tags: mockTags,
+        name: 'test-case',
+        testDefinition: 'columnValueLengthsToBeBetween',
+        entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+      },
+    };
+
+    await act(async () => {
+      render(<TestCaseForm {...mockWithValues} />);
+    });
+
+    // Submit without changing anything to test initial value handling
+    const submitBtn = await screen.findByTestId('submit-test');
+    await act(async () => {
+      submitBtn.click();
+    });
+
+    // Should include tags from initial values
+    expect(mockProps.onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tags: expect.any(Array), // Should contain the combined tags
+      })
+    );
+  });
+
+  it('should initialize tags field with initial values when editing', async () => {
+    const mockInitialTags = [
+      {
+        tagFQN: 'PII.Sensitive',
+        source: TagSource.Classification,
+        labelType: LabelType.Manual,
+        state: State.Confirmed,
+      },
+      {
+        tagFQN: 'PersonalData.Email',
+        source: TagSource.Glossary,
+        labelType: LabelType.Manual,
+        state: State.Confirmed,
+      },
+    ];
+
+    const mockWithTags = {
+      ...mockProps,
+      initialValue: {
+        tags: mockInitialTags,
+        name: 'existing-test-case',
+        testDefinition: 'columnValueLengthsToBeBetween',
+        entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+      },
+    };
+
+    await act(async () => {
+      render(<TestCaseForm {...mockWithTags} />);
+    });
+
+    // Verify that the tags field components are rendered
+    const tagsField = await screen.findByTestId('tags-selector');
+
+    expect(tagsField).toBeInTheDocument();
+
+    const glossaryTermsField = await screen.findByTestId(
+      'glossary-terms-selector'
+    );
+
+    expect(glossaryTermsField).toBeInTheDocument();
+  });
+
+  it('should handle empty tags and glossary terms gracefully', async () => {
+    await act(async () => {
+      render(<TestCaseForm {...mockProps} />);
+    });
+
+    // Select test type and submit form without any tags or glossary terms
+    const typeSelector = await findByRole(
+      await screen.findByTestId('test-type'),
+      'combobox'
+    );
+    await act(async () => {
+      fireEvent.focus(typeSelector);
+      fireEvent.keyDown(typeSelector, { key: 'ArrowDown', code: 'ArrowDown' });
+    });
+
+    await waitFor(() => screen.getByText('Column Value Lengths To Be Between'));
+
+    await act(async () => {
+      fireEvent.click(
+        await screen.findByText('Column Value Lengths To Be Between')
+      );
+    });
+
+    const submitBtn = await screen.findByTestId('submit-test');
+    await act(async () => {
+      submitBtn.click();
+    });
+
+    expect(mockProps.onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tags: [], // Should be empty array when no tags are selected
+      })
+    );
+  });
+
+  it('should render glossary terms field with correct props', async () => {
+    await act(async () => {
+      render(<TestCaseForm {...mockProps} />);
+    });
+
+    const glossaryTermsField = await screen.findByTestId(
+      'glossary-terms-selector'
+    );
+
+    expect(glossaryTermsField).toBeInTheDocument();
+
+    // Verify that the glossary terms field has the expected data-testid
+    expect(glossaryTermsField).toHaveAttribute(
+      'data-testid',
+      'glossary-terms-selector'
+    );
+  });
+
+  it('should render tags field with correct props', async () => {
+    await act(async () => {
+      render(<TestCaseForm {...mockProps} />);
+    });
+
+    const tagsField = await screen.findByTestId('tags-selector');
+
+    expect(tagsField).toBeInTheDocument();
+
+    // Verify that the tags field has the expected data-testid
+    expect(tagsField).toHaveAttribute('data-testid', 'tags-selector');
   });
 });

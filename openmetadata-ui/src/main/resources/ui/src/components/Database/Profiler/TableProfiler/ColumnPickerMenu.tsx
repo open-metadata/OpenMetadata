@@ -10,11 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown, Space, Typography } from 'antd';
-import { find, map } from 'lodash';
-import { MenuInfo } from 'rc-menu/lib/interface';
-import React, { FC, useMemo, useState } from 'react';
-import { ReactComponent as DropdownIcon } from '../../../../assets/svg/drop-down.svg';
+import { KeyboardArrowDown } from '@mui/icons-material';
+import {
+  Box,
+  Button,
+  Menu,
+  MenuItem,
+  Typography,
+  useTheme,
+} from '@mui/material';
+import { find } from 'lodash';
+import { FC, useMemo, useState } from 'react';
 import { Column } from '../../../../generated/entity/data/container';
 import { getEntityName } from '../../../../utils/EntityUtils';
 
@@ -29,20 +35,9 @@ const ColumnPickerMenu: FC<ColumnPickerMenuProps> = ({
   columns,
   handleChange,
 }) => {
-  const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
-
-  const items = useMemo(() => {
-    return map(columns, (column) => ({
-      label: (
-        <Space>
-          {getEntityName(column)}
-
-          <Typography.Text className="text-xs text-grey-muted">{`(${column.dataType})`}</Typography.Text>
-        </Space>
-      ),
-      key: column.fullyQualifiedName || '',
-    }));
-  }, [columns]);
+  const theme = useTheme();
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
 
   const selectedItem = useMemo(() => {
     return find(
@@ -51,30 +46,103 @@ const ColumnPickerMenu: FC<ColumnPickerMenuProps> = ({
     );
   }, [activeColumnFqn, columns]);
 
-  const handleOptionClick = ({ key }: MenuInfo) => {
+  const handleMenuClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleOptionClick = (key: string) => {
     handleChange(key);
-    setIsMenuOpen(false);
+    handleMenuClose();
   };
 
   return (
-    <Dropdown
-      destroyPopupOnHide
-      menu={{
-        items,
-        triggerSubMenuAction: 'click',
-        onClick: handleOptionClick,
-        selectedKeys: [activeColumnFqn],
-      }}
-      open={isMenuOpen}
-      trigger={['click']}
-      onOpenChange={(value) => setIsMenuOpen(value)}>
-      <Button>
-        <Space align="center" size={8}>
-          {getEntityName(selectedItem)}
-          <DropdownIcon height={14} width={14} />
-        </Space>
+    <Box data-testid="column-picker-menu">
+      <Button
+        data-testid="column-picker-menu-button"
+        endIcon={<KeyboardArrowDown />}
+        size="small"
+        sx={{
+          color: theme.palette.grey[900],
+          fontWeight: 600,
+          fontSize: theme.typography.pxToRem(12),
+          height: '32px',
+          textTransform: 'none',
+          boxShadow: 'none',
+          border: `1px solid ${theme.palette.grey[200]}`,
+          '&:hover': {
+            border: `1px solid ${theme.palette.grey[200]}`,
+            boxShadow: 'none',
+          },
+        }}
+        variant="outlined"
+        onClick={handleMenuClick}>
+        {getEntityName(selectedItem)}
       </Button>
-    </Dropdown>
+      <Menu
+        anchorEl={anchorEl}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        open={open}
+        sx={{
+          '.MuiPaper-root': {
+            maxHeight: '350px',
+            width: 'max-content',
+            minWidth: '200px',
+          },
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        onClose={handleMenuClose}>
+        {columns.map((column) => {
+          const isSelected = column.fullyQualifiedName === activeColumnFqn;
+
+          return (
+            <MenuItem
+              data-testid={`column-picker-menu-item-${column.fullyQualifiedName}`}
+              key={column.fullyQualifiedName}
+              selected={isSelected}
+              sx={{
+                '&.Mui-selected': {
+                  backgroundColor: theme.palette.primary.main,
+                  color: theme.palette.primary.contrastText,
+                  '&:hover': {
+                    backgroundColor: theme.palette.primary.dark,
+                  },
+                },
+              }}
+              onClick={() =>
+                handleOptionClick(column.fullyQualifiedName || '')
+              }>
+              <Box alignItems="center" display="flex" gap={1}>
+                <Typography
+                  sx={{
+                    color: 'inherit',
+                    fontSize: theme.typography.pxToRem(14),
+                  }}>
+                  {getEntityName(column)}
+                </Typography>
+                <Typography
+                  sx={{
+                    color: isSelected
+                      ? theme.palette.primary.contrastText
+                      : theme.palette.grey[600],
+                    fontSize: theme.typography.pxToRem(12),
+                    opacity: isSelected ? 0.9 : 1,
+                  }}>{`(${column.dataType})`}</Typography>
+              </Box>
+            </MenuItem>
+          );
+        })}
+      </Menu>
+    </Box>
   );
 };
 

@@ -69,6 +69,15 @@ const searchForEntityShouldWork = async (
   displayName: string,
   page: Page
 ) => {
+  // Wait for welcome screen and close it if visible
+  const isWelcomeScreenVisible = await page
+    .getByTestId('welcome-screen')
+    .isVisible();
+
+  if (isWelcomeScreenVisible) {
+    await page.getByTestId('welcome-screen-close-btn').click();
+  }
+
   await page.getByTestId('searchBox').click();
   await page.getByTestId('searchBox').fill(fqn);
   await page.getByTestId('searchBox').press('Enter');
@@ -89,6 +98,15 @@ const searchForEntityShouldWorkShowNoResult = async (
   displayName: string,
   page: Page
 ) => {
+  // Wait for welcome screen and close it if visible
+  const isWelcomeScreenVisible = await page
+    .getByTestId('welcome-screen')
+    .isVisible();
+
+  if (isWelcomeScreenVisible) {
+    await page.getByTestId('welcome-screen-close-btn').click();
+  }
+
   await page.getByTestId('searchBox').click();
   await page.getByTestId('searchBox').fill(fqn);
   await page.getByTestId('searchBox').press('Enter');

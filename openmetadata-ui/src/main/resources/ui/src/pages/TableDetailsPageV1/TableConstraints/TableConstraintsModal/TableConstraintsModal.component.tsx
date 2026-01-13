@@ -14,7 +14,7 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Empty, Form, Modal, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
@@ -32,6 +32,7 @@ import {
 } from '../../../../generated/entity/data/table';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getBreadcrumbsFromFqn } from '../../../../utils/EntityUtils';
+import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
 import { getServiceNameQueryFilter } from '../../../../utils/ServiceUtils';
 import {
   escapeESReservedCharacters,
@@ -167,7 +168,7 @@ const TableConstraintsModal = ({
           <div className="constraint-breadcrumb">
             <Space wrap align="start" className="w-full" size={4}>
               {breadcrumbs.slice(0, 4).map((breadcrumb, index) => (
-                <React.Fragment key={breadcrumb.name}>
+                <Fragment key={breadcrumb.name}>
                   <Typography.Text
                     className="constraint-breadcrumb-item"
                     ellipsis={{ tooltip: true }}>
@@ -178,7 +179,7 @@ const TableConstraintsModal = ({
                       {t('label.slash-symbol')}
                     </Typography.Text>
                   )}
-                </React.Fragment>
+                </Fragment>
               ))}
             </Space>
             <Typography.Text
@@ -249,6 +250,24 @@ const TableConstraintsModal = ({
     getSearchResults(searchValue);
   }, []);
 
+  const translatedRelationShipTypeOptions = useMemo(
+    () =>
+      RELATIONSHIP_TYPE_OPTION.map((option) => ({
+        ...option,
+        label: t(option.label),
+      })),
+    [t]
+  );
+
+  const translatedTableConstrantTypeOptions = useMemo(
+    () =>
+      TABLE_CONSTRAINTS_TYPE_OPTIONS.map((option) => ({
+        ...option,
+        label: translateWithNestedKeys(option.label, option.labelData),
+      })),
+    [t]
+  );
+
   return (
     <Modal
       centered
@@ -291,7 +310,7 @@ const TableConstraintsModal = ({
             allowClear
             autoClearSearchValue
             data-testid="constraint-type-select"
-            options={TABLE_CONSTRAINTS_TYPE_OPTIONS}
+            options={translatedTableConstrantTypeOptions}
             placeholder={t('label.select-entity', {
               entity: t('label.constraint-type'),
             })}
@@ -442,7 +461,7 @@ const TableConstraintsModal = ({
                       ]}>
                       <Select
                         data-testid={`${key}-relationship-type-select`}
-                        options={RELATIONSHIP_TYPE_OPTION}
+                        options={translatedRelationShipTypeOptions}
                         placeholder={t('label.select-entity', {
                           entity: t('label.relationship-type'),
                         })}

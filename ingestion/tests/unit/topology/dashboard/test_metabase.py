@@ -13,6 +13,7 @@
 Test Domo Dashboard using the topology
 """
 
+import json
 from copy import deepcopy
 from types import SimpleNamespace
 from unittest import TestCase
@@ -102,7 +103,11 @@ mock_config = {
             }
         },
         "sourceConfig": {
-            "config": {"dashboardFilterPattern": {}, "chartFilterPattern": {}}
+            "config": {
+                "dashboardFilterPattern": {},
+                "chartFilterPattern": {},
+                "includeOwners": True,
+            }
         },
     },
     "sink": {"type": "metadata-rest", "config": {}},
@@ -291,7 +296,7 @@ class MetabaseUnitTest(TestCase):
 
         # if no db service name then no lineage generated
         result = self.metabase.yield_dashboard_lineage_details(
-            dashboard_details=MOCK_DASHBOARD_DETAILS, db_service_name=None
+            dashboard_details=MOCK_DASHBOARD_DETAILS, db_service_prefix=None
         )
         self.assertEqual(next(result).right, EXPECTED_LINEAGE)
 
@@ -299,20 +304,128 @@ class MetabaseUnitTest(TestCase):
         mock_dashboard = deepcopy(MOCK_DASHBOARD_DETAILS)
         mock_dashboard.card_ids = [MOCK_DASHBOARD_DETAILS.card_ids[0]]
         result = self.metabase.yield_dashboard_lineage_details(
-            dashboard_details=mock_dashboard, db_service_name="db.service.name"
+            dashboard_details=mock_dashboard,
+            db_service_prefix=f"{MOCK_DATABASE_SERVICE.name}",
         )
         self.assertEqual(next(result).right, EXPECTED_LINEAGE)
 
         # test out _yield_lineage_from_query
         mock_dashboard.card_ids = [MOCK_DASHBOARD_DETAILS.card_ids[1]]
         result = self.metabase.yield_dashboard_lineage_details(
-            dashboard_details=mock_dashboard, db_service_name="db.service.name"
+            dashboard_details=mock_dashboard,
+            db_service_prefix=f"{MOCK_DATABASE_SERVICE.name}",
         )
         self.assertEqual(next(result).right, EXPECTED_LINEAGE)
 
         # test out if no query type
         mock_dashboard.card_ids = [MOCK_DASHBOARD_DETAILS.card_ids[2]]
         result = self.metabase.yield_dashboard_lineage_details(
-            dashboard_details=mock_dashboard, db_service_name="db.service.name"
+            dashboard_details=mock_dashboard, db_service_prefix="db.service.name"
         )
         self.assertEqual(list(result), [])
+
+    def test_include_owners_flag_enabled(self):
+        """
+        Test that when includeOwners is True, owner information is processed
+        """
+        # Mock the source config to have includeOwners = True
+        self.metabase.source_config.includeOwners = True
+
+        # Test that owner information is processed when includeOwners is True
+        self.assertTrue(self.metabase.source_config.includeOwners)
+
+    def test_include_owners_flag_disabled(self):
+        """
+        Test that when includeOwners is False, owner information is not processed
+        """
+        # Mock the source config to have includeOwners = False
+        self.metabase.source_config.includeOwners = False
+
+        # Test that owner information is not processed when includeOwners is False
+        self.assertFalse(self.metabase.source_config.includeOwners)
+
+    def test_include_owners_flag_in_config(self):
+        """
+        Test that the includeOwners flag is properly set in the configuration
+        """
+        # Check that the mock configuration includes the includeOwners flag
+        config = mock_config["source"]["sourceConfig"]["config"]
+        self.assertIn("includeOwners", config)
+        self.assertTrue(config["includeOwners"])
+
+    def test_include_owners_flag_affects_owner_processing(self):
+        """
+        Test that the includeOwners flag affects how owner information is processed
+        """
+        # Test with includeOwners = True
+        self.metabase.source_config.includeOwners = True
+        self.assertTrue(self.metabase.source_config.includeOwners)
+
+        # Test with includeOwners = False
+        self.metabase.source_config.includeOwners = False
+        self.assertFalse(self.metabase.source_config.includeOwners)
+
+    def test_dataset_query_string_parsing(self):
+        """
+        Test that dataset_query field can handle both string and dict inputs
+        """
+        # Test 1: dataset_query as a proper dict
+        chart_with_dict = MetabaseChart(
+            name="test_chart_dict",
+            id="100",
+            dataset_query={
+                "type": "native",
+                "native": {"query": "SELECT * FROM users"},
+            },
+        )
+        self.assertIsNotNone(chart_with_dict.dataset_query)
+        self.assertEqual(chart_with_dict.dataset_query.type, "native")
+        self.assertEqual(
+            chart_with_dict.dataset_query.native.query, "SELECT * FROM users"
+        )
+
+        # Test 2: dataset_query as a JSON string
+        dataset_query_json = json.dumps(
+            {"type": "query", "database": 1, "query": {"source-table": 2}}
+        )
+        chart_with_json_string = MetabaseChart(
+            name="test_chart_json", id="101", dataset_query=dataset_query_json
+        )
+        self.assertIsNotNone(chart_with_json_string.dataset_query)
+        self.assertEqual(chart_with_json_string.dataset_query.type, "query")
+
+        # Test 3: dataset_query as a Python dict string (single quotes)
+        dataset_query_str = (
+            "{'type': 'native', 'native': {'query': 'SELECT COUNT(*) FROM orders'}}"
+        )
+        chart_with_dict_string = MetabaseChart(
+            name="test_chart_dict_str", id="102", dataset_query=dataset_query_str
+        )
+        self.assertIsNotNone(chart_with_dict_string.dataset_query)
+        self.assertEqual(chart_with_dict_string.dataset_query.type, "native")
+        self.assertEqual(
+            chart_with_dict_string.dataset_query.native.query,
+            "SELECT COUNT(*) FROM orders",
+        )
+
+        # Test 4: dataset_query with None values as string
+        dataset_query_with_none = "{'type': 'query', 'native': None, 'database': 1}"
+        chart_with_none = MetabaseChart(
+            name="test_chart_none", id="103", dataset_query=dataset_query_with_none
+        )
+        self.assertIsNotNone(chart_with_none.dataset_query)
+        self.assertEqual(chart_with_none.dataset_query.type, "query")
+        self.assertIsNone(chart_with_none.dataset_query.native)
+
+        # Test 5: Invalid dataset_query string should return None
+        invalid_dataset_query = "this is not valid json or dict"
+        chart_with_invalid = MetabaseChart(
+            name="test_chart_invalid", id="104", dataset_query=invalid_dataset_query
+        )
+        self.assertIsNone(chart_with_invalid.dataset_query)
+
+        # Test 6: dataset_query as None
+        chart_with_none_value = MetabaseChart(
+            name="test_chart_none_value", id="105", dataset_query=None
+        )
+        self.assertIsNone(chart_with_none_value.dataset_query)

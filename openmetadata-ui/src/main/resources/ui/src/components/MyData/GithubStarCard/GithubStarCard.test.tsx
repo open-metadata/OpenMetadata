@@ -11,25 +11,14 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { TWO_MINUTE_IN_MILLISECOND } from '../../../constants/constants';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import GithubStarCard from './GithubStarCard.component';
 
-const mockLinkButton = jest.fn();
-
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({ pathname: '/my-data' }));
 });
-
-jest.mock('react-router-dom', () => ({
-  Link: jest.fn().mockImplementation(({ children, ...rest }) => (
-    <a {...rest} onClick={mockLinkButton}>
-      {children}
-    </a>
-  )),
-}));
 
 jest.mock('../../../utils/WhatsNewModal.util', () => ({
   getReleaseVersionExpiry: jest.fn().mockImplementation(() => new Date()),
@@ -51,18 +40,16 @@ jest.mock('../../../hooks/useApplicationStore', () => ({
   })),
 }));
 
+jest.useFakeTimers();
+
 describe('GithubStarCard', () => {
-  beforeEach(() => {
-    jest.useFakeTimers();
-  });
-
   it('should render GithubStarCard', async () => {
-    await act(async () => {
-      render(<GithubStarCard />);
-      jest.advanceTimersByTime(TWO_MINUTE_IN_MILLISECOND);
-    });
+    render(<GithubStarCard />);
+    jest.advanceTimersByTime(TWO_MINUTE_IN_MILLISECOND);
 
-    expect(screen.getByTestId('github-star-popup-card')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('github-star-popup-card')
+    ).toBeInTheDocument();
     expect(
       screen.getByText('message.star-on-github-description')
     ).toBeInTheDocument();
@@ -75,41 +62,33 @@ describe('GithubStarCard', () => {
     expect(screen.getByRole('button', { name: '10' })).toBeInTheDocument();
   });
 
-  it('should render count badge in loading state', async () => {
-    await act(async () => {
-      render(<GithubStarCard />);
-    });
+  it('check redirect buttons have correct links', async () => {
+    render(<GithubStarCard />);
     jest.advanceTimersByTime(TWO_MINUTE_IN_MILLISECOND);
 
-    expect(screen.getByTestId('skeleton-loader')).toBeInTheDocument();
-  });
+    await screen.findByTestId('github-star-popup-card');
 
-  it('check redirect buttons', async () => {
-    await act(async () => {
-      render(<GithubStarCard />);
-      jest.advanceTimersByTime(TWO_MINUTE_IN_MILLISECOND);
-    });
+    // Check that both links point to the correct GitHub repository
+    const links = screen.getAllByRole('link');
 
-    const starTextButton = screen.getByRole('button', { name: 'label.star' });
-
-    fireEvent.click(starTextButton);
-
-    const countButton = screen.getByRole('button', { name: '10' });
-
-    fireEvent.click(countButton);
-
-    expect(mockLinkButton).toHaveBeenCalledTimes(2);
+    expect(links).toHaveLength(2);
+    expect(links[0]).toHaveAttribute(
+      'href',
+      'https://star-us.open-metadata.org/'
+    );
+    expect(links[0]).toHaveAttribute('target', '_blank');
+    expect(links[1]).toHaveAttribute(
+      'href',
+      'https://star-us.open-metadata.org/'
+    );
+    expect(links[1]).toHaveAttribute('target', '_blank');
   });
 
   it('should close the alert when the close button is clicked', async () => {
-    await act(async () => {
-      render(<GithubStarCard />);
-    });
+    render(<GithubStarCard />);
     jest.advanceTimersByTime(TWO_MINUTE_IN_MILLISECOND);
 
-    act(async () => {
-      fireEvent.click(screen.getByTestId('close-github-star-popup-card'));
-    });
+    fireEvent.click(await screen.findByTestId('close-github-star-popup-card'));
 
     expect(
       screen.queryByTestId('github-star-popup-card')
@@ -121,10 +100,8 @@ describe('GithubStarCard', () => {
       pathname: '/',
     }));
 
-    await act(async () => {
-      render(<GithubStarCard />);
-      jest.advanceTimersByTime(TWO_MINUTE_IN_MILLISECOND);
-    });
+    render(<GithubStarCard />);
+    jest.advanceTimersByTime(TWO_MINUTE_IN_MILLISECOND);
 
     expect(
       screen.queryByTestId('github-star-popup-card')

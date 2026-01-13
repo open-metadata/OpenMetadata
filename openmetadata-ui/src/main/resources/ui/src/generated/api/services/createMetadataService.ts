@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -24,9 +24,9 @@ export interface CreateMetadataService {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Metadata Service belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * The ingestion agent responsible for executing the ingestion pipeline.
      */
@@ -65,6 +65,8 @@ export interface MetadataConnection {
  * Alation Connection Config
  *
  * Alation Sink Connection Config
+ *
+ * Collibra Connection Config
  */
 export interface Connection {
     /**
@@ -84,6 +86,8 @@ export interface Connection {
      * Host and port of the Atlas service.
      *
      * Host and port of the Alation service.
+     *
+     * Host and port of the Collibra service.
      */
     hostPort?: string;
     /**
@@ -94,6 +98,8 @@ export interface Connection {
      * password to connect to the Amundsen Neo4j Connection.
      *
      * password to connect  to the Atlas.
+     *
+     * Password to connect to the Collibra.
      */
     password?: string;
     /**
@@ -114,6 +120,9 @@ export interface Connection {
      *
      * username to connect  to the Atlas. This user should have privileges to read all the
      * metadata in Atlas.
+     *
+     * Username to connect to the Collibra. This user should have privileges to read all the
+     * metadata in Collibra.
      */
     username?: string;
     /**
@@ -312,6 +321,20 @@ export interface Connection {
      */
     projectName?:     string;
     datasourceLinks?: { [key: string]: string };
+    /**
+     * Regex to only include/exclude domains that match the pattern.
+     */
+    domainFilterPattern?: FilterPattern;
+    /**
+     * Enable enrichment of existing OpenMetadata assets with Collibra metadata (descriptions,
+     * tags, owners). When enabled, the connector will match Collibra assets to OpenMetadata
+     * entities and apply metadata without creating new assets.
+     */
+    enableEnrichment?: boolean;
+    /**
+     * Regex to only include/exclude glossaries that match the pattern.
+     */
+    glossaryFilterPattern?: FilterPattern;
 }
 
 /**
@@ -393,7 +416,14 @@ export interface AlationDatabaseConnection {
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
      */
-    ingestAllDatabases?:      boolean;
+    ingestAllDatabases?: boolean;
+    /**
+     * Fully qualified name of the view or table to use for query logs. If not provided,
+     * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
+     * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
+     * restricted.
+     */
+    queryStatementSource?:    string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -551,6 +581,10 @@ export interface AzureCredentials {
  * Regex to only include/exclude schemas that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only include/exclude domains that match the pattern.
+ *
+ * Regex to only include/exclude glossaries that match the pattern.
  */
 export interface FilterPattern {
     /**
@@ -723,6 +757,7 @@ export enum RunMode {
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ru = "RU",
     Zh = "ZH",
 }
 
@@ -751,6 +786,7 @@ export enum SecretsManagerProvider {
     DB = "db",
     Gcp = "gcp",
     InMemory = "in-memory",
+    Kubernetes = "kubernetes",
     ManagedAws = "managed-aws",
     ManagedAwsSsm = "managed-aws-ssm",
     ManagedAzureKv = "managed-azure-kv",
@@ -779,6 +815,8 @@ export interface OpenMetadataJWTClientConfig {
  *
  * Service type.
  *
+ * Collibra service type
+ *
  * Type of database service such as Amundsen, Atlas...
  */
 export enum MetadataServiceType {
@@ -786,6 +824,7 @@ export enum MetadataServiceType {
     AlationSink = "AlationSink",
     Amundsen = "Amundsen",
     Atlas = "Atlas",
+    Collibra = "Collibra",
     MetadataES = "MetadataES",
     OpenMetadata = "OpenMetadata",
 }
@@ -864,6 +903,14 @@ export interface EntityReference {
  */
 export interface TagLabel {
     /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
+    /**
      * Description for the tag label.
      */
     description?: string;
@@ -887,6 +934,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */
@@ -942,7 +993,29 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }

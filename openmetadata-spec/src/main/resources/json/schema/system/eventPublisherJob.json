@@ -40,6 +40,14 @@
           "description": "Stats for the job",
           "$ref": "#/definitions/stepStats"
         },
+        "readerStats": {
+          "description": "Stats for the reader step (reading from database)",
+          "$ref": "#/definitions/stepStats"
+        },
+        "sinkStats": {
+          "description": "Stats for the sink step (writing to search index)",
+          "$ref": "#/definitions/stepStats"
+        },
         "entityStats": {
           "javaType": "org.openmetadata.schema.system.EntityStats",
           "description": "Stats for different entities. Keys should match entity types",
@@ -184,6 +192,19 @@
       "description": "Enable automatic performance tuning based on cluster capabilities and database entity count",
       "type": "boolean",
       "default": false
+    },
+    "force": {
+      "description": "Force reindexing even if no index mapping changes are detected",
+      "type": "boolean",
+      "default": false
+    },
+    "slackBotToken": {
+      "description": "Optional Slack bot token for sending progress notifications with real-time updates",
+      "type": "string"
+    },
+    "slackChannel": {
+      "description": "Slack channel ID or name (required when using bot token, e.g., 'C1234567890' or '#general')",
+      "type": "string"
     }
   },
   "additionalProperties": false

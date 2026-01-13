@@ -15,9 +15,9 @@ import { RJSFSchema } from '@rjsf/utils';
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -26,12 +26,13 @@ import {
   default as applicationsClassBase,
 } from '../../components/Settings/Applications/AppDetails/ApplicationsClassBase';
 import AppInstallVerifyCard from '../../components/Settings/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component';
-import ApplicationConfiguration from '../../components/Settings/Applications/ApplicationConfiguration/ApplicationConfiguration';
+import { AppPlugin } from '../../components/Settings/Applications/plugins/AppPlugin';
 import ScheduleInterval from '../../components/Settings/Services/AddIngestion/Steps/ScheduleInterval';
 import { WorkflowExtraConfig } from '../../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
 import IngestionStepper from '../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import { STEPS_FOR_APP_INSTALL } from '../../constants/Applications.constant';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
+import { SCHEDULAR_OPTIONS } from '../../constants/Schedular.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { TabSpecificField } from '../../enums/entity.enum';
 import {
@@ -40,8 +41,10 @@ import {
 } from '../../generated/entity/applications/createAppRequest';
 import {
   AppMarketPlaceDefinition,
+  AppType,
   ScheduleType,
 } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
+import { EntityReference } from '../../generated/entity/type';
 import { useFqn } from '../../hooks/useFqn';
 import { installApplication } from '../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../rest/applicationMarketPlaceAPI';
@@ -57,7 +60,7 @@ import './app-install.less';
 
 const AppInstall = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn } = useFqn();
   const [appData, setAppData] = useState<AppMarketPlaceDefinition>();
   const [isLoading, setIsLoading] = useState(true);
@@ -65,7 +68,13 @@ const AppInstall = () => {
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [appConfiguration, setAppConfiguration] = useState();
   const [jsonSchema, setJsonSchema] = useState<RJSFSchema>();
+  const [pluginComponent, setPluginComponent] = useState<FC | null>(null);
   const { config, getResourceLimit } = useLimitStore();
+  const [selectedIngestionRunner, setSelectedIngestionRunner] = useState<
+    EntityReference | undefined
+  >(undefined);
+  const shouldShowIngestionRunner =
+    appData?.appType === AppType.External && appData?.supportsIngestionRunner;
 
   const { pipelineSchedules } =
     config?.limits?.config.featureLimits.find(
@@ -73,16 +82,20 @@ const AppInstall = () => {
     ) ?? {};
 
   const stepperList = useMemo(() => {
+    let steps = STEPS_FOR_APP_INSTALL;
     if (appData?.scheduleType === ScheduleType.NoSchedule) {
-      return STEPS_FOR_APP_INSTALL.filter((item) => item.step !== 3);
+      steps = steps.filter((item) => item.step !== 3);
     }
 
     if (!appData?.allowConfiguration) {
-      return STEPS_FOR_APP_INSTALL.filter((item) => item.step !== 2);
+      steps = steps.filter((item) => item.step !== 2);
     }
 
-    return STEPS_FOR_APP_INSTALL;
-  }, [appData]);
+    return steps.map((step) => ({
+      ...step,
+      name: t(step.name),
+    }));
+  }, [appData, t]);
 
   const { initialOptions, defaultValue } = useMemo(() => {
     if (!appData) {
@@ -101,6 +114,16 @@ const AppInstall = () => {
     };
   }, [appData?.name, appData?.appType, pipelineSchedules, config?.enable]);
 
+  const translatedSchedularOptions = useMemo(
+    () =>
+      SCHEDULAR_OPTIONS.map((option) => ({
+        ...option,
+        title: t(option.title),
+        description: t(option.description),
+      })),
+    [t]
+  );
+
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -112,6 +135,20 @@ const AppInstall = () => {
       const schema = await applicationSchemaClassBase.importSchema(fqn);
 
       setJsonSchema(schema);
+
+      // Check if this app has a plugin with a custom install component
+      if (data.name) {
+        const PluginClass = applicationsClassBase.appPluginRegistry[data.name];
+        if (PluginClass) {
+          const pluginInstance: AppPlugin = new PluginClass(data.name, false);
+          if (pluginInstance.getAppInstallComponent) {
+            const Component = pluginInstance.getAppInstallComponent(data);
+            if (Component) {
+              setPluginComponent(() => Component);
+            }
+          }
+        }
+      }
     } catch (_) {
       showErrorToast(
         t('message.no-application-schema-found', { appName: fqn })
@@ -122,11 +159,11 @@ const AppInstall = () => {
   }, [fqn]);
 
   const onCancel = () => {
-    history.push(getMarketPlaceAppDetailsPath(fqn));
+    navigate(getMarketPlaceAppDetailsPath(fqn));
   };
 
   const goToAppPage = () => {
-    history.push(getSettingPath(GlobalSettingOptions.APPLICATIONS));
+    navigate(getSettingPath(GlobalSettingOptions.APPLICATIONS));
   };
 
   const installApp = async (data: CreateAppRequest) => {
@@ -161,23 +198,41 @@ const AppInstall = () => {
       name: fqn,
       description: appData?.description,
       displayName: appData?.displayName,
+      ingestionRunner: shouldShowIngestionRunner
+        ? selectedIngestionRunner
+        : undefined,
     };
     installApp(data);
   };
 
-  const onSaveConfiguration = (data: IChangeEvent) => {
-    const updatedFormData = formatFormDataForSubmit(data.formData);
+  const onSaveConfiguration = (
+    data: IChangeEvent & { ingestionRunner?: EntityReference }
+  ) => {
+    const { formData, ingestionRunner } = data;
+
+    const updatedFormData = formatFormDataForSubmit(formData);
     setAppConfiguration(updatedFormData);
+    const ingestionRunnerRef = ingestionRunner
+      ? {
+          id: ingestionRunner.id,
+          type: 'ingestionRunner',
+          name: ingestionRunner.name,
+          fullyQualifiedName: ingestionRunner.fullyQualifiedName,
+        }
+      : undefined;
+    setSelectedIngestionRunner(ingestionRunnerRef);
+
     if (appData?.scheduleType !== ScheduleType.NoSchedule) {
       setActiveServiceStep(3);
     } else {
-      const data: CreateAppRequest = {
+      const requestData: CreateAppRequest = {
         appConfiguration: updatedFormData,
         name: fqn,
         description: appData?.description,
         displayName: appData?.displayName,
+        ...(ingestionRunnerRef ? { ingestionRunner: ingestionRunnerRef } : {}),
       };
-      installApp(data);
+      installApp(requestData);
     }
   };
 
@@ -185,6 +240,9 @@ const AppInstall = () => {
     if (!appData || !jsonSchema) {
       return <></>;
     }
+
+    const ApplicationConfigurationComponent =
+      applicationsClassBase.getApplicationConfigurationComponent();
 
     switch (activeServiceStep) {
       case 1:
@@ -205,7 +263,7 @@ const AppInstall = () => {
 
       case 2:
         return (
-          <ApplicationConfiguration
+          <ApplicationConfigurationComponent
             appData={appData}
             isLoading={false}
             jsonSchema={jsonSchema}
@@ -220,6 +278,7 @@ const AppInstall = () => {
             <ScheduleInterval
               defaultSchedule={defaultValue}
               includePeriodOptions={initialOptions}
+              schedularOptions={translatedSchedularOptions}
               status={isSavingLoading ? 'waiting' : 'initial'}
               onBack={() =>
                 setActiveServiceStep(appData.allowConfiguration ? 2 : 1)
@@ -260,17 +319,22 @@ const AppInstall = () => {
     <PageLayoutV1
       className="app-install-page"
       pageTitle={t('label.application-plural')}>
-      <Row gutter={[0, 16]}>
-        <Col span={24}>
-          <IngestionStepper
-            activeStep={activeServiceStep}
-            steps={stepperList}
-          />
-        </Col>
-        <Col className="app-intall-page-tabs" span={24}>
-          {renderSelectedTab}
-        </Col>
-      </Row>
+      {pluginComponent ? (
+        // Render plugin's custom app details component
+        React.createElement(pluginComponent)
+      ) : (
+        <Row gutter={[0, 16]}>
+          <Col span={24}>
+            <IngestionStepper
+              activeStep={activeServiceStep}
+              steps={stepperList}
+            />
+          </Col>
+          <Col className="app-intall-page-tabs" span={24}>
+            {renderSelectedTab}
+          </Col>
+        </Row>
+      )}
     </PageLayoutV1>
   );
 };

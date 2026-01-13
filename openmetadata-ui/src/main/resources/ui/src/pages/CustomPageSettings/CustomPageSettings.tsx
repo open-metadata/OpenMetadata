@@ -14,9 +14,9 @@
 import { Button, Card, Col, Row, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -43,13 +43,14 @@ import {
   getCustomizePagePath,
   getSettingPageEntityBreadCrumb,
 } from '../../utils/GlobalSettingsUtils';
+import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './custom-page-settings.less';
 
 export const CustomPageSettings = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { theme } = useApplicationStore();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -63,6 +64,7 @@ export const CustomPageSettings = () => {
     paging,
     handlePagingChange,
     showPagination,
+    pagingCursor,
   } = usePaging();
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
@@ -94,12 +96,18 @@ export const CustomPageSettings = () => {
   };
 
   useEffect(() => {
-    fetchPersonas();
-  }, [pageSize]);
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      fetchPersonas({ [cursorType]: cursorValue });
+    } else {
+      fetchPersonas();
+    }
+  }, [pageSize, pagingCursor]);
 
   const handleCustomisePersona = (persona: Persona) => {
     if (persona.fullyQualifiedName) {
-      history.push(
+      navigate(
         getCustomizePagePath(persona.fullyQualifiedName, PageType.LandingPage)
       );
     }
@@ -109,9 +117,13 @@ export const CustomPageSettings = () => {
     currentPage,
     cursorType,
   }) => {
-    handlePageChange(currentPage);
     if (cursorType) {
       fetchPersonas({ [cursorType]: paging[cursorType] });
+      handlePageChange(
+        currentPage,
+        { cursorType, cursorValue: paging[cursorType] },
+        pageSize
+      );
     }
   };
 
@@ -162,7 +174,18 @@ export const CustomPageSettings = () => {
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
         <Col span={18}>
-          <PageHeader data={PAGE_HEADERS.CUSTOM_PAGE} />
+          <PageHeader
+            data={{
+              header: translateWithNestedKeys(
+                PAGE_HEADERS.CUSTOM_PAGE.header,
+                PAGE_HEADERS.CUSTOM_PAGE.headerParams
+              ),
+              subHeader: translateWithNestedKeys(
+                PAGE_HEADERS.CUSTOM_PAGE.subHeader,
+                PAGE_HEADERS.CUSTOM_PAGE.subHeaderParams
+              ),
+            }}
+          />
         </Col>
 
         {isLoading

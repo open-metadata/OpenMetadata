@@ -14,11 +14,16 @@
 package org.openmetadata.service.resources.settings;
 
 import static org.openmetadata.schema.settings.SettingsType.ASSET_CERTIFICATION_SETTINGS;
+import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.CUSTOM_UI_THEME_PREFERENCE;
 import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.ENTITY_RULES_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LOGIN_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.OPEN_LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.SCIM_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.WORKFLOW_SETTINGS;
 
@@ -27,7 +32,10 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import java.io.IOException;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import lombok.NonNull;
@@ -39,20 +47,30 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.lineage.LineageLayer;
 import org.openmetadata.schema.api.lineage.LineageSettings;
+import org.openmetadata.schema.api.search.AssetTypeConfiguration;
+import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
+import org.openmetadata.schema.configuration.OpenLineageSettings;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
+import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class SettingsCache {
@@ -150,7 +168,7 @@ public class SettingsCache {
     if (storedSearchSettings == null) {
       try {
         List<String> jsonDataFiles =
-            EntityUtil.getJsonDataResources(".*json/data/searchSettings/searchSettings.json$");
+            EntityUtil.getJsonDataResources(".*json/data/settings/searchSettings.json$");
         if (!jsonDataFiles.isEmpty()) {
           String json =
               CommonUtil.getResourceAsStream(
@@ -205,7 +223,97 @@ public class SettingsCache {
                   new LineageSettings()
                       .withDownstreamDepth(2)
                       .withUpstreamDepth(2)
-                      .withLineageLayer(LineageLayer.ENTITY_LINEAGE));
+                      .withLineageLayer(LineageLayer.ENTITY_LINEAGE)
+                      .withGraphPerformanceConfig(
+                          new org.openmetadata.schema.api.lineage.GraphPerformanceConfig()
+                              .withSmallGraphThreshold(5000)
+                              .withMediumGraphThreshold(50000)
+                              .withMaxInMemoryNodes(100000)
+                              .withSmallGraphBatchSize(10000)
+                              .withMediumGraphBatchSize(5000)
+                              .withLargeGraphBatchSize(1000)
+                              .withStreamingBatchSize(500)
+                              .withEnableCaching(true)
+                              .withCacheTTLSeconds(300)
+                              .withMaxCachedGraphs(100)
+                              .withEnableProgressTracking(false)
+                              .withProgressReportInterval(1000)
+                              .withUseScrollForLargeGraphs(true)
+                              .withScrollTimeoutMinutes(5)));
+      Entity.getSystemRepository().createNewSetting(setting);
+    }
+
+    // Initialize Authentication Configuration
+    Settings storedAuthConfig =
+        Entity.getSystemRepository().getConfigWithKey(AUTHENTICATION_CONFIGURATION.toString());
+    if (storedAuthConfig == null) {
+      AuthenticationConfiguration authConfig = applicationConfig.getAuthenticationConfiguration();
+      if (authConfig != null) {
+        Settings setting =
+            new Settings().withConfigType(AUTHENTICATION_CONFIGURATION).withConfigValue(authConfig);
+
+        Entity.getSystemRepository().createNewSetting(setting);
+      }
+    }
+
+    // Initialize Authorizer Configuration
+    Settings storedAuthzConfig =
+        Entity.getSystemRepository().getConfigWithKey(AUTHORIZER_CONFIGURATION.toString());
+    if (storedAuthzConfig == null) {
+      AuthorizerConfiguration authzConfig = applicationConfig.getAuthorizerConfiguration();
+      if (authzConfig != null) {
+        Settings setting =
+            new Settings().withConfigType(AUTHORIZER_CONFIGURATION).withConfigValue(authzConfig);
+
+        Entity.getSystemRepository().createNewSetting(setting);
+      }
+    }
+
+    Settings storedScimConfig =
+        Entity.getSystemRepository().getConfigWithKey(SCIM_CONFIGURATION.toString());
+    if (storedScimConfig == null) {
+      ScimConfiguration scimConfiguration = applicationConfig.getScimConfiguration();
+      if (scimConfiguration != null) {
+        Settings setting =
+            new Settings().withConfigType(SCIM_CONFIGURATION).withConfigValue(scimConfiguration);
+        Entity.getSystemRepository().createNewSetting(setting);
+      }
+    }
+
+    Settings entityRulesSettings =
+        Entity.getSystemRepository()
+            .getConfigWithKey(SettingsType.ENTITY_RULES_SETTINGS.toString());
+    if (entityRulesSettings == null) {
+      try {
+        List<String> jsonDataFiles =
+            EntityUtil.getJsonDataResources(".*json/data/settings/entityRulesSettings.json$");
+        if (!jsonDataFiles.isEmpty()) {
+          String json =
+              CommonUtil.getResourceAsStream(
+                  EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
+          Settings setting =
+              new Settings()
+                  .withConfigType(ENTITY_RULES_SETTINGS)
+                  .withConfigValue(JsonUtils.readValue(json, EntityRulesSettings.class));
+          Entity.getSystemRepository().createNewSetting(setting);
+        }
+      } catch (IOException e) {
+        LOG.error("Failed to read default Enitty Rules settings. Message: {}", e.getMessage(), e);
+      }
+    }
+
+    // Initialize OpenLineage Settings
+    Settings openLineageSettings =
+        Entity.getSystemRepository().getConfigWithKey(OPEN_LINEAGE_SETTINGS.toString());
+    if (openLineageSettings == null) {
+      Settings setting =
+          new Settings()
+              .withConfigType(OPEN_LINEAGE_SETTINGS)
+              .withConfigValue(
+                  new OpenLineageSettings()
+                      .withEnabled(true)
+                      .withAutoCreateEntities(true)
+                      .withDefaultPipelineService("openlineage"));
       Entity.getSystemRepository().createNewSetting(setting);
     }
   }
@@ -239,6 +347,10 @@ public class SettingsCache {
   public static void invalidateSettings(String settingsName) {
     try {
       CACHE.invalidate(settingsName);
+      // If search settings are being invalidated, also invalidate aggregated fields
+      if (SEARCH_SETTINGS.toString().equals(settingsName)) {
+        CACHE.invalidate(SEARCH_SETTINGS_AGGREGATED_FIELDS);
+      }
     } catch (Exception ex) {
       LOG.error("Failed to invalidate cache for settings {}", settingsName, ex);
     }
@@ -254,10 +366,68 @@ public class SettingsCache {
         .withTemplates(SmtpSettings.Templates.OPENMETADATA);
   }
 
+  @SuppressWarnings("unchecked")
+  public static Map<String, Float> getAggregatedSearchFields() {
+    try {
+      Settings aggregatedFields = CACHE.get(SEARCH_SETTINGS_AGGREGATED_FIELDS);
+      Map<String, Float> fields = (Map<String, Float>) aggregatedFields.getConfigValue();
+      return fields;
+    } catch (Exception ex) {
+      LOG.error("Failed to fetch aggregated search fields", ex);
+      // Return default fields as fallback
+      return SearchIndex.getDefaultFields();
+    }
+  }
+
+  private static Settings computeAggregatedSearchFields() {
+    Map<String, Float> fields = new HashMap<>(SearchIndex.getDefaultFields());
+
+    try {
+      SearchSettings searchSettings = getSetting(SEARCH_SETTINGS, SearchSettings.class);
+      if (searchSettings != null && searchSettings.getAssetTypeConfigurations() != null) {
+        SearchRepository searchRepository = Entity.getSearchRepository();
+
+        for (AssetTypeConfiguration assetConfig : searchSettings.getAssetTypeConfigurations()) {
+          String entityType = assetConfig.getAssetType();
+
+          // Check if this entity type's index has dataAsset as a parent alias
+          IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
+          if (indexMapping != null
+              && indexMapping.getParentAliases() != null
+              && indexMapping.getParentAliases().contains("dataAsset")) {
+            // Add fields from this asset type
+            if (assetConfig.getSearchFields() != null) {
+              for (FieldBoost fieldBoost : assetConfig.getSearchFields()) {
+                fields.put(fieldBoost.getField(), fieldBoost.getBoost().floatValue());
+              }
+            }
+          }
+        }
+      }
+    } catch (Exception ex) {
+      LOG.error("Error computing aggregated search fields", ex);
+    }
+
+    // Create a dummy Settings object to store in cache
+    return new Settings()
+        .withConfigType(SettingsType.SEARCH_SETTINGS)
+        .withConfigValue(Collections.unmodifiableMap(fields));
+  }
+
+  // Special key for caching aggregated search fields
+  public static final String SEARCH_SETTINGS_AGGREGATED_FIELDS =
+      "SEARCH_SETTINGS_AGGREGATED_FIELDS";
+
   static class SettingsLoader extends CacheLoader<String, Settings> {
     @Override
     public @NonNull Settings load(@CheckForNull String settingsName) {
       Settings fetchedSettings;
+
+      // Handle special case for aggregated fields
+      if (SEARCH_SETTINGS_AGGREGATED_FIELDS.equals(settingsName)) {
+        return computeAggregatedSearchFields();
+      }
+
       switch (SettingsType.fromValue(settingsName)) {
         case EMAIL_CONFIGURATION -> {
           fetchedSettings = Entity.getSystemRepository().getEmailConfigInternal();
@@ -290,6 +460,12 @@ public class SettingsCache {
           // Only if available
           fetchedSettings = Entity.getSystemRepository().getSlackStateConfigInternal();
           LOG.info("Loaded Slack state Configuration");
+        }
+        case SEARCH_SETTINGS -> {
+          fetchedSettings = Entity.getSystemRepository().getConfigWithKey(settingsName);
+          LOG.info("Loaded Setting {}", fetchedSettings.getConfigType());
+          // When SEARCH_SETTINGS are loaded, invalidate aggregated fields cache
+          CACHE.invalidate(SEARCH_SETTINGS_AGGREGATED_FIELDS);
         }
         default -> {
           fetchedSettings = Entity.getSystemRepository().getConfigWithKey(settingsName);

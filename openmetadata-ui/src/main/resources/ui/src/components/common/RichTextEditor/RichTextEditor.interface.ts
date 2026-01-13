@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { HTMLAttributes, ReactNode } from 'react';
+import { HTMLAttributes } from 'react';
+import { ExtensionOptions } from '../../BlockEditor/BlockEditor.interface';
 
-export type editorRef = ReactNode | HTMLElement | string;
 export type TextVariant = 'white' | 'black';
 
 export interface PreviewerProp {
-  markdown: string;
+  markdown?: string;
   maxLength?: number;
   className?: string;
   enableSeeMoreVariant?: boolean;
@@ -25,6 +25,8 @@ export interface PreviewerProp {
   isDescriptionExpanded?: boolean;
   textVariant?: TextVariant;
   reducePreviewLineClass?: string;
+  maxLineLength?: string;
+  extensionOptions?: ExtensionOptions;
 }
 
 export type PreviewStyle = 'tab' | 'vertical';
@@ -35,10 +37,15 @@ export interface RichTextEditorProp extends HTMLAttributes<HTMLDivElement> {
   autofocus?: boolean;
   initialValue?: string;
   readonly?: boolean;
+  onFocus?: () => void;
   onTextChange?: (value: string) => void;
   placeHolder?: string;
+  extensionOptions?: ExtensionOptions;
+  showMenu?: boolean;
 }
 
 export interface EditorContentRef {
   getEditorContent: () => string;
+  clearEditorContent: () => void;
+  setEditorContent: (content: string) => void;
 }

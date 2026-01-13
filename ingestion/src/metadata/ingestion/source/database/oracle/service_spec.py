@@ -1,3 +1,4 @@
+from metadata.ingestion.source.database.oracle.connection import OracleConnection
 from metadata.ingestion.source.database.oracle.lineage import OracleLineageSource
 from metadata.ingestion.source.database.oracle.metadata import OracleSource
 from metadata.ingestion.source.database.oracle.usage import OracleUsageSource
@@ -7,4 +8,5 @@ ServiceSpec = DefaultDatabaseSpec(
     metadata_source_class=OracleSource,
     lineage_source_class=OracleLineageSource,
     usage_source_class=OracleUsageSource,
+    connection_class=OracleConnection,
 )

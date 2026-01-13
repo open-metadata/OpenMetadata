@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -37,7 +37,8 @@ export interface DatafactoryConnection {
     /**
      * The azure subscription identifier.
      */
-    subscription_id: string;
+    subscription_id:             string;
+    supportsMetadataExtraction?: boolean;
     /**
      * Service Type
      */

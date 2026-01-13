@@ -12,14 +12,17 @@
  */
 
 import { Button, Form, FormProps, Space } from 'antd';
-import { t } from 'i18next';
-import React from 'react';
+import { debounce } from 'lodash';
+import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../../../constants/regex.constants';
+import { ServiceCategory } from '../../../../../enums/service.enum';
 import {
   FieldProp,
   FieldTypes,
 } from '../../../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../../../utils/formUtils';
+import { validateServiceName } from '../../../../../utils/ServiceUtils';
+import { useRequiredParams } from '../../../../../utils/useRequiredParams';
 import { ConfigureServiceProps } from './Steps.interface';
 
 const ConfigureService = ({
@@ -27,7 +30,27 @@ const ConfigureService = ({
   onBack,
   onNext,
 }: ConfigureServiceProps) => {
+  const { serviceCategory } =
+    useRequiredParams<{ serviceCategory: ServiceCategory }>();
   const [form] = Form.useForm();
+  const { t } = useTranslation();
+
+  const debouncedValidateServiceName = debounce(
+    async (
+      value: string,
+      serviceCategory: ServiceCategory,
+      resolve: () => void,
+      reject: (err: Error) => void
+    ) => {
+      const errorMessage = await validateServiceName(value, serviceCategory);
+      if (errorMessage) {
+        reject(new Error(errorMessage));
+      } else {
+        resolve();
+      }
+    },
+    300
+  );
 
   const formFields: FieldProp[] = [
     {
@@ -40,6 +63,17 @@ const ConfigureService = ({
         {
           pattern: ENTITY_NAME_REGEX,
           message: t('message.entity-name-validation'),
+        },
+        {
+          validator: (_, value) =>
+            new Promise<void>((resolve, reject) => {
+              debouncedValidateServiceName(
+                value,
+                serviceCategory,
+                resolve,
+                reject
+              );
+            }),
         },
       ],
       props: {

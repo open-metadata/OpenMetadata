@@ -47,13 +47,14 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
+  await settingClick(page, GlobalSettingOptions.ROLES);
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 });
 
 test('Roles page should work properly', async ({ page }) => {
   test.slow(true);
 
   await test.step('Add new role and check all tabs data', async () => {
-    await settingClick(page, GlobalSettingOptions.ROLES);
     await page.locator('[data-testid="add-role"]').click();
 
     // Asserting navigation
@@ -118,13 +119,11 @@ test('Roles page should work properly', async ({ page }) => {
       .locator(`[data-row-key="${roleName}"] [data-testid="plus-more-count"]`)
       .click();
 
-    await expect(
-      page.getByRole('tooltip', { name: policies.dataStewardPolicy })
-    ).toBeVisible();
+    await expect(page.getByText(policies.dataStewardPolicy)).toBeVisible();
+    await expect(page.getByText(policies.dataConsumerPolicy)).toBeVisible();
   });
 
   await test.step('Add new role without selecting data', async () => {
-    await settingClick(page, GlobalSettingOptions.ROLES);
     await page.locator('[data-testid="add-role"]').click();
 
     // Asserting navigation
@@ -299,7 +298,11 @@ test('Delete role action from manage button options', async ({ page }) => {
 
   await role.create(apiContext, policies);
 
-  await settingClick(page, GlobalSettingOptions.ROLES);
+  await page.reload();
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await page.waitForLoadState('networkidle');
 
   await getElementWithPagination(page, roleLocator);
 

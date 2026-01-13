@@ -13,7 +13,8 @@
 import { SuggestionProps } from '@tiptap/suggestion';
 import { Space, Typography } from 'antd';
 import classNames from 'classnames';
-import React, { forwardRef, useImperativeHandle, useState } from 'react';
+import { isEmpty } from 'lodash';
+import { forwardRef, useImperativeHandle, useState } from 'react';
 import ProfilePicture from '../../../../components/common/ProfilePicture/ProfilePicture';
 import { isInViewport } from '../../../../utils/BlockEditorUtils';
 import { ExtensionRef, SuggestionItem } from '../../BlockEditor.interface';
@@ -35,7 +36,7 @@ export default forwardRef<ExtensionRef, SuggestionProps<SuggestionItem>>(
       setSelectedIndex((prev) => {
         const newIndex = (prev + items.length - 1) % items.length;
         const commandListing = document.getElementById(
-          `mention-item-${items[newIndex].id}`
+          `mention-item-${items[newIndex]?.id}`
         );
         const commandList = document.getElementById('mention-viewport');
         if (
@@ -54,7 +55,7 @@ export default forwardRef<ExtensionRef, SuggestionProps<SuggestionItem>>(
       setSelectedIndex((prev) => {
         const newIndex = (prev + 1) % items.length;
         const commandListing = document.getElementById(
-          `mention-item-${items[newIndex].id}`
+          `mention-item-${items[newIndex]?.id}`
         );
         const commandList = document.getElementById('mention-viewport');
         if (
@@ -75,6 +76,11 @@ export default forwardRef<ExtensionRef, SuggestionProps<SuggestionItem>>(
 
     useImperativeHandle(ref, () => ({
       onKeyDown: ({ event }) => {
+        // Allow default behavior when there are no items
+        if (isEmpty(items)) {
+          return false;
+        }
+
         if (event.key === 'ArrowUp') {
           upHandler();
 

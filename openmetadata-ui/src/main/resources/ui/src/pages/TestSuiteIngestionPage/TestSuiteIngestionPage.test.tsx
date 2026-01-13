@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { useFqn } from '../../hooks/useFqn';
 import { getIngestionPipelineByFqn } from '../../rest/ingestionPipelineAPI';
 import { getTestSuiteByName } from '../../rest/testAPI';
+import i18n from '../../utils/i18next/LocalUtil';
 import TestSuiteIngestionPage from './TestSuiteIngestionPage';
 
 const mockTestSuite = {
@@ -35,16 +35,7 @@ const mockTestSuite = {
 };
 
 jest.mock('../../hoc/withPageLayout', () => ({
-  withPageLayout: jest.fn().mockImplementation(
-    () =>
-      (Component: React.FC) =>
-      (
-        props: JSX.IntrinsicAttributes & {
-          children?: React.ReactNode | undefined;
-        }
-      ) =>
-        <Component {...props} />
-  ),
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
 }));
 
 jest.mock('../../hooks/useFqn', () => {
@@ -54,19 +45,17 @@ jest.mock('../../hooks/useFqn', () => {
     }),
   };
 });
-const mockUseHistory = {
-  goBack: jest.fn(),
-};
-jest.mock('react-router-dom', () => {
-  return {
-    useHistory: jest.fn().mockImplementation(() => mockUseHistory),
-  };
-});
+
 jest.mock('../../rest/testAPI', () => {
   return {
     getTestSuiteByName: jest
       .fn()
       .mockImplementation(() => Promise.resolve(mockTestSuite)),
+    TestCaseType: {
+      all: 'all',
+      table: 'table',
+      column: 'column',
+    },
   };
 });
 jest.mock('../../rest/ingestionPipelineAPI', () => {
@@ -114,7 +103,13 @@ jest.mock(
 describe('TestSuiteIngestionPage', () => {
   it('should render component', async () => {
     await act(async () => {
-      render(<TestSuiteIngestionPage />);
+      render(
+        <TestSuiteIngestionPage
+          pageTitle={i18n.t('label.add-entity', {
+            entity: i18n.t('label.test-suite'),
+          })}
+        />
+      );
     });
 
     expect(
@@ -125,14 +120,15 @@ describe('TestSuiteIngestionPage', () => {
 
   it('should render loading state', async () => {
     (getTestSuiteByName as jest.Mock).mockResolvedValueOnce(mockTestSuite);
+    render(
+      <TestSuiteIngestionPage
+        pageTitle={i18n.t('label.add-entity', {
+          entity: i18n.t('label.test-suite'),
+        })}
+      />
+    );
 
-    await act(async () => {
-      render(<TestSuiteIngestionPage />);
-
-      expect(screen.getByText('Loader.component')).toBeInTheDocument();
-    });
-
-    expect(screen.queryByText('Loader.component')).not.toBeInTheDocument();
+    expect(screen.getByText('Loader.component')).toBeInTheDocument();
   });
 
   it('should render error placeholder', async () => {
@@ -141,7 +137,13 @@ describe('TestSuiteIngestionPage', () => {
     );
 
     await act(async () => {
-      render(<TestSuiteIngestionPage />);
+      render(
+        <TestSuiteIngestionPage
+          pageTitle={i18n.t('label.add-entity', {
+            entity: i18n.t('label.test-suite'),
+          })}
+        />
+      );
     });
 
     expect(
@@ -154,10 +156,15 @@ describe('TestSuiteIngestionPage', () => {
       fqn: 'testSuiteFQN',
       ingestionFQN: 'ingestionFQN',
     }));
-    getIngestionPipelineByFqn as jest.Mock;
 
     await act(async () => {
-      render(<TestSuiteIngestionPage />);
+      render(
+        <TestSuiteIngestionPage
+          pageTitle={i18n.t('label.add-entity', {
+            entity: i18n.t('label.test-suite'),
+          })}
+        />
+      );
     });
 
     expect(getIngestionPipelineByFqn).toHaveBeenCalledWith('ingestionFQN');

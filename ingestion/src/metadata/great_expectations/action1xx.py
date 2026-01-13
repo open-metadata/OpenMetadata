@@ -49,6 +49,11 @@ from metadata.generated.schema.tests.testDefinition import (
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import Timestamp
+from metadata.great_expectations.table_mapper import (
+    TableConfigMap,
+    TableMapper,
+    TablePart,
+)
 from metadata.great_expectations.utils.ometa_config_handler import (
     create_jinja_environment,
     create_ometa_connection_obj,
@@ -72,7 +77,11 @@ class OpenMetadataValidationAction1xx(ValidationAction):
         data_context: great expectation data context
         database_service_name: name of the service for the table
         api_version: default to v1
-        config_file_path: path to the open metdata config path
+        config_file_path: path to the open metadata config path
+        expectation_suite_table_config_map: optional mapping of expectation suite names
+            to table configurations. Used to route validation results to specific tables
+            in multi-table checkpoints.
+            Format: {"suite_name": {"database_name": "db", "schema_name": "schema", "table_name": "table"}}
     """
 
     type: Literal["open_metadata_validation_action"] = "open_metadata_validation_action"
@@ -82,11 +91,13 @@ class OpenMetadataValidationAction1xx(ValidationAction):
     schema_name: Optional[str] = "default"
     database_name: str
     table_name: Optional[str] = None
+    expectation_suite_table_config_map: Optional[Dict[str, Dict[str, str]]] = None
     # Using Optional to make this field not part of the serialized model
     # This will be initialized in the run method
     ometa_conn: Optional[OpenMetadata] = None
 
-    def run(  # pylint: disable=unused-argument, arguments-differ
+    # pylint: disable=arguments-differ, unused-argument
+    def run(
         self,
         checkpoint_result: CheckpointResult,
         action_context: Union[ActionContext, None],
@@ -101,21 +112,51 @@ class OpenMetadataValidationAction1xx(ValidationAction):
             checkpoint_identifier: identifier for the checkpoint
         """
         self.ometa_conn = self._create_ometa_connection()
+
+        table_mapper = TableMapper(
+            default_database_name=self.database_name,
+            default_schema_name=self.schema_name,
+            default_table_name=self.table_name,
+            expectation_suite_table_config_map=TableConfigMap.parse(
+                self.expectation_suite_table_config_map or {}
+            ),
+        )
         for _, v in checkpoint_result.run_results.items():
             meta = v.meta
+
+            expectation_suite_name = getattr(v, "suite_name", None)  # works in GE 1.x
+            if expectation_suite_name is None and meta:
+                expectation_suite_name = meta.get("suite_name")
+
             if meta:
                 check_point_spec = self._get_checkpoint_batch_spec(meta)
                 table_entity = self._get_table_entity(
-                    self.database_name,
-                    check_point_spec.get("schema_name", self.schema_name),
-                    check_point_spec.get("table_name"),
+                    table_mapper.get_part_name(
+                        TablePart.DATABASE, expectation_suite_name
+                    ),
+                    check_point_spec.get(
+                        "schema_name",
+                        table_mapper.get_part_name(
+                            TablePart.SCHEMA, expectation_suite_name
+                        ),
+                    ),
+                    check_point_spec.get(
+                        "table_name",
+                        table_mapper.get_part_name(
+                            TablePart.TABLE, expectation_suite_name
+                        ),
+                    ),
                 )
 
             else:
                 table_entity = self._get_table_entity(
-                    self.database_name,
-                    self.schema_name,
-                    self.table_name,
+                    table_mapper.get_part_name(
+                        TablePart.DATABASE, expectation_suite_name
+                    ),
+                    table_mapper.get_part_name(
+                        TablePart.SCHEMA, expectation_suite_name
+                    ),
+                    table_mapper.get_part_name(TablePart.TABLE, expectation_suite_name),
                 )
 
             if table_entity:
@@ -319,19 +360,94 @@ class OpenMetadataValidationAction1xx(ValidationAction):
         Returns:
             TestCaseResult: a test case result object
         """
-        try:
-            test_result_value = TestResultValue(
-                name="observed_value",
-                value=str(result["result"]["observed_value"]),
-            )
-        except KeyError:
-            unexpected_percent_total = result["result"].get("unexpected_percent_total")
-            test_result_value = TestResultValue(
-                name="unexpected_percentage_total",
-                value=str(unexpected_percent_total),
-            )
+        test_result_values = []
+        result_data = result.get("result", {})
 
-        return [test_result_value]
+        numeric_fields = [
+            "unexpected_percent",
+            "unexpected_percent_total",
+            "missing_percent",
+            "unexpected_count",
+            "missing_count",
+            "element_count",
+            "observed_value",
+            "success_rate",
+        ]
+
+        for field in numeric_fields:
+            if field in result_data:
+                value = result_data[field]
+
+                if isinstance(value, (int, float)):
+                    test_result_values.append(
+                        TestResultValue(
+                            name=field,
+                            value=str(value),
+                            predictedValue=None,
+                        )
+                    )
+                elif field == "observed_value":
+                    test_result_values.extend(
+                        self._extract_complex_value_from_observed_value(value)
+                    )
+
+        return test_result_values
+
+    def _extract_complex_value_from_observed_value(
+        self, observed_value
+    ) -> List[TestResultValue]:
+        """Extract complex value from observed value
+
+        Args:
+            observed_value: observed value
+        Returns:
+            str: complex value
+        """
+        if isinstance(observed_value, list):
+            return [
+                TestResultValue(
+                    name="element_count",
+                    value=str(len(observed_value)),
+                    predictedValue=None,
+                )
+            ]
+
+        if isinstance(observed_value, dict):
+            if "quantiles" in observed_value:
+                result_values = []
+                quantiles = observed_value["quantiles"]
+                values = observed_value["values"]
+                for quantile, value in zip(quantiles, values):
+                    result_values.append(
+                        TestResultValue(
+                            name=f"quantile_{str(quantile)}",
+                            value=str(value),
+                            predictedValue=None,
+                        )
+                    )
+                return result_values
+
+            # catch all other cases that are not a quantile
+            for k, v in observed_value.items():
+                if isinstance(v, (int, float)):
+                    return [
+                        TestResultValue(
+                            name=k,
+                            value=str(v),
+                            predictedValue=None,
+                        )
+                    ]
+
+        if isinstance(observed_value, str):
+            return [
+                TestResultValue(
+                    name="observed_value",
+                    value=str(1),
+                    predictedValue=None,
+                )
+            ]
+
+        return []
 
     def _handle_test_case(self, result: Dict, table_entity: Table):
         """Handle adding test to table entity based on the test case.

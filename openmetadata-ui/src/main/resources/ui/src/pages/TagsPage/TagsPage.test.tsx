@@ -12,6 +12,8 @@
  *  limitations under the License.
  */
 
+import { ThemeProvider } from '@mui/material';
+import { createMuiTheme } from '@openmetadata/ui-core-components';
 import {
   act,
   findAllByTestId,
@@ -22,11 +24,14 @@ import {
   queryByTitle,
   render,
   screen,
+  waitFor,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
-import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
+import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import { deleteTag, getAllClassifications } from '../../rest/tagAPI';
 import { checkPermission } from '../../utils/PermissionsUtils';
+import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { getClassifications } from '../../utils/TagsUtils';
 import TagsPage from './TagsPage';
 import {
@@ -37,8 +42,6 @@ import {
   MOCK_TAGS_CATEGORY,
 } from './TagsPage.mock';
 
-jest.useRealTimers();
-
 jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({
     pathname: '/my-data',
@@ -46,16 +49,27 @@ jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: jest.fn(),
-  })),
+  ...jest.requireActual('react-router-dom'),
   useParams: jest.fn().mockReturnValue({
     entityTypeFQN: 'entityTypeFQN',
   }),
+  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
   Link: jest
     .fn()
     .mockImplementation(({ children, ...rest }) => <a {...rest}>{children}</a>),
 }));
+
+const theme = createMuiTheme();
+
+const Wrapper = ({ children }: { children: React.ReactNode }) => (
+  <ThemeProvider theme={theme}>
+    <MemoryRouter>{children}</MemoryRouter>
+  </ThemeProvider>
+);
+
+const mockProps = {
+  pageTitle: 'tags',
+};
 
 const mockCategory = [
   {
@@ -217,7 +231,7 @@ jest.mock('../../rest/tagAPI', () => ({
     .mockImplementation(() => Promise.resolve(MOCK_DELETE_TAG)),
   getAllClassifications: jest
     .fn()
-    .mockImplementation(() => Promise.resolve(MOCK_ALL_CLASSIFICATIONS)),
+    .mockImplementation(() => MOCK_ALL_CLASSIFICATIONS),
 
   getTags: jest.fn().mockImplementation(() => Promise.resolve(MOCK_TAGS)),
 }));
@@ -243,16 +257,13 @@ jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () =>
 );
 
 jest.mock('../../hoc/withPageLayout', () => ({
-  withPageLayout: jest.fn().mockImplementation(
-    () =>
-      (Component: React.FC) =>
-      (
-        props: JSX.IntrinsicAttributes & {
-          children?: React.ReactNode | undefined;
-        }
-      ) =>
-        <Component {...props} />
-  ),
+  withPageLayout: jest.fn().mockImplementation((Component) => {
+    const WrappedComponent = (props: Record<string, unknown>) => (
+      <Component {...props} />
+    );
+
+    return WrappedComponent;
+  }),
 }));
 
 jest.mock(
@@ -273,12 +284,6 @@ jest.mock('../../components/Modals/EntityDeleteModal/EntityDeleteModal', () => {
       </button>
     </div>
   ));
-});
-
-jest.mock('../../components/Modals/FormModal', () => {
-  return jest
-    .fn()
-    .mockReturnValue(<p data-testid="modal-container">FormModal</p>);
 });
 
 jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
@@ -344,15 +349,32 @@ jest.mock(
   })
 );
 
-jest.mock('../../utils/TableColumn.util', () => ({
-  ownerTableObject: jest.fn().mockReturnValue({}),
+jest.mock(
+  '../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
+
+jest.mock('../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockImplementation(() => ({
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
 }));
 
 describe('Test TagsPage page', () => {
   it('Component should render', async () => {
-    await act(async () => {
-      render(<TagsPage />);
-    });
+    render(<TagsPage {...mockProps} />, { wrapper: Wrapper });
+
+    expect(getAllClassifications).toHaveBeenCalled();
+
     const tagsComponent = await screen.findByTestId('tags-container');
     const leftPanelContent = await screen.findByTestId('tags-left-panel');
     const header = await screen.findByTestId('header');
@@ -373,7 +395,7 @@ describe('Test TagsPage page', () => {
   });
 
   it('Classification LeftPanel count should render properly', async () => {
-    render(<TagsPage />);
+    render(<TagsPage {...mockProps} />, { wrapper: Wrapper });
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
     const leftPanelContent = screen.getByTestId('tags-left-panel');
@@ -393,77 +415,80 @@ describe('Test TagsPage page', () => {
     expect(getByText(getAllCounts[2], '5')).toBeInTheDocument();
   });
 
-  it('OnClick of add new tag, FormModal should display', async () => {
-    render(<TagsPage />);
+  it('OnClick of add new tag, Form should display in drawer', async () => {
+    render(<TagsPage {...mockProps} />, { wrapper: Wrapper });
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
     const addNewTag = screen.getByTestId('add-new-tag-button');
 
     expect(addNewTag).toBeInTheDocument();
 
-    fireEvent.click(
-      addNewTag,
-      new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-      })
-    );
-    const FormModal = await screen.findAllByTestId('modal-container');
+    fireEvent.click(addNewTag);
 
-    expect(FormModal[0]).toBeInTheDocument();
-  });
-
-  it('OnClick of delete tag, confirmation modal should display', async () => {
-    const { container } = render(<TagsPage />);
-    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
-    const deleteBtn = await findAllByTestId(container, 'delete-tag');
-
-    await act(async () => {
-      expect(deleteBtn[0]).toBeInTheDocument();
-
-      fireEvent.click(deleteBtn[0]);
-
-      expect(
-        await findByTestId(container, 'confirmation-modal')
-      ).toBeInTheDocument();
-
-      fireEvent.click(deleteBtn[0]);
-
-      expect(
-        await findByTestId(container, 'confirmation-modal')
-      ).toBeInTheDocument();
-
-      fireEvent.click(await findByTestId(container, 'confirm-modal'));
+    // Wait for the drawer to open and form to render (setTimeout is used in the code)
+    await waitFor(() => {
+      expect(screen.getByTestId('name')).toBeInTheDocument();
     });
   });
 
-  it('OnClick of add new category, FormModal should display', async () => {
-    render(<TagsPage />);
+  it('OnClick of delete tag, confirmation modal should display', async () => {
+    const { container } = render(<TagsPage {...mockProps} />, {
+      wrapper: Wrapper,
+    });
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+    const deleteBtn = await findAllByTestId(container, 'delete-tag');
 
-    const addNewCategory = screen.getByTestId('add-classification');
+    expect(deleteBtn[0]).toBeInTheDocument();
+
+    fireEvent.click(deleteBtn[0]);
+    await waitFor(async () => {
+      expect(
+        await findByTestId(container, 'confirmation-modal')
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(deleteBtn[0]);
+
+    await waitFor(async () => {
+      expect(
+        await findByTestId(container, 'confirmation-modal')
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(await findByTestId(container, 'confirm-modal'));
+  });
+
+  it('OnClick of add new category, Form should display in drawer', async () => {
+    render(<TagsPage {...mockProps} />, { wrapper: Wrapper });
+
+    const loader = screen.queryByTestId('loader');
+    if (loader) {
+      await waitForElementToBeRemoved(loader);
+    }
+
+    const addNewCategory = await screen.findByTestId('add-classification');
 
     expect(addNewCategory).toBeInTheDocument();
 
-    fireEvent.click(
-      addNewCategory,
-      new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-      })
-    );
+    fireEvent.click(addNewCategory);
 
-    const FormModal = await screen.findAllByTestId('modal-container');
-
-    expect(FormModal[0]).toBeInTheDocument();
+    // Wait for the drawer to open and form to render (setTimeout is used in the code)
+    await waitFor(() => {
+      expect(screen.getByTestId('name')).toBeInTheDocument();
+    });
   });
 
   it('Description should be in document', async () => {
-    const { container } = render(<TagsPage />);
-    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+    const { container } = render(<TagsPage {...mockProps} />, {
+      wrapper: Wrapper,
+    });
 
-    const descriptionContainer = await findByTestId(
-      container,
+    const loader = screen.queryByTestId('loader');
+    if (loader) {
+      await waitForElementToBeRemoved(loader);
+    }
+
+    const descriptionContainer = await screen.findByTestId(
       'description-container'
     );
     const description = await findByText(container, /DescriptionComponent/i);
@@ -473,18 +498,23 @@ describe('Test TagsPage page', () => {
   });
 
   it('Table with respective header should be render', async () => {
-    const { container } = render(<TagsPage />);
-    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+    const { container } = render(<TagsPage {...mockProps} />, {
+      wrapper: Wrapper,
+    });
+
+    const loader = screen.queryByTestId('loader');
+    if (loader) {
+      await waitForElementToBeRemoved(loader);
+    }
 
     const table = await findByTestId(container, 'table');
     const name = await findByText(container, 'label.tag');
-    const description = await findByText(container, 'label.description');
     const actions = await findByText(container, 'label.action-plural');
 
     expect(table).toBeInTheDocument();
     expect(actions).toBeInTheDocument();
     expect(name).toBeInTheDocument();
-    expect(description).toBeInTheDocument();
+    expect(descriptionTableObject).toHaveBeenCalledWith({ width: 300 });
   });
 
   it('Should render error placeholder if categories api fails', async () => {
@@ -495,7 +525,9 @@ describe('Test TagsPage page', () => {
         },
       })
     );
-    const { container } = render(<TagsPage />);
+    const { container } = render(<TagsPage {...mockProps} />, {
+      wrapper: Wrapper,
+    });
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
     const errorPlaceholder = await findByTestId(
@@ -507,7 +539,7 @@ describe('Test TagsPage page', () => {
   });
 
   it('System tag category should not be renamed', async () => {
-    render(<TagsPage />);
+    render(<TagsPage {...mockProps} />, { wrapper: Wrapper });
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
     const tagsComponent = screen.getByTestId('tags-container');
@@ -524,7 +556,7 @@ describe('Test TagsPage page', () => {
     (getClassifications as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({ data: [mockCategory[1]] })
     );
-    render(<TagsPage />);
+    render(<TagsPage {...mockProps} />, { wrapper: Wrapper });
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
     const tagsComponent = screen.getByTestId('tags-container');
@@ -539,9 +571,7 @@ describe('Test TagsPage page', () => {
     expect(editIcon).toBeInTheDocument();
     expect(tagCategoryName).toBeInTheDocument();
 
-    await act(async () => {
-      fireEvent.click(editIcon);
-    });
+    fireEvent.click(editIcon);
 
     const tagCategoryHeading = screen.getByTestId(
       'current-classification-name'
@@ -565,23 +595,21 @@ describe('Test TagsPage page', () => {
   });
 
   it('User tag should be load', async () => {
-    const { container } = render(<TagsPage />);
+    const { container } = render(<TagsPage {...mockProps} />, {
+      wrapper: Wrapper,
+    });
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
     const tagsComponent = screen.getByTestId('tags-container');
     const classification = await screen.findAllByText('PersonalData');
 
-    act(() => {
-      fireEvent.click(classification[0]);
-    });
+    fireEvent.click(classification[0]);
 
-    act(async () => {
-      const tagEditIcon = await findAllByTestId(container, 'edit-button');
+    const tagEditIcon = await findAllByTestId(container, 'edit-button');
 
-      expect(tagEditIcon[0]).toBeInTheDocument();
+    expect(tagEditIcon[0]).toBeInTheDocument();
 
-      fireEvent.click(tagEditIcon[0]);
-    });
+    fireEvent.click(tagEditIcon[0]);
 
     const tagName = screen.getByTestId('test_tag');
 
@@ -592,7 +620,7 @@ describe('Test TagsPage page', () => {
   it("Should not render add classification button if doesn't have create permission", async () => {
     (checkPermission as jest.Mock).mockReturnValueOnce(false);
 
-    render(<TagsPage />);
+    render(<TagsPage {...mockProps} />, { wrapper: Wrapper });
 
     expect(screen.queryByTestId('add-classification')).not.toBeInTheDocument();
   });
@@ -602,7 +630,7 @@ describe('Test TagsPage page', () => {
       (deleteTag as jest.Mock).mockImplementationOnce(() =>
         Promise.reject({ response: { data: 'error!' } })
       );
-      render(<TagsPage />);
+      render(<TagsPage {...mockProps} />, { wrapper: Wrapper });
       await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
       const deleteBtn = await screen.findAllByTestId('delete-tag');
@@ -622,25 +650,44 @@ describe('Test TagsPage page', () => {
       (deleteTag as jest.Mock).mockImplementationOnce(() =>
         Promise.resolve({ data: '' })
       );
-      const { container } = render(<TagsPage />);
+      const { container } = render(<TagsPage {...mockProps} />, {
+        wrapper: Wrapper,
+      });
 
-      await act(async () => {
-        const deleteBtn = await findAllByTestId(container, 'delete-tag');
+      const deleteBtn = await findAllByTestId(container, 'delete-tag');
 
-        expect(deleteBtn[0]).toBeInTheDocument();
+      expect(deleteBtn[0]).toBeInTheDocument();
 
-        fireEvent.click(deleteBtn[0]);
+      fireEvent.click(deleteBtn[0]);
 
-        expect(
-          await findByTestId(container, 'confirmation-modal')
-        ).toBeInTheDocument();
+      expect(
+        await findByTestId(container, 'confirmation-modal')
+      ).toBeInTheDocument();
 
-        fireEvent.click(await findByTestId(container, 'confirm-modal'));
+      fireEvent.click(await findByTestId(container, 'confirm-modal'));
 
-        expect(
-          queryByTitle(container, 'confirmation-modal')
-        ).not.toBeInTheDocument();
+      expect(
+        queryByTitle(container, 'confirmation-modal')
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it('should pass classification name as pageTitle to withPageLayout', async () => {
+    (getAllClassifications as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(MOCK_ALL_CLASSIFICATIONS)
+    );
+
+    await act(async () => {
+      render(<TagsPage {...mockProps} />, {
+        wrapper: Wrapper,
       });
     });
+
+    expect(ResizableLeftPanels).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pageTitle: 'PersonalData',
+      }),
+      expect.anything()
+    );
   });
 });

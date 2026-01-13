@@ -1,0 +1,833 @@
+[
+  {
+    "name": "Summary",
+    "displayName": "Budget Summary",
+    "description": "Executive summary of the annual budget",
+    "spreadsheet": "annual_budget_2024",
+    "isHidden": false,
+    "columns": [
+      {
+        "name": "department",
+        "displayName": "Department",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string",
+        "description": "Department name"
+      },
+      {
+        "name": "allocated_budget",
+        "displayName": "Allocated Budget",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(12,2)",
+        "description": "Total allocated budget in USD"
+      },
+      {
+        "name": "spent_ytd",
+        "displayName": "Spent YTD",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(12,2)",
+        "description": "Amount spent year to date"
+      },
+      {
+        "name": "remaining_budget",
+        "displayName": "Remaining Budget",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(12,2)",
+        "description": "Remaining budget for the year"
+      },
+      {
+        "name": "utilization_percentage",
+        "displayName": "Utilization %",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(5,2)",
+        "description": "Budget utilization percentage"
+      }
+    ],
+    "tags": []
+  },
+  {
+    "name": "IT_Department",
+    "displayName": "IT Department Budget",
+    "description": "Detailed IT department budget breakdown",
+    "spreadsheet": "annual_budget_2024",
+    "isHidden": false,
+    "columns": [
+      {
+        "name": "category",
+        "displayName": "Category",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string",
+        "description": "Budget category"
+      },
+      {
+        "name": "subcategory",
+        "displayName": "Subcategory",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string",
+        "description": "Budget subcategory"
+      },
+      {
+        "name": "vendor",
+        "displayName": "Vendor",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string",
+        "description": "Vendor or service provider"
+      },
+      {
+        "name": "monthly_cost",
+        "displayName": "Monthly Cost",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(10,2)",
+        "description": "Monthly recurring cost"
+      },
+      {
+        "name": "annual_cost",
+        "displayName": "Annual Cost",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(12,2)",
+        "description": "Total annual cost"
+      }
+    ]
+  },
+  {
+    "name": "Salaries",
+    "displayName": "Employee Salaries",
+    "description": "Salary information by employee",
+    "spreadsheet": "employee_compensation_q4",
+    "isHidden": false,
+    "columns": [
+      {
+        "name": "employee_id",
+        "displayName": "Employee ID",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string",
+        "description": "Unique employee identifier",
+        "tags": [
+          {
+            "tagFQN": "PII.Sensitive",
+            "description": "Employee identifier",
+            "source": "Classification",
+            "labelType": "Manual",
+            "state": "Confirmed"
+          }
+        ]
+      },
+      {
+        "name": "employee_name",
+        "displayName": "Employee Name",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string",
+        "description": "Full name of the employee",
+        "tags": [
+          {
+            "tagFQN": "PII.Sensitive",
+            "description": "Personal name",
+            "source": "Classification",
+            "labelType": "Manual",
+            "state": "Confirmed"
+          }
+        ]
+      },
+      {
+        "name": "department",
+        "displayName": "Department",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string",
+        "description": "Employee department"
+      },
+      {
+        "name": "base_salary",
+        "displayName": "Base Salary",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(10,2)",
+        "description": "Annual base salary",
+        "tags": [
+          {
+            "tagFQN": "PersonalData.SpecialCategory",
+            "description": "Salary information",
+            "source": "Classification",
+            "labelType": "Manual",
+            "state": "Confirmed"
+          }
+        ]
+      },
+      {
+        "name": "q4_bonus",
+        "displayName": "Q4 Bonus",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(10,2)",
+        "description": "Q4 performance bonus",
+        "tags": [
+          {
+            "tagFQN": "PersonalData.SpecialCategory",
+            "description": "Bonus information",
+            "source": "Classification",
+            "labelType": "Manual",
+            "state": "Confirmed"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Campaign_Overview",
+    "displayName": "Campaign Overview",
+    "description": "Overview of all marketing campaigns",
+    "spreadsheet": "campaign_performance_tracker",
+    "isHidden": false,
+    "columns": [
+      {
+        "name": "campaign_id",
+        "displayName": "Campaign ID",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string",
+        "description": "Unique campaign identifier"
+      },
+      {
+        "name": "campaign_name",
+        "displayName": "Campaign Name",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string",
+        "description": "Name of the marketing campaign"
+      },
+      {
+        "name": "start_date",
+        "displayName": "Start Date",
+        "dataType": "DATE",
+        "dataTypeDisplay": "date",
+        "description": "Campaign start date"
+      },
+      {
+        "name": "end_date",
+        "displayName": "End Date",
+        "dataType": "DATE",
+        "dataTypeDisplay": "date",
+        "description": "Campaign end date"
+      },
+      {
+        "name": "budget",
+        "displayName": "Budget",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(10,2)",
+        "description": "Total campaign budget"
+      },
+      {
+        "name": "impressions",
+        "displayName": "Impressions",
+        "dataType": "BIGINT",
+        "dataTypeDisplay": "bigint",
+        "description": "Total impressions"
+      },
+      {
+        "name": "clicks",
+        "displayName": "Clicks",
+        "dataType": "BIGINT",
+        "dataTypeDisplay": "bigint",
+        "description": "Total clicks"
+      },
+      {
+        "name": "conversions",
+        "displayName": "Conversions",
+        "dataType": "INT",
+        "dataTypeDisplay": "int",
+        "description": "Total conversions"
+      },
+      {
+        "name": "roi",
+        "displayName": "ROI",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(5,2)",
+        "description": "Return on investment percentage"
+      }
+    ]
+  },
+  {
+    "name": "Social_Media_Metrics",
+    "displayName": "Social Media Metrics",
+    "description": "Detailed social media campaign performance",
+    "spreadsheet": "campaign_performance_tracker",
+    "isHidden": false,
+    "columns": [
+      {
+        "name": "platform",
+        "displayName": "Platform",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string",
+        "description": "Social media platform"
+      },
+      {
+        "name": "post_id",
+        "displayName": "Post ID",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string",
+        "description": "Unique post identifier"
+      },
+      {
+        "name": "post_date",
+        "displayName": "Post Date",
+        "dataType": "TIMESTAMP",
+        "dataTypeDisplay": "timestamp",
+        "description": "Date and time of post"
+      },
+      {
+        "name": "reach",
+        "displayName": "Reach",
+        "dataType": "BIGINT",
+        "dataTypeDisplay": "bigint",
+        "description": "Number of unique users reached"
+      },
+      {
+        "name": "engagement_rate",
+        "displayName": "Engagement Rate",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(5,2)",
+        "description": "Engagement rate percentage"
+      }
+    ]
+  },
+  {
+    "name": "HR_Budget",
+    "displayName": "HR Department Budget",
+    "description": "Human Resources department budget allocation",
+    "spreadsheet": "annual_budget_2024",
+    "isHidden": false,
+    "columns": [
+      {
+        "name": "expense_type",
+        "displayName": "Expense Type",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      },
+      {
+        "name": "q1_budget",
+        "displayName": "Q1 Budget",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(10,2)"
+      },
+      {
+        "name": "q2_budget",
+        "displayName": "Q2 Budget",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(10,2)"
+      },
+      {
+        "name": "q3_budget",
+        "displayName": "Q3 Budget",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(10,2)"
+      },
+      {
+        "name": "q4_budget",
+        "displayName": "Q4 Budget",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(10,2)"
+      }
+    ]
+  },
+  {
+    "name": "Marketing_Budget",
+    "displayName": "Marketing Department Budget",
+    "description": "Marketing initiatives and campaign budgets",
+    "spreadsheet": "annual_budget_2024",
+    "isHidden": false,
+    "columns": [
+      {
+        "name": "campaign_name",
+        "displayName": "Campaign Name",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      },
+      {
+        "name": "channel",
+        "displayName": "Marketing Channel",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      },
+      {
+        "name": "budget_allocated",
+        "displayName": "Budget Allocated",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(10,2)"
+      },
+      {
+        "name": "spent_to_date",
+        "displayName": "Spent to Date",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(10,2)"
+      },
+      {
+        "name": "roi_percentage",
+        "displayName": "ROI %",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(5,2)"
+      }
+    ]
+  },
+  {
+    "name": "Operations_Budget",
+    "displayName": "Operations Budget",
+    "description": "Operations and facilities budget tracking",
+    "spreadsheet": "annual_budget_2024",
+    "isHidden": false,
+    "columns": [
+      {
+        "name": "facility",
+        "displayName": "Facility",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      },
+      {
+        "name": "expense_category",
+        "displayName": "Expense Category",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      },
+      {
+        "name": "monthly_budget",
+        "displayName": "Monthly Budget",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(10,2)"
+      },
+      {
+        "name": "ytd_actual",
+        "displayName": "YTD Actual",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(12,2)"
+      }
+    ]
+  },
+  {
+    "name": "Capital_Expenditures",
+    "displayName": "Capital Expenditures",
+    "description": "CapEx planning and tracking",
+    "spreadsheet": "annual_budget_2024",
+    "isHidden": false,
+    "columns": [
+      {
+        "name": "project_name",
+        "displayName": "Project Name",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      },
+      {
+        "name": "department",
+        "displayName": "Department",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      },
+      {
+        "name": "capex_amount",
+        "displayName": "CapEx Amount",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(12,2)"
+      },
+      {
+        "name": "approval_status",
+        "displayName": "Approval Status",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      },
+      {
+        "name": "expected_roi_years",
+        "displayName": "Expected ROI (Years)",
+        "dataType": "INT",
+        "dataTypeDisplay": "int"
+      }
+    ]
+  },
+  {
+    "name": "Revenue_Projections",
+    "displayName": "Revenue Projections",
+    "description": "Revenue forecasts by product line",
+    "spreadsheet": "sales_forecast_2024",
+    "isHidden": false,
+    "columns": [
+      {
+        "name": "product_line",
+        "displayName": "Product Line",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      },
+      {
+        "name": "region",
+        "displayName": "Region",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      },
+      {
+        "name": "q1_forecast",
+        "displayName": "Q1 Forecast",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(12,2)"
+      },
+      {
+        "name": "q2_forecast",
+        "displayName": "Q2 Forecast",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(12,2)"
+      },
+      {
+        "name": "q3_forecast",
+        "displayName": "Q3 Forecast",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(12,2)"
+      },
+      {
+        "name": "q4_forecast",
+        "displayName": "Q4 Forecast",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(12,2)"
+      }
+    ]
+  },
+  {
+    "name": "Sales_Pipeline",
+    "displayName": "Sales Pipeline",
+    "description": "Active sales opportunities tracking",
+    "spreadsheet": "sales_forecast_2024",
+    "isHidden": false,
+    "columns": [
+      {
+        "name": "opportunity_id",
+        "displayName": "Opportunity ID",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      },
+      {
+        "name": "customer_name",
+        "displayName": "Customer Name",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      },
+      {
+        "name": "deal_size",
+        "displayName": "Deal Size",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(12,2)"
+      },
+      {
+        "name": "probability",
+        "displayName": "Probability %",
+        "dataType": "INT",
+        "dataTypeDisplay": "int"
+      },
+      {
+        "name": "expected_close_date",
+        "displayName": "Expected Close Date",
+        "dataType": "DATE",
+        "dataTypeDisplay": "date"
+      },
+      {
+        "name": "sales_rep",
+        "displayName": "Sales Rep",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      }
+    ]
+  },
+  {
+    "name": "Regional_Performance",
+    "displayName": "Regional Performance",
+    "description": "Sales performance by region",
+    "spreadsheet": "sales_forecast_2024",
+    "isHidden": false,
+    "columns": [
+      {
+        "name": "region",
+        "displayName": "Region",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      },
+      {
+        "name": "ytd_sales",
+        "displayName": "YTD Sales",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(12,2)"
+      },
+      {
+        "name": "ytd_target",
+        "displayName": "YTD Target",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(12,2)"
+      },
+      {
+        "name": "achievement_percentage",
+        "displayName": "Achievement %",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(5,2)"
+      }
+    ]
+  },
+  {
+    "name": "Active_Employees",
+    "displayName": "Active Employees",
+    "description": "Current employee roster",
+    "spreadsheet": "hr_headcount_tracker",
+    "isHidden": false,
+    "columns": [
+      {
+        "name": "employee_id",
+        "displayName": "Employee ID",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      },
+      {
+        "name": "full_name",
+        "displayName": "Full Name",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      },
+      {
+        "name": "department",
+        "displayName": "Department",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      },
+      {
+        "name": "position",
+        "displayName": "Position",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      },
+      {
+        "name": "hire_date",
+        "displayName": "Hire Date",
+        "dataType": "DATE",
+        "dataTypeDisplay": "date"
+      },
+      {
+        "name": "location",
+        "displayName": "Location",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      }
+    ]
+  },
+  {
+    "name": "Department_Summary",
+    "displayName": "Department Summary",
+    "description": "Headcount by department",
+    "spreadsheet": "hr_headcount_tracker",
+    "isHidden": false,
+    "columns": [
+      {
+        "name": "department",
+        "displayName": "Department",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      },
+      {
+        "name": "total_headcount",
+        "displayName": "Total Headcount",
+        "dataType": "INT",
+        "dataTypeDisplay": "int"
+      },
+      {
+        "name": "open_positions",
+        "displayName": "Open Positions",
+        "dataType": "INT",
+        "dataTypeDisplay": "int"
+      },
+      {
+        "name": "average_tenure_years",
+        "displayName": "Avg Tenure (Years)",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(5,2)"
+      }
+    ]
+  },
+  {
+    "name": "Feature_Roadmap",
+    "displayName": "Feature Roadmap",
+    "description": "Product feature development timeline",
+    "spreadsheet": "product_roadmap_2024",
+    "isHidden": false,
+    "columns": [
+      {
+        "name": "feature_name",
+        "displayName": "Feature Name",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      },
+      {
+        "name": "priority",
+        "displayName": "Priority",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      },
+      {
+        "name": "target_quarter",
+        "displayName": "Target Quarter",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      },
+      {
+        "name": "development_status",
+        "displayName": "Development Status",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      },
+      {
+        "name": "assigned_team",
+        "displayName": "Assigned Team",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      }
+    ]
+  },
+  {
+    "name": "Sprint_Planning",
+    "displayName": "Sprint Planning",
+    "description": "Agile sprint planning and tracking",
+    "spreadsheet": "product_roadmap_2024",
+    "isHidden": false,
+    "columns": [
+      {
+        "name": "sprint_number",
+        "displayName": "Sprint Number",
+        "dataType": "INT",
+        "dataTypeDisplay": "int"
+      },
+      {
+        "name": "start_date",
+        "displayName": "Start Date",
+        "dataType": "DATE",
+        "dataTypeDisplay": "date"
+      },
+      {
+        "name": "end_date",
+        "displayName": "End Date",
+        "dataType": "DATE",
+        "dataTypeDisplay": "date"
+      },
+      {
+        "name": "story_points",
+        "displayName": "Story Points",
+        "dataType": "INT",
+        "dataTypeDisplay": "int"
+      },
+      {
+        "name": "velocity",
+        "displayName": "Velocity",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(5,2)"
+      }
+    ]
+  },
+  {
+    "name": "Customer_Segments",
+    "displayName": "Customer Segments",
+    "description": "Customer segmentation analysis",
+    "spreadsheet": "customer_analytics_dashboard",
+    "isHidden": false,
+    "columns": [
+      {
+        "name": "segment_name",
+        "displayName": "Segment Name",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      },
+      {
+        "name": "customer_count",
+        "displayName": "Customer Count",
+        "dataType": "INT",
+        "dataTypeDisplay": "int"
+      },
+      {
+        "name": "avg_revenue_per_customer",
+        "displayName": "Avg Revenue per Customer",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(10,2)"
+      },
+      {
+        "name": "churn_rate",
+        "displayName": "Churn Rate %",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(5,2)"
+      },
+      {
+        "name": "ltv",
+        "displayName": "Lifetime Value",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(12,2)"
+      }
+    ]
+  },
+  {
+    "name": "Revenue_KPIs",
+    "displayName": "Revenue KPIs",
+    "description": "Key revenue metrics",
+    "spreadsheet": "kpi_dashboard_2024",
+    "isHidden": false,
+    "columns": [
+      {
+        "name": "metric_name",
+        "displayName": "Metric Name",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      },
+      {
+        "name": "target_value",
+        "displayName": "Target Value",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(12,2)"
+      },
+      {
+        "name": "actual_value",
+        "displayName": "Actual Value",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(12,2)"
+      },
+      {
+        "name": "variance_percentage",
+        "displayName": "Variance %",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(5,2)"
+      },
+      {
+        "name": "status",
+        "displayName": "Status",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      }
+    ]
+  },
+  {
+    "name": "Operational_KPIs",
+    "displayName": "Operational KPIs",
+    "description": "Operations performance metrics",
+    "spreadsheet": "kpi_dashboard_2024",
+    "isHidden": false,
+    "columns": [
+      {
+        "name": "kpi_name",
+        "displayName": "KPI Name",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      },
+      {
+        "name": "unit_of_measure",
+        "displayName": "Unit of Measure",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      },
+      {
+        "name": "baseline",
+        "displayName": "Baseline",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(10,2)"
+      },
+      {
+        "name": "current_value",
+        "displayName": "Current Value",
+        "dataType": "DECIMAL",
+        "dataTypeDisplay": "decimal(10,2)"
+      },
+      {
+        "name": "trend",
+        "displayName": "Trend",
+        "dataType": "STRING",
+        "dataTypeDisplay": "string"
+      }
+    ]
+  }
+]

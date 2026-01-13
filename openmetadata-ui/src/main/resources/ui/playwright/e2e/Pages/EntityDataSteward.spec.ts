@@ -12,18 +12,23 @@
  */
 import { Page, test as base } from '@playwright/test';
 import { isUndefined } from 'lodash';
+import { COMMON_TIER_TAG } from '../../constant/common';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
+import { DirectoryClass } from '../../support/entity/DirectoryClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { FileClass } from '../../support/entity/FileClass';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { SpreadsheetClass } from '../../support/entity/SpreadsheetClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { WorksheetClass } from '../../support/entity/WorksheetClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
@@ -42,6 +47,10 @@ const entities = [
   SearchIndexClass,
   DashboardDataModelClass,
   MetricClass,
+  DirectoryClass,
+  FileClass,
+  SpreadsheetClass,
+  WorksheetClass,
 ] as const;
 
 // Create 2 page and authenticate 1 with admin and another with normal user
@@ -89,7 +98,6 @@ entities.forEach((EntityClass) => {
         ],
       });
 
-      await EntityDataClass.preRequisitesForTests(apiContext);
       await entity.create(apiContext);
       await afterAction();
     });
@@ -102,24 +110,20 @@ entities.forEach((EntityClass) => {
     test('User as Owner Add, Update and Remove', async ({ page }) => {
       test.slow(true);
 
-      const OWNER1 = EntityDataClass.user1.getUserName();
-      const OWNER2 = EntityDataClass.user2.getUserName();
-      const OWNER3 = EntityDataClass.user3.getUserName();
+      const OWNER1 = EntityDataClass.user1.getUserDisplayName();
+      const OWNER2 = EntityDataClass.user2.getUserDisplayName();
+      const OWNER3 = EntityDataClass.user3.getUserDisplayName();
       await entity.owner(page, [OWNER1, OWNER3], [OWNER2]);
     });
 
     test('Team as Owner Add, Update and Remove', async ({ page }) => {
-      const OWNER1 = EntityDataClass.team1.data.displayName;
-      const OWNER2 = EntityDataClass.team2.data.displayName;
+      const OWNER1 = EntityDataClass.team1.responseData.displayName;
+      const OWNER2 = EntityDataClass.team2.responseData.displayName;
       await entity.owner(page, [OWNER1], [OWNER2], 'Teams');
     });
 
     test('Tier Add, Update and Remove', async ({ page }) => {
-      await entity.tier(
-        page,
-        'Tier1',
-        EntityDataClass.tierTag1.data.displayName
-      );
+      await entity.tier(page, 'Tier1', COMMON_TIER_TAG[0].name);
     });
 
     test('Update description', async ({ page }) => {
@@ -127,7 +131,7 @@ entities.forEach((EntityClass) => {
     });
 
     test('Tag Add, Update and Remove', async ({ page }) => {
-      await entity.tag(page, 'PersonalData.Personal', 'PII.None');
+      await entity.tag(page, 'PersonalData.Personal', 'PII.None', entity);
     });
 
     test('Glossary Term Add, Update and Remove', async ({ page }) => {
@@ -173,7 +177,7 @@ entities.forEach((EntityClass) => {
         });
       });
 
-      if (['Table', 'Dashboard Data Model'].includes(entity.type)) {
+      if (['Table', 'DashboardDataModel'].includes(entity.type)) {
         test('DisplayName Add, Update and Remove for child entities', async ({
           page,
         }) => {
@@ -223,7 +227,6 @@ entities.forEach((EntityClass) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await user.delete(apiContext);
       await entity.delete(apiContext);
-      await EntityDataClass.postRequisitesForTests(apiContext);
       await afterAction();
     });
   });

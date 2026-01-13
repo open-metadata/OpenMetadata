@@ -1,10 +1,10 @@
 # MongoDB
-In this section, we provide guides and references to use the MongoDB connector. You can view the full documentation for MongoDB [here](https://docs.open-metadata.org/connectors/database/mongo).
+In this section, we provide guides and references to use the MongoDB connector. You can view the full documentation for MongoDB <a href="https://docs.open-metadata.org/connectors/database/mongo" target="_blank">here</a>.
 
 ## Requirements
 To extract metadata, the user used in the connection needs to be able to perform `find` operation on collection and `listCollection` operations on database available in MongoDB.
 
-You can find further information on the Hive connector in the [here](https://docs.open-metadata.org/connectors/database/mongo).
+You can find further information on the Hive connector in the <a href="https://docs.open-metadata.org/connectors/database/mongo" target="_blank">here</a>.
 
 ## Connection Details
 
@@ -33,6 +33,11 @@ In OpenMetadata, the Database Service hierarchy works as follows:
 Database Service > Database > Schema > Table
 ```
 In the case of MongoDB, we won't have a Database as such. If you'd like to see your data in a database named something other than `default`, you can specify the name in this field.
+$$
+
+$$section
+### Database Schema $(id="databaseSchema")
+This is an optional parameter. When set, the value will be used to restrict the metadata reading to a single database (corresponding to the value passed in this field). When left blank, OpenMetadata will scan all the databases.
 $$
 
 $$section

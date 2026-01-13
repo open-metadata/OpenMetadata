@@ -21,11 +21,12 @@ import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
-import org.openmetadata.service.util.JsonUtils;
 
 public final class CatalogExceptionMessage {
   public static final String REINDEXING_ALREADY_RUNNING = "REINDEXING_ALREADY_RUNNING";
@@ -111,6 +112,10 @@ public final class CatalogExceptionMessage {
 
   public static String entityNotFound(String entityType, UUID id) {
     return entityNotFound(entityType, id.toString());
+  }
+
+  public static String entityNameAlreadyExists(String entityType, String name) {
+    return String.format("%s with name '%s' already exists.", entityType, name);
   }
 
   public static String readOnlyAttribute(String entityType, String attribute) {
@@ -231,10 +236,12 @@ public final class CatalogExceptionMessage {
   }
 
   public static String domainPermissionNotAllowed(
-      String user, String domainName, List<MetadataOperation> operations) {
+      String user, List<EntityReference> domains, List<MetadataOperation> operations) {
     return String.format(
-        "Principal: CatalogPrincipal{name='%s'} does not belong to domain %s. to perform the %s ",
-        user, domainName, operations);
+        "Principal: CatalogPrincipal{name='%s'} does not belong to domains [%s] to perform the %s operations.",
+        user,
+        domains.stream().map(EntityReference::getName).collect(Collectors.joining(", ")),
+        operations);
   }
 
   public static String taskOperationNotAllowed(String user, String operations) {

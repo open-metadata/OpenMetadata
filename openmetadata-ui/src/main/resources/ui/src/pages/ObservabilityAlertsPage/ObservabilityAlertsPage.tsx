@@ -12,16 +12,15 @@
  */
 import { Button, Col, Row, Skeleton, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { isUndefined } from 'lodash';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../components/common/Table/Table';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -53,11 +52,12 @@ import {
   getObservabilityAlertDetailsPath,
   getObservabilityAlertsEditPath,
 } from '../../utils/RouterUtils';
+import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const ObservabilityAlertsPage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [loadingCount, setLoadingCount] = useState(0);
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);
@@ -70,6 +70,7 @@ const ObservabilityAlertsPage = () => {
     handlePagingChange,
     showPagination,
     paging,
+    pagingCursor,
   } = usePaging();
   const { getResourceLimit } = useLimitStore();
   const { getEntityPermissionByFqn, getResourcePermission } =
@@ -161,8 +162,14 @@ const ObservabilityAlertsPage = () => {
   }, []);
 
   useEffect(() => {
-    fetchAlerts();
-  }, [pageSize]);
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      fetchAlerts({ [cursorType]: cursorValue });
+    } else {
+      fetchAlerts();
+    }
+  }, [pageSize, pagingCursor]);
 
   const handleAlertDelete = useCallback(async () => {
     try {
@@ -178,7 +185,11 @@ const ObservabilityAlertsPage = () => {
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
         fetchAlerts({ [cursorType]: paging[cursorType] });
-        handlePageChange(currentPage);
+        handlePageChange(
+          currentPage,
+          { cursorType, cursorValue: paging[cursorType] },
+          pageSize
+        );
       }
     },
     [paging]
@@ -212,22 +223,7 @@ const ObservabilityAlertsPage = () => {
           return resources?.join(', ') || '--';
         },
       },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        flex: true,
-        key: 'description',
-        render: (description: string) =>
-          isEmpty(description) ? (
-            <Typography.Text className="text-grey-muted">
-              {t('label.no-entity', {
-                entity: t('label.description'),
-              })}
-            </Typography.Text>
-          ) : (
-            <RichTextEditorPreviewerNew markdown={description} />
-          ),
-      },
+      ...descriptionTableObject(),
       {
         title: t('label.action-plural'),
         dataIndex: 'fullyQualifiedName',
@@ -306,7 +302,7 @@ const ObservabilityAlertsPage = () => {
                 <Button
                   data-testid="create-observability"
                   type="primary"
-                  onClick={() => history.push(ROUTES.ADD_OBSERVABILITY_ALERTS)}>
+                  onClick={() => navigate(ROUTES.ADD_OBSERVABILITY_ALERTS)}>
                   {t('label.add-entity', { entity: t('label.alert') })}
                 </Button>
               </LimitWrapper>
@@ -338,7 +334,7 @@ const ObservabilityAlertsPage = () => {
                     entity: t('label.alert'),
                   })}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}
-                  onClick={() => history.push(ROUTES.ADD_OBSERVABILITY_ALERTS)}
+                  onClick={() => navigate(ROUTES.ADD_OBSERVABILITY_ALERTS)}
                 />
               ),
             }}

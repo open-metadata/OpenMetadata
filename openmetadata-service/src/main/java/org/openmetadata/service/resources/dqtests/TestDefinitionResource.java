@@ -41,6 +41,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -49,7 +50,6 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 @Path("/v1/dataQuality/testDefinitions")
@@ -149,7 +149,13 @@ public class TestDefinitionResource
               description = "Filter tests definition by supported data type",
               schema = @Schema(implementation = ColumnDataType.class))
           @QueryParam("supportedDataType")
-          String supportedDataTypeParam) {
+          String supportedDataTypeParam,
+      @Parameter(
+              description =
+                  "Filter test definitions by supported service. Returns test definitions that either "
+                      + "have an empty supportedServices list (supporting all services) or include the specified service.")
+          @QueryParam("supportedService")
+          String supportedServiceParam) {
     ListFilter filter = new ListFilter(include);
     if (entityType != null) {
       filter.addQueryParam("entityType", entityType);
@@ -159,6 +165,9 @@ public class TestDefinitionResource
     }
     if (supportedDataTypeParam != null) {
       filter.addQueryParam("supportedDataType", supportedDataTypeParam);
+    }
+    if (supportedServiceParam != null) {
+      filter.addQueryParam("supportedService", supportedServiceParam);
     }
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);

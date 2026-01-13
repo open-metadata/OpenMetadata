@@ -14,10 +14,11 @@
 /* eslint-disable */
 
 import classNames from 'classnames';
-import React, { forwardRef, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useImperativeHandle, useRef } from 'react';
 import {
   formatContent,
   formatValueBasedOnContent,
+  setEditorContent,
 } from '../../../utils/BlockEditorUtils';
 import BlockEditor from '../../BlockEditor/BlockEditor';
 import { BlockEditorRef } from '../../BlockEditor/BlockEditor.interface';
@@ -34,8 +35,11 @@ const RichTextEditor = forwardRef<EditorContentRef, RichTextEditorProp>(
       readonly,
       className,
       style,
-      placeholder,
+      placeHolder,
+      onFocus,
       onTextChange,
+      extensionOptions,
+      showMenu = true,
     }: RichTextEditorProp,
     ref
   ) => {
@@ -53,18 +57,29 @@ const RichTextEditor = forwardRef<EditorContentRef, RichTextEditorProp>(
 
         return formatValueBasedOnContent(backendFormat);
       },
+      clearEditorContent() {
+        editorRef.current?.editor &&
+          setEditorContent(editorRef.current.editor, '');
+      },
+      setEditorContent(_content: string) {
+        editorRef.current?.editor &&
+          setEditorContent(editorRef.current.editor, _content);
+      },
     }));
 
     return (
       <div className={classNames(className)} style={style} data-testid="editor">
         <BlockEditor
-          placeholder={placeholder}
+          extensionOptions={extensionOptions}
+          placeholder={placeHolder}
           ref={editorRef}
           autoFocus={autofocus}
           content={initialValue}
           menuType="bar"
+          showMenu={showMenu}
           editable={!readonly}
           onChange={onChangeHandler}
+          onFocus={onFocus}
         />
       </div>
     );

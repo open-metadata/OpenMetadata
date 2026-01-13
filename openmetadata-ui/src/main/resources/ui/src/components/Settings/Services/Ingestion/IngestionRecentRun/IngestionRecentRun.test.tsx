@@ -18,7 +18,7 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import React from 'react';
+import { Status } from '../../../../../generated/entity/applications/appRunRecord';
 import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EXECUTION_RUNS, FAILURE } from '../../../../../mocks/Ingestion.mock';
 import { mockDataInsightApplicationRun } from '../../../../../mocks/LogsViewerPage.mock';
@@ -319,5 +319,186 @@ describe('Test IngestionRecentRun component', () => {
 
     expect(getRunHistoryForPipeline).toHaveBeenCalledTimes(2);
     expect(mockHandlePipelineIdToFetchStatus).toHaveBeenCalled();
+  });
+
+  describe('Timestamp Sorting Logic', () => {
+    it('should sort runs by timestamp in ascending order and show last 5 runs', async () => {
+      const unorderedRuns = [
+        {
+          runId: 'run-3',
+          pipelineState: 'success',
+          startDate: 1667307000,
+          timestamp: 1667307000,
+          endDate: 1667307003,
+        },
+        {
+          runId: 'run-1',
+          pipelineState: 'failed',
+          startDate: 1667301000,
+          timestamp: 1667301000,
+          endDate: 1667301003,
+        },
+        {
+          runId: 'run-5',
+          pipelineState: 'success',
+          startDate: 1667309000,
+          timestamp: 1667309000,
+          endDate: 1667309003,
+        },
+        {
+          runId: 'run-2',
+          pipelineState: 'partialSuccess',
+          startDate: 1667304000,
+          timestamp: 1667304000,
+          endDate: 1667304003,
+        },
+        {
+          runId: 'run-4',
+          pipelineState: 'running',
+          startDate: 1667308000,
+          timestamp: 1667308000,
+          endDate: 1667308003,
+        },
+        {
+          runId: 'run-6',
+          pipelineState: 'queued',
+          startDate: 1667310000,
+          timestamp: 1667310000,
+          endDate: 1667310003,
+        },
+        {
+          runId: 'run-7',
+          pipelineState: 'success',
+          startDate: 1667311000,
+          timestamp: 1667311000,
+          endDate: 1667311003,
+        },
+      ];
+
+      (getRunHistoryForPipeline as jest.Mock).mockResolvedValueOnce({
+        data: unorderedRuns,
+        paging: { total: 7 },
+      });
+
+      await act(async () => {
+        render(<IngestionRecentRuns ingestion={mockIngestion} />);
+      });
+
+      const runs = await screen.findAllByTestId('pipeline-status');
+
+      expect(runs).toHaveLength(5);
+
+      const latestRun = await screen.findByText(/Success/);
+
+      expect(latestRun).toBeInTheDocument();
+    });
+
+    it('should handle runs with missing timestamps gracefully by treating them as 0', async () => {
+      const runsWithMissingTimestamps = [
+        {
+          runId: 'run-with-timestamp',
+          pipelineState: 'success',
+          startDate: 1667307000,
+          timestamp: 1667307000,
+          endDate: 1667307003,
+        },
+        {
+          runId: 'run-without-timestamp',
+          pipelineState: 'failed',
+          startDate: 1667301000,
+          endDate: 1667301003,
+        },
+        {
+          runId: 'run-with-null-timestamp',
+          pipelineState: 'partialSuccess',
+          startDate: 1667304000,
+          timestamp: null,
+          endDate: 1667304003,
+        },
+      ];
+
+      (getRunHistoryForPipeline as jest.Mock).mockResolvedValueOnce({
+        data: runsWithMissingTimestamps,
+        paging: { total: 3 },
+      });
+
+      await act(async () => {
+        render(<IngestionRecentRuns ingestion={mockIngestion} />);
+      });
+
+      const runs = await screen.findAllByTestId('pipeline-status');
+
+      expect(runs).toHaveLength(3);
+
+      const latestRun = await screen.findByText(/Success/);
+
+      expect(latestRun).toBeInTheDocument();
+    });
+
+    it('should sort appRuns by timestamp when provided', async () => {
+      const unorderedAppRuns = [
+        {
+          runId: 'app-run-2',
+          status: Status.Success,
+          startTime: 1667307000,
+          timestamp: 1667307000,
+          endTime: 1667307003,
+          appId: 'app-2',
+        },
+        {
+          runId: 'app-run-1',
+          status: Status.Failed,
+          startTime: 1667301000,
+          timestamp: 1667301000,
+          endTime: 1667301003,
+          appId: 'app-1',
+        },
+        {
+          runId: 'app-run-3',
+          status: Status.Running,
+          startTime: 1667309000,
+          timestamp: 1667309000,
+          endTime: 1667309003,
+          appId: 'app-3',
+        },
+      ];
+
+      await act(async () => {
+        render(
+          <IngestionRecentRuns appRuns={unorderedAppRuns} fetchStatus={false} />
+        );
+      });
+
+      const runs = await screen.findAllByTestId('pipeline-status');
+
+      expect(runs).toHaveLength(3);
+
+      const latestRun = await screen.findByText(/Running/);
+
+      expect(latestRun).toBeInTheDocument();
+    });
+
+    it('should limit results to maximum 5 runs after sorting', async () => {
+      const manyRuns = Array.from({ length: 10 }, (_, i) => ({
+        runId: `run-${i}`,
+        pipelineState: 'success',
+        startDate: 1667300000 + i * 1000,
+        timestamp: 1667300000 + i * 1000,
+        endDate: 1667300003 + i * 1000,
+      }));
+
+      (getRunHistoryForPipeline as jest.Mock).mockResolvedValueOnce({
+        data: manyRuns,
+        paging: { total: 10 },
+      });
+
+      await act(async () => {
+        render(<IngestionRecentRuns ingestion={mockIngestion} />);
+      });
+
+      const runs = await screen.findAllByTestId('pipeline-status');
+
+      expect(runs).toHaveLength(5);
+    });
   });
 });

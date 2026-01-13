@@ -79,6 +79,8 @@ class DomodashboardSource(DashboardServiceSource):
         return cls(config, metadata)
 
     def get_dashboards_list(self) -> Optional[List[DomoDashboardDetails]]:
+        if not self.source_config.includeOwners:
+            logger.debug("Skipping owner information as includeOwners is False")
         dashboards = self.client.domo.page_list()
         dashboard_list = []
         for dashboard in dashboards:
@@ -104,15 +106,23 @@ class DomodashboardSource(DashboardServiceSource):
     def get_owner_ref(
         self, dashboard_details: DomoDashboardDetails
     ) -> Optional[EntityReferenceList]:
-        for owner in dashboard_details.owners or []:
-            try:
-                owner_details = self.client.domo.users_get(owner.id)
-                if owner_details.get("email"):
-                    return self.metadata.get_reference_by_email(owner_details["email"])
-            except Exception as exc:
-                logger.warning(
-                    f"Error while getting details of user {owner.displayName} - {exc}"
-                )
+        try:
+            if not self.source_config.includeOwners:
+                return None
+            for owner in dashboard_details.owners or []:
+                try:
+                    owner_details = self.client.domo.users_get(owner.id)
+                    if owner_details.get("email"):
+                        return self.metadata.get_reference_by_email(
+                            owner_details["email"]
+                        )
+                except Exception as exc:
+                    logger.warning(
+                        f"Error while getting details of user {owner.displayName} - {exc}"
+                    )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not fetch owner data due to {err}")
         return None
 
     def yield_dashboard(
@@ -127,9 +137,11 @@ class DomodashboardSource(DashboardServiceSource):
                 name=EntityName(dashboard_details.id),
                 sourceUrl=SourceUrl(dashboard_url),
                 displayName=dashboard_details.name,
-                description=Markdown(dashboard_details.description)
-                if dashboard_details.description
-                else None,
+                description=(
+                    Markdown(dashboard_details.description)
+                    if dashboard_details.description
+                    else None
+                ),
                 charts=[
                     FullyQualifiedEntityName(
                         fqn.build(
@@ -228,9 +240,11 @@ class DomodashboardSource(DashboardServiceSource):
                     yield Either(
                         right=CreateChartRequest(
                             name=EntityName(str(chart_id)),
-                            description=Markdown(chart.description)
-                            if chart.description
-                            else None,
+                            description=(
+                                Markdown(chart.description)
+                                if chart.description
+                                else None
+                            ),
                             displayName=chart.name,
                             sourceUrl=SourceUrl(chart_url),
                             service=self.context.get().dashboard_service,
@@ -250,6 +264,6 @@ class DomodashboardSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: dict,
-        db_service_name: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """No lineage implemented"""

@@ -4,9 +4,12 @@ import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAME
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Queue;
 import java.util.Set;
 import lombok.Getter;
 import org.flowable.bpmn.model.BoundaryEvent;
@@ -16,11 +19,11 @@ import org.flowable.bpmn.model.SequenceFlow;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.elements.Edge;
 import org.openmetadata.service.governance.workflows.elements.NodeFactory;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.endEvent.EndEvent;
-import org.openmetadata.service.util.JsonUtils;
 
 @Getter
 public class MainWorkflow {
@@ -127,10 +130,11 @@ public class MainWorkflow {
                     "Invalid Workflow: [%s] is expecting '%s' to be an output from [%s], which it is not.",
                     nodeDefinition.getName(), variable, namespace));
           }
-          if (!validateNodeHasInput(nodeDefinition.getName(), namespace)) {
+          // Enhanced validation: Check for reachability instead of direct connection
+          if (!validateNodeIsReachable(nodeDefinition.getName(), namespace)) {
             throw new RuntimeException(
                 String.format(
-                    "Invalid Workflow: [%s] is expecting [%s] to be an input node, which it is not.",
+                    "Invalid Workflow: [%s] is expecting [%s] to be reachable, but no path exists in the workflow graph.",
                     nodeDefinition.getName(), namespace));
           }
         }
@@ -162,7 +166,58 @@ public class MainWorkflow {
     }
 
     private boolean validateNodeHasInput(String nodeName, String inputNodeName) {
-      return incomingEdgesMap.get(nodeName).contains(inputNodeName);
+      List<String> directInputs = incomingEdgesMap.get(nodeName);
+      return directInputs != null && directInputs.contains(inputNodeName);
+    }
+
+    /**
+     * Enhanced validation: Check if sourceNode can reach targetNode through the workflow graph.
+     * This allows for transitive dependencies, not just direct edges.
+     * For example: A -> B -> C, where C can use outputs from A even without a direct edge.
+     */
+    private boolean validateNodeIsReachable(String targetNode, String sourceNode) {
+      // First check for direct connection (fast path)
+      if (validateNodeHasInput(targetNode, sourceNode)) {
+        return true;
+      }
+
+      // If no direct connection, check for transitive path through the graph
+      return canReachThroughGraph(sourceNode, targetNode);
+    }
+
+    /**
+     * BFS to check if sourceNode can reach targetNode through the workflow graph.
+     * This handles cases where variables are passed through intermediate nodes.
+     */
+    private boolean canReachThroughGraph(String sourceNode, String targetNode) {
+      Set<String> visited = new HashSet<>();
+      Queue<String> queue = new LinkedList<>();
+      queue.offer(sourceNode);
+
+      while (!queue.isEmpty()) {
+        String current = queue.poll();
+
+        if (current.equals(targetNode)) {
+          return true;
+        }
+
+        if (visited.contains(current)) {
+          continue;
+        }
+        visited.add(current);
+
+        // Find all nodes that current node connects to
+        for (Map.Entry<String, List<String>> entry : incomingEdgesMap.entrySet()) {
+          if (entry.getValue().contains(current)) {
+            String nextNode = entry.getKey();
+            if (!visited.contains(nextNode)) {
+              queue.offer(nextNode);
+            }
+          }
+        }
+      }
+
+      return false;
     }
 
     public void validate() {

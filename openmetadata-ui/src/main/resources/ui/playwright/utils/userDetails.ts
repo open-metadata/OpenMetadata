@@ -19,7 +19,7 @@ export const redirectToUserPage = async (page: Page) => {
   await page.getByTestId('dropdown-profile').click();
 
   // Hover on the profile avatar to close the name tooltip
-  await page.getByTestId('profile-avatar').hover();
+  await page.getByTestId('profile-avatar').first().hover();
 
   await page.waitForSelector('.profile-dropdown', { state: 'visible' });
 

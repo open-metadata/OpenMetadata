@@ -13,7 +13,7 @@
 
 import { Button, Divider } from 'antd';
 import { isUndefined } from 'lodash';
-import React, { FC } from 'react';
+import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getReplyText } from '../../../../utils/FeedUtils';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';

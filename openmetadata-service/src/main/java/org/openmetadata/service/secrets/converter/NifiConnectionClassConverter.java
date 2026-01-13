@@ -17,7 +17,7 @@ import java.util.List;
 import org.openmetadata.schema.services.connections.pipeline.NifiConnection;
 import org.openmetadata.schema.services.connections.pipeline.nifi.BasicAuth;
 import org.openmetadata.schema.services.connections.pipeline.nifi.ClientCertificateAuth;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /** Converter class to get an `NifiConnection` object. */
 public class NifiConnectionClassConverter extends ClassConverter {

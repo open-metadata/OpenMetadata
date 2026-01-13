@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { FixedType } from 'rc-table/lib/interface';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DISABLED,
@@ -46,6 +46,7 @@ import {
   getEpochMillisForPastDays,
 } from '../../../../../utils/date-time/DateTimeUtils';
 import {
+  getColumnSorter,
   getEntityName,
   highlightSearchText,
 } from '../../../../../utils/EntityUtils';
@@ -325,6 +326,7 @@ function IngestionListTable({
         dataIndex: 'name',
         key: 'name',
         fixed: 'left' as FixedType,
+        sorter: getColumnSorter<IngestionPipeline, 'name'>('name'),
         render: customRenderNameField ?? renderNameField(searchText),
       },
       ...(showDescriptionCol

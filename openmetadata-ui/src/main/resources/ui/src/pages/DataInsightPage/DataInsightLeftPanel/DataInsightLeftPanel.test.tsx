@@ -12,15 +12,12 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import DataInsightLeftPanel from './DataInsightLeftPanel';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockReturnValue({ tab: 'data-assets' }),
 }));
 
@@ -53,6 +50,6 @@ describe('Test Data insight left panel', () => {
       fireEvent.click(appAnalytics);
     });
 
-    expect(mockPush).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalled();
   });
 });

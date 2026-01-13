@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { getListTestCaseBySearch } from '../../../rest/testAPI';
 import { TestCases } from './TestCases.component';
@@ -25,10 +24,7 @@ const testCasePermission = {
   EditDisplayName: true,
   EditCustomFields: true,
 };
-const mockUseParam = { tab: DataQualityPageTabs.TEST_CASES } as {
-  tab?: DataQualityPageTabs;
-};
-const mockUseHistory = { push: jest.fn() };
+
 const mockLocation = { search: '' };
 
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
@@ -67,30 +63,32 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
 jest.mock('react-router-dom', () => {
   return {
     ...jest.requireActual('react-router-dom'),
-    useParams: jest.fn().mockImplementation(() => mockUseParam),
-    useHistory: jest.fn().mockImplementation(() => mockUseHistory),
+    useNavigate: jest.fn().mockReturnValue(jest.fn()),
   };
 });
 jest.mock('../../common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
-jest.mock('../../common/SearchBarComponent/SearchBar.component', () => {
-  return jest.fn().mockImplementation(() => <div>Searchbar.component</div>);
-});
-jest.mock('../../Database/Profiler/DataQualityTab/DataQualityTab', () => {
-  return jest
+jest.mock('../../common/SearchBarComponent/SearchBar.component', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => <div>Searchbar.component</div>),
+}));
+jest.mock('../../Database/Profiler/DataQualityTab/DataQualityTab', () => ({
+  __esModule: true,
+  default: jest
     .fn()
-    .mockImplementation(() => <div>DataQualityTab.component</div>);
-});
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest
+    .mockImplementation(() => <div>DataQualityTab.component</div>),
+}));
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
+  __esModule: true,
+  default: jest
     .fn()
     .mockImplementation(({ type }) => (
       <div data-testid={`error-placeholder-type-${type}`}>
         ErrorPlaceHolder.component
       </div>
-    ));
-});
+    )),
+}));
 const mockDataQualityContext = {
   isTestCaseSummaryLoading: false,
   testCaseSummary: {
@@ -108,34 +106,37 @@ jest.mock('../../../pages/DataQuality/DataQualityProvider', () => {
       .mockImplementation(() => mockDataQualityContext),
   };
 });
-jest.mock('../SummaryPannel/SummaryPanel.component', () => {
-  return {
-    SummaryPanel: jest
-      .fn()
-      .mockImplementation(() => <div>SummaryPanel.component</div>),
-  };
-});
+jest.mock('../SummaryPannel/PieChartSummaryPanel.component', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(() => <div>SummaryPanel.component</div>),
+}));
 
 describe('TestCases component', () => {
   it('component should render', async () => {
     render(<TestCases />);
 
+    // Check for the main container
     expect(
       await screen.findByTestId('test-case-container')
     ).toBeInTheDocument();
-    expect(await screen.findByText('Searchbar.component')).toBeInTheDocument();
-    expect(
-      await screen.findByText('SummaryPanel.component')
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText('DataQualityTab.component')
-    ).toBeInTheDocument();
+
+    // Check for the filter components
     expect(await screen.findByTestId('advanced-filter')).toBeInTheDocument();
     expect(
       await screen.findByTestId('status-select-filter')
     ).toBeInTheDocument();
     expect(
       await screen.findByTestId('test-case-type-select-filter')
+    ).toBeInTheDocument();
+
+    // Check for mocked components
+    expect(
+      await screen.findByText('DataQualityTab.component')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('SummaryPanel.component')
     ).toBeInTheDocument();
   });
 
@@ -147,7 +148,7 @@ describe('TestCases component', () => {
     expect(mockGetListTestCase).toHaveBeenCalledWith({
       fields: ['testCaseResult', 'testSuite', 'incidentId'],
       includeAllTests: true,
-      limit: 10,
+      limit: 15,
       offset: 0,
       q: undefined,
       testCaseStatus: undefined,
@@ -165,7 +166,7 @@ describe('TestCases component', () => {
     expect(mockSearchQuery).toHaveBeenCalledWith({
       fields: ['testCaseResult', 'testSuite', 'incidentId'],
       includeAllTests: true,
-      limit: 10,
+      limit: 15,
       offset: 0,
       q: '*sale*',
       testCaseStatus: undefined,

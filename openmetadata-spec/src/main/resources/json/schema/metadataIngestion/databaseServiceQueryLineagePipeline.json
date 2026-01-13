@@ -41,6 +41,11 @@
       "default": 300,
       "title": "Parsing Timeout Limit"
     },
+    "queryParserConfig": {
+      "title": "Query Parser Configuration",
+      "description": "Configuration for SQL query parser selection for lineage extraction.",
+      "$ref": "./parserconfig/queryParserConfig.json"
+    },
     "filterCondition": {
       "description": "Configuration the condition to filter the query history.",
       "type": "string",
@@ -60,6 +65,11 @@
       "description": "Regex to only fetch databases that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
       "title": "Database Filter Pattern"
+    },
+    "storedProcedureFilterPattern": {
+      "description": "Regex to only fetch stored procedures that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Stored Procedure Filter Pattern"
     },
     "overrideViewLineage":{
       "title": "Override View Lineage",

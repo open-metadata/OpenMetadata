@@ -16,7 +16,7 @@ import { customizeValidator } from '@rjsf/validator-ajv8';
 import { Button, Space } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, omit, omitBy } from 'lodash';
-import React, { FC, useMemo, useState } from 'react';
+import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA,
@@ -31,6 +31,7 @@ import {
   IngestionWorkflowData,
   IngestionWorkflowFormProps,
 } from '../../../../../interface/service.interface';
+import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { transformErrors } from '../../../../../utils/formUtils';
 import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
 import BooleanFieldTemplate from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
@@ -74,7 +75,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   const isDbtPipeline = pipeLineType === PipelineType.Dbt;
 
   const isIncrementalExtractionSupported =
-    serviceData?.connection.config.supportsIncrementalMetadataExtraction;
+    serviceData?.connection?.config?.supportsIncrementalMetadataExtraction;
 
   const uiSchema = useMemo(() => {
     let commonSchema = { ...INGESTION_WORKFLOW_UI_SCHEMA };
@@ -126,10 +127,23 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
     }
   };
 
-  const customFields: RegistryFieldsType = {
-    BooleanField: BooleanFieldTemplate,
-    ArrayField: WorkflowArrayFieldTemplate,
-  };
+  const customFields = useMemo(() => {
+    const fields: RegistryFieldsType = {
+      BooleanField: BooleanFieldTemplate,
+      ArrayField: WorkflowArrayFieldTemplate,
+    };
+
+    const SparkAgentField = ProfilerConfigurationClassBase.getSparkAgentField();
+
+    if (
+      !isUndefined(SparkAgentField) &&
+      pipeLineType === PipelineType.Profiler
+    ) {
+      fields['/schemas/rootProcessingEngine'] = SparkAgentField;
+    }
+
+    return fields;
+  }, [pipeLineType]);
 
   const handleSubmit = (e: IChangeEvent<IngestionWorkflowData>) => {
     if (e.formData) {
@@ -190,7 +204,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
           </Button>
 
           <Button data-testid="submit-btn" htmlType="submit" type="primary">
-            {okText ?? t('label.submit')}
+            {okText ?? t('label.save')}
           </Button>
         </Space>
       </div>

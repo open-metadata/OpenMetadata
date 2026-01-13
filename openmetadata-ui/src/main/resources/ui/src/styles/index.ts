@@ -25,7 +25,7 @@ import '@fontsource/inter/700.css'; // Font 700
 import '@fontsource/inter/800.css'; // Font 800
 import '@fontsource/inter/900.css'; // Font 900
 
-import 'react-awesome-query-builder/lib/css/styles.css';
+import '@react-awesome-query-builder/antd/css/styles.css';
 import 'reactflow/dist/base.css';
 import 'reactflow/dist/style.css';
 import './antd-master.less';
@@ -49,6 +49,7 @@ import './components/select.less';
 import './components/size.less';
 import './components/slider.less';
 import './components/step.less';
+import './components/tags.less';
 import './fonts.less';
 import './modal.less';
 import './temp.css';

@@ -43,24 +43,34 @@ export type TagData = {
   displayName: string;
   classification: string;
   name: string;
+  autoClassificationEnabled?: boolean;
+  autoClassificationPriority?: number;
 };
 
 export class TagClass {
-  randomName = getRandomLastName();
-  data: TagData = {
-    name: `pw-tier-${this.randomName}`,
-    displayName: `PW Tier ${this.randomName}`,
-    description: 'Tier tag for the Collate platform',
-    style: {
-      color: '#FFD700',
-    },
-    classification: 'Tier',
-  };
+  randomName: string;
+  data: TagData;
 
   responseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(tag: Partial<TagData>) {
-    this.data.classification = tag.classification ?? this.data.classification;
+    this.randomName = getRandomLastName();
+    this.data = {
+      name: tag?.name ?? `pw-tier-${this.randomName}`,
+      displayName: `PW Tier ${this.randomName}`,
+      description: 'Tier tag for the Collate platform',
+      style: {
+        color: '#FFD700',
+      },
+      classification: tag.classification ?? 'Tier',
+    };
+    if (typeof tag.autoClassificationEnabled === 'boolean') {
+      this.data.autoClassificationEnabled = tag.autoClassificationEnabled;
+    }
+
+    if (typeof tag.autoClassificationPriority === 'number') {
+      this.data.autoClassificationPriority = tag.autoClassificationPriority;
+    }
   }
 
   async visitPage(page: Page) {
@@ -69,9 +79,8 @@ export class TagClass {
       this.responseData.classification.name,
       this.responseData.classification.displayName
     );
-    const res = page.waitForResponse(`/api/v1/tags/name/*`);
+    await page.getByTestId(this.data.name).waitFor({ state: 'visible' });
     await page.getByTestId(this.data.name).click();
-    await res;
     await page.waitForLoadState('networkidle');
   }
 
@@ -95,5 +104,9 @@ export class TagClass {
     );
 
     return await response.json();
+  }
+
+  getTagDisplayName() {
+    return this.responseData.displayName;
   }
 }

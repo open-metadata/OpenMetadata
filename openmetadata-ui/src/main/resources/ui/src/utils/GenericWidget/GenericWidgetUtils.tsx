@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import classNames from 'classnames';
-import React from 'react';
 import APIEndpointSchema from '../../components/APIEndpoint/APIEndpointSchema/APIEndpointSchema';
 import { PropertyValue } from '../../components/common/CustomPropertyTable/PropertyValue';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
@@ -78,9 +77,9 @@ export const WIDGET_COMPONENTS = {
     domainClassBase.getDummyData().domainType,
   [DetailPageWidgetKeys.DOMAIN]: () => (
     <DomainLabel
-      domain={
-        { type: EntityType.DOMAIN, name: 'Engineering' } as EntityReference
-      }
+      domains={[
+        { type: EntityType.DOMAIN, name: 'Engineering' } as EntityReference,
+      ]}
       entityFqn="Engineering"
       entityId="123"
       entityType={EntityType.DOMAIN}

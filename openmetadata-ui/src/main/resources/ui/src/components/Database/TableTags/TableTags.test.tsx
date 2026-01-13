@@ -11,13 +11,25 @@
  *  limitations under the License.
  */
 
+import { createTheme, Theme, ThemeProvider } from '@mui/material/styles';
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { Constraint, DataType } from '../../../generated/entity/data/table';
 import { LabelType, State, TagSource } from '../../../generated/type/schema';
 import TableTags from './TableTags.component';
+
+const theme: Theme = createTheme({
+  palette: {
+    allShades: {
+      brand: {
+        50: '#EFF8FF',
+        100: '#D1E9FF',
+        900: '#194185',
+      },
+    },
+  },
+});
 
 jest.mock('../../../utils/FeedElementUtils', () => ({
   getFieldThreadElement: jest
@@ -101,10 +113,16 @@ const mockProp = {
   entityType: EntityType.TABLE,
 };
 
+const Wrapper = ({ children }: { children: React.ReactNode }) => (
+  <ThemeProvider theme={theme}>
+    <MemoryRouter>{children}</MemoryRouter>
+  </ThemeProvider>
+);
+
 describe('Test EntityTableTags Component', () => {
   it('Initially, Tags Container should load', async () => {
     render(<TableTags {...mockProp} />, {
-      wrapper: MemoryRouter,
+      wrapper: Wrapper,
     });
 
     const tagContainer = await screen.findByTestId('classification-tags-0');
@@ -124,7 +142,7 @@ describe('Test EntityTableTags Component', () => {
         tags={[...classificationTags, ...glossaryTags]}
       />,
       {
-        wrapper: MemoryRouter,
+        wrapper: Wrapper,
       }
     );
 
@@ -144,7 +162,7 @@ describe('Test EntityTableTags Component', () => {
         tags={[...classificationTags, ...glossaryTags]}
       />,
       {
-        wrapper: MemoryRouter,
+        wrapper: Wrapper,
       }
     );
 
@@ -167,7 +185,7 @@ describe('Test EntityTableTags Component', () => {
         tags={[...classificationTags, ...glossaryTags]}
       />,
       {
-        wrapper: MemoryRouter,
+        wrapper: Wrapper,
       }
     );
 
@@ -190,7 +208,7 @@ describe('Test EntityTableTags Component', () => {
         tags={[...classificationTags, ...glossaryTags]}
       />,
       {
-        wrapper: MemoryRouter,
+        wrapper: Wrapper,
       }
     );
 

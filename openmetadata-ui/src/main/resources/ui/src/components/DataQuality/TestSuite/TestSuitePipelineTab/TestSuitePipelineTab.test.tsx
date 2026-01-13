@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { act } from 'react-test-renderer';
 import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
@@ -113,18 +112,40 @@ jest.mock(
 );
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
   useLocation: jest.fn().mockReturnValue({
     pathname: '/test/path',
     search: '',
     hash: '',
     state: null,
   }),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: {},
+  }),
+}));
+
+jest.mock('../../../../hooks/paging/usePaging', () => ({
+  usePaging: jest.fn().mockReturnValue({
+    paging: {
+      after: 'after-id',
+      before: 'before-id',
+      total: 10,
+    },
+    handlePagingChange: jest.fn(),
+    currentPage: 1,
+    handlePageChange: jest.fn(),
+    pageSize: 15,
+    handlePageSizeChange: jest.fn(),
+    showPagination: true,
+    pagingCursor: {
+      cursorType: undefined,
+      cursorValue: undefined,
+      currentPage: '1',
+      pageSize: 15,
+    },
   }),
 }));
 

@@ -27,9 +27,17 @@
       },
       "default": null
     },
-    "domain" : {
-      "description": "Fully qualified name of the domain the Table belongs to.",
-      "type": "string"
+    "domains" : {
+      "description": "Fully qualified names of the domains the Persona belongs to.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "default": {
+      "description": "When true, this persona is the system-wide default persona that will be applied to users who don't have any persona assigned or no default persona set.",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": ["name"],

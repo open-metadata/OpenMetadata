@@ -13,10 +13,10 @@
 
 package org.openmetadata.service.resources.lineage;
 
-import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
@@ -28,16 +28,20 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -56,6 +60,7 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.api.services.CreateApiService;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
@@ -65,23 +70,28 @@ import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.ContainerDataModel;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.lineage.NodeInformation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
+import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResourceTest;
@@ -90,12 +100,12 @@ import org.openmetadata.service.resources.dqtests.TestDefinitionResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.mlmodels.MlModelResourceTest;
+import org.openmetadata.service.resources.services.APIServiceResourceTest;
 import org.openmetadata.service.resources.storages.ContainerResourceTest;
 import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.resources.teams.RoleResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -336,20 +346,20 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS);
 
     // Add invalid column lineage (from column or to column are invalid)
+    // invalid columns are now silently filtered out instead of throwing errors
     details
         .getColumnsLineage()
         .add(new ColumnLineage().withFromColumns(List.of("invalidColumn")).withToColumn(t2c1FQN));
-    assertResponse(
-        () -> addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "Invalid column name invalidColumn");
+    // This should now succeed with the invalid column being filtered out
+    addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS);
+
+    // Clear and test invalid toColumn
+    details.getColumnsLineage().clear();
     details
         .getColumnsLineage()
         .add(new ColumnLineage().withFromColumns(List.of(t1c1FQN)).withToColumn("invalidColumn"));
-    assertResponse(
-        () -> addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "Invalid column name invalidColumn");
+    // the invalid column lineage being filtered out
+    addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS);
 
     // Add column level lineage with multiple fromColumns (t1c1 + t3c1) to t2c1
     details.getColumnsLineage().clear();
@@ -398,10 +408,8 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     String f3FQN = "test_non_existent_filed";
     topicToTableLineage.add(
         new ColumnLineage().withFromColumns(List.of(f3FQN)).withToColumn(d1c1FQN));
-    assertResponse(
-        () -> addEdge(TOPIC, TABLE_DATA_MODEL_LINEAGE, topicToTable, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        String.format("Invalid column name %s", f3FQN));
+    // invalid columns are now silently filtered out instead of throwing errors
+    addEdge(TOPIC, TABLE_DATA_MODEL_LINEAGE, topicToTable, ADMIN_AUTH_HEADERS);
 
     LineageDetails topicToContainer = new LineageDetails();
     String f1c1 = CONTAINER.getDataModel().getColumns().get(0).getFullyQualifiedName();
@@ -415,10 +423,8 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     String f2c3FQN = "test_non_existent_container_column";
     topicToContainerLineage.add(
         new ColumnLineage().withFromColumns(List.of(f2FQN)).withToColumn(f2c3FQN));
-    assertResponse(
-        () -> addEdge(TOPIC, CONTAINER, topicToContainer, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        String.format("Invalid column name %s", f2c3FQN));
+    // invalid columns are now silently filtered out instead of throwing errors
+    addEdge(TOPIC, CONTAINER, topicToContainer, ADMIN_AUTH_HEADERS);
 
     LineageDetails containerToTable = new LineageDetails();
     List<ColumnLineage> containerToTableLineage = containerToTable.getColumnsLineage();
@@ -440,10 +446,8 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     String m3f3 = "test_non_existent_feature";
     tableToMlModelLineage.add(
         new ColumnLineage().withFromColumns(List.of(f2t2)).withToColumn(m3f3));
-    assertResponse(
-        () -> addEdge(TABLE_DATA_MODEL_LINEAGE, ML_MODEL, tableToMlModel, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        String.format("Invalid column name %s", m3f3));
+    // invalid columns are now silently filtered out instead of throwing errors
+    addEdge(TABLE_DATA_MODEL_LINEAGE, ML_MODEL, tableToMlModel, ADMIN_AUTH_HEADERS);
 
     LineageDetails tableToDashboard = new LineageDetails();
     String c1d1 = DASHBOARD.getCharts().get(0).getFullyQualifiedName();
@@ -475,8 +479,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
 
   @Order(6)
   @Test
-  void get_dataQualityLineage(TestInfo test)
-      throws IOException, URISyntaxException, ParseException {
+  void get_dataQualityLineage(TestInfo test) throws IOException, ParseException {
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
     TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
     TestDefinitionResourceTest testDefinitionResourceTest = new TestDefinitionResourceTest();
@@ -511,17 +514,25 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     TestSuite testSuite6 =
         testSuiteResourceTest.createBasicTestSuite(createTestSuite6, ADMIN_AUTH_HEADERS);
 
-    MessageParser.EntityLink TABLE4_LINK =
-        new MessageParser.EntityLink(Entity.TABLE, TABLES.get(4).getFullyQualifiedName());
-    MessageParser.EntityLink TABLE6_LINK =
-        new MessageParser.EntityLink(Entity.TABLE, TABLES.get(6).getFullyQualifiedName());
+    MessageParser.EntityLink TABLE4_COLUMN_LINK =
+        MessageParser.EntityLink.parse(
+            String.format(
+                "<#E::table::%s::columns::%s>",
+                TABLES.get(4).getFullyQualifiedName(),
+                TABLES.get(4).getColumns().get(0).getName()));
+    MessageParser.EntityLink TABLE6_COLUMN_LINK =
+        MessageParser.EntityLink.parse(
+            String.format(
+                "<#E::table::%s::columns::%s>",
+                TABLES.get(6).getFullyQualifiedName(),
+                TABLES.get(6).getColumns().get(0).getName()));
     CreateTestCase create4 = testCaseResourceTest.createRequest(test);
     CreateTestCase create6 = testCaseResourceTest.createRequest(test, 2);
     create4
-        .withEntityLink(TABLE4_LINK.getLinkString())
+        .withEntityLink(TABLE4_COLUMN_LINK.getLinkString())
         .withTestDefinition(testDefinition.getFullyQualifiedName());
     create6
-        .withEntityLink(TABLE6_LINK.getLinkString())
+        .withEntityLink(TABLE6_COLUMN_LINK.getLinkString())
         .withTestDefinition(testDefinition.getFullyQualifiedName());
     TestCase testCase4 = testCaseResourceTest.createEntity(create4, ADMIN_AUTH_HEADERS);
     TestCase testCase6 = testCaseResourceTest.createEntity(create6, ADMIN_AUTH_HEADERS);
@@ -607,6 +618,569 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     deleteEdge(TABLES.get(2), TABLES.get(1));
     deleteEdge(TABLES.get(2), TABLES.get(7));
     deleteEdge(TABLES.get(6), TABLES.get(7));
+  }
+
+  @Order(8)
+  @Test
+  void test_lineageWithDirection() throws IOException {
+    // Create a simple lineage chain: A -> B -> C
+    Table tableA = TABLES.get(0);
+    Table tableB = TABLES.get(1);
+    Table tableC = TABLES.get(2);
+
+    // Create lineage relationships
+    addEdge(tableA, tableB); // A -> B
+    addEdge(tableB, tableC); // B -> C
+
+    // Test UPSTREAM direction for tableB (should find A -> B)
+    Map<String, String> queryParamsUpstream = new HashMap<>();
+    queryParamsUpstream.put("fqn", tableB.getFullyQualifiedName());
+    queryParamsUpstream.put("upstreamDepth", "1");
+    queryParamsUpstream.put("downstreamDepth", "0");
+
+    WebTarget upstreamTarget = getResource("lineage/getLineage");
+    for (Map.Entry<String, String> entry : queryParamsUpstream.entrySet()) {
+      upstreamTarget = upstreamTarget.queryParam(entry.getKey(), entry.getValue());
+    }
+    SearchLineageResult upstreamResult =
+        TestUtils.get(upstreamTarget, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+
+    // Assertions for upstream: should find tableA -> tableB
+    assertNotNull(upstreamResult);
+    assertEquals(2, upstreamResult.getNodes().size());
+    assertTrue(upstreamResult.getNodes().containsKey(tableA.getFullyQualifiedName()));
+    assertTrue(upstreamResult.getNodes().containsKey(tableB.getFullyQualifiedName()));
+
+    // Verify upstream edges
+    assertEquals(1, upstreamResult.getUpstreamEdges().size());
+    var upstreamEdge = upstreamResult.getUpstreamEdges().values().iterator().next();
+    assertEquals(tableA.getId(), upstreamEdge.getFromEntity().getId());
+    assertEquals(tableB.getId(), upstreamEdge.getToEntity().getId());
+    assertTrue(upstreamResult.getDownstreamEdges().isEmpty());
+
+    // Test UPSTREAM direction with depth=2 (should return up to 2 upstream edges)
+    Map<String, String> queryParamsUpstreamTwo = new HashMap<>();
+    queryParamsUpstreamTwo.put("fqn", tableC.getFullyQualifiedName());
+    queryParamsUpstreamTwo.put("upstreamDepth", "2");
+    queryParamsUpstreamTwo.put("downstreamDepth", "0");
+
+    WebTarget upstreamTwoTarget = getResource("lineage/getLineage");
+    for (Map.Entry<String, String> entry : queryParamsUpstreamTwo.entrySet()) {
+      upstreamTwoTarget = upstreamTwoTarget.queryParam(entry.getKey(), entry.getValue());
+    }
+    SearchLineageResult upstreamTwoResult =
+        TestUtils.get(upstreamTwoTarget, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(upstreamTwoResult);
+    // Should have 3 nodes (C, B, A) and 2 upstream edges (B->C, A->B)
+    assertEquals(3, upstreamTwoResult.getNodes().size());
+    assertEquals(2, upstreamTwoResult.getUpstreamEdges().size());
+    assertTrue(upstreamTwoResult.getNodes().containsKey(tableA.getFullyQualifiedName()));
+    assertTrue(upstreamTwoResult.getNodes().containsKey(tableB.getFullyQualifiedName()));
+    assertTrue(upstreamTwoResult.getNodes().containsKey(tableC.getFullyQualifiedName()));
+
+    // Test UPSTREAM direction with depth=0 (should return starting node + immediate upstreams)
+    Map<String, String> queryParamsUpstreamZero = new HashMap<>();
+    queryParamsUpstreamZero.put("fqn", tableB.getFullyQualifiedName());
+    queryParamsUpstreamZero.put("upstreamDepth", "0");
+    queryParamsUpstreamZero.put("downstreamDepth", "0");
+
+    WebTarget upstreamZeroTarget = getResource("lineage/getLineage");
+    for (Map.Entry<String, String> entry : queryParamsUpstreamZero.entrySet()) {
+      upstreamZeroTarget = upstreamZeroTarget.queryParam(entry.getKey(), entry.getValue());
+    }
+    SearchLineageResult upstreamZeroResult =
+        TestUtils.get(upstreamZeroTarget, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(upstreamZeroResult);
+    // Debug output
+    // For depth=1, expect starting node + nothing else
+    assertEquals(1, upstreamZeroResult.getNodes().size());
+    assertFalse(upstreamZeroResult.getNodes().containsKey(tableA.getFullyQualifiedName()));
+    assertTrue(upstreamZeroResult.getNodes().containsKey(tableB.getFullyQualifiedName()));
+    assertTrue(upstreamZeroResult.getDownstreamEdges().isEmpty());
+    assertTrue(upstreamZeroResult.getDownstreamEdges().isEmpty());
+
+    // Test DOWNSTREAM direction for tableB (should find B -> C)
+    Map<String, String> queryParamsDownstream = new HashMap<>();
+    queryParamsDownstream.put("fqn", tableB.getFullyQualifiedName());
+    queryParamsDownstream.put("upstreamDepth", "0");
+    queryParamsDownstream.put("downstreamDepth", "1");
+
+    WebTarget downstreamTarget = getResource("lineage/getLineage");
+    for (Map.Entry<String, String> entry : queryParamsDownstream.entrySet()) {
+      downstreamTarget = downstreamTarget.queryParam(entry.getKey(), entry.getValue());
+    }
+    SearchLineageResult downstreamResult =
+        TestUtils.get(downstreamTarget, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+
+    // Assertions for downstream: should find tableB -> tableC, upstream=0 will should not return
+    // anything
+    assertNotNull(downstreamResult);
+    assertEquals(2, downstreamResult.getNodes().size());
+    assertFalse(downstreamResult.getNodes().containsKey(tableA.getFullyQualifiedName()));
+    assertTrue(downstreamResult.getNodes().containsKey(tableB.getFullyQualifiedName()));
+    assertTrue(downstreamResult.getNodes().containsKey(tableC.getFullyQualifiedName()));
+
+    // Verify downstream edges
+    assertEquals(1, downstreamResult.getDownstreamEdges().size());
+    var downstreamEdge = downstreamResult.getDownstreamEdges().values().iterator().next();
+    assertEquals(tableB.getId(), downstreamEdge.getFromEntity().getId());
+    assertEquals(tableC.getId(), downstreamEdge.getToEntity().getId());
+
+    // 1 upstream is there, for upstreamDepth = 0
+    assertEquals(0, downstreamResult.getUpstreamEdges().size());
+
+    // Clean up
+    deleteEdge(tableA, tableB);
+    deleteEdge(tableB, tableC);
+  }
+
+  @Order(9)
+  @Test
+  void test_lineageBothDirections() throws IOException {
+    // Create a lineage chain: A -> B -> C
+    Table tableA = TABLES.get(3);
+    Table tableB = TABLES.get(4);
+    Table tableC = TABLES.get(5);
+
+    // Create lineage relationships
+    addEdge(tableA, tableB); // A -> B
+    addEdge(tableB, tableC); // B -> C
+
+    // Test both directions using tableB's FQN
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("fqn", tableB.getFullyQualifiedName());
+    queryParams.put("upstreamDepth", "1");
+    queryParams.put("downstreamDepth", "1");
+
+    WebTarget target = getResource("lineage/getLineage");
+    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
+    }
+    SearchLineageResult result =
+        TestUtils.get(target, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+
+    // Assertions
+    assertNotNull(result);
+    // Nodes should be tableA, tableB, tableC
+    assertEquals(3, result.getNodes().size());
+    assertTrue(result.getNodes().containsKey(tableA.getFullyQualifiedName()));
+    assertTrue(result.getNodes().containsKey(tableB.getFullyQualifiedName()));
+    assertTrue(result.getNodes().containsKey(tableC.getFullyQualifiedName()));
+
+    // There should be 1 upstream and 1 downstream edge for tableB
+    assertEquals(1, result.getUpstreamEdges().size());
+    assertEquals(1, result.getDownstreamEdges().size());
+
+    // Check upstream edge: tableA -> tableB
+    assertTrue(
+        result.getUpstreamEdges().values().stream()
+            .anyMatch(
+                e ->
+                    e.getFromEntity().getId().equals(tableA.getId())
+                        && e.getToEntity().getId().equals(tableB.getId())),
+        "Edge from tableA to tableB not found in upstream edges");
+
+    // Check downstream edge: tableB -> tableC
+    assertTrue(
+        result.getDownstreamEdges().values().stream()
+            .anyMatch(
+                e ->
+                    e.getFromEntity().getId().equals(tableB.getId())
+                        && e.getToEntity().getId().equals(tableC.getId())),
+        "Edge from tableB to tableC not found in downstream edges");
+
+    // Clean up
+    deleteEdge(tableA, tableB);
+    deleteEdge(tableB, tableC);
+  }
+
+  @Order(10)
+  @Test
+  void test_lineageFanOutUpstream(TestInfo test) throws IOException {
+    // Create a fan-out upstream scenario: A -> B, C -> B, D -> B
+    Table tableA = TABLES.get(6);
+    Table tableB = TABLES.get(7);
+    Table tableC = TABLES.get(8);
+    Table tableD = TABLES.get(9);
+
+    // Create lineage relationships (multiple parents to one child)
+    addEdge(tableA, tableB); // A -> B
+    addEdge(tableC, tableB); // C -> B
+    addEdge(tableD, tableB); // D -> B
+
+    // Call lineage API: upstream depth = 1
+    WebTarget target =
+        getResource("lineage/getLineage")
+            .queryParam("fqn", tableB.getFullyQualifiedName())
+            .queryParam("upstreamDepth", "1")
+            .queryParam("downstreamDepth", "0");
+
+    SearchLineageResult result =
+        TestUtils.get(target, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+
+    // Expectations: 4 nodes (B + 3 parents) and 3 upstream edges
+    assertEquals(4, result.getNodes().size());
+    assertEquals(3, result.getUpstreamEdges().size());
+    assertTrue(result.getDownstreamEdges().isEmpty());
+
+    // Expected nodes
+    assertEquals(
+        Set.of(
+            tableA.getFullyQualifiedName(),
+            tableB.getFullyQualifiedName(),
+            tableC.getFullyQualifiedName(),
+            tableD.getFullyQualifiedName()),
+        result.getNodes().keySet());
+
+    // Verify upstream edges: each parent -> B
+    assertEquals(3, result.getUpstreamEdges().size());
+    Set<UUID> parentIds = Set.of(tableA.getId(), tableC.getId(), tableD.getId());
+    for (var edge : result.getUpstreamEdges().values()) {
+      assertTrue(parentIds.contains(edge.getFromEntity().getId()));
+      assertEquals(tableB.getId(), edge.getToEntity().getId());
+    }
+    assertTrue(result.getDownstreamEdges().isEmpty());
+
+    // Clean up
+    deleteEdge(tableA, tableB);
+    deleteEdge(tableC, tableB);
+    deleteEdge(tableD, tableB);
+  }
+
+  @Order(11)
+  @Test
+  void test_lineageMultiHopDownstream(TestInfo test) throws IOException {
+    // Create a multi-hop downstream scenario: A -> B -> C -> D
+    Table tableA = TABLES.get(0);
+    Table tableB = TABLES.get(1);
+    Table tableC = TABLES.get(2);
+    Table tableD = TABLES.get(3);
+
+    // Create lineage relationships
+    addEdge(tableA, tableB); // A -> B
+    addEdge(tableB, tableC); // B -> C
+    addEdge(tableC, tableD); // C -> D
+
+    // Downstream depth = 1 (expect A, B, C)
+    WebTarget depth1Target =
+        getResource("lineage/getLineage")
+            .queryParam("fqn", tableA.getFullyQualifiedName())
+            .queryParam("upstreamDepth", "0")
+            .queryParam("downstreamDepth", "1");
+    var depth1Result = TestUtils.get(depth1Target, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+
+    // For depth=1, expect starting node + immediate downstreams
+    assertEquals(2, depth1Result.getNodes().size());
+    assertEquals(1, depth1Result.getDownstreamEdges().size());
+    assertEquals(
+        Set.of(tableA.getFullyQualifiedName(), tableB.getFullyQualifiedName()),
+        depth1Result.getNodes().keySet());
+
+    // Verify downstream edge: A -> B
+    var edge = depth1Result.getDownstreamEdges().values().iterator().next();
+    assertEquals(tableA.getId(), edge.getFromEntity().getId());
+    assertEquals(tableB.getId(), edge.getToEntity().getId());
+
+    // Downstream depth = 2 (expect A, B, C, D)
+    WebTarget depth2Target =
+        getResource("lineage/getLineage")
+            .queryParam("fqn", tableA.getFullyQualifiedName())
+            .queryParam("upstreamDepth", "0")
+            .queryParam("downstreamDepth", "2");
+    var depth2Result = TestUtils.get(depth2Target, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+
+    // For depth=2, expect starting node + all downstreams up to depth 2
+    // Note: D is at depth 3 (A->B->C->D), so it's not included for depth=2
+    assertEquals(3, depth2Result.getNodes().size());
+    assertEquals(2, depth2Result.getDownstreamEdges().size());
+    assertEquals(
+        Set.of(
+            tableA.getFullyQualifiedName(),
+            tableB.getFullyQualifiedName(),
+            tableC.getFullyQualifiedName()),
+        depth2Result.getNodes().keySet());
+
+    // Verify downstream edges: A -> B, B -> C
+    boolean foundAB = false, foundBC = false;
+    for (var e : depth2Result.getDownstreamEdges().values()) {
+      if (e.getFromEntity().getId().equals(tableA.getId())
+          && e.getToEntity().getId().equals(tableB.getId())) foundAB = true;
+      if (e.getFromEntity().getId().equals(tableB.getId())
+          && e.getToEntity().getId().equals(tableC.getId())) foundBC = true;
+    }
+    assertTrue(foundAB, "Edge A->B not found");
+    assertTrue(foundBC, "Edge B->C not found");
+
+    // Clean up
+    deleteEdge(tableA, tableB);
+    deleteEdge(tableB, tableC);
+    deleteEdge(tableC, tableD);
+  }
+
+  @Order(12)
+  @Test
+  void test_lineageWithDirectionEndpoint() throws IOException {
+    // Create a simple lineage chain: A -> B -> C
+    Table tableA = TABLES.get(0);
+    Table tableB = TABLES.get(1);
+    Table tableC = TABLES.get(2);
+
+    // Create lineage relationships
+    addEdge(tableA, tableB); // A -> B
+    addEdge(tableB, tableC); // B -> C
+
+    // Test UPSTREAM direction using the direction-specific endpoint
+    WebTarget upstreamTarget =
+        getResource("lineage/getLineage/UPSTREAM")
+            .queryParam("fqn", tableB.getFullyQualifiedName())
+            .queryParam("upstreamDepth", "1")
+            .queryParam("downstreamDepth", "0");
+
+    SearchLineageResult upstreamResult =
+        TestUtils.get(upstreamTarget, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+
+    // Assertions for upstream: should find tableA -> tableB
+    assertNotNull(upstreamResult);
+    assertEquals(2, upstreamResult.getNodes().size());
+    assertTrue(upstreamResult.getNodes().containsKey(tableA.getFullyQualifiedName()));
+    assertTrue(upstreamResult.getNodes().containsKey(tableB.getFullyQualifiedName()));
+
+    // Verify upstream edges
+    assertEquals(1, upstreamResult.getUpstreamEdges().size());
+    var upstreamEdge = upstreamResult.getUpstreamEdges().values().iterator().next();
+    assertEquals(tableA.getId(), upstreamEdge.getFromEntity().getId());
+    assertEquals(tableB.getId(), upstreamEdge.getToEntity().getId());
+    assertTrue(upstreamResult.getDownstreamEdges().isEmpty());
+
+    // Test DOWNSTREAM direction using the direction-specific endpoint
+    // Note: The direction-specific endpoint should only return downstream nodes
+    WebTarget downstreamTarget =
+        getResource("lineage/getLineage/DOWNSTREAM")
+            .queryParam("fqn", tableB.getFullyQualifiedName())
+            .queryParam("downstreamDepth", "1");
+
+    SearchLineageResult downstreamResult =
+        TestUtils.get(downstreamTarget, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+
+    // Assertions for downstream: should find tableB -> tableC
+    // The direction-specific endpoint should only return downstream nodes
+    assertNotNull(downstreamResult);
+    assertEquals(2, downstreamResult.getNodes().size());
+    assertTrue(downstreamResult.getNodes().containsKey(tableB.getFullyQualifiedName()));
+    assertTrue(downstreamResult.getNodes().containsKey(tableC.getFullyQualifiedName()));
+
+    // Verify downstream edges
+    assertEquals(1, downstreamResult.getDownstreamEdges().size());
+    var downstreamEdge = downstreamResult.getDownstreamEdges().values().iterator().next();
+    assertEquals(tableB.getId(), downstreamEdge.getFromEntity().getId());
+    assertEquals(tableC.getId(), downstreamEdge.getToEntity().getId());
+
+    // Verify no upstream edges (direction-specific endpoint should not include upstream)
+    assertTrue(downstreamResult.getUpstreamEdges().isEmpty());
+
+    // Clean up
+    deleteEdge(tableA, tableB);
+    deleteEdge(tableB, tableC);
+  }
+
+  @Order(13)
+  @Test
+  void test_platformLineage() throws IOException {
+    // Create a comprehensive platform lineage scenario with multiple services
+    // This test will verify the platform lineage endpoint functionality for 'service' view only
+
+    // Create lineage relationships: table0 -> table1 -> table2 (within same service)
+    addEdge(TABLES.get(0), TABLES.get(1));
+    addEdge(TABLES.get(1), TABLES.get(2));
+
+    // Create cross-service lineage: table3 -> table4 (different services)
+    addEdge(TABLES.get(3), TABLES.get(4));
+
+    // Create a longer chain: table5 -> table6 -> table7
+    addEdge(TABLES.get(5), TABLES.get(6));
+    addEdge(TABLES.get(6), TABLES.get(7));
+
+    // Test platform lineage with 'service' view only
+    WebTarget serviceViewTarget =
+        getResource("lineage/getPlatformLineage")
+            .queryParam("view", "service")
+            .queryParam("includeDeleted", false);
+
+    SearchLineageResult serviceViewResult =
+        TestUtils.get(serviceViewTarget, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+
+    // Verify service view response
+    assertNotNull(serviceViewResult);
+    assertSearchLineageResponseFields(serviceViewResult);
+    assertFalse(serviceViewResult.getNodes().isEmpty(), "Service view should return nodes");
+    assertFalse(
+        serviceViewResult.getUpstreamEdges().isEmpty(),
+        "Upstream edges should not be empty for platformLineage");
+
+    // Check the number of upstream edges (downstreamEdges will always be empty for platformLineage)
+    // 5 edges are created
+    int expectedUpstreamEdges = serviceViewResult.getUpstreamEdges().size();
+    assertEquals(5, expectedUpstreamEdges, "Should have 5 upstream edges");
+    assertTrue(
+        serviceViewResult.getDownstreamEdges().isEmpty(),
+        "Downstream edges should be empty for platformLineage");
+    // Clean up all created lineage relationships
+    deleteEdge(TABLES.get(0), TABLES.get(1));
+    deleteEdge(TABLES.get(1), TABLES.get(2));
+    deleteEdge(TABLES.get(3), TABLES.get(4));
+    deleteEdge(TABLES.get(5), TABLES.get(6));
+    deleteEdge(TABLES.get(6), TABLES.get(7));
+  }
+
+  @Order(14)
+  @Test
+  void test_platformLineageAllViews() throws IOException {
+    // Test platform lineage with all view types to ensure cluster alias is not duplicated
+    // This test verifies the fix for double cluster alias appending issue
+    //
+
+    // Verify cluster alias is configured in test environment
+    String clusterAlias = Entity.getSearchRepository().getClusterAlias();
+    assertNotNull(clusterAlias, "Cluster alias should be configured in test environment");
+    assertEquals("openmetadata", clusterAlias, "Expected cluster alias to be 'openmetadata'");
+
+    // Create lineage relationships
+    addEdge(TABLES.get(0), TABLES.get(1));
+    addEdge(TABLES.get(1), TABLES.get(2));
+
+    // Test 1: Service view
+    // Service view works even with the bug because "service" is not a valid entity type,
+    // so the transformation is skipped
+    WebTarget serviceViewTarget =
+        getResource("lineage/getPlatformLineage")
+            .queryParam("view", "service")
+            .queryParam("includeDeleted", false);
+
+    SearchLineageResult serviceViewResult =
+        TestUtils.get(serviceViewTarget, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(serviceViewResult, "Service view should return a valid response");
+    assertNotNull(serviceViewResult.getNodes(), "Service view should have nodes");
+    assertNotNull(serviceViewResult.getUpstreamEdges(), "Service view should have upstream edges");
+    assertNotNull(
+        serviceViewResult.getDownstreamEdges(), "Service view should have downstream edges");
+
+    // Test 2: Domain view
+    // Without the fix, this would fail with:
+    // "index_not_found_exception: no such index [openmetadata_openmetadata_domain_search_index]"
+    WebTarget domainViewTarget =
+        getResource("lineage/getPlatformLineage")
+            .queryParam("view", "domain")
+            .queryParam("includeDeleted", false);
+
+    SearchLineageResult domainViewResult =
+        TestUtils.get(domainViewTarget, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(domainViewResult, "Domain view should return a valid response");
+    assertNotNull(domainViewResult.getNodes(), "Domain view should have nodes");
+    assertNotNull(domainViewResult.getUpstreamEdges(), "Domain view should have upstream edges");
+    assertNotNull(
+        domainViewResult.getDownstreamEdges(), "Domain view should have downstream edges");
+
+    // Test 3: DataProduct view
+    // Without the fix, this would fail with:
+    // "index_not_found_exception: no such index
+    // [openmetadata_openmetadata_data_product_search_index]"
+    WebTarget dataProductViewTarget =
+        getResource("lineage/getPlatformLineage")
+            .queryParam("view", "dataProduct")
+            .queryParam("includeDeleted", false);
+
+    SearchLineageResult dataProductViewResult =
+        TestUtils.get(dataProductViewTarget, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(dataProductViewResult, "DataProduct view should return a valid response");
+    assertNotNull(dataProductViewResult.getNodes(), "DataProduct view should have nodes");
+    assertNotNull(
+        dataProductViewResult.getUpstreamEdges(), "DataProduct view should have upstream edges");
+    assertNotNull(
+        dataProductViewResult.getDownstreamEdges(),
+        "DataProduct view should have downstream edges");
+
+    // Test 4: All view
+    WebTarget allViewTarget =
+        getResource("lineage/getPlatformLineage")
+            .queryParam("view", "all")
+            .queryParam("includeDeleted", false);
+
+    SearchLineageResult allViewResult =
+        TestUtils.get(allViewTarget, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(allViewResult, "All view should return a valid response");
+    assertNotNull(allViewResult.getNodes(), "All view should have nodes");
+    assertNotNull(allViewResult.getUpstreamEdges(), "All view should have upstream edges");
+    assertNotNull(allViewResult.getDownstreamEdges(), "All view should have downstream edges");
+
+    // Clean up
+    deleteEdge(TABLES.get(0), TABLES.get(1));
+    deleteEdge(TABLES.get(1), TABLES.get(2));
+  }
+
+  @Order(15)
+  @Test
+  void test_searchLineageForServiceEntity(TestInfo test) throws IOException {
+    // Test that lineage search works correctly for service entities (apiService, databaseService)
+
+    // Create an API service
+    APIServiceResourceTest apiServiceResourceTest = new APIServiceResourceTest();
+    CreateApiService createApiService =
+        apiServiceResourceTest
+            .createRequest(test)
+            .withName("test_lineage_api_service")
+            .withServiceType(CreateApiService.ApiServiceType.Rest)
+            .withConnection(TestUtils.API_SERVICE_CONNECTION);
+
+    ApiService apiService =
+        apiServiceResourceTest.createEntity(createApiService, ADMIN_AUTH_HEADERS);
+
+    // Test searching lineage for the API service entity
+    WebTarget target = getResource("lineage/getLineage");
+    target = target.queryParam("fqn", apiService.getFullyQualifiedName());
+    target = target.queryParam("type", "apiService");
+    target = target.queryParam("upstreamDepth", 0);
+    target = target.queryParam("downstreamDepth", 0);
+
+    SearchLineageResult result =
+        TestUtils.get(target, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+
+    // Verify the API service was found in search
+    assertNotNull(result, "Search lineage result should not be null");
+    assertNotNull(result.getNodes(), "Nodes map should not be null");
+    assertEquals(1, result.getNodes().size(), "Should find exactly one node");
+    assertTrue(
+        result.getNodes().containsKey(apiService.getFullyQualifiedName()),
+        "Should contain the API service in nodes");
+
+    // Verify the node information
+    NodeInformation nodeInfo = result.getNodes().get(apiService.getFullyQualifiedName());
+    assertNotNull(nodeInfo, "Node information should not be null");
+    assertEquals(
+        "apiService", nodeInfo.getEntity().get("entityType"), "Entity type should be apiService");
+
+    // Test with includeDeleted=false (the original issue scenario)
+    WebTarget targetWithDeletedFalse = getResource("lineage/getLineage");
+    targetWithDeletedFalse =
+        targetWithDeletedFalse.queryParam("fqn", apiService.getFullyQualifiedName());
+    targetWithDeletedFalse = targetWithDeletedFalse.queryParam("type", "apiService");
+    targetWithDeletedFalse = targetWithDeletedFalse.queryParam("upstreamDepth", 0);
+    targetWithDeletedFalse = targetWithDeletedFalse.queryParam("downstreamDepth", 0);
+    targetWithDeletedFalse = targetWithDeletedFalse.queryParam("includeDeleted", false);
+
+    SearchLineageResult resultWithDeleted =
+        TestUtils.get(targetWithDeletedFalse, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+
+    // Verify the API service is still found with includeDeleted=false
+    assertNotNull(resultWithDeleted, "Result with includeDeleted=false should not be null");
+    assertEquals(
+        1,
+        resultWithDeleted.getNodes().size(),
+        "Should still find the API service with includeDeleted=false");
+
+    // Cleanup
+    apiServiceResourceTest.deleteEntity(apiService.getId(), ADMIN_AUTH_HEADERS);
   }
 
   public Edge getEdge(Table from, Table to) {
@@ -793,15 +1367,18 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
       assertTrue(keys.containsAll(nodesFields), err);
 
       List<Map<String, Object>> columns = (List<Map<String, Object>>) entity.get("columns");
-      columns.forEach(
-          c -> {
-            Set<String> columnsKeys = c.keySet();
-            Set<String> missingColumnKeys = new HashSet<>(nodesColumnsFields);
-            missingColumnKeys.removeAll(columnsKeys);
-            String columnErr =
-                String.format("Column nodes keys not found in the response: %s", missingColumnKeys);
-            assertTrue(columnsKeys.containsAll(nodesColumnsFields), columnErr);
-          });
+      if (columns != null) {
+        columns.forEach(
+            c -> {
+              Set<String> columnsKeys = c.keySet();
+              Set<String> missingColumnKeys = new HashSet<>(nodesColumnsFields);
+              missingColumnKeys.removeAll(columnsKeys);
+              String columnErr =
+                  String.format(
+                      "Column nodes keys not found in the response: %s", missingColumnKeys);
+              assertTrue(columnsKeys.containsAll(nodesColumnsFields), columnErr);
+            });
+      }
     }
   }
 
@@ -899,5 +1476,159 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     for (Edge expectedDownstreamEdge : expectedDownstreamEdges) {
       assertEdgeFromLineage(lineage.getDownstreamEdges(), expectedDownstreamEdge);
     }
+  }
+
+  @Order(8)
+  @Test
+  void test_getChildrenNames_AllEntityTypes() throws Exception {
+    LineageRepository lineageRepository = new LineageRepository();
+    Method getChildrenNamesMethod =
+        LineageRepository.class.getDeclaredMethod("getChildrenNames", EntityReference.class);
+    getChildrenNamesMethod.setAccessible(true);
+
+    // Test Table Entity - should return column children
+    EntityReference tableRef = TABLES.get(0).getEntityReference();
+    Set<String> tableChildren =
+        (Set<String>) getChildrenNamesMethod.invoke(lineageRepository, tableRef);
+    assertFalse(tableChildren.isEmpty(), "Table should have column children");
+    assertTrue(tableChildren.size() >= 3, "Table should have at least 3 columns");
+    Set<String> expectedColumns =
+        TABLES.get(0).getColumns().stream().map(Column::getName).collect(Collectors.toSet());
+    assertTrue(
+        tableChildren.containsAll(expectedColumns),
+        "Table children should contain expected column names: " + expectedColumns);
+
+    // Test Topic Entity - should return schema field children
+    EntityReference topicRef = TOPIC.getEntityReference();
+    Set<String> topicChildren =
+        (Set<String>) getChildrenNamesMethod.invoke(lineageRepository, topicRef);
+    assertFalse(topicChildren.isEmpty(), "Topic should have schema field children");
+    assertTrue(topicChildren.size() >= 1, "Topic should have at least 1 schema field");
+    Set<String> expectedFields =
+        TOPIC.getMessageSchema().getSchemaFields().stream()
+            .map(Field::getName)
+            .sorted()
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+    assertEquals(
+        expectedFields,
+        topicChildren.stream().sorted().collect(Collectors.toCollection(LinkedHashSet::new)),
+        "Topic children should contain expected field names: " + expectedFields);
+
+    // Test Container Entity - should return data model column children
+    EntityReference containerRef = CONTAINER.getEntityReference();
+    Set<String> containerChildren =
+        (Set<String>) getChildrenNamesMethod.invoke(lineageRepository, containerRef);
+    assertFalse(containerChildren.isEmpty(), "Container should have data model column children");
+    assertTrue(containerChildren.size() >= 2, "Container should have at least 2 columns");
+    Set<String> expectedContainerField =
+        CONTAINER.getDataModel().getColumns().stream()
+            .map(Column::getName)
+            .sorted()
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+    assertEquals(
+        expectedContainerField,
+        containerChildren.stream().sorted().collect(Collectors.toCollection(LinkedHashSet::new)),
+        "Container children should contain expected column names: " + expectedContainerField);
+
+    // Test DashboardDataModel Entity - should return column children
+    EntityReference dataModelRef = DATA_MODEL.getEntityReference();
+    Set<String> dataModelChildren =
+        (Set<String>) getChildrenNamesMethod.invoke(lineageRepository, dataModelRef);
+    assertFalse(dataModelChildren.isEmpty(), "DashboardDataModel should have column children");
+    assertTrue(dataModelChildren.size() >= 3, "DashboardDataModel should have at least 3 columns");
+    Set<String> expectedDataModelColumns =
+        DATA_MODEL.getColumns().stream()
+            .map(Column::getName)
+            .sorted()
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+    assertTrue(
+        dataModelChildren.stream().sorted().toList().containsAll(expectedDataModelColumns),
+        "DashboardDataModel children should contain expected column names: "
+            + expectedDataModelColumns);
+
+    // Test Dashboard Entity - should return chart children without FQN prefix
+    EntityReference dashboardRef = DASHBOARD.getEntityReference();
+    Set<String> dashboardChildren =
+        (Set<String>) getChildrenNamesMethod.invoke(lineageRepository, dashboardRef);
+    assertFalse(dashboardChildren.isEmpty(), "Dashboard should have chart children");
+    assertTrue(dashboardChildren.size() >= 2, "Dashboard should have at least 2 charts");
+    Set<String> expectedChartNames =
+        DASHBOARD.getCharts().stream()
+            .map(
+                chart ->
+                    chart
+                        .getFullyQualifiedName()
+                        .replace(DASHBOARD.getFullyQualifiedName() + ".", ""))
+            .collect(Collectors.toSet());
+    assertEquals(
+        expectedChartNames,
+        dashboardChildren,
+        "Dashboard children should match expected chart names without FQN prefix");
+    for (String chartName : dashboardChildren) {
+      assertFalse(
+          chartName.contains(DASHBOARD.getFullyQualifiedName() + "."),
+          "Chart name should not contain dashboard FQN prefix: " + chartName);
+    }
+
+    // Test MlModel Entity - should return feature children without FQN prefix
+    EntityReference mlModelRef = ML_MODEL.getEntityReference();
+    Set<String> mlModelChildren =
+        (Set<String>) getChildrenNamesMethod.invoke(lineageRepository, mlModelRef);
+    assertFalse(mlModelChildren.isEmpty(), "MlModel should have ML feature children");
+    assertTrue(mlModelChildren.size() >= 2, "MlModel should have at least 2 ML features");
+    Set<String> expectedFeatureNames =
+        ML_MODEL.getMlFeatures().stream()
+            .map(
+                feature ->
+                    feature
+                        .getFullyQualifiedName()
+                        .replace(ML_MODEL.getFullyQualifiedName() + ".", ""))
+            .collect(Collectors.toSet());
+    assertEquals(
+        expectedFeatureNames,
+        mlModelChildren,
+        "MlModel children should match expected feature names without FQN prefix");
+    for (String featureName : mlModelChildren) {
+      assertFalse(
+          featureName.contains(ML_MODEL.getFullyQualifiedName() + "."),
+          "Feature name should not contain ML model FQN prefix: " + featureName);
+    }
+
+    // Test Topic Entity without schema - should return empty set
+    TopicResourceTest topicResourceTest = new TopicResourceTest();
+    CreateTopic topicRequest = topicResourceTest.createRequest("topicWithoutSchema");
+    topicRequest.setMessageSchema(null);
+    Topic topicWithoutSchema = topicResourceTest.createEntity(topicRequest, ADMIN_AUTH_HEADERS);
+    EntityReference topicWithoutSchemaRef = topicWithoutSchema.getEntityReference();
+    Set<String> topicWithoutSchemaChildren =
+        (Set<String>) getChildrenNamesMethod.invoke(lineageRepository, topicWithoutSchemaRef);
+    assertTrue(
+        topicWithoutSchemaChildren.isEmpty(),
+        "Topic without message schema should return empty set");
+
+    // Test Container Entity without data model - should return empty set
+    ContainerResourceTest containerResourceTest = new ContainerResourceTest();
+    CreateContainer containerRequest =
+        containerResourceTest.createRequest("containerWithoutDataModel");
+    containerRequest.setDataModel(null);
+    Container containerWithoutDataModel =
+        containerResourceTest.createEntity(containerRequest, ADMIN_AUTH_HEADERS);
+    EntityReference containerWithoutDataModelRef = containerWithoutDataModel.getEntityReference();
+    Set<String> containerWithoutDataModelChildren =
+        (Set<String>)
+            getChildrenNamesMethod.invoke(lineageRepository, containerWithoutDataModelRef);
+    assertTrue(
+        containerWithoutDataModelChildren.isEmpty(),
+        "Container without data model should return empty set");
+
+    // Test unknown entity type - should return empty set
+    EntityReference unknownRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("UNKNOWN_TYPE")
+            .withFullyQualifiedName("test.unknown");
+    Set<String> unknownChildren =
+        (Set<String>) getChildrenNamesMethod.invoke(lineageRepository, unknownRef);
+    assertTrue(unknownChildren.isEmpty(), "Unknown entity type should return empty set");
   }
 }

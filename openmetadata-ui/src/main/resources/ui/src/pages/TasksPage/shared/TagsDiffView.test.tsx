@@ -13,7 +13,6 @@
 
 import { render, screen } from '@testing-library/react';
 import { ArrayChange } from 'diff';
-import React from 'react';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { TagsDiffView } from './TagsDiffView';
 

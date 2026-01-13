@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -31,15 +31,25 @@ export interface AuthenticationConfiguration {
      */
     clientType?: ClientType;
     /**
+     * Enable automatic redirect from the sign-in page to the configured SSO provider.
+     */
+    enableAutoRedirect?: boolean;
+    /**
      * Enable Self Sign Up
      */
     enableSelfSignup?: boolean;
+    /**
+     * Force secure flag on session cookies even when not using HTTPS directly. Enable this when
+     * running behind a proxy/load balancer that handles SSL termination.
+     */
+    forceSecureSessionCookie?: boolean;
     /**
      * Jwt Principal Claim
      */
     jwtPrincipalClaims: string[];
     /**
-     * Jwt Principal Claim Mapping
+     * Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or
+     * 'email'. Both username and email mappings are required.
      */
     jwtPrincipalClaimsMapping?: string[];
     /**
@@ -290,11 +300,11 @@ export interface OidcClientConfig {
     /**
      * Discovery Uri for the Client.
      */
-    discoveryUri?: string;
+    discoveryUri: string;
     /**
      * Client ID.
      */
-    id?: string;
+    id: string;
     /**
      * Validity for the JWT Token created from SAML Response
      */
@@ -322,15 +332,19 @@ export interface OidcClientConfig {
     /**
      * Client Secret.
      */
-    secret?: string;
+    secret: string;
     /**
      * Server Url.
      */
     serverUrl?: string;
     /**
+     * Validity for the Session in case of confidential clients
+     */
+    sessionExpiry?: number;
+    /**
      * Tenant in case of Azure.
      */
-    tenant?: string;
+    tenant: string;
     /**
      * Validity for the JWT Token created from SAML Response
      */
@@ -402,7 +416,7 @@ export interface SamlSSOClientConfig {
  */
 export interface Idp {
     /**
-     * Authority URL to redirect the users on Sign In page
+     * Authority URL (deprecated, use entityId instead).
      */
     authorityUrl?: string;
     /**
@@ -414,7 +428,7 @@ export interface Idp {
      */
     idpX509Certificate?: string;
     /**
-     * Authority URL to redirect the users on Sign In page
+     * Name ID format for SAML assertions
      */
     nameId?: string;
     /**

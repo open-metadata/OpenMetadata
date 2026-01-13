@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React, { useMemo } from 'react';
-import { Switch } from 'react-router-dom';
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -22,6 +23,7 @@ import AdminProtectedRoute from './AdminProtectedRoute';
 
 const ClassificationRouter = () => {
   const { permissions } = usePermissionProvider();
+  const { t } = useTranslation();
   const tagCategoryPermission = useMemo(
     () =>
       userPermissions.hasViewPermissions(
@@ -33,20 +35,32 @@ const ClassificationRouter = () => {
   );
 
   return (
-    <Switch>
-      <AdminProtectedRoute
-        exact
-        component={TagsPage}
-        hasPermission={tagCategoryPermission}
-        path={[ROUTES.TAGS, ROUTES.TAG_DETAILS]}
+    <Routes>
+      <Route
+        element={
+          <AdminProtectedRoute hasPermission={tagCategoryPermission}>
+            <TagsPage pageTitle={t('label.tag-plural')} />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.TAGS.replace(ROUTES.TAGS, '')}
       />
-      <AdminProtectedRoute
-        exact
-        component={ClassificationVersionPage}
-        hasPermission={tagCategoryPermission}
-        path={ROUTES.TAG_VERSION}
+      <Route
+        element={
+          <AdminProtectedRoute hasPermission={tagCategoryPermission}>
+            <TagsPage pageTitle={t('label.tag-plural')} />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.TAG_DETAILS.replace(ROUTES.TAGS, '')}
       />
-    </Switch>
+      <Route
+        element={
+          <AdminProtectedRoute hasPermission={tagCategoryPermission}>
+            <ClassificationVersionPage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.TAG_VERSION.replace(ROUTES.TAGS, '')}
+      />
+    </Routes>
   );
 };
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -36,9 +36,9 @@ export interface CreateTable {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Table belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -133,7 +133,11 @@ export interface Column {
     /**
      * Display Name that identifies this column name.
      */
-    displayName?:        string;
+    displayName?: string;
+    /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?:          any;
     fullyQualifiedName?: string;
     /**
      * Json schema only if the dataType is JSON else null.
@@ -202,6 +206,8 @@ export enum DataType {
     Float = "FLOAT",
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
+    Heirarchy = "HEIRARCHY",
+    Hierarchyid = "HIERARCHYID",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -211,12 +217,14 @@ export enum DataType {
     Ipv4 = "IPV4",
     Ipv6 = "IPV6",
     JSON = "JSON",
+    Kpi = "KPI",
     Largeint = "LARGEINT",
     Long = "LONG",
     Longblob = "LONGBLOB",
     Lowcardinality = "LOWCARDINALITY",
     Macaddr = "MACADDR",
     Map = "MAP",
+    Measure = "MEASURE",
     MeasureHidden = "MEASURE HIDDEN",
     MeasureVisible = "MEASURE VISIBLE",
     Mediumblob = "MEDIUMBLOB",
@@ -376,6 +384,10 @@ export interface EntityReference {
  */
 export interface ColumnProfile {
     /**
+     * Cardinality distribution showing top categories with an 'Others' bucket.
+     */
+    cardinalityDistribution?: CardinalityDistribution;
+    /**
      * Custom Metrics profile list bound to a column.
      */
     customMetrics?: CustomMetricProfile[];
@@ -494,6 +506,29 @@ export interface ColumnProfile {
 }
 
 /**
+ * Cardinality distribution showing top categories with an 'Others' bucket.
+ */
+export interface CardinalityDistribution {
+    /**
+     * Flag indicating that all values in the column are unique, so no distribution is
+     * calculated.
+     */
+    allValuesUnique?: boolean;
+    /**
+     * List of category names including 'Others'.
+     */
+    categories?: string[];
+    /**
+     * List of counts corresponding to each category.
+     */
+    counts?: number[];
+    /**
+     * List of percentages corresponding to each category.
+     */
+    percentages?: number[];
+}
+
+/**
  * Profiling results of a Custom Metric.
  */
 export interface CustomMetricProfile {
@@ -523,6 +558,14 @@ export interface HistogramClass {
  */
 export interface TagLabel {
     /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
+    /**
      * Description for the tag label.
      */
     description?: string;
@@ -546,6 +589,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */
@@ -601,9 +648,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**
@@ -616,6 +685,11 @@ export interface DataModel {
      * from `schema.yaml`.
      */
     columns?: Column[];
+    /**
+     * The DBT project name that served as the source for ingesting this table's metadata and
+     * lineage information.
+     */
+    dbtSourceProject?: string;
     /**
      * Description of the Table from the model.
      */
@@ -665,13 +739,19 @@ export enum ModelType {
 export enum FileFormat {
     Avro = "avro",
     CSV = "csv",
+    CSVGz = "csv.gz",
     JSON = "json",
     JSONGz = "json.gz",
     JSONZip = "json.zip",
     Jsonl = "jsonl",
     JsonlGz = "jsonl.gz",
     JsonlZip = "jsonl.zip",
+    Mf4 = "MF4",
+    Parq = "parq",
     Parquet = "parquet",
+    ParquetSnappy = "parquet.snappy",
+    Pq = "pq",
+    Pqt = "pqt",
     Tsv = "tsv",
 }
 
@@ -834,6 +914,11 @@ export interface TableProfilerConfig {
      */
     sampleDataCount?:    number;
     samplingMethodType?: SamplingMethodType;
+    /**
+     * Table Specific configuration for Profiling it with a Spark Engine. It is ignored for
+     * other engines.
+     */
+    sparkTableProfilerConfig?: SparkTableProfilerConfig;
     [property: string]: any;
 }
 
@@ -914,6 +999,38 @@ export enum ProfileSampleType {
 export enum SamplingMethodType {
     Bernoulli = "BERNOULLI",
     System = "SYSTEM",
+}
+
+/**
+ * Table Specific configuration for Profiling it with a Spark Engine. It is ignored for
+ * other engines.
+ */
+export interface SparkTableProfilerConfig {
+    /**
+     * When reading big tables from sources, we optimize the reading by partitioning the data.
+     * This configuration is responsible for it.
+     */
+    partitioning?: Partitioning;
+}
+
+/**
+ * When reading big tables from sources, we optimize the reading by partitioning the data.
+ * This configuration is responsible for it.
+ */
+export interface Partitioning {
+    /**
+     * Lower bound of the partition range. If not provided, it will be fetched from the source.
+     */
+    lowerBound?: string;
+    /**
+     * Column to partition on. It should be a date, timestamp or integer column. It is important
+     * for the data to be reasonably equally distributed across the partitions.
+     */
+    partitionColumn: string;
+    /**
+     * Upper bound of the partition range. If not provided, it will be fetched from the source.
+     */
+    upperBound?: string;
 }
 
 /**

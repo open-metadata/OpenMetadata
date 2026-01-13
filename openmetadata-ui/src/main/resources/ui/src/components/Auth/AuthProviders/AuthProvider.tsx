@@ -13,6 +13,7 @@
 
 import { removeSession } from '@analytics/session-utils';
 import { Auth0Provider } from '@auth0/auth0-react';
+
 import {
   Configuration,
   IPublicClientApplication,
@@ -25,9 +26,9 @@ import {
   InternalAxiosRequestConfig,
 } from 'axios';
 import { CookieStorage } from 'cookie-storage';
-import { isEmpty, isNil, isNumber } from 'lodash';
-import Qs from 'qs';
-import React, {
+import { isNil, isNumber } from 'lodash';
+import { WebStorageStateStore } from 'oidc-client';
+import {
   ComponentType,
   createContext,
   ReactNode,
@@ -39,17 +40,15 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { UN_AUTHORIZED_EXCLUDED_PATHS } from '../../../constants/Auth.constants';
 import {
-  DEFAULT_DOMAIN_VALUE,
   ES_MAX_PAGE_SIZE,
   REDIRECT_PATHNAME,
   ROUTES,
 } from '../../../constants/constants';
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
-import { SearchIndex } from '../../../enums/search.enum';
 import {
   AuthenticationConfiguration,
   ClientType,
@@ -76,14 +75,14 @@ import {
   prepareUserProfileFromClaims,
   validateAuthFields,
 } from '../../../utils/AuthProvider.util';
+import { withDomainFilter } from '../../../utils/DomainUtils';
 import {
+  clearOidcToken,
   getOidcToken,
   getRefreshToken,
   setOidcToken,
   setRefreshToken,
-} from '../../../utils/LocalStorageUtils';
-import { getPathNameFromWindowLocation } from '../../../utils/RouterUtils';
-import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
+} from '../../../utils/SwTokenStorageUtils';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import { checkIfUpdateRequired } from '../../../utils/UserDataUtils';
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
@@ -94,7 +93,6 @@ import { GenericAuthenticator } from '../AppAuthenticators/GenericAuthenticator'
 import MsalAuthenticator from '../AppAuthenticators/MsalAuthenticator';
 import OidcAuthenticator from '../AppAuthenticators/OidcAuthenticator';
 import OktaAuthenticator from '../AppAuthenticators/OktaAuthenticator';
-import SamlAuthenticator from '../AppAuthenticators/SamlAuthenticator';
 import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
 import BasicAuthProvider from './BasicAuthProvider';
 import OktaAuthProvider from './OktaAuthProvider';
@@ -120,7 +118,6 @@ const isEmailVerifyField = 'isEmailVerified';
 let requestInterceptor: number | null = null;
 let responseInterceptor: number | null = null;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let pendingRequests: any[] = [];
 
 type AuthContextType = {
@@ -153,12 +150,14 @@ export const AuthProvider = ({
     setJwtPrincipalClaimsMapping,
     isApplicationLoading,
     setApplicationLoading,
+    isAuthenticating,
+    initializeAuthState,
   } = useApplicationStore();
   const { updateDomains, updateDomainLoading } = useDomainStore();
   const tokenService = useRef<TokenService>(TokenService.getInstance());
 
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
 
   const [timeoutId, setTimeoutId] = useState<number>();
@@ -167,7 +166,10 @@ export const AuthProvider = ({
   const authenticatorRef = useRef<AuthenticatorRef>(null);
 
   const userConfig = useMemo(
-    () => (authConfig ? getUserManagerConfig(authConfig) : {}),
+    () =>
+      authConfig
+        ? getUserManagerConfig(authConfig)
+        : ({} as Record<string, string | boolean | WebStorageStateStore>),
     [authConfig]
   );
 
@@ -196,8 +198,9 @@ export const AuthProvider = ({
     // remove analytics session on logout
     removeSession();
 
-    // remove the refresh token on logout
-    setRefreshToken('');
+    // Clear tokens properly during logout
+    await setOidcToken('');
+    await setRefreshToken('');
 
     setApplicationLoading(false);
 
@@ -205,7 +208,7 @@ export const AuthProvider = ({
     tokenService.current.clearRefreshInProgress();
 
     // Upon logout, redirect to the login page
-    history.push(ROUTES.SIGNIN);
+    navigate(ROUTES.SIGNIN);
   }, [timeoutId]);
 
   const fetchDomainList = useCallback(async () => {
@@ -225,7 +228,20 @@ export const AuthProvider = ({
 
   const handledVerifiedUser = () => {
     if (!applicationRoutesClass.isProtectedRoute(location.pathname)) {
-      history.push(ROUTES.HOME);
+      // Check if provider uses OidcAuthenticator which has routing logic
+      const usesOidcAuthenticator = [
+        AuthProviderEnum.Google,
+        AuthProviderEnum.CustomOidc,
+        AuthProviderEnum.AwsCognito,
+      ].includes(authConfig?.provider as AuthProviderEnum);
+
+      // For providers using OidcAuthenticator, navigate to HOME for routing
+      // For all others (Azure, Auth0, SAML, etc.), navigate directly to MY_DATA
+      if (usesOidcAuthenticator && clientType !== ClientType.Confidential) {
+        navigate(ROUTES.HOME);
+      } else {
+        navigate(ROUTES.MY_DATA);
+      }
     }
   };
 
@@ -244,8 +260,7 @@ export const AuthProvider = ({
 
   const resetUserDetails = (forceLogout = false) => {
     setCurrentUser({} as User);
-    setOidcToken('');
-    setRefreshToken('');
+    clearOidcToken();
     setIsAuthenticated(false);
     setApplicationLoading(false);
     clearTimeout(timeoutId);
@@ -254,7 +269,7 @@ export const AuthProvider = ({
       onLogoutHandler();
       showInfoToast(t('message.session-expired'));
     } else {
-      history.push(ROUTES.SIGNIN);
+      navigate(ROUTES.SIGNIN);
     }
   };
 
@@ -292,12 +307,11 @@ export const AuthProvider = ({
    * It will also ensure that we have time left for token expiry
    * This method will be call upon successful signIn
    */
-  const startTokenExpiryTimer = () => {
+  const startTokenExpiryTimer = async () => {
+    const oidcToken = await getOidcToken();
     // Extract expiry
-    const { isExpired, timeoutExpiry } = extractDetailsFromToken(
-      getOidcToken()
-    );
-    const refreshToken = getRefreshToken();
+    const { isExpired, timeoutExpiry } = extractDetailsFromToken(oidcToken);
+    const refreshToken = await getRefreshToken();
 
     // Basic & LDAP renewToken depends on RefreshToken hence adding a check here for the same
     const shouldStartExpiry =
@@ -318,6 +332,10 @@ export const AuthProvider = ({
       setTimeoutId(Number(timerId));
     }
   };
+
+  useEffect(() => {
+    initializeAuthState();
+  }, []);
 
   useEffect(() => {
     if (authenticatorRef.current?.renewIdToken) {
@@ -341,7 +359,7 @@ export const AuthProvider = ({
     setIsSigningUp(false);
     setIsAuthenticated(false);
     setApplicationLoading(false);
-    history.push(ROUTES.SIGNIN);
+    navigate(ROUTES.SIGNIN);
   };
 
   const handleSuccessfulLogin = useCallback(
@@ -378,20 +396,20 @@ export const AuthProvider = ({
         if (err?.response?.status === 404) {
           if (!authConfig?.enableSelfSignup) {
             resetUserDetails();
+            navigate(ROUTES.UNAUTHORISED);
             showErrorToast(err);
-            history.push(ROUTES.UNAUTHORISED);
           } else {
             setNewUserProfile(user.profile);
             setCurrentUser({} as User);
             setIsSigningUp(true);
-            history.push(ROUTES.SIGNUP);
+            navigate(ROUTES.SIGNUP);
           }
         } else {
           // eslint-disable-next-line no-console
           console.error(err);
           showErrorToast(err);
           resetUserDetails();
-          history.push(ROUTES.SIGNIN);
+          navigate(ROUTES.SIGNIN);
         }
       } finally {
         setApplicationLoading(false);
@@ -441,61 +459,11 @@ export const AuthProvider = ({
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const withDomainFilter = (config: InternalAxiosRequestConfig<any>) => {
-    const isGetRequest = config.method === 'get';
-    const activeDomain = useDomainStore.getState().activeDomain;
-    const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
-    const currentPath = getPathNameFromWindowLocation();
-    const shouldNotIntercept = [
-      '/domain',
-      '/auth/logout',
-      '/auth/refresh',
-    ].reduce((prev, curr) => {
-      return prev || currentPath.startsWith(curr);
-    }, false);
-
-    // Do not intercept requests from domains page or /auth endpoints
-    if (shouldNotIntercept) {
-      return config;
-    }
-
-    if (isGetRequest && hasActiveDomain) {
-      // Filter ES Query
-      if (config.url?.includes('/search/query')) {
-        if (config.params?.index === SearchIndex.TAG) {
-          return config;
-        }
-
-        // Parse and update the query parameter
-        const queryParams = Qs.parse(config.url.split('?')[1]);
-        // adding quotes for exact matching
-        const domainStatement = `(domain.fullyQualifiedName:"${escapeESReservedCharacters(
-          activeDomain
-        )}")`;
-        queryParams.q = queryParams.q ?? '';
-        queryParams.q += isEmpty(queryParams.q)
-          ? domainStatement
-          : ` AND ${domainStatement}`;
-
-        // Update the URL with the modified query parameter
-        config.url = `${config.url.split('?')[0]}?${Qs.stringify(queryParams)}`;
-      } else {
-        config.params = {
-          ...config.params,
-          domain: activeDomain,
-        };
-      }
-    }
-
-    return config;
-  };
-
   /**
    * Initialize Axios interceptors to intercept every request and response
    * to handle appropriately. This should be called only when security is enabled.
    */
-  const initializeAxiosInterceptors = () => {
+  const initializeAxiosInterceptors = async () => {
     // Axios Request interceptor to add Bearer tokens in Header
     if (requestInterceptor != null) {
       axiosClient.interceptors.request.eject(requestInterceptor);
@@ -506,11 +474,10 @@ export const AuthProvider = ({
     }
 
     requestInterceptor = axiosClient.interceptors.request.use(async function (
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       config: InternalAxiosRequestConfig<any>
     ) {
       // Need to read token from local storage as it might have been updated with refresh
-      const token: string = getOidcToken() || '';
+      const token: string = await getOidcToken();
       if (token) {
         if (config.headers) {
           config.headers['Authorization'] = `Bearer ${token}`;
@@ -614,18 +581,18 @@ export const AuthProvider = ({
           setJwtPrincipalClaimsMapping(authConfig.jwtPrincipalClaimsMapping);
           setAuthConfig(configJson);
           setAuthorizerConfig(authorizerConfig);
+          // RDF enabled status is already set from system config in App.tsx
           updateAuthInstance(configJson);
-          if (!getOidcToken()) {
+          const oidcToken = await getOidcToken();
+          if (!oidcToken) {
             handleStoreProtectedRedirectPath();
             setApplicationLoading(false);
           } else {
             // get the user details if token is present and route is not auth callback and saml callback
             if (
-              ![
-                ROUTES.AUTH_CALLBACK,
-                ROUTES.SAML_CALLBACK,
-                ROUTES.SILENT_CALLBACK,
-              ].includes(location.pathname)
+              ![ROUTES.AUTH_CALLBACK, ROUTES.SILENT_CALLBACK].includes(
+                location.pathname
+              )
             ) {
               getLoggedInUserDetails();
             }
@@ -655,14 +622,19 @@ export const AuthProvider = ({
   };
 
   const getProtectedApp = () => {
-    // Show loader if application in loading state
-    const childElement = isApplicationLoading ? (
-      <Loader fullScreen />
-    ) : (
-      children
-    );
+    // Show loader if application is loading or authenticating
+    const childElement =
+      isApplicationLoading || isAuthenticating ? (
+        <Loader fullScreen />
+      ) : (
+        children
+      );
 
-    if (clientType === ClientType.Confidential) {
+    // Handling for SAML moved to GenericAuthenticator
+    if (
+      clientType === ClientType.Confidential ||
+      authConfig?.provider === AuthProviderEnum.Saml
+    ) {
       return (
         <GenericAuthenticator ref={authenticatorRef}>
           {childElement}
@@ -684,7 +656,7 @@ export const AuthProvider = ({
         return (
           <Auth0Provider
             useRefreshTokens
-            cacheLocation="localstorage"
+            cacheLocation="memory"
             clientId={authConfig.clientId.toString()}
             domain={authConfig.authority.toString()}
             redirectUri={authConfig.callbackUrl.toString()}>
@@ -692,13 +664,6 @@ export const AuthProvider = ({
               {childElement}
             </Auth0Authenticator>
           </Auth0Provider>
-        );
-      }
-      case AuthProviderEnum.Saml: {
-        return (
-          <SamlAuthenticator ref={authenticatorRef}>
-            {childElement}
-          </SamlAuthenticator>
         );
       }
       case AuthProviderEnum.Okta: {

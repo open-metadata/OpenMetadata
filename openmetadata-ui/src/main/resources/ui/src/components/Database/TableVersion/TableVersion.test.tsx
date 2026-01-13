@@ -11,14 +11,12 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import { tableVersionMockProps } from '../../../mocks/TableVersion.mock';
 import TableVersion from './TableVersion.component';
 
-const mockPush = jest.fn();
-
+const mockNavigate = jest.fn();
 jest.mock(
   '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
   () => jest.fn().mockImplementation(() => <div>DataAssetsVersionHeader</div>)
@@ -55,13 +53,23 @@ jest.mock('../../common/Loader/Loader', () =>
 );
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockReturnValue({
     tab: 'tables',
   }),
+  useLocation: jest.fn().mockImplementation(() => ({ pathname: 'pathname' })),
 }));
+
+jest.mock(
+  '../../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
 
 describe('TableVersion tests', () => {
   it('Should render component properly if not loading', async () => {
@@ -123,12 +131,60 @@ describe('TableVersion tests', () => {
     expect(customPropertyTabLabel).toBeInTheDocument();
     expect(versionTable).toBeInTheDocument();
 
-    await act(async () => {
-      userEvent.click(customPropertyTabLabel);
-    });
+    fireEvent.click(customPropertyTabLabel);
 
-    expect(mockPush).toHaveBeenCalledWith(
+    expect(mockNavigate).toHaveBeenCalledWith(
       '/table/sample_data.ecommerce_db.shopify.raw_product_catalog/versions/0.3/custom_properties'
     );
+  });
+
+  describe('ViewCustomFields Permission Tests', () => {
+    it('should render custom properties tab when ViewCustomFields is true', async () => {
+      await act(async () => {
+        render(
+          <TableVersion
+            {...tableVersionMockProps}
+            entityPermissions={{
+              ...ENTITY_PERMISSIONS,
+              ViewCustomFields: true,
+            }}
+          />
+        );
+      });
+
+      const customPropertyTabLabel = screen.getByText(
+        'label.custom-property-plural'
+      );
+
+      expect(customPropertyTabLabel).toBeInTheDocument();
+
+      fireEvent.click(customPropertyTabLabel);
+
+      expect(screen.getByText('CustomPropertyTable')).toBeInTheDocument();
+    });
+
+    it('should render custom properties tab when ViewCustomFields is false', async () => {
+      await act(async () => {
+        render(
+          <TableVersion
+            {...tableVersionMockProps}
+            entityPermissions={{
+              ...ENTITY_PERMISSIONS,
+              ViewCustomFields: false,
+            }}
+          />
+        );
+      });
+
+      const customPropertyTabLabel = screen.getByText(
+        'label.custom-property-plural'
+      );
+
+      expect(customPropertyTabLabel).toBeInTheDocument();
+
+      fireEvent.click(customPropertyTabLabel);
+
+      expect(screen.getByText('CustomPropertyTable')).toBeInTheDocument();
+    });
   });
 });

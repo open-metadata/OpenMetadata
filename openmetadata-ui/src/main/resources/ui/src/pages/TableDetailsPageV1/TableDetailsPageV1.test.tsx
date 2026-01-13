@@ -13,18 +13,98 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { TableType } from '../../generated/entity/data/table';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import TableDetailsPageV1 from './TableDetailsPageV1';
 
+/**
+ * Mock MUI components that have Jest compatibility issues
+ */
+jest.mock('@mui/material', () => ({
+  Box: ({
+    children,
+    ...props
+  }: {
+    children: React.ReactNode;
+    'data-testid'?: string;
+  }) => <div data-testid={props['data-testid']}>{children}</div>,
+  Card: ({
+    children,
+    ...props
+  }: {
+    children: React.ReactNode;
+    'data-testid'?: string;
+  }) => <div data-testid={props['data-testid']}>{children}</div>,
+  Stack: ({
+    children,
+    ...props
+  }: {
+    children: React.ReactNode;
+    'data-testid'?: string;
+  }) => <div data-testid={props['data-testid']}>{children}</div>,
+  Grid: ({
+    children,
+    ...props
+  }: {
+    children: React.ReactNode;
+    'data-testid'?: string;
+  }) => <div data-testid={props['data-testid']}>{children}</div>,
+  Typography: ({
+    children,
+    ...props
+  }: {
+    children: React.ReactNode;
+    'data-testid'?: string;
+  }) => <span data-testid={props['data-testid']}>{children}</span>,
+  Tabs: ({
+    children,
+    ...props
+  }: {
+    children: React.ReactNode;
+    'data-testid'?: string;
+  }) => <div data-testid={props['data-testid']}>{children}</div>,
+  Tab: ({ label, ...props }: { label: string; 'data-testid'?: string }) => (
+    <button data-testid={props['data-testid']}>{label}</button>
+  ),
+  Divider: () => <hr />,
+  Skeleton: () => <div data-testid="skeleton">Loading...</div>,
+  styled: (component: unknown) => () => component,
+  useTheme: () => ({
+    palette: {
+      grey: {
+        50: '#fafafa',
+        100: '#f5f5f5',
+        200: '#eeeeee',
+        700: '#616161',
+        900: '#212121',
+      },
+      common: {
+        white: '#ffffff',
+        black: '#000000',
+      },
+      allShades: {
+        white: '#ffffff',
+        gray: {
+          300: '#d1d1d1',
+        },
+      },
+    },
+    typography: {
+      pxToRem: (size: number) => `${size}px`,
+      fontWeightMedium: 500,
+    },
+  }),
+}));
+
 const mockEntityPermissionByFqn = jest
   .fn()
   .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
 
 const COMMON_API_FIELDS =
-  'followers,joins,tags,owners,dataModel,tableConstraints,schemaDefinition,domain,dataProducts,votes,extension';
+  'followers,joins,tags,owners,dataModel,tableConstraints,schemaDefinition,domains,dataProducts,votes,extension';
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
@@ -116,12 +196,13 @@ jest.mock(
   }
 );
 
-jest.mock(
-  '../../components/Database/Profiler/TableProfiler/TableProfiler',
-  () => {
-    return jest.fn().mockImplementation(() => <p>testTableProfiler</p>);
-  }
-);
+// Mock removed - TableProfiler component doesn't exist as a single file anymore
+// jest.mock(
+//   '../../components/Database/Profiler/TableProfiler/TableProfiler',
+//   () => {
+//     return jest.fn().mockImplementation(() => <p>testTableProfiler</p>);
+//   }
+// );
 
 jest.mock('../../components/Database/TableQueries/TableQueries', () => {
   return jest.fn().mockImplementation(() => <p>testTableQueries</p>);
@@ -183,7 +264,7 @@ jest.mock('react-router-dom', () => ({
   useParams: jest
     .fn()
     .mockImplementation(() => ({ fqn: 'fqn', tab: 'schema' })),
-  useHistory: jest.fn().mockImplementation(() => ({})),
+  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
 }));
 
 jest.mock('../../context/TourProvider/TourProvider', () => ({
@@ -210,9 +291,16 @@ jest.mock('../../components/Customization/GenericTab/GenericTab', () => ({
   GenericTab: jest.fn().mockImplementation(() => <>GenericTab</>),
 }));
 
-jest.mock('../../utils/TableColumn.util', () => ({
-  ownerTableObject: jest.fn().mockReturnValue({}),
-}));
+jest.mock(
+  '../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
 
 describe('TestDetailsPageV1 component', () => {
   it('TableDetailsPageV1 should fetch permissions', () => {
@@ -277,7 +365,7 @@ describe('TestDetailsPageV1 component', () => {
     });
 
     expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
-    expect(await screen.findByText('label.schema')).toBeInTheDocument();
+    expect(await screen.findByText('label.column-plural')).toBeInTheDocument();
     expect(
       await screen.findByText('label.activity-feed-and-task-plural')
     ).toBeInTheDocument();
@@ -433,5 +521,34 @@ describe('TestDetailsPageV1 component', () => {
 
     expect(await screen.findByText('GenericTab')).toBeInTheDocument();
     expect(GenericTab).toHaveBeenCalledWith({ type: 'Table' }, {});
+  });
+
+  it('should pass entity name as pageTitle to PageLayoutV1', async () => {
+    const mockTableData = {
+      name: 'test-table',
+      id: '123',
+      columns: [],
+    };
+
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: true,
+      })),
+    }));
+
+    (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(mockTableData)
+    );
+
+    await act(async () => {
+      render(<TableDetailsPageV1 />);
+    });
+
+    expect(PageLayoutV1).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pageTitle: 'test-table',
+      }),
+      expect.anything()
+    );
   });
 });

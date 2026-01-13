@@ -39,10 +39,10 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.SSLUtil;
 
 @Slf4j
@@ -61,10 +61,14 @@ public class AirflowRESTClient extends PipelineServiceClient {
   protected final String password;
   protected final HttpClient client;
   protected final URL serviceURL;
-  private static final List<String> API_ENDPOINT_SEGMENTS = List.of("api", "v1", "openmetadata");
+  private volatile List<String> apiEndpointSegments;
   private static final String DAG_ID = "dag_id";
   private static final String CONF = "conf";
   private static final String APP_CONFIG_OVERRIDE = "appConfigOverride";
+  private String detectedAirflowVersion = null;
+  private final Object detectionLock = new Object();
+  private volatile String csrfToken = null;
+  private volatile List<String> sessionCookies = null;
 
   public AirflowRESTClient(PipelineServiceClientConfiguration config) throws KeyStoreException {
 
@@ -90,6 +94,9 @@ public class AirflowRESTClient extends PipelineServiceClient {
     } else {
       this.client = clientBuilder.sslContext(sslContext).build();
     }
+
+    // Lazy initialization - will detect on first API call
+    this.apiEndpointSegments = null;
   }
 
   private static SSLContext createAirflowSSLContext(PipelineServiceClientConfiguration config)
@@ -103,16 +110,179 @@ public class AirflowRESTClient extends PipelineServiceClient {
     return SSLUtil.createSSLContext(truststorePath, truststorePassword, PLATFORM);
   }
 
+  private List<String> detectAirflowApiVersion() {
+    // Try Airflow 3.x with /pluginsv2 prefix first
+    try {
+      List<String> v3Segments = List.of("pluginsv2", "api", "v2", "openmetadata");
+      URIBuilder v3Builder = new URIBuilder(String.valueOf(serviceURL));
+      List<String> segments = new ArrayList<>(v3Builder.getPathSegments());
+      segments.addAll(v3Segments);
+      segments.add("health-auth");
+      v3Builder.setPathSegments(segments);
+
+      HttpRequest request =
+          HttpRequest.newBuilder(v3Builder.build())
+              .header(CONTENT_HEADER, CONTENT_TYPE)
+              .header(AUTH_HEADER, getBasicAuthenticationHeader(username, password))
+              .GET()
+              .timeout(Duration.ofSeconds(5))
+              .build();
+
+      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+      if (response.statusCode() == 200) {
+        try {
+          JSONObject responseJSON = new JSONObject(response.body());
+          detectedAirflowVersion = responseJSON.getString("version");
+          LOG.info(
+              "Detected Airflow version {} - using /pluginsv2/api/v2 endpoints (Airflow 3.x)",
+              detectedAirflowVersion);
+          return v3Segments;
+        } catch (Exception parseError) {
+          LOG.debug(
+              "Received 200 response from /pluginsv2 health-auth but failed to parse version: {}",
+              parseError.getMessage());
+        }
+      }
+    } catch (Exception e) {
+      LOG.debug("Failed to detect Airflow 3.x /pluginsv2 endpoint, trying v2: {}", e.getMessage());
+    }
+
+    // Try Airflow 2.x with direct /api/v2 (without pluginsv2 prefix)
+    try {
+      List<String> v2Segments = List.of("api", "v2", "openmetadata");
+      URIBuilder v2Builder = new URIBuilder(String.valueOf(serviceURL));
+      List<String> segments = new ArrayList<>(v2Builder.getPathSegments());
+      segments.addAll(v2Segments);
+      segments.add("health-auth");
+      v2Builder.setPathSegments(segments);
+
+      HttpRequest request =
+          HttpRequest.newBuilder(v2Builder.build())
+              .header(CONTENT_HEADER, CONTENT_TYPE)
+              .header(AUTH_HEADER, getBasicAuthenticationHeader(username, password))
+              .GET()
+              .timeout(Duration.ofSeconds(5))
+              .build();
+
+      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+      if (response.statusCode() == 200) {
+        try {
+          JSONObject responseJSON = new JSONObject(response.body());
+          detectedAirflowVersion = responseJSON.getString("version");
+          LOG.info("Detected Airflow version {} - using API v2 endpoints", detectedAirflowVersion);
+          return v2Segments;
+        } catch (Exception parseError) {
+          LOG.debug(
+              "Received 200 response from v2 health-auth but failed to parse version: {}",
+              parseError.getMessage());
+        }
+      }
+
+    } catch (Exception e) {
+      LOG.debug("Failed to detect Airflow API v2, falling back to v1: {}", e.getMessage());
+    }
+
+    // Try Airflow 1.x/2.x with /api/v1 fallback
+    try {
+      List<String> v1Segments = List.of("api", "v1", "openmetadata");
+      URIBuilder v1Builder = new URIBuilder(String.valueOf(serviceURL));
+      List<String> segments = new ArrayList<>(v1Builder.getPathSegments());
+      segments.addAll(v1Segments);
+      segments.add("health-auth");
+      v1Builder.setPathSegments(segments);
+
+      HttpRequest request =
+          HttpRequest.newBuilder(v1Builder.build())
+              .header(CONTENT_HEADER, CONTENT_TYPE)
+              .header(AUTH_HEADER, getBasicAuthenticationHeader(username, password))
+              .GET()
+              .timeout(Duration.ofSeconds(5))
+              .build();
+
+      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+      if (response.statusCode() == 200) {
+        try {
+          JSONObject responseJSON = new JSONObject(response.body());
+          detectedAirflowVersion = responseJSON.getString("version");
+          LOG.info("Detected Airflow version {} - using API v1 endpoints", detectedAirflowVersion);
+          return v1Segments;
+        } catch (Exception parseError) {
+          LOG.debug(
+              "Received 200 response from v1 health-auth but failed to parse version: {}",
+              parseError.getMessage());
+        }
+      }
+
+    } catch (Exception e) {
+      LOG.debug("Failed to detect Airflow API v1: {}", e.getMessage());
+    }
+
+    LOG.warn(
+        "Failed to detect any working Airflow API endpoint. Tried /pluginsv2/api/v2, /api/v2, and /api/v1. "
+            + "Airflow may still be starting up. Will retry on next API call. Service URL: {}",
+        serviceURL);
+    return null;
+  }
+
   public final HttpResponse<String> post(String endpoint, String payload, boolean authenticate)
       throws IOException, InterruptedException {
+    // Fetch CSRF token before making POST request
+    if (authenticate) {
+      fetchCsrfTokenIfNeeded();
+    }
+
     HttpRequest.Builder requestBuilder =
         HttpRequest.newBuilder(URI.create(endpoint))
             .header(CONTENT_HEADER, CONTENT_TYPE)
             .POST(HttpRequest.BodyPublishers.ofString(payload));
+
     if (authenticate) {
       requestBuilder.header(AUTH_HEADER, getBasicAuthenticationHeader(username, password));
+
+      // Add CSRF token if available
+      if (csrfToken != null && !csrfToken.isEmpty()) {
+        requestBuilder.header("X-CSRFToken", csrfToken);
+      }
+
+      // Add session cookies if available
+      if (sessionCookies != null && !sessionCookies.isEmpty()) {
+        requestBuilder.header("Cookie", String.join("; ", sessionCookies));
+      }
     }
-    return client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+
+    HttpResponse<String> response =
+        client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+
+    // If we get a 400 with CSRF token expired error, clear the token and retry once
+    if (authenticate
+        && response.statusCode() == 400
+        && response.body() != null
+        && response.body().contains("CSRF token")) {
+      LOG.warn("CSRF token expired, refreshing and retrying request");
+      clearCsrfToken();
+      fetchCsrfTokenIfNeeded();
+
+      // Rebuild request with new token
+      requestBuilder =
+          HttpRequest.newBuilder(URI.create(endpoint))
+              .header(CONTENT_HEADER, CONTENT_TYPE)
+              .header(AUTH_HEADER, getBasicAuthenticationHeader(username, password))
+              .POST(HttpRequest.BodyPublishers.ofString(payload));
+
+      if (csrfToken != null && !csrfToken.isEmpty()) {
+        requestBuilder.header("X-CSRFToken", csrfToken);
+      }
+      if (sessionCookies != null && !sessionCookies.isEmpty()) {
+        requestBuilder.header("Cookie", String.join("; ", sessionCookies));
+      }
+
+      response = client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+    }
+
+    return response;
   }
 
   public final HttpResponse<String> post(String endpoint, String payload)
@@ -290,7 +460,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       if (response.statusCode() == 200) {
         JSONObject responseJSON = new JSONObject(response.body());
         String ingestionVersion = responseJSON.getString("version");
-        return Boolean.TRUE.equals(validServerClientVersions(ingestionVersion))
+        return validServerClientVersions(ingestionVersion, SERVER_VERSION)
             ? buildHealthyStatus(ingestionVersion)
             : buildUnhealthyStatus(
                 buildVersionMismatchErrorMessage(ingestionVersion, SERVER_VERSION));
@@ -477,17 +647,60 @@ public class AirflowRESTClient extends PipelineServiceClient {
         String.format("Failed to get last ingestion logs due to %s", response.body()));
   }
 
+  private List<String> getApiEndpointSegments() {
+    if (apiEndpointSegments == null) {
+      synchronized (detectionLock) {
+        if (apiEndpointSegments == null) {
+          List<String> detected = detectAirflowApiVersion();
+          if (detected == null) {
+            throw new PipelineServiceClientException(
+                String.format(
+                    "Unable to connect to Airflow APIs at [%s]. None of the API versions (v3 pluginsv2, v2, v1) responded successfully. "
+                        + "Airflow may still be starting up or the OpenMetadata plugin may not be installed. "
+                        + "This operation will be retried on the next API call.",
+                    serviceURL));
+          }
+          apiEndpointSegments = detected;
+        }
+      }
+    }
+    return apiEndpointSegments;
+  }
+
+  private void resetApiEndpointDetection() {
+    synchronized (detectionLock) {
+      apiEndpointSegments = null;
+      detectedAirflowVersion = null;
+      LOG.info("Reset Airflow API endpoint detection. Will retry on next call.");
+    }
+  }
+
   public URIBuilder buildURI(String path) {
     try {
-      List<String> pathInternal = new ArrayList<>(API_ENDPOINT_SEGMENTS);
+      List<String> pathInternal = new ArrayList<>(getApiEndpointSegments());
       pathInternal.add(path);
       URIBuilder builder = new URIBuilder(String.valueOf(serviceURL));
       List<String> segments = new ArrayList<>(builder.getPathSegments());
       segments.addAll(pathInternal);
       return builder.setPathSegments(segments);
+    } catch (PipelineServiceClientException e) {
+      resetApiEndpointDetection();
+      throw e;
     } catch (Exception e) {
       throw clientException(String.format("Failed to built request URI for path [%s].", path), e);
     }
+  }
+
+  public String getAirflowVersion() {
+    return detectedAirflowVersion != null ? detectedAirflowVersion : "unknown";
+  }
+
+  public String getApiVersion() {
+    List<String> segments = getApiEndpointSegments();
+    if (segments.contains("pluginsv2")) {
+      return "v2 (pluginsv2)";
+    }
+    return segments.contains("v2") ? "v2" : "v1";
   }
 
   private HttpResponse<String> getRequestAuthenticatedForJsonContent(String url)
@@ -498,14 +711,152 @@ public class AirflowRESTClient extends PipelineServiceClient {
 
   private HttpResponse<String> deleteRequestAuthenticatedForJsonContent(String url)
       throws IOException, InterruptedException {
+    // DELETE endpoints are protected by CSRF on Airflow 3.x
+    fetchCsrfTokenIfNeeded();
     HttpRequest request = authenticatedRequestBuilder(url).DELETE().build();
-    return client.send(request, HttpResponse.BodyHandlers.ofString());
+    HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+    // If we get a 400 with CSRF token expired error, clear the token and retry once
+    if (response.statusCode() == 400
+        && response.body() != null
+        && response.body().contains("CSRF token has expired")) {
+      LOG.warn("CSRF token expired, refreshing and retrying DELETE request");
+      clearCsrfToken();
+      fetchCsrfTokenIfNeeded();
+      request = authenticatedRequestBuilder(url).DELETE().build();
+      response = client.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    return response;
   }
 
   private HttpRequest.Builder authenticatedRequestBuilder(String url) {
-    return HttpRequest.newBuilder(URI.create(url))
-        .header(CONTENT_HEADER, CONTENT_TYPE)
-        .header(AUTH_HEADER, getBasicAuthenticationHeader(username, password));
+    HttpRequest.Builder builder =
+        HttpRequest.newBuilder(URI.create(url))
+            .header(CONTENT_HEADER, CONTENT_TYPE)
+            .header(AUTH_HEADER, getBasicAuthenticationHeader(username, password));
+
+    // Add CSRF token for POST/DELETE/PUT requests if available
+    if (csrfToken != null && !csrfToken.isEmpty()) {
+      builder.header("X-CSRFToken", csrfToken);
+    }
+
+    // Add session cookies if available
+    if (sessionCookies != null && !sessionCookies.isEmpty()) {
+      builder.header("Cookie", String.join("; ", sessionCookies));
+    }
+
+    return builder;
+  }
+
+  /**
+   * Clear the CSRF token and session cookies to force a refresh.
+   */
+  private void clearCsrfToken() {
+    synchronized (detectionLock) {
+      csrfToken = null;
+      sessionCookies = null;
+      LOG.debug("Cleared CSRF token and session cookies");
+    }
+  }
+
+  /**
+   * Fetch CSRF token and session cookies from Airflow.
+   * This should be called before making POST/PUT/DELETE requests.
+   */
+  private void fetchCsrfTokenIfNeeded() {
+    if (csrfToken != null) {
+      return; // Already have a token
+    }
+
+    synchronized (detectionLock) {
+      if (csrfToken != null) {
+        return; // Double-check after acquiring lock
+      }
+
+      try {
+        fetchCsrfTokenViaEndpoint();
+      } catch (Exception endpointError) {
+        LOG.debug(
+            "Failed to fetch CSRF token via /csrf-token endpoint: {}", endpointError.getMessage());
+        try {
+          fetchCsrfTokenFromHealthEndpoint();
+        } catch (Exception fallbackError) {
+          LOG.warn(
+              "Failed to fetch CSRF token (fallback) due to {}. Proceeding without it.",
+              fallbackError.getMessage());
+        }
+      }
+    }
+  }
+
+  private void fetchCsrfTokenViaEndpoint()
+      throws IOException, InterruptedException, URISyntaxException {
+    String csrfUrl = buildURI("csrf-token").build().toString();
+    HttpResponse<String> response = sendAuthenticatedGet(csrfUrl);
+    storeSessionCookies(response);
+
+    if (response.statusCode() == 200 && response.body() != null) {
+      try {
+        Map<String, Object> body = JsonUtils.readValue(response.body(), Map.class);
+        Object token = body.get("csrf_token");
+        if (token instanceof String && !((String) token).isEmpty()) {
+          csrfToken = (String) token;
+          LOG.debug("Extracted CSRF token from csrf-token endpoint response body");
+        }
+      } catch (Exception parseErr) {
+        LOG.debug("Unable to parse csrf-token response body: {}", parseErr.getMessage());
+      }
+    }
+
+    LOG.info("CSRF token fetch via endpoint completed. Token available: {}", csrfToken != null);
+  }
+
+  private void fetchCsrfTokenFromHealthEndpoint()
+      throws IOException, InterruptedException, URISyntaxException {
+    String healthUrl = buildURI("health").build().toString();
+    HttpResponse<String> response = sendAuthenticatedGet(healthUrl);
+    storeSessionCookies(response);
+    LOG.info("CSRF token fetch via health completed. Token available: {}", csrfToken != null);
+  }
+
+  private HttpResponse<String> sendAuthenticatedGet(String url)
+      throws IOException, InterruptedException {
+    HttpRequest request =
+        HttpRequest.newBuilder(URI.create(url))
+            .header(CONTENT_HEADER, CONTENT_TYPE)
+            .header(AUTH_HEADER, getBasicAuthenticationHeader(username, password))
+            .GET()
+            .build();
+    return client.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  private void storeSessionCookies(HttpResponse<String> response) {
+    List<String> cookies = new ArrayList<>();
+    response
+        .headers()
+        .map()
+        .forEach(
+            (key, values) -> {
+              if (key != null && key.equalsIgnoreCase("set-cookie")) {
+                for (String value : values) {
+                  String cookieValue = value.split(";")[0].trim();
+                  cookies.add(cookieValue);
+                  if (value.contains("csrf") || value.contains("CSRF")) {
+                    String[] parts = cookieValue.split("=", 2);
+                    if (parts.length == 2) {
+                      csrfToken = parts[1];
+                      LOG.debug("Extracted CSRF token from cookie");
+                    }
+                  }
+                }
+              }
+            });
+
+    if (!cookies.isEmpty()) {
+      sessionCookies = cookies;
+      LOG.debug("Stored {} session cookies", cookies.size());
+    }
   }
 
   private PipelineServiceClientResponse getResponse(int code, String body) {

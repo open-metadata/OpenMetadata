@@ -33,7 +33,7 @@ public record PostResourceContext(String postedBy) implements ResourceContextInt
   }
 
   @Override
-  public EntityReference getDomain() {
+  public List<EntityReference> getDomains() {
     return null;
   }
 }

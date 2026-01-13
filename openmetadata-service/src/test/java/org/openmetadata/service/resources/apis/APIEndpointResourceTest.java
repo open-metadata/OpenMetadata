@@ -1,7 +1,9 @@
 package org.openmetadata.service.resources.apis;
 
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
@@ -10,10 +12,13 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
+import static org.openmetadata.service.util.TestUtils.compareTagsIgnoringOrder;
+import static org.openmetadata.service.util.TestUtils.isTagsSuperSet;
 import static org.openmetadata.service.util.TestUtils.validateEntityReference;
 
 import jakarta.ws.rs.client.WebTarget;
@@ -27,6 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -38,16 +44,19 @@ import org.openmetadata.schema.api.data.CreateAPIEndpoint;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.type.APIRequestMethod;
 import org.openmetadata.schema.type.APISchema;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -192,22 +201,24 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
     patchEntity(endpoint.getId(), endpointJson, endpoint, ADMIN_AUTH_HEADERS);
     endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
     fields = endpoint.getResponseSchema().getSchemaFields();
-    List<TagLabel> tags = fields.get(0).getTags();
-    for (TagLabel tag : tags) {
-      assertTrue(tag.equals(PERSONAL_DATA_TAG_LABEL) || tag.equals(PII_SENSITIVE_TAG_LABEL));
-    }
+    List<TagLabel> tags = fields.getFirst().getTags();
+
+    assertTrue(isTagsSuperSet(tags, List.of(PERSONAL_DATA_TAG_LABEL, PII_SENSITIVE_TAG_LABEL)));
+
     endpointJson = JsonUtils.pojoToJson(endpoint);
     fields = endpoint.getResponseSchema().getSchemaFields();
-    fields.get(0).getTags().remove(PERSONAL_DATA_TAG_LABEL);
+    fields
+        .getFirst()
+        .getTags()
+        .removeIf(tag -> EntityUtil.tagLabelMatch.test(tag, PERSONAL_DATA_TAG_LABEL));
     endpoint.getResponseSchema().setSchemaFields(fields);
     patchEntity(endpoint.getId(), endpointJson, endpoint, ADMIN_AUTH_HEADERS);
     endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
     fields = endpoint.getResponseSchema().getSchemaFields();
     tags = fields.get(0).getTags();
     assertEquals(1, tags.size());
-    for (TagLabel tag : tags) {
-      assertEquals(tag, PII_SENSITIVE_TAG_LABEL);
-    }
+
+    assertTrue(isTagsSuperSet(tags, List.of(PII_SENSITIVE_TAG_LABEL)));
 
     // add 2 new tags
     endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
@@ -220,26 +231,26 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
     fields = endpoint.getResponseSchema().getSchemaFields();
     tags = fields.get(0).getTags();
     assertEquals(3, tags.size());
-    for (TagLabel tag : tags) {
-      assertTrue(
-          tag.equals(PERSONAL_DATA_TAG_LABEL)
-              || tag.equals(PII_SENSITIVE_TAG_LABEL)
-              || tag.equals(USER_ADDRESS_TAG_LABEL));
-    }
+    assertTrue(
+        compareTagsIgnoringOrder(
+            tags,
+            List.of(PERSONAL_DATA_TAG_LABEL, PII_SENSITIVE_TAG_LABEL, USER_ADDRESS_TAG_LABEL)));
 
     // remove 1 tag
     endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
     endpointJson = JsonUtils.pojoToJson(endpoint);
     fields = endpoint.getResponseSchema().getSchemaFields();
-    fields.get(0).getTags().remove(PERSONAL_DATA_TAG_LABEL);
+    fields
+        .getFirst()
+        .getTags()
+        .removeIf(tag -> EntityUtil.tagLabelMatch.test(tag, PERSONAL_DATA_TAG_LABEL));
     patchEntity(endpoint.getId(), endpointJson, endpoint, ADMIN_AUTH_HEADERS);
     endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
     fields = endpoint.getResponseSchema().getSchemaFields();
-    tags = fields.get(0).getTags();
+    tags = fields.getFirst().getTags();
     assertEquals(2, tags.size());
-    for (TagLabel tag : tags) {
-      assertTrue(tag.equals(PII_SENSITIVE_TAG_LABEL) || tag.equals(USER_ADDRESS_TAG_LABEL));
-    }
+    compareTagsIgnoringOrder(tags, List.of(PERSONAL_DATA_TAG_LABEL, USER_ADDRESS_TAG_LABEL));
+
     endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
     endpointJson = JsonUtils.pojoToJson(endpoint);
     endpoint.setRequestSchema(RESPONSE_SCHEMA);
@@ -255,16 +266,26 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
     endpointJson = JsonUtils.pojoToJson(endpoint);
     requestFields = endpoint.getRequestSchema().getSchemaFields();
     fields = endpoint.getResponseSchema().getSchemaFields();
-    requestFields.get(0).getTags().remove(PII_SENSITIVE_TAG_LABEL);
-    fields.get(0).getTags().remove(USER_ADDRESS_TAG_LABEL);
+    requestFields
+        .getFirst()
+        .getTags()
+        .removeIf(tag -> EntityUtil.tagLabelMatch.test(tag, PII_SENSITIVE_TAG_LABEL));
+    fields
+        .getFirst()
+        .getTags()
+        .removeIf(tag -> EntityUtil.tagLabelMatch.test(tag, USER_ADDRESS_TAG_LABEL));
     patchEntity(endpoint.getId(), endpointJson, endpoint, ADMIN_AUTH_HEADERS);
     endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
     requestFields = endpoint.getRequestSchema().getSchemaFields();
     fields = endpoint.getResponseSchema().getSchemaFields();
     assertEquals(1, requestFields.get(0).getTags().size());
     assertEquals(1, fields.get(0).getTags().size());
-    assertEquals(USER_ADDRESS_TAG_LABEL, requestFields.get(0).getTags().get(0));
-    assertEquals(PII_SENSITIVE_TAG_LABEL, fields.get(0).getTags().get(0));
+    assertTrue(
+        EntityUtil.tagLabelMatch.test(
+            requestFields.getFirst().getTags().getFirst(), USER_ADDRESS_TAG_LABEL));
+    assertTrue(
+        EntityUtil.tagLabelMatch.test(
+            fields.getFirst().getTags().getFirst(), PII_SENSITIVE_TAG_LABEL));
   }
 
   @Override
@@ -381,5 +402,254 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
 
     // Check the nested columns
     assertFields(expectedField.getChildren(), actualField.getChildren());
+  }
+
+  @Test
+  @Order(2)
+  void test_paginationFetchesTagsAtBothEntityAndFieldLevels(TestInfo test) throws IOException {
+    TagLabel endpointTagLabel = USER_ADDRESS_TAG_LABEL;
+    TagLabel fieldTagLabel = PERSONAL_DATA_TAG_LABEL;
+
+    List<APIEndpoint> createdEndpoints = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      List<Field> requestFields =
+          Arrays.asList(
+              getField("requestField1_" + i, FieldDataType.STRING, fieldTagLabel),
+              getField("requestField2_" + i, FieldDataType.STRING, null));
+
+      List<Field> responseFields =
+          Arrays.asList(
+              getField("responseField1_" + i, FieldDataType.STRING, PII_SENSITIVE_TAG_LABEL),
+              getField("responseField2_" + i, FieldDataType.STRING, null));
+
+      APISchema requestSchema = new APISchema().withSchemaFields(requestFields);
+      APISchema responseSchema = new APISchema().withSchemaFields(responseFields);
+
+      CreateAPIEndpoint createEndpoint =
+          createRequest(test.getDisplayName() + "_pagination_" + i)
+              .withRequestSchema(requestSchema)
+              .withResponseSchema(responseSchema)
+              .withTags(List.of(endpointTagLabel));
+
+      APIEndpoint endpoint = createEntity(createEndpoint, ADMIN_AUTH_HEADERS);
+      createdEndpoints.add(endpoint);
+    }
+
+    WebTarget target =
+        getResource("apiEndpoints").queryParam("fields", "tags").queryParam("limit", "50");
+
+    APIEndpointResource.APIEndpointList endpointList =
+        TestUtils.get(target, APIEndpointResource.APIEndpointList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(endpointList.getData());
+
+    List<APIEndpoint> ourEndpoints =
+        endpointList.getData().stream()
+            .filter(e -> createdEndpoints.stream().anyMatch(ce -> ce.getId().equals(e.getId())))
+            .collect(Collectors.toList());
+
+    assertFalse(
+        ourEndpoints.isEmpty(), "Should find at least one of our created endpoints in pagination");
+
+    for (APIEndpoint endpoint : ourEndpoints) {
+      assertNotNull(
+          endpoint.getTags(),
+          "Endpoint-level tags should not be null when fields=tags in pagination");
+      assertEquals(1, endpoint.getTags().size(), "Should have exactly one endpoint-level tag");
+      assertEquals(endpointTagLabel.getTagFQN(), endpoint.getTags().get(0).getTagFQN());
+
+      if (endpoint.getRequestSchema() != null
+          && endpoint.getRequestSchema().getSchemaFields() != null) {
+        for (Field field : endpoint.getRequestSchema().getSchemaFields()) {
+          assertTrue(
+              field.getTags() == null || field.getTags().isEmpty(),
+              "Request field tags should not be populated when only fields=tags is specified in pagination");
+        }
+      }
+      if (endpoint.getResponseSchema() != null
+          && endpoint.getResponseSchema().getSchemaFields() != null) {
+        for (Field field : endpoint.getResponseSchema().getSchemaFields()) {
+          assertTrue(
+              field.getTags() == null || field.getTags().isEmpty(),
+              "Response field tags should not be populated when only fields=tags is specified in pagination");
+        }
+      }
+    }
+
+    target =
+        getResource("apiEndpoints")
+            .queryParam("fields", "requestSchema,responseSchema,tags")
+            .queryParam("limit", "10");
+
+    endpointList =
+        TestUtils.get(target, APIEndpointResource.APIEndpointList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(endpointList.getData());
+
+    ourEndpoints =
+        endpointList.getData().stream()
+            .filter(e -> createdEndpoints.stream().anyMatch(ce -> ce.getId().equals(e.getId())))
+            .collect(Collectors.toList());
+
+    assertFalse(
+        ourEndpoints.isEmpty(), "Should find at least one of our created endpoints in pagination");
+
+    // Verify both endpoint-level and field-level tags are fetched
+    for (APIEndpoint endpoint : ourEndpoints) {
+      // Verify endpoint-level tags
+      assertNotNull(
+          endpoint.getTags(),
+          "Endpoint-level tags should not be null in pagination with schemas,tags");
+      assertEquals(1, endpoint.getTags().size(), "Should have exactly one endpoint-level tag");
+      assertEquals(endpointTagLabel.getTagFQN(), endpoint.getTags().get(0).getTagFQN());
+
+      // Verify request field-level tags
+      assertNotNull(
+          endpoint.getRequestSchema(),
+          "RequestSchema should not be null when fields includes requestSchema");
+      assertNotNull(
+          endpoint.getRequestSchema().getSchemaFields(),
+          "Request schema fields should not be null");
+
+      Field requestField1 =
+          endpoint.getRequestSchema().getSchemaFields().stream()
+              .filter(f -> f.getName().startsWith("requestField1_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find requestField1 field"));
+
+      assertNotNull(
+          requestField1.getTags(),
+          "Request field tags should not be null when fields=requestSchema,responseSchema,tags in pagination");
+      assertEquals(1, requestField1.getTags().size(), "Request field should have exactly one tag");
+      assertEquals(fieldTagLabel.getTagFQN(), requestField1.getTags().get(0).getTagFQN());
+
+      // Verify response field-level tags
+      assertNotNull(
+          endpoint.getResponseSchema(),
+          "ResponseSchema should not be null when fields includes responseSchema");
+      assertNotNull(
+          endpoint.getResponseSchema().getSchemaFields(),
+          "Response schema fields should not be null");
+
+      Field responseField1 =
+          endpoint.getResponseSchema().getSchemaFields().stream()
+              .filter(f -> f.getName().startsWith("responseField1_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find responseField1 field"));
+
+      assertNotNull(
+          responseField1.getTags(),
+          "Response field tags should not be null when fields=requestSchema,responseSchema,tags in pagination");
+      assertEquals(
+          1, responseField1.getTags().size(), "Response field should have exactly one tag");
+      assertEquals(
+          PII_SENSITIVE_TAG_LABEL.getTagFQN(), responseField1.getTags().get(0).getTagFQN());
+
+      // Fields without tags should remain empty
+      Field requestField2 =
+          endpoint.getRequestSchema().getSchemaFields().stream()
+              .filter(f -> f.getName().startsWith("requestField2_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find requestField2 field"));
+
+      assertTrue(
+          requestField2.getTags() == null || requestField2.getTags().isEmpty(),
+          "requestField2 should not have tags");
+
+      Field responseField2 =
+          endpoint.getResponseSchema().getSchemaFields().stream()
+              .filter(f -> f.getName().startsWith("responseField2_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find responseField2 field"));
+
+      assertTrue(
+          responseField2.getTags() == null || responseField2.getTags().isEmpty(),
+          "responseField2 should not have tags");
+    }
+  }
+
+  @Test
+  void testBulk_PreservesUserEditsOnUpdate(TestInfo test) throws IOException {
+    CreateAPIEndpoint botCreate =
+        createRequest(test.getDisplayName())
+            .withDescription("Bot initial description")
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL));
+    APIEndpoint entity = createEntity(botCreate, INGESTION_BOT_AUTH_HEADERS);
+
+    CreateAPIEndpoint userUpdate =
+        createRequest(test.getDisplayName()).withDescription("User updated description");
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget,
+            List.of(userUpdate),
+            BulkOperationResult.class,
+            OK,
+            INGESTION_BOT_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    APIEndpoint updated = getEntity(entity.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(
+        "Bot initial description",
+        updated.getDescription(),
+        "Bot should not be able to override non-empty user-edited description");
+
+    List<TagLabel> expectedTags = List.of(USER_ADDRESS_TAG_LABEL);
+    assertTrue(
+        isTagsSuperSet(updated.getTags(), expectedTags),
+        "Tags should be preserved from bot creation");
+  }
+
+  @Test
+  void testBulk_TagMergeBehavior(TestInfo test) throws IOException {
+    CreateAPIEndpoint initialCreate =
+        createRequest(test.getDisplayName()).withTags(List.of(USER_ADDRESS_TAG_LABEL));
+    APIEndpoint entity = createEntity(initialCreate, ADMIN_AUTH_HEADERS);
+    assertEquals(1, entity.getTags().size());
+    assertTrue(entity.getTags().contains(USER_ADDRESS_TAG_LABEL));
+
+    CreateAPIEndpoint updateWithNewTag =
+        createRequest(test.getDisplayName()).withTags(List.of(PERSONAL_DATA_TAG_LABEL));
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget,
+            List.of(updateWithNewTag),
+            BulkOperationResult.class,
+            OK,
+            ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    APIEndpoint updated = getEntity(entity.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(2, updated.getTags().size(), "Tags should be merged, not replaced");
+    assertTrue(
+        updated.getTags().stream()
+            .map(TagLabel::getTagFQN)
+            .collect(Collectors.toSet())
+            .containsAll(
+                List.of(USER_ADDRESS_TAG_LABEL.getTagFQN(), PERSONAL_DATA_TAG_LABEL.getTagFQN())),
+        "Both old and new tags should be present");
+  }
+
+  @Test
+  void testBulk_AdminCanOverrideDescription(TestInfo test) throws IOException {
+    CreateAPIEndpoint initialCreate =
+        createRequest(test.getDisplayName()).withDescription("Initial description");
+    APIEndpoint entity = createEntity(initialCreate, ADMIN_AUTH_HEADERS);
+
+    CreateAPIEndpoint adminUpdate =
+        createRequest(test.getDisplayName()).withDescription("Admin updated description");
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget, List.of(adminUpdate), BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    APIEndpoint updated = getEntity(entity.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(
+        "Admin updated description",
+        updated.getDescription(),
+        "Admin should be able to update description via bulk API");
   }
 }

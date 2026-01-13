@@ -20,16 +20,7 @@
     gap: 16px;
     display: flex;
     background-color: @background-color;
-    justify-content: space-evenly;
     flex-wrap: wrap;
-  }
-
-  .data-asset-header-less-items {
-    justify-content: initial;
-
-    .ant-divider {
-      margin: 0 20px 0 100px;
-    }
   }
 
   .ant-space-item {
@@ -77,7 +68,7 @@
   }
   .owner-label-container,
   .domain-label-container {
-    max-width: 148px;
+    max-width: 220px;
   }
   .domain-link-container {
     //consistent width for data-asset-header
@@ -127,5 +118,45 @@
     svg {
       fill: @de-active-color;
     }
+  }
+
+  .ant-btn-group.spaced {
+    .ant-btn.ant-btn-default.data-contract-latest-result-button {
+      font-size: 14px;
+      padding: 6px 12px;
+      border-radius: 12px;
+      font-weight: 600;
+      box-shadow: 0px 2px 2px -1px @grey-35, 0px 4px 6px -2px @grey-35,
+        0px 12px 16px -4px @grey-35;
+
+      svg {
+        font-size: 26px;
+        fill: transparent;
+      }
+
+      &.failed {
+        color: @red-14;
+        border: 1px solid @red-19;
+        background-color: @red-9;
+      }
+
+      &.aborted {
+        color: @orange-7;
+        border: 1px solid @orange-200;
+        background-color: @orange-50;
+      }
+
+      &.running {
+        color: @primary-7;
+        border: 1px solid @blue-39;
+        background-color: @blue-33;
+      }
+    }
+  }
+}
+
+.full-screen-view {
+  .data-assets-header-container {
+    visibility: hidden;
   }
 }

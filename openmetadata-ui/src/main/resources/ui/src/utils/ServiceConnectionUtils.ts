@@ -25,7 +25,9 @@ import { MlModelServiceType } from '../generated/entity/data/mlmodel';
 import { PipelineServiceType } from '../generated/entity/data/pipeline';
 import { SearchServiceType } from '../generated/entity/data/searchIndex';
 import { MessagingServiceType } from '../generated/entity/data/topic';
+import { DriveServiceType } from '../generated/entity/services/driveService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
+import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
 import { ConfigData, ServicesType } from '../interface/service.interface';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 
@@ -43,8 +45,8 @@ export const getConnectionSchemas = ({
     : (data.connection?.config as ConfigData);
 
   let connSch = {
-    schema: {} as Record<string, any>,
-    uiSchema: {} as Record<string, any>,
+    schema: {} as Record<string, unknown>,
+    uiSchema: {} as Record<string, unknown>,
   };
 
   const validConfig = cloneDeep(config || {});
@@ -120,6 +122,22 @@ export const getConnectionSchemas = ({
 
       break;
     }
+
+    case ServiceCategory.SECURITY_SERVICES: {
+      connSch = serviceUtilClassBase.getSecurityServiceConfig(
+        serviceType as SecurityServiceType
+      );
+
+      break;
+    }
+
+    case ServiceCategory.DRIVE_SERVICES: {
+      connSch = serviceUtilClassBase.getDriveServiceConfig(
+        serviceType as DriveServiceType
+      );
+
+      break;
+    }
   }
 
   return { connSch, validConfig };
@@ -134,7 +152,7 @@ export const getConnectionSchemas = ({
  * @returns The filtered schema
  */
 export const getFilteredSchema = (
-  schema?: Record<string, any>,
+  schema?: Record<string, unknown>,
   removeDefaultFilters = true
 ) =>
   Object.fromEntries(
@@ -153,7 +171,7 @@ export const getFilteredSchema = (
  * @returns The UI Schema with all the default filter fields hidden
  */
 export const getUISchemaWithNestedDefaultFilterFieldsHidden = (
-  uiSchema: Record<string, any>
+  uiSchema: Record<string, unknown>
 ) => {
   // object with all the default filter fields hidden
   const uiSchemaWithAllDefaultFilterFieldsHidden = reduce(
@@ -166,7 +184,7 @@ export const getUISchemaWithNestedDefaultFilterFieldsHidden = (
 
       return acc;
     },
-    {} as Record<string, any>
+    {} as Record<string, unknown>
   );
 
   // object with all the default filter fields hidden nested under all the ServiceNestedConnectionFields
@@ -180,7 +198,7 @@ export const getUISchemaWithNestedDefaultFilterFieldsHidden = (
 
       return acc;
     },
-    {} as Record<string, any>
+    {} as Record<string, unknown>
   );
 
   return {

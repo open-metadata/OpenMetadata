@@ -1,0 +1,14 @@
+{
+    "name": "Ranger",
+    "displayName": "Ranger Test Connection",
+    "description": "This Test Connection validates the access against the ranger service",
+    "steps": [
+        {
+            "name": "CheckAccess",
+            "description": "Checks if we can access the ranger service",
+            "errorMessage": "Failed to access the ranger service, please check the credentials",
+            "shortCircuit": true,
+            "mandatory": true
+        }
+    ]
+}

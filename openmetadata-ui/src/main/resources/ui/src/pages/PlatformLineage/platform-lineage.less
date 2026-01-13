@@ -10,24 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('../../styles/variables.less');
+@import (reference) '../../styles/variables.less';
 
-@platform-page-header-height: 114px;
+@platform-page-header-height: 140px;
 
 .platform-lineage-container {
+  height: calc(100vh - @om-navbar-height - @platform-page-header-height);
   .lineage-card {
-    height: calc(
-      100vh - @om-navbar-height - @platform-page-header-height - @size-md
-    );
+    height: 100%;
+    .ant-card-body {
+      height: calc(100% - 74px); // 74px is the height of card header
+    }
   }
 
   .full-screen-lineage {
-    .lineage-card {
-      height: calc(100vh - @om-navbar-height - @size-md);
-    }
+    height: calc(
+      100vh - @om-navbar-height - 44px
+    ); // Breadcrumb height is 36 + bottom margin 8px
 
-    .lineage-container {
-      height: calc(100vh - @om-navbar-height);
+    .lineage-card {
+      height: 100%;
     }
   }
 }

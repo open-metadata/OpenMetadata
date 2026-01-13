@@ -2,7 +2,7 @@ package org.openmetadata.service.search.indexes;
 
 import java.util.Map;
 import org.openmetadata.schema.analytics.ReportData;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 public record RawCostAnalysisReportDataIndex(ReportData reportData) implements SearchIndex {
   @Override

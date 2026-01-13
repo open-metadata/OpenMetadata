@@ -15,9 +15,6 @@ public class DatabaseAuthenticationProviderFactory {
 
   /**
    * Get auth provider based on the given jdbc url.
-   *
-   * @param jdbcURL the jdbc url.
-   * @return instance of {@link DatabaseAuthenticationProvider}.
    */
   public static Optional<DatabaseAuthenticationProvider> get(String jdbcURL) {
     Map<String, String> queryParams = parseQueryParams(jdbcURL);

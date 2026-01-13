@@ -29,7 +29,8 @@
         "QuickSightDataModel",
         "SigmaDataModel",
         "PowerBIDataFlow",
-        "MicroStrategyDataset"
+        "MicroStrategyDataset",
+        "ThoughtSpotDataModel"
       ],
       "javaEnums": [
         {
@@ -70,6 +71,9 @@
         },
         {
           "name": "MicroStrategyDataset"
+        },
+        {
+          "name": "ThoughtSpotDataModel"
         }
       ]
     }
@@ -106,6 +110,10 @@
     "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
     },
     "href": {
       "description": "Link to this data model entity.",
@@ -173,9 +181,13 @@
       "description": "Name of the project / workspace / collection in which the dataModel is contained",
       "type": "string"
     },
-    "domain": {
-      "description": "Domain the Dashboard Data Model belongs to. When not set, the Dashboard model inherits the domain from the dashboard service it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "sourceUrl": {
+      "description": "Dashboard Data Model URL suffix from its service.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
+    "domains": {
+      "description": "Domains the Dashboard Data Model belongs to. When not set, the Dashboard model inherits the domain from the dashboard service it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "votes": {
       "description": "Votes on the entity.",
@@ -197,6 +209,10 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "entityStatus": {
+      "description": "Status of the DashboardDataModel.",
+      "$ref": "../../type/status.json"
     }
   },
   "required": [

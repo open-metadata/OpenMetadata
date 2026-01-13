@@ -13,7 +13,7 @@
 import { Button, Checkbox, Col, List, Row, Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import VirtualList from 'rc-virtual-list';
-import React, {
+import {
   UIEventHandler,
   useCallback,
   useEffect,
@@ -65,12 +65,19 @@ export const AddTestCaseList = ({
   };
 
   const fetchTestCases = useCallback(
-    async ({ searchText = WILD_CARD_CHAR, page = 1 }) => {
+    async ({
+      searchText,
+      page = 1,
+    }: {
+      searchText?: string;
+      page?: number;
+    }) => {
       try {
         setIsLoading(true);
+        const globalSearch = searchText ? `*${searchText}*` : WILD_CARD_CHAR;
 
         const testCaseResponse = await getListTestCaseBySearch({
-          q: filters ? `${searchText} && ${filters}` : searchText,
+          q: filters ? `${globalSearch} && ${filters}` : globalSearch,
           limit: PAGE_SIZE_MEDIUM,
           offset: (page - 1) * PAGE_SIZE_MEDIUM,
           ...(testCaseParams ?? {}),
@@ -96,8 +103,6 @@ export const AddTestCaseList = ({
             : (prevItems) => [...prevItems, ...testCaseResponse.data]
         );
         setPageNumber(page);
-      } catch (_) {
-        // Nothing here
       } finally {
         setIsLoading(false);
       }
@@ -281,7 +286,7 @@ export const AddTestCaseList = ({
             loading={isLoading}
             type="primary"
             onClick={handleSubmit}>
-            {submitText ?? t('label.submit')}
+            {submitText ?? t('label.create')}
           </Button>
         </Col>
       )}

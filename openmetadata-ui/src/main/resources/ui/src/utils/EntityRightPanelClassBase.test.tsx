@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React, { FC } from 'react';
+import { FC } from 'react';
 import entityRightPanelClassBase, {
   EntityRightPanelClassBase,
 } from './EntityRightPanelClassBase';

@@ -34,6 +34,14 @@
           "description": "If the test definition supports it, use dynamic assertion to evaluate the test case.",
           "type": "boolean",
           "default": false
+        },
+        "tags": {
+          "description": "Tags to apply",
+          "type": "array",
+          "items": {
+            "$ref": "../../../../../type/tagLabel.json"
+          },
+          "default": []
         }
       }
     }

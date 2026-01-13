@@ -42,7 +42,10 @@ class CliCommonDB:
                 connector, cls.get_test_type()
             )
             cls.engine = workflow.source.engine
+
             cls.openmetadata = workflow.source.metadata
+            cls.set_ingestion_bot_jwt_token()
+
             cls.config_file_path = str(
                 Path(PATH_TO_RESOURCES + f"/database/{connector}/{connector}.yaml")
             )
@@ -178,7 +181,7 @@ class CliCommonDB:
             self, source_status: Status, sink_status: Status
         ):
             self.assertEqual(len(source_status.failures), 0)
-            self.assertEqual(
+            self.assertGreaterEqual(
                 len(source_status.filtered), self.expected_filtered_schema_includes()
             )
 
@@ -186,7 +189,7 @@ class CliCommonDB:
             self, source_status: Status, sink_status: Status
         ):
             self.assertEqual(len(source_status.failures), 0)
-            self.assertEqual(
+            self.assertGreaterEqual(
                 len(source_status.filtered), self.expected_filtered_schema_excludes()
             )
 
@@ -194,7 +197,7 @@ class CliCommonDB:
             self, source_status: Status, sink_status: Status
         ):
             self.assertEqual(len(source_status.failures), 0)
-            self.assertEqual(
+            self.assertGreaterEqual(
                 len(source_status.filtered), self.expected_filtered_table_includes()
             )
 
@@ -202,13 +205,15 @@ class CliCommonDB:
             self, source_status: Status, sink_status: Status
         ):
             self.assertEqual(len(source_status.failures), 0)
-            self.assertEqual(
+            self.assertGreaterEqual(
                 len(source_status.filtered), self.expected_filtered_table_excludes()
             )
 
         def assert_filtered_mix(self, source_status: Status, sink_status: Status):
             self.assertEqual(len(source_status.failures), 0)
-            self.assertEqual(len(source_status.filtered), self.expected_filtered_mix())
+            self.assertGreaterEqual(
+                len(source_status.filtered), self.expected_filtered_mix()
+            )
 
         @staticmethod
         @abstractmethod

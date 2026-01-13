@@ -115,6 +115,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
         )
         self.external_location_map = {}
         self.schema_description_map = {}
+        self.glue_client = None
 
     def prepare(self):
         """
@@ -122,8 +123,10 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
         """
         try:
             super().prepare()
-            glue_client = AWSClient(self.service_connection.awsConfig).get_glue_client()
-            paginator = glue_client.get_paginator("get_databases")
+            self.glue_client = AWSClient(
+                self.service_connection.awsConfig
+            ).get_glue_client()
+            paginator = self.glue_client.get_paginator("get_databases")
             for page in paginator.paginate():
                 database_page = DatabasePage(**page)
                 for database in database_page.DatabaseList or []:
@@ -163,7 +166,10 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             Tuple[bool, Optional[TablePartition]]:
         """
         columns = inspector.get_columns(
-            table_name=table_name, schema=schema_name, only_partition_columns=True
+            table_name=table_name,
+            schema=schema_name,
+            only_partition_columns=True,
+            glue_client=self.glue_client,
         )
         if columns:
             partition_details = TablePartition(
@@ -304,3 +310,23 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
         else:
             description = table_info.get("text")
         return description
+
+    def _get_columns_internal(
+        self,
+        schema_name: str,
+        table_name: str,
+        db_name: str,
+        inspector: Inspector,
+        table_type: TableType = None,
+    ):
+        """
+        Override to pass Glue client to get_columns for Iceberg table filtering
+        """
+        # Pass the Glue client as a keyword argument to get_columns
+        return inspector.get_columns(
+            table_name,
+            schema_name,
+            table_type=table_type,
+            db_name=db_name,
+            glue_client=self.glue_client,
+        )

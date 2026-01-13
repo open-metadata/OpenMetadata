@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons';
 import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { Editor, EditorChange } from 'codemirror';
@@ -26,10 +27,10 @@ import 'codemirror/mode/javascript/javascript';
 import 'codemirror/mode/python/python';
 import 'codemirror/mode/sql/sql';
 import { isUndefined } from 'lodash';
-import React, { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Controlled as CodeMirror } from 'react-codemirror2';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
+import { ReactComponent as CopyIcon } from '../../../assets/svg/ic-duplicate.svg';
 import { JSON_TAB_SIZE } from '../../../constants/constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
@@ -51,6 +52,7 @@ const SchemaEditor = ({
   onFocus,
   refreshEditor,
 }: SchemaEditorProps) => {
+  const wrapperRef = useRef<CodeMirror | null>(null);
   const { t } = useTranslation();
   const defaultOptions = {
     tabSize: JSON_TAB_SIZE,
@@ -91,6 +93,18 @@ const SchemaEditor = ({
     }
   };
 
+  const editorWillUnmount = useCallback(() => {
+    if (editorInstance.current) {
+      const editorWrapper = editorInstance.current.getWrapperElement();
+      if (editorWrapper) {
+        editorWrapper.remove();
+      }
+    }
+    if (wrapperRef.current) {
+      (wrapperRef.current as unknown as { hydrated: boolean }).hydrated = false;
+    }
+  }, [editorInstance, wrapperRef]);
+
   useEffect(() => {
     setInternalValue(getSchemaEditorValue(value));
   }, [value]);
@@ -109,7 +123,7 @@ const SchemaEditor = ({
 
   return (
     <div
-      className={classNames('relative', className)}
+      className={classNames('schema-editor-container relative', className)}
       data-testid="code-mirror-container">
       {showCopyButton && (
         <div className="query-editor-button">
@@ -118,9 +132,9 @@ const SchemaEditor = ({
               hasCopied ? t('label.copied') : t('message.copy-to-clipboard')
             }>
             <Button
-              className="flex-center bg-white"
+              className="query-editor-copy-button"
               data-testid="query-copy-button"
-              icon={<CopyIcon height={16} width={16} />}
+              icon={<Icon component={CopyIcon} />}
               onClick={onCopyToClipBoard}
             />
           </Tooltip>
@@ -132,7 +146,9 @@ const SchemaEditor = ({
         editorDidMount={(editor) => {
           editorInstance.current = editor;
         }}
+        editorWillUnmount={editorWillUnmount}
         options={defaultOptions}
+        ref={wrapperRef}
         value={internalValue}
         onBeforeChange={handleEditorInputBeforeChange}
         onChange={handleEditorInputChange}

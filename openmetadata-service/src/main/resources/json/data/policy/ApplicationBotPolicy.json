@@ -13,6 +13,13 @@
       "resources" : ["All"],
       "operations": ["Create", "EditAll", "ViewAll", "Delete"],
       "effect": "allow"
+    },
+    {
+      "name": "DisplayName-Deny",
+      "description" : "Deny bots to update display name",
+      "resources" : ["All"],
+      "operations": ["EditDisplayName"],
+      "effect": "deny"
     }
   ]
 }

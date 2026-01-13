@@ -80,5 +80,161 @@
       "type": "dashboard"
     },
     "edge_meta": { "fqn": "", "type": "" }
+  },
+  {
+    "from": {
+      "fqn": "sample_data.ecommerce_db.shopify.raw_customer",
+      "type": "table"
+    },
+    "to": {
+      "fqn": "mysql_sample.default.posts_db.Tags",
+      "type": "table"
+    },
+    "sql_query": "select * from mysql_sample.default.posts_db.Tags",
+    "edge_meta": { "fqn": "sample_airflow.dim_address_etl", "type": "pipeline" }
+  },
+  {
+    "from": {
+      "fqn": "sample_data.ecommerce_db.shopify.raw_customer",
+      "type": "table"
+    },
+    "to": {
+      "fqn": "mysql_sample.default.posts_db.Tags",
+      "type": "table"
+    },
+    "sql_query": "select * from mysql_sample.default.posts_db.Tags",
+    "edge_meta": { "fqn": "sample_airflow.dim_address_etl", "type": "pipeline" }
+  },
+  {
+    "from": {
+      "fqn": "sample_data.ecommerce_db.shopify.dim_address",
+      "type": "table"
+    },
+    "to": {
+      "fqn": "mysql_sample.default.posts_db.Tags",
+      "type": "table"
+    },
+    "sql_query": "select * from mysql_sample.default.posts_db.Tags",
+    "edge_meta": { "fqn": "sample_airflow.dim_address_etl", "type": "pipeline" }
+  },
+  {
+    "from": {
+      "fqn": "sample_data.ecommerce_db.shopify.raw_customer",
+      "type": "table"
+    },
+    "to": {
+      "fqn": "sample_data.ecommerce_db.shopify.dim_customer",
+      "type": "table"
+    },
+    "sql_query": "select customer_id, first_name, last_name, email from raw_customer",
+    "edge_meta": { "fqn": "sample_dbtcloud.dbt_staging_shopify", "type": "pipeline" }
+  },
+  {
+    "from": {
+      "fqn": "sample_data.ecommerce_db.shopify.raw_order",
+      "type": "table"
+    },
+    "to": {
+      "fqn": "sample_data.ecommerce_db.shopify.dim_address",
+      "type": "table"
+    },
+    "sql_query": "select * from raw_order where order_status = 'completed'",
+    "edge_meta": { "fqn": "sample_dbtcloud.dbt_staging_shopify", "type": "pipeline" }
+  },
+  {
+    "from": {
+      "fqn": "sample_data.ecommerce_db.shopify.\"dim.product\"",
+      "type": "table"
+    },
+    "to": {
+      "fqn": "sample_data.ecommerce_db.shopify.fact_orders",
+      "type": "table"
+    },
+    "sql_query": "select product_id, order_id, quantity, price from dim.product",
+    "edge_meta": { "fqn": "sample_dbtcloud.dbt_transform_orders", "type": "pipeline" }
+  },
+  {
+    "from": {
+      "fqn": "sample_data.ecommerce_db.shopify.dim_customer",
+      "type": "table"
+    },
+    "to": {
+      "fqn": "sample_data.ecommerce_db.shopify.fact_orders",
+      "type": "table"
+    },
+    "sql_query": "select customer_id, order_date, total_amount from dim_customer join orders",
+    "edge_meta": { "fqn": "sample_dbtcloud.dbt_transform_orders", "type": "pipeline" }
+  },
+  {
+    "from": {
+      "fqn": "sample_data.ecommerce_db.shopify.\"dim.product\"",
+      "type": "table"
+    },
+    "to": {
+      "fqn": "sample_data.ecommerce_db.shopify.fact_orders",
+      "type": "table"
+    },
+    "sql_query": "select product_id, order_id, quantity, price, discount from dim.product",
+    "edge_meta": { "fqn": "sample_dbtcloud.dbt_transform_orders", "type": "pipeline" }
+  },
+  {
+    "from": {
+      "fqn": "sample_data.ecommerce_db.shopify.dim_customer",
+      "type": "table"
+    },
+    "to": {
+      "fqn": "sample_data.ecommerce_db.shopify.fact_orders",
+      "type": "table"
+    },
+    "sql_query": "select customer_id, order_date, total_amount, product_count from dim_customer",
+    "edge_meta": { "fqn": "sample_dbtcloud.dbt_transform_orders", "type": "pipeline" }
+  },
+  {
+    "from": {
+      "fqn": "sample_data.ecommerce_db.shopify.fact_orders",
+      "type": "table"
+    },
+    "to": {
+      "fqn": "sample_data.ecommerce_db.shopify.dim_customer",
+      "type": "table"
+    },
+    "sql_query": "select customer_id, sum(total_amount) as lifetime_value from fact_orders group by customer_id",
+    "edge_meta": { "fqn": "sample_dbtcloud.dbt_analytics_customers", "type": "pipeline" }
+  },
+  {
+    "from": {
+      "fqn": "sample_data.ecommerce_db.shopify.fact_orders",
+      "type": "table"
+    },
+    "to": {
+      "fqn": "sample_data.ecommerce_db.shopify.customer_features",
+      "type": "table"
+    },
+    "sql_query": "select customer_id, count(*) as total_orders, avg(total_amount) as avg_order_value from fact_orders group by customer_id",
+    "edge_meta": { "fqn": "sample_dbtcloud.dbt_ml_features", "type": "pipeline" }
+  },
+  {
+    "from": {
+      "fqn": "sample_data.ecommerce_db.shopify.dim_customer",
+      "type": "table"
+    },
+    "to": {
+      "fqn": "sample_data.ecommerce_db.shopify.customer_features",
+      "type": "table"
+    },
+    "sql_query": "select customer_id, preferred_category, churn_probability from dim_customer",
+    "edge_meta": { "fqn": "sample_dbtcloud.dbt_ml_features", "type": "pipeline" }
+  },
+  {
+    "from": {
+      "fqn": "sample_data.ecommerce_db.shopify.fact_orders",
+      "type": "table"
+    },
+    "to": {
+      "fqn": "sample_data.ecommerce_db.shopify.customer_features",
+      "type": "table"
+    },
+    "sql_query": "select customer_id, sum(total_amount) as total_spend from fact_orders group by customer_id",
+    "edge_meta": { "fqn": "sample_airflow.ml_feature_pipeline", "type": "pipeline" }
   }
 ]

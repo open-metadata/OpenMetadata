@@ -12,16 +12,15 @@
  */
 import { Button, Col, Row, Skeleton, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { isUndefined } from 'lodash';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../components/common/Table/Table';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -61,11 +60,12 @@ import {
   getNotificationAlertsEditPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
+import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const NotificationListPage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [loadingCount, setLoadingCount] = useState(0);
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);
   const [selectedAlert, setSelectedAlert] = useState<EventSubscription>();
@@ -77,6 +77,7 @@ const NotificationListPage = () => {
     handlePagingChange,
     showPagination,
     paging,
+    pagingCursor,
   } = usePaging();
   const { getResourceLimit } = useLimitStore();
   const { getEntityPermissionByFqn, getResourcePermission } =
@@ -137,7 +138,10 @@ const NotificationListPage = () => {
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
-      getSettingPageEntityBreadCrumb(GlobalSettingsMenuCategory.NOTIFICATIONS),
+      getSettingPageEntityBreadCrumb(
+        GlobalSettingsMenuCategory.NOTIFICATIONS,
+        t('label.alert-plural')
+      ),
     []
   );
 
@@ -180,8 +184,14 @@ const NotificationListPage = () => {
   }, []);
 
   useEffect(() => {
-    fetchAlerts();
-  }, [pageSize]);
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      fetchAlerts({ [cursorType]: cursorValue });
+    } else {
+      fetchAlerts();
+    }
+  }, [pageSize, pagingCursor]);
 
   const handleAlertDelete = useCallback(async () => {
     try {
@@ -197,7 +207,14 @@ const NotificationListPage = () => {
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
         fetchAlerts({ [cursorType]: paging[cursorType] });
-        handlePageChange(currentPage);
+        handlePageChange(
+          currentPage,
+          {
+            cursorType,
+            cursorValue: paging[cursorType],
+          },
+          pageSize
+        );
       }
     },
     [paging]
@@ -206,7 +223,7 @@ const NotificationListPage = () => {
   const columns = useMemo(
     () => [
       {
-        title: t('label.name'),
+        title: t('label.name').toString(),
         dataIndex: 'name',
         width: '200px',
         key: 'name',
@@ -223,7 +240,7 @@ const NotificationListPage = () => {
         },
       },
       {
-        title: t('label.trigger'),
+        title: t('label.trigger').toString(),
         dataIndex: ['filteringRules', 'resources'],
         width: '200px',
         key: 'FilteringRules.resources',
@@ -231,24 +248,9 @@ const NotificationListPage = () => {
           return resources?.join(', ') || '--';
         },
       },
+      ...descriptionTableObject(),
       {
-        title: t('label.description'),
-        dataIndex: 'description',
-        flex: true,
-        key: 'description',
-        render: (description: string) =>
-          isEmpty(description) ? (
-            <Typography.Text className="text-grey-muted">
-              {t('label.no-entity', {
-                entity: t('label.description'),
-              })}
-            </Typography.Text>
-          ) : (
-            <RichTextEditorPreviewerNew markdown={description} />
-          ),
-      },
-      {
-        title: t('label.action-plural'),
+        title: t('label.action-plural').toString(),
         dataIndex: 'fullyQualifiedName',
         width: 90,
         key: 'fullyQualifiedName',
@@ -314,7 +316,12 @@ const NotificationListPage = () => {
         </Col>
         <Col span={24}>
           <div className="d-flex justify-between">
-            <PageHeader data={PAGE_HEADERS.NOTIFICATION} />
+            <PageHeader
+              data={{
+                header: t(PAGE_HEADERS.NOTIFICATION.header),
+                subHeader: t(PAGE_HEADERS.NOTIFICATION.subHeader),
+              }}
+            />
             {(alertResourcePermission?.Create ||
               alertResourcePermission?.All) && (
               <LimitWrapper resource="eventsubscription">
@@ -322,7 +329,7 @@ const NotificationListPage = () => {
                   data-testid="create-notification"
                   type="primary"
                   onClick={() =>
-                    history.push(
+                    navigate(
                       getSettingPath(
                         GlobalSettingsMenuCategory.NOTIFICATIONS,
                         GlobalSettingOptions.ADD_NOTIFICATION
@@ -361,7 +368,7 @@ const NotificationListPage = () => {
                   })}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}
                   onClick={() =>
-                    history.push(
+                    navigate(
                       getSettingPath(
                         GlobalSettingsMenuCategory.NOTIFICATIONS,
                         GlobalSettingOptions.ADD_NOTIFICATION

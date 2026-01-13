@@ -11,8 +11,15 @@
       "name": "IngestionBotRule-Allow",
       "description" : "Allow ingestion bots to create/update/delete data entities",
       "resources" : ["All"],
-      "operations": ["Create", "EditAll", "ViewAll", "Delete"],
+      "operations": ["Create", "BulkCreate", "BulkUpdate", "EditAll", "ViewAll", "Delete"],
       "effect": "allow"
+    },
+    {
+      "name": "DisplayName-Deny",
+      "description" : "Deny bots to update display name",
+      "resources" : ["All"],
+      "operations": ["EditDisplayName"],
+      "effect": "deny"
     }
   ]
 }

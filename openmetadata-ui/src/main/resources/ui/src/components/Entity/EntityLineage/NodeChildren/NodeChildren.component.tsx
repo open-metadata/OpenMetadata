@@ -10,13 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DownOutlined, SearchOutlined, UpOutlined } from '@ant-design/icons';
-import { Button, Collapse, Input, Space } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import { IconButton, Stack, Typography } from '@mui/material';
+import { Collapse, Input } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BORDER_COLOR } from '../../../../constants/constants';
+import {
+  BORDER_COLOR,
+  LINEAGE_CHILD_ITEMS_PER_PAGE,
+} from '../../../../constants/constants';
 import {
   DATATYPES_HAVING_SUBFIELDS,
   LINEAGE_COLUMN_NODE_SUPPORTED,
@@ -33,33 +39,250 @@ import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils';
 import EntityLink from '../../../../utils/EntityLink';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import searchClassBase from '../../../../utils/SearchClassBase';
-import { getColumnContent } from '../CustomNode.utils';
-import TestSuiteSummaryWidget from '../TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
-import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
+import { ColumnContent } from '../CustomNode.utils';
+import {
+  EntityChildren,
+  EntityChildrenItem,
+  NodeChildrenProps,
+} from './NodeChildren.interface';
 
-const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
+interface CustomPaginatedListProps {
+  entityChildren: EntityChildren;
+  isOnlyShowColumnsWithLineageFilterActive?: boolean;
+  items: React.ReactNode[];
+  nodeId?: string;
+  page: number;
+  setPage: React.Dispatch<React.SetStateAction<number>>;
+}
+
+const CustomPaginatedList = ({
+  entityChildren,
+  isOnlyShowColumnsWithLineageFilterActive,
+  items,
+  nodeId,
+  page,
+  setPage,
+}: CustomPaginatedListProps) => {
+  const currentNodeAllColumns = Object.values(entityChildren ?? {});
+  const { t } = useTranslation();
+  const { setColumnsInCurrentPages, useUpdateNodeInternals } =
+    useLineageProvider();
+  const updateNodeInternals = useUpdateNodeInternals();
+
+  const getAllNestedChildrenInFlatArray = useCallback(
+    (item: EntityChildrenItem): string[] => {
+      const result: string[] = [];
+
+      if (item.fullyQualifiedName) {
+        result.push(item.fullyQualifiedName);
+      }
+
+      if (
+        'children' in item &&
+        Array.isArray(item.children) &&
+        item.children.length > 0
+      ) {
+        for (const child of item.children) {
+          result.push(...getAllNestedChildrenInFlatArray(child));
+        }
+      }
+
+      return result;
+    },
+    []
+  );
+
+  const currentNodeAllPagesItems = useMemo(
+    () =>
+      currentNodeAllColumns.flatMap((item) =>
+        getAllNestedChildrenInFlatArray(item)
+      ),
+    [currentNodeAllColumns, getAllNestedChildrenInFlatArray]
+  );
+
+  const {
+    totalPages,
+    insideCurrentPageItems,
+    outsideCurrentPageItems,
+    currentNodeCurrentPageItems,
+  } = useMemo(() => {
+    const totalPages = Math.ceil(items.length / LINEAGE_CHILD_ITEMS_PER_PAGE);
+    const startIdx = (page - 1) * LINEAGE_CHILD_ITEMS_PER_PAGE;
+    const endIdx = startIdx + LINEAGE_CHILD_ITEMS_PER_PAGE;
+
+    const insideCurrentPageItems: React.ReactNode[] = [];
+    const outsideCurrentPageItems: React.ReactNode[] = [];
+
+    items.forEach((item, i) => {
+      const wrappedItem = (
+        <div
+          className={
+            i >= startIdx && i < endIdx
+              ? 'inside-current-page-item'
+              : 'outside-current-page-item'
+          }>
+          {item}
+        </div>
+      );
+
+      if (i >= startIdx && i < endIdx) {
+        insideCurrentPageItems.push(wrappedItem);
+      } else {
+        outsideCurrentPageItems.push(wrappedItem);
+      }
+    });
+
+    const currentNodeCurrentPageItems = currentNodeAllColumns
+      .slice(startIdx, endIdx)
+      .filter(Boolean)
+      .flatMap((item) => getAllNestedChildrenInFlatArray(item));
+
+    return {
+      totalPages,
+      insideCurrentPageItems,
+      outsideCurrentPageItems,
+      currentNodeCurrentPageItems,
+    };
+  }, [
+    items,
+    page,
+    currentNodeAllColumns,
+    getAllNestedChildrenInFlatArray,
+    isOnlyShowColumnsWithLineageFilterActive,
+  ]);
+
+  /**
+   * This updates `columnsInCurrentPages` object for current node
+   *
+   * When page or filter is changed, this effect is called
+   * When filter is activated
+   *  - entry for nodeid is updated with `currentNodeAllPagesItems`
+   *  - `currentNodeAllPagesItems` is updated using `filteredColumns`
+   *  - `filteredColumns` is updated to only include columns having lineage
+   * When filter is deactivated
+   *  - entry is updated with `currentNodeCurrentPageItems`.
+   *  - `currentNodeCurrentPageItems` is updated using `filteredColumns`
+   *  - `filteredColumns` is updated to include all columns of current node
+   */
+  useEffect(() => {
+    setColumnsInCurrentPages((prev) => {
+      const updated = { ...prev };
+      if (nodeId) {
+        updated[nodeId] = isOnlyShowColumnsWithLineageFilterActive
+          ? currentNodeAllPagesItems
+          : currentNodeCurrentPageItems;
+      }
+
+      return updated;
+    });
+  }, [isOnlyShowColumnsWithLineageFilterActive, page]);
+
+  const handlePageChange = useCallback(
+    (newPage: number) => {
+      setPage(newPage);
+      if (nodeId) {
+        updateNodeInternals(nodeId);
+      }
+    },
+    [currentNodeCurrentPageItems, nodeId, updateNodeInternals]
+  );
+
+  const handlePrev = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      handlePageChange(Math.max(page - 1, 1));
+    },
+    [page, handlePageChange]
+  );
+
+  const handleNext = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      handlePageChange(Math.min(page + 1, totalPages));
+    },
+    [page, totalPages, handlePageChange]
+  );
+
+  if (isOnlyShowColumnsWithLineageFilterActive) {
+    return items;
+  }
+
+  return (
+    <>
+      <Stack className="inside-current-page-items" spacing={1}>
+        {insideCurrentPageItems}
+      </Stack>
+      <Stack className="outside-current-page-items" spacing={1}>
+        {outsideCurrentPageItems}
+      </Stack>
+
+      {!isOnlyShowColumnsWithLineageFilterActive && (
+        <Stack
+          alignItems="center"
+          direction="row"
+          justifyContent="center"
+          mt={2}
+          spacing={1}>
+          <IconButton
+            data-testid="prev-btn"
+            disabled={page === 1}
+            size="small"
+            onClick={handlePrev}>
+            <ChevronLeftIcon />
+          </IconButton>
+
+          <Typography variant="body2">
+            {page} {t('label.slash-symbol')} {totalPages}
+          </Typography>
+
+          <IconButton
+            data-testid="next-btn"
+            disabled={page === totalPages}
+            size="small"
+            onClick={handleNext}>
+            <ChevronRightIcon />
+          </IconButton>
+        </Stack>
+      )}
+    </>
+  );
+};
+
+const NodeChildren = ({
+  node,
+  isConnectable,
+  isChildrenListExpanded,
+  isOnlyShowColumnsWithLineageFilterActive,
+}: NodeChildrenProps) => {
   const { t } = useTranslation();
   const { Panel } = Collapse;
   const {
     tracedColumns,
     activeLayer,
     onColumnClick,
+    onColumnMouseEnter,
+    onColumnMouseLeave,
     columnsHavingLineage,
     isEditMode,
     expandAllColumns,
+    selectedColumn,
+    useUpdateNodeInternals,
+    isCreatingEdge,
   } = useLineageProvider();
+  const updateNodeInternals = useUpdateNodeInternals();
   const { entityType } = node;
   const [searchValue, setSearchValue] = useState('');
   const [filteredColumns, setFilteredColumns] = useState<EntityChildren>([]);
   const [showAllColumns, setShowAllColumns] = useState(false);
-  const [isExpanded, setIsExpanded] = useState<boolean>(true);
   const [summary, setSummary] = useState<TestSummary>();
   const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState(1);
 
-  const { showColumns, showDataObservability } = useMemo(() => {
+  const { isColumnLayerEnabled, showDataObservability } = useMemo(() => {
     return {
-      showColumns: activeLayer.includes(LineageLayer.ColumnLevelLineage),
+      isColumnLayerEnabled: activeLayer.includes(
+        LineageLayer.ColumnLevelLineage
+      ),
       showDataObservability: activeLayer.includes(
         LineageLayer.DataObservability
       ),
@@ -92,60 +315,129 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
       node &&
       LINEAGE_COLUMN_NODE_SUPPORTED.includes(node.entityType as EntityType)
     );
-  }, [node.id]);
+  }, [node]);
 
-  const { children, childrenHeading } = useMemo(
+  const { children: entityChildren, childrenHeading } = useMemo(
     () => getEntityChildrenAndLabel(node),
-    [node.id]
+    [node]
+  );
+
+  const currentNodeAllColumns = useMemo(
+    () => Object.values(entityChildren ?? {}),
+    [entityChildren]
+  );
+
+  const hasLineageInNestedChildren = useCallback(
+    (column: EntityChildrenItem): boolean => {
+      if (columnsHavingLineage.includes(column.fullyQualifiedName ?? '')) {
+        return true;
+      }
+
+      if (
+        'children' in column &&
+        Array.isArray(column.children) &&
+        column.children.length > 0
+      ) {
+        return column.children.some((child) =>
+          hasLineageInNestedChildren(child)
+        );
+      }
+
+      return false;
+    },
+    [columnsHavingLineage]
+  );
+
+  const currentNodeColumnsWithLineage = useMemo(
+    () =>
+      currentNodeAllColumns.filter((column) =>
+        hasLineageInNestedChildren(column)
+      ),
+    [currentNodeAllColumns, hasLineageInNestedChildren]
   );
 
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       e.stopPropagation();
-      const value = e.target.value;
-      setSearchValue(value);
+      const searchQuery = e.target.value;
+      setSearchValue(searchQuery);
+      const currentNodeColumnsToSearch =
+        isOnlyShowColumnsWithLineageFilterActive
+          ? currentNodeColumnsWithLineage
+          : currentNodeAllColumns;
 
-      if (value.trim() === '') {
-        // If search value is empty, show all columns
-        const filterColumns = Object.values(children ?? {});
-        setFilteredColumns(filterColumns);
+      if (searchQuery.trim() === '') {
+        setFilteredColumns(currentNodeColumnsToSearch);
+        setShowAllColumns(false);
       } else {
-        // Filter columns based on search value
-        const filtered = Object.values(children ?? {}).filter((column) =>
-          getEntityName(column).toLowerCase().includes(value.toLowerCase())
+        const currentNodeMatchedColumns = currentNodeColumnsToSearch.filter(
+          (column) =>
+            getEntityName(column)
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase())
         );
-        setFilteredColumns(filtered);
+        setFilteredColumns(currentNodeMatchedColumns);
         setShowAllColumns(true);
       }
     },
-    [children]
+    [
+      currentNodeAllColumns,
+      currentNodeColumnsWithLineage,
+      isOnlyShowColumnsWithLineageFilterActive,
+    ]
   );
-
-  const handleShowMoreClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    setShowAllColumns(true);
-  };
 
   const isColumnVisible = useCallback(
     (record: Column) => {
-      if (expandAllColumns || isEditMode || showAllColumns) {
+      if (
+        expandAllColumns ||
+        isEditMode ||
+        showAllColumns ||
+        isChildrenListExpanded
+      ) {
         return true;
       }
 
       return columnsHavingLineage.includes(record.fullyQualifiedName ?? '');
     },
-    [isEditMode, columnsHavingLineage, expandAllColumns, showAllColumns]
+    [
+      isEditMode,
+      columnsHavingLineage,
+      expandAllColumns,
+      showAllColumns,
+      isChildrenListExpanded,
+    ]
   );
 
   useEffect(() => {
-    if (!isEmpty(children)) {
-      setFilteredColumns(children);
+    if (!isEmpty(entityChildren)) {
+      if (isOnlyShowColumnsWithLineageFilterActive) {
+        setFilteredColumns(currentNodeColumnsWithLineage);
+      } else {
+        setFilteredColumns(currentNodeAllColumns);
+      }
     }
-  }, [children]);
+  }, [
+    currentNodeAllColumns,
+    currentNodeColumnsWithLineage,
+    isOnlyShowColumnsWithLineageFilterActive,
+  ]);
 
   useEffect(() => {
     setShowAllColumns(expandAllColumns);
   }, [expandAllColumns]);
+
+  useEffect(() => {
+    if (node.id) {
+      updateNodeInternals?.(node.id);
+    }
+  }, [
+    selectedColumn,
+    updateNodeInternals,
+    tracedColumns,
+    node.id,
+    isOnlyShowColumnsWithLineageFilterActive,
+  ]);
 
   const fetchTestSuiteSummary = async (testSuite: EntityReference) => {
     setIsLoading(true);
@@ -176,14 +468,15 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
 
       const columnSummary = getColumnSummary(record);
 
-      const headerContent = getColumnContent(
-        record,
-        isColumnTraced,
-        isConnectable,
-        onColumnClick,
-        showDataObservabilitySummary,
-        isLoading,
-        columnSummary
+      const headerContent = (
+        <ColumnContent
+          column={record}
+          isColumnTraced={isColumnTraced}
+          isConnectable={isConnectable}
+          isLoading={isLoading}
+          showDataObservabilitySummary={showDataObservabilitySummary}
+          summary={columnSummary}
+        />
       );
 
       if (!record.children || record.children.length === 0) {
@@ -210,14 +503,16 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
             return null;
           }
 
-          return getColumnContent(
-            child,
-            isColumnTraced,
-            isConnectable,
-            onColumnClick,
-            showDataObservabilitySummary,
-            isLoading,
-            columnSummary
+          return (
+            <ColumnContent
+              column={child}
+              isColumnTraced={isColumnTraced}
+              isConnectable={isConnectable}
+              isLoading={isLoading}
+              key={fullyQualifiedName}
+              showDataObservabilitySummary={showDataObservabilitySummary}
+              summary={columnSummary}
+            />
           );
         }
       });
@@ -242,13 +537,17 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
       );
     },
     [
-      isConnectable,
       tracedColumns,
+      getColumnSummary,
+      selectedColumn,
+      isConnectable,
       onColumnClick,
-      isColumnVisible,
+      onColumnMouseEnter,
+      onColumnMouseLeave,
       showDataObservabilitySummary,
       isLoading,
-      summary,
+      Panel,
+      isColumnVisible,
     ]
   );
   const renderColumnsData = useCallback(
@@ -264,24 +563,30 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
           return null;
         }
 
-        return getColumnContent(
-          column,
-          isColumnTraced,
-          isConnectable,
-          onColumnClick,
-          showDataObservabilitySummary,
-          isLoading,
-          columnSummary
+        return (
+          <ColumnContent
+            column={column}
+            isColumnTraced={isColumnTraced}
+            isConnectable={isConnectable}
+            isLoading={isLoading}
+            showDataObservabilitySummary={showDataObservabilitySummary}
+            summary={columnSummary}
+          />
         );
       }
     },
     [
-      isConnectable,
+      getColumnSummary,
+      renderRecord,
       tracedColumns,
       isColumnVisible,
+      selectedColumn,
+      isConnectable,
+      onColumnClick,
+      onColumnMouseEnter,
+      onColumnMouseLeave,
       showDataObservabilitySummary,
       isLoading,
-      summary,
     ]
   );
 
@@ -292,97 +597,51 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
       .filter(Boolean);
   }, [filteredColumns, renderColumnsData]);
 
-  // Memoize the expand/collapse icon to prevent unnecessary re-renders
-  const expandCollapseIcon = useMemo(() => {
-    return isExpanded ? (
-      <UpOutlined style={{ fontSize: '12px' }} />
-    ) : (
-      <DownOutlined style={{ fontSize: '12px' }} />
-    );
-  }, [isExpanded]);
-
-  // Memoize the entity icon to prevent unnecessary re-renders
-  const entityIcon = useMemo(() => {
-    return searchClassBase.getEntityIcon(node.entityType ?? '');
-  }, [node.entityType]);
-
-  const shouldShowMoreButton = useMemo(() => {
+  if (
+    supportsColumns &&
+    (isColumnLayerEnabled || showDataObservability || isChildrenListExpanded)
+  ) {
     return (
-      !showAllColumns &&
-      !isEmpty(children) &&
-      renderedColumns.length !== children.length &&
-      !searchValue
-    );
-  }, [showAllColumns, children, renderedColumns, searchValue]);
-
-  // Memoize the expand/collapse click handler
-  const handleExpandCollapseClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsExpanded((prevIsExpanded: boolean) => !prevIsExpanded);
-  }, []);
-
-  if (supportsColumns && (showColumns || showDataObservability)) {
-    return (
-      <div className="column-container">
-        <div className="d-flex justify-between items-center">
-          <div>
-            {showColumns && (
-              <Button
-                className="flex-center text-primary rounded-4 p-xss h-9"
-                data-testid="expand-cols-btn"
-                type="text"
-                onClick={handleExpandCollapseClick}>
-                <Space>
-                  <div className=" w-5 h-5 text-base-color">{entityIcon}</div>
-                  {childrenHeading}
-                  {expandCollapseIcon}
-                </Space>
-              </Button>
-            )}
-          </div>
-          {showDataObservabilitySummary && (
-            <TestSuiteSummaryWidget isLoading={isLoading} summary={summary} />
+      isChildrenListExpanded &&
+      !isEmpty(entityChildren) && (
+        <div
+          className={classNames(
+            'column-container',
+            selectedColumn && 'any-column-selected',
+            isCreatingEdge && 'creating-edge'
           )}
-        </div>
-
-        {showColumns && isExpanded && (
-          <div className="m-t-md">
-            <div className="search-box">
-              <Input
-                placeholder={t('label.search-entity', {
-                  entity: childrenHeading,
-                })}
-                suffix={<SearchOutlined color={BORDER_COLOR} />}
-                value={searchValue}
-                onChange={handleSearchChange}
-              />
-            </div>
+          data-testid="column-container">
+          <div className="search-box">
+            <Input
+              data-testid="search-column-input"
+              placeholder={t('label.search-entity', {
+                entity: childrenHeading,
+              })}
+              suffix={<SearchOutlined color={BORDER_COLOR} />}
+              value={searchValue}
+              onChange={handleSearchChange}
+              onClick={(e) => e.stopPropagation()}
+            />
 
             {!isEmpty(renderedColumns) && (
               <section className="m-t-md" id="table-columns">
-                <div
-                  className={classNames('rounded-4 overflow-hidden', {
-                    border: !showAllColumns,
-                  })}>
-                  {renderedColumns}
+                <div className="rounded-4 overflow-hidden">
+                  <CustomPaginatedList
+                    entityChildren={entityChildren}
+                    isOnlyShowColumnsWithLineageFilterActive={
+                      isOnlyShowColumnsWithLineageFilterActive
+                    }
+                    items={renderedColumns}
+                    nodeId={node.id}
+                    page={page}
+                    setPage={setPage}
+                  />
                 </div>
               </section>
             )}
-
-            {shouldShowMoreButton && (
-              <Button
-                className="m-t-xs text-primary"
-                data-testid="show-more-columns-btn"
-                type="text"
-                onClick={handleShowMoreClick}>
-                {t('label.show-more-entity', {
-                  entity: t('label.column-plural'),
-                })}
-              </Button>
-            )}
           </div>
-        )}
-      </div>
+        </div>
+      )
     );
   } else {
     return null;

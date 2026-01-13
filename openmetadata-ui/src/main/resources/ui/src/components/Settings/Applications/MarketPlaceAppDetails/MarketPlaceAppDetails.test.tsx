@@ -11,18 +11,18 @@
  *  limitations under the License.
  */
 import {
+  fireEvent,
   queryByTestId,
   render,
   screen,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import * as reactI18next from 'react-i18next';
 import { ROUTES } from '../../../../constants/constants';
 import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
 import MarketPlaceAppDetails from './MarketPlaceAppDetails.component';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 const mockShowErrorToast = jest.fn();
 let mockGetApplicationByName = jest.fn().mockReturnValue(mockApplicationData);
 let mockGetMarketPlaceApplicationByFqn = jest.fn().mockReturnValue({
@@ -36,9 +36,7 @@ let mockGetMarketPlaceApplicationByFqn = jest.fn().mockReturnValue({
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
@@ -94,6 +92,13 @@ jest.mock('../AppLogo/AppLogo.component', () =>
   jest.fn().mockImplementation(() => <>AppLogo</>)
 );
 
+jest.mock('../../../../utils/BrandData/BrandClassBase', () => ({
+  __esModule: true,
+  default: {
+    getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
+  },
+}));
+
 describe('MarketPlaceAppDetails component', () => {
   it('should render all necessary elements if app details fetch successfully', async () => {
     const { container } = render(<MarketPlaceAppDetails />);
@@ -122,11 +127,11 @@ describe('MarketPlaceAppDetails component', () => {
     expect(appName).not.toBeInTheDocument();
 
     // actions check
-    userEvent.click(
+    fireEvent.click(
       screen.getByRole('button', { name: 'left label.browse-app-plural' })
     );
 
-    expect(mockPush).toHaveBeenCalledWith(ROUTES.MARKETPLACE);
+    expect(mockNavigate).toHaveBeenCalledWith(ROUTES.MARKETPLACE);
   });
 
   it('should show install button disabled', async () => {
@@ -175,9 +180,9 @@ describe('MarketPlaceAppDetails component', () => {
 
     // app install action check
     // making install button enable by rejecting promise in getApplicationByName
-    userEvent.click(screen.getByRole('button', { name: 'label.install' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.install' }));
 
-    expect(mockPush).toHaveBeenCalledWith('app install path');
+    expect(mockNavigate).toHaveBeenCalledWith('app install path');
   });
 
   it("should render the correct support email url with 'mailto:' schema", async () => {
@@ -189,5 +194,34 @@ describe('MarketPlaceAppDetails component', () => {
       'href',
       'mailto:support@email.com'
     );
+  });
+
+  it('should render with correct brandName (OpenMetadata or Collate)', async () => {
+    const mockT = jest.fn((key: string, params?: Record<string, string>) => {
+      if (key === 'message.marketplace-verify-msg' && params?.brandName) {
+        return `Verified by ${params.brandName}`;
+      }
+
+      return key;
+    });
+
+    jest.spyOn(reactI18next, 'useTranslation').mockReturnValue({
+      t: mockT,
+      i18n: { language: 'en-US' },
+      ready: true,
+    } as any);
+
+    const { container } = render(<MarketPlaceAppDetails />);
+
+    await waitForElementToBeRemoved(() => screen.getByText('Loader'));
+
+    // Verify actual brand name is rendered
+    expect(container.textContent).toMatch(/OpenMetadata|Collate/);
+    expect(container.textContent).not.toContain('{{brandName}}');
+
+    // Verify translation was called with brandName
+    expect(mockT).toHaveBeenCalledWith('message.marketplace-verify-msg', {
+      brandName: 'OpenMetadata',
+    });
   });
 });

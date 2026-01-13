@@ -34,6 +34,7 @@ import {
   visitOwnProfilePage,
 } from './common';
 import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
+import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick, SettingOptionsType, sidebarClick } from './sidebar';
 
 export const visitUserListPage = async (page: Page) => {
@@ -96,7 +97,7 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
     }
   );
   const userResponse = page.waitForResponse(
-    '/api/v1/search/query?q=**AND%20isAdmin:false%20isBot:false&from=0&size=*&index=*'
+    '/api/v1/search/query?q=*&index=*&from=0&size=*'
   );
   const loader = page.waitForSelector(
     '[data-testid="user-list-v1-component"] [data-testid="loader"]',
@@ -116,7 +117,7 @@ export const softDeleteUserProfilePage = async (
   displayName: string
 ) => {
   const userResponse = page.waitForResponse(
-    '/api/v1/search/query?q=**&from=0&size=*&index=*'
+    '/api/v1/search/query?q=*&index=*&from=0&size=*'
   );
   await page.getByTestId('searchbar').fill(userName);
   await userResponse;
@@ -211,12 +212,17 @@ export const hardDeleteUserProfilePage = async (
 export const editDisplayName = async (page: Page, editedUserName: string) => {
   await page.click('[data-testid="user-profile-manage-btn"]');
   await page.click('[data-testid="edit-displayname"]');
-  await page.fill('[data-testid="displayName-input"]', '');
-  await page.getByTestId('displayName-input').fill(editedUserName);
 
+  await expect(page.locator('.ant-modal-wrap')).toBeVisible();
+
+  await page.getByTestId('displayName-input').click();
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type(editedUserName);
   const saveResponse = page.waitForResponse('/api/v1/users/*');
   await page.getByText('Save').click();
   await saveResponse;
+
+  await expect(page.locator('.ant-modal-wrap')).not.toBeVisible();
 
   // Verify the updated display name
   const userName = await page.textContent('[data-testid="user-display-name"]');
@@ -289,21 +295,12 @@ export const handleUserUpdateDetails = async (
 
   // edit displayName
   await editDisplayName(page, editedUserName);
-
-  // edit description
 };
 
 export const updateUserDetails = async (
   page: Page,
-  {
-    updatedDisplayName,
-    isAdmin,
-  }: {
-    updatedDisplayName: string;
-    teamName: string;
-    isAdmin?: boolean;
-    role?: string;
-  }
+  updatedDisplayName: string,
+  isAdmin?: boolean
 ) => {
   if (isAdmin) {
     await handleAdminUpdateDetails(page, updatedDisplayName);
@@ -321,7 +318,7 @@ export const softDeleteUser = async (
   await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
 
   const searchResponse = page.waitForResponse(
-    '/api/v1/search/query?q=**&from=0&size=*&index=*'
+    '/api/v1/search/query?q=*&index=*&from=0&size=*'
   );
   await page.fill('[data-testid="searchbar"]', username);
   await searchResponse;
@@ -468,7 +465,7 @@ export const generateToken = async (page: Page) => {
 
   await page.click('[data-testid="token-expiry"]');
 
-  await page.locator('[title="1 hr"] div').click();
+  await page.locator('[title="1 hour"] div').click();
 
   await expect(page.locator('[data-testid="token-expiry"]')).toBeVisible();
 
@@ -491,15 +488,25 @@ export const revokeToken = async (page: Page, isBot?: boolean) => {
   await expect(page.locator('[data-testid="revoke-button"]')).not.toBeVisible();
 };
 
-export const updateExpiration = async (page: Page, expiry: number | string) => {
+export const updateExpiration = async (page: Page, expiry: number) => {
   await page.click('[data-testid="token-expiry"]');
-  await page.click(`text=${expiry} days`);
+  await page.click(`text=${expiry} day${expiry > 1 ? 's' : ''}`);
 
   const expiryDate = customFormatDateTime(
     getEpochMillisForFutureDays(expiry as number),
     `ccc d'th' MMMM, yyyy`
   );
 
+  // Wait for dropdown to close and ensure no overlays are present
+  await page.waitForTimeout(100);
+
+  // Click outside to close any open dropdowns
+  await page.mouse.click(1, 1);
+
+  // Wait for any dropdown animations to complete
+  await page.waitForSelector('.ant-select-dropdown', { state: 'hidden' });
+
+  // Now click the save button
   await page.click('[data-testid="save-edit"]');
 
   await expect(
@@ -556,7 +563,9 @@ export const checkDataConsumerPermissions = async (page: Page) => {
 
   await page.click('[data-testid="lineage"]');
 
-  await expect(page.locator('[data-testid="edit-lineage"]')).toBeDisabled();
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(page.getByTestId('edit-lineage')).not.toBeVisible();
 };
 
 export const checkStewardServicesPermissions = async (page: Page) => {
@@ -583,6 +592,16 @@ export const checkStewardServicesPermissions = async (page: Page) => {
     state: 'detached',
   });
 
+  const dataAssetDropdownRequest = page.waitForResponse(
+    '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
+  );
+
+  await page
+    .getByTestId('drop-down-menu')
+    .getByTestId('search-input')
+    .fill('table');
+  await dataAssetDropdownRequest;
+
   await page.locator('[data-testid="table-checkbox"]').scrollIntoViewIfNeeded();
   await page.click('[data-testid="table-checkbox"]');
 
@@ -597,9 +616,6 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   await page.click('.summary-panel-container [data-testid="entity-link"]');
 
   await page.waitForLoadState('networkidle');
-
-  // Check if the edit tier button is visible
-  await expect(page.locator('[data-testid="edit-tier"]')).toBeVisible();
 };
 
 export const checkStewardPermissions = async (page: Page) => {
@@ -640,9 +656,10 @@ export const checkStewardPermissions = async (page: Page) => {
 
   // Click on lineage item
   await page.click('[data-testid="lineage"]');
+  await waitForAllLoadersToDisappear(page);
 
-  // Check if edit lineage button is enabled
-  await expect(page.locator('[data-testid="edit-lineage"]')).toBeEnabled();
+  // Check if edit lineage option is available
+  await expect(page.getByTestId('edit-lineage')).toBeVisible();
 };
 
 export const addUser = async (

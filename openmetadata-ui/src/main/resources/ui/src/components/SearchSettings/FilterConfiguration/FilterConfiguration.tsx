@@ -21,7 +21,7 @@ import {
   Typography,
 } from 'antd';
 import { startCase } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/filter-primary.svg';
@@ -95,7 +95,7 @@ const FilterConfiguration = () => {
           <div
             className="bg-white flex items-center justify-center gap-3 p-y-xss p-x-sm filter-value"
             key={value.key}>
-            {value.label}
+            {t(value.label)}
             <Icon
               className="text-grey-muted text-xss cursor-pointer"
               component={CloseIcon}

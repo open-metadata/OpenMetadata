@@ -1,0 +1,50 @@
+{
+  "semantic_fields": {
+    "properties": {
+      "embedding": {
+        "type": "knn_vector",
+        "dimension": 384,
+        "method": {
+          "name": "hnsw",
+          "space_type": "cosinesimil",
+          "engine": "lucene",
+          "parameters": {
+            "ef_construction": 128,
+            "m": 16
+          }
+        }
+      },
+      "rdfContext": {
+        "type": "object",
+        "properties": {
+          "semanticTypes": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "upstreamCount": {
+            "type": "integer"
+          },
+          "downstreamCount": {
+            "type": "integer"
+          },
+          "relatedCount": {
+            "type": "integer"
+          },
+          "rdfProperties": {
+            "type": "object",
+            "enabled": false
+          }
+        }
+      }
+    }
+  },
+  "settings": {
+    "index.knn": true,
+    "index.knn.algo_param.ef_search": 100
+  }
+}

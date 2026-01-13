@@ -12,7 +12,7 @@
  */
 import Icon from '@ant-design/icons';
 import { Button, Table } from 'antd';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -44,10 +44,16 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
 
   const columns = useMemo(() => {
     return [
-      ...fieldValueBoostBaseColumns,
+      ...fieldValueBoostBaseColumns.map((col) => ({
+        ...col,
+        title: t(col.title),
+      })),
       ...(!entitySearchSettingsPage
         ? [
-            ...fieldValueBoostAdditionalColumns,
+            ...fieldValueBoostAdditionalColumns.map((col) => ({
+              ...col,
+              title: t(col.title),
+            })),
             {
               title: t('label.greater-than'),
               key: 'gt',
@@ -107,6 +113,7 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
       },
     ];
   }, [
+    t,
     handleEditFieldValueBoost,
     handleDeleteFieldValueBoost,
     entitySearchSettingsPage,

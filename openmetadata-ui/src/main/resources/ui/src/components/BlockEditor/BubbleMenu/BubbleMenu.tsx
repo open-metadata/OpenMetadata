@@ -18,7 +18,7 @@ import {
 import { Button, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isString } from 'lodash';
-import React, { FC, useMemo } from 'react';
+import { FC, useMemo } from 'react';
 import { ReactComponent as FormatBoldIcon } from '../../../assets/svg/ic-format-bold.svg';
 import { ReactComponent as FormatInlineCodeIcon } from '../../../assets/svg/ic-format-inline-code.svg';
 import { ReactComponent as FormatItalicIcon } from '../../../assets/svg/ic-format-italic.svg';
@@ -141,7 +141,13 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
                 'is-format-active': isActive(),
               })}
               type="text"
-              onClick={command}>
+              onMouseDown={(e) => {
+                // To prevent losing focus from editor
+                // The mouseDown event fires before the click event and before focus changes,
+                // so we can intercept it and prevent the default focus behavior.
+                e.preventDefault();
+                command();
+              }}>
               {isString(Icon) ? (
                 <Typography>{Icon}</Typography>
               ) : (

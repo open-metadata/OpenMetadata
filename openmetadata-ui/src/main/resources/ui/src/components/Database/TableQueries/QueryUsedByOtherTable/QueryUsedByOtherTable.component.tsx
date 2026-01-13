@@ -13,7 +13,7 @@
 import { Col, Popover, Row, Space, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { isArray, isUndefined, slice, uniqBy } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
@@ -23,7 +23,7 @@ import {
 import { QUERY_USED_BY_TABLE_VIEW_CAP } from '../../../../constants/Query.constant';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
-import { searchData } from '../../../../rest/miscAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
 import { getEntityLabel, getEntityName } from '../../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
@@ -113,7 +113,7 @@ const QueryUsedByOtherTable = ({
 
   const handleOnChange = (
     _: string[],
-    options: DefaultOptionType | DefaultOptionType[]
+    options?: DefaultOptionType | DefaultOptionType[]
   ) => {
     if (isArray(options)) {
       onChange(options);
@@ -124,17 +124,14 @@ const QueryUsedByOtherTable = ({
     searchValue = ''
   ): Promise<DefaultOptionType[]> => {
     try {
-      const { data } = await searchData(
-        searchValue,
-        INITIAL_PAGING_VALUE,
-        PAGE_SIZE_MEDIUM,
-        '',
-        '',
-        '',
-        SearchIndex.TABLE
-      );
+      const response = await searchQuery({
+        query: searchValue,
+        pageNumber: INITIAL_PAGING_VALUE,
+        pageSize: PAGE_SIZE_MEDIUM,
+        searchIndex: SearchIndex.TABLE,
+      });
 
-      return data.hits.hits.map((value) => ({
+      return response.hits.hits.map((value) => ({
         label: getEntityLabel(value._source),
         value: value._source.id,
         labelName: getEntityName(value._source),

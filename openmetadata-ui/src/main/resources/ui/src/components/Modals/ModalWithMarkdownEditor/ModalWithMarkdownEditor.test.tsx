@@ -12,7 +12,7 @@
  */
 
 import { fireEvent, getByTestId, render } from '@testing-library/react';
-import React, { forwardRef } from 'react';
+import { forwardRef } from 'react';
 import ReactDOM from 'react-dom';
 import { ModalWithMarkdownEditor } from './ModalWithMarkdownEditor';
 
@@ -30,7 +30,6 @@ jest.mock('../../common/RichTextEditor/RichTextEditor', () => {
 
 describe('Test ModalWithMarkdownEditor Component', () => {
   beforeAll(() => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     ReactDOM.createPortal = jest.fn().mockImplementation((element, _node) => {
       return element;
     });

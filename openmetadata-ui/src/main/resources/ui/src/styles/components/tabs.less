@@ -88,7 +88,7 @@
 
   .ant-tabs-tabpane {
     margin-top: @padding-sm;
-    border-radius: @border-radius-sm;
+    border-radius: @border-rad-sm;
     background-color: @white;
   }
 
@@ -96,5 +96,15 @@
     bottom: 6px;
     height: 2px;
     background-color: @primary-color;
+  }
+}
+
+.glossary-details,
+.entity-details-page-tabs {
+  .ant-tabs.tabs-new {
+    .ant-tabs-tabpane {
+      background-color: @grey-9;
+      margin-bottom: @margin-md;
+    }
   }
 }

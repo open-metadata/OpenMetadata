@@ -12,9 +12,9 @@
  */
 import { Badge } from 'antd';
 import { isNil } from 'lodash';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { getCountBadge } from '../../../utils/CommonUtils';
+import Loader from '../Loader/Loader';
 import './tabs-label.less';
 import { TabsLabelProps } from './TabsLabel.interface';
 
@@ -25,6 +25,7 @@ const TabsLabel = ({
   id,
   description,
   isBeta,
+  isLoading,
 }: TabsLabelProps) => {
   const { t } = useTranslation();
 
@@ -32,8 +33,18 @@ const TabsLabel = ({
     <div className="w-full tabs-label-container" data-testid={id}>
       <div className="d-flex justify-between gap-1">
         {name}
-        {!isNil(count) && (
-          <span data-testid="count">{getCountBadge(count, '', isActive)}</span>
+        {isLoading ? (
+          <span
+            className="d-flex justify-center items-center"
+            data-testid="loading-skeleton">
+            <Loader size="small" />
+          </span>
+        ) : (
+          !isNil(count) && (
+            <span data-testid="count">
+              {getCountBadge(count, '', isActive)}
+            </span>
+          )
         )}
         {isBeta && (
           <Badge className="service-beta-tag" count={t('label.beta')} />

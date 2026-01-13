@@ -1,15 +1,59 @@
 """Base class for param setter logic for table data diff"""
 
-from typing import List, Optional, Set
-from urllib.parse import urlparse
+from typing import List, Optional, Set, Type, Union
+
+from sqlalchemy.engine import make_url
 
 from metadata.data_quality.validations.models import Column, TableParameter
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseService,
+    DatabaseServiceType,
+)
+from metadata.generated.schema.entity.services.serviceType import ServiceType
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.connections import get_connection
-from metadata.profiler.orm.registry import Dialects
+from metadata.profiler.orm.registry import Dialects, PythonDialects
 from metadata.utils import fqn
 from metadata.utils.collections import CaseInsensitiveList
+from metadata.utils.importer import get_module_dir, import_from_module
+from metadata.utils.logger import test_suite_logger
+
+logger = test_suite_logger()
+
+
+# TODO: Refactor to avoid the circular import that makes us unable to use the BaseSpec class and the helper methods.
+# Using the specs class method causes circular import as TestSuiteInterface
+# imports RuntimeParameterSetter
+class ServiceSpecPatch:
+    def __init__(self, service_type: ServiceType, source_type: str):
+        self.service_type = service_type
+        self.source_type = source_type
+        self._service_spec = None
+
+    @property
+    def service_spec(self):
+        if self._service_spec is None:
+            self._service_spec = self.get_for_source()
+        return self._service_spec
+
+    def get_for_source(self):
+        return import_from_module(
+            "metadata.{}.source.{}.{}.{}.ServiceSpec".format(  # pylint: disable=C0209
+                "ingestion",
+                self.service_type.name.lower(),
+                get_module_dir(self.source_type),
+                "service_spec",
+            )
+        )
+
+    def get_data_diff_class(self) -> Type["BaseTableParameter"]:
+        return import_from_module(self.service_spec.data_diff)
+
+    def get_connection_class(self) -> Optional[Type[BaseConnection]]:
+        if self.service_spec.connection_class:
+            return import_from_module(self.service_spec.connection_class)
+        return None
 
 
 class BaseTableParameter:
@@ -22,7 +66,7 @@ class BaseTableParameter:
         key_columns,
         extra_columns,
         case_sensitive_columns,
-        service_url: Optional[str],
+        service_url: Optional[Union[str, dict]],
     ) -> TableParameter:
         """Getter table parameter for the table diff test.
 
@@ -31,7 +75,9 @@ class BaseTableParameter:
         """
         return TableParameter(
             database_service_type=service.serviceType,
-            path=self.get_data_diff_table_path(entity.fullyQualifiedName.root),
+            path=self.get_data_diff_table_path(
+                entity.fullyQualifiedName.root, service.serviceType
+            ),
             serviceUrl=self.get_data_diff_url(
                 service,
                 entity.fullyQualifiedName.root,
@@ -45,10 +91,14 @@ class BaseTableParameter:
             ),
             privateKey=None,
             passPhrase=None,
+            key_columns=key_columns,
+            extra_columns=extra_columns,
         )
 
     @staticmethod
-    def get_data_diff_table_path(table_fqn: str) -> str:
+    def get_data_diff_table_path(
+        table_fqn: str, service_type: DatabaseServiceType
+    ) -> str:
         """Get the data diff table path.
 
         Args:
@@ -58,14 +108,66 @@ class BaseTableParameter:
             str
         """
         _, _, schema, table = fqn.split(table_fqn)
+        try:
+            dialect = PythonDialects[service_type.name].value
+            if dialect in (Dialects.Oracle):
+                url = make_url(f"{dialect}://")
+                dialect_instance = url.get_dialect()()
+                table = dialect_instance.denormalize_name(name=table)
+                schema = dialect_instance.denormalize_name(name=schema)
+        except Exception as e:
+            logger.debug(
+                f"[Data Diff]: Error denormalizing table and schema names. Skipping denormalization\n{e}"
+            )
         return fqn._build(  # pylint: disable=protected-access
             "___SERVICE___", "__DATABASE__", schema, table
         ).replace("___SERVICE___.__DATABASE__.", "")
 
-    @staticmethod
+    @classmethod
+    def _get_service_connection_config(
+        cls,
+        service_connection_config,
+    ) -> Optional[Union[str, dict]]:
+        """
+        Get the connection dictionary for the service.
+        """
+        if not service_connection_config:
+            return None
+
+        service_spec_patch = ServiceSpecPatch(
+            ServiceType.Database, service_connection_config.type.value.lower()
+        )
+
+        try:
+            connection_class = service_spec_patch.get_connection_class()
+            if not connection_class:
+                return (
+                    str(get_connection(service_connection_config).url)
+                    if service_connection_config
+                    else None
+                )
+            connection = connection_class(service_connection_config)
+            return connection.get_connection_dict()
+        except (ValueError, AttributeError, NotImplementedError):
+            return (
+                str(get_connection(service_connection_config).url)
+                if service_connection_config
+                else None
+            )
+
+    @classmethod
+    def get_service_connection_config(
+        cls,
+        service: DatabaseService,
+    ) -> Optional[Union[str, dict]]:
+        return cls._get_service_connection_config(service.connection.config)
+
     def get_data_diff_url(
-        db_service: DatabaseService, table_fqn, override_url: Optional[str] = None
-    ) -> str:
+        self,
+        db_service: DatabaseService,
+        table_fqn,
+        override_url: Optional[Union[str, dict]] = None,
+    ) -> Union[str, dict]:
         """Get the url for the data diff service.
 
         Args:
@@ -77,22 +179,30 @@ class BaseTableParameter:
             str: The url for the data diff service
         """
         source_url = (
-            str(get_connection(db_service.connection.config).url)
+            self._get_service_connection_config(db_service.connection.config)
             if not override_url
             else override_url
         )
-        url = urlparse(source_url)
+        if isinstance(source_url, dict):
+            source_url["driver"] = source_url["driver"].split("+")[0]
+            return source_url
+
+        url = make_url(source_url)
         # remove the driver name from the url because table-diff doesn't support it
-        kwargs = {"scheme": url.scheme.split("+")[0]}
-        service, database, schema, table = fqn.split(  # pylint: disable=unused-variable
-            table_fqn
-        )
-        # path needs to include the database AND schema in some of the connectors
+        drivername = url.drivername.split("+")[0]
+        _, database, schema, _ = fqn.split(table_fqn)
         if hasattr(db_service.connection.config, "supportsDatabase"):
-            kwargs["path"] = f"/{database}"
-        if kwargs["scheme"] in {Dialects.MSSQL, Dialects.Snowflake, Dialects.Trino}:
-            kwargs["path"] = f"/{database}/{schema}"
-        return url._replace(**kwargs).geturl()
+            if drivername in {Dialects.UnityCatalog, Dialects.Databricks}:
+                url = url.set(drivername=drivername, query={"catalog": database})
+            else:
+                url = url.set(drivername=drivername, database=database)
+        if drivername in {Dialects.MSSQL, Dialects.Snowflake, Dialects.Trino}:
+            url = url.set(drivername=drivername, database=f"{database}/{schema}")
+        elif drivername in {Dialects.MySQL, Dialects.MariaDB}:
+            url = url.set(drivername=drivername, database=f"{schema}")
+        else:
+            url = url.set(drivername=drivername)
+        return str(url)
 
     @staticmethod
     def filter_relevant_columns(

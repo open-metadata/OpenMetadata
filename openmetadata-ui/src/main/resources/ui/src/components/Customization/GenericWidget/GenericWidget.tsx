@@ -13,7 +13,7 @@
 import { HolderOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import { Button, Card, Space } from 'antd';
 import { noop, startCase } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { GlossaryTermDetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';
@@ -40,16 +40,16 @@ export const GenericWidget = (props: WidgetCommonProps) => {
   const data = getDummyDataByPage(currentPageType as PageType);
 
   useMemo(() => {
+    // Only set dummy data if we're in edit/preview mode
     if (
+      props.isEditView &&
       props.widgetKey.startsWith(GlossaryTermDetailPageWidgetKeys.TERMS_TABLE)
     ) {
       setGlossaryChildTerms(
         customizeGlossaryTermPageClassBase.getGlossaryChildTerms()
       );
     }
-
-    return () => setGlossaryChildTerms([]);
-  }, [props.widgetKey]);
+  }, [props.widgetKey, props.isEditView]);
 
   const widgetName = startCase(
     props.widgetKey.replace('KnowledgePanel.', '').replace(/\d+$/, '')

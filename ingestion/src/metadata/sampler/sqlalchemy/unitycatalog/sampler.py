@@ -13,16 +13,15 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
-from metadata.ingestion.source.database.databricks.connection import (
-    get_connection as databricks_get_connection,
-)
-from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 
-class UnityCatalogSamplerInterface(SQASampler):
-    def get_client(self):
-        """client is the session for SQA"""
-        self.connection = databricks_get_connection(self.service_connection_config)
-        client = super().get_client()
-        self.set_catalog(client)
-        return client
+from metadata.sampler.sqlalchemy.databricks.sampler import DatabricksSamplerInterface
+
+
+class UnityCatalogSamplerInterface(DatabricksSamplerInterface):
+    """
+    Unity Catalog Sampler Interface
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)

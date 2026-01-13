@@ -115,6 +115,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
     "href": {
       "description": "Link to the resource corresponding to this search service.",
       "$ref": "../../type/basic.json#/definitions/href"
@@ -144,9 +148,9 @@
       "description": "Followers of this entity.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "domain" : {
-      "description": "Domain the search service belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the search service belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "ingestionRunner" : {
       "description": "The ingestion agent responsible for executing the ingestion pipeline.",

@@ -24,42 +24,41 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class DashboardDataModelClass extends EntityClass {
-  private dashboardDataModelName = `pw-dashboard-data-model-${uuid()}`;
-  private projectName = `pw-project-${uuid()}`;
-  service = {
-    name: `pw-dashboard-service-${uuid()}`,
-    serviceType: 'Superset',
+  private dashboardDataModelName: string;
+  private projectName: string;
+  service: {
+    name: string;
+    serviceType: string;
     connection: {
       config: {
-        type: 'Superset',
-        hostPort: 'http://localhost:8088',
+        type: string;
+        hostPort: string;
         connection: {
-          provider: 'ldap',
-          username: 'admin',
-          password: 'admin',
-        },
-        supportsMetadataExtraction: true,
-      },
-    },
+          provider: string;
+          username: string;
+          password: string;
+        };
+        supportsMetadataExtraction: boolean;
+      };
+    };
   };
 
-  children = [
-    {
-      name: 'country_name',
-      dataType: 'VARCHAR',
-      dataLength: 256,
-      dataTypeDisplay: 'varchar',
-      description: 'Name of the country.',
-    },
-  ];
+  children: Array<{
+    name: string;
+    dataType: string;
+    dataLength: number;
+    dataTypeDisplay: string;
+    description: string;
+  }>;
 
-  entity = {
-    name: this.dashboardDataModelName,
-    displayName: this.dashboardDataModelName,
-    service: this.service.name,
-    columns: this.children,
-    dataModelType: 'SupersetDataModel',
-    project: this.projectName,
+  entity: {
+    name: string;
+    displayName: string;
+    service: string;
+    description: string;
+    columns: unknown[];
+    dataModelType: string;
+    project: string;
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
@@ -68,8 +67,48 @@ export class DashboardDataModelClass extends EntityClass {
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.DataModel);
-    this.service.name = name ?? this.service.name;
-    this.type = 'Dashboard Data Model';
+
+    this.dashboardDataModelName = `pw-dashboard-data-model-${uuid()}`;
+    this.projectName = `pw-project-${uuid()}`;
+
+    this.service = {
+      name: name ?? `pw-dashboard-service-${uuid()}`,
+      serviceType: 'Superset',
+      connection: {
+        config: {
+          type: 'Superset',
+          hostPort: 'http://localhost:8088',
+          connection: {
+            provider: 'ldap',
+            username: 'admin',
+            password: 'admin',
+          },
+          supportsMetadataExtraction: true,
+        },
+      },
+    };
+
+    this.children = [
+      {
+        name: 'country_name',
+        dataType: 'VARCHAR',
+        dataLength: 256,
+        dataTypeDisplay: 'varchar',
+        description: 'Name of the country.',
+      },
+    ];
+
+    this.entity = {
+      name: this.dashboardDataModelName,
+      displayName: this.dashboardDataModelName,
+      description: `Description for ${this.dashboardDataModelName}`,
+      service: this.service.name,
+      columns: this.children,
+      dataModelType: 'SupersetDataModel',
+      project: this.projectName,
+    };
+
+    this.type = 'DashboardDataModel';
     this.childrenTabId = 'model';
     this.childrenSelectorId = this.children[0].name;
     this.serviceCategory = SERVICE_TYPE.Dashboard;
@@ -123,18 +162,28 @@ export class DashboardDataModelClass extends EntityClass {
     };
   }
 
-  async get() {
+  get() {
     return {
       service: this.serviceResponseData,
       entity: this.entityResponseData,
     };
   }
 
+  public set(data: {
+    entity: ResponseDataWithServiceType;
+    service: ResponseDataType;
+  }): void {
+    this.entityResponseData = data.entity;
+    this.serviceResponseData = data.service;
+  }
+
   async visitEntityPage(page: Page) {
     await visitEntityPage({
       page,
       searchTerm: this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.service.name}-${this.entity.name}`,
+      dataTestId: `${
+        this.entityResponseData.service.name ?? this.service.name
+      }-${this.entityResponseData.name ?? this.entity.name}`,
     });
   }
 

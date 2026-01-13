@@ -12,7 +12,7 @@
  */
 import { Col, Row, Skeleton, Steps, Typography } from 'antd';
 import { last, toLower } from 'lodash';
-import React, { ReactNode, useMemo } from 'react';
+import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AssigneesIcon } from '../../../../assets/svg/ic-assignees.svg';
 import { ReactComponent as FailureCommentIcon } from '../../../../assets/svg/ic-failure-comment.svg';
@@ -20,13 +20,17 @@ import { ReactComponent as FailureReasonIcon } from '../../../../assets/svg/ic-f
 import { ReactComponent as SeverityIcon } from '../../../../assets/svg/ic-severity.svg';
 import { ReactComponent as UserIcon } from '../../../../assets/svg/ic-user-profile.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
-import { TEST_CASE_STATUS } from '../../../../constants/TestSuite.constant';
+import {
+  TEST_CASE_RESOLUTION_STATUS_LABELS,
+  TEST_CASE_STATUS,
+} from '../../../../constants/TestSuite.constant';
 import { Thread } from '../../../../generated/entity/feed/thread';
 import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 
+import { OwnerType } from '../../../../enums/user.enum';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
@@ -59,7 +63,9 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
         case TestCaseResolutionStatusTypes.ACK:
           details = status.updatedBy ? (
             <Typography.Text className="text-grey-muted text-xss">
-              {`By ${getEntityName(status.updatedBy)} on `}
+              {`${t('label.by-entity', {
+                entity: getEntityName(status.updatedBy),
+              })} ${t('label.on-lowercase')} `}
             </Typography.Text>
           ) : null;
 
@@ -67,9 +73,9 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
         case TestCaseResolutionStatusTypes.Assigned:
           details = status.testCaseResolutionStatusDetails?.assignee ? (
             <Typography.Text className="text-grey-muted text-xss">
-              {`To ${getEntityName(
+              {`${t('label.to-lowercase')} ${getEntityName(
                 status.testCaseResolutionStatusDetails?.assignee
-              )} on `}
+              )} ${t('label.on-lowercase')} `}
             </Typography.Text>
           ) : null;
 
@@ -77,9 +83,11 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
         case TestCaseResolutionStatusTypes.Resolved:
           details = status.testCaseResolutionStatusDetails?.resolvedBy ? (
             <Typography.Text className="text-grey-muted text-xss">
-              {`By ${getEntityName(
-                status.testCaseResolutionStatusDetails.resolvedBy
-              )} on `}
+              {`${t('label.by-entity', {
+                entity: getEntityName(
+                  status.testCaseResolutionStatusDetails.resolvedBy
+                ),
+              })} ${t('label.on-lowercase')} `}
             </Typography.Text>
           ) : null;
 
@@ -94,7 +102,11 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
         title: (
           <div className="incident-title">
             <Typography.Paragraph className="m-b-0">
-              {status.testCaseResolutionStatusType}
+              {
+                TEST_CASE_RESOLUTION_STATUS_LABELS[
+                  status.testCaseResolutionStatusType
+                ]
+              }
             </Typography.Paragraph>
             <Typography.Paragraph className="m-b-0 incident-details">
               {details}
@@ -109,7 +121,7 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
         key: status.testCaseResolutionStatusType,
       };
     });
-  }, [testCaseResolutionStatus]);
+  }, [testCaseResolutionStatus, t]);
 
   const latestTestCaseResolutionStatus = useMemo(
     () => last(testCaseResolutionStatus),
@@ -146,7 +158,9 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
         <Col className="flex items-center gap-2" span={16}>
           {thread?.task?.assignees?.length === 1 ? (
             <div className="d-flex items-center gap-2">
-              <UserPopOverCard userName={thread?.task?.assignees[0].name ?? ''}>
+              <UserPopOverCard
+                type={thread?.task?.assignees[0]?.type as OwnerType}
+                userName={thread?.task?.assignees[0].name ?? ''}>
                 <div className="d-flex items-center">
                   <ProfilePicture
                     name={thread?.task?.assignees[0].name ?? ''}
@@ -160,7 +174,6 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
             </div>
           ) : (
             <OwnerLabel
-              avatarSize={24}
               isCompactView={false}
               owners={thread?.task?.assignees}
               showLabel={false}

@@ -16,6 +16,10 @@ from typing import List, Protocol, Sequence
 from dateutil.parser import parse
 from presidio_analyzer import RecognizerResult
 
+from metadata.utils.logger import pii_logger
+
+logger = pii_logger()
+
 
 class PresidioRecognizerResultPatcher(Protocol):
     """
@@ -76,8 +80,24 @@ def date_time_patcher(
             # try to parse using dateutils, if it fails, skip the result
             try:
                 _ = parse(text[result.start : result.end])
-            except ValueError:
+            except (ValueError, OverflowError):
                 # if parsing fails, skip the result
+                continue
+            except Exception as e:
+                logger.info("Unexpected error while parsing date time: %s", e)
                 continue
         patched_result.append(result)
     return patched_result
+
+
+class ResultCapturingPatcher:
+    recognizer_results: List[RecognizerResult]
+
+    def __init__(self) -> None:
+        self.recognizer_results = []
+
+    def __call__(
+        self, recognizer_results: Sequence[RecognizerResult], text: str
+    ) -> Sequence[RecognizerResult]:
+        self.recognizer_results.extend(recognizer_results)
+        return recognizer_results

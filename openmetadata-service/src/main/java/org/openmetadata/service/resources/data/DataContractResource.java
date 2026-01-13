@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.data;
 
+import static org.openmetadata.service.jdbi3.DataContractRepository.RESULT_EXTENSION;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -44,21 +46,39 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.List;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.DataContract;
+import org.openmetadata.schema.entity.datacontract.DataContractResult;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.DataContractRepository;
+import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.ODCSConverter;
+import org.openmetadata.service.util.RestUtil;
 
+@Slf4j
 @Path("/v1/dataContracts")
 @Tag(
     name = "Data Contracts",
@@ -68,18 +88,29 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "dataContracts")
 public class DataContractResource extends EntityResource<DataContract, DataContractRepository> {
   public static final String COLLECTION_PATH = "v1/dataContracts/";
-  static final String FIELDS = "owners";
+  static final String FIELDS = "owners,reviewers,extension";
 
   @Override
   public DataContract addHref(UriInfo uriInfo, DataContract dataContract) {
     super.addHref(uriInfo, dataContract);
     Entity.withHref(uriInfo, dataContract.getOwners());
+    Entity.withHref(uriInfo, dataContract.getReviewers());
     Entity.withHref(uriInfo, dataContract.getEntity());
     return dataContract;
   }
 
   public DataContractResource(Authorizer authorizer, Limits limits) {
     super(Entity.DATA_CONTRACT, authorizer, limits);
+  }
+
+  // Set the PipelineServiceClient so the repository can manage the Ingestion Pipelines for Test
+  // Suites
+  @Override
+  public void initialize(OpenMetadataApplicationConfig config) {
+    PipelineServiceClientInterface pipelineServiceClient =
+        PipelineServiceClientFactory.createPipelineServiceClient(
+            config.getPipelineServiceClientConfiguration());
+    repository.setPipelineServiceClient(pipelineServiceClient);
   }
 
   @GET
@@ -114,23 +145,15 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           @DefaultValue("10")
           int limitParam,
       @Parameter(
-              description = "Sort the records based on a field",
-              schema = @Schema(type = "string", example = "name"))
-          @QueryParam("sort")
-          @DefaultValue("updatedAt")
-          String sortParam,
-      @Parameter(
-              description = "Starting record number for pagination",
-              schema = @Schema(type = "integer", minimum = "0", example = "0"))
-          @Min(0)
+              description = "Returns list of contracts before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
-          Integer beforeParam,
+          String before,
       @Parameter(
-              description = "Starting record number for pagination",
-              schema = @Schema(type = "integer", minimum = "0", example = "0"))
-          @Min(0)
+              description = "Returns list of contracts after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
-          Integer afterParam,
+          String after,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities",
               schema = @Schema(implementation = Include.class))
@@ -151,8 +174,6 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     if (entityId != null) {
       filter.addQueryParam("entity", entityId.toString());
     }
-    String before = beforeParam != null ? beforeParam.toString() : null;
-    String after = afterParam != null ? afterParam.toString() : null;
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -232,6 +253,54 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           @DefaultValue("non-deleted")
           Include include) {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+  }
+
+  @GET
+  @Path("/entity")
+  @Operation(
+      operationId = "getDataContractByEntityId",
+      summary = "Get a data contract by its related Entity ID",
+      description = "Get a data contract by its related Entity ID.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The data contract",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataContract.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Data contract for instance {id} is not found")
+      })
+  public DataContract getByEntityId(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "ID of the related Entity", schema = @Schema(type = "string"))
+          @QueryParam("entityId")
+          UUID entityId,
+      @Parameter(
+              description = "Entity Type to get the data contract for",
+              schema = @Schema(type = "string", example = Entity.TABLE))
+          @QueryParam("entityType")
+          String entityType,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+        getResourceContextById(entityId));
+    DataContract dataContract =
+        repository.loadEntityDataContract(
+            new EntityReference().withId(entityId).withType(entityType));
+    if (dataContract == null) {
+      throw EntityNotFoundException.byMessage(
+          String.format("Data contract for entity %s is not found", entityId));
+    }
+    return addHref(uriInfo, repository.setFieldsInternal(dataContract, getFields(fieldsParam)));
   }
 
   @GET
@@ -443,9 +512,14 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Data contract Id", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -468,11 +542,16 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
+      @Parameter(
               description = "Fully qualified name of the data contract",
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return super.deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return super.deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @DELETE
@@ -528,6 +607,561 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
 
   private DataContract getDataContract(CreateDataContract create, String user) {
     return DataContractMapper.createEntity(create, user);
+  }
+
+  // Data Contract Results APIs
+
+  @GET
+  @Path("/{id}/results")
+  @Operation(
+      operationId = "listDataContractResults",
+      summary = "List data contract results",
+      description = "Get a list of all data contract execution results for a given contract.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of data contract results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ResultList.class)))
+      })
+  public ResultList<DataContractResult> listResults(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the data contract", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(description = "Limit the number of results (1 to 10000, default = 10)")
+          @DefaultValue("10")
+          @QueryParam("limit")
+          @Min(0)
+          @Max(10000)
+          int limitParam,
+      @Parameter(
+              description = "Returns results after this timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description = "Returns results before this timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("endTs")
+          Long endTs) {
+    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    OperationContext operationContext =
+        new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.VIEW_BASIC);
+    ResourceContext<DataContract> resourceContext =
+        new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    EntityTimeSeriesDAO timeSeriesDAO = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
+    List<String> jsonResults =
+        timeSeriesDAO.listBetweenTimestampsByOrder(
+            dataContract.getFullyQualifiedName(),
+            "dataContract.dataContractResult",
+            startTs != null ? startTs : 0L,
+            endTs != null ? endTs : System.currentTimeMillis(),
+            EntityTimeSeriesDAO.OrderBy.DESC);
+
+    List<DataContractResult> results = JsonUtils.readObjects(jsonResults, DataContractResult.class);
+
+    // Apply limit
+    if (limitParam > 0 && results.size() > limitParam) {
+      results = results.subList(0, limitParam);
+    }
+
+    return new ResultList<>(
+        results, String.valueOf(startTs), String.valueOf(endTs), results.size());
+  }
+
+  @GET
+  @Path("/{id}/results/latest")
+  @Operation(
+      operationId = "getLatestDataContractResult",
+      summary = "Get latest data contract result",
+      description = "Get the latest execution result for a data contract.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Latest data contract result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataContractResult.class))),
+        @ApiResponse(responseCode = "404", description = "Data contract or result not found")
+      })
+  public DataContractResult getLatestResult(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the data contract", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    OperationContext operationContext =
+        new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.VIEW_BASIC);
+    ResourceContext<DataContract> resourceContext =
+        new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    EntityTimeSeriesDAO timeSeriesDAO = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
+    String jsonRecord =
+        timeSeriesDAO.getLatestExtension(dataContract.getFullyQualifiedName(), RESULT_EXTENSION);
+
+    return jsonRecord != null ? JsonUtils.readValue(jsonRecord, DataContractResult.class) : null;
+  }
+
+  @GET
+  @Path("/{id}/results/{resultId}")
+  @Operation(
+      operationId = "getDataContractResult",
+      summary = "Get a data contract result by ID",
+      description = "Get a specific data contract execution result by its ID.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Data contract result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataContractResult.class))),
+        @ApiResponse(responseCode = "404", description = "Data contract result not found")
+      })
+  public DataContractResult getResult(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the data contract", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(description = "Id of the data contract result", schema = @Schema(type = "UUID"))
+          @PathParam("resultId")
+          UUID resultId) {
+    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    OperationContext operationContext =
+        new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.VIEW_BASIC);
+    ResourceContext<DataContract> resourceContext =
+        new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    return repository.getLatestResult(dataContract);
+  }
+
+  @PUT
+  @Path("/{id}/results")
+  @Operation(
+      operationId = "createOrUpdateDataContractResult",
+      summary = "Create or update data contract result",
+      description = "Create a new data contract execution result.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully created or updated the result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataContractResult.class)))
+      })
+  public Response createResult(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the data contract", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Valid DataContractResult newResult) {
+    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    OperationContext operationContext =
+        new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.EDIT_ALL);
+    ResourceContext<DataContract> resourceContext =
+        new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    DataContractResult result = getContractResult(dataContract, newResult);
+    return repository.addContractResult(dataContract, result).toResponse();
+  }
+
+  @DELETE
+  @Path("/{id}/results/{timestamp}")
+  @Operation(
+      operationId = "deleteDataContractResult",
+      summary = "Delete data contract result",
+      description = "Delete a data contract result at a specific timestamp.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Successfully deleted the result")
+      })
+  public Response deleteResult(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the data contract", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Timestamp of the result to delete",
+              schema = @Schema(type = "number"))
+          @PathParam("timestamp")
+          Long timestamp) {
+    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    OperationContext operationContext =
+        new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.DELETE);
+    ResourceContext<DataContract> resourceContext =
+        new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    EntityTimeSeriesDAO timeSeriesDAO = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
+    timeSeriesDAO.deleteAtTimestamp(
+        dataContract.getFullyQualifiedName(), "dataContract.dataContractResult", timestamp);
+    return Response.ok().build();
+  }
+
+  @DELETE
+  @Path("/{id}/results/before/{timestamp}")
+  @Operation(
+      operationId = "deleteDataContractResultsBefore",
+      summary = "Delete data contract results before timestamp",
+      description = "Delete all data contract results before a specific timestamp.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Successfully deleted the results")
+      })
+  public Response deleteResultsBefore(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the data contract", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Delete results before this timestamp",
+              schema = @Schema(type = "number"))
+          @PathParam("timestamp")
+          Long timestamp) {
+    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    OperationContext operationContext =
+        new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.DELETE);
+    ResourceContext<DataContract> resourceContext =
+        new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    EntityTimeSeriesDAO timeSeriesDAO = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
+    timeSeriesDAO.deleteBeforeTimestamp(
+        dataContract.getFullyQualifiedName(), "dataContract.dataContractResult", timestamp);
+    return Response.ok().build();
+  }
+
+  @POST
+  @Path("/{id}/validate")
+  @Operation(
+      operationId = "validateDataContract",
+      summary = "Validate a data contract",
+      description =
+          "Execute on-demand validation of a data contract including semantic rules and quality tests.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Validation result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataContractResult.class))),
+        @ApiResponse(responseCode = "404", description = "Data contract not found")
+      })
+  public Response validateContract(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the data contract", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    OperationContext operationContext =
+        new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.EDIT_ALL);
+    ResourceContext<DataContract> resourceContext =
+        new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    RestUtil.PutResponse<DataContractResult> result = repository.validateContract(dataContract);
+    return result.toResponse();
+  }
+
+  // Add runId and dataContractFQN to the result if not incoming
+  private DataContractResult getContractResult(
+      DataContract dataContract, DataContractResult newResult) {
+    return newResult
+        .withId(newResult.getId() == null ? UUID.randomUUID() : newResult.getId())
+        .withDataContractFQN(dataContract.getFullyQualifiedName());
+  }
+
+  // ODCS (Open Data Contract Standard) Import/Export APIs
+
+  @GET
+  @Path("/{id}/odcs")
+  @Operation(
+      operationId = "exportDataContractToODCS",
+      summary = "Export data contract to ODCS format",
+      description = "Export a data contract to Open Data Contract Standard (ODCS) v3.0.2 format.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "ODCS data contract",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ODCSDataContract.class))),
+        @ApiResponse(responseCode = "404", description = "Data contract not found")
+      })
+  public ODCSDataContract exportToODCS(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the data contract", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam) {
+    DataContract dataContract =
+        getInternal(uriInfo, securityContext, id, fieldsParam, Include.NON_DELETED);
+    return ODCSConverter.toODCS(dataContract);
+  }
+
+  @GET
+  @Path("/{id}/odcs/yaml")
+  @Produces({"application/yaml", "text/yaml"})
+  @Operation(
+      operationId = "exportDataContractToODCSYaml",
+      summary = "Export data contract to ODCS YAML format",
+      description =
+          "Export a data contract to Open Data Contract Standard (ODCS) v3.0.2 YAML format.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "ODCS data contract in YAML format",
+            content = @Content(mediaType = "application/yaml")),
+        @ApiResponse(responseCode = "404", description = "Data contract not found")
+      })
+  public Response exportToODCSYaml(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the data contract", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam) {
+    DataContract dataContract =
+        getInternal(uriInfo, securityContext, id, fieldsParam, Include.NON_DELETED);
+    ODCSDataContract odcs = ODCSConverter.toODCS(dataContract);
+    try {
+      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+      yamlMapper.setSerializationInclusion(
+          com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL);
+      String yamlContent = yamlMapper.writeValueAsString(odcs);
+      return Response.ok(yamlContent, "application/yaml").build();
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Failed to convert to YAML: " + e.getMessage(), e);
+    }
+  }
+
+  @GET
+  @Path("/name/{fqn}/odcs")
+  @Operation(
+      operationId = "exportDataContractToODCSByFQN",
+      summary = "Export data contract to ODCS format by FQN",
+      description =
+          "Export a data contract to Open Data Contract Standard (ODCS) v3.0.2 format by fully qualified name.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "ODCS data contract",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ODCSDataContract.class))),
+        @ApiResponse(responseCode = "404", description = "Data contract not found")
+      })
+  public ODCSDataContract exportToODCSByFqn(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the data contract",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam) {
+    DataContract dataContract =
+        getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, Include.NON_DELETED);
+    return ODCSConverter.toODCS(dataContract);
+  }
+
+  @POST
+  @Path("/odcs")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "importDataContractFromODCS",
+      summary = "Import data contract from ODCS format",
+      description =
+          "Import a data contract from Open Data Contract Standard (ODCS) v3.0.2 JSON format.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The imported data contract",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataContract.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response importFromODCS(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Entity ID to associate with the contract",
+              schema = @Schema(type = "string", format = "uuid"))
+          @QueryParam("entityId")
+          UUID entityId,
+      @Parameter(
+              description = "Entity Type (table, topic, etc.)",
+              schema = @Schema(type = "string", example = Entity.TABLE))
+          @QueryParam("entityType")
+          String entityType,
+      @Valid ODCSDataContract odcs) {
+    EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
+    DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef);
+    dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
+    dataContract.setUpdatedAt(System.currentTimeMillis());
+    return create(uriInfo, securityContext, dataContract);
+  }
+
+  @POST
+  @Path("/odcs/yaml")
+  @Consumes({"application/yaml", "text/yaml"})
+  @Operation(
+      operationId = "importDataContractFromODCSYaml",
+      summary = "Import data contract from ODCS YAML format",
+      description =
+          "Import a data contract from Open Data Contract Standard (ODCS) v3.0.2 YAML format.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The imported data contract",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataContract.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response importFromODCSYaml(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Entity ID to associate with the contract",
+              schema = @Schema(type = "string", format = "uuid"))
+          @QueryParam("entityId")
+          UUID entityId,
+      @Parameter(
+              description = "Entity Type (table, topic, etc.)",
+              schema = @Schema(type = "string", example = Entity.TABLE))
+          @QueryParam("entityType")
+          String entityType,
+      String yamlContent) {
+    try {
+      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+      ODCSDataContract odcs = yamlMapper.readValue(yamlContent, ODCSDataContract.class);
+      EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
+      DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef);
+      dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
+      dataContract.setUpdatedAt(System.currentTimeMillis());
+      return create(uriInfo, securityContext, dataContract);
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Invalid ODCS YAML content: " + e.getMessage(), e);
+    }
+  }
+
+  @PUT
+  @Path("/odcs")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "createOrUpdateDataContractFromODCS",
+      summary = "Create or update data contract from ODCS format",
+      description =
+          "Create or update a data contract from Open Data Contract Standard (ODCS) v3.0.2 JSON format.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The created or updated data contract",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataContract.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createOrUpdateFromODCS(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Entity ID to associate with the contract",
+              schema = @Schema(type = "string", format = "uuid"))
+          @QueryParam("entityId")
+          UUID entityId,
+      @Parameter(
+              description = "Entity Type (table, topic, etc.)",
+              schema = @Schema(type = "string", example = Entity.TABLE))
+          @QueryParam("entityType")
+          String entityType,
+      @Valid ODCSDataContract odcs) {
+    EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
+    DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef);
+    dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
+    dataContract.setUpdatedAt(System.currentTimeMillis());
+    return createOrUpdate(uriInfo, securityContext, dataContract);
+  }
+
+  @PUT
+  @Path("/odcs/yaml")
+  @Consumes({"application/yaml", "text/yaml"})
+  @Operation(
+      operationId = "createOrUpdateDataContractFromODCSYaml",
+      summary = "Create or update data contract from ODCS YAML format",
+      description =
+          "Create or update a data contract from Open Data Contract Standard (ODCS) v3.0.2 YAML format.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The created or updated data contract",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataContract.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createOrUpdateFromODCSYaml(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Entity ID to associate with the contract",
+              schema = @Schema(type = "string", format = "uuid"))
+          @QueryParam("entityId")
+          UUID entityId,
+      @Parameter(
+              description = "Entity Type (table, topic, etc.)",
+              schema = @Schema(type = "string", example = Entity.TABLE))
+          @QueryParam("entityType")
+          String entityType,
+      String yamlContent) {
+    try {
+      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+      ODCSDataContract odcs = yamlMapper.readValue(yamlContent, ODCSDataContract.class);
+      EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
+      DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef);
+      dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
+      dataContract.setUpdatedAt(System.currentTimeMillis());
+      return createOrUpdate(uriInfo, securityContext, dataContract);
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Invalid ODCS YAML content: " + e.getMessage(), e);
+    }
   }
 
   public static class DataContractList extends ResultList<DataContract> {

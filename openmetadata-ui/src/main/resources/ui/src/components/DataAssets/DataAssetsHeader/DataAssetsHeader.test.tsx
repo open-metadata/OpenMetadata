@@ -11,24 +11,29 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
-import { useParams } from 'react-router-dom';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import {
   Container,
   StorageServiceType,
 } from '../../../generated/entity/data/container';
+import { ContractExecutionStatus } from '../../../generated/entity/data/dataContract';
 import { DatabaseServiceType } from '../../../generated/entity/services/databaseService';
 import { LabelType, State, TagSource } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
+import { useCustomPages } from '../../../hooks/useCustomPages';
+import { MOCK_DATA_CONTRACT } from '../../../mocks/DataContract.mock';
 import { MOCK_TIER_DATA } from '../../../mocks/TableData.mock';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
+import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
 import { ExtraInfoLink } from '../../../utils/DataAssetsHeader.utils';
+import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { DataAssetsHeader } from './DataAssetsHeader.component';
 import { DataAssetsHeaderProps } from './DataAssetsHeader.interface';
 
@@ -59,11 +64,17 @@ const mockProps: DataAssetsHeaderProps = {
   onOwnerUpdate: jest.fn(),
 };
 
+const mockNavigate = jest.fn();
+
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  useParams: jest.fn().mockImplementation(() => ({
-    serviceCategory: ServiceCategory.DATABASE_SERVICES,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
+}));
+
+jest.mock('../../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest.fn().mockReturnValue({
+    serviceCategory: undefined,
+  }),
 }));
 
 jest.mock('../../../rest/applicationAPI', () => ({
@@ -74,6 +85,10 @@ jest.mock('../../../utils/ServiceUtils', () => ({
   getEntityTypeFromServiceCategory: jest
     .fn()
     .mockImplementation(() => EntityType.DATABASE_SERVICE),
+}));
+
+jest.mock('../../../rest/contractAPI', () => ({
+  getContractByEntityId: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({
@@ -176,6 +191,38 @@ jest.mock('../../../rest/lineageAPI', () => ({
   getDataQualityLineage: jest.fn(),
 }));
 
+jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
+  getDataContractStatusIcon: jest.fn(),
+}));
+
+jest.mock('../../../hooks/useCustomPages', () => ({
+  useCustomPages: jest.fn().mockReturnValue({ customizedPage: null }),
+}));
+
+jest.mock('../../../utils/RouterUtils', () => ({
+  getEntityDetailsPath: jest.fn(),
+}));
+
+jest.mock(
+  '../../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
+
+jest.mock('../../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockImplementation(() => ({
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
+}));
+
 describe('ExtraInfoLink component', () => {
   const mockProps = {
     label: 'myLabel',
@@ -247,7 +294,7 @@ describe('DataAssetsHeader component', () => {
   it('should not render the Tier data if not  present', () => {
     render(<DataAssetsHeader {...mockProps} dataAsset={mockProps.dataAsset} />);
 
-    expect(screen.getByTestId('Tier')).toContainHTML('label.no-entity');
+    expect(screen.getByTestId('Tier')).toContainHTML('--');
   });
 
   it('should not call getDataQualityLineage, if isDqAlertSupported and alert supported is false', () => {
@@ -338,9 +385,9 @@ describe('DataAssetsHeader component', () => {
       expiryDate: 1735406645688,
     };
 
-    // Mock useParams to return undefined serviceCategory
-    const useParamsMock = useParams as jest.Mock;
-    useParamsMock.mockReturnValue({
+    // Mock useRequiredParamsMock to return undefined serviceCategory
+    const useRequiredParamsMock = useRequiredParams as jest.Mock;
+    useRequiredParamsMock.mockReturnValue({
       serviceCategory: undefined,
     });
 
@@ -367,12 +414,10 @@ describe('DataAssetsHeader component', () => {
     // Test without certification when serviceCategory is undefined
     render(<DataAssetsHeader {...mockProps} />);
 
-    expect(screen.getByTestId('certification-label')).toContainHTML(
-      'label.no-entity'
-    );
+    expect(screen.getByTestId('certification-label')).toContainHTML('--');
 
     // Reset the mock to original value
-    useParamsMock.mockReturnValue({
+    useRequiredParamsMock.mockReturnValue({
       serviceCategory: ServiceCategory.DATABASE_SERVICES,
     });
   });
@@ -434,6 +479,300 @@ describe('DataAssetsHeader component', () => {
 
     expect(triggerOnDemandApp).toHaveBeenCalledWith(AUTO_PILOT_APP_NAME, {
       entityLink: 'entityFeedLink',
+    });
+  });
+
+  it('should disable the button when disableRunAgentsButton is true', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        disableRunAgentsButton
+        dataAsset={{
+          ...mockProps.dataAsset,
+          serviceType: DatabaseServiceType.BigQuery,
+        }}
+        entityType={EntityType.DATABASE_SERVICE}
+      />
+    );
+
+    const button = screen.getByTestId('trigger-auto-pilot-application-button');
+
+    expect(button).toBeDisabled();
+  });
+
+  it('should enable the button when isAutoPilotWorkflowStatusLoading is false', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          serviceType: DatabaseServiceType.BigQuery,
+        }}
+        disableRunAgentsButton={false}
+        entityType={EntityType.DATABASE_SERVICE}
+      />
+    );
+
+    const button = screen.getByTestId('trigger-auto-pilot-application-button');
+
+    expect(button).toBeEnabled();
+  });
+
+  it('should render the button with disableRunAgentsButtonMessage prop when provided', () => {
+    const customMessage = 'Custom disable message';
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        disableRunAgentsButton
+        dataAsset={{
+          ...mockProps.dataAsset,
+          serviceType: DatabaseServiceType.BigQuery,
+        }}
+        disableRunAgentsButtonMessage={customMessage}
+        entityType={EntityType.DATABASE_SERVICE}
+      />
+    );
+
+    const button = screen.getByTestId('trigger-auto-pilot-application-button');
+
+    expect(button).toBeDisabled();
+    expect(button).toBeInTheDocument();
+  });
+
+  it('should render the button when disableRunAgentsButtonMessage is not provided', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          serviceType: DatabaseServiceType.BigQuery,
+        }}
+        disableRunAgentsButton={false}
+        entityType={EntityType.DATABASE_SERVICE}
+      />
+    );
+
+    const button = screen.getByTestId('trigger-auto-pilot-application-button');
+
+    expect(button).toBeInTheDocument();
+    expect(button).toBeEnabled();
+  });
+
+  describe('dataContractLatestResultButton', () => {
+    const mockGetDataContractStatusIcon =
+      getDataContractStatusIcon as jest.Mock;
+    const mockUseCustomPages = useCustomPages as jest.Mock;
+    const mockGetEntityDetailsPath = getEntityDetailsPath as jest.Mock;
+
+    it('should render data contract button when contract tab is visible and status is in allowed list', async () => {
+      mockUseCustomPages.mockReturnValue({
+        customizedPage: {
+          tabs: [{ id: EntityTabs.CONTRACT }],
+        },
+      });
+
+      (getContractByEntityId as jest.Mock).mockImplementation(() =>
+        Promise.resolve(MOCK_DATA_CONTRACT)
+      );
+
+      await act(async () => {
+        render(<DataAssetsHeader {...mockProps} />);
+      });
+
+      const button = screen.getByTestId('data-contract-latest-result-btn');
+
+      expect(button).toBeInTheDocument();
+      expect(button).toHaveClass('data-contract-latest-result-button');
+      expect(button).toHaveClass('failed');
+    });
+
+    it('should render data contract button when customizedPage tabs is undefined', async () => {
+      mockUseCustomPages.mockReturnValue({
+        customizedPage: {
+          tabs: undefined,
+        },
+      });
+
+      (getContractByEntityId as jest.Mock).mockImplementation(() =>
+        Promise.resolve(MOCK_DATA_CONTRACT)
+      );
+
+      await act(async () => {
+        render(<DataAssetsHeader {...mockProps} />);
+      });
+
+      expect(
+        screen.getByTestId('data-contract-latest-result-btn')
+      ).toBeInTheDocument();
+    });
+
+    it('should navigate to contract tab when button is clicked', async () => {
+      mockUseCustomPages.mockReturnValue({
+        customizedPage: {
+          tabs: [{ id: EntityTabs.CONTRACT }],
+        },
+      });
+
+      const mockDataContract = {
+        ...MOCK_DATA_CONTRACT,
+        latestResult: {
+          status: ContractExecutionStatus.Running,
+        },
+      };
+
+      (getContractByEntityId as jest.Mock).mockImplementation(() =>
+        Promise.resolve(mockDataContract)
+      );
+
+      await act(async () => {
+        render(<DataAssetsHeader {...mockProps} />);
+      });
+
+      const button = screen.getByTestId('data-contract-latest-result-btn');
+      fireEvent.click(button);
+
+      expect(mockGetEntityDetailsPath).toHaveBeenCalledWith(
+        EntityType.CONTAINER,
+        'fullyQualifiedName',
+        EntityTabs.CONTRACT
+      );
+      expect(mockNavigate).toHaveBeenCalled();
+    });
+
+    it('should not render data contract button when contract tab is not visible', async () => {
+      mockUseCustomPages.mockReturnValue({
+        customizedPage: {
+          tabs: [{ id: EntityTabs.ACTIVITY_FEED }],
+        },
+      });
+
+      (getContractByEntityId as jest.Mock).mockImplementation(() =>
+        Promise.resolve(MOCK_DATA_CONTRACT)
+      );
+
+      await act(async () => {
+        render(<DataAssetsHeader {...mockProps} />);
+      });
+
+      expect(
+        screen.queryByTestId('data-contract-latest-result-btn')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should not render data contract button when status is not in allowed list', async () => {
+      mockUseCustomPages.mockReturnValue({
+        customizedPage: {
+          tabs: [{ id: EntityTabs.CONTRACT }],
+        },
+      });
+
+      const mockDataContract = {
+        ...MOCK_DATA_CONTRACT,
+        latestResult: {
+          status: ContractExecutionStatus.Success,
+        },
+      };
+
+      (getContractByEntityId as jest.Mock).mockImplementation(() =>
+        Promise.resolve(mockDataContract)
+      );
+
+      await act(async () => {
+        render(<DataAssetsHeader {...mockProps} />);
+      });
+
+      expect(
+        screen.queryByTestId('data-contract-latest-result-btn')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should not render data contract button when dataContract is undefined', async () => {
+      mockUseCustomPages.mockReturnValue({
+        customizedPage: {
+          tabs: [{ id: EntityTabs.CONTRACT }],
+        },
+      });
+
+      (getContractByEntityId as jest.Mock).mockImplementation(() =>
+        Promise.resolve()
+      );
+
+      await act(async () => {
+        render(<DataAssetsHeader {...mockProps} />);
+      });
+
+      expect(
+        screen.queryByTestId('data-contract-latest-result-btn')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should not render data contract button when latestResult is undefined', async () => {
+      mockUseCustomPages.mockReturnValue({
+        customizedPage: {
+          tabs: [{ id: EntityTabs.CONTRACT }],
+        },
+      });
+
+      const mockDataContract = {
+        ...MOCK_DATA_CONTRACT,
+        latestResult: undefined,
+      };
+
+      (getContractByEntityId as jest.Mock).mockImplementation(() =>
+        Promise.resolve(mockDataContract)
+      );
+
+      await act(async () => {
+        render(<DataAssetsHeader {...mockProps} />);
+      });
+
+      expect(
+        screen.queryByTestId('data-contract-latest-result-btn')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should render button with icon when getDataContractStatusIcon returns an icon', async () => {
+      mockUseCustomPages.mockReturnValue({
+        customizedPage: { tabs: [{ id: EntityTabs.CONTRACT }] },
+      });
+      mockGetDataContractStatusIcon.mockReturnValue('TestIcon');
+
+      (getContractByEntityId as jest.Mock).mockImplementation(() =>
+        Promise.resolve({
+          ...MOCK_DATA_CONTRACT,
+          latestResult: { status: ContractExecutionStatus.Failed },
+        })
+      );
+
+      await act(async () => {
+        render(<DataAssetsHeader {...mockProps} />);
+      });
+
+      const button = screen.getByTestId('data-contract-latest-result-btn');
+
+      expect(button.querySelector('.anticon')).toBeInTheDocument();
+    });
+
+    it('should render button without icon when getDataContractStatusIcon returns null', async () => {
+      mockUseCustomPages.mockReturnValue({
+        customizedPage: { tabs: [{ id: EntityTabs.CONTRACT }] },
+      });
+      mockGetDataContractStatusIcon.mockReturnValue(null);
+
+      (getContractByEntityId as jest.Mock).mockImplementation(() =>
+        Promise.resolve({
+          ...MOCK_DATA_CONTRACT,
+          latestResult: { status: ContractExecutionStatus.Failed },
+        })
+      );
+
+      await act(async () => {
+        render(<DataAssetsHeader {...mockProps} />);
+      });
+
+      const button = screen.getByTestId('data-contract-latest-result-btn');
+
+      expect(button.querySelector('.anticon')).not.toBeInTheDocument();
     });
   });
 });

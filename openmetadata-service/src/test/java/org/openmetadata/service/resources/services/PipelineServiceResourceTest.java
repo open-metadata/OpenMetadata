@@ -34,6 +34,7 @@ import jakarta.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -55,12 +56,13 @@ import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.PipelineConnection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.resources.services.pipeline.PipelineServiceResource;
 import org.openmetadata.service.resources.services.pipeline.PipelineServiceResource.PipelineServiceList;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -327,5 +329,35 @@ public class PipelineServiceResourceTest
           JsonUtils.convertValue(actualAirflowConnection.getConnection(), MysqlConnection.class);
       validateMysqlConnection(expectedMysqlConnection, actualMysqlConnection, true);
     }
+  }
+
+  @Test
+  void test_hardDeletePipelineService_deletesSecrets(TestInfo test) throws IOException {
+    CreatePipelineService createRequest = createRequest(test).withConnection(AIRFLOW_CONNECTION);
+    PipelineService service = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(service.getConnection(), "Service should have connection");
+
+    deleteEntity(service.getId(), false, true, ADMIN_AUTH_HEADERS);
+
+    assertEntityDeleted(service.getId(), true);
+  }
+
+  @Test
+  void test_softDeletePipelineService_preservesSecrets(TestInfo test) throws IOException {
+    CreatePipelineService createRequest = createRequest(test).withConnection(AIRFLOW_CONNECTION);
+    PipelineService service = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(service.getConnection(), "Service should have connection");
+
+    deleteEntity(service.getId(), false, false, ADMIN_AUTH_HEADERS);
+
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("include", Include.DELETED.value());
+    PipelineService deletedService =
+        getEntity(service.getId(), queryParams, "", ADMIN_AUTH_HEADERS);
+    assertTrue(deletedService.getDeleted(), "Service should be marked as deleted");
+    assertNotNull(
+        deletedService.getConnection(), "Connection should be preserved after soft delete");
   }
 }

@@ -12,7 +12,7 @@
  */
 
 import { Col, Row, Typography } from 'antd';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { TEST_CASE_FEED_GRAPH_HEIGHT } from '../../../../../constants/constants';
@@ -25,6 +25,7 @@ import {
   formatTestStatusData,
   getTestCaseResultCount,
 } from '../../../../../utils/FeedUtils';
+import { translateWithNestedKeys } from '../../../../../utils/i18next/LocalUtil';
 import TestSummaryGraph from '../../../../Database/Profiler/TestSummary/TestSummaryGraph';
 import './test-case-feed.less';
 import { TestCaseFeedProps } from './TestCaseFeed.interface';
@@ -62,7 +63,10 @@ function TestCaseFeed({
       <Row className="m-t-xs" gutter={[0, 4]}>
         <TestSummaryGraph
           minHeight={TEST_CASE_FEED_GRAPH_HEIGHT}
-          selectedTimeRange={PROFILER_FILTER_RANGE.last7days.title}
+          selectedTimeRange={translateWithNestedKeys(
+            PROFILER_FILTER_RANGE.last7days.title,
+            PROFILER_FILTER_RANGE.last7days.titleData
+          )}
           testCaseName={testCaseName}
           testCaseParameterValue={entitySpecificInfo?.parameterValues}
           testCaseResults={testCaseResult}

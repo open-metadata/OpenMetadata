@@ -24,7 +24,10 @@ export type CardWithListItems = {
 
 export interface TierCardProps {
   currentTier?: string;
+  tierCardClassName?: string;
+  footerActionButtonsClassName?: string;
   updateTier?: (value?: Tag) => Promise<void>;
   children?: ReactNode;
   popoverProps?: PopoverProps;
+  onClose?: () => void;
 }

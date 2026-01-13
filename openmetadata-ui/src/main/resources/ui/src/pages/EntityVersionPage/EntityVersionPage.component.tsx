@@ -12,7 +12,7 @@
  */
 
 import { isEmpty } from 'lodash';
-import React, {
+import {
   FunctionComponent,
   useCallback,
   useEffect,
@@ -20,8 +20,9 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import APIEndpointVersion from '../../components/APIEndpoint/APIEndpointVersion/APIEndpointVersion';
+import ChartVersion from '../../components/Chart/ChartVersion/ChartVersion.component';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import ContainerVersion from '../../components/Container/ContainerVersion/ContainerVersion.component';
@@ -30,6 +31,10 @@ import DataModelVersion from '../../components/Dashboard/DataModel/DataModelVers
 import StoredProcedureVersion from '../../components/Database/StoredProcedureVersion/StoredProcedureVersion.component';
 import TableVersion from '../../components/Database/TableVersion/TableVersion.component';
 import DataProductsPage from '../../components/DataProducts/DataProductsPage/DataProductsPage.component';
+import DirectoryVersion from '../../components/DriveService/Directory/DirectoryVersion/DirectoryVersion';
+import FileVersion from '../../components/DriveService/File/FileVersion/FileVersion';
+import SpreadsheetVersion from '../../components/DriveService/Spreadsheet/SpreadsheetVersion/SpreadsheetVersion';
+import WorksheetVersion from '../../components/DriveService/Worksheet/WorksheetVersion/WorksheetVersion';
 import MetricVersion from '../../components/Metric/MetricVersion/MetricVersion';
 import MlModelVersion from '../../components/MlModel/MlModelVersion/MlModelVersion.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -44,16 +49,21 @@ import {
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
+import { Chart } from '../../generated/entity/data/chart';
 import { Container } from '../../generated/entity/data/container';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
+import { Directory } from '../../generated/entity/data/directory';
+import { File } from '../../generated/entity/data/file';
 import { Metric } from '../../generated/entity/data/metric';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { SearchIndex } from '../../generated/entity/data/searchIndex';
+import { Spreadsheet } from '../../generated/entity/data/spreadsheet';
 import { StoredProcedure } from '../../generated/entity/data/storedProcedure';
 import { Table } from '../../generated/entity/data/table';
 import { Topic } from '../../generated/entity/data/topic';
+import { Worksheet } from '../../generated/entity/data/worksheet';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -64,6 +74,11 @@ import {
   getApiEndPointVersions,
 } from '../../rest/apiEndpointsAPI';
 import {
+  getChartByFqn,
+  getChartVersion,
+  getChartVersions,
+} from '../../rest/chartsAPI';
+import {
   getDashboardByFqn,
   getDashboardVersion,
   getDashboardVersions,
@@ -73,6 +88,11 @@ import {
   getDataModelVersion,
   getDataModelVersionsList,
 } from '../../rest/dataModelsAPI';
+import {
+  getDriveAssetByFqn,
+  getDriveAssetsVersion,
+  getDriveAssetsVersions,
+} from '../../rest/driveAPI';
 import {
   getMetricByFqn,
   getMetricVersion,
@@ -118,6 +138,7 @@ import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { getTierTags } from '../../utils/TableUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import APICollectionVersionPage from '../APICollectionPage/APICollectionVersionPage';
 import DatabaseSchemaVersionPage from '../DatabaseSchemaVersionPage/DatabaseSchemaVersionPage';
 import DatabaseVersionPage from '../DatabaseVersionPage/DatabaseVersionPage';
@@ -127,6 +148,7 @@ export type VersionData =
   | Table
   | Topic
   | Dashboard
+  | Chart
   | Pipeline
   | Mlmodel
   | Container
@@ -134,17 +156,21 @@ export type VersionData =
   | StoredProcedure
   | DashboardDataModel
   | APIEndpoint
-  | Metric;
+  | Metric
+  | Directory
+  | File
+  | Spreadsheet
+  | Worksheet;
 
 const EntityVersionPage: FunctionComponent = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [entityId, setEntityId] = useState<string>('');
   const [currentVersionData, setCurrentVersionData] = useState<VersionData>(
     {} as VersionData
   );
 
-  const { entityType, version, tab } = useParams<{
+  const { entityType, version, tab } = useRequiredParams<{
     entityType: EntityType;
     version: string;
     tab: EntityTabs;
@@ -162,18 +188,16 @@ const EntityVersionPage: FunctionComponent = () => {
   const [isVersionLoading, setIsVersionLoading] = useState<boolean>(true);
 
   const backHandler = useCallback(
-    () => history.push(getEntityDetailsPath(entityType, decodedEntityFQN, tab)),
+    () => navigate(getEntityDetailsPath(entityType, decodedEntityFQN, tab)),
     [entityType, decodedEntityFQN, tab]
   );
 
   const versionHandler = useCallback(
     (newVersion = version) => {
       if (tab) {
-        history.push(
-          getVersionPath(entityType, decodedEntityFQN, newVersion, tab)
-        );
+        navigate(getVersionPath(entityType, decodedEntityFQN, newVersion, tab));
       } else {
-        history.push(getVersionPath(entityType, decodedEntityFQN, newVersion));
+        navigate(getVersionPath(entityType, decodedEntityFQN, newVersion));
       }
     },
     [entityType, decodedEntityFQN, tab]
@@ -370,6 +394,32 @@ const EntityVersionPage: FunctionComponent = () => {
 
           break;
         }
+        case EntityType.CHART: {
+          const { id } = await getChartByFqn(decodedEntityFQN, {
+            include: Include.All,
+          });
+
+          setEntityId(id ?? '');
+
+          const versions = await getChartVersions(id ?? '');
+
+          setVersionList(versions);
+
+          break;
+        }
+        case EntityType.DIRECTORY:
+        case EntityType.FILE:
+        case EntityType.SPREADSHEET:
+        case EntityType.WORKSHEET: {
+          const { id } = await getDriveAssetByFqn(decodedEntityFQN, entityType);
+          setEntityId(id ?? '');
+
+          const versions = await getDriveAssetsVersions(id ?? '', entityType);
+
+          setVersionList(versions as unknown as EntityHistory);
+
+          break;
+        }
 
         default:
           break;
@@ -469,6 +519,57 @@ const EntityVersionPage: FunctionComponent = () => {
 
               break;
             }
+            case EntityType.CHART: {
+              const currentVersion = await getChartVersion(id, version);
+
+              setCurrentVersionData(currentVersion);
+
+              break;
+            }
+            case EntityType.DIRECTORY: {
+              const currentVersion = await getDriveAssetsVersion<Directory>(
+                id,
+                entityType,
+                version
+              );
+
+              setCurrentVersionData(currentVersion);
+
+              break;
+            }
+            case EntityType.FILE: {
+              const currentVersion = await getDriveAssetsVersion<File>(
+                id,
+                entityType,
+                version
+              );
+
+              setCurrentVersionData(currentVersion);
+
+              break;
+            }
+            case EntityType.SPREADSHEET: {
+              const currentVersion = await getDriveAssetsVersion<Spreadsheet>(
+                id,
+                entityType,
+                version
+              );
+
+              setCurrentVersionData(currentVersion);
+
+              break;
+            }
+            case EntityType.WORKSHEET: {
+              const currentVersion = await getDriveAssetsVersion<Worksheet>(
+                id,
+                entityType,
+                version
+              );
+
+              setCurrentVersionData(currentVersion);
+
+              break;
+            }
 
             default:
               break;
@@ -481,11 +582,11 @@ const EntityVersionPage: FunctionComponent = () => {
     [entityType, version, viewVersionPermission]
   );
 
-  const { owners, domain, tier, slashedEntityName } = useMemo(() => {
+  const { owners, domains, tier, slashedEntityName } = useMemo(() => {
     return {
       owners: currentVersionData.owners,
       tier: getTierTags(currentVersionData.tags ?? []),
-      domain: currentVersionData.domain,
+      domains: currentVersionData.domains,
       slashedEntityName: getEntityBreadcrumbs(currentVersionData, entityType),
     };
   }, [currentVersionData, entityType]);
@@ -519,7 +620,7 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersionData={currentVersionData as Table}
             dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
-            domain={domain}
+            domains={domains}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owners={owners}
@@ -538,7 +639,7 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersionData={currentVersionData as Topic}
             dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
-            domain={domain}
+            domains={domains}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owners={owners}
@@ -558,7 +659,7 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersionData={currentVersionData as Dashboard}
             dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
-            domain={domain}
+            domains={domains}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owners={owners}
@@ -578,7 +679,7 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersionData={currentVersionData as Pipeline}
             dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
-            domain={domain}
+            domains={domains}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owners={owners}
@@ -598,7 +699,7 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersionData={currentVersionData as Mlmodel}
             dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
-            domain={domain}
+            domains={domains}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owners={owners}
@@ -618,7 +719,7 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersionData={currentVersionData as Container}
             dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
-            domain={domain}
+            domains={domains}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owners={owners}
@@ -637,7 +738,7 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersionData={currentVersionData as SearchIndex}
             dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
-            domain={domain}
+            domains={domains}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owners={owners}
@@ -656,7 +757,7 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersionData={currentVersionData as DashboardDataModel}
             dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
-            domain={domain}
+            domains={domains}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owners={owners}
@@ -676,7 +777,7 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersionData={currentVersionData as StoredProcedure}
             dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
-            domain={domain}
+            domains={domains}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owners={owners}
@@ -694,7 +795,7 @@ const EntityVersionPage: FunctionComponent = () => {
           <APIEndpointVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData as APIEndpoint}
-            domain={domain}
+            domains={domains}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owners={owners}
@@ -711,11 +812,106 @@ const EntityVersionPage: FunctionComponent = () => {
           <MetricVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData as Metric}
-            domain={domain}
+            domains={domains}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owners={owners}
             slashedMetricName={slashedEntityName}
+            tier={tier as TagLabel}
+            version={version}
+            versionHandler={versionHandler}
+            versionList={versionList}
+          />
+        );
+      }
+      case EntityType.CHART: {
+        return (
+          <ChartVersion
+            backHandler={backHandler}
+            currentVersionData={currentVersionData as Chart}
+            dataProducts={currentVersionData.dataProducts}
+            deleted={currentVersionData.deleted}
+            domains={domains}
+            entityPermissions={entityPermissions}
+            isVersionLoading={isVersionLoading}
+            owners={owners}
+            slashedChartName={slashedEntityName as unknown as string[]}
+            tier={tier as TagLabel}
+            version={version}
+            versionHandler={versionHandler}
+            versionList={versionList}
+          />
+        );
+      }
+      case EntityType.DIRECTORY: {
+        return (
+          <DirectoryVersion
+            backHandler={backHandler}
+            breadCrumbList={slashedEntityName}
+            currentVersionData={currentVersionData as Directory}
+            dataProducts={currentVersionData.dataProducts}
+            deleted={currentVersionData.deleted}
+            domains={domains}
+            entityPermissions={entityPermissions}
+            isVersionLoading={isVersionLoading}
+            owners={owners}
+            tier={tier as TagLabel}
+            version={version}
+            versionHandler={versionHandler}
+            versionList={versionList}
+          />
+        );
+      }
+      case EntityType.FILE: {
+        return (
+          <FileVersion
+            backHandler={backHandler}
+            breadCrumbList={slashedEntityName}
+            currentVersionData={currentVersionData as File}
+            dataProducts={currentVersionData.dataProducts}
+            deleted={currentVersionData.deleted}
+            domains={domains}
+            entityPermissions={entityPermissions}
+            isVersionLoading={isVersionLoading}
+            owners={owners}
+            tier={tier as TagLabel}
+            version={version}
+            versionHandler={versionHandler}
+            versionList={versionList}
+          />
+        );
+      }
+      case EntityType.SPREADSHEET: {
+        return (
+          <SpreadsheetVersion
+            backHandler={backHandler}
+            breadCrumbList={slashedEntityName}
+            currentVersionData={currentVersionData as Spreadsheet}
+            dataProducts={currentVersionData.dataProducts}
+            deleted={currentVersionData.deleted}
+            domains={domains}
+            entityPermissions={entityPermissions}
+            isVersionLoading={isVersionLoading}
+            owners={owners}
+            tier={tier as TagLabel}
+            version={version}
+            versionHandler={versionHandler}
+            versionList={versionList}
+          />
+        );
+      }
+      case EntityType.WORKSHEET: {
+        return (
+          <WorksheetVersion
+            backHandler={backHandler}
+            breadCrumbList={slashedEntityName}
+            currentVersionData={currentVersionData as Worksheet}
+            dataProducts={currentVersionData.dataProducts}
+            deleted={currentVersionData.deleted}
+            domains={domains}
+            entityPermissions={entityPermissions}
+            isVersionLoading={isVersionLoading}
+            owners={owners}
             tier={tier as TagLabel}
             version={version}
             versionHandler={versionHandler}

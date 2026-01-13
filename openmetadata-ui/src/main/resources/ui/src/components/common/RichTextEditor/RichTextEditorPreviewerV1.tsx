@@ -12,7 +12,7 @@
  */
 import { Button } from 'antd';
 import classNames from 'classnames';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DESCRIPTION_MAX_PREVIEW_CHARACTERS } from '../../../constants/constants';
 import {
@@ -33,6 +33,7 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
   maxLength = DESCRIPTION_MAX_PREVIEW_CHARACTERS,
   isDescriptionExpanded = false,
   reducePreviewLineClass,
+  extensionOptions,
 }) => {
   const { t, i18n } = useTranslation();
   const [content, setContent] = useState<string>('');
@@ -86,7 +87,12 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
           readMore ? '' : reducePreviewLineClass
         )}
         data-testid="markdown-parser">
-        <BlockEditor autoFocus={false} content={viewerValue} editable={false} />
+        <BlockEditor
+          autoFocus={false}
+          content={viewerValue}
+          editable={false}
+          extensionOptions={extensionOptions}
+        />
       </div>
       {hasReadMore && showReadMoreBtn && (
         <Button

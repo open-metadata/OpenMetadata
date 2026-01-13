@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Query } from '../../../../generated/entity/data/query';
 import {
@@ -22,6 +21,7 @@ import {
 } from '../../../../generated/type/tagLabel';
 import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
 import { MOCK_QUERIES } from '../../../../mocks/Queries.mock';
+import '../../../../test/unit/mocks/mui.mock';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import TableQueryRightPanel from './TableQueryRightPanel.component';
 import { TableQueryRightPanelProps } from './TableQueryRightPanel.interface';
@@ -103,15 +103,26 @@ jest.mock('../../../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockImplementation(() => <>testProfilePicture</>);
 });
 
+jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest.fn().mockImplementation(() => <>OwnerLabelComponent</>),
+}));
+
+jest.mock('../../../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockImplementation(() => ({
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
+}));
+
 describe('TableQueryRightPanel component test', () => {
   it('Component should render', async () => {
     render(<TableQueryRightPanel {...mockProps} />, {
       wrapper: MemoryRouter,
     });
-    const owner = await screen.findByTestId('owner-link');
 
-    expect(owner).toBeInTheDocument();
-    expect(owner.textContent).toEqual(MOCK_QUERIES[0].owners?.[0].displayName);
+    expect(screen.getByText('OwnerLabelComponent')).toBeInTheDocument();
     expect(
       await screen.findByText('Description.component')
     ).toBeInTheDocument();

@@ -50,6 +50,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -83,17 +84,22 @@ import org.openmetadata.schema.type.csv.CsvErrorType;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.teams.TeamResource;
+import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
+import org.openmetadata.service.search.InheritedFieldEntitySearch;
+import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
+import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class TeamRepository extends EntityRepository<Team> {
@@ -105,6 +111,7 @@ public class TeamRepository extends EntityRepository<Team> {
       "profile,users,defaultRoles,parents,children,policies,teamType,email,domains";
   private static final String DEFAULT_ROLES = "defaultRoles";
   private Team organization = null;
+  private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
   public TeamRepository() {
     super(
@@ -116,6 +123,18 @@ public class TeamRepository extends EntityRepository<Team> {
         TEAM_UPDATE_FIELDS);
     this.quoteFqn = true;
     supportsSearch = true;
+
+    this.fieldFetchers.put("users", this::fetchAndSetUsers);
+    this.fieldFetchers.put("defaultRoles", this::fetchAndSetDefaultRoles);
+    this.fieldFetchers.put("parents", this::fetchAndSetParents);
+    this.fieldFetchers.put("policies", this::fetchAndSetPolicies);
+    this.fieldFetchers.put("childrenCount", this::fetchAndSetChildrenCount);
+    this.fieldFetchers.put("userCount", this::fetchAndSetUserCount);
+    this.fieldFetchers.put("owns", this::fetchAndSetOwns);
+
+    if (searchRepository != null) {
+      inheritedFieldEntitySearch = new DefaultInheritedFieldEntitySearch(searchRepository);
+    }
   }
 
   @Override
@@ -144,8 +163,189 @@ public class TeamRepository extends EntityRepository<Team> {
     team.setInheritedRoles(fields.contains(DEFAULT_ROLES) ? team.getInheritedRoles() : null);
     team.setParents(fields.contains(PARENTS_FIELD) ? team.getParents() : null);
     team.setPolicies(fields.contains("policies") ? team.getPolicies() : null);
-    team.setChildrenCount(fields.contains("childrenCount") ? team.getChildrenCount() : null);
-    team.withUserCount(fields.contains("userCount") ? team.getUserCount() : null);
+    if (!fields.contains("childrenCount")) {
+      team.setChildrenCount(0);
+    }
+    if (!fields.contains("userCount")) {
+      team.setUserCount(0);
+    }
+  }
+
+  private void fetchAndSetUsers(List<Team> teams, Fields fields) {
+    if (!fields.contains("users") || teams == null || teams.isEmpty()) {
+      return;
+    }
+
+    List<String> teamIds = teams.stream().map(Team::getId).map(UUID::toString).distinct().toList();
+
+    List<CollectionDAO.EntityRelationshipObject> userRecords =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(teamIds, Relationship.HAS.ordinal(), TEAM, Entity.USER);
+
+    Map<UUID, List<EntityReference>> teamToUsers = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : userRecords) {
+      UUID teamId = UUID.fromString(record.getFromId());
+      EntityReference userRef =
+          Entity.getEntityReferenceById(
+              Entity.USER, UUID.fromString(record.getToId()), Include.ALL);
+      teamToUsers.computeIfAbsent(teamId, k -> new ArrayList<>()).add(userRef);
+    }
+
+    for (Team team : teams) {
+      List<EntityReference> userRefs = teamToUsers.get(team.getId());
+      team.setUsers(userRefs != null ? userRefs : new ArrayList<>());
+    }
+  }
+
+  private void fetchAndSetDefaultRoles(List<Team> teams, Fields fields) {
+    if (!fields.contains(DEFAULT_ROLES) || teams == null || teams.isEmpty()) {
+      return;
+    }
+
+    List<String> teamIds = teams.stream().map(Team::getId).map(UUID::toString).distinct().toList();
+
+    List<CollectionDAO.EntityRelationshipObject> roleRecords =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(teamIds, Relationship.HAS.ordinal(), TEAM, Entity.ROLE);
+
+    Map<UUID, List<EntityReference>> teamToRoles = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : roleRecords) {
+      UUID teamId = UUID.fromString(record.getFromId());
+      EntityReference roleRef =
+          Entity.getEntityReferenceById(
+              Entity.ROLE, UUID.fromString(record.getToId()), Include.ALL);
+      teamToRoles.computeIfAbsent(teamId, k -> new ArrayList<>()).add(roleRef);
+    }
+
+    for (Team team : teams) {
+      List<EntityReference> roleRefs = teamToRoles.get(team.getId());
+      team.setDefaultRoles(roleRefs != null ? roleRefs : new ArrayList<>());
+    }
+  }
+
+  private void fetchAndSetParents(List<Team> teams, Fields fields) {
+    if (!fields.contains(PARENTS_FIELD) || teams == null || teams.isEmpty()) {
+      return;
+    }
+
+    List<String> teamIds = teams.stream().map(Team::getId).map(UUID::toString).distinct().toList();
+
+    List<CollectionDAO.EntityRelationshipObject> parentRecords =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(teamIds, Relationship.PARENT_OF.ordinal(), TEAM, TEAM);
+
+    Map<UUID, List<EntityReference>> teamToParents = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : parentRecords) {
+      UUID teamId = UUID.fromString(record.getToId());
+      EntityReference parentRef =
+          Entity.getEntityReferenceById(TEAM, UUID.fromString(record.getFromId()), Include.ALL);
+      teamToParents.computeIfAbsent(teamId, k -> new ArrayList<>()).add(parentRef);
+    }
+
+    for (Team team : teams) {
+      List<EntityReference> parentRefs = teamToParents.get(team.getId());
+      if (parentRefs == null || parentRefs.isEmpty()) {
+        if (organization != null && !team.getId().equals(organization.getId())) {
+          team.setParents(new ArrayList<>(List.of(organization.getEntityReference())));
+        } else {
+          team.setParents(new ArrayList<>());
+        }
+      } else {
+        team.setParents(parentRefs);
+      }
+    }
+  }
+
+  private void fetchAndSetPolicies(List<Team> teams, Fields fields) {
+    if (!fields.contains("policies") || teams == null || teams.isEmpty()) {
+      return;
+    }
+
+    List<String> teamIds = teams.stream().map(Team::getId).map(UUID::toString).distinct().toList();
+
+    List<CollectionDAO.EntityRelationshipObject> policyRecords =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(teamIds, Relationship.HAS.ordinal(), TEAM, POLICY);
+
+    Map<UUID, List<EntityReference>> teamToPolicies = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : policyRecords) {
+      UUID teamId = UUID.fromString(record.getFromId());
+      EntityReference policyRef =
+          Entity.getEntityReferenceById(POLICY, UUID.fromString(record.getToId()), Include.ALL);
+      teamToPolicies.computeIfAbsent(teamId, k -> new ArrayList<>()).add(policyRef);
+    }
+
+    for (Team team : teams) {
+      List<EntityReference> policyRefs = teamToPolicies.get(team.getId());
+      team.setPolicies(policyRefs != null ? policyRefs : new ArrayList<>());
+    }
+  }
+
+  private void fetchAndSetChildrenCount(List<Team> teams, Fields fields) {
+    if (!fields.contains("childrenCount") || teams == null || teams.isEmpty()) {
+      return;
+    }
+    for (Team team : teams) {
+      if (organization != null && team.getId().equals(organization.getId())) {
+        List<String> children = daoCollection.teamDAO().listTeamsUnderOrganization(team.getId());
+        team.setChildrenCount(children.size());
+      } else {
+        // For other teams, count direct children
+        List<EntityReference> children = findTo(team.getId(), TEAM, Relationship.PARENT_OF, TEAM);
+        team.setChildrenCount(children != null ? children.size() : 0);
+      }
+    }
+  }
+
+  private void fetchAndSetUserCount(List<Team> teams, Fields fields) {
+    if (!fields.contains("userCount") || teams == null || teams.isEmpty()) {
+      return;
+    }
+
+    for (Team team : teams) {
+      List<String> userIds = new ArrayList<>();
+      List<EntityRelationshipRecord> userRecordList = getUsersRelationshipRecords(team.getId());
+      for (EntityRelationshipRecord userRecord : userRecordList) {
+        userIds.add(userRecord.getId().toString());
+      }
+      Set<String> userIdsSet = new HashSet<>(userIds);
+      team.setUserCount(userIdsSet.size());
+    }
+  }
+
+  private void fetchAndSetOwns(List<Team> teams, Fields fields) {
+    if (!fields.contains("owns") || teams == null || teams.isEmpty()) {
+      return;
+    }
+
+    List<String> teamIds = teams.stream().map(Team::getId).map(UUID::toString).distinct().toList();
+
+    List<CollectionDAO.EntityRelationshipObject> ownsRecords =
+        daoCollection
+            .relationshipDAO()
+            .findToBatchAllTypes(teamIds, Relationship.OWNS.ordinal(), Include.ALL);
+
+    Map<UUID, List<EntityReference>> teamToOwns = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : ownsRecords) {
+      UUID teamId = UUID.fromString(record.getFromId());
+      try {
+        EntityReference ownedRef =
+            Entity.getEntityReferenceById(
+                record.getToEntity(), UUID.fromString(record.getToId()), Include.ALL);
+        teamToOwns.computeIfAbsent(teamId, k -> new ArrayList<>()).add(ownedRef);
+      } catch (Exception e) {
+        LOG.warn("Failed to get entity reference for owned entity: {}", record.getToId(), e);
+      }
+    }
+
+    for (Team team : teams) {
+      List<EntityReference> ownsRefs = teamToOwns.get(team.getId());
+      team.setOwns(ownsRefs != null ? ownsRefs : new ArrayList<>());
+    }
   }
 
   private List<EntityReference> getDomains(UUID teamId) {
@@ -155,7 +355,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  protected void storeDomain(Team entity, EntityReference exclude) {
+  protected void storeDomains(Team entity, List<EntityReference> exclude) {
     for (EntityReference domainRef : listOrEmpty(entity.getDomains())) {
       // Add relationship domain --- has ---> entity
       LOG.info(
@@ -214,6 +414,62 @@ public class TeamRepository extends EntityRepository<Team> {
         throw new IllegalArgumentException("Only users can be added to a Team");
       }
     }
+  }
+
+  public ResultList<EntityReference> getTeamAssets(UUID teamId, int limit, int offset) {
+    Team team = get(null, teamId, getFields("id,fullyQualifiedName"));
+
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search is unavailable for team assets. Returning empty list.");
+      return new ResultList<>(new ArrayList<>(), null, null, 0);
+    }
+
+    InheritedFieldQuery query = InheritedFieldQuery.forTeam(team.getId().toString(), offset, limit);
+
+    InheritedFieldResult result =
+        inheritedFieldEntitySearch.getEntitiesForField(
+            query,
+            () -> {
+              LOG.warn(
+                  "Search fallback for team {} assets. Returning empty list.",
+                  team.getFullyQualifiedName());
+              return new InheritedFieldResult(new ArrayList<>(), 0);
+            });
+
+    return new ResultList<>(result.entities(), null, null, result.total());
+  }
+
+  public ResultList<EntityReference> getTeamAssetsByName(String teamName, int limit, int offset) {
+    Team team = getByName(null, teamName, getFields("id,fullyQualifiedName"));
+    return getTeamAssets(team.getId(), limit, offset);
+  }
+
+  public Map<String, Integer> getAllTeamsWithAssetsCount() {
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search unavailable for team asset counts");
+      return new HashMap<>();
+    }
+
+    List<Team> allTeams = listAll(getFields("id,fullyQualifiedName"), new ListFilter(null));
+    Map<String, Integer> teamAssetCounts = new LinkedHashMap<>();
+
+    for (Team team : allTeams) {
+      InheritedFieldQuery query = InheritedFieldQuery.forTeam(team.getId().toString(), 0, 0);
+
+      Integer count =
+          inheritedFieldEntitySearch.getCountForField(
+              query,
+              () -> {
+                LOG.warn(
+                    "Search fallback for team {} asset count. Returning 0.",
+                    team.getFullyQualifiedName());
+                return 0;
+              });
+
+      teamAssetCounts.put(team.getFullyQualifiedName(), count);
+    }
+
+    return teamAssetCounts;
   }
 
   @Override
@@ -343,7 +599,7 @@ public class TeamRepository extends EntityRepository<Team> {
         .withHref(team.getHref())
         .withFullyQualifiedName(team.getFullyQualifiedName())
         .withIsJoinable(team.getIsJoinable())
-        .withChildren(null)
+        .withChildren(new ArrayList<>())
         .withDescription(team.getDescription());
   }
 
@@ -365,6 +621,9 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     for (Team team : joinableTeams) {
+      if (team.getParents() == null) {
+        continue;
+      }
       for (EntityReference parentRef : team.getParents()) {
         if (parentRef.getName().equals(ORGANIZATION_NAME)) {
           continue;
@@ -487,7 +746,11 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private Integer getChildrenCount(Team team) {
-    return !nullOrEmpty(team.getChildren()) ? team.getChildren().size() : getChildren(team).size();
+    if (!nullOrEmpty(team.getChildren())) {
+      return team.getChildren().size();
+    }
+    List<EntityReference> children = getChildren(team);
+    return children != null ? children.size() : 0;
   }
 
   private List<EntityReference> getPolicies(Team team) {
@@ -882,6 +1145,8 @@ public class TeamRepository extends EntityRepository<Team> {
       updateParents(original, updated);
       updateChildren(original, updated);
       updatePolicies(original, updated);
+      // Invalidate policy cache when team roles/policies/hierarchy changes
+      SubjectCache.invalidateAll();
     }
 
     private void updateUsers(Team origTeam, Team updatedTeam) {
@@ -915,7 +1180,7 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     @Override
-    protected void updateDomain() {
+    protected void updateDomains() {
       if (operation.isPut() && !nullOrEmpty(original.getDomains()) && updatedByBot()) {
         // Revert change to non-empty domain if it is being updated by a bot
         // This is to prevent bots from overwriting the domain. Domain need to be

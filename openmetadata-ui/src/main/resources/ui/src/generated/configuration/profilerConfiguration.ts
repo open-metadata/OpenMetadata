@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -60,6 +60,8 @@ export enum DataType {
     Float = "FLOAT",
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
+    Heirarchy = "HEIRARCHY",
+    Hierarchyid = "HIERARCHYID",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -69,12 +71,14 @@ export enum DataType {
     Ipv4 = "IPV4",
     Ipv6 = "IPV6",
     JSON = "JSON",
+    Kpi = "KPI",
     Largeint = "LARGEINT",
     Long = "LONG",
     Longblob = "LONGBLOB",
     Lowcardinality = "LOWCARDINALITY",
     Macaddr = "MACADDR",
     Map = "MAP",
+    Measure = "MEASURE",
     MeasureHidden = "MEASURE HIDDEN",
     MeasureVisible = "MEASURE VISIBLE",
     Mediumblob = "MEDIUMBLOB",
@@ -122,6 +126,7 @@ export enum DataType {
  * This schema defines all possible metric types in OpenMetadata.
  */
 export enum MetricType {
+    CardinalityDistribution = "cardinalityDistribution",
     ColumnCount = "columnCount",
     ColumnNames = "columnNames",
     CountInSet = "countInSet",

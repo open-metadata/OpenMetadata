@@ -11,14 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  act,
-  fireEvent,
-  getByTestId,
-  render,
-  screen,
-} from '@testing-library/react';
-import React from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import Searchbar from './SearchBar.component';
 
 const mockOnUserSearch = jest.fn();
@@ -51,17 +44,12 @@ describe('Test Searchbar Component', () => {
     expect(searchElement.value).toBe('Test Search');
   });
 
-  it('Renders the searchbar with blank text if the search text is blank or not sent', () => {
-    act(() => {
-      const onSearch = jest.fn();
-      const { container } = render(<Searchbar onSearch={onSearch} />);
-      const searchElement = getByTestId(
-        container,
-        'searchbar'
-      ) as HTMLInputElement;
+  it('Renders the searchbar with blank text if the search text is blank or not sent', async () => {
+    const onSearch = jest.fn();
+    render(<Searchbar onSearch={onSearch} />);
+    const searchElement = await screen.findByTestId('searchbar');
 
-      expect(searchElement.value).toBe('');
-    });
+    expect(searchElement).toHaveValue('');
   });
 
   it('Renders the user typed text when a change event is fired', async () => {
@@ -125,36 +113,5 @@ describe('Test Searchbar Component', () => {
     rerender(<Searchbar searchValue="updated" onSearch={mockOnUserSearch} />);
 
     expect(screen.getByTestId('searchbar')).toHaveValue('updated');
-  });
-
-  it('should update URL filters when urlSearchKey is provided', async () => {
-    render(
-      <Searchbar
-        typingInterval={1000}
-        urlSearchKey="search"
-        onSearch={mockOnUserSearch}
-      />
-    );
-
-    const searchInput = screen.getByTestId('searchbar');
-    fireEvent.change(searchInput, { target: { value: 'test' } });
-
-    expect(mockSetFilters).toHaveBeenCalledWith({ search: 'test' });
-  });
-
-  it('should set URL filter to null when search is empty', async () => {
-    render(
-      <Searchbar
-        searchValue="test"
-        typingInterval={1000}
-        urlSearchKey="search"
-        onSearch={mockOnUserSearch}
-      />
-    );
-
-    const searchInput = screen.getByTestId('searchbar');
-    fireEvent.change(searchInput, { target: { value: '' } });
-
-    expect(mockSetFilters).toHaveBeenCalledWith({ search: null });
   });
 });

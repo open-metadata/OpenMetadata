@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import AddPipeLineModal from './AddPipeLineModal';
 
 const mockProps = {
@@ -66,8 +64,8 @@ describe('Test CustomEdge Component', () => {
     expect(removeEdge).toBeInTheDocument();
     expect(saveButton).toBeInTheDocument();
 
-    userEvent.click(removeEdge);
-    userEvent.click(saveButton);
+    fireEvent.click(removeEdge);
+    fireEvent.click(saveButton);
 
     expect(mockProps.onRemoveEdgeClick).toHaveBeenCalled();
     expect(mockProps.onSave).toHaveBeenCalled();

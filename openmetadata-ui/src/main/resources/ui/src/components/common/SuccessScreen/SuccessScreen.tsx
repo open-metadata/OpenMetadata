@@ -13,7 +13,7 @@
 
 import { Button, Card, Space, Typography } from 'antd';
 import { isUndefined } from 'lodash';
-import React, { ReactNode, useMemo } from 'react';
+import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconCollateSupport } from '../../../assets/svg/ic-collate-support.svg';
 import { ReactComponent as IconSuccessBadge } from '../../../assets/svg/success-badge.svg';
@@ -63,11 +63,15 @@ const SuccessScreen = ({
         <div data-testid="airflow-platform-message">
           <div>
             <h6 className="text-base text-grey-body font-medium">
-              {t('message.manage-airflow-api-failed')}
+              {t('message.manage-airflow-api-failed', {
+                brandName: brandClassBase.getPageTitle(),
+              })}
             </h6>
 
             <p className="text-grey-body text-sm m-b-md">
-              {t('message.airflow-guide-message')}
+              {t('message.airflow-guide-message', {
+                brandName: brandClassBase.getPageTitle(),
+              })}
             </p>
           </div>
 

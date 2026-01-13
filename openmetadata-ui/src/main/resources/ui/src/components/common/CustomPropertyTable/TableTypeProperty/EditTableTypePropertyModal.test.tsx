@@ -12,7 +12,6 @@
  */
 import '@testing-library/jest-dom/extend-expect';
 import { fireEvent, render, waitFor } from '@testing-library/react';
-import React from 'react';
 import { CustomProperty } from '../../../../generated/type/customProperty';
 import EditTableTypePropertyModal from './EditTableTypePropertyModal';
 import { EditTableTypePropertyModalProps } from './EditTableTypePropertyModal.interface';

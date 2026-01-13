@@ -14,7 +14,7 @@
       "description": "Type of database service such as Amundsen, Atlas...",
       "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
       "type": "string",
-      "enum": ["Amundsen", "MetadataES", "OpenMetadata", "Atlas", "Alation", "AlationSink"],
+      "enum": ["Amundsen", "MetadataES", "OpenMetadata", "Atlas", "Alation", "AlationSink", "Collibra"],
       "javaEnums": [
         {
           "name": "Amundsen"
@@ -33,6 +33,9 @@
         },
         {
           "name": "AlationSink"
+        },
+        {
+          "name": "Collibra"
         }
       ]
     },
@@ -64,6 +67,9 @@
             },
             {
               "$ref": "./connections/metadata/alationSinkConnection.json"
+            },
+            {
+              "$ref": "./connections/metadata/collibraConnection.json"
             }
           ]
         }
@@ -115,6 +121,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
     "testConnectionResult": {
       "description": "Last test connection results for this service",
       "$ref": "connections/testConnectionResult.json"
@@ -155,9 +165,9 @@
       "description": "Followers of this entity.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "domain" : {
-      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "ingestionRunner" : {
       "description": "The ingestion agent responsible for executing the ingestion pipeline.",

@@ -15,31 +15,32 @@ import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isObject, isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
-import React, { forwardRef, useMemo } from 'react';
+import { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ReactComponent as ScoreIcon } from '../../../assets/svg/score.svg';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import {
+  EntityStatus,
   GlossaryTerm,
-  Status,
 } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagLabel } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
-import { getEntityName, highlightSearchText } from '../../../utils/EntityUtils';
-import { getDomainPath } from '../../../utils/RouterUtils';
+import { highlightSearchText } from '../../../utils/EntityUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { getUsagePercentile } from '../../../utils/TableUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
+import { DomainDisplay } from '../../common/DomainDisplay/DomainDisplay.component';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
-import { GlossaryStatusBadge } from '../../Glossary/GlossaryStatusBadge/GlossaryStatusBadge.component';
+import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './explore-search-card.less';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
@@ -70,7 +71,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     ref
   ) => {
     const { t } = useTranslation();
-    const { tab } = useParams<{ tab: string }>();
+    const { tab } = useRequiredParams<{ tab: string }>();
     const { isTourOpen } = useTourProvider();
     const otherDetails = useMemo(() => {
       const tierValue = isString(source.tier)
@@ -83,14 +84,11 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           );
 
       const _otherDetails: ExtraInfo[] = [
-        ...(source?.domain
+        ...(source?.domains && source.domains.length > 0
           ? [
               {
-                key: 'Domain',
-                value: getDomainPath(source.domain.fullyQualifiedName),
-                placeholderText: getEntityName(source.domain),
-                isLink: true,
-                openInNewTab: false,
+                key: 'Domains',
+                value: <DomainDisplay domains={source.domains} />,
               },
             ]
           : !searchClassBase
@@ -192,7 +190,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     const header = useMemo(() => {
       const hasGlossaryTermStatus =
         source.entityType === EntityType.GLOSSARY_TERM &&
-        (source as GlossaryTerm).status !== Status.Approved;
+        (source as GlossaryTerm).entityStatus !== EntityStatus.Approved;
 
       return (
         <Row gutter={[8, 8]}>
@@ -262,18 +260,12 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                     'm-r-xs': hasGlossaryTermStatus,
                   })}
                   data-testid="entity-link"
+                  state={{ breadcrumbData: breadcrumbs.slice(0, -1) }}
                   target={searchClassBase.getSearchEntityLinkTarget(
                     source,
                     openEntityInNewPage
                   )}
-                  to={{
-                    pathname: isObject(entityLink)
-                      ? entityLink.pathname
-                      : entityLink,
-                    state: {
-                      breadcrumbData: breadcrumbs.slice(0, -1),
-                    },
-                  }}>
+                  to={isObject(entityLink) ? entityLink.pathname : entityLink}>
                   <Typography.Text
                     className="text-lg font-medium text-link-color break-word whitespace-normal"
                     data-testid="entity-header-display-name">
@@ -299,8 +291,11 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 )}
 
                 {hasGlossaryTermStatus && (
-                  <GlossaryStatusBadge
-                    status={(source as GlossaryTerm).status ?? Status.Approved}
+                  <EntityStatusBadge
+                    status={
+                      (source as GlossaryTerm).entityStatus ??
+                      EntityStatus.Approved
+                    }
                   />
                 )}
               </div>
@@ -345,9 +340,8 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             <span>{`${t('label.matches')}:`}</span>
             {matches.map((data, i) => (
               <span className="m-l-xs" key={uniqueId()}>
-                {`${data.value} in ${startCase(data.key)}${
-                  i !== matches.length - 1 ? ',' : ''
-                }`}
+                {`${data.value} ${t('label.in-lowercase')} 
+                ${startCase(data.key)}${i !== matches.length - 1 ? ',' : ''}`}
               </span>
             ))}
           </div>

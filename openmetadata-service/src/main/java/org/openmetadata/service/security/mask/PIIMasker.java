@@ -22,18 +22,20 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnProfile;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
 import org.openmetadata.schema.type.topic.TopicSampleData;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ColumnUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.ResultList;
 
 public class PIIMasker {
   public static final String SENSITIVE_PII_TAG = "PII.Sensitive";
@@ -130,30 +132,56 @@ public class PIIMasker {
     return searchIndex;
   }
 
-  public static List<Column> getTableProfile(List<Column> columns) {
-    for (Column column : columns) {
-      if (hasPiiSensitiveTag(column)) {
-        column.setProfile(null);
-        column.setName(flagMaskedName(column.getName()));
+  public static List<Column> getTableProfile(
+      String fqn, List<Column> columns, Authorizer authorizer, SecurityContext securityContext) {
+    Table table = Entity.getEntityByName(Entity.TABLE, fqn, "owners", Include.ALL);
+    List<EntityReference> owners = table.getOwners();
+    boolean authorizePII = authorizer.authorizePII(securityContext, owners);
+    if (authorizePII) return columns;
+    for (Column c : listOrEmpty(columns)) {
+      if (hasPiiSensitiveTag(c)) {
+        c.setProfile(null);
+        c.setName(flagMaskedName(c.getName()));
       }
     }
     return columns;
   }
 
   public static List<ColumnProfile> getColumnProfile(
-      String fqn, List<ColumnProfile> columnProfiles) {
+      String fqn,
+      List<ColumnProfile> columnProfiles,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     Table table =
         Entity.getEntityByName(
-            Entity.TABLE, FullyQualifiedName.getTableFQN(fqn), "columns,tags", Include.ALL);
+            Entity.TABLE, FullyQualifiedName.getTableFQN(fqn), "columns,tags,owners", Include.ALL);
     Column column =
         table.getColumns().stream()
             .filter(c -> c.getFullyQualifiedName().equals(fqn))
             .findFirst()
             .orElse(null);
-    if (column != null && hasPiiSensitiveTag(column)) {
+    boolean authorizePII = authorizer.authorizePII(securityContext, table.getOwners());
+
+    if (column != null && hasPiiSensitiveTag(column) && !authorizePII) {
       return Collections.nCopies(columnProfiles.size(), new ColumnProfile());
     }
     return columnProfiles;
+  }
+
+  public static ColumnProfile maskColumnProfile(String fqn, ColumnProfile columnProfile) {
+    Table table = Entity.getEntityByName(Entity.TABLE, fqn, "columns,tags", Include.ALL);
+    Column columnObj = EntityUtil.getColumn(table, columnProfile.getName());
+    String columnFQN = columnObj.getFullyQualifiedName();
+    Column column =
+        table.getColumns().stream()
+            .filter(c -> c.getFullyQualifiedName().equals(columnFQN))
+            .findFirst()
+            .orElse(null);
+
+    if (column != null && hasPiiSensitiveTag(column)) {
+      return new ColumnProfile().withName(columnProfile.getName());
+    }
+    return columnProfile;
   }
 
   private static TestCase getTestCase(Column column, TestCase testCase) {

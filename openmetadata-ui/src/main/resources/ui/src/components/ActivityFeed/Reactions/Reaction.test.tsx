@@ -12,7 +12,6 @@
  */
 
 import { fireEvent, render } from '@testing-library/react';
-import React from 'react';
 import { ReactionType } from '../../../generated/type/reaction';
 import Reaction from './Reaction';
 
@@ -58,7 +57,7 @@ describe('Test Reaction Component', () => {
     );
   });
 
-  it('Should call onHide methdod on click of emoji button', async () => {
+  it('Should call onHide method on click of emoji button', async () => {
     const { findByTestId } = render(<Reaction {...mockProps} />);
 
     const reactionButton = await findByTestId('reaction-button');

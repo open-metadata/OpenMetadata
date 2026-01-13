@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import ApplicationCard from './ApplicationCard.component';
 
 const props = {
@@ -23,8 +22,12 @@ const props = {
   showDescription: true,
 };
 
-jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
+jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewNew', () =>
   jest.fn().mockImplementation(({ markdown }) => <div>{markdown}</div>)
+);
+
+jest.mock('../AppLogo/AppLogo.component', () =>
+  jest.fn().mockImplementation(() => <div>AppLogo</div>)
 );
 
 describe('ApplicationCard', () => {
@@ -39,9 +42,6 @@ describe('ApplicationCard', () => {
 
   it('renders the title correctly', () => {
     render(<ApplicationCard {...props} />);
-
-    // Fast-forward until all timers have been executed
-    jest.runAllTimers();
 
     expect(screen.getByText('Search Index')).toBeInTheDocument();
     expect(screen.getByText('Hello World')).toBeInTheDocument();

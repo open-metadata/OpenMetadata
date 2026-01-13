@@ -1,0 +1,36 @@
+source:
+  type: sample-drive-data
+  serviceName: sample_google_drive
+  serviceConnection:
+    config:
+      type: GoogleDrive
+      credentials:
+        gcpConfig:
+          type: service_account
+          projectId: sample-project-id
+          privateKeyId: sample-private-key-id
+          privateKey: |
+            -----BEGIN RSA PRIVATE KEY-----
+            MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDN...
+            -----END RSA PRIVATE KEY-----
+          clientEmail: sample-sa@sample-project.iam.gserviceaccount.com
+          clientId: "123456789"
+      driveId: 0APBVnJtQ-NLCUk9PVA
+      driveName: Marketing Team Drive
+      connectionOptions:
+        sampleDataFolder: ingestion/examples/sample_data
+  sourceConfig:
+    config:
+      type: DriveMetadata
+
+sink:
+  type: metadata-rest
+  config: {}
+
+workflowConfig:
+  loggerLevel: DEBUG
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJvcGVuLW1ldGFkYXRhLm9yZyIsInN1YiI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBvcGVubWV0YWRhdGEub3JnIiwiaXNzdWVyLXVybCI6Imh0dHA6Ly9sb2NhbGhvc3Q6ODU4NSIsImlhdCI6MTcxOTkyNTkyNCwiZXhwIjpudWxsfQ.P14IBLvr5iULO-loGmTHmXJvV91kt5LQSA41OfSgMiH6zt8lXvJRJblej8tNTM_zrk5glH7WKtNjLWp_TBT3uE9P7QNrlJ_TL6LrpIlCydvx1gY_t5mPINhR0jiVU5TnN8p7vuiG_Nj-nnnVmVJLzLrFcKrBsVlNKfWSfp0LU9bRbM_J0J2bOQS7L0YkLABR5b59e4hR4IHHNqLOIao9UW0lmFVYrnWP5HRIZuk_HksvLON8u-FxJGeaZImQW0IiG4PQaGpB8VF7h59bHvgxg4evrPPOHvdcT4vWilBEpKdbQJCWhbBhLBnfsHIlYCCn9cJNbPWYKJkzhJf_HXp4rA"

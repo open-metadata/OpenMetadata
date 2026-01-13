@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ENTITY_PERMISSIONS } from '../../mocks/Permissions.mock';
@@ -29,16 +28,21 @@ const mockParams = {
 };
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: jest.fn(),
-  })),
   useParams: jest.fn().mockImplementation(() => mockParams),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock(
   '../../components/Classifications/ClassificationDetails/ClassificationDetails',
   () => {
-    return jest.fn().mockImplementation(() => <div>ClassificationDetails</div>);
+    return jest.fn().mockImplementation(() => (
+      <div>
+        <div>ClassificationDetails</div>
+        <div data-testid="asset-description-container">Test Description</div>
+        <div>Domain</div>
+        <div data-testid="classification-owner-name">Owner</div>
+      </div>
+    ));
   }
 );
 
@@ -189,5 +193,19 @@ describe('ClassificationVersionPage component', () => {
     expect((PageLayoutV1 as jest.Mock).mock.calls[0][0].pageTitle).toBe(
       'label.entity-version-detail-plural'
     );
+  });
+
+  it('should not render edit permissions in version view', async () => {
+    await act(async () => {
+      render(<ClassificationVersionPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(screen.queryByTestId('edit-description')).not.toBeInTheDocument();
+
+    expect(screen.queryByTestId('add-domain')).not.toBeInTheDocument();
+
+    expect(screen.queryByTestId('add-owner')).not.toBeInTheDocument();
   });
 });

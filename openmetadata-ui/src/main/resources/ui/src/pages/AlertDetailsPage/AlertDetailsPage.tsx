@@ -16,9 +16,9 @@ import { Button, Card, Col, Row, Skeleton, Space, Tabs, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import AlertConfigDetails from '../../components/Alerts/AlertDetails/AlertConfigDetails/AlertConfigDetails';
@@ -33,7 +33,10 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import EntityHeaderTitle from '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { DE_ACTIVE_COLOR, ROUTES } from '../../constants/constants';
-import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -68,20 +71,20 @@ import {
 } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import { AlertDetailsPageProps } from './AlertDetailsPage.interface';
 
 function AlertDetailsPage({
   isNotificationAlert = false,
 }: Readonly<AlertDetailsPageProps>) {
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { tab = AlertDetailTabs.CONFIGURATION } =
-    useParams<{ tab: AlertDetailTabs }>();
+  const { tab } = useRequiredParams<{ tab: AlertDetailTabs }>();
   const { fqn } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [alertDetails, setAlertDetails] = useState<EventSubscription>();
   const [alertEventCounts, setAlertEventCounts] = useState<EventsRecord>();
-  const [loadingCount, setLoadingCount] = useState(1);
+  const [loadingCount, setLoadingCount] = useState(0);
   const [ownerLoading, setOwnerLoading] = useState(false);
   const [alertEventCountsLoading, setAlertEventCountsLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
@@ -111,6 +114,7 @@ function AlertDetailsPage({
 
   const fetchResourcePermission = useCallback(async () => {
     try {
+      setLoadingCount((count) => count + 1);
       if (fqn) {
         const searchIndexPermission = await getEntityPermissionByFqn(
           ResourceEntity.EVENT_SUBSCRIPTION,
@@ -173,6 +177,13 @@ function AlertDetailsPage({
               url: getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS),
             },
             {
+              name: t('label.alert-plural'),
+              url: getSettingPath(
+                GlobalSettingsMenuCategory.NOTIFICATIONS,
+                GlobalSettingOptions.ALERTS
+              ),
+            },
+            {
               name: getEntityName(alertDetails),
               url: '',
             },
@@ -196,12 +207,12 @@ function AlertDetailsPage({
 
   const handleAlertDelete = useCallback(async () => {
     isNotificationAlert
-      ? history.push(ROUTES.NOTIFICATION_ALERTS)
-      : history.push(ROUTES.OBSERVABILITY_ALERTS);
+      ? navigate(ROUTES.NOTIFICATION_ALERT_LIST)
+      : navigate(ROUTES.OBSERVABILITY_ALERTS);
   }, [history]);
 
   const handleAlertEdit = useCallback(async () => {
-    history.push(
+    navigate(
       isNotificationAlert
         ? getNotificationAlertsEditPath(fqn)
         : getObservabilityAlertsEditPath(fqn)
@@ -295,10 +306,11 @@ function AlertDetailsPage({
 
   const handleTabChange = useCallback(
     (activeKey: string) => {
-      history.replace(
+      navigate(
         isNotificationAlert
           ? getNotificationAlertDetailsPath(fqn, activeKey)
-          : getObservabilityAlertDetailsPath(fqn, activeKey)
+          : getObservabilityAlertDetailsPath(fqn, activeKey),
+        { replace: true }
       );
     },
     [history, fqn]
@@ -325,7 +337,7 @@ function AlertDetailsPage({
     [alertEventCounts, alertEventCountsLoading]
   );
 
-  if (!loadingCount && !viewPermission) {
+  if (!loadingCount && !isUndefined(viewPermission) && !viewPermission) {
     return (
       <ErrorPlaceHolder
         className="border-none"
@@ -341,10 +353,7 @@ function AlertDetailsPage({
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.alert'),
-      })}>
+    <PageLayoutV1 pageTitle={getEntityName(alertDetails)}>
       {loadingCount ? (
         <Loader />
       ) : (

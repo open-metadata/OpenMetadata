@@ -17,7 +17,7 @@ export const advanceSearchSaveFilter = async (
   propertyValue: string
 ) => {
   const searchResponse = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=10*'
+    '/api/v1/search/query?*index=dataAsset&from=0&size=15*'
   );
   await page.getByTestId('apply-btn').click();
 

@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import {
   dashboardVersionProps,
@@ -21,16 +19,11 @@ import {
   mockTagChangeVersion,
 } from '../../../mocks/dashboardVersion.mock';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
+import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import DashboardVersion from './DashboardVersion.component';
 import { DashboardVersionProp } from './DashboardVersion.interface';
 
-const mockPush = jest.fn();
-
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>RichTextEditorPreviewer.component</div>);
-});
+const mockNavigate = jest.fn();
 
 jest.mock('../../common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <div>Description.component</div>);
@@ -74,14 +67,23 @@ jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockReturnValue({
     tab: 'dashboard',
   }),
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
 }));
+
+jest.mock(
+  '../../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
 
 JSON.parse = jest.fn().mockReturnValue([]);
 
@@ -100,17 +102,12 @@ describe('DashboardVersion tests', () => {
       'EntityVersionTimeLine.component'
     );
     const tabs = await screen.findByTestId('tabs');
-    const description = await screen.findByText('Description.component');
-    const richTextEditorPreviewer = await screen.findByText(
-      'RichTextEditorPreviewer.component'
-    );
 
     expect(versionData).toBeInTheDocument();
     expect(schemaTable).toBeInTheDocument();
     expect(entityVersionTimeLine).toBeInTheDocument();
     expect(tabs).toBeInTheDocument();
-    expect(description).toBeInTheDocument();
-    expect(richTextEditorPreviewer).toBeInTheDocument();
+    expect(descriptionTableObject).toHaveBeenCalledWith();
   });
 
   it('Should render components properly if version changes are related to tags', async () => {
@@ -135,17 +132,12 @@ describe('DashboardVersion tests', () => {
       'EntityVersionTimeLine.component'
     );
     const tabs = await screen.findByTestId('tabs');
-    const description = await screen.findByText('Description.component');
-    const richTextEditorPreviewer = await screen.findByText(
-      'RichTextEditorPreviewer.component'
-    );
 
     expect(versionData).toBeInTheDocument();
     expect(schemaTable).toBeInTheDocument();
     expect(entityVersionTimeLine).toBeInTheDocument();
     expect(tabs).toBeInTheDocument();
-    expect(description).toBeInTheDocument();
-    expect(richTextEditorPreviewer).toBeInTheDocument();
+    expect(descriptionTableObject).toHaveBeenCalledWith();
   });
 
   it('Should render component properly if "deleted" field for dashboard is undefined', async () => {
@@ -167,12 +159,11 @@ describe('DashboardVersion tests', () => {
       'EntityVersionTimeLine.component'
     );
     const tabs = await screen.findByTestId('tabs');
-    const description = await screen.findByText('Description.component');
 
     expect(versionData).toBeInTheDocument();
     expect(entityVersionTimeLine).toBeInTheDocument();
     expect(tabs).toBeInTheDocument();
-    expect(description).toBeInTheDocument();
+    expect(descriptionTableObject).toHaveBeenCalledWith();
   });
 
   it('Should display Loader if isVersionLoading is true', async () => {
@@ -210,12 +201,103 @@ describe('DashboardVersion tests', () => {
 
     expect(customPropertyTabLabel).toBeInTheDocument();
 
-    await act(async () => {
-      userEvent.click(customPropertyTabLabel);
-    });
+    fireEvent.click(customPropertyTabLabel);
 
-    expect(mockPush).toHaveBeenCalledWith(
+    expect(mockNavigate).toHaveBeenCalledWith(
       '/dashboard/sample_superset.eta_predictions_performance/versions/0.3/custom_properties'
     );
+  });
+
+  describe('ViewCustomFields Permission Tests', () => {
+    const mockCustomPropertyTable = jest.requireMock(
+      '../../common/CustomPropertyTable/CustomPropertyTable'
+    ).CustomPropertyTable;
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should pass hasPermission=true to CustomPropertyTable when ViewCustomFields is true', async () => {
+      await act(async () => {
+        render(
+          <DashboardVersion
+            {...dashboardVersionProps}
+            entityPermissions={{
+              ...ENTITY_PERMISSIONS,
+              ViewCustomFields: true,
+            }}
+          />,
+          {
+            wrapper: MemoryRouter,
+          }
+        );
+      });
+
+      const customPropertyTabLabel = screen.getByText(
+        'label.custom-property-plural'
+      );
+
+      fireEvent.click(customPropertyTabLabel);
+
+      expect(mockCustomPropertyTable).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hasPermission: true,
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('should pass hasPermission=false to CustomPropertyTable when ViewCustomFields is false', async () => {
+      await act(async () => {
+        render(
+          <DashboardVersion
+            {...dashboardVersionProps}
+            entityPermissions={{
+              ...ENTITY_PERMISSIONS,
+              ViewCustomFields: false,
+            }}
+          />,
+          {
+            wrapper: MemoryRouter,
+          }
+        );
+      });
+
+      const customPropertyTabLabel = screen.getByText(
+        'label.custom-property-plural'
+      );
+
+      fireEvent.click(customPropertyTabLabel);
+
+      expect(mockCustomPropertyTable).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hasPermission: false,
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('should render custom properties tab regardless of ViewCustomFields value', async () => {
+      await act(async () => {
+        render(
+          <DashboardVersion
+            {...dashboardVersionProps}
+            entityPermissions={{
+              ...ENTITY_PERMISSIONS,
+              ViewCustomFields: false,
+            }}
+          />,
+          {
+            wrapper: MemoryRouter,
+          }
+        );
+      });
+
+      const customPropertyTabLabel = screen.getByText(
+        'label.custom-property-plural'
+      );
+
+      expect(customPropertyTabLabel).toBeInTheDocument();
+    });
   });
 });

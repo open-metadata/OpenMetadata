@@ -14,10 +14,9 @@
 package org.openmetadata.service.apps.bundles.changeEvent.slack;
 
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.SLACK;
-import static org.openmetadata.service.util.SubscriptionUtil.appendHeadersToTarget;
 import static org.openmetadata.service.util.SubscriptionUtil.deliverTestWebhookMessage;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
-import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
+import static org.openmetadata.service.util.SubscriptionUtil.getTarget;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -26,28 +25,34 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Invocation;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.decorators.SlackMessageDecorator;
-import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
+import org.openmetadata.service.notifications.HandlebarsNotificationMessageEngine;
+import org.openmetadata.service.notifications.channels.NotificationMessage;
+import org.openmetadata.service.notifications.recipients.RecipientResolver;
+import org.openmetadata.service.notifications.recipients.context.Recipient;
+import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
 
 @Slf4j
 public class SlackEventPublisher implements Destination<ChangeEvent> {
-  private final MessageDecorator<SlackMessage> slackMessageFormatter = new SlackMessageDecorator();
+  private final HandlebarsNotificationMessageEngine messageEngine;
   private final Webhook webhook;
-  private Invocation.Builder target;
   private final Client client;
+
   @Getter private final SubscriptionDestination subscriptionDestination;
   private final EventSubscription eventSubscription;
 
@@ -57,17 +62,11 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
       this.eventSubscription = eventSubscription;
       this.subscriptionDestination = subscriptionDest;
       this.webhook = JsonUtils.convertValue(subscriptionDest.getConfig(), Webhook.class);
-
-      // Build Client
-      client = getClient(subscriptionDest.getTimeout(), subscriptionDest.getReadTimeout());
-
-      // Build Target
-      if (webhook != null && webhook.getEndpoint() != null) {
-        String slackWebhookURL = webhook.getEndpoint().toString();
-        if (!CommonUtil.nullOrEmpty(slackWebhookURL)) {
-          target = appendHeadersToTarget(client, slackWebhookURL);
-        }
-      }
+      this.client = getClient(subscriptionDest.getTimeout(), subscriptionDest.getReadTimeout());
+      this.messageEngine =
+          new HandlebarsNotificationMessageEngine(
+              (NotificationTemplateRepository)
+                  Entity.getEntityRepository(Entity.NOTIFICATION_TEMPLATE));
     } else {
       throw new IllegalArgumentException("Slack Alert Invoked with Illegal Type and Settings.");
     }
@@ -76,24 +75,31 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
   @Override
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
     try {
-      SlackMessage slackMessage =
-          slackMessageFormatter.buildOutgoingMessage(getDisplayNameOrFqn(eventSubscription), event);
+      // Generate message using new Handlebars pipeline
+      NotificationMessage message =
+          messageEngine.generateMessage(event, eventSubscription, subscriptionDestination);
+      SlackMessage slackMessage = (SlackMessage) message;
 
+      // Convert to JSON and apply snake_case transformation
       String json = JsonUtils.pojoToJsonIgnoreNull(slackMessage);
-      json = convertCamelCaseToSnakeCase(json);
+      String transformedJson = convertCamelCaseToSnakeCase(json);
+
+      // Resolve recipients using new RecipientResolver framework
+      RecipientResolver recipientResolver = new RecipientResolver();
+      Set<Recipient> recipients =
+          recipientResolver.resolveRecipients(event, subscriptionDestination, webhook);
+
+      // Convert type-agnostic Recipient objects to configured webhook requests
       List<Invocation.Builder> targets =
-          getTargetsForWebhookAlert(
-              webhook, subscriptionDestination.getCategory(), SLACK, client, event);
-      if (target != null) {
-        targets.add(target);
-      }
+          recipients.stream()
+              .filter(r -> r instanceof WebhookRecipient)
+              .map(r -> ((WebhookRecipient) r).getConfiguredRequest(client, transformedJson))
+              .filter(Objects::nonNull)
+              .toList();
+
+      // Send Slack message to each webhook target
       for (Invocation.Builder actionTarget : targets) {
-        if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
-          String hmac = "sha256=" + CommonUtil.calculateHMAC(webhook.getSecretKey(), json);
-          postWebhookMessage(this, actionTarget.header(RestUtil.SIGNATURE_HEADER, hmac), json);
-        } else {
-          postWebhookMessage(this, actionTarget, json);
-        }
+        postWebhookMessage(this, actionTarget, transformedJson);
       }
     } catch (Exception e) {
       String message =
@@ -108,18 +114,12 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
   @Override
   public void sendTestMessage() throws EventPublisherException {
     try {
-      SlackMessage slackMessage = slackMessageFormatter.buildOutgoingTestMessage();
+      // Use legacy test message (unchanged)
+      SlackMessage slackMessage = new SlackMessageDecorator().buildOutgoingTestMessage();
 
       String json = JsonUtils.pojoToJsonIgnoreNull(slackMessage);
       json = convertCamelCaseToSnakeCase(json);
-      if (target != null) {
-        if (!CommonUtil.nullOrEmpty(webhook.getSecretKey())) {
-          String hmac = "sha256=" + CommonUtil.calculateHMAC(webhook.getSecretKey(), json);
-          deliverTestWebhookMessage(this, target.header(RestUtil.SIGNATURE_HEADER, hmac), json);
-        } else {
-          deliverTestWebhookMessage(this, target, json);
-        }
-      }
+      deliverTestWebhookMessage(this, getTarget(client, webhook, json), json);
     } catch (Exception e) {
       String message = CatalogExceptionMessage.eventPublisherFailedToPublish(SLACK, e.getMessage());
       LOG.error(message);
@@ -128,10 +128,10 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
   }
 
   /**
-   * Slack messages sent via webhook require some keys in snake_case, while the Slack
-   * app accepts them as they are (camelCase). Using Layout blocks (from com.slack.api.model.block) restricts control over key
+   * Slack messages sent via webhook require some keys in snake_case.
+   * Using Layout blocks (from com.slack.api.model.block) restricts control over key
    * aliases within the class.
-   **/
+   */
   public String convertCamelCaseToSnakeCase(String jsonString) {
     JsonNode rootNode = JsonUtils.readTree(jsonString);
     JsonNode modifiedNode = convertKeys(rootNode);
@@ -153,16 +153,12 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
                 } else if (fieldName.equals("altText")) {
                   newFieldName = "alt_text";
                 }
-
-                // Recursively convert the keys
                 newNode.set(newFieldName, convertKeys(objectNode.get(fieldName)));
               });
       return newNode;
     } else if (node.isArray()) {
       ArrayNode arrayNode = (ArrayNode) node;
       ArrayNode newArrayNode = JsonUtils.getObjectNode().arrayNode();
-
-      // recursively convert elements
       for (int i = 0; i < arrayNode.size(); i++) {
         newArrayNode.add(convertKeys(arrayNode.get(i)));
       }

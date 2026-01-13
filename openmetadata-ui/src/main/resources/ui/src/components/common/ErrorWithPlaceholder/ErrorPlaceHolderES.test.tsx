@@ -12,16 +12,20 @@
  */
 
 import { getByTestId, render } from '@testing-library/react';
-import React from 'react';
+import * as reactI18next from 'react-i18next';
 import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import ErrorPlaceHolderES from './ErrorPlaceHolderES';
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
-  useParams: jest.fn().mockReturnValue({
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
+}));
+
+jest.mock('../../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest.fn().mockReturnValue({
     tab: 'tables',
   }),
 }));
+
 jest.mock('./FilterErrorPlaceHolder', () => {
   return jest
     .fn()
@@ -29,6 +33,13 @@ jest.mock('./FilterErrorPlaceHolder', () => {
       <div data-testid="FilterErrorPlaceHolder">FilterErrorPlaceHolder</div>
     );
 });
+
+jest.mock('../../../utils/BrandData/BrandClassBase', () => ({
+  __esModule: true,
+  default: {
+    getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
+  },
+}));
 
 const mockErrorMessage =
   'An exception with message [Elasticsearch exception [type=index_not_found_exception, reason=no such index [test_search_index]]] was thrown while processing request.';
@@ -77,5 +88,40 @@ describe('Test Error placeholder ingestion Component', () => {
     const errMsg = getByTestId(errorES, 'error-text');
 
     expect(errMsg.textContent).toMatch('message.unable-to-error-elasticsearch');
+  });
+
+  it('should render with correct brandName (OpenMetadata or Collate)', () => {
+    // Mock useTranslation to handle brandName interpolation
+    const mockT = jest.fn((key: string, params?: Record<string, string>) => {
+      if (key === 'message.welcome-to-open-metadata' && params?.brandName) {
+        return `Welcome to ${params.brandName}!`;
+      }
+
+      return key;
+    });
+
+    jest.spyOn(reactI18next, 'useTranslation').mockReturnValue({
+      t: mockT,
+      i18n: { language: 'en-US' },
+      ready: true,
+    } as any);
+
+    const { container } = render(
+      <ErrorPlaceHolderES
+        errorMessage={mockErrorMessage}
+        type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.ERROR}
+      />
+    );
+    const errorES = getByTestId(container, 'es-error');
+
+    expect(errorES).toBeInTheDocument();
+    // Verify the actual brand name is rendered, not the placeholder
+    expect(errorES.textContent).toMatch(/OpenMetadata|Collate/);
+    expect(errorES.textContent).not.toContain('{{brandName}}');
+
+    // Verify the translation function was called with brandName parameter
+    expect(mockT).toHaveBeenCalledWith('message.welcome-to-open-metadata', {
+      brandName: 'OpenMetadata',
+    });
   });
 });

@@ -64,7 +64,7 @@ test.describe('Tags Suggestions Table Entity', () => {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
 
-      await expect(page.getByText('Suggested Descriptions')).toBeVisible();
+      await expect(page.getByText('Suggested Tags')).toBeVisible();
 
       const allAvatarSuggestion = page
         .getByTestId('asset-description-container')
@@ -84,7 +84,7 @@ test.describe('Tags Suggestions Table Entity', () => {
       // All Column Suggestions Card should be visible
       await expect(
         page.getByTestId('suggested-SuggestTagLabel-card')
-      ).toHaveCount(6);
+      ).toHaveCount(table.entityLinkColumnsName.length);
 
       // Close the suggestions
       await page.getByTestId('close-suggestion').click();

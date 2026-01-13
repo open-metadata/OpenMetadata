@@ -12,7 +12,7 @@
  */
 import { Form, FormProps, Input, Modal } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../../constants/constants';
 import { testEmailConnection } from '../../../../rest/settingConfigAPI';

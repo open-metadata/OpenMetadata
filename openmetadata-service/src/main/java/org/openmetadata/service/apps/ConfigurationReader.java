@@ -12,7 +12,7 @@ import java.net.URL;
 import java.util.Map;
 import org.apache.commons.text.StringSubstitutor;
 import org.openmetadata.schema.api.configuration.apps.AppPrivateConfig;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

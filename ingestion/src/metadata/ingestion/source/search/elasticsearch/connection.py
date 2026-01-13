@@ -176,7 +176,7 @@ def get_connection(connection: ElasticsearchConnection) -> Elasticsearch:
 
     return Elasticsearch(
         str(connection.hostPort),
-        http_auth=basic_auth,
+        basic_auth=basic_auth,
         api_key=api_key,
         ssl_context=ssl_context,
         **connection.connectionArguments.root,
@@ -196,7 +196,18 @@ def test_connection(
     """
 
     def test_get_search_indexes():
-        client.indices.get_alias(expand_wildcards="open")
+        try:
+            result = client.indices.get_alias(expand_wildcards="open")
+            if result is None:
+                raise ConnectionError(
+                    "Failed to retrieve search indexes from Elasticsearch"
+                )
+            return result
+        except Exception as exc:
+            raise ConnectionError(
+                f"Unable to connect to Elasticsearch or retrieve indexes: {exc}. "
+                "Please check your Elasticsearch connection configuration and cluster health."
+            ) from exc
 
     test_fn = {
         "CheckAccess": client.info,

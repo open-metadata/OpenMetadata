@@ -15,6 +15,9 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Iterator, Optional
 
+from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
+    QueryParserType,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -64,6 +67,7 @@ class QueryParserSource(Source, ABC):
         self.source_config = self.config.sourceConfig.config
         self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)
         self.graph = None
+        self.procedure_graph_map = None
 
         self.engine = None
         if get_engine:
@@ -122,6 +126,20 @@ class QueryParserSource(Source, ABC):
         if self.source_config.filterCondition:
             return f"{self.filters} AND {self.source_config.filterCondition}"
         return self.filters
+
+    def get_query_parser_type(self) -> QueryParserType:
+        """
+        Get the query parser type from source config.
+
+        Returns QueryParserType.Auto if queryParserConfig is not set.
+        """
+        if (
+            hasattr(self.source_config, "queryParserConfig")
+            and self.source_config.queryParserConfig
+            and self.source_config.queryParserConfig.type
+        ):
+            return self.source_config.queryParserConfig.type
+        return QueryParserType.Auto
 
     def get_engine(self):
         yield self.engine

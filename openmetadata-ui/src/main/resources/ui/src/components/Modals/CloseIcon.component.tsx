@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import React from 'react';
 import { CloseIconInterface } from './CloseIcon.interface';
 
 const CloseIcon = ({ handleCancel, dataTestId }: CloseIconInterface) => {

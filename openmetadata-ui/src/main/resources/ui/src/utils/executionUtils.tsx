@@ -21,6 +21,7 @@ import {
   PipelineStatus,
   StatusType,
   Task,
+  TaskStatus,
 } from '../generated/entity/data/pipeline';
 import { formatDateTime } from './date-time/DateTimeUtils';
 import { getStatusBadgeIcon } from './PipelineDetailsUtils';
@@ -75,7 +76,7 @@ export const getTableViewData = (
 
   const viewData: Array<ViewDataInterface> = [];
   executions?.map((execution) => {
-    execution.taskStatus?.map((execute) => {
+    execution.taskStatus?.map((execute: TaskStatus) => {
       viewData.push({
         name: execute.name,
         status: execute.executionStatus,
@@ -126,9 +127,9 @@ export const buildCompleteTree = (
   data: Task[],
   viewElements: {
     key: string;
-    value: any;
+    value: React.ReactNode;
   }[],
-  icon: any,
+  icon: React.ReactNode | null,
   key: string,
   parentKey: string
 ) => {
@@ -183,40 +184,43 @@ export const getTreeData = (
   const treeLabelList: DataNode[] = [];
 
   // map execution element to task name
-  const viewElements = map(viewData, (value, key) => ({
-    key,
-    value: (
-      <Row gutter={16} key={key}>
-        <Col>
-          <div className="execution-node-container">
-            {value.map((status) => (
-              <Tooltip
-                key={`${status.timestamp}-${status.executionStatus}`}
-                placement="top"
-                title={
-                  <Space direction="vertical">
-                    <div>{status.timestamp}</div>
-                    <div>{status.executionStatus}</div>
-                  </Space>
-                }>
-                <Icon
-                  alt="result"
-                  className="align-middle"
-                  component={getStatusBadgeIcon(status.executionStatus)}
-                  // by default, color is set to inherit for Icon in ANTD, so we need to set it to transparent
-                  style={{ fontSize: '24px', color: 'transparent' }}
-                />
-              </Tooltip>
-            ))}
-          </div>
-        </Col>
-      </Row>
-    ),
-  }));
+  const viewElements = map(
+    viewData,
+    (value: ViewDataInterface[], key: string) => ({
+      key,
+      value: (
+        <Row gutter={16} key={key}>
+          <Col>
+            <div className="execution-node-container">
+              {value.map((status: ViewDataInterface) => (
+                <Tooltip
+                  key={`${status.timestamp}-${status.executionStatus}`}
+                  placement="top"
+                  title={
+                    <Space direction="vertical">
+                      <div>{status.timestamp}</div>
+                      <div>{status.executionStatus}</div>
+                    </Space>
+                  }>
+                  <Icon
+                    alt="result"
+                    className="align-middle"
+                    component={getStatusBadgeIcon(status.executionStatus)}
+                    // by default, color is set to inherit for Icon in ANTD, so we need to set it to transparent
+                    style={{ fontSize: '24px', color: 'transparent' }}
+                  />
+                </Tooltip>
+              ))}
+            </div>
+          </Col>
+        </Row>
+      ),
+    })
+  );
 
   const labelElements: { key: string; value: string }[] = [];
 
-  viewElements.forEach((value) => {
+  viewElements.forEach((value: { key: string; value: React.ReactNode }) => {
     const object = { key: value.key, value: value.key };
     labelElements.push(object);
   });

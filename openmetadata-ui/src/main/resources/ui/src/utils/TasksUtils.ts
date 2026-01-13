@@ -12,7 +12,6 @@
  */
 import { AxiosError } from 'axios';
 import { Change, diffLines } from 'diff';
-import i18Next from 'i18next';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
 import React from 'react';
 import { ReactComponent as CancelColored } from '../assets/svg/cancel-colored.svg';
@@ -65,6 +64,7 @@ import {
   getDatabaseSchemaDetailsByFQN,
 } from '../rest/databaseAPI';
 import { getDataModelByFqn } from '../rest/dataModelsAPI';
+import { getDataProductByName } from '../rest/dataProductAPI';
 import { getGlossariesByName, getGlossaryTermByFQN } from '../rest/glossaryAPI';
 import { getMetricByFqn } from '../rest/metricsAPI';
 import { getUserAndTeamSearch } from '../rest/miscAPI';
@@ -89,6 +89,7 @@ import entityUtilClassBase from './EntityUtilClassBase';
 import { getEntityName } from './EntityUtils';
 import { getEntityFQN, getEntityType } from './FeedUtils';
 import { getGlossaryBreadcrumbs } from './GlossaryUtils';
+import { t } from './i18next/LocalUtil';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
 import {
@@ -183,6 +184,16 @@ export const getUpdateTagsPath = (
   return { pathname, search: searchParams.toString() };
 };
 
+export const getKnowledgeCenterPagePath = (
+  pageFQN: string,
+  tab: string,
+  subTab: string
+) => {
+  const encodedFqn = getEncodedFqn(pageFQN);
+
+  return `${ROUTES.KNOWLEDGE_CENTER_PAGE}/${encodedFqn}/${tab}/${subTab}`;
+};
+
 export const getTaskDetailPath = (task: Thread) => {
   const entityFqn = getEntityFQN(task.about) ?? '';
   const entityType = getEntityType(task.about) ?? '';
@@ -199,6 +210,12 @@ export const getTaskDetailPath = (task: Thread) => {
     [EntityType.GLOSSARY, EntityType.GLOSSARY_TERM].includes(entityType)
   ) {
     return getGlossaryTermDetailsPath(
+      entityFqn,
+      EntityTabs.ACTIVITY_FEED,
+      ActivityFeedTabs.TASKS
+    );
+  } else if (entityType === EntityType.KNOWLEDGE_PAGE) {
+    return getKnowledgeCenterPagePath(
       entityFqn,
       EntityTabs.ACTIVITY_FEED,
       ActivityFeedTabs.TASKS
@@ -358,6 +375,7 @@ export const TASK_ENTITIES = [
   EntityType.API_COLLECTION,
   EntityType.API_ENDPOINT,
   EntityType.METRIC,
+  EntityType.DATA_PRODUCT,
 ];
 
 export const getBreadCrumbList = (
@@ -441,6 +459,10 @@ export const getBreadCrumbList = (
       return [service(ServiceCategory.SEARCH_SERVICES), activeEntity];
     }
 
+    case EntityType.DIRECTORY: {
+      return [service(ServiceCategory.DRIVE_SERVICES), activeEntity];
+    }
+
     case EntityType.DATABASE_SCHEMA: {
       return [
         service(ServiceCategory.DATABASE_SERVICES),
@@ -492,13 +514,23 @@ export const getBreadCrumbList = (
     case EntityType.METRIC: {
       return [
         {
-          name: i18Next.t('label.metric-plural'),
+          name: t('label.metric-plural'),
           url: ROUTES.METRICS,
         },
         {
           name: getEntityName(entityData),
           url: '',
         },
+      ];
+    }
+
+    case EntityType.DATA_PRODUCT: {
+      return [
+        {
+          name: t('label.data-product-plural'),
+          url: ROUTES.DATA_PRODUCT,
+        },
+        activeEntity,
       ];
     }
 
@@ -606,6 +638,21 @@ export const fetchEntityDetail = (
         .catch((err: AxiosError) => showErrorToast(err));
 
       break;
+    case EntityType.DATA_PRODUCT:
+      getDataProductByName(entityFQN, {
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.DOMAINS,
+          TabSpecificField.EXTENSION,
+        ].join(','),
+      })
+        .then((res) => {
+          setEntityData(res as EntityData);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
     case EntityType.STORED_PROCEDURE:
       getStoredProceduresByFqn(entityFQN, {
         fields: STORED_PROCEDURE_DEFAULT_FIELDS,
@@ -686,7 +733,7 @@ export const fetchEntityDetail = (
 
 export const TASK_ACTION_COMMON_ITEM: TaskAction[] = [
   {
-    label: i18Next.t('label.close'),
+    label: t('label.close'),
     key: TaskActionMode.CLOSE,
     icon: CancelColored,
   },
@@ -694,17 +741,17 @@ export const TASK_ACTION_COMMON_ITEM: TaskAction[] = [
 
 export const TASK_ACTION_LIST: TaskAction[] = [
   {
-    label: i18Next.t('label.accept-suggestion'),
+    label: t('label.accept-suggestion'),
     key: TaskActionMode.VIEW,
     icon: CheckIcon,
   },
   {
-    label: i18Next.t('label.edit-suggestion'),
+    label: t('label.edit-suggestion'),
     key: TaskActionMode.EDIT,
     icon: EditSuggestionIcon,
   },
   {
-    label: i18Next.t('label.close'),
+    label: t('label.close'),
     key: TaskActionMode.CLOSE,
     icon: CloseIcon,
   },
@@ -712,12 +759,12 @@ export const TASK_ACTION_LIST: TaskAction[] = [
 
 export const GLOSSARY_TASK_ACTION_LIST: TaskAction[] = [
   {
-    label: i18Next.t('label.approve'),
+    label: t('label.approve'),
     key: TaskActionMode.RESOLVE,
     icon: CheckIcon,
   },
   {
-    label: i18Next.t('label.reject'),
+    label: t('label.reject'),
     key: TaskActionMode.CLOSE,
     icon: CloseIcon,
   },
@@ -725,12 +772,12 @@ export const GLOSSARY_TASK_ACTION_LIST: TaskAction[] = [
 
 export const INCIDENT_TASK_ACTION_LIST: TaskAction[] = [
   {
-    label: i18Next.t('label.re-assign'),
+    label: t('label.re-assign'),
     key: TaskActionMode.RE_ASSIGN,
     icon: EditSuggestionIcon,
   },
   {
-    label: i18Next.t('label.resolve'),
+    label: t('label.resolve'),
     key: TaskActionMode.RESOLVE,
     icon: CloseIcon,
   },

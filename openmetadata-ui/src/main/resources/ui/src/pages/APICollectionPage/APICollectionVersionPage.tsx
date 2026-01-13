@@ -15,9 +15,9 @@ import { Col, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, toString } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -31,7 +31,6 @@ import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
-import { PAGE_SIZE } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -45,6 +44,7 @@ import {
 } from '../../enums/entity.enum';
 import { APICollection } from '../../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
+import { Operation } from '../../generated/entity/policies/policy';
 import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
@@ -66,23 +66,27 @@ import {
   getCommonDiffsFromVersionData,
   getCommonExtraInfoForVersionDetails,
 } from '../../utils/EntityVersionUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import APIEndpointsTab from './APIEndpointsTab';
 
 const APICollectionVersionPage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { version, tab } = useParams<{
+  const { version, tab } = useRequiredParams<{
     version: string;
-    tab: EntityTabs;
+    tab: string;
   }>();
 
   const { fqn: decodedEntityFQN } = useFqn();
 
-  const pagingInfo = usePaging(PAGE_SIZE);
+  const pagingInfo = usePaging();
 
   const {
     paging,
@@ -110,7 +114,7 @@ const APICollectionVersionPage = () => {
 
   const [apiEndpoints, setAPIEndpoints] = useState<Array<APIEndpoint>>([]);
 
-  const { tier, owners, breadcrumbLinks, changeDescription, deleted, domain } =
+  const { tier, owners, breadcrumbLinks, changeDescription, deleted, domains } =
     useMemo(
       () =>
         getBasicEntityInfoFromVersionData(
@@ -125,6 +129,14 @@ const APICollectionVersionPage = () => {
     [collectionPermissions]
   );
 
+  const viewCustomPropertiesPermission = useMemo(
+    () =>
+      getPrioritizedViewPermission(
+        collectionPermissions,
+        Operation.ViewCustomFields
+      ),
+    [collectionPermissions]
+  );
   const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
     useMemo(
       () =>
@@ -132,9 +144,9 @@ const APICollectionVersionPage = () => {
           currentVersionData?.changeDescription as ChangeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [currentVersionData?.changeDescription, owners, tier, domain]
+      [currentVersionData?.changeDescription, owners, tier, domains]
     );
 
   const init = useCallback(async () => {
@@ -217,7 +229,7 @@ const APICollectionVersionPage = () => {
   );
 
   const handleTabChange = (activeKey: string) => {
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.API_COLLECTION,
         decodedEntityFQN,
@@ -244,7 +256,7 @@ const APICollectionVersionPage = () => {
   const { versionHandler, backHandler } = useMemo(
     () => ({
       versionHandler: (newVersion = version) => {
-        history.push(
+        navigate(
           getVersionPath(
             EntityType.API_COLLECTION,
             decodedEntityFQN,
@@ -254,7 +266,7 @@ const APICollectionVersionPage = () => {
         );
       },
       backHandler: () => {
-        history.push(
+        navigate(
           getEntityDetailsPath(EntityType.API_COLLECTION, decodedEntityFQN, tab)
         );
       },
@@ -299,7 +311,7 @@ const APICollectionVersionPage = () => {
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={currentVersionData?.dataProducts ?? []}
                   hasPermission={false}
                 />
@@ -335,14 +347,14 @@ const APICollectionVersionPage = () => {
             isVersionView
             entityType={EntityType.API_COLLECTION}
             hasEditAccess={false}
-            hasPermission={viewVersionPermission}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },
     ],
     [
       tags,
-      domain,
+      domains,
       description,
       currentVersionData,
       apiEndpoints,

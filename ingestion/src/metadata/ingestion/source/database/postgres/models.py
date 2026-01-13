@@ -24,3 +24,4 @@ class PostgresStoredProcedure(BaseModel):
     definition: str
     language: Optional[str] = None
     procedure_type: Optional[str] = Field(None, alias="procedure_type")
+    description: Optional[str] = Field(None, alias="description")

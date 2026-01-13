@@ -80,9 +80,9 @@ services:
       SERVER_ADMIN_PORT: ${SERVER_ADMIN_PORT:-8586}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
 
-      # Migration 
+      # Migration
       MIGRATION_LIMIT_PARAM: ${MIGRATION_LIMIT_PARAM:-1200}
-      
+
       # OpenMetadata Server Authentication Configuration
       AUTHORIZER_CLASS_NAME: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
       AUTHORIZER_REQUEST_FILTER: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.service.security.JwtFilter}
@@ -122,6 +122,7 @@ services:
       OIDC_CUSTOM_PARAMS: ${OIDC_CUSTOM_PARAMS:-{}}
       OIDC_MAX_AGE: ${OIDC_MAX_AGE:-"0"}
       OIDC_PROMPT_TYPE: ${OIDC_PROMPT_TYPE:-"consent"}
+      OIDC_SESSION_EXPIRY: ${OIDC_SESSION_EXPIRY:-"604800"}
       # For SAML Authentication
       # SAML_DEBUG_MODE: ${SAML_DEBUG_MODE:-false}
       # SAML_IDP_ENTITY_ID: ${SAML_IDP_ENTITY_ID:-""}
@@ -301,6 +302,7 @@ services:
       SERVER_PORT: ${SERVER_PORT:-8585}
       SERVER_ADMIN_PORT: ${SERVER_ADMIN_PORT:-8586}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
       # OpenMetadata Server Authentication Configuration
       AUTHORIZER_CLASS_NAME: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
       AUTHORIZER_REQUEST_FILTER: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.service.security.JwtFilter}
@@ -340,6 +342,7 @@ services:
       OIDC_CUSTOM_PARAMS: ${OIDC_CUSTOM_PARAMS:-{}}
       OIDC_MAX_AGE: ${OIDC_MAX_AGE:-"0"}
       OIDC_PROMPT_TYPE: ${OIDC_PROMPT_TYPE:-"consent"}
+      OIDC_SESSION_EXPIRY: ${OIDC_SESSION_EXPIRY:-"604800"}
       # For SAML Authentication
       # SAML_DEBUG_MODE: ${SAML_DEBUG_MODE:-false}
       # SAML_IDP_ENTITY_ID: ${SAML_IDP_ENTITY_ID:-""}
@@ -511,6 +514,9 @@ services:
       # AIRFLOW__LINEAGE__AIRFLOW_SERVICE_NAME: local_airflow
       # AIRFLOW__LINEAGE__OPENMETADATA_API_ENDPOINT: http://openmetadata-server:8585/api
       # AIRFLOW__LINEAGE__JWT_TOKEN: ...
+      # AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+      # AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: true
+
     entrypoint: /bin/bash
     command:
       - "/opt/airflow/ingestion_dependency.sh"

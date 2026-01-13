@@ -10,9 +10,9 @@ import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.schema.analytics.RawCostAnalysisReportData;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.bundles.insights.workflows.costAnalysis.CostAnalysisWorkflow;
 import org.openmetadata.service.exception.SearchIndexException;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.interfaces.Processor;
 
 @Slf4j

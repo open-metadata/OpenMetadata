@@ -25,7 +25,6 @@
 
 import { Typography } from 'antd';
 import classNames from 'classnames';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as NoDataFoundPlaceHolderIcon } from '../../../assets/svg/no-data-placeholder.svg';
 import { NoDataPlaceholderProps } from './placeholder.interface';

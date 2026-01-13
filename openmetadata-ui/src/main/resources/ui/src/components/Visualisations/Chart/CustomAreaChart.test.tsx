@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render } from '@testing-library/react';
-import React from 'react';
+import { render, screen } from '@testing-library/react';
 import '../../../test/unit/mocks/recharts.mock';
 import CustomAreaChart from './CustomAreaChart.component';
 
@@ -53,7 +52,7 @@ describe('CustomAreaChart', () => {
   });
 
   it('should Area chart', () => {
-    const { getByText } = render(
+    render(
       <CustomAreaChart
         colorScheme={mockColorScheme}
         data={mockData}
@@ -63,7 +62,7 @@ describe('CustomAreaChart', () => {
       />
     );
 
-    const areaChart = getByText('Area');
+    const areaChart = screen.getByText('Area');
 
     expect(areaChart).toBeInTheDocument();
   });

@@ -16,9 +16,11 @@ import { DatabaseServiceType } from '../generated/entity/data/database';
 import { MlModelServiceType } from '../generated/entity/data/mlmodel';
 import { MessagingServiceType } from '../generated/entity/data/topic';
 import { APIServiceType } from '../generated/entity/services/apiService';
+import { DriveServiceType } from '../generated/entity/services/driveService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 import { SearchServiceType } from '../generated/entity/services/searchService';
+import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
 import { StorageServiceType } from '../generated/entity/services/storageService';
 
 export enum ServiceCategory {
@@ -31,6 +33,8 @@ export enum ServiceCategory {
   STORAGE_SERVICES = 'storageServices',
   SEARCH_SERVICES = 'searchServices',
   API_SERVICES = 'apiServices',
+  SECURITY_SERVICES = 'securityServices',
+  DRIVE_SERVICES = 'driveServices',
 }
 
 export enum ServiceCategoryPlural {
@@ -43,6 +47,8 @@ export enum ServiceCategoryPlural {
   storageService = 'storageServices',
   searchService = 'searchServices',
   apiService = 'apiServices',
+  securityService = 'securityServices',
+  driveService = 'driveServices',
 }
 
 export type DatabaseServiceTypeSmallCaseType = {
@@ -93,6 +99,16 @@ export type SearchServiceTypeSmallCaseType = {
 
 export type ApiServiceTypeSmallCaseType = {
   [K in keyof typeof APIServiceType]: Lowercase<typeof APIServiceType[K]>;
+};
+
+export type SecurityServiceTypeSmallCaseType = {
+  [K in keyof typeof SecurityServiceType]: Lowercase<
+    typeof SecurityServiceType[K]
+  >;
+};
+
+export type DriveServiceTypeSmallCaseType = {
+  [K in keyof typeof DriveServiceType]: Lowercase<typeof DriveServiceType[K]>;
 };
 
 export enum ServiceAgentSubTabs {

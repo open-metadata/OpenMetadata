@@ -10,11 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover, Typography } from 'antd';
-import ButtonGroup from 'antd/lib/button/button-group';
+import {
+  Popover,
+  styled,
+  ToggleButton,
+  ToggleButtonGroup,
+  ToggleButtonProps,
+} from '@mui/material';
 import classNames from 'classnames';
-import { t } from 'i18next';
+import { isEmpty, xor } from 'lodash';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/ic-data-contract.svg';
 import { ReactComponent as DataProductIcon } from '../../../../assets/svg/ic-data-product.svg';
 import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domain.svg';
@@ -29,39 +35,80 @@ import { LineageLayer } from '../../../../generated/settings/settings';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { AssetsUnion } from '../../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import './lineage-layers.less';
-import {
-  LayerButtonProps,
-  LineageLayersProps,
-} from './LineageLayers.interface';
+import { LineageLayersProps } from './LineageLayers.interface';
 
-const LayerButton: React.FC<LayerButtonProps> = React.memo(
-  ({ isActive, onClick, icon, label, testId }) => (
-    <Button
-      className={classNames('lineage-layer-button h-15', {
-        active: isActive,
-      })}
-      data-testid={testId}
-      onClick={onClick}>
-      <div className="lineage-layer-btn">
-        <div className="layer-icon">{icon}</div>
-        <Typography.Text className="text-xss">{label}</Typography.Text>
-      </div>
-    </Button>
-  )
-);
+const StyledButton = styled((props: ToggleButtonProps) => (
+  <ToggleButton {...props} />
+))(({ theme }) => ({
+  display: 'inline-flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: '4px',
+  backgroundColor: theme.palette.allShades.white,
+  fontSize: theme.typography.pxToRem(10),
+  color: theme.palette.text.primary,
+  wordBreak: 'break-word',
+  padding: '8px 16px',
+
+  svg: {
+    height: 20,
+  },
+
+  '&:hover': {
+    border: '1px solid',
+    borderColor: theme.palette.primary.main + ' !important',
+    // To show all the border on hover
+    zIndex: 1,
+    margin: '0',
+    backgroundColor: theme.palette.allShades.white,
+
+    svg: {
+      color: theme.palette.primary.main,
+    },
+  },
+
+  '&.Mui-selected': {
+    backgroundColor: theme.palette.allShades.brand[100],
+
+    '&:hover': {
+      border: '1px solid' + ' ' + theme.palette.primary.main,
+      backgroundColor: theme.palette.allShades.brand[100],
+    },
+  },
+
+  '&.highlight': {
+    border: '1px solid',
+    borderColor: theme.palette.primary.main + ' !important',
+    // To show all the border on hover
+    zIndex: 1,
+    margin: '0',
+    backgroundColor: theme.palette.allShades.white,
+
+    svg: {
+      color: theme.palette.primary.main,
+    },
+  },
+}));
 
 const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
   const {
     activeLayer,
     onUpdateLayerView,
-    isEditMode,
     onPlatformViewChange,
     platformView,
     isPlatformLineage,
   } = useLineageProvider();
+  const { t } = useTranslation();
+  const [layersAnchorEl, setLayersAnchorEl] =
+    React.useState<null | HTMLElement>(null);
+  const selectedValues = [...activeLayer, platformView];
 
   const handleLayerClick = React.useCallback(
-    (value: LineageLayer) => {
+    (
+      _event: React.MouseEvent<HTMLElement, MouseEvent>,
+      layer: LineageLayer
+    ) => {
+      const value = layer;
       const index = activeLayer.indexOf(value);
       if (index === -1) {
         onUpdateLayerView([...activeLayer, value]);
@@ -73,110 +120,151 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
   );
 
   const handlePlatformViewChange = React.useCallback(
-    (view: LineagePlatformView) => {
+    (
+      _event: React.MouseEvent<HTMLElement, MouseEvent>,
+      view: string | null
+    ) => {
       onPlatformViewChange(
-        platformView === view ? LineagePlatformView.None : view
+        platformView === view
+          ? LineagePlatformView.None
+          : (view as LineagePlatformView)
       );
     },
     [platformView, onPlatformViewChange]
   );
 
-  const buttonContent = React.useMemo(
-    () => (
-      <ButtonGroup>
-        {entityType && !SERVICE_TYPES.includes(entityType as AssetsUnion) && (
-          <>
-            <LayerButton
-              icon={searchClassBase.getEntityIcon(EntityType.TABLE)}
-              isActive={activeLayer.includes(LineageLayer.ColumnLevelLineage)}
-              label={t('label.column')}
-              testId="lineage-layer-column-btn"
-              onClick={() => handleLayerClick(LineageLayer.ColumnLevelLineage)}
-            />
-            <LayerButton
-              icon={<DataQualityIcon />}
-              isActive={activeLayer.includes(LineageLayer.DataObservability)}
-              label={t('label.observability')}
-              testId="lineage-layer-observability-btn"
-              onClick={() => handleLayerClick(LineageLayer.DataObservability)}
-            />
-          </>
-        )}
+  const handleSelection = (
+    _event: React.MouseEvent<HTMLElement, MouseEvent>,
+    newSelection: (LineageLayer | LineagePlatformView)[]
+  ) => {
+    const newlyAddedValue = xor(selectedValues, newSelection);
 
-        {(isPlatformLineage ||
-          (entityType &&
-            !SERVICE_TYPES.includes(entityType as AssetsUnion))) && (
-          <LayerButton
-            icon={<ServiceView />}
-            isActive={platformView === LineagePlatformView.Service}
-            label={t('label.service')}
-            testId="lineage-layer-service-btn"
-            onClick={() =>
-              handlePlatformViewChange(LineagePlatformView.Service)
-            }
-          />
-        )}
+    if (
+      Object.values(LineagePlatformView).includes(
+        newlyAddedValue[0] as LineagePlatformView
+      )
+    ) {
+      handlePlatformViewChange(_event, newlyAddedValue[0]);
+    } else {
+      handleLayerClick(_event, newlyAddedValue[0] as LineageLayer);
+    }
+  };
 
-        {(isPlatformLineage ||
-          (entityType &&
-            entityType !== EntityType.DOMAIN &&
-            entity?.domain)) && (
-          <LayerButton
-            icon={<DomainIcon />}
-            isActive={platformView === LineagePlatformView.Domain}
-            label={t('label.domain')}
-            testId="lineage-layer-domain-btn"
-            onClick={() => handlePlatformViewChange(LineagePlatformView.Domain)}
-          />
-        )}
+  const isServiceType = SERVICE_TYPES.includes(entityType as AssetsUnion);
+  const showColumnAndObservability = entityType && !isServiceType;
+  const showService = isPlatformLineage || !isServiceType;
+  const showDomain =
+    isPlatformLineage ||
+    (entityType &&
+      entityType !== EntityType.DOMAIN &&
+      !isEmpty(entity?.domains));
+  const showDataProduct =
+    isPlatformLineage ||
+    (entityType &&
+      entityType !== EntityType.DOMAIN &&
+      ((entity as Table)?.dataProducts ?? []).length > 0);
 
-        {(isPlatformLineage ||
-          (entityType &&
-            entityType !== EntityType.DOMAIN &&
-            ((entity as Table)?.dataProducts ?? [])?.length > 0)) && (
-          <LayerButton
-            icon={<DataProductIcon />}
-            isActive={platformView === LineagePlatformView.DataProduct}
-            label={t('label.data-product')}
-            testId="lineage-layer-data-product-btn"
-            onClick={() =>
-              handlePlatformViewChange(LineagePlatformView.DataProduct)
-            }
-          />
-        )}
-      </ButtonGroup>
-    ),
-    [
-      activeLayer,
-      platformView,
-      entityType,
-      handleLayerClick,
-      handlePlatformViewChange,
-      isPlatformLineage,
-    ]
-  );
+  const buttonContent = React.useMemo(() => {
+    const buttons = [];
+
+    if (showColumnAndObservability) {
+      buttons.push([
+        <StyledButton
+          data-testid="lineage-layer-column-btn"
+          key={LineageLayer.ColumnLevelLineage}
+          value={LineageLayer.ColumnLevelLineage}>
+          {searchClassBase.getEntityIcon(EntityType.TABLE)}
+          {t('label.column')}
+        </StyledButton>,
+        <StyledButton
+          data-testid="lineage-layer-observability-btn"
+          key={LineageLayer.DataObservability}
+          value={LineageLayer.DataObservability}>
+          <DataQualityIcon />
+          {t('label.observability')}
+        </StyledButton>,
+      ]);
+    }
+
+    if (showService) {
+      buttons.push(
+        <StyledButton
+          data-testid="lineage-layer-service-btn"
+          key={LineagePlatformView.Service}
+          value={LineagePlatformView.Service}>
+          <ServiceView />
+          {t('label.service')}
+        </StyledButton>
+      );
+    }
+
+    if (showDomain) {
+      buttons.push(
+        <StyledButton
+          data-testid="lineage-layer-domain-btn"
+          key={LineagePlatformView.Domain}
+          value={LineagePlatformView.Domain}>
+          <DomainIcon />
+          {t('label.domain')}
+        </StyledButton>
+      );
+    }
+
+    if (showDataProduct) {
+      buttons.push(
+        <StyledButton
+          data-testid="lineage-layer-data-product-btn"
+          key={LineagePlatformView.DataProduct}
+          value={LineagePlatformView.DataProduct}>
+          <DataProductIcon />
+          {t('label.data-product')}
+        </StyledButton>
+      );
+    }
+
+    return (
+      <ToggleButtonGroup value={selectedValues} onChange={handleSelection}>
+        {buttons}
+      </ToggleButtonGroup>
+    );
+  }, [
+    selectedValues,
+    activeLayer,
+    platformView,
+    handleSelection,
+    showColumnAndObservability,
+    showService,
+    showDomain,
+    showDataProduct,
+  ]);
 
   return (
-    <Popover
-      content={buttonContent}
-      overlayClassName="lineage-layers-popover"
-      placement="right"
-      trigger="click">
-      <Button
-        ghost
-        className={classNames('layers-btn h-15', {
-          'layers-btn-edit-mode': isEditMode,
+    <>
+      <StyledButton
+        className={classNames({
+          highlight: Boolean(layersAnchorEl),
         })}
         data-testid="lineage-layer-btn"
-        type="primary">
-        <div className="lineage-layer-btn">
-          <Layers width={20} />
-          <Typography.Text className="text-xss">
-            {t('label.layer-plural')}
-          </Typography.Text>
-        </div>
-      </Button>
-    </Popover>
+        value=""
+        onClick={(e) => setLayersAnchorEl(e.currentTarget)}>
+        <Layers width={20} />
+
+        {t('label.layer-plural')}
+      </StyledButton>
+      <Popover
+        anchorEl={layersAnchorEl}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        className="lineage-layers-popover"
+        id="lineage-layers-popover"
+        open={Boolean(layersAnchorEl)}
+        sx={{ marginLeft: '16px' }} // Moves popover right by 80px
+        onClose={() => setLayersAnchorEl(null)}>
+        {buttonContent}
+      </Popover>
+    </>
   );
 };
 

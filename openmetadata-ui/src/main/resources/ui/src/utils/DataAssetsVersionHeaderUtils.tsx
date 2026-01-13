@@ -14,16 +14,15 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Divider, Space, Typography } from 'antd';
-import { t } from 'i18next';
 import { isEmpty, isUndefined, toString } from 'lodash';
-import React from 'react';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import { DataAssetsVersionHeaderProps } from '../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader.interface';
 import { DATA_ASSET_ICON_DIMENSION } from '../constants/constants';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
+import { Chart } from '../generated/entity/data/chart';
 import { Dashboard } from '../generated/entity/data/dashboard';
-import { Metric } from '../generated/entity/data/metric';
+import { Metric, UnitOfMeasurement } from '../generated/entity/data/metric';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { Topic } from '../generated/entity/data/topic';
 import { ChangeDescription } from '../generated/entity/type';
@@ -33,7 +32,48 @@ import {
   getDiffByFieldName,
   getEntityVersionByField,
 } from './EntityVersionUtils';
+import { t } from './i18next/LocalUtil';
 import { stringToHTML } from './StringsUtils';
+
+export const VersionExtraInfoLink = ({
+  value,
+  href,
+}: {
+  value: string;
+  href?: string;
+}) => (
+  <>
+    <Divider className="self-center m-x-sm" type="vertical" />
+    <div className="d-flex items-center text-xs">
+      <Typography.Link href={href} style={{ fontSize: '12px' }}>
+        {stringToHTML(value)}
+      </Typography.Link>
+    </div>
+  </>
+);
+
+export const VersionExtraInfoLabel = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) => (
+  <>
+    <Divider className="self-center m-x-sm" type="vertical" />
+    <Space align="center">
+      <Typography.Text className="self-center text-xs whitespace-nowrap">
+        {!isEmpty(label) && (
+          <span className="text-grey-muted">{`${label}: `}</span>
+        )}
+      </Typography.Text>
+
+      <Typography.Text className="self-center text-xs whitespace-nowrap font-medium">
+        {stringToHTML(value)}
+      </Typography.Text>
+    </Space>
+  </>
+);
 
 export const getExtraInfoSourceUrl = (
   currentVersionData: Dashboard | Pipeline,
@@ -134,6 +174,12 @@ export const getDataAssetsVersionHeaderInfo = (
         changeDescription
       );
 
+    case EntityType.CHART:
+      return getExtraInfoSourceUrl(
+        currentVersionData as Chart,
+        changeDescription
+      );
+
     case EntityType.METRIC: {
       const metricDetails = currentVersionData as Metric;
 
@@ -149,6 +195,17 @@ export const getDataAssetsVersionHeaderInfo = (
         toString(metricDetails.unitOfMeasurement)
       );
 
+      const customUnitOfMeasurement = getEntityVersionByField(
+        changeDescription,
+        'customUnitOfMeasurement',
+        toString(metricDetails.customUnitOfMeasurement)
+      );
+
+      const displayUnitOfMeasurement =
+        unitOfMeasurement === UnitOfMeasurement.Other && customUnitOfMeasurement
+          ? customUnitOfMeasurement
+          : unitOfMeasurement;
+
       const granularity = getEntityVersionByField(
         changeDescription,
         'granularity',
@@ -163,10 +220,10 @@ export const getDataAssetsVersionHeaderInfo = (
               value={metricType}
             />
           )}
-          {!isEmpty(unitOfMeasurement) && (
+          {!isEmpty(displayUnitOfMeasurement) && (
             <VersionExtraInfoLabel
               label={t('label.unit-of-measurement')}
-              value={unitOfMeasurement}
+              value={displayUnitOfMeasurement}
             />
           )}
           {!isEmpty(granularity) && (
@@ -182,43 +239,3 @@ export const getDataAssetsVersionHeaderInfo = (
       return null;
   }
 };
-
-export const VersionExtraInfoLabel = ({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) => (
-  <>
-    <Divider className="self-center m-x-sm" type="vertical" />
-    <Space align="center">
-      <Typography.Text className="self-center text-xs whitespace-nowrap">
-        {!isEmpty(label) && (
-          <span className="text-grey-muted">{`${label}: `}</span>
-        )}
-      </Typography.Text>
-
-      <Typography.Text className="self-center text-xs whitespace-nowrap font-medium">
-        {stringToHTML(value)}
-      </Typography.Text>
-    </Space>
-  </>
-);
-
-export const VersionExtraInfoLink = ({
-  value,
-  href,
-}: {
-  value: string;
-  href?: string;
-}) => (
-  <>
-    <Divider className="self-center m-x-sm" type="vertical" />
-    <div className="d-flex items-center text-xs">
-      <Typography.Link href={href} style={{ fontSize: '12px' }}>
-        {stringToHTML(value)}
-      </Typography.Link>
-    </div>
-  </>
-);

@@ -12,7 +12,7 @@
  */
 import { WidgetProps } from '@rjsf/utils';
 import { Col, Input, Radio, RadioChangeEvent, Row, Typography } from 'antd';
-import React, { FC, useCallback, useMemo, useState } from 'react';
+import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ALL_ASTERISKS_REGEX } from '../../../../../constants/regex.constants';
 import { CertificationInputType } from '../../../../../enums/PasswordWidget.enum';
@@ -70,7 +70,7 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
   if (isInputTypeFileOrInput) {
     return (
       <Radio.Group
-        className="password-widget"
+        className="password-widget m-t-sm"
         data-testid={`password-input-radio-group-${props.id}`}
         value={inputType}
         onChange={onRadioChange}>

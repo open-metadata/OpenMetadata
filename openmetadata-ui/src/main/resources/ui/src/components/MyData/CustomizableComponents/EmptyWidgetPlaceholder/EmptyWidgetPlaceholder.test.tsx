@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { SIZE } from '../../../../enums/common.enum';
 import { LandingPageWidgetKeys } from '../../../../enums/CustomizablePage.enum';
 import EmptyWidgetPlaceholder from './EmptyWidgetPlaceholder';
@@ -81,7 +79,7 @@ describe('EmptyWidgetPlaceholder component', () => {
 
     const addButton = screen.getByTestId('add-widget-button');
 
-    await act(async () => userEvent.click(addButton));
+    fireEvent.click(addButton);
 
     expect(mockProps.handleOpenAddWidgetModal).toHaveBeenCalledTimes(1);
     expect(mockProps.handlePlaceholderWidgetKey).toHaveBeenCalledTimes(1);
@@ -99,7 +97,7 @@ describe('EmptyWidgetPlaceholder component', () => {
 
     const removeButton = screen.getByTestId('remove-widget-button');
 
-    await act(async () => userEvent.click(removeButton));
+    fireEvent.click(removeButton);
 
     expect(mockProps.handleRemoveWidget).toHaveBeenCalledTimes(1);
     expect(mockProps.handleRemoveWidget).toHaveBeenCalledWith(

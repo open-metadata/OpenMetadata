@@ -72,6 +72,8 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.NotificationResourceDescriptor;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertFactory;
@@ -89,8 +91,6 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ResultList;
 import org.quartz.SchedulerException;
 
 @Slf4j
@@ -137,6 +137,8 @@ public class EventSubscriptionResource
           listOrEmpty(EventSubscriptionResource.getObservabilityFilterDescriptors()));
       repository.initSeedDataFromResources();
       initializeEventSubscriptions();
+      // Schedule the audit log consumer to read from change_event and write to audit_log
+      EventSubscriptionScheduler.getInstance().scheduleAuditLogConsumer();
     } catch (Exception ex) {
       // Starting application should not fail
       LOG.warn("Exception during initialization", ex);
@@ -195,6 +197,13 @@ public class EventSubscriptionResource
           @QueryParam("alertType")
           String alertType,
       @Parameter(
+              description =
+                  "Filter subscriptions by notification template ID. "
+                      + "Returns only subscriptions using the specified template.",
+              schema = @Schema(type = "string", format = "uuid"))
+          @QueryParam("notificationTemplate")
+          String notificationTemplate,
+      @Parameter(
               description = "Returns list of event subscriptions before this cursor",
               schema = @Schema(type = "string"))
           @QueryParam("before")
@@ -207,6 +216,9 @@ public class EventSubscriptionResource
     ListFilter filter = new ListFilter(null);
     if (!nullOrEmpty(alertType)) {
       filter.addQueryParam("alertType", alertType);
+    }
+    if (!nullOrEmpty(notificationTemplate)) {
+      filter.addQueryParam("notificationTemplate", notificationTemplate);
     }
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }

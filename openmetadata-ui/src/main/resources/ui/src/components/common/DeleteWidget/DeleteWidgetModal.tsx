@@ -23,7 +23,7 @@ import {
 import Input, { InputRef } from 'antd/lib/input/Input';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
-import React, {
+import {
   ChangeEvent,
   useCallback,
   useEffect,

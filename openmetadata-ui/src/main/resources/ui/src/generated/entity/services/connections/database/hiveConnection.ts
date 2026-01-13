@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -63,7 +63,11 @@ export interface HiveConnection {
     /**
      * SQLAlchemy driver scheme options.
      */
-    scheme?:                        HiveScheme;
+    scheme?: HiveScheme;
+    /**
+     * SSL Configuration details.
+     */
+    sslConfig?:                     Config;
     supportsDBTExtraction?:         boolean;
     supportsMetadataExtraction?:    boolean;
     supportsProfiler?:              boolean;
@@ -81,6 +85,11 @@ export interface HiveConnection {
      * Hive.
      */
     username?: string;
+    /**
+     * Enable SSL connection to Hive server. When enabled, SSL transport will be used for secure
+     * communication.
+     */
+    useSSL?: boolean;
 }
 
 /**
@@ -156,7 +165,14 @@ export interface HiveMetastoreConnectionDetails {
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
      */
-    ingestAllDatabases?:      boolean;
+    ingestAllDatabases?: boolean;
+    /**
+     * Fully qualified name of the view or table to use for query logs. If not provided,
+     * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
+     * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
+     * restricted.
+     */
+    queryStatementSource?:    string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.

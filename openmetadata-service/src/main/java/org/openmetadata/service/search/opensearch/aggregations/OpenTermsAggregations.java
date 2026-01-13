@@ -2,53 +2,93 @@ package org.openmetadata.service.search.opensearch.aggregations;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.service.search.SearchAggregationNode;
-import os.org.opensearch.search.aggregations.AggregationBuilder;
-import os.org.opensearch.search.aggregations.AggregationBuilders;
-import os.org.opensearch.search.aggregations.PipelineAggregationBuilder;
-import os.org.opensearch.search.aggregations.bucket.terms.IncludeExclude;
-import os.org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
+import os.org.opensearch.client.opensearch._types.aggregations.Aggregation;
 
 @Setter
 @Getter
 public class OpenTermsAggregations implements OpenAggregations {
-  static final String aggregationType = "terms";
-  AggregationBuilder elasticAggregationBuilder;
+  private String aggregationName;
+  private Aggregation aggregation;
+  private Map<String, Aggregation> subAggregations = new HashMap<>();
+  private String field;
+  private String includesStr;
+  private int size;
+  private String missing;
 
   @Override
   public void createAggregation(SearchAggregationNode node) {
-    String[] includes = null;
-    int size = -1;
     Map<String, String> params = node.getValue();
-    String includesStr = params.get("include");
+    this.aggregationName = node.getName();
+
+    this.field = params.get("field");
+    this.includesStr = params.get("include");
     String sizeStr = params.get("size");
-    if (!nullOrEmpty(includesStr)) includes = includesStr.split(",");
-    if (!nullOrEmpty(sizeStr)) size = Integer.parseInt(params.get("size"));
-    TermsAggregationBuilder termsAggregationBuilder =
-        AggregationBuilders.terms(node.getName()).field(params.get("field"));
+    this.missing = params.get("missing");
 
-    if (size > 0) termsAggregationBuilder.size(size);
-    if (!nullOrEmpty(includes)) {
-      IncludeExclude includeExclude = new IncludeExclude(includes, null);
-      termsAggregationBuilder.includeExclude(includeExclude);
+    this.size = !nullOrEmpty(sizeStr) ? Integer.parseInt(sizeStr) : 10;
+
+    buildAggregation();
+  }
+
+  private void buildAggregation() {
+    if (!subAggregations.isEmpty()) {
+      this.aggregation =
+          Aggregation.of(
+              a ->
+                  a.terms(
+                          terms -> {
+                            var builder = terms.field(field).size(size);
+
+                            if (!nullOrEmpty(includesStr)) {
+                              String[] includes = includesStr.split(",");
+                              builder.include(i -> i.terms(Arrays.asList(includes)));
+                            }
+
+                            if (missing != null) {
+                              builder.missing(m -> m.stringValue(missing));
+                            }
+
+                            return builder;
+                          })
+                      .aggregations(subAggregations));
+    } else {
+      this.aggregation =
+          Aggregation.of(
+              a ->
+                  a.terms(
+                      terms -> {
+                        var builder = terms.field(field).size(size);
+
+                        if (!nullOrEmpty(includesStr)) {
+                          String[] includes = includesStr.split(",");
+                          builder.include(i -> i.terms(Arrays.asList(includes)));
+                        }
+
+                        if (missing != null) {
+                          builder.missing(m -> m.stringValue(missing));
+                        }
+
+                        return builder;
+                      }));
     }
-    setElasticAggregationBuilder(termsAggregationBuilder);
   }
 
   @Override
-  public void setSubAggregation(PipelineAggregationBuilder aggregation) {
-    if (elasticAggregationBuilder != null) {
-      elasticAggregationBuilder.subAggregation(aggregation);
+  public void setSubAggregations(Map<String, Aggregation> subAggregations) {
+    this.subAggregations = subAggregations;
+    if (!subAggregations.isEmpty()) {
+      buildAggregation();
     }
   }
 
   @Override
-  public void setSubAggregation(AggregationBuilder aggregation) {
-    if (elasticAggregationBuilder != null) {
-      elasticAggregationBuilder.subAggregation(aggregation);
-    }
+  public Boolean supportsSubAggregationsNatively() {
+    return true;
   }
 }

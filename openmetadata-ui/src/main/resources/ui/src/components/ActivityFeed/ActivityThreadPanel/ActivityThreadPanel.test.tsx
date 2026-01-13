@@ -12,7 +12,6 @@
  */
 
 import { act, findAllByText, render, screen } from '@testing-library/react';
-import React from 'react';
 import ReactDOM from 'react-dom';
 import { MemoryRouter } from 'react-router-dom';
 import ActivityThreadPanel from './ActivityThreadPanel';
@@ -47,26 +46,23 @@ jest.mock('./ActivityThreadList', () => {
 
 describe('Test ActivityThreadPanel Component', () => {
   beforeAll(() => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     ReactDOM.createPortal = jest.fn().mockImplementation((element, _node) => {
       return element;
     });
   });
 
   it('Check if it has all child elements', async () => {
-    await act(async () => {
-      const { container } = render(
-        <ActivityThreadPanel {...mockActivityThreadPanelProp} />,
-        { wrapper: MemoryRouter }
-      );
+    const { container } = render(
+      <ActivityThreadPanel {...mockActivityThreadPanelProp} />,
+      { wrapper: MemoryRouter }
+    );
 
-      const panelThreadList = await findAllByText(
-        container,
-        /ActivityThreadList/i
-      );
+    const panelThreadList = await findAllByText(
+      container,
+      /ActivityThreadList/i
+    );
 
-      expect(panelThreadList).toHaveLength(1);
-    });
+    expect(panelThreadList).toHaveLength(1);
   });
 
   it('Should create an observer if IntersectionObserver is available', async () => {

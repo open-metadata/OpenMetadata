@@ -1,9 +1,15 @@
 package org.openmetadata.service.apps.bundles.insights.search.opensearch;
 
 import java.io.IOException;
+import java.util.List;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchConfiguration;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
+import org.openmetadata.service.apps.bundles.insights.search.EntityIndexMap;
+import org.openmetadata.service.apps.bundles.insights.search.IndexMappingTemplate;
 import org.openmetadata.service.apps.bundles.insights.search.IndexTemplate;
-import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.service.search.opensearch.OsUtils;
 import os.org.opensearch.client.Request;
 import os.org.opensearch.client.Response;
 import os.org.opensearch.client.RestClient;
@@ -81,5 +87,46 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
   @Override
   public void deleteDataAssetDataStream(String name) throws IOException {
     performRequest("DELETE", String.format("/_data_stream/%s", name));
+  }
+
+  @Override
+  public String buildMapping(
+      String entityType,
+      IndexMapping entityIndexMapping,
+      String language,
+      String indexMappingTemplateStr) {
+    IndexMappingTemplate indexMappingTemplate =
+        JsonUtils.readOrConvertValue(indexMappingTemplateStr, IndexMappingTemplate.class);
+    String mappingContent =
+        readResource(
+            String.format(entityIndexMapping.getIndexMappingFile(), language.toLowerCase()));
+    String transformedContent = OsUtils.enrichIndexMappingWithStemmer(mappingContent);
+    EntityIndexMap entityIndexMap =
+        JsonUtils.readOrConvertValue(transformedContent, EntityIndexMap.class);
+
+    DataInsightsSearchConfiguration dataInsightsSearchConfiguration =
+        readDataInsightsSearchConfiguration();
+    List<String> entityAttributeFields =
+        getEntityAttributeFields(dataInsightsSearchConfiguration, entityType);
+
+    indexMappingTemplate
+        .getTemplate()
+        .getSettings()
+        .put("analysis", entityIndexMap.getSettings().get("analysis"));
+
+    for (String attribute : entityAttributeFields) {
+      if (!indexMappingTemplate
+          .getTemplate()
+          .getMappings()
+          .getProperties()
+          .containsKey(attribute)) {
+        Object value = entityIndexMap.getMappings().getProperties().get(attribute);
+        if (value != null) {
+          indexMappingTemplate.getTemplate().getMappings().getProperties().put(attribute, value);
+        }
+      }
+    }
+
+    return JsonUtils.pojoToJson(indexMappingTemplate);
   }
 }

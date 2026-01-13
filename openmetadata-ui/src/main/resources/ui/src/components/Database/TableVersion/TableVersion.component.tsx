@@ -14,10 +14,11 @@
 import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, toString } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
 import {
@@ -25,7 +26,14 @@ import {
   Column,
   ColumnJoins,
 } from '../../../generated/entity/data/table';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { usePaging } from '../../../hooks/paging/usePaging';
+import { useFqn } from '../../../hooks/useFqn';
+import {
+  getTableColumnsByFQN,
+  searchTableColumnsByFQN,
+} from '../../../rest/tableAPI';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import {
   getColumnsDataWithVersionChanges,
@@ -34,10 +42,14 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
+import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
+import { pruneEmptyChildren } from '../../../utils/TableUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import Loader from '../../common/Loader/Loader';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
@@ -52,7 +64,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
   currentVersionData,
   isVersionLoading,
   owners,
-  domain,
+  domains,
   dataProducts,
   tier,
   slashedTableName,
@@ -63,10 +75,101 @@ const TableVersion: React.FC<TableVersionProp> = ({
   entityPermissions,
 }: TableVersionProp) => {
   const { t } = useTranslation();
-  const history = useHistory();
-  const { tab } = useParams<{ tab: EntityTabs }>();
+  const navigate = useNavigate();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
+  const {
+    currentPage,
+    pageSize,
+    handlePageChange,
+    handlePageSizeChange,
+    showPagination,
+    paging,
+    handlePagingChange,
+  } = usePaging(PAGE_SIZE_LARGE);
+  const { fqn: tableFqn } = useFqn();
+  const [searchText, setSearchText] = useState('');
+  // Pagination state for columns
+  const [tableColumns, setTableColumns] = useState<Column[]>([]);
+  const [columnsLoading, setColumnsLoading] = useState(true); // Start with loading state
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
+  );
+
+  // Function to fetch paginated columns or search results
+  const fetchPaginatedColumns = useCallback(
+    async (page = 1, searchQuery?: string) => {
+      if (!tableFqn) {
+        return;
+      }
+
+      setColumnsLoading(true);
+      try {
+        const offset = (page - 1) * pageSize;
+
+        // Use search API if there's a search query, otherwise use regular pagination
+        const response = searchQuery
+          ? await searchTableColumnsByFQN(tableFqn, {
+              q: searchQuery,
+              limit: pageSize,
+              offset: offset,
+              fields: 'tags',
+            })
+          : await getTableColumnsByFQN(tableFqn, {
+              limit: pageSize,
+              offset: offset,
+              fields: 'tags',
+            });
+
+        setTableColumns(pruneEmptyChildren(response.data) || []);
+        handlePagingChange(response.paging);
+      } catch {
+        // Set empty state if API fails
+        setTableColumns([]);
+        handlePagingChange({
+          offset: 1,
+          limit: pageSize,
+          total: 0,
+        });
+      } finally {
+        setColumnsLoading(false);
+      }
+    },
+    [tableFqn, pageSize]
+  );
+
+  const handleSearchAction = useCallback((searchValue: string) => {
+    setSearchText(searchValue);
+  }, []);
+
+  const handleColumnsPageChange = useCallback(
+    ({ currentPage }: PagingHandlerParams) => {
+      fetchPaginatedColumns(currentPage, searchText);
+      handlePageChange(currentPage);
+    },
+    [paging, fetchPaginatedColumns, searchText]
+  );
+
+  const paginationProps = useMemo(
+    () => ({
+      currentPage,
+      showPagination,
+      isLoading: columnsLoading,
+      isNumberBased: Boolean(searchText),
+      pageSize,
+      paging,
+      pagingHandler: handleColumnsPageChange,
+      onShowSizeChange: handlePageSizeChange,
+    }),
+    [
+      currentPage,
+      showPagination,
+      columnsLoading,
+      searchText,
+      pageSize,
+      paging,
+      handleColumnsPageChange,
+      handlePageSizeChange,
+    ]
   );
 
   const entityFqn = useMemo(
@@ -81,19 +184,19 @@ const TableVersion: React.FC<TableVersionProp> = ({
           changeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [changeDescription, owners, tier, domain]
+      [changeDescription, owners, tier, domains]
     );
 
   const columns = useMemo(() => {
-    const colList = cloneDeep(currentVersionData.columns);
+    const colList = cloneDeep(tableColumns);
 
     return getColumnsDataWithVersionChanges<Column>(changeDescription, colList);
-  }, [currentVersionData, changeDescription]);
+  }, [tableColumns, changeDescription]);
 
   const handleTabChange = (activeKey: string) => {
-    history.push(
+    navigate(
       getVersionPath(EntityType.TABLE, entityFqn, String(version), activeKey)
     );
   };
@@ -141,6 +244,13 @@ const TableVersion: React.FC<TableVersionProp> = ({
     [changeDescription]
   );
 
+  const viewCustomPropertiesPermission = useMemo(() => {
+    return getPrioritizedViewPermission(
+      entityPermissions,
+      Operation.ViewCustomFields
+    );
+  }, [entityPermissions]);
+
   const tabItems: TabsProps['items'] = useMemo(
     () => [
       {
@@ -169,7 +279,10 @@ const TableVersion: React.FC<TableVersionProp> = ({
                     columns={columns}
                     deletedColumnConstraintDiffs={deletedColumnConstraintDiffs}
                     deletedTableConstraintDiffs={deletedTableConstraintDiffs}
+                    handelSearchCallback={handleSearchAction}
+                    isLoading={columnsLoading}
                     joins={currentVersionData.joins as ColumnJoins[]}
+                    paginationProps={paginationProps}
                     tableConstraints={currentVersionData.tableConstraints}
                   />
                 </Col>
@@ -182,7 +295,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
                 />
@@ -214,12 +327,15 @@ const TableVersion: React.FC<TableVersionProp> = ({
             isVersionView
             entityType={EntityType.TABLE}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },
     ],
     [
+      columnsLoading,
+      handleSearchAction,
+      paginationProps,
       description,
       entityFqn,
       columns,
@@ -228,9 +344,17 @@ const TableVersion: React.FC<TableVersionProp> = ({
       addedColumnConstraintDiffs,
       addedTableConstraintDiffs,
       currentVersionData,
-      entityPermissions,
+      viewCustomPropertiesPermission,
     ]
   );
+
+  // Fetch columns when search changes
+  useEffect(() => {
+    if (tableFqn && !isVersionLoading) {
+      // Reset to first page when search changes
+      fetchPaginatedColumns(1, searchText || undefined);
+    }
+  }, [isVersionLoading, tableFqn, searchText, fetchPaginatedColumns, pageSize]);
 
   return (
     <>

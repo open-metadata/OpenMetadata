@@ -7,10 +7,10 @@ import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.CreateAppMarketPlaceDefinitionReq;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.apps.NativeApplication;
 import org.openmetadata.service.mapper.EntityMapper;
-import org.openmetadata.service.util.JsonUtils;
 
 public class AppMarketPlaceMapper
     implements EntityMapper<AppMarketPlaceDefinition, CreateAppMarketPlaceDefinitionReq> {
@@ -42,9 +42,11 @@ public class AppMarketPlaceMapper
             .withFeatures(create.getFeatures())
             .withSourcePythonClass(create.getSourcePythonClass())
             .withAllowConfiguration(create.getAllowConfiguration())
+            .withAllowConcurrentExecution(create.getAllowConcurrentExecution())
             .withSystem(create.getSystem())
             .withSupportsInterrupt(create.getSupportsInterrupt())
-            .withEventSubscriptions(create.getEventSubscriptions());
+            .withEventSubscriptions(create.getEventSubscriptions())
+            .withSupportsIngestionRunner(create.getSupportsIngestionRunner());
 
     // Validate App
     validateApplication(app);

@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { AntdIconProps } from '@ant-design/icons/lib/components/AntdIcon';
+import { ForwardRefExoticComponent, RefAttributes } from 'react';
 import { SortingField } from '../../components/Explore/SortingDropDown';
 import { SORT_ORDER } from '../../enums/common.enum';
 
@@ -20,7 +22,12 @@ export type TabsInfoData = {
   sortField: string;
   sortOrder?: SORT_ORDER;
   path: string;
-  icon: React.ReactNode;
+  icon:
+    | React.ReactNode
+    | SvgComponent
+    | ForwardRefExoticComponent<
+        Omit<AntdIconProps, 'ref'> & RefAttributes<HTMLSpanElement>
+      >;
 };
 
 export type FieldValue = string | boolean | null | number | undefined;
@@ -48,7 +55,8 @@ export interface EsBoolQuery {
   filter?: QueryFieldInterface | QueryFieldInterface[];
   must?: QueryFieldInterface | QueryFieldInterface[];
   must_not?: QueryFieldInterface | QueryFieldInterface[];
-  should?: QueryFieldInterface | QueryFieldInterface[];
+  should?: QueryFieldInterface | QueryFieldInterface[] | EsWildCard[];
+  minimum_should_match?: number;
 }
 
 export interface QueryFieldInterface {

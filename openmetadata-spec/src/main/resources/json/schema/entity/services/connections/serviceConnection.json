@@ -34,6 +34,12 @@
         },
         {
           "$ref": "../searchService.json#/definitions/searchConnection"
+        },
+        {
+          "$ref": "../securityService.json#/definitions/securityConnection"
+        },
+        {
+          "$ref": "../driveService.json#/definitions/driveConnection"
         }
       ]
     }

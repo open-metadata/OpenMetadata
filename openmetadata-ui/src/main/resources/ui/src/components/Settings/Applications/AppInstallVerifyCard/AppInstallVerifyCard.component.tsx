@@ -24,7 +24,6 @@ import {
   Space,
   Typography,
 } from 'antd';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { LIGHT_GREEN_COLOR } from '../../../../constants/constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';

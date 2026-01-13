@@ -14,7 +14,7 @@ import Icon, { ExclamationCircleFilled } from '@ant-design/icons';
 import { Badge, Button, Col, Row, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
@@ -51,11 +51,14 @@ const EntityHeaderTitle = ({
   nameClassName = '',
   displayNameClassName = '',
   isCustomizedView = false,
+  entityUrl,
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
   const location = useCustomLocation();
   const [copyTooltip, setCopyTooltip] = useState<string>();
-  const { onCopyToClipBoard } = useClipboard(window.location.href);
+  const { onCopyToClipBoard } = useClipboard(
+    entityUrl ?? globalThis.location.href
+  );
 
   const handleShareButtonClick = async () => {
     await onCopyToClipBoard();

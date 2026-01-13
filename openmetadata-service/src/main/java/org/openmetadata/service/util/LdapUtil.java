@@ -27,6 +27,7 @@ import org.openmetadata.schema.auth.ldapTrustStoreConfig.CustomTrustManagerConfi
 import org.openmetadata.schema.auth.ldapTrustStoreConfig.HostNameConfig;
 import org.openmetadata.schema.auth.ldapTrustStoreConfig.JVMDefaultConfig;
 import org.openmetadata.schema.auth.ldapTrustStoreConfig.TrustAllConfig;
+import org.openmetadata.schema.utils.JsonUtils;
 
 public class LdapUtil {
 

@@ -17,7 +17,7 @@ import {
 import { Alert, Button, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AlertIcon } from '../../../assets/svg/alert.svg';
 import { ReactComponent as ErrorExclamationIcon } from '../../../assets/svg/error-exclamation.svg';

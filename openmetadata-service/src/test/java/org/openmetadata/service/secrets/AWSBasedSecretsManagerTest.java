@@ -15,6 +15,8 @@ package org.openmetadata.service.secrets;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
+import java.lang.reflect.Field;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,23 +30,52 @@ import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.security.secrets.Parameters;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.fernet.Fernet;
-import org.openmetadata.service.util.JsonUtils;
 
 @ExtendWith(MockitoExtension.class)
 public abstract class AWSBasedSecretsManagerTest extends ExternalSecretsManagerTest {
+
   @BeforeEach
   void setUp() {
+    // Ensure AWS system properties are set at the instance level too
+    System.setProperty("aws.region", "us-east-1");
+    System.setProperty("aws.accessKeyId", "test-access-key");
+    System.setProperty("aws.secretAccessKey", "test-secret-key");
+
     Fernet fernet = Fernet.getInstance();
     fernet.setFernetKey("jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=");
     Parameters parameters = new Parameters();
-    parameters.setAdditionalProperty("region", "eu-west-1");
-    parameters.setAdditionalProperty("accessKeyId", "123456");
-    parameters.setAdditionalProperty("secretAccessKey", "654321");
+    parameters.setAdditionalProperty("region", "us-east-1");
+    parameters.setAdditionalProperty("accessKeyId", "test-access-key");
+    parameters.setAdditionalProperty("secretAccessKey", "test-secret-key");
     SecretsManagerConfiguration config = new SecretsManagerConfiguration();
     config.setParameters(parameters);
     setUpSpecific(config);
+  }
+
+  @AfterEach
+  void tearDown() {
+    // Clear AWS system properties
+    System.clearProperty("aws.region");
+    System.clearProperty("aws.accessKeyId");
+    System.clearProperty("aws.secretAccessKey");
+
+    // Reset singleton instances using reflection to ensure test isolation
+    try {
+      resetSingleton("org.openmetadata.service.secrets.AWSSecretsManager");
+      resetSingleton("org.openmetadata.service.secrets.AWSSSMSecretsManager");
+    } catch (Exception e) {
+      // Ignore reflection exceptions in test cleanup
+    }
+  }
+
+  private void resetSingleton(String className) throws Exception {
+    Class<?> clazz = Class.forName(className);
+    Field instanceField = clazz.getDeclaredField("instance");
+    instanceField.setAccessible(true);
+    instanceField.set(null, null);
   }
 
   @Test

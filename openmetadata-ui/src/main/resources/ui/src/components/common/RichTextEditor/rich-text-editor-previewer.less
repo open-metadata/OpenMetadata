@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-@import url('./../../../styles/variables.less');
+@import './../../../styles/variables.less';
 @border-radius: 6px;
 @border-color: #e8e8ed;
 @markdown-bg-color: #f8f8fa;
@@ -60,10 +60,9 @@
     }
 
     section[data-highlighted='true'] {
-      background: @primary-1;
-      color: @primary-color;
+      background: @primary-50;
       transition: ease-in-out;
-      border-left: 3px solid @primary-color;
+      border-left: 3px solid @primary-6;
       padding-bottom: 12px !important;
       margin-top: 12px;
 
@@ -215,7 +214,7 @@
     }
     .admonition_tip,
     .admonition_info {
-      background-color: #d1e9ff;
+      background-color: @primary-1;
       border-left-color: @info-color;
     }
     .admonition_tip {

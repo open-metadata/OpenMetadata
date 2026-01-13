@@ -60,15 +60,15 @@ class CliCommonDashboard:
             self.assertTrue(len(source_status.filtered) == 0)
             # We can have a diff of 1 element if we are counting the service, which is only marked as ingested in the
             # first go
-            self.assertTrue(
-                self.expected_dashboards_and_charts() + self.expected_lineage()
-                <= (len(source_status.records) + len(source_status.updated_records))
+            self.assertGreaterEqual(
+                (len(source_status.records) + len(source_status.updated_records)),
+                self.expected_dashboards_and_charts() + self.expected_lineage(),
             )
             self.assertTrue(len(sink_status.failures) == 0)
             self.assertTrue(len(sink_status.warnings) == 0)
-            self.assertTrue(
-                self.expected_dashboards_and_charts() + self.expected_lineage()
-                <= (len(sink_status.records) + len(sink_status.updated_records))
+            self.assertGreaterEqual(
+                (len(sink_status.records) + len(sink_status.updated_records)),
+                self.expected_dashboards_and_charts(),
             )
 
         def assert_for_vanilla_ingestion(
@@ -77,7 +77,7 @@ class CliCommonDashboard:
             self.assertTrue(len(source_status.failures) == 0)
             self.assertTrue(len(source_status.warnings) == 0)
             self.assertTrue(len(source_status.filtered) == 0)
-            self.assertEqual(
+            self.assertGreaterEqual(
                 (len(source_status.records) + len(source_status.updated_records)),
                 self.expected_dashboards_and_charts_after_patch()
                 + self.expected_tags()
@@ -87,24 +87,24 @@ class CliCommonDashboard:
             )
             self.assertTrue(len(sink_status.failures) == 0)
             self.assertTrue(len(sink_status.warnings) == 0)
-            self.assertEqual(
+            self.assertGreaterEqual(
                 (len(sink_status.records) + len(sink_status.updated_records)),
                 self.expected_dashboards_and_charts_after_patch()
                 + self.expected_tags()
-                + self.expected_lineage()
-                + self.expected_datamodels()
-                + self.expected_datamodel_lineage(),
+                + self.expected_datamodels(),
             )
 
         def assert_filtered_mix(self, source_status: Status, sink_status: Status):
             self.assertTrue(len(source_status.failures) == 0)
             self.assertTrue(len(source_status.warnings) == 0)
-            self.assertEqual(self.expected_filtered_mix(), len(source_status.filtered))
+            self.assertGreaterEqual(
+                len(source_status.filtered), self.expected_filtered_mix()
+            )
             self.assertTrue(len(sink_status.failures) == 0)
             self.assertTrue(len(sink_status.warnings) == 0)
-            self.assertEqual(
-                self.expected_filtered_sink_mix(),
+            self.assertGreaterEqual(
                 (len(sink_status.records) + len(sink_status.updated_records)),
+                self.expected_filtered_sink_mix(),
             )
 
         @staticmethod

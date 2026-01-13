@@ -44,6 +44,11 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.oracle.metadata import OracleSource
 from metadata.ingestion.source.database.oracle.models import OracleStoredObject
+from metadata.ingestion.source.database.oracle.queries import (
+    ORACLE_GET_STORED_PACKAGES,
+    ORACLE_GET_STORED_PROCEDURES,
+    TEST_ORACLE_GET_STORED_PACKAGES,
+)
 
 mock_oracle_config = {
     "source": {
@@ -116,79 +121,37 @@ MOCK_STORED_PACKAGE = OracleStoredObject(
 EXPECTED_DATABASE = [
     CreateDatabaseRequest(
         name=EntityName("sample_database"),
-        displayName=None,
-        description=None,
-        tags=None,
-        owners=None,
         service=FullyQualifiedEntityName("oracle_source_test"),
-        dataProducts=None,
         default=False,
-        retentionPeriod=None,
-        extension=None,
-        sourceUrl=None,
-        domain=None,
-        lifeCycle=None,
-        sourceHash=None,
     )
 ]
 
 EXPECTED_DATABASE_SCHEMA = [
     CreateDatabaseSchemaRequest(
         name=EntityName("sample_schema"),
-        displayName=None,
-        description=None,
-        owners=None,
         database=FullyQualifiedEntityName("oracle_source_test.sample_database"),
-        dataProducts=None,
-        tags=None,
-        retentionPeriod=None,
-        extension=None,
-        sourceUrl=None,
-        domain=None,
-        lifeCycle=None,
-        sourceHash=None,
     )
 ]
 
 EXPECTED_STORED_PROCEDURE = [
     CreateStoredProcedureRequest(
         name=EntityName("sample_procedure"),
-        displayName=None,
-        description=None,
-        owners=None,
-        tags=None,
         storedProcedureCode=StoredProcedureCode(language="SQL", code="SAMPLE_SQL_TEXT"),
         storedProcedureType=StoredProcedureType.StoredProcedure,
         databaseSchema=FullyQualifiedEntityName(
             "oracle_source_test.sample_database.sample_schema"
         ),
-        extension=None,
-        dataProducts=None,
-        sourceUrl=None,
-        domain=None,
-        lifeCycle=None,
-        sourceHash=None,
     )
 ]
 
 EXPECTED_STORED_PACKAGE = [
     CreateStoredProcedureRequest(
         name=EntityName("sample_package"),
-        displayName=None,
-        description=None,
-        owners=None,
-        tags=None,
         storedProcedureCode=StoredProcedureCode(language="SQL", code="SAMPLE_SQL_TEXT"),
         storedProcedureType=StoredProcedureType.StoredPackage,
         databaseSchema=FullyQualifiedEntityName(
             "oracle_source_test.sample_database.sample_schema"
         ),
-        extension=None,
-        dataProducts=None,
-        sourceUrl=None,
-        domain=None,
-        lifeCycle=None,
-        sourceHash=None,
     )
 ]
 
@@ -253,3 +216,16 @@ class OracleUnitTest(TestCase):
             either.right
             for either in self.oracle.yield_stored_procedure(MOCK_STORED_PACKAGE)
         ]
+
+    def test_stored_procedure_queries_have_order_by(self):
+        """
+        Test that stored procedure queries have ORDER BY clause to ensure
+        lines are returned in correct order from the database.
+
+        This is critical because the process_result method concatenates text
+        as rows are received without reordering. Without ORDER BY, Oracle can
+        return rows in any physical order, causing scrambled code.
+        """
+        assert "ORDER BY OWNER, NAME, LINE" in ORACLE_GET_STORED_PROCEDURES
+        assert "ORDER BY OWNER, NAME, LINE" in ORACLE_GET_STORED_PACKAGES
+        assert "ORDER BY OWNER, NAME, LINE" in TEST_ORACLE_GET_STORED_PACKAGES

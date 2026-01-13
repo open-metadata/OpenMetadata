@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-@import (reference) url('../../../../styles/variables.less');
+@import (reference) '../../../../styles/variables.less';
 
 .profile-dropdown {
   .ant-dropdown-menu-item-group {
@@ -25,6 +25,10 @@
       padding: 4px 0;
     }
 
+    .ant-dropdown-menu-title-content {
+      width: 100%;
+    }
+
     .ant-dropdown-menu-item-only-child {
       padding: 4px 0 4px 6px;
       border-radius: 4px;
@@ -34,6 +38,26 @@
       color: inherit;
       cursor: default;
     }
+  }
+
+  .default-persona-container {
+    min-width: 0;
+  }
+  .more-teams-pill {
+    display: block;
+    width: 100%;
+  }
+
+  .default-persona-tag {
+    border-radius: 6px;
+    border: 1px solid @primary-50;
+    background: @blue-22;
+    box-shadow: @button-box-shadow-default;
+    color: @primary-7;
+    text-align: center;
+    font-size: @size-sm;
+    font-style: normal;
+    font-weight: @font-medium;
   }
 }
 

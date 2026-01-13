@@ -26,10 +26,10 @@ import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 
 public abstract class ServiceEntityRepository<
         T extends ServiceEntityInterface, S extends ServiceConnectionEntityInterface>
@@ -105,10 +105,12 @@ public abstract class ServiceEntityRepository<
     return service;
   }
 
-  /** Remove the secrets from the secret manager */
+  /** Remove the secrets from the secret manager only on hard delete */
   @Override
-  protected void postDelete(T service) {
-    if (service.getConnection() != null) {
+  protected void postDelete(T service, boolean hardDelete) {
+    super.postDelete(service, hardDelete);
+    // Only delete secrets on hard delete to allow soft delete to be reversible
+    if (hardDelete && service.getConnection() != null) {
       SecretsManagerFactory.getSecretsManager()
           .deleteSecretsFromServiceConnectionConfig(
               service.getConnection().getConfig(),

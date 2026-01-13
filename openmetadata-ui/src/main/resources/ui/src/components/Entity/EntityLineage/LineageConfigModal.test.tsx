@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
+import { PipelineViewMode } from '../../../generated/configuration/lineageSettings';
 import LineageConfigModal from './LineageConfigModal';
 
 const onCancel = jest.fn();
@@ -21,6 +21,7 @@ const config = {
   upstreamDepth: 2,
   downstreamDepth: 3,
   nodesPerLayer: 4,
+  pipelineViewMode: PipelineViewMode.Node,
 };
 
 describe('LineageConfigModal', () => {

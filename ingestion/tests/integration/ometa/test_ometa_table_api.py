@@ -291,7 +291,9 @@ class OMetaTableTest(TestCase):
 
         self.metadata.create_or_update(data=self.create)
 
-        res = self.metadata.list_entities(entity=Table)
+        res = self.metadata.list_entities(
+            entity=Table, params={"database": "test-service-table.test-db"}
+        )
 
         # Fetch our test Database. We have already inserted it, so we should find it
         data = next(

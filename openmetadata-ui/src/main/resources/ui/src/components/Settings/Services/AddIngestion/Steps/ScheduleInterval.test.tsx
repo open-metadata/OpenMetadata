@@ -12,7 +12,7 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
+import { SchedularOptions } from '../../../../../enums/Schedular.enum';
 import ScheduleInterval from './ScheduleInterval';
 import { ScheduleIntervalProps } from './ScheduleInterval.interface';
 
@@ -24,6 +24,18 @@ const mockScheduleIntervalProps: ScheduleIntervalProps<{ cron: string }> = {
   buttonProps: {
     okText: 'Add',
   },
+  schedularOptions: [
+    {
+      title: 'Schedule',
+      description: 'Schedule this pipeline to run at regular intervals',
+      value: SchedularOptions.SCHEDULE,
+    },
+    {
+      title: 'On Demand',
+      description: 'Run this pipeline manually when needed',
+      value: SchedularOptions.ON_DEMAND,
+    },
+  ],
 };
 
 jest.mock('../../../../../utils/i18next/i18nextUtil', () => ({

@@ -13,11 +13,14 @@
 
 import { Steps } from 'antd';
 import classNames from 'classnames';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import './ingestion-stepper.style.less';
 
 type Props = {
-  steps: Array<{ name: string; step: number }>;
+  steps: Array<{
+    name: string;
+    step: number;
+  }>;
   activeStep: number;
   excludeSteps?: Array<number>;
   className?: string;

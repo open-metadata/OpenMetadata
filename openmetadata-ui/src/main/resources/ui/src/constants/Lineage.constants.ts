@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
 import { ElementLoadingState } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Source } from '../generated/type/entityLineage';
+import { t } from '../utils/i18next/LocalUtil';
 
 export const FOREIGN_OBJECT_SIZE = 40;
 export const ZOOM_VALUE = 0.65;
@@ -35,43 +35,63 @@ export const DATATYPES_HAVING_SUBFIELDS = [
 export const entityData = [
   {
     type: SearchIndex.TABLE,
-    label: t('label.table-plural'),
+    label: 'label.table-plural',
   },
   {
     type: SearchIndex.DASHBOARD,
-    label: t('label.dashboard-plural'),
+    label: 'label.dashboard-plural',
+  },
+  {
+    type: SearchIndex.STORED_PROCEDURE,
+    label: 'label.stored-procedure-plural',
   },
   {
     type: SearchIndex.TOPIC,
-    label: t('label.topic-plural'),
+    label: 'label.topic-plural',
   },
   {
     type: SearchIndex.MLMODEL,
-    label: t('label.ml-model-plural'),
+    label: 'label.ml-model-plural',
   },
   {
     type: SearchIndex.CONTAINER,
-    label: t('label.container-plural'),
+    label: 'label.container-plural',
   },
   {
     type: SearchIndex.PIPELINE,
-    label: t('label.pipeline-plural'),
+    label: 'label.pipeline-plural',
   },
   {
     type: SearchIndex.SEARCH_INDEX,
-    label: t('label.search-index-plural'),
+    label: 'label.search-index-plural',
   },
   {
     type: SearchIndex.DASHBOARD_DATA_MODEL,
-    label: t('label.data-model-plural'),
+    label: 'label.data-model-plural',
   },
   {
     type: SearchIndex.API_ENDPOINT_INDEX,
-    label: t('label.api-endpoint-plural'),
+    label: 'label.api-endpoint-plural',
   },
   {
     type: SearchIndex.METRIC_SEARCH_INDEX,
-    label: t('label.metric-plural'),
+    label: 'label.metric-plural',
+  },
+  {
+    type: SearchIndex.DIRECTORY_SEARCH_INDEX,
+    label: 'label.directory-plural',
+  },
+  {
+    type: SearchIndex.FILE_SEARCH_INDEX,
+    label: 'label.file-plural',
+  },
+  {
+    type: SearchIndex.SPREADSHEET_SEARCH_INDEX,
+    label: 'label.spreadsheet-plural',
+  },
+  {
+    type: SearchIndex.WORKSHEET_SEARCH_INDEX,
+    label: 'label.worksheet-plural',
   },
 ];
 
@@ -84,7 +104,7 @@ export const ELEMENT_DELETE_STATE = {
 };
 
 export const LINEAGE_DEFAULT_QUICK_FILTERS = [
-  EntityFields.DOMAIN,
+  EntityFields.DOMAINS,
   EntityFields.OWNERS,
   EntityFields.TAG,
   EntityFields.COLUMN,
@@ -122,7 +142,7 @@ export const LINEAGE_EXPORT_HEADERS = [
   { field: 'entityType', title: 'Entity Type' },
   { field: 'direction', title: 'Direction' },
   { field: 'owners', title: 'Owner' },
-  { field: 'domain', title: 'Domain' },
+  { field: 'domains', title: 'Domains' },
   { field: 'tags', title: 'Tags' },
   { field: 'tier', title: 'Tier' },
   { field: 'glossaryTerms', title: 'Glossary Terms' },
@@ -132,3 +152,43 @@ export const LINEAGE_EXPORT_HEADERS = [
 export const INITIAL_NODE_ITEMS_LENGTH = 50;
 export const NODE_ITEMS_PAGE_SIZE = 50;
 export const DEBOUNCE_TIMEOUT = 300;
+
+export enum LINEAGE_TAB_VIEW {
+  DIAGRAM_VIEW = 'diagram_view',
+  TABLE_VIEW = 'table_view',
+}
+
+export const LINEAGE_TABLE_COLUMN_LOCALIZATION_KEYS: Record<string, string> = {
+  fromEntityFQN: t('label.from-entity-fqn'),
+  fromServiceName: t('label.from-service-name'),
+  fromServiceType: t('label.from-service-type'),
+  fromOwners: t('label.from-owner-plural'),
+  fromDomain: t('label.from-domain'),
+  toEntityFQN: t('label.to-entity-fqn'),
+  toServiceName: t('label.to-service-name'),
+  toServiceType: t('label.to-service-type'),
+  toOwners: t('label.to-owner-plural'),
+  toDomain: t('label.to-domain'),
+  fromChildEntityFQN: t('label.from-child-entity-fqn'),
+  toChildEntityFQN: t('label.to-child-entity-fqn'),
+  pipelineName: t('label.pipeline-name'),
+  pipelineDisplayName: t('label.pipeline-display-name'),
+  pipelineType: t('label.pipeline-type'),
+  pipelineDescription: t('label.pipeline-description'),
+  pipelineOwners: t('label.pipeline-owner-plural'),
+  pipelineDomain: t('label.pipeline-domain'),
+  pipelineServiceName: t('label.pipeline-service-name'),
+  pipelineServiceType: t('label.pipeline-service-type'),
+};
+
+export const IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS = [
+  'name',
+  'owners',
+  'nodeDepth',
+  'toEntity',
+  'fromEntity',
+  'toColumn',
+  'fromColumn',
+];
+
+export const IMPACT_ANALYSIS_STATIC_COLUMNS = ['name', 'column'];

@@ -14,9 +14,9 @@
 import { Button, Divider, Form, Input, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ADD_POLICY_PAGE_BREADCRUMB } from '../../../constants/Breadcrumb.constants';
@@ -31,9 +31,10 @@ import {
 import { withPageLayout } from '../../../hoc/withPageLayout';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { addPolicy } from '../../../rest/rolesAPIV1';
+import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import { getField } from '../../../utils/formUtils';
-import i18n from '../../../utils/i18next/LocalUtil';
+import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import { getPath, getPolicyWithFqnPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RuleForm from '../RuleForm/RuleForm';
@@ -41,7 +42,7 @@ import RuleForm from '../RuleForm/RuleForm';
 const policiesPath = getPath(GlobalSettingOptions.POLICIES);
 
 const AddPolicyPage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
 
   const [name, setName] = useState<string>('');
@@ -57,7 +58,7 @@ const AddPolicyPage = () => {
   const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
 
   const handleCancel = () => {
-    history.push(policiesPath);
+    navigate(policiesPath);
   };
 
   const handleSubmit = async () => {
@@ -73,9 +74,7 @@ const AddPolicyPage = () => {
     try {
       const dataResponse = await addPolicy(data);
       if (dataResponse) {
-        history.push(
-          getPolicyWithFqnPath(dataResponse.fullyQualifiedName || '')
-        );
+        navigate(getPolicyWithFqnPath(dataResponse.fullyQualifiedName || ''));
       }
     } catch (error) {
       showErrorToast(
@@ -112,6 +111,15 @@ const AddPolicyPage = () => {
     []
   );
 
+  const translatedAddPolicyBreadcrumb = useMemo(
+    () =>
+      ADD_POLICY_PAGE_BREADCRUMB.map((option) => ({
+        ...option,
+        name: translateWithNestedKeys(option.name, option.nameData),
+      })),
+    [t]
+  );
+
   return (
     <ResizablePanels
       className="content-height-with-resizable-panel"
@@ -121,7 +129,7 @@ const AddPolicyPage = () => {
         allowScroll: true,
         children: (
           <div data-testid="add-policy-container">
-            <TitleBreadcrumb titleLinks={ADD_POLICY_PAGE_BREADCRUMB} />
+            <TitleBreadcrumb titleLinks={translatedAddPolicyBreadcrumb} />
             <div className="m-t-md">
               <Typography.Paragraph
                 className="text-base"
@@ -173,7 +181,7 @@ const AddPolicyPage = () => {
                     htmlType="submit"
                     loading={isSaveLoading}
                     type="primary">
-                    {t('label.submit')}
+                    {t('label.create')}
                   </Button>
                 </Space>
               </Form>
@@ -192,7 +200,11 @@ const AddPolicyPage = () => {
                 entity: t('label.policy'),
               })}
             </Typography.Paragraph>
-            <Typography.Text>{t('message.add-policy-message')}</Typography.Text>
+            <Typography.Text>
+              {t('message.add-policy-message', {
+                brandName: brandClassBase.getPageTitle(),
+              })}
+            </Typography.Text>
           </>
         ),
         className: 'content-resizable-panel-container',
@@ -203,8 +215,4 @@ const AddPolicyPage = () => {
   );
 };
 
-export default withPageLayout(
-  i18n.t('label.add-entity', {
-    entity: i18n.t('label.policy'),
-  })
-)(AddPolicyPage);
+export default withPageLayout(AddPolicyPage);

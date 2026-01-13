@@ -1,0 +1,113 @@
+{
+  "name": "@openmetadata/ui-core-components",
+  "version": "1.0.0",
+  "description": "OpenMetadata shared UI core components and theme system",
+  "main": "./dist/index.cjs.js",
+  "module": "./dist/index.es.js",
+  "types": "./dist/types/src/index.d.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.es.js",
+      "require": "./dist/index.cjs.js",
+      "types": "./dist/types/src/index.d.ts"
+    },
+    "./theme": {
+      "import": "./dist/theme/index.es.js",
+      "require": "./dist/theme/index.cjs.js",
+      "types": "./dist/types/src/theme/index.d.ts"
+    },
+    "./colors": {
+      "import": "./dist/colors/index.es.js",
+      "require": "./dist/colors/index.cjs.js",
+      "types": "./dist/types/src/colors/index.d.ts"
+    },
+    "./components": {
+      "import": "./dist/components/index.es.js",
+      "require": "./dist/components/index.cjs.js",
+      "types": "./dist/types/src/components/index.d.ts"
+    },
+    "./utils": {
+      "import": "./dist/utils/index.es.js",
+      "require": "./dist/utils/index.cjs.js",
+      "types": "./dist/types/src/utils/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "theme",
+    "mui",
+    "material-ui",
+    "design-system",
+    "core-components",
+    "react",
+    "typescript",
+    "ui-library",
+    "component-library"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "build:watch": "vite build --watch",
+    "dev": "vite build --watch",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "yarn clean && yarn build",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
+  },
+  "author": "OpenMetadata",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@material/material-color-utilities": "^0.3.0"
+  },
+  "peerDependencies": {
+    "@emotion/react": ">=11.0.0",
+    "@emotion/styled": ">=11.0.0",
+    "@mui/material": ">=7.0.0",
+    "@mui/system": ">=7.0.0",
+    "@mui/x-date-pickers": ">=8.0.0",
+    "notistack": ">=3.0.0",
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.3.4",
+    "@mui/material": "^7.3.1",
+    "@mui/system": "^7.3.1",
+    "@mui/x-date-pickers": "^8.11.0",
+    "@storybook/addon-essentials": "^8.6.14",
+    "@storybook/addon-interactions": "^8.6.14",
+    "@storybook/addon-links": "^8.6.14",
+    "@storybook/blocks": "^8.6.14",
+    "@storybook/react": "^8.6.14",
+    "@storybook/react-vite": "^8.6.14",
+    "@storybook/test": "^8.6.14",
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^5.0.1",
+    "notistack": "^3.0.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "storybook": "^8.6.15",
+    "terser": "^5.0.0",
+    "typescript": "^4.2.4",
+    "vite": "^7.1.11",
+    "vite-plugin-dts": "^4.5.4"
+  },
+  "publishConfig": {
+    "access": "restricted",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "engines": {
+    "node": ">=22.17.0",
+    "yarn": ">=1.22.0"
+  }
+}

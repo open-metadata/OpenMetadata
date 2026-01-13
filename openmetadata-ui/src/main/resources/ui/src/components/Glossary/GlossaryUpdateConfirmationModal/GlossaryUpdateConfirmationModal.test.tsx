@@ -11,16 +11,15 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render } from '@testing-library/react';
-import React from 'react';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { validateTagAddtionToGlossary } from '../../../rest/glossaryAPI';
 import { GlossaryUpdateConfirmationModal } from './GlossaryUpdateConfirmationModal';
 
 const mockOnCancel = jest.fn();
 const mockOnValidationSuccess = jest.fn();
-const mockValidateTagAddtionToGlossary = jest.fn().mockResolvedValue({});
 
 jest.mock('../../../rest/glossaryAPI', () => ({
-  validateTagAddtionToGlossary: mockValidateTagAddtionToGlossary,
+  validateTagAddtionToGlossary: jest.fn().mockResolvedValue({}),
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({
@@ -82,7 +81,7 @@ describe('GlossaryUpdateConfirmationModal component', () => {
       fireEvent.click(await findByText('label.yes-comma-confirm'));
     });
 
-    expect(mockValidateTagAddtionToGlossary).toHaveBeenCalledWith(
+    expect(validateTagAddtionToGlossary).toHaveBeenCalledWith(
       { tags: [] },
       true
     );

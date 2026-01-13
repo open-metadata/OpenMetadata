@@ -12,7 +12,6 @@
  */
 
 import { act, findByText, fireEvent, render } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { createUser } from '../../rest/userAPI';
 import AddUserPageComponent from './CreateUserPage.component';
@@ -43,10 +42,10 @@ jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockReturnValue({
     state: { isAdminPage: false },
   }),
-  useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({
     bot: undefined,
   }),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock('../../rest/rolesAPIV1', () => ({

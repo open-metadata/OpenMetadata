@@ -22,9 +22,9 @@ import {
   Typography,
 } from 'antd';
 import { isUndefined } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as MetadataAgentIcon } from '../../../../assets/svg/ic-collapse.svg';
 import { ReactComponent as CollateAI } from '../../../../assets/svg/ic-suggestions.svg';
 import {
@@ -36,6 +36,7 @@ import { getCountBadge } from '../../../../utils/CommonUtils';
 import { getTypeAndStatusMenuItems } from '../../../../utils/IngestionUtils';
 import { getServiceDetailsPath } from '../../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
+import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import ErrorPlaceHolderIngestion from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import SearchDropdown from '../../../SearchDropdown/SearchDropdown';
@@ -67,9 +68,9 @@ const Ingestion: React.FC<IngestionProps> = ({
   workflowStartAt,
 }: IngestionProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn: decodedServiceFQN } = useFqn();
-  const { serviceCategory, tab, subTab } = useParams<{
+  const { serviceCategory, tab, subTab } = useRequiredParams<{
     serviceCategory: ServiceCategory;
     tab: string;
     subTab: string;
@@ -130,14 +131,19 @@ const Ingestion: React.FC<IngestionProps> = ({
     (e: RadioChangeEvent) => {
       const key = e.target.value;
 
-      history.replace({
-        pathname: getServiceDetailsPath(
-          decodedServiceFQN,
-          serviceCategory,
-          tab,
-          key
-        ),
-      });
+      navigate(
+        {
+          pathname: getServiceDetailsPath(
+            decodedServiceFQN,
+            serviceCategory,
+            tab,
+            key
+          ),
+        },
+        {
+          replace: true,
+        }
+      );
     },
     [history, decodedServiceFQN, serviceCategory, tab]
   );

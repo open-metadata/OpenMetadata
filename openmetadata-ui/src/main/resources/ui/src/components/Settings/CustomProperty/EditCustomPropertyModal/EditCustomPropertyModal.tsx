@@ -12,7 +12,7 @@
  */
 import { Form, Modal, Typography } from 'antd';
 import { isUndefined, uniq } from 'lodash';
-import React, { FC, useMemo, useState } from 'react';
+import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ENTITY_REFERENCE_OPTIONS,

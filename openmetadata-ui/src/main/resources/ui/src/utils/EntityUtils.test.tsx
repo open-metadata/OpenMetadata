@@ -12,7 +12,6 @@
  */
 import { render } from '@testing-library/react';
 import { startCase } from 'lodash';
-import React from 'react';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { ServiceCategory } from '../enums/service.enum';
@@ -26,6 +25,9 @@ import {
   getEntityBreadcrumbs,
   getEntityLinkFromType,
   getEntityOverview,
+  hasCustomPropertiesTab,
+  hasLineageTab,
+  hasSchemaTab,
   highlightEntityNameAndDescription,
   highlightSearchArrayElement,
   highlightSearchText,
@@ -91,6 +93,11 @@ jest.mock('../components/common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest.fn(),
 }));
 
+jest.mock('../components/common/DomainLabel/DomainLabel.component', () => ({
+  __esModule: true,
+  DomainLabel: jest.fn(),
+}));
+
 jest.mock('../components/common/QueryCount/QueryCount.component', () => ({
   __esModule: true,
   default: jest.fn(),
@@ -115,6 +122,7 @@ jest.mock('./TagsUtils', () => ({
 jest.mock('./CommonUtils', () => ({
   getPartialNameFromTableFQN: jest.fn().mockImplementation((value) => value),
   getTableFQNFromColumnFQN: jest.fn().mockImplementation((value) => value),
+  formatNumberWithComma: jest.fn().mockImplementation((value) => value),
 }));
 jest.mock('./DataInsightUtils', () => ({
   getDataInsightPathWithFqn: jest.fn(),
@@ -321,15 +329,15 @@ describe('EntityUtils unit tests', () => {
       { text: null, searchText: 'test', expected: '' },
       { text: 'mockText', searchText: null, expected: 'mockText' },
       { text: null, searchText: null, expected: '' },
-      { text: 0 as any, searchText: '', expected: 0 },
-      { text: false as any, searchText: '', expected: false },
+      { text: 0, searchText: '', expected: 0 },
+      { text: false, searchText: '', expected: false },
     ];
 
     it.each(falsyTestCases)(
       'should return expected when text or searchText is null or falsy',
       ({ text, searchText, expected }) => {
         const result = highlightSearchText(
-          text ?? undefined,
+          (text as string) ?? undefined,
           searchText ?? undefined
         );
 
@@ -507,6 +515,84 @@ describe('EntityUtils unit tests', () => {
         EntityType.DATABASE,
         'sample_data.ecommerce_db'
       );
+    });
+  });
+
+  describe('hasSchemaTab', () => {
+    it('should return true for all entity types in SCHEMA_TABS_SET', () => {
+      const {
+        SCHEMA_TABS_SET,
+      } = require('../components/Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants');
+
+      SCHEMA_TABS_SET.forEach((entityType: EntityType) => {
+        expect(hasSchemaTab(entityType)).toBe(true);
+      });
+    });
+
+    it('should return false for entity types not in SCHEMA_TABS_SET', () => {
+      const {
+        SCHEMA_TABS_SET,
+      } = require('../components/Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants');
+      const allEntityTypes = Object.values(EntityType);
+      const entitiesWithoutSchema = allEntityTypes.filter(
+        (type) => !SCHEMA_TABS_SET.has(type)
+      );
+
+      entitiesWithoutSchema.forEach((entityType) => {
+        expect(hasSchemaTab(entityType)).toBe(false);
+      });
+    });
+  });
+
+  describe('hasLineageTab', () => {
+    it('should return true for all entity types in LINEAGE_TABS_SET', () => {
+      const {
+        LINEAGE_TABS_SET,
+      } = require('../components/Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants');
+
+      LINEAGE_TABS_SET.forEach((entityType: EntityType) => {
+        expect(hasLineageTab(entityType)).toBe(true);
+      });
+    });
+
+    it('should return false for entity types not in LINEAGE_TABS_SET', () => {
+      const {
+        LINEAGE_TABS_SET,
+      } = require('../components/Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants');
+      const allEntityTypes = Object.values(EntityType);
+      const entitiesWithoutLineage = allEntityTypes.filter(
+        (type) => !LINEAGE_TABS_SET.has(type)
+      );
+
+      entitiesWithoutLineage.forEach((entityType) => {
+        expect(hasLineageTab(entityType)).toBe(false);
+      });
+    });
+  });
+
+  describe('hasCustomPropertiesTab', () => {
+    it('should return true for all entity types in CUSTOM_PROPERTIES_TABS_SET', () => {
+      const {
+        CUSTOM_PROPERTIES_TABS_SET,
+      } = require('../components/Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants');
+
+      CUSTOM_PROPERTIES_TABS_SET.forEach((entityType: EntityType) => {
+        expect(hasCustomPropertiesTab(entityType)).toBe(true);
+      });
+    });
+
+    it('should return false for entity types not in CUSTOM_PROPERTIES_TABS_SET', () => {
+      const {
+        CUSTOM_PROPERTIES_TABS_SET,
+      } = require('../components/Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants');
+      const allEntityTypes = Object.values(EntityType);
+      const entitiesWithoutCustomProperties = allEntityTypes.filter(
+        (type) => !CUSTOM_PROPERTIES_TABS_SET.has(type)
+      );
+
+      entitiesWithoutCustomProperties.forEach((entityType) => {
+        expect(hasCustomPropertiesTab(entityType)).toBe(false);
+      });
     });
   });
 });

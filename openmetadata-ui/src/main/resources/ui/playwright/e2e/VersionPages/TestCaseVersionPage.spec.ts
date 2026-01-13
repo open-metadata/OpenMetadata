@@ -21,6 +21,27 @@ import {
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
+/**
+ * Test Case — Version Page Coverage
+ * @description Validates version bumps and diff rendering for display name, description, and parameter edits
+ * on the Test Case version page.
+ *
+ * Preconditions
+ * - Admin session via storage state.
+ * - A table and a linked test case exist (created in `beforeAll`).
+ *
+ * Coverage
+ * - Version increment: Each edit bumps the version (0.1 → 0.2 → 0.3 → 0.4).
+ * - Diff view: Confirms `diff-added`/`diff-removed` markers display in the version page.
+ *
+ * API Interactions
+ * - PATCH `/api/v1/dataQuality/testCases/*` for all edits.
+ *
+ * Key Selectors
+ * - Header name: `entity-header-name`; Version button: `version-button`.
+ * - Description: `asset-description-container > markdown-parser`.
+ * - Parameters: `minValue`, `maxValue` diff chips.
+ */
 test.describe('TestCase Version Page', () => {
   const table1 = new TableClass();
 
@@ -41,16 +62,26 @@ test.describe('TestCase Version Page', () => {
     await afterAction();
   });
 
+  /**
+   * View and verify Test Case version changes
+   * @description Opens the Test Case details, performs sequential edits, and verifies version bumps with diffs.
+   */
   test('should show the test case version page', async ({ page }) => {
     const testCase = table1.testCasesResponseData[0];
 
     await redirectToHomePage(page);
-    await page.goto(`/test-case/${testCase.fullyQualifiedName}`);
+    await page.goto(
+      `/test-case/${encodeURIComponent(testCase.fullyQualifiedName)}`
+    );
     await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
 
+    /**
+     * Step: Display name change
+     * @description Renames the Test Case and validates version bump to 0.2 with diff on version page.
+     */
     await test.step('Display name change', async () => {
       await expect(page.getByTestId('entity-header-name')).toHaveText(
         testCase.name
@@ -86,6 +117,10 @@ test.describe('TestCase Version Page', () => {
       });
     });
 
+    /**
+     * Step: Description change
+     * @description Updates the description and validates version bump to 0.3 with diff markers.
+     */
     await test.step('Description change', async () => {
       await page.getByTestId('edit-description').click();
       await page.waitForSelector('[data-testid="editor"]');
@@ -116,6 +151,10 @@ test.describe('TestCase Version Page', () => {
       });
     });
 
+    /**
+     * Step: Parameter change
+     * @description Updates min/max parameter values and validates version bump to 0.4 with diffs for both fields.
+     */
     await test.step('Parameter change', async () => {
       await page.getByTestId('edit-parameter-icon').click();
       await page.waitForSelector('#tableTestForm');
@@ -128,7 +167,7 @@ test.describe('TestCase Version Page', () => {
       const updateParameterRes = page.waitForResponse(
         '/api/v1/dataQuality/testCases/*'
       );
-      await page.getByRole('button', { name: 'Submit' }).click();
+      await page.getByRole('button', { name: 'Save' }).click();
       await updateParameterRes;
 
       await expect(page.getByTestId('version-button')).toHaveText('0.4');

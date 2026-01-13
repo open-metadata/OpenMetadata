@@ -195,6 +195,11 @@
       "type": "boolean",
       "default": true
     },
+    "enableStreamableLogs": {
+      "description": "Enable real-time log streaming to the OpenMetadata server. When enabled, ingestion logs will be automatically shipped to the server's configured log storage backend (S3 or compatible).",
+      "type": "boolean",
+      "default": false
+    },
     "href": {
       "description": "Link to this ingestion pipeline resource.",
       "$ref": "../../../type/basic.json#/definitions/href"
@@ -210,6 +215,10 @@
     "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../../type/basic.json#/definitions/impersonatedBy"
     },
     "changeDescription": {
       "description": "Change that led to this version of the entity.",
@@ -231,9 +240,9 @@
     "provider" : {
       "$ref": "../../../type/basic.json#/definitions/providerType"
     },
-    "domain" : {
-      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
-      "$ref": "../../../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../../type/entityReferenceList.json"
     },
     "applicationType": {
       "description": "Type of the application when pipelineType is 'application'.",
@@ -241,6 +250,10 @@
     },
     "ingestionRunner" : {
       "description": "The ingestion agent responsible for executing the ingestion pipeline.",
+      "$ref": "../../../type/entityReference.json"
+    },
+    "processingEngine": {
+      "description": "The processing engine responsible for executing the ingestion pipeline logic.",
       "$ref": "../../../type/entityReference.json"
     }
   },

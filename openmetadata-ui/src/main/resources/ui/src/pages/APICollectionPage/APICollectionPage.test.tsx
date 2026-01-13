@@ -12,8 +12,8 @@
  */
 
 import { render, waitFor } from '@testing-library/react';
-import React from 'react';
 import { useParams } from 'react-router-dom';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Include } from '../../generated/type/include';
 import { useFqn } from '../../hooks/useFqn';
@@ -69,7 +69,7 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({ push: jest.fn() }),
+  useNavigate: jest.fn().mockReturnValue({ push: jest.fn() }),
   useParams: jest
     .fn()
     .mockReturnValue({ fqn: 'api.collection.v1', tab: 'api_endpoint' }),
@@ -90,6 +90,10 @@ jest.mock('../../components/AppRouter/withActivityFeed', () => ({
 
 jest.mock('../../components/common/DocumentTitle/DocumentTitle', () =>
   jest.fn().mockImplementation(() => <div>DocumentTitle</div>)
+);
+
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );
 
 jest.mock(
@@ -162,7 +166,7 @@ describe('APICollectionPage', () => {
     // Verify initial API calls
     await waitFor(() => {
       expect(getApiCollectionByFQN).toHaveBeenCalledWith('api.collection.v1', {
-        fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
+        fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.DOMAINS},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
         include: Include.All,
       });
       expect(getApiEndPoints).toHaveBeenCalledWith({
@@ -194,7 +198,7 @@ describe('APICollectionPage', () => {
     // Verify APIs are called with new FQN
     await waitFor(() => {
       expect(getApiCollectionByFQN).toHaveBeenCalledWith('api.collection.v2', {
-        fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
+        fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.DOMAINS},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
         include: Include.All,
       });
       expect(getApiEndPoints).toHaveBeenCalledWith({
@@ -214,5 +218,27 @@ describe('APICollectionPage', () => {
     expect(getApiCollectionByFQN).toHaveBeenCalledTimes(1);
     expect(getApiEndPoints).toHaveBeenCalledTimes(1);
     expect(getFeedCounts).toHaveBeenCalledTimes(1);
+  });
+
+  it('should pass entity name as pageTitle to PageLayoutV1', async () => {
+    const mockApiCollectionDetails = {
+      name: 'test-api-collection',
+      id: '123',
+    };
+
+    (getApiCollectionByFQN as jest.Mock).mockResolvedValueOnce(
+      mockApiCollectionDetails
+    );
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(PageLayoutV1).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pageTitle: 'test-api-collection',
+        }),
+        expect.anything()
+      );
+    });
   });
 });

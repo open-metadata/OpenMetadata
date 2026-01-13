@@ -22,7 +22,7 @@ import {
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import {
@@ -130,6 +130,15 @@ const TeamsSubscription = ({
     }
   }, [subscription, editSubscription]);
 
+  const subscriptionWebhookTranslated = useMemo(
+    () =>
+      SUBSCRIPTION_WEBHOOK_OPTIONS.map((option) => ({
+        ...option,
+        label: t(option.label),
+      })),
+    [t]
+  );
+
   return (
     <Space
       align="start"
@@ -146,15 +155,8 @@ const TeamsSubscription = ({
             })}>
             <Button
               className="flex-center teams-info-email-edit-button p-0"
-              color={DE_ACTIVE_COLOR}
               data-testid="edit-team-subscription"
-              icon={
-                <EditIcon
-                  color={DE_ACTIVE_COLOR}
-                  {...ICON_DIMENSION}
-                  width="12px"
-                />
-              }
+              icon={<EditIcon {...ICON_DIMENSION} width="12px" />}
               {...ICON_DIMENSION}
               onClick={(e) => {
                 // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
@@ -171,7 +173,6 @@ const TeamsSubscription = ({
             })}>
             <Button
               className="flex-center teams-info-email-edit-button p-0"
-              color={DE_ACTIVE_COLOR}
               data-testid="edit-team-subscription"
               icon={
                 <EditIcon
@@ -221,7 +222,7 @@ const TeamsSubscription = ({
               onFinish={handleSave}>
               <Form.Item label={t('label.webhook')} name="webhook">
                 <Select
-                  options={SUBSCRIPTION_WEBHOOK_OPTIONS}
+                  options={subscriptionWebhookTranslated}
                   placeholder={t('label.select-field', {
                     field: t('label.condition'),
                   })}

@@ -45,6 +45,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.api.VoteRequest;
@@ -56,6 +57,12 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.PipelineExecutionTrendList;
+import org.openmetadata.schema.type.PipelineMetrics;
+import org.openmetadata.schema.type.PipelineObservabilityResponse;
+import org.openmetadata.schema.type.PipelineRuntimeTrendList;
+import org.openmetadata.schema.type.PipelineSummary;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PipelineRepository;
@@ -64,7 +71,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Path("/v1/pipelines")
 @Tag(
@@ -78,7 +85,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   public static final String COLLECTION_PATH = "v1/pipelines/";
   private final PipelineMapper mapper = new PipelineMapper();
   static final String FIELDS =
-      "owners,tasks,pipelineStatus,followers,tags,extension,scheduleInterval,domain,sourceHash";
+      "owners,tasks,pipelineStatus,followers,tags,extension,scheduleInterval,domains,sourceHash";
 
   @Override
   public Pipeline addHref(UriInfo uriInfo, Pipeline pipeline) {
@@ -102,6 +109,10 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   }
 
   public static class PipelineStatusList extends ResultList<PipelineStatus> {
+    /* Required for serde */
+  }
+
+  public static class PipelineSummaryList extends ResultList<PipelineSummary> {
     /* Required for serde */
   }
 
@@ -316,6 +327,45 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     return create(uriInfo, securityContext, pipeline);
   }
 
+  @PUT
+  @Path("/bulk")
+  @Operation(
+      operationId = "bulkCreateOrUpdatePipelines",
+      summary = "Bulk create or update pipelines",
+      description =
+          "Create or update multiple pipelines in a single operation. "
+              + "Returns a BulkOperationResult with success/failure details for each pipeline.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Bulk operation results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.schema.type.api.BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Bulk operation accepted for async processing",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.schema.type.api.BulkOperationResult.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response bulkCreateOrUpdate(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @DefaultValue("false") @QueryParam("async") boolean async,
+      List<CreatePipeline> createRequests) {
+    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+  }
+
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -434,9 +484,9 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       operationId = "listPipelineStatuses",
       summary = "List pipeline status",
       description =
-          "Get a list of pipeline status."
-              + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
-              + "entries in the list using `limit` and `before` or `after` query params.",
+          "Get a list of pipeline status. Use `limit` and `before` or `after` query params for cursor-based pagination. "
+              + "Filter by execution status using comma-separated values (e.g., 'Failed,Successful'). "
+              + "Search by task name using the `search` parameter.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -465,8 +515,48 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
               schema = @Schema(type = "number"))
           @NotNull
           @QueryParam("endTs")
-          Long endTs) {
-    return repository.getPipelineStatuses(fqn, startTs, endTs);
+          Long endTs,
+      @Parameter(
+              description =
+                  "Limit the number of pipeline statuses returned. If not provided, returns all results.",
+              schema = @Schema(type = "integer"))
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
+          @QueryParam("limit")
+          Integer limitParam,
+      @Parameter(
+              description = "Returns list of pipeline statuses before this cursor (timestamp)",
+              schema = @Schema(type = "string"))
+          @QueryParam("before")
+          String before,
+      @Parameter(
+              description = "Returns list of pipeline statuses after this cursor (timestamp)",
+              schema = @Schema(type = "string"))
+          @QueryParam("after")
+          String after,
+      @Parameter(
+              description =
+                  "Filter by execution status. Supports multiple comma-separated values (e.g., 'Failed,Successful')",
+              schema = @Schema(type = "string", example = "Failed,Successful"))
+          @QueryParam("status")
+          String status,
+      @Parameter(
+              description = "Search pipeline statuses by task name",
+              schema = @Schema(type = "string"))
+          @QueryParam("search")
+          String search,
+      @Parameter(
+              description = "Filter pipeline statuses by minimum duration in milliseconds",
+              schema = @Schema(type = "number"))
+          @QueryParam("minDuration")
+          Long minDuration,
+      @Parameter(
+              description = "Filter pipeline statuses by maximum duration in milliseconds",
+              schema = @Schema(type = "number"))
+          @QueryParam("maxDuration")
+          Long maxDuration) {
+    return repository.getPipelineStatuses(
+        fqn, startTs, endTs, limitParam, before, after, status, search, minDuration, maxDuration);
   }
 
   @DELETE
@@ -589,6 +679,436 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     return repository
         .updateVote(securityContext.getUserPrincipal().getName(), id, request)
         .toResponse();
+  }
+
+  @GET
+  @Path("/summary")
+  @Operation(
+      operationId = "listPipelineSummaries",
+      summary = "List pipeline summaries with impacted assets count",
+      description = "Get a paginated list of pipeline summaries including impacted assets count",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of pipeline summaries",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineSummaryList.class)))
+      })
+  public ResultList<PipelineSummary> listPipelineSummaries(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Fields requested in the returned resource") @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(description = "Filter by service name") @QueryParam("service") String serviceParam,
+      @Parameter(description = "Search pipelines by name or FQN") @QueryParam("search")
+          String searchParam,
+      @Parameter(
+              description = "Filter by execution status (Successful, Failed, Pending, Skipped)",
+              schema = @Schema(type = "string"))
+          @QueryParam("status")
+          String status,
+      @Parameter(
+              description = "Filter by domain ID or fully qualified name",
+              schema = @Schema(type = "string"))
+          @QueryParam("domain")
+          String domain,
+      @Parameter(description = "Filter by owner ID or name", schema = @Schema(type = "string"))
+          @QueryParam("owner")
+          String owner,
+      @Parameter(
+              description = "Filter by tier (e.g., Tier.Tier1)",
+              schema = @Schema(type = "string"))
+          @QueryParam("tier")
+          String tier,
+      @Parameter(
+              description = "Filter results after the given start timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description = "Filter results before the given end timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("endTs")
+          Long endTs,
+      @Parameter(description = "Limit the number of results (1 to 1000, default = 10)")
+          @DefaultValue("10")
+          @Min(value = 1, message = "Limit must be at least 1")
+          @Max(value = 1000, message = "Limit cannot exceed 1000")
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(description = "Returns list before this cursor") @QueryParam("before")
+          String before,
+      @Parameter(description = "Returns list after this cursor") @QueryParam("after") String after,
+      @Parameter(description = "Include all, deleted, or non-deleted entities")
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
+
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    Fields fields = getFields(fieldsParam);
+    ListFilter filter =
+        new ListFilter(include)
+            .addQueryParam("service", serviceParam)
+            .addQueryParam("search", searchParam)
+            .addQueryParam("status", status)
+            .addQueryParam("domain", domain)
+            .addQueryParam("owner", owner)
+            .addQueryParam("tier", tier)
+            .addQueryParam("startTs", startTs != null ? String.valueOf(startTs) : null)
+            .addQueryParam("endTs", endTs != null ? String.valueOf(endTs) : null);
+
+    return repository.listPipelineSummaries(
+        uriInfo, securityContext, fields, filter, limitParam, before, after);
+  }
+
+  @GET
+  @Path("/metrics")
+  @Operation(
+      operationId = "getPipelineMetrics",
+      summary = "Get aggregated pipeline metrics",
+      description =
+          "Get aggregated metrics about pipelines from the database. Optionally filter results using the q parameter.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Pipeline metrics",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineMetrics.class)))
+      })
+  public Response getPipelineMetrics(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Search query to filter the aggregation results",
+              schema = @Schema(type = "String"))
+          @QueryParam("q")
+          String query,
+      @Parameter(description = "Filter by service type", schema = @Schema(type = "string"))
+          @QueryParam("serviceType")
+          String serviceType,
+      @Parameter(description = "Filter by service name", schema = @Schema(type = "string"))
+          @QueryParam("service")
+          String service,
+      @Parameter(
+              description = "Filter by execution status (Successful, Failed, Pending, Skipped)",
+              schema = @Schema(type = "string"))
+          @QueryParam("status")
+          String status,
+      @Parameter(
+              description = "Filter by domain ID or fully qualified name",
+              schema = @Schema(type = "string"))
+          @QueryParam("domain")
+          String domain,
+      @Parameter(description = "Filter by owner ID or name", schema = @Schema(type = "string"))
+          @QueryParam("owner")
+          String owner,
+      @Parameter(
+              description = "Filter by tier (e.g., Tier.Tier1)",
+              schema = @Schema(type = "string"))
+          @QueryParam("tier")
+          String tier,
+      @Parameter(
+              description = "Filter results after the given start timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description = "Filter results before the given end timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("endTs")
+          Long endTs) {
+
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+
+    try {
+      authorizer.authorize(securityContext, operationContext, getResourceContextByName(""));
+      PipelineMetrics metrics =
+          repository.getPipelineMetrics(
+              query, service, serviceType, status, domain, owner, tier, startTs, endTs);
+      return Response.ok(metrics).build();
+    } catch (Exception e) {
+      PipelineMetrics emptyMetrics =
+          new PipelineMetrics()
+              .withTotalPipelines(0)
+              .withDataAvailable(false)
+              .withErrorMessage(e.getMessage());
+      return Response.ok(emptyMetrics).build();
+    }
+  }
+
+  @GET
+  @Path("/name/{fqn}/observability")
+  @Operation(
+      operationId = "getPipelineObservability",
+      summary = "Get pipeline observability data",
+      description = "Get observability data for all tables associated with this pipeline.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Pipeline observability data grouped by tables",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineObservabilityResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Pipeline for instance {fqn} is not found")
+      })
+  public Response getPipelineObservability(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the pipeline",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(
+              description =
+                  "Filter by execution status (Successful, Failed, Running, Pending, Skipped)",
+              schema = @Schema(type = "string"))
+          @QueryParam("status")
+          String status,
+      @Parameter(
+              description = "Filter pipeline observability data after the given start timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description = "Filter pipeline observability data before the given end timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("endTs")
+          Long endTs,
+      @Parameter(description = "Filter by service type", schema = @Schema(type = "string"))
+          @QueryParam("serviceType")
+          String serviceType,
+      @Parameter(description = "Search tables by name or FQN", schema = @Schema(type = "string"))
+          @QueryParam("search")
+          String search,
+      @Parameter(
+              description = "Limit the number of tables returned",
+              schema = @Schema(type = "integer"))
+          @DefaultValue("10")
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "Returns list before this cursor") @QueryParam("before")
+          String before,
+      @Parameter(description = "Returns list after this cursor") @QueryParam("after")
+          String after) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    PipelineObservabilityResponse response =
+        repository.getPipelineObservability(
+            fqn, status, startTs, endTs, serviceType, search, limit, before, after);
+    return Response.ok(response).build();
+  }
+
+  @GET
+  @Path("/executionTrend")
+  @Operation(
+      operationId = "getPipelineExecutionTrend",
+      summary = "Get pipeline execution trend",
+      description =
+          "Get day-wise pipeline execution trend showing succeeded and failed counts from the database.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Pipeline execution trend data",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineExecutionTrendList.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response getPipelineExecutionTrend(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Start timestamp for trend analysis",
+              schema = @Schema(type = "number"),
+              required = true)
+          @QueryParam("startTs")
+          @NotNull
+          Long startTs,
+      @Parameter(
+              description = "End timestamp for trend analysis",
+              schema = @Schema(type = "number"),
+              required = true)
+          @QueryParam("endTs")
+          @NotNull
+          Long endTs,
+      @Parameter(description = "Filter by specific pipeline FQN", schema = @Schema(type = "string"))
+          @QueryParam("pipelineFqn")
+          String pipelineFqn,
+      @Parameter(description = "Filter by service type", schema = @Schema(type = "string"))
+          @QueryParam("serviceType")
+          String serviceType,
+      @Parameter(description = "Filter by service name", schema = @Schema(type = "string"))
+          @QueryParam("service")
+          String service,
+      @Parameter(
+              description = "Filter by execution status (Successful, Failed, Pending, Skipped)",
+              schema = @Schema(type = "string"))
+          @QueryParam("status")
+          String status,
+      @Parameter(
+              description = "Filter by domain ID or fully qualified name",
+              schema = @Schema(type = "string"))
+          @QueryParam("domain")
+          String domain,
+      @Parameter(description = "Filter by owner ID or name", schema = @Schema(type = "string"))
+          @QueryParam("owner")
+          String owner,
+      @Parameter(
+              description = "Filter by tier (e.g., Tier.Tier1)",
+              schema = @Schema(type = "string"))
+          @QueryParam("tier")
+          String tier,
+      @Parameter(
+              description = "Maximum number of trend data points to return",
+              schema = @Schema(type = "integer"))
+          @QueryParam("limit")
+          @DefaultValue("30")
+          Integer limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @QueryParam("offset")
+          Integer offset) {
+
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
+
+    try {
+      PipelineExecutionTrendList trendList =
+          repository.getPipelineExecutionTrend(
+              startTs,
+              endTs,
+              pipelineFqn,
+              service,
+              serviceType,
+              status,
+              domain,
+              owner,
+              tier,
+              limit,
+              offset);
+      return Response.ok(trendList).build();
+    } catch (Exception e) {
+      PipelineExecutionTrendList emptyTrend =
+          new PipelineExecutionTrendList()
+              .withData(new ArrayList<>())
+              .withDataAvailable(false)
+              .withErrorMessage(e.getMessage());
+      return Response.ok(emptyTrend).build();
+    }
+  }
+
+  @GET
+  @Path("/runtimeTrend")
+  @Operation(
+      operationId = "getPipelineRuntimeTrend",
+      summary = "Get pipeline runtime trend",
+      description =
+          "Get day-wise pipeline runtime trend showing max, min, and average runtime from the database.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Pipeline runtime trend data",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineRuntimeTrendList.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response getPipelineRuntimeTrend(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Start timestamp for trend analysis",
+              schema = @Schema(type = "number"),
+              required = true)
+          @QueryParam("startTs")
+          @NotNull
+          Long startTs,
+      @Parameter(
+              description = "End timestamp for trend analysis",
+              schema = @Schema(type = "number"),
+              required = true)
+          @QueryParam("endTs")
+          @NotNull
+          Long endTs,
+      @Parameter(description = "Filter by specific pipeline FQN", schema = @Schema(type = "string"))
+          @QueryParam("pipelineFqn")
+          String pipelineFqn,
+      @Parameter(description = "Filter by service type", schema = @Schema(type = "string"))
+          @QueryParam("serviceType")
+          String serviceType,
+      @Parameter(description = "Filter by service name", schema = @Schema(type = "string"))
+          @QueryParam("service")
+          String service,
+      @Parameter(
+              description = "Filter by execution status (Successful, Failed, Pending, Skipped)",
+              schema = @Schema(type = "string"))
+          @QueryParam("status")
+          String status,
+      @Parameter(
+              description = "Filter by domain ID or fully qualified name",
+              schema = @Schema(type = "string"))
+          @QueryParam("domain")
+          String domain,
+      @Parameter(description = "Filter by owner ID or name", schema = @Schema(type = "string"))
+          @QueryParam("owner")
+          String owner,
+      @Parameter(
+              description = "Filter by tier (e.g., Tier.Tier1)",
+              schema = @Schema(type = "string"))
+          @QueryParam("tier")
+          String tier,
+      @Parameter(
+              description = "Maximum number of trend data points to return",
+              schema = @Schema(type = "integer"))
+          @QueryParam("limit")
+          @DefaultValue("30")
+          Integer limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @QueryParam("offset")
+          Integer offset) {
+
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
+
+    try {
+      PipelineRuntimeTrendList trendList =
+          repository.getPipelineRuntimeTrend(
+              startTs,
+              endTs,
+              pipelineFqn,
+              service,
+              serviceType,
+              status,
+              domain,
+              owner,
+              tier,
+              limit,
+              offset);
+      return Response.ok(trendList).build();
+    } catch (Exception e) {
+      PipelineRuntimeTrendList emptyTrend =
+          new PipelineRuntimeTrendList()
+              .withData(new ArrayList<>())
+              .withDataAvailable(false)
+              .withErrorMessage(e.getMessage());
+      return Response.ok(emptyTrend).build();
+    }
   }
 
   @DELETE

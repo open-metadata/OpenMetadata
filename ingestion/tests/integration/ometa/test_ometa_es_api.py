@@ -11,6 +11,7 @@
 """
 OMeta ES Mixin integration tests. The API needs to be up
 """
+import json
 import logging
 import time
 import uuid
@@ -54,6 +55,8 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 
 from ..integration_base import TIER1_TAG, get_create_entity
+
+FIELDS = "owners,domains"
 
 
 class OMetaESTest(TestCase):
@@ -235,7 +238,7 @@ class OMetaESTest(TestCase):
             entity_type=Table,
             fqn_search_string=fqn_search_string,
             size=100,
-            fields="owners",
+            fields=FIELDS,
         )
 
         # We get the created table back
@@ -253,7 +256,7 @@ class OMetaESTest(TestCase):
             entity_type=Table,
             fqn_search_string=fqn_search_string,
             size=100,
-            fields="owners",
+            fields=FIELDS,
         )
 
         self.assertIsNotNone(res)
@@ -270,7 +273,7 @@ class OMetaESTest(TestCase):
             entity_type=Table,
             fqn_search_string=fqn_search_string,
             size=100,
-            fields="owners",
+            fields=FIELDS,
         )
 
         self.assertIsNotNone(res)
@@ -391,3 +394,127 @@ class OMetaESTest(TestCase):
             self.metadata.paginate_es(entity=Table, query_filter=query_filter, size=2)
         )
         assert len(assets) == 5
+
+    def test_paginate_with_sorting(self):
+        for name in [f"paginating_table_{i}" for i in range(5)]:
+            self.metadata.create_or_update(
+                data=get_create_entity(
+                    entity=Table,
+                    name=EntityName(name),
+                    reference=self.create_schema_entity.fullyQualifiedName,
+                )
+            )
+
+        query_filter_obj = {
+            "query": {
+                "bool": {
+                    "must": [
+                        {
+                            "bool": {
+                                "must": [
+                                    {
+                                        "term": {
+                                            "service.name.keyword": (
+                                                self.service_entity.name.root
+                                            )
+                                        }
+                                    },
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+
+        query_filter = json.dumps(query_filter_obj)
+        # Default sorting with fullyQualifiedName and desc order.
+        assets = list(
+            self.metadata.paginate_es(entity=Table, query_filter=query_filter, size=2)
+        )
+        returned_table_names = [
+            asset.name.root
+            for asset in assets
+            if asset.name.root.startswith("paginating_table_")
+        ]
+        assert returned_table_names == [
+            "paginating_table_4",
+            "paginating_table_3",
+            "paginating_table_2",
+            "paginating_table_1",
+            "paginating_table_0",
+        ]
+
+        # Asc order with fullyQualifiedName
+
+        assets = list(
+            self.metadata.paginate_es(
+                entity=Table, query_filter=query_filter, size=2, sort_order="asc"
+            )
+        )
+        returned_table_names = [
+            asset.name.root
+            for asset in assets
+            if asset.name.root.startswith("paginating_table_")
+        ]
+        assert returned_table_names == [
+            "paginating_table_0",
+            "paginating_table_1",
+            "paginating_table_2",
+            "paginating_table_3",
+            "paginating_table_4",
+        ]
+
+        # Sorting by _score should be supported without deserialization
+        # errors. This tests the fix for the _score bug where ES returns
+        # [float_score, fqn_value] instead of [fqn_value], which caused
+        # the HitsModel.sort field to fail validation.
+        # Note: With a term filter (not a search query), all items have
+        # the same _score, so we verify the operation succeeds and returns
+        # all items, not score ordering.
+        assets = list(
+            self.metadata.paginate_es(
+                entity=Table, query_filter=query_filter, size=2, sort_field="_score"
+            )
+        )
+        returned_table_names = [
+            asset.name.root
+            for asset in assets
+            if asset.name.root.startswith("paginating_table_")
+        ]
+        # Verify all 5 tables are returned (operation didn't crash)
+        assert len(returned_table_names) == 5
+
+    def test_paginate_invalid_sort_order(self):
+        """Test that invalid sort_order raises ValueError"""
+        query_filter_obj = {
+            "query": {
+                "bool": {
+                    "must": [
+                        {
+                            "bool": {
+                                "must": [
+                                    {
+                                        "term": {
+                                            "service.name.keyword": (
+                                                self.service_entity.name.root
+                                            )
+                                        }
+                                    },
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+        query_filter = json.dumps(query_filter_obj)
+
+        with pytest.raises(ValueError, match="sort_order must be 'asc' or 'desc'"):
+            list(
+                self.metadata.paginate_es(
+                    entity=Table,
+                    query_filter=query_filter,
+                    sort_order="invalid",
+                )
+            )

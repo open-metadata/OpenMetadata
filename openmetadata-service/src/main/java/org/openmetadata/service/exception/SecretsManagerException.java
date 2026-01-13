@@ -27,7 +27,11 @@ public class SecretsManagerException extends WebServiceException {
   }
 
   public SecretsManagerException(Response.Status status, String message) {
-    super(status.getStatusCode(), SECRETS_MANAGER_ERROR, message);
+    super(Response.Status.fromStatusCode(status.getStatusCode()), SECRETS_MANAGER_ERROR, message);
+  }
+
+  public SecretsManagerException(String message, Throwable cause) {
+    super(Response.Status.INTERNAL_SERVER_ERROR, SECRETS_MANAGER_ERROR, message, cause);
   }
 
   public static SecretsManagerException byMessage(

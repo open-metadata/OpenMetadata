@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,24 +15,27 @@
  */
 export interface Domain {
     /**
-     * Previous Domain.
+     * Previous Domains.
      */
-    previousDomain?: EntityReference;
+    previousDomains?: EntityReference[];
     /**
-     * Updated Domain.
+     * Updated Domains.
      */
-    updatedDomain?: EntityReference;
+    updatedDomains?: EntityReference[];
 }
 
 /**
- * Previous Domain.
+ * Previous Domains.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Updated Domain.
  */
 export interface EntityReference {
     /**

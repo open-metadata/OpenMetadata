@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { Query } from '../../../../generated/entity/data/query';
 import { User } from '../../../../generated/entity/teams/user';
 import { MOCK_QUERIES } from '../../../../mocks/Queries.mock';
@@ -49,6 +48,12 @@ jest.mock('../../../../rest/queryAPI', () => ({
 jest.mock('../../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockImplementation(() => ({ fqn: 'testFqn' })),
 }));
+
+jest.mock('react-router-dom', () => {
+  return {
+    useNavigate: jest.fn().mockReturnValue(jest.fn()),
+  };
+});
 
 describe('QueryCardExtraOption component test', () => {
   it('Component should render', async () => {

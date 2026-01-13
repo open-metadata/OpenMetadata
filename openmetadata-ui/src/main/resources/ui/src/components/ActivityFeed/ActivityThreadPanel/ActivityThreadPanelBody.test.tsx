@@ -12,7 +12,6 @@
  */
 
 import { findByTestId, findByText, render } from '@testing-library/react';
-import React from 'react';
 import ReactDOM from 'react-dom';
 import { MemoryRouter } from 'react-router-dom';
 import { ThreadType } from '../../../generated/entity/feed/thread';
@@ -48,7 +47,6 @@ jest.mock('./ActivityThreadList', () => {
 
 describe('Test ActivityThreadPanelBodyBody Component', () => {
   beforeAll(() => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     ReactDOM.createPortal = jest.fn().mockImplementation((element, _node) => {
       return element;
     });

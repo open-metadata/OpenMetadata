@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
 import { getDataModelColumnsByFQN } from '../../../../rest/dataModelsAPI';
 import { getTableColumnsByFQN } from '../../../../rest/tableAPI';

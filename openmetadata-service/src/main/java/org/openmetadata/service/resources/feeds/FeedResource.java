@@ -61,6 +61,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.ThreadType;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.FeedFilter;
 import org.openmetadata.service.jdbi3.FeedRepository;
@@ -75,7 +76,6 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.ThreadResourceContext;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
-import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/feed")
 @Tag(

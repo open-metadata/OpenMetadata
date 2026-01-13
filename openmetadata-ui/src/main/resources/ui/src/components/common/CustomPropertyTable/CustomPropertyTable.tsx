@@ -15,19 +15,12 @@ import { Col, Divider, Row, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, startCase } from 'lodash';
-import React, {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as CustomPropertyEmpty } from '../../../assets/svg/custom-property-empty.svg';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
@@ -55,14 +48,12 @@ import { PropertyValue } from './PropertyValue';
 export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   entityType,
   hasEditAccess,
-  className,
   isVersionView,
   hasPermission,
   maxDataCap,
   isRenderedInRightPanel = false,
 }: CustomPropertyProps<T>) => {
   const { t } = useTranslation();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const {
     data: entityDetails,
     onUpdate,
@@ -179,26 +170,10 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   const initCustomPropertyTable = useCallback(async () => {
     setEntityTypeDetailLoading(true);
     try {
-      const permission = await getEntityPermissionByFqn(
-        ResourceEntity.TYPE,
-        entityType
-      );
-
-      if (permission?.ViewAll || permission?.ViewBasic) {
-        try {
-          const res = await getTypeByFQN(entityType);
-
-          setEntityTypeDetail(res);
-        } catch (error) {
-          showErrorToast(error as AxiosError);
-        }
-      }
-    } catch {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: t('label.resource-permission-lowercase'),
-        })
-      );
+      const res = await getTypeByFQN(entityType);
+      setEntityTypeDetail(res);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
     } finally {
       setEntityTypeDetailLoading(false);
     }
@@ -218,9 +193,9 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
   if (!hasPermission) {
     return (
-      <div className="flex-center">
+      <div className="items-center d-block align-items-center text-center">
         <ErrorPlaceHolder
-          className="border-none"
+          className="border-none p-lg"
           permissionValue={t('label.view-entity', {
             entity: t('label.custom-property-plural'),
           })}
@@ -237,27 +212,28 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     !isRenderedInRightPanel
   ) {
     return (
-      <div className="h-full p-x-lg flex-center border-default border-radius-sm">
+      <div className="h-full flex-center border-default border-radius-sm">
         <ErrorPlaceHolder
-          className={classNames(className)}
-          placeholderText={
-            <Transi18next
-              i18nKey="message.no-custom-properties-entity"
-              renderElement={
-                <a
-                  href={CUSTOM_PROPERTIES_DOCS}
-                  rel="noreferrer"
-                  target="_blank"
-                  title="Custom properties documentation"
-                />
-              }
-              values={{
-                docs: t('label.doc-plural-lowercase'),
-                entity: startCase(entityType),
-              }}
-            />
-          }
-        />
+          className="border-none"
+          contentMaxWidth="24rem"
+          icon={<CustomPropertyEmpty />}
+          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}>
+          <Transi18next
+            i18nKey="message.no-custom-properties-entity"
+            renderElement={
+              <a
+                href={CUSTOM_PROPERTIES_DOCS}
+                rel="noreferrer"
+                target="_blank"
+                title="Custom properties documentation"
+              />
+            }
+            values={{
+              docs: t('label.doc-plural-lowercase'),
+              entity: startCase(entityType),
+            }}
+          />
+        </ErrorPlaceHolder>
       </div>
     );
   }
@@ -314,8 +290,12 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     );
   }
 
-  return !isEmpty(entityTypeDetail.customProperties) ? (
-    <div className="h-full custom-properties-card">
+  if (isEmpty(entityTypeDetail.customProperties)) {
+    return null;
+  }
+
+  return (
+    <div className="custom-properties-card">
       <Row data-testid="custom-properties-card" gutter={[16, 16]}>
         {dataSourceColumns.map((columns, colIndex) => (
           <Col key={colIndex} span={8}>
@@ -336,5 +316,5 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
         ))}
       </Row>
     </div>
-  ) : null;
+  );
 };

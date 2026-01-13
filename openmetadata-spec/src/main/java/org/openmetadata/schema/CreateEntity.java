@@ -42,7 +42,7 @@ public interface CreateEntity {
     return null;
   }
 
-  default String getDomain() {
+  default List<String> getDomains() {
     return null;
   }
 
@@ -62,6 +62,10 @@ public interface CreateEntity {
 
   default void setOwners(List<EntityReference> owners) {}
 
+  default void setDomains(List<String> domains) {}
+
+  default void setDataProducts(List<String> dataProducts) {}
+
   default void setTags(List<TagLabel> tags) {
     /* no-op implementation to be overridden */
   }
@@ -69,10 +73,6 @@ public interface CreateEntity {
   default void setReviewers(List<EntityReference> reviewers) {}
 
   default <K extends CreateEntity> K withExtension(Object extension) {
-    return (K) this;
-  }
-
-  default <K extends CreateEntity> K withDomain(String domain) {
     return (K) this;
   }
 

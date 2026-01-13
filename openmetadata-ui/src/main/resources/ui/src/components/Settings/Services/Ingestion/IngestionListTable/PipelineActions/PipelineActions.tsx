@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { Button, Col, Row, Tooltip } from 'antd';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as LogsIcon } from '../../../../../../assets/svg/logs.svg';
 import { ReactComponent as PauseIcon } from '../../../../../../assets/svg/pause.svg';
 import { ReactComponent as ResumeIcon } from '../../../../../../assets/svg/resume.svg';
@@ -40,7 +40,7 @@ function PipelineActions({
   handleEditClick,
   moreActionButtonProps,
 }: Readonly<PipelineActionsProps>) {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [currPauseId, setCurrPauseId] = useState({ id: '', state: '' });
 
@@ -79,7 +79,7 @@ function PipelineActions({
 
   const handleLogsClick = useCallback(
     () =>
-      history.push(
+      navigate(
         getLogsViewerPath(
           pipeline.pipelineType === PipelineType.TestSuite
             ? EntityType.TEST_SUITE

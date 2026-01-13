@@ -1,0 +1,7 @@
+{
+  "$id": "DataContractValidationApplication.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Data Contract Validation Application",
+  "description": "The Data Contract Validation application is designed to validate data contracts and ensure compliance with your standards. It ensures schemas, semantics, and data quality are maintained across your data assets.",
+  "additionalProperties": false
+}

@@ -90,6 +90,7 @@ export enum EntityField {
   EXPERTS = 'experts',
   FIELDS = 'fields',
   PARAMETER_VALUES = 'parameterValues',
+  DATA_TYPE_DISPLAY = 'dataTypeDisplay',
 }
 
 export const ANNOUNCEMENT_BG = '#FFFDF8';

@@ -10,11 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { createMemoryHistory } from 'history';
-import React from 'react';
-import { MemoryRouter, Router } from 'react-router-dom';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import {
   AlertType,
   Destination,
@@ -41,7 +38,6 @@ jest.mock('../../../PageHeader/PageHeader.component', () =>
 );
 
 const mockDelete = jest.fn();
-const mockPush = jest.fn();
 
 const mockProps1 = {
   alerts: {
@@ -115,25 +111,19 @@ describe('AlertDetailsComponent', () => {
   });
 
   it('should call action handlers on click of buttons', () => {
-    const history = createMemoryHistory();
-
-    history.push = mockPush;
-
-    render(
-      <Router history={history}>
-        <AlertDetailsComponent {...mockProps1} />
-      </Router>
-    );
+    render(<AlertDetailsComponent {...mockProps1} />, {
+      wrapper: MemoryRouter,
+    });
 
     const editButton = screen.getByRole('button', { name: 'label.edit' });
     const deleteButton = screen.getByRole('button', { name: 'label.delete' });
 
-    userEvent.click(deleteButton);
+    fireEvent.click(deleteButton);
 
     expect(mockDelete).toHaveBeenCalled();
 
-    userEvent.click(editButton);
+    const editLink = editButton.closest('a');
 
-    expect(mockPush).toHaveBeenCalledWith('Edit Alert Link/alertId');
+    expect(editLink).toHaveAttribute('href', '/Edit Alert Link/alertId');
   });
 });

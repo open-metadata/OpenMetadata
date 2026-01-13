@@ -48,6 +48,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.customProperties.EnumConfig;
 import org.openmetadata.schema.type.customProperties.TableConfig;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -55,7 +56,6 @@ import org.openmetadata.service.jobs.EnumCleanupHandler;
 import org.openmetadata.service.resources.types.TypeResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 
 @Slf4j
@@ -118,7 +118,8 @@ public class TypeRepository extends EntityRepository<Type> {
   }
 
   @Override
-  protected void postDelete(Type entity) {
+  protected void postDelete(Type entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
     TypeRegistry.instance().removeType(entity.getName());
   }
 
@@ -131,6 +132,8 @@ public class TypeRepository extends EntityRepository<Type> {
   @Override
   public void postUpdate(Type original, Type updated) {
     super.postUpdate(original, updated);
+    // Refresh TypeRegistry to ensure custom property changes are reflected
+    updateTypeMap(updated);
   }
 
   public PutResponse<Type> addCustomProperty(
@@ -384,6 +387,9 @@ public class TypeRepository extends EntityRepository<Type> {
               Relationship.HAS.ordinal());
       // Delete all the data stored in the entity extension for the custom property
       daoCollection.entityExtensionDAO().deleteExtension(customPropertyFQN);
+
+      // Remove from TypeRegistry cache
+      TypeRegistry.instance().removeCustomProperty(updated.getName(), property.getName());
     }
 
     private void updateCustomPropertyDescription(

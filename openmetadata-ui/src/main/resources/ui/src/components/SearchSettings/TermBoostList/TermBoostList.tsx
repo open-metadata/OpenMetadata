@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import classNames from 'classnames';
-import React from 'react';
 import { TermBoost } from '../../../generated/configuration/searchSettings';
 import TermBoostComponent from '../TermBoost/TermBoost';
 import './term-boost-list.less';

@@ -15,42 +15,17 @@ import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import Qs from 'qs';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconSuggestionsBlue } from '../../assets/svg/ic-suggestions-blue.svg';
 import { PAGE_SIZE_BASE } from '../../constants/constants';
 import {
-  APICollectionSource,
-  APIEndpointSource,
-  ChartSource,
-  DashboardSource,
-  DatabaseSchemaSource,
-  DatabaseSource,
-  DataProductSource,
-  GlossarySource,
-  MetricSource,
-  MlModelSource,
   Option,
-  PipelineSource,
-  SearchIndexSource,
   SearchSuggestions,
-  TableSource,
-  TagSource,
-  TopicSource,
+  SuggestionsObject,
 } from '../../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { SearchIndex } from '../../enums/search.enum';
-import {
-  ContainerSearchSource,
-  DashboardDataModelSearchSource,
-  StoredProcedureSearchSource,
-} from '../../interface/search.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import { Transi18next } from '../../utils/CommonUtils';
 import searchClassBase from '../../utils/SearchClassBase';
@@ -59,8 +34,10 @@ import {
   getGroupLabel,
   getSuggestionElement,
 } from '../../utils/SearchUtils';
+import { escapeESReservedCharacters } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
+import './suggestions.less';
 
 type SuggestionProp = {
   searchText: string;
@@ -82,105 +59,124 @@ const Suggestions = ({
   const { isTourOpen } = useTourProvider();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [options, setOptions] = useState<Array<Option>>([]);
-  const [tableSuggestions, setTableSuggestions] = useState<TableSource[]>([]);
-  const [topicSuggestions, setTopicSuggestions] = useState<TopicSource[]>([]);
-  const [dashboardSuggestions, setDashboardSuggestions] = useState<
-    DashboardSource[]
-  >([]);
+  const [suggestions, setSuggestions] = useState<SuggestionsObject>({
+    tableSuggestions: [],
+    topicSuggestions: [],
+    dashboardSuggestions: [],
+    pipelineSuggestions: [],
+    mlModelSuggestions: [],
+    containerSuggestions: [],
+    glossaryTermSuggestions: [],
+    databaseSuggestions: [],
+    databaseSchemaSuggestions: [],
+    searchIndexSuggestions: [],
+    tagSuggestions: [],
+    storedProcedureSuggestions: [],
+    dataModelSuggestions: [],
+    dataProductSuggestions: [],
+    chartSuggestions: [],
+    apiEndpointSuggestions: [],
+    apiCollectionSuggestions: [],
+    metricSuggestions: [],
+    directorySuggestions: [],
+    fileSuggestions: [],
+    spreadsheetSuggestions: [],
+    worksheetSuggestions: [],
+  });
 
-  const [pipelineSuggestions, setPipelineSuggestions] = useState<
-    PipelineSource[]
-  >([]);
-  const [mlModelSuggestions, setMlModelSuggestions] = useState<MlModelSource[]>(
-    []
-  );
-  const [containerSuggestions, setContainerSuggestions] = useState<
-    ContainerSearchSource[]
-  >([]);
-  const [glossaryTermSuggestions, setGlossaryTermSuggestions] = useState<
-    GlossarySource[]
-  >([]);
-  const [databaseSuggestions, setDatabaseSuggestions] = useState<
-    DatabaseSource[]
-  >([]);
-  const [databaseSchemaSuggestions, setDatabaseSchemaSuggestions] = useState<
-    DatabaseSchemaSource[]
-  >([]);
-  const [searchIndexSuggestions, setSearchIndexSuggestions] = useState<
-    SearchIndexSource[]
-  >([]);
-  const [tagSuggestions, setTagSuggestions] = useState<TagSource[]>([]);
-
-  const [storedProcedureSuggestions, setStoredProcedureSuggestions] = useState<
-    StoredProcedureSearchSource[]
-  >([]);
-
-  const [dataModelSuggestions, setDataModelSuggestions] = useState<
-    DashboardDataModelSearchSource[]
-  >([]);
-  const [dataProductSuggestions, setDataProductSuggestions] = useState<
-    DataProductSource[]
-  >([]);
-
-  const [chartSuggestions, setChartSuggestions] = useState<ChartSource[]>([]);
-
-  const [apiCollectionSuggestions, setApiCollectionSuggestions] = useState<
-    APICollectionSource[]
-  >([]);
-
-  const [apiEndpointSuggestions, setApiEndpointSuggestions] = useState<
-    APIEndpointSource[]
-  >([]);
-  const [metricSuggestions, setMetricSuggestions] = useState<MetricSource[]>(
-    []
-  );
+  const {
+    tableSuggestions,
+    topicSuggestions,
+    dashboardSuggestions,
+    pipelineSuggestions,
+    mlModelSuggestions,
+    containerSuggestions,
+    glossaryTermSuggestions,
+    databaseSuggestions,
+    databaseSchemaSuggestions,
+    searchIndexSuggestions,
+    tagSuggestions,
+    storedProcedureSuggestions,
+    dataModelSuggestions,
+    dataProductSuggestions,
+    chartSuggestions,
+    apiEndpointSuggestions,
+    apiCollectionSuggestions,
+    metricSuggestions,
+  } = suggestions;
 
   const isMounting = useRef(true);
 
   const updateSuggestions = (options: Array<Option>) => {
-    setTableSuggestions(filterOptionsByIndex(options, SearchIndex.TABLE));
-    setTopicSuggestions(filterOptionsByIndex(options, SearchIndex.TOPIC));
-    setDashboardSuggestions(
-      filterOptionsByIndex(options, SearchIndex.DASHBOARD)
-    );
-    setPipelineSuggestions(filterOptionsByIndex(options, SearchIndex.PIPELINE));
-    setMlModelSuggestions(filterOptionsByIndex(options, SearchIndex.MLMODEL));
-    setContainerSuggestions(
-      filterOptionsByIndex(options, SearchIndex.CONTAINER)
-    );
-    setSearchIndexSuggestions(
-      filterOptionsByIndex(options, SearchIndex.SEARCH_INDEX)
-    );
-    setStoredProcedureSuggestions(
-      filterOptionsByIndex(options, SearchIndex.STORED_PROCEDURE)
-    );
-    setDataModelSuggestions(
-      filterOptionsByIndex(options, SearchIndex.DASHBOARD_DATA_MODEL)
-    );
-    setGlossaryTermSuggestions(
-      filterOptionsByIndex(options, SearchIndex.GLOSSARY_TERM)
-    );
-    setTagSuggestions(filterOptionsByIndex(options, SearchIndex.TAG));
-    setDataProductSuggestions(
-      filterOptionsByIndex(options, SearchIndex.DATA_PRODUCT)
-    );
-    setDatabaseSuggestions(filterOptionsByIndex(options, SearchIndex.DATABASE));
-    setDatabaseSchemaSuggestions(
-      filterOptionsByIndex(options, SearchIndex.DATABASE_SCHEMA)
-    );
-
-    setChartSuggestions(filterOptionsByIndex(options, SearchIndex.CHART));
-
-    setApiCollectionSuggestions(
-      filterOptionsByIndex(options, SearchIndex.API_COLLECTION_INDEX)
-    );
-
-    setApiEndpointSuggestions(
-      filterOptionsByIndex(options, SearchIndex.API_ENDPOINT_INDEX)
-    );
-    setMetricSuggestions(
-      filterOptionsByIndex(options, SearchIndex.METRIC_SEARCH_INDEX)
-    );
+    setSuggestions(() => ({
+      tableSuggestions: filterOptionsByIndex(options, SearchIndex.TABLE),
+      topicSuggestions: filterOptionsByIndex(options, SearchIndex.TOPIC),
+      dashboardSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.DASHBOARD
+      ),
+      pipelineSuggestions: filterOptionsByIndex(options, SearchIndex.PIPELINE),
+      mlModelSuggestions: filterOptionsByIndex(options, SearchIndex.MLMODEL),
+      containerSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.CONTAINER
+      ),
+      glossaryTermSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.GLOSSARY_TERM
+      ),
+      databaseSuggestions: filterOptionsByIndex(options, SearchIndex.DATABASE),
+      databaseSchemaSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.DATABASE_SCHEMA
+      ),
+      searchIndexSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.SEARCH_INDEX
+      ),
+      tagSuggestions: filterOptionsByIndex(options, SearchIndex.TAG),
+      storedProcedureSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.STORED_PROCEDURE
+      ),
+      dataModelSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.DASHBOARD_DATA_MODEL
+      ),
+      dataProductSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.DATA_PRODUCT
+      ),
+      chartSuggestions: filterOptionsByIndex(options, SearchIndex.CHART),
+      apiEndpointSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.API_ENDPOINT_INDEX
+      ),
+      apiCollectionSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.API_COLLECTION_INDEX
+      ),
+      metricSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.METRIC_SEARCH_INDEX
+      ),
+      directorySuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.DIRECTORY_SEARCH_INDEX
+      ),
+      fileSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.FILE_SEARCH_INDEX
+      ),
+      spreadsheetSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.SPREADSHEET_SEARCH_INDEX
+      ),
+      worksheetSuggestions: filterOptionsByIndex(
+        options,
+        SearchIndex.WORKSHEET_SEARCH_INDEX
+      ),
+    }));
   };
 
   const quickFilter = useMemo(() => {
@@ -215,7 +211,10 @@ const Suggestions = ({
 
   const getEntitiesSuggestions = () => {
     return (
-      <div data-testid="global-search-suggestion-box" role="none">
+      <div
+        className="global-search-suggestion-box"
+        data-testid="global-search-suggestion-box"
+        role="none">
         {[
           { suggestions: tableSuggestions, searchIndex: SearchIndex.TABLE },
           { suggestions: topicSuggestions, searchIndex: SearchIndex.TOPIC },
@@ -277,6 +276,22 @@ const Suggestions = ({
             suggestions: metricSuggestions,
             searchIndex: SearchIndex.METRIC_SEARCH_INDEX,
           },
+          {
+            suggestions: suggestions.directorySuggestions,
+            searchIndex: SearchIndex.DIRECTORY_SEARCH_INDEX,
+          },
+          {
+            suggestions: suggestions.fileSuggestions,
+            searchIndex: SearchIndex.FILE_SEARCH_INDEX,
+          },
+          {
+            suggestions: suggestions.spreadsheetSuggestions,
+            searchIndex: SearchIndex.SPREADSHEET_SEARCH_INDEX,
+          },
+          {
+            suggestions: suggestions.worksheetSuggestions,
+            searchIndex: SearchIndex.WORKSHEET_SEARCH_INDEX,
+          },
           ...searchClassBase.getEntitiesSuggestions(options ?? []),
         ].map(({ suggestions, searchIndex }) =>
           getSuggestionsForIndex(suggestions, searchIndex)
@@ -294,10 +309,11 @@ const Suggestions = ({
       setIsLoading(true);
 
       const res = await searchQuery({
-        query: searchText,
+        query: escapeESReservedCharacters(searchText),
         searchIndex: searchCriteria ?? SearchIndex.DATA_ASSET,
         queryFilter: quickFilter,
         pageSize: PAGE_SIZE_BASE,
+        includeDeleted: false,
       });
 
       setOptions(res.hits.hits as unknown as Option[]);

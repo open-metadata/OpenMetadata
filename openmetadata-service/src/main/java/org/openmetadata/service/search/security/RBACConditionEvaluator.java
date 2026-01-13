@@ -1,5 +1,7 @@
 package org.openmetadata.service.search.security;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.*;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.User;
@@ -214,6 +216,7 @@ public class RBACConditionEvaluator {
       }
       case "isOwner" -> isOwner((User) spelContext.lookupVariable("user"), collector);
       case "noOwner" -> noOwner(collector);
+      case "isReviewer" -> isReviewer((User) spelContext.lookupVariable("user"), collector);
       case "hasAnyRole" -> {
         List<String> roles = extractMethodArguments(methodRef);
         hasAnyRole(roles, collector);
@@ -304,15 +307,31 @@ public class RBACConditionEvaluator {
     collector.addMustNot(existsQuery); // Wrap existsQuery in a List
   }
 
-  public void hasAnyRole(List<String> roles, ConditionCollector collector) {
-    User user = (User) spelContext.lookupVariable("user");
-    if (user.getRoles() == null || user.getRoles().isEmpty()) {
-      collector.setMatchNothing(true);
-      return;
+  public void isReviewer(User user, ConditionCollector collector) {
+    List<OMQueryBuilder> reviewerQueries = new ArrayList<>();
+    // Reviewer is the user
+    reviewerQueries.add(queryBuilderFactory.termQuery("reviewers.id", user.getId().toString()));
+
+    // Reviewer could also be any of the user's teams
+    if (user.getTeams() != null) {
+      for (EntityReference team : user.getTeams()) {
+        reviewerQueries.add(queryBuilderFactory.termQuery("reviewers.id", team.getId().toString()));
+      }
     }
 
-    List<String> userRoleNames = user.getRoles().stream().map(EntityReference::getName).toList();
-    boolean hasRole = userRoleNames.stream().anyMatch(roles::contains);
+    OMQueryBuilder reviewerQuery;
+    if (reviewerQueries.size() == 1) {
+      reviewerQuery = reviewerQueries.get(0);
+    } else {
+      reviewerQuery = queryBuilderFactory.boolQuery().should(reviewerQueries);
+    }
+
+    collector.addMust(reviewerQuery);
+  }
+
+  public void hasAnyRole(List<String> roles, ConditionCollector collector) {
+    User user = (User) spelContext.lookupVariable("user");
+    boolean hasRole = roles.stream().anyMatch(role -> SubjectContext.hasRole(user, role));
 
     if (hasRole) {
       collector.addMust(queryBuilderFactory.matchAllQuery());
@@ -323,13 +342,15 @@ public class RBACConditionEvaluator {
 
   public void hasDomain(ConditionCollector collector) {
     User user = (User) spelContext.lookupVariable("user");
-    if (user.getDomain() == null) {
-      OMQueryBuilder existsQuery = queryBuilderFactory.existsQuery("domain.id");
+    if (user == null || nullOrEmpty(user.getDomains())) {
+      OMQueryBuilder existsQuery = queryBuilderFactory.existsQuery("domains.id");
       collector.addMustNot(existsQuery); // Wrap existsQuery in a List
     } else {
-      String userDomainId = user.getDomain().getId().toString();
-      OMQueryBuilder domainQuery = queryBuilderFactory.termQuery("domain.id", userDomainId);
-      collector.addMust(domainQuery);
+      for (EntityReference domain : user.getDomains()) {
+        String domainId = domain.getId().toString();
+        OMQueryBuilder domainQuery = queryBuilderFactory.termQuery("domains.id", domainId);
+        collector.addMust(domainQuery);
+      }
     }
   }
 
@@ -339,8 +360,15 @@ public class RBACConditionEvaluator {
       collector.setMatchNothing(true);
       return;
     }
-    List<String> userTeamNames = user.getTeams().stream().map(EntityReference::getName).toList();
-    boolean inTeam = userTeamNames.stream().anyMatch(teamNames::contains);
+    boolean inTeam =
+        teamNames.stream()
+            .anyMatch(
+                teamName ->
+                    user.getTeams().stream()
+                        .anyMatch(
+                            userTeam ->
+                                userTeam.getName().equals(teamName)
+                                    || SubjectContext.isInTeam(teamName, userTeam)));
     if (inTeam) {
       collector.addMust(queryBuilderFactory.matchAllQuery());
     } else {

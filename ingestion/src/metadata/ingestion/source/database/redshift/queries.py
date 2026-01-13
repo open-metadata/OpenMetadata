@@ -13,13 +13,8 @@ SQL Queries used during ingestion
 """
 
 import textwrap
-from typing import List
 
-from sqlalchemy import text
-from sqlalchemy.orm.session import Session
-
-from metadata.utils.profiler_utils import QueryResult
-from metadata.utils.time_utils import datetime_to_timestamp
+from metadata.ingestion.source.database.redshift.models import RedshiftInstanceType
 
 # Not able to use SYS_QUERY_HISTORY here. Few users not getting any results
 REDSHIFT_SQL_STATEMENT = textwrap.dedent(
@@ -34,7 +29,6 @@ REDSHIFT_SQL_STATEMENT = textwrap.dedent(
           AND label NOT IN ('maintenance', 'metrics', 'health')
           AND querytxt NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
           AND querytxt NOT LIKE '/* {{"app": "dbt", %%}} */%%'
-          AND userid <> 1
           AND aborted = 0
           AND starttime >= '{start_time}'
           AND starttime < '{end_time}'
@@ -53,7 +47,7 @@ REDSHIFT_SQL_STATEMENT = textwrap.dedent(
           LISTAGG(CASE WHEN LEN(RTRIM(text)) = 0 THEN text ELSE RTRIM(text) END, '')
             WITHIN GROUP (ORDER BY sequence) AS query_text
       FROM deduped_querytext
-      WHERE sequence < 327	-- each chunk contains up to 200, RS has a maximum str length of 65535.
+      WHERE sequence < 327  -- each chunk contains up to 200, RS has a maximum str length of 65535.
     GROUP BY query
   ),
   raw_scans AS (
@@ -62,11 +56,11 @@ REDSHIFT_SQL_STATEMENT = textwrap.dedent(
       FROM pg_catalog.stl_scan
   ),
   scans AS (
-  	SELECT DISTINCT
-  		query,
-  		sti.database AS database_name,
+    SELECT DISTINCT
+      query,
+      sti.database AS database_name,
       sti.schema AS schema_name
-  	  FROM raw_scans AS s
+      FROM raw_scans AS s
           INNER JOIN pg_catalog.svv_table_info AS sti
             ON (s.tbl)::oid = sti.table_id
   )
@@ -93,6 +87,75 @@ REDSHIFT_SQL_STATEMENT = textwrap.dedent(
 )
 
 
+REDSHIFT_SERVERLESS_SQL_STATEMENT = textwrap.dedent(
+    """
+WITH queries AS (
+    SELECT *
+    FROM SYS_QUERY_HISTORY
+    WHERE user_id > 1
+        {filters}
+        -- Filter out all automated & cursor queries
+        AND LOWER(query_label) NOT IN ('maintenance', 'metrics', 'health')
+        AND query_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+        AND query_text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+        AND LOWER(status) = 'success'
+        AND start_time >= '{start_time}'
+        AND start_time < '{end_time}'
+),
+deduped_querytext AS (
+    -- Sometimes rows are duplicated, causing LISTAGG to fail in the full_queries CTE.
+    SELECT DISTINCT
+        qt.*
+    FROM SYS_QUERY_TEXT AS qt
+        INNER JOIN queries AS q
+            ON qt.query_id = q.query_id
+),
+full_queries AS (
+    SELECT
+        query_id,
+        LISTAGG(CASE WHEN LEN(RTRIM(text)) = 0 THEN text ELSE RTRIM(text) END, '')
+            WITHIN GROUP (ORDER BY sequence) AS query_text
+    FROM deduped_querytext
+    WHERE sequence < 327  -- each chunk contains up to 200, RS has a maximum str length of 65535.
+    GROUP BY query_id
+),
+query_detail AS (
+    SELECT DISTINCT
+        query_id,
+        COALESCE(SPLIT_PART(table_name, '.', 1), 'unknown') AS database_name,
+        COALESCE(SPLIT_PART(table_name, '.', 2), 'unknown') AS schema_name,
+        COALESCE(SPLIT_PART(table_name, '.', 3), table_name) AS table_name
+    FROM SYS_QUERY_DETAIL
+    WHERE LOWER(step_name) IN ('insert', 'merge', 'delete')
+        AND table_name <> ''
+)
+SELECT DISTINCT
+    q.user_id,
+    q.query_id,
+    RTRIM(u.usename) AS user_name,
+    fq.query_text,
+    qd.database_name,
+    qd.schema_name,
+    q.start_time AS start_time,
+    q.end_time AS end_time,
+    datediff(millisecond, q.start_time, q.end_time) AS duration,
+    q.status,
+    q.query_type
+FROM queries AS q
+    -- instances where query_detail has no entries of step 'insert', 'merge' or 'delete'
+    -- means no table was affected so perform inner join to filter those out
+    INNER JOIN query_detail AS qd
+        ON q.query_id = qd.query_id
+    INNER JOIN full_queries AS fq
+        ON q.query_id = fq.query_id
+    INNER JOIN pg_catalog.pg_user AS u
+        ON q.user_id = u.usesysid
+ORDER BY q.start_time DESC
+LIMIT {result_limit}
+"""
+)
+
+
 REDSHIFT_GET_ALL_RELATION_INFO = textwrap.dedent(
     """
     SELECT
@@ -100,7 +163,7 @@ REDSHIFT_GET_ALL_RELATION_INFO = textwrap.dedent(
       c.relkind
     FROM pg_catalog.pg_class c
     LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-    WHERE c.relkind = 'r'
+    WHERE (c.relkind IN ('r', 'S', 'f') {view_filter})
       AND n.nspname = :schema
     UNION
     SELECT
@@ -234,15 +297,59 @@ SELECT datname FROM pg_database
 """
 
 REDSHIFT_TEST_GET_QUERIES = """
-SELECT 
-    has_table_privilege('svv_table_info', 'SELECT') as can_access_svv_table_info,
-    has_table_privilege('stl_querytext', 'SELECT') as can_access_stl_querytext,
-    has_table_privilege('stl_query', 'SELECT') as can_access_stl_query;
+SELECT
+    has_table_privilege('SVV_TABLE_INFO', 'SELECT') as can_access_svv_table_info,
+    has_table_privilege('STL_QUERY', 'SELECT') as can_access_stl_query,
+    has_table_privilege('STL_QUERYTEXT', 'SELECT') as can_access_stl_querytext,
+    has_table_privilege('STL_SCAN', 'SELECT') as can_access_stl_scan,
+    has_table_privilege('SVL_STORED_PROC_CALL', 'SELECT') as can_access_stl_stored_proc_call,
+    has_table_privilege('STL_INSERT', 'SELECT') as can_access_stl_insert,
+    has_table_privilege('STL_DELETE', 'SELECT') as can_access_stl_delete;
+"""
+
+REDSHIFT_SERVERLESS_TEST_GET_QUERIES = """
+SELECT
+    has_table_privilege('SYS_QUERY_HISTORY', 'SELECT') as can_access_sys_query_history,
+    has_table_privilege('SYS_QUERY_TEXT', 'SELECT') as can_access_sys_query_text,
+    has_table_privilege('SYS_QUERY_DETAIL', 'SELECT') as can_access_sys_query_detail,
+    has_table_privilege('SYS_PROCEDURE_CALL', 'SELECT') as can_access_sys_procedure_call;
 """
 
 
-REDSHIFT_TEST_PARTITION_DETAILS = "select * from SVV_TABLE_INFO limit 1"
+REDSHIFT_TEST_PARTITION_DETAILS = """
+SELECT
+    has_table_privilege('SVV_TABLE_INFO', 'SELECT') as can_access_svv_table_info
+"""
 
+REDSHIFT_GET_ALL_CONSTRAINTS = """
+select
+  n.nspname as "schema",
+  c.relname as "table_name",
+  t.contype as "constraint_type",
+  t.conkey,
+  pg_catalog.pg_get_constraintdef(t.oid, true)::varchar(512) as condef,
+  a.attname as "column_name"
+FROM pg_catalog.pg_class c
+LEFT JOIN pg_catalog.pg_namespace n
+  ON n.oid = c.relnamespace
+JOIN pg_catalog.pg_constraint t
+  ON t.conrelid = c.oid
+JOIN pg_catalog.pg_attribute a
+  ON t.conrelid = a.attrelid AND a.attnum = ANY(t.conkey)
+WHERE n.nspname not like '^pg_' and schema=:schema
+UNION
+SELECT
+  s.schemaname AS "schema",
+  c.tablename AS "table_name",
+  'p' as "constraint_type",
+  null as conkey,
+  null as condef,
+  c.columnname as "column_name"
+FROM
+    svv_external_columns c
+    JOIN svv_external_schemas s ON s.schemaname = c.schemaname
+where 1 and schema=:schema;
+"""
 
 # Redshift views definitions only contains the select query
 # hence we are appending "create view <schema>.<table> as " to select query
@@ -363,6 +470,66 @@ order by procedure_start_time DESC
     """
 )
 
+REDSHIFT_SERVERLESS_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
+    """
+WITH SP_HISTORY AS (
+    SELECT
+        spcall.query_text AS procedure_text,
+        spcall.start_time AS procedure_start_time,
+        spcall.end_time AS procedure_end_time,
+        spcall.query_id AS procedure_query_id,
+        qh.session_id AS procedure_session_id
+    FROM SYS_PROCEDURE_CALL spcall
+        LEFT JOIN SYS_QUERY_HISTORY qh
+          ON spcall.query_id = qh.query_id
+    WHERE LOWER(spcall.status) = 'success'
+      AND spcall.start_time >= '{start_date}'
+),
+Q_HISTORY AS (
+    SELECT
+        query_text,
+        CASE
+            WHEN query_text ILIKE '%%MERGE%%' THEN 'MERGE'
+            WHEN query_text ILIKE '%%UPDATE%%' THEN 'UPDATE'
+            WHEN query_text ILIKE '%%CREATE%%AS%%' THEN 'CREATE_TABLE_AS_SELECT'
+            WHEN query_text ILIKE '%%INSERT%%' THEN 'INSERT'
+        ELSE 'UNKNOWN' END query_type,
+        database_name AS query_database_name,
+        session_id as query_session_id,
+        start_time AS query_start_time,
+        end_time AS query_end_time,
+        CAST(b.usename AS varchar) AS query_user_name
+    FROM SYS_QUERY_HISTORY q
+        JOIN pg_catalog.pg_user b
+        ON b.usesysid = q.user_id
+    WHERE LOWER(q.query_label) NOT IN ('maintenance', 'metrics', 'health')
+      AND q.query_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+      AND q.query_text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+      AND LOWER(q.status) = 'success'
+      AND q.start_time >= '{start_date}'
+      AND q.user_id <> 1
+)
+SELECT
+    TRIM(sp.procedure_text) procedure_text,
+    sp.procedure_start_time,
+    sp.procedure_end_time,
+    TRIM(q.query_text) query_text,
+    q.query_type,
+    TRIM(q.query_database_name) query_database_name,
+    null AS query_schema_name,
+    q.query_start_time,
+    q.query_end_time,
+    TRIM(q.query_user_name) query_user_name
+FROM SP_HISTORY sp
+  JOIN Q_HISTORY q
+    ON sp.procedure_session_id = q.query_session_id
+   AND q.query_start_time BETWEEN sp.procedure_start_time AND sp.procedure_end_time
+   AND q.query_end_time BETWEEN sp.procedure_start_time AND sp.procedure_end_time
+ORDER BY procedure_start_time DESC
+    """
+)
+
+
 REDSHIFT_LIFE_CYCLE_QUERY = textwrap.dedent(
     """
 select "table" as table_name,
@@ -389,83 +556,106 @@ ORDER BY end_time DESC
 """
 
 
-STL_QUERY = """
-    with data as (
-        select
-            {alias}.*
-        from 
-            pg_catalog.stl_insert si
-            {join_type} join pg_catalog.stl_delete sd on si.query = sd.query
-        where 
-            {condition}
-    )
-	SELECT
-        SUM(data."rows") AS "rows",
-        sti."database",
-        sti."schema",
-        sti."table",
-        DATE_TRUNC('second', data.starttime) AS starttime
-    FROM
-        data
-        INNER JOIN  pg_catalog.svv_table_info sti ON data.tbl = sti.table_id
+REDSHIFT_SYSTEM_METRICS_QUERY = """
+with data as (
+    select
+        {alias}.*
+    from
+        pg_catalog.stl_insert si
+        {join_type} join pg_catalog.stl_delete sd on si.query = sd.query
     where
-        sti."database" = '{database}' AND
-       	sti."schema" = '{schema}' AND
-        "rows" != 0 AND
-        DATE(data.starttime) >= CURRENT_DATE - 1
-    GROUP BY 2,3,4,5
-    ORDER BY 5 DESC
+        {condition}
+)
+SELECT
+    SUM(data."rows") AS "rows",
+    sti."database",
+    sti."schema",
+    sti."table",
+    DATE_TRUNC('second', data.starttime) AS starttime
+FROM
+    data
+    INNER JOIN  pg_catalog.svv_table_info sti ON data.tbl = sti.table_id
+where
+    sti."database" = '{database}' AND
+    sti."schema" = '{schema}' AND
+    "rows" != 0 AND
+    DATE(data.starttime) >= CURRENT_DATE - 1
+GROUP BY 2,3,4,5
+ORDER BY 5 DESC
 """
 
+# output_rows from SYS_QUERY_DETAIL should match rows from stl_insert/stl_delete
+# It’s often wrong (usually too high). I noticed that sometimes the 'scan' step
+# with plan_parent_id > 0 and plan_node_id > 0 gives the correct count, taking the
+# min id if there are multiple scans. It worked in all the cases I tried, but it’s
+# not really reliable for general use.
+# For now, we just use the number of queries as a placeholder until we figure out
+# a proper fix.
+REDSHIFT_SERVERLESS_SYSTEM_METRICS_QUERY = """
+WITH data AS (
+    SELECT
+        {alias}.output_rows AS rows,
+        COALESCE(SPLIT_PART({alias}.table_name, '.', 1), 'unknown') AS database,
+        COALESCE(SPLIT_PART({alias}.table_name, '.', 2), 'unknown') AS schema,
+        COALESCE(SPLIT_PART({alias}.table_name, '.', 3), {alias}.table_name) AS table,
+        DATE_TRUNC('second', {alias}.start_time) AS starttime
+    FROM (
+            SELECT *
+            FROM SYS_QUERY_DETAIL
+            WHERE lower(step_name) = 'insert'
+        ) si
+        {join_type} JOIN (
+            SELECT *
+            FROM SYS_QUERY_DETAIL
+            WHERE lower(step_name) = 'delete'
+        ) sd
+        ON si.query_id = sd.query_id
+    WHERE
+        {condition}
+        AND {alias}.table_name <> ''
+        AND DATE({alias}.start_time) >= CURRENT_DATE - 1
+        AND {alias}.output_rows <> 0
+)
+SELECT
+    COUNT(data.rows) as rows,
+    data.database,
+    data.schema,
+    data.table,
+    data.starttime
+FROM data
+WHERE
+    lower(data.database) = lower('{database}')
+    AND lower(data.schema) = lower('{schema}')
+GROUP BY
+    data.database,
+    data.schema,
+    data.table,
+    data.starttime
+ORDER BY data.starttime DESC;
+"""
 
-def get_query_results(
-    session: Session,
-    query,
-    operation,
-) -> List[QueryResult]:
-    """get query results either from cache or from the database
+# Ideally, all serverless specific queries defined here should work with
+# both Redshift Serverless and Provisioned since sys views are available
+# in both instances. However, it still needs to be tested in Provisioned
+# clusters.
+# Ref: https://github.com/open-metadata/OpenMetadata/pull/6568/files#diff-65e5e8591345679be6a347ea29c4d283d5ca9aa723ef788c9a2524344de49ff3R17
 
-    Args:
-        session (Session): session
-        query (_type_): query
-        operation (_type_): operation
+REDSHIFT_TEST_GET_QUERIES_MAP = {
+    RedshiftInstanceType.PROVISIONED: REDSHIFT_TEST_GET_QUERIES,
+    RedshiftInstanceType.SERVERLESS: REDSHIFT_SERVERLESS_TEST_GET_QUERIES,
+}
 
-    Returns:
-        List[QueryResult]:
-    """
-    cursor = session.execute(text(query))
-    results = [
-        QueryResult(
-            database_name=row.database,
-            schema_name=row.schema,
-            table_name=row.table,
-            query_text=None,
-            query_type=operation,
-            start_time=row.starttime,
-            rows=row.rows,
-        )
-        for row in cursor
-    ]
+REDSHIFT_SQL_STATEMENT_MAP = {
+    RedshiftInstanceType.PROVISIONED: REDSHIFT_SQL_STATEMENT,
+    RedshiftInstanceType.SERVERLESS: REDSHIFT_SERVERLESS_SQL_STATEMENT,
+}
 
-    return results
+REDSHIFT_GET_STORED_PROCEDURE_QUERIES_MAP = {
+    RedshiftInstanceType.PROVISIONED: REDSHIFT_GET_STORED_PROCEDURE_QUERIES,
+    RedshiftInstanceType.SERVERLESS: REDSHIFT_SERVERLESS_GET_STORED_PROCEDURE_QUERIES,
+}
 
-
-def get_metric_result(ddls: List[QueryResult], table_name: str) -> List:
-    """Given query results, retur the metric result
-
-    Args:
-        ddls (List[QueryResult]): list of query results
-        table_name (str): table name
-
-    Returns:
-        List:
-    """
-    return [
-        {
-            "timestamp": datetime_to_timestamp(ddl.start_time, milliseconds=True),
-            "operation": ddl.query_type,
-            "rowsAffected": ddl.rows,
-        }
-        for ddl in ddls
-        if ddl.table_name == table_name
-    ]
+REDSHIFT_SYSTEM_METRICS_QUERY_MAP = {
+    RedshiftInstanceType.PROVISIONED: REDSHIFT_SYSTEM_METRICS_QUERY,
+    RedshiftInstanceType.SERVERLESS: REDSHIFT_SERVERLESS_SYSTEM_METRICS_QUERY,
+}

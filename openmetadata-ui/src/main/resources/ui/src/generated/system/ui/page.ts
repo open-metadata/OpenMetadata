@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -16,9 +16,9 @@
  */
 export interface Page {
     /**
-     * Domain this page belongs to.
+     * Domains this page belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Entity Type.
      */
@@ -43,16 +43,14 @@ export interface Page {
 }
 
 /**
- * Domain this page belongs to.
+ * Domains this page belongs to.
  *
- * This schema defines the EntityReference type used for referencing an entity.
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * KnowledgePanels that are part of this Page.
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
@@ -115,12 +113,17 @@ export enum EntityType {
 export enum PageType {
     APICollection = "APICollection",
     APIEndpoint = "APIEndpoint",
+    Chart = "Chart",
+    Classification = "Classification",
     Container = "Container",
     Dashboard = "Dashboard",
     DashboardDataModel = "DashboardDataModel",
+    DataProduct = "DataProduct",
     Database = "Database",
     DatabaseSchema = "DatabaseSchema",
+    Directory = "Directory",
     Domain = "Domain",
+    File = "File",
     Glossary = "Glossary",
     GlossaryTerm = "GlossaryTerm",
     LandingPage = "LandingPage",
@@ -128,9 +131,12 @@ export enum PageType {
     MlModel = "MlModel",
     Pipeline = "Pipeline",
     SearchIndex = "SearchIndex",
+    Spreadsheet = "Spreadsheet",
     StoredProcedure = "StoredProcedure",
     Table = "Table",
+    Tag = "Tag",
     Topic = "Topic",
+    Worksheet = "Worksheet",
 }
 
 /**

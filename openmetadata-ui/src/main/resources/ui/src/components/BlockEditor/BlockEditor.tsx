@@ -10,21 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { EditorContent } from '@tiptap/react';
 import classNames from 'classnames';
 import { isNil, isUndefined } from 'lodash';
 
-import React, {
-  forwardRef,
-  useEffect,
-  useImperativeHandle,
-  useRef,
-} from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   EDITOR_OPTIONS,
   TEXT_TYPES,
 } from '../../constants/BlockEditor.constants';
+import blockEditorExtensionsClassBase from '../../utils/BlockEditorExtensionsClassBase';
 import { formatContent, setEditorContent } from '../../utils/BlockEditorUtils';
 import Banner from '../common/Banner/Banner';
 import { useEntityAttachment } from '../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
@@ -37,7 +34,6 @@ import {
   FileType,
 } from './BlockEditor.interface';
 import EditorSlots from './EditorSlots';
-import { extensions } from './Extensions';
 import './Extensions/File/file-node.less';
 import { useCustomEditor } from './hooks/useCustomEditor';
 
@@ -50,7 +46,10 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       autoFocus,
       placeholder,
       onChange,
+      onFocus,
       showInlineAlert = true,
+      extensionOptions,
+      showMenu,
     },
     ref
   ) => {
@@ -66,6 +65,9 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
 
     const editorWrapperRef = useRef<HTMLDivElement>(null);
 
+    const extensions =
+      blockEditorExtensionsClassBase.getExtensions(extensionOptions);
+
     const editor = useCustomEditor({
       ...EDITOR_OPTIONS,
       extensions,
@@ -74,6 +76,9 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
         const htmlContent = editor.getHTML();
         const backendFormat = formatContent(htmlContent, 'server');
         onChange?.(backendFormat);
+      },
+      onFocus() {
+        onFocus?.();
       },
       editorProps: {
         attributes: {
@@ -246,7 +251,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
             type="error"
           />
         )}
-        {menuType === 'bar' && !isNil(editor) && (
+        {showMenu && menuType === 'bar' && !isNil(editor) && (
           <BarMenu
             editor={editor}
             onLinkToggle={editorSlots.current?.onLinkToggle}

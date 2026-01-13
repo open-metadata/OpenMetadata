@@ -15,16 +15,18 @@ import { Col, Row, Table, Tabs, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { SIZE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { MlHyperParameter } from '../../../generated/api/data/createMlModel';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Mlmodel, MlStore } from '../../../generated/entity/data/mlmodel';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -32,7 +34,7 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreMlmodel } from '../../../rest/mlModelAPI';
-import { getEmptyPlaceholder, getFeedCounts } from '../../../utils/CommonUtils';
+import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -40,7 +42,11 @@ import {
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import mlModelDetailsClassBase from '../../../utils/MlModel/MlModelClassBase';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import {
@@ -48,7 +54,9 @@ import {
   updateTierTag,
 } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
@@ -72,8 +80,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 }) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const history = useHistory();
-  const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
+  const navigate = useNavigate();
+  const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
   const { customizedPage, isLoading } = useCustomPages(PageType.MlModel);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
@@ -143,8 +151,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.replace(
-        getEntityDetailsPath(EntityType.MLMODEL, decodedMlModelFqn, activeKey)
+      navigate(
+        getEntityDetailsPath(EntityType.MLMODEL, decodedMlModelFqn, activeKey),
+        { replace: true }
       );
     }
   };
@@ -259,7 +268,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           {t('label.hyper-parameter-plural')}{' '}
         </Typography.Title>
         {isEmpty(mlModelDetail.mlHyperParameters) ? (
-          getEmptyPlaceholder()
+          <ErrorPlaceHolder size={SIZE.MEDIUM} />
         ) : (
           <Table
             columns={getMlHyperParametersColumn}
@@ -289,14 +298,14 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             size="small"
           />
         ) : (
-          getEmptyPlaceholder()
+          <ErrorPlaceHolder size={SIZE.MEDIUM} />
         )}
       </>
     );
   }, [mlModelDetail, mlModelStoreColumn]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
   );
 
@@ -304,23 +313,32 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     editCustomAttributePermission,
     editLineagePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
-        (mlModelPermissions.EditTags || mlModelPermissions.EditAll) && !deleted,
-      editGlossaryTermsPermission:
-        (mlModelPermissions.EditGlossaryTerms || mlModelPermissions.EditAll) &&
+        getPrioritizedEditPermission(mlModelPermissions, Operation.EditTags) &&
         !deleted,
       editDescriptionPermission:
-        (mlModelPermissions.EditDescription || mlModelPermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          mlModelPermissions,
+          Operation.EditDescription
+        ) && !deleted,
       editCustomAttributePermission:
-        (mlModelPermissions.EditAll || mlModelPermissions.EditCustomFields) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          mlModelPermissions,
+          Operation.EditCustomFields
+        ) && !deleted,
       editLineagePermission:
-        (mlModelPermissions.EditAll || mlModelPermissions.EditLineage) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          mlModelPermissions,
+          Operation.EditLineage
+        ) && !deleted,
       viewAllPermission: mlModelPermissions.ViewAll,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        mlModelPermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [mlModelPermissions, deleted]
   );
@@ -339,6 +357,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       editLineagePermission,
       editCustomAttributePermission,
       viewAllPermission,
+      viewCustomPropertiesPermission,
       fetchMlModel,
       labelMap: tabLabelMap,
     });
@@ -359,6 +378,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     editLineagePermission,
     editCustomAttributePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
     fetchMlModel,
     customizedPage?.tabs,
   ]);
@@ -394,10 +414,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.ml-model'),
-      })}>
+    <PageLayoutV1 pageTitle={mlModelName}>
       <Row gutter={[0, 12]}>
         <Col span={24}>
           <DataAssetsHeader

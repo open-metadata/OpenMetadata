@@ -16,7 +16,8 @@
     },
     "secret": {
       "description": "Client Secret.",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "scope": {
       "description": "Oidc Request Scopes.",
@@ -54,7 +55,12 @@
     "clientAuthenticationMethod": {
       "description": "Client Authentication Method.",
       "type": "string",
-      "enum": ["client_secret_basic", "client_secret_post", "client_secret_jwt", "private_key_jwt"]
+      "enum": [
+        "client_secret_basic",
+        "client_secret_post",
+        "client_secret_jwt",
+        "private_key_jwt"
+      ]
     },
     "tokenValidity": {
       "description": "Validity for the JWT Token created from SAML Response",
@@ -63,8 +69,8 @@
     },
     "customParams": {
       "description": "Custom Params.",
-      "existingJavaType" : "java.util.Map<String,String>",
-      "type" : "object"
+      "existingJavaType": "java.util.Map<String,String>",
+      "type": "object"
     },
     "tenant": {
       "description": "Tenant in case of Azure.",
@@ -85,7 +91,13 @@
     "prompt": {
       "description": "Prompt whether login/consent",
       "type": "string"
+    },
+    "sessionExpiry": {
+      "description": "Validity for the Session in case of confidential clients",
+      "type": "integer",
+      "default": "604800"
     }
   },
+  "required": ["id", "secret", "discoveryUri", "tenant"],
   "additionalProperties": false
 }

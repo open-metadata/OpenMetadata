@@ -12,7 +12,7 @@
  */
 import { Col, Row, Space, Steps, Typography } from 'antd';
 import { isEmpty, isUndefined, last, toLower } from 'lodash';
-import React, { ReactNode, useMemo } from 'react';
+import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { TEST_CASE_STATUS } from '../../../../constants/TestSuite.constant';

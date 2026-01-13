@@ -1,0 +1,76 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/database/serviceNowConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ServiceNowConnection",
+    "description": "ServiceNow Connection Config",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.database.ServiceNowConnection",
+    "definitions": {
+      "serviceNowType": {
+        "description": "Service type.",
+        "type": "string",
+        "enum": ["ServiceNow"],
+        "default": "ServiceNow"
+      }
+    },
+    "properties": {
+      "type": {
+        "title": "Service Type",
+        "description": "Service Type",
+        "$ref": "#/definitions/serviceNowType",
+        "default": "ServiceNow"
+      },
+      "hostPort": {
+        "title": "ServiceNow Instance URL",
+        "description": "ServiceNow instance URL (e.g., https://your-instance.service-now.com)",
+        "type": "string",
+        "format": "uri"
+      },
+      "username": {
+        "title": "Username",
+        "description": "Username to connect to ServiceNow. This user should have read access to sys_db_object and sys_dictionary tables.",
+        "type": "string"
+      },
+      "password": {
+        "title": "Password",
+        "description": "Password to connect to ServiceNow.",
+        "type": "string",
+        "format": "password"
+      },
+      "includeScopes": {
+        "title": "Include Scopes as Schemas",
+        "description": "If true, ServiceNow application scopes will be imported as database schemas. Otherwise, a single default schema will be used.",
+        "type": "boolean",
+        "default": false
+      },
+      "includeSystemTables": {
+        "title": "Include System Tables",
+        "description": "If true, both admin and system tables (sys_* tables) will be fetched. If false, only admin tables will be fetched.",
+        "type": "boolean",
+        "default": false
+      },
+      "connectionOptions": {
+        "title": "Connection Options",
+        "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+      },
+      "connectionArguments": {
+        "title": "Connection Arguments",
+        "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+      },
+      "tableFilterPattern": {
+        "title": "Default Table Filter Pattern",
+        "description": "Regex to only include/exclude tables that matches the pattern.",
+        "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+      },
+      "supportsMetadataExtraction": {
+        "title": "Supports Metadata Extraction",
+        "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+      },
+      "supportsLineageExtraction": {
+        "title": "Supports Lineage Extraction",
+        "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
+      }
+    },
+    "additionalProperties": false,
+    "required": ["hostPort", "username", "password"]
+  }

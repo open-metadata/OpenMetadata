@@ -15,9 +15,10 @@ import { Button, Dropdown, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { t } from 'i18next';
+
 import { isEmpty, lowerCase } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { AUTO_CLASSIFICATION_DOCS } from '../../../constants/docs.constants';
@@ -49,15 +50,15 @@ import {
   SampleDataType,
 } from './SampleData.interface';
 
-const SampleDataTable = ({
+const SampleDataTable: FC<SampleDataProps> = ({
   isTableDeleted,
   tableId,
   owners,
   permissions,
-}: SampleDataProps) => {
+}) => {
   const { isTourPage } = useTourProvider();
   const { currentUser, theme } = useApplicationStore();
-
+  const { t } = useTranslation();
   const [sampleData, setSampleData] = useState<SampleData>();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
@@ -100,7 +101,6 @@ const SampleDataTable = ({
         ),
         dataIndex: column,
         key: column,
-        accessor: column,
         width: 250,
         render: (data: SampleDataType) => <RowData data={data} />,
       };
@@ -214,7 +214,7 @@ const SampleDataTable = ({
 
   return (
     <div
-      className={classNames('p-md border-default border-radius-sm', {
+      className={classNames('p-md border-default border-radius-sm bg-white', {
         'h-70vh overflow-hidden': isTourPage,
       })}
       data-testid="sample-data"
@@ -271,4 +271,4 @@ const SampleDataTable = ({
   );
 };
 
-export default withLoader<SampleDataProps>(SampleDataTable);
+export default withLoader(SampleDataTable);

@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import {
   MOCK_PROPS,
   TEST_SEARCHED_TEAM_OPTIONS,
@@ -42,7 +40,7 @@ describe('TeamAndUserSelectItem Component', () => {
     const triggerButton = screen.getByTestId('dropdown-trigger-button');
 
     await act(async () => {
-      userEvent.click(triggerButton);
+      fireEvent.click(triggerButton);
       jest.advanceTimersByTime(500);
     });
 
@@ -59,7 +57,7 @@ describe('TeamAndUserSelectItem Component', () => {
     const triggerButton = screen.getByTestId('dropdown-trigger-button');
 
     await act(async () => {
-      userEvent.click(triggerButton);
+      fireEvent.click(triggerButton);
       jest.advanceTimersByTime(500);
     });
 
@@ -82,7 +80,7 @@ describe('TeamAndUserSelectItem Component', () => {
     const triggerButton = screen.getByTestId('dropdown-trigger-button');
 
     await act(async () => {
-      userEvent.click(triggerButton);
+      fireEvent.click(triggerButton);
       jest.advanceTimersByTime(500);
     });
 
@@ -101,7 +99,7 @@ describe('TeamAndUserSelectItem Component', () => {
 
     const searchInput = screen.getByTestId('search-input');
 
-    userEvent.type(searchInput, 'test');
+    fireEvent.change(searchInput, { target: { value: 'test' } });
 
     await act(async () => {
       jest.advanceTimersByTime(500);
@@ -123,7 +121,7 @@ describe('TeamAndUserSelectItem Component', () => {
     const triggerButton = screen.getByTestId('dropdown-trigger-button');
 
     await act(async () => {
-      userEvent.click(triggerButton);
+      fireEvent.click(triggerButton);
       jest.advanceTimersByTime(500);
     });
 
@@ -132,7 +130,7 @@ describe('TeamAndUserSelectItem Component', () => {
     ).toBeInTheDocument();
 
     await act(async () => {
-      userEvent.click(document.body);
+      fireEvent.click(document.body);
     });
 
     expect(screen.queryByTestId('team-user-select-dropdown-0')).toBeNull();

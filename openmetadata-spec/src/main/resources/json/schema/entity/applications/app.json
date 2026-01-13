@@ -97,11 +97,19 @@
       "type": "string",
       "enum": [
         "CollateAI",
+        "CollateAITierAgent",
+        "CollateAIQualityAgent",
         "Metadata"
       ],
       "javaEnums": [
         {
           "name": "CollateAI"
+        },
+        {
+          "name": "CollateAITierAgent"
+        },
+        {
+          "name": "CollateAIQualityAgent"
         },
         {
           "name": "Metadata"
@@ -175,6 +183,10 @@
     "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
     },
     "href": {
       "description": "Link to the resource corresponding to this entity.",
@@ -292,9 +304,9 @@
       },
       "uniqueItems": true
     },
-    "domain": {
-      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains": {
+      "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "supportsInterrupt": {
       "description": "If the app run can be interrupted as part of the execution.",
@@ -304,6 +316,20 @@
     "eventSubscriptions": {
       "description": "Event Subscriptions for the Application.",
       "$ref": "../../type/entityReferenceList.json"
+    },
+    "supportsIngestionRunner": {
+      "description": "If the app support execution through the external runner.",
+      "type": "boolean",
+      "default": false
+    },
+    "ingestionRunner" : {
+      "description": "The ingestion agent responsible for executing the ingestion pipeline. It will be defined at runtime based on the Ingestion Agent of the service.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "allowConcurrentExecution": {
+      "description": "If true, multiple instances of this app can run concurrently. This is useful for apps like QueryRunner that support parallel executions with different configurations.",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false,

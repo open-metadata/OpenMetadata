@@ -12,20 +12,13 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Query } from '../../../../generated/entity/data/query';
 import { MOCK_QUERIES } from '../../../../mocks/Queries.mock';
-import { searchData } from '../../../../rest/miscAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
 import { MOCK_EXPLORE_SEARCH_RESULTS } from '../../../Explore/Explore.mock';
 import { QueryUsedByOtherTableProps } from '../TableQueries.interface';
 import QueryUsedByOtherTable from './QueryUsedByOtherTable.component';
-
-const mockProps: QueryUsedByOtherTableProps = {
-  query: MOCK_QUERIES[0] as Query,
-  isEditMode: false,
-  onChange: jest.fn(),
-};
 
 jest.mock('../../../common/AsyncSelect/AsyncSelect', () => ({
   AsyncSelect: jest
@@ -33,13 +26,19 @@ jest.mock('../../../common/AsyncSelect/AsyncSelect', () => ({
     .mockImplementation(() => <div>AsyncSelect.component</div>),
 }));
 
-jest.mock('../../../../rest/miscAPI', () => ({
-  searchData: jest
-    .fn()
-    .mockReturnValue(() => Promise.resolve(MOCK_EXPLORE_SEARCH_RESULTS)),
-}));
+jest.mock('../../../../rest/searchAPI');
+
+const mockProps: QueryUsedByOtherTableProps = {
+  query: MOCK_QUERIES[0] as Query,
+  isEditMode: false,
+  onChange: jest.fn(),
+};
 
 describe('QueryUsedByOtherTable test', () => {
+  beforeEach(() => {
+    (searchQuery as jest.Mock).mockResolvedValue(MOCK_EXPLORE_SEARCH_RESULTS);
+  });
+
   it('Component should render', async () => {
     render(<QueryUsedByOtherTable {...mockProps} />, {
       wrapper: MemoryRouter,
@@ -82,22 +81,19 @@ describe('QueryUsedByOtherTable test', () => {
   });
 
   it('Should fetch initial dropdown list in edit mode', async () => {
-    const mockSearchData = searchData as jest.Mock;
+    const mockSearchQuery = searchQuery as jest.Mock;
     render(<QueryUsedByOtherTable {...mockProps} isEditMode />, {
       wrapper: MemoryRouter,
     });
     const selectField = await screen.findByText('AsyncSelect.component');
 
     expect(selectField).toBeInTheDocument();
-    expect(mockSearchData).toHaveBeenCalledWith(
-      '',
-      1,
-      25,
-      '',
-      '',
-      '',
-      'table_search_index'
-    );
+    expect(mockSearchQuery).toHaveBeenCalledWith({
+      query: '',
+      pageNumber: 1,
+      pageSize: 25,
+      searchIndex: 'table_search_index',
+    });
   });
 
   it('Loader should be visible while loading the initial options', async () => {

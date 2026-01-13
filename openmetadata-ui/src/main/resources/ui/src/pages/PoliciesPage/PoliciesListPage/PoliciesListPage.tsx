@@ -15,24 +15,19 @@ import { Button, Col, Popover, Row, Space, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerNew from '../../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../components/common/Table/Table';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import {
-  NO_DATA_PLACEHOLDER,
-  PAGE_SIZE_MEDIUM,
-  ROUTES,
-} from '../../../constants/constants';
+import { ROUTES } from '../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import {
   NO_PERMISSION_FOR_ACTION,
@@ -58,12 +53,13 @@ import {
   getPolicyWithFqnPath,
   getRoleWithFqnPath,
 } from '../../../utils/RouterUtils';
+import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './policies-list.less';
 
 const PoliciesListPage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [selectedPolicy, setSelectedPolicy] = useState<Policy>();
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -75,7 +71,8 @@ const PoliciesListPage = () => {
     pageSize,
     handlePageSizeChange,
     showPagination,
-  } = usePaging(PAGE_SIZE_MEDIUM);
+    pagingCursor,
+  } = usePaging();
 
   const { permissions } = usePermissionProvider();
 
@@ -111,7 +108,7 @@ const PoliciesListPage = () => {
   const columns: ColumnsType<Policy> = useMemo(() => {
     return [
       {
-        title: t('label.name'),
+        title: t('label.name').toString(),
         dataIndex: 'name',
         width: '200px',
         key: 'name',
@@ -128,19 +125,9 @@ const PoliciesListPage = () => {
           </Link>
         ),
       },
+      ...descriptionTableObject(),
       {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        render: (_, record) =>
-          isEmpty(record?.description) ? (
-            NO_DATA_PLACEHOLDER
-          ) : (
-            <RichTextEditorPreviewerNew markdown={record?.description ?? ''} />
-          ),
-      },
-      {
-        title: t('label.role-plural'),
+        title: t('label.role-plural').toString(),
         dataIndex: 'roles',
         width: '250px',
         key: 'roles',
@@ -158,7 +145,7 @@ const PoliciesListPage = () => {
                     {getEntityName(role)}
                   </Link>
                 ) : (
-                  <Tooltip key={uniqueId()} title={NO_PERMISSION_TO_VIEW}>
+                  <Tooltip key={uniqueId()} title={t(NO_PERMISSION_TO_VIEW)}>
                     {getEntityName(role)}
                   </Tooltip>
                 )
@@ -180,7 +167,7 @@ const PoliciesListPage = () => {
                         ) : (
                           <Tooltip
                             key={uniqueId()}
-                            title={NO_PERMISSION_TO_VIEW}>
+                            title={t(NO_PERMISSION_TO_VIEW)}>
                             {getEntityName(role)}
                           </Tooltip>
                         )
@@ -201,7 +188,7 @@ const PoliciesListPage = () => {
         },
       },
       {
-        title: t('label.action-plural'),
+        title: t('label.action-plural').toString(),
         dataIndex: 'actions',
         width: '80px',
         align: 'center',
@@ -215,7 +202,7 @@ const PoliciesListPage = () => {
                   ? t('label.delete-entity', {
                       entity: t('label.policy'),
                     })
-                  : NO_PERMISSION_FOR_ACTION
+                  : t(NO_PERMISSION_FOR_ACTION)
               }>
               <Button
                 data-testid={`delete-action-${getEntityName(record)}`}
@@ -231,7 +218,7 @@ const PoliciesListPage = () => {
     ];
   }, []);
 
-  const fetchPolicies = async (paging?: Paging) => {
+  const fetchPolicies = async (paging?: Partial<Paging>) => {
     setIsLoading(true);
     try {
       const data = await getPolicies(
@@ -255,22 +242,32 @@ const PoliciesListPage = () => {
   }, [fetchPolicies]);
 
   const handleAddPolicy = () => {
-    history.push(ROUTES.ADD_POLICY);
+    navigate(ROUTES.ADD_POLICY);
   };
 
   const handlePaging = ({ currentPage, cursorType }: PagingHandlerParams) => {
-    handlePageChange(currentPage);
     if (cursorType && paging) {
       fetchPolicies({
         [cursorType]: paging[cursorType],
         total: paging?.total,
       } as Paging);
+      handlePageChange(
+        currentPage,
+        { cursorType, cursorValue: paging[cursorType] },
+        pageSize
+      );
     }
   };
 
   useEffect(() => {
-    fetchPolicies();
-  }, [pageSize]);
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      fetchPolicies({ [cursorType]: cursorValue });
+    } else {
+      fetchPolicies();
+    }
+  }, [pageSize, pagingCursor]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.policy-plural')}>
@@ -283,7 +280,12 @@ const PoliciesListPage = () => {
         </Col>
         <Col span={24}>
           <Space className="w-full justify-between">
-            <PageHeader data={PAGE_HEADERS.POLICIES} />
+            <PageHeader
+              data={{
+                header: t(PAGE_HEADERS.POLICIES.header),
+                subHeader: t(PAGE_HEADERS.POLICIES.subHeader),
+              }}
+            />
 
             {addPolicyPermission && (
               <Button

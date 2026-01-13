@@ -2,11 +2,11 @@
   "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/automator/addDomainAction.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AddDomainAction",
-  "description": "Add an owner to the selected assets.",
+  "description": "Add domains to the selected assets.",
   "type": "object",
   "definitions": {
     "addDomainActionType": {
-      "description": "Add Owner Action Type.",
+      "description": "Add Domain Action Type.",
       "type": "string",
       "enum": ["AddDomainAction"],
       "default": "AddDomainAction"
@@ -19,17 +19,17 @@
       "$ref": "#/definitions/addDomainActionType",
       "default": "AddDomainAction"
     },
-    "domain": {
-      "description": "Domain to apply",
-      "$ref": "../../../../../type/entityReference.json"
+    "domains": {
+      "description": "Domains to apply",
+      "$ref": "../../../../../type/entityReferenceList.json"
     },
     "overwriteMetadata": {
       "title": "Overwrite Metadata",
-      "description": "Update the domain even if it is defined in the asset. By default, we will only apply the domain to assets without domain.",
+      "description": "Update the domains even if they are defined in the asset. By default, we will only apply the domains to assets without domains.",
       "type": "boolean",
       "default": false
     }
   },
-  "required": ["type", "domain"],
+  "required": ["type", "domains"],
   "additionalProperties": false
 }

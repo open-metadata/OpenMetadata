@@ -111,6 +111,11 @@ export const ENTITY_REFERENCE_OPTIONS = [
     value: 'team',
     label: 'Team',
   },
+  {
+    key: 'metric',
+    value: 'metric',
+    label: 'Metric',
+  },
 ];
 
 // supported date formats on backend
@@ -156,6 +161,10 @@ export const SUPPORTED_DATE_TIME_FORMATS_ANTD_FORMAT_MAPPING = {
   'yyyy-MM-dd HH:mm:ss.SSSSSS': 'YYYY-MM-DD HH:mm:ss.SSSSSS',
   'dd MMMM yyyy HH:mm:ss': 'DD MMMM YYYY HH:mm:ss',
   'HH:mm:ss': 'HH:mm:ss',
+};
+
+export const SUPPORTED_DATE_TIME_FORMATS_LUXON_FORMAT_MAPPING = {
+  yyyyDDD: 'yyyyo',
 };
 
 export const DEFAULT_TIME_FORMAT = 'HH:mm:ss';

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import {
   TaskType,
   ThreadTaskStatus,
@@ -78,7 +77,6 @@ describe('Test TagsTask Component', () => {
     expect(screen.getByText('TagsDiffView')).toBeInTheDocument();
   });
 
-  // eslint-disable-next-line max-len
   it('Should render TagsDiffView component if in not editMode, type is RequestTag, not having hasEditAccess and if suggestion tags is present', async () => {
     render(
       <TagsTask
@@ -98,7 +96,6 @@ describe('Test TagsTask Component', () => {
     expect(screen.getByText('TagsDiffView')).toBeInTheDocument();
   });
 
-  // eslint-disable-next-line max-len
   it('Should render TagsDiffView component if in not editMode, type is RequestTag, not having hasEditAccess and if old tags is present', async () => {
     render(
       <TagsTask
@@ -118,7 +115,6 @@ describe('Test TagsTask Component', () => {
     expect(screen.getByText('TagsDiffView')).toBeInTheDocument();
   });
 
-  // eslint-disable-next-line max-len
   it('Should render noDataPlaceholder if in not editMode, type is RequestTag, not having hasEditAccess and do not have old and suggestion', async () => {
     render(<TagsTask {...mockProps} task={mockTask} />);
 

@@ -30,7 +30,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.change.ChangeSummary;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.util.Utilities;
 
 public final class SearchIndexUtils {
@@ -253,7 +253,8 @@ public final class SearchIndexUtils {
           Map<String, String> nestedAggregationMetadata = new HashMap<>();
 
           String nestedAggregationSibling = nestedAggregationSiblings[j];
-          String[] parts = nestedAggregationSibling.split(":(?!:)");
+          String[] parts =
+              nestedAggregationSibling.split(Utilities.doubleQuoteRegexEscape(":(?!:)"));
           for (String part : parts) {
             if (part.contains("&")) {
               String[] subParts = part.split("&");
@@ -327,25 +328,24 @@ public final class SearchIndexUtils {
       List<TagLabel> tagList, TagAndTierSources tagAndTierSources) {
     Optional.ofNullable(tagList)
         .ifPresent(
-            tags -> {
-              tags.forEach(
-                  tag -> {
-                    String tagSource = tag.getLabelType().value();
-                    if (tag.getTagFQN().startsWith("Tier.")) {
-                      tagAndTierSources
-                          .getTierSources()
-                          .put(
-                              tagSource,
-                              tagAndTierSources.getTierSources().getOrDefault(tagSource, 0) + 1);
-                    } else {
-                      tagAndTierSources
-                          .getTagSources()
-                          .put(
-                              tagSource,
-                              tagAndTierSources.getTagSources().getOrDefault(tagSource, 0) + 1);
-                    }
-                  });
-            });
+            tags ->
+                tags.forEach(
+                    tag -> {
+                      String tagSource = tag.getLabelType().value();
+                      if (tag.getTagFQN().startsWith("Tier.")) {
+                        tagAndTierSources
+                            .getTierSources()
+                            .put(
+                                tagSource,
+                                tagAndTierSources.getTierSources().getOrDefault(tagSource, 0) + 1);
+                      } else {
+                        tagAndTierSources
+                            .getTagSources()
+                            .put(
+                                tagSource,
+                                tagAndTierSources.getTagSources().getOrDefault(tagSource, 0) + 1);
+                      }
+                    }));
   }
 
   private static void processEntityTagSources(

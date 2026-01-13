@@ -32,6 +32,8 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -52,13 +54,13 @@ import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
 import org.openmetadata.schema.services.connections.dashboard.MetabaseConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DashboardConnection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.charts.ChartResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.services.dashboard.DashboardServiceResource;
 import org.openmetadata.service.resources.services.dashboard.DashboardServiceResource.DashboardServiceList;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -317,7 +319,7 @@ public class DashboardServiceResourceTest
                     .withUsername("admin"));
     createDashboardService
         .withConnection(dashboardConnection)
-        .withDomain(DOMAIN.getFullyQualifiedName());
+        .withDomains(List.of(DOMAIN.getFullyQualifiedName()));
     DashboardService dashboardService =
         new DashboardServiceResourceTest().createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
     METABASE_REFERENCE = dashboardService.getEntityReference();
@@ -351,10 +353,56 @@ public class DashboardServiceResourceTest
           dashboardResourceTest
               .createRequest("dashboard" + i, "", "", null)
               .withService(METABASE_REFERENCE.getName());
-      createDashboard1.withDomain(DOMAIN.getFullyQualifiedName());
+      createDashboard1.withDomains(List.of(DOMAIN.getFullyQualifiedName()));
       Dashboard dashboard1 =
           new DashboardResourceTest().createEntity(createDashboard1, ADMIN_AUTH_HEADERS);
       DASHBOARD_REFERENCES.add(dashboard1.getFullyQualifiedName());
     }
+  }
+
+  @Test
+  void test_hardDeleteDashboardService_deletesSecrets(TestInfo test)
+      throws IOException, URISyntaxException {
+    MetabaseConnection metabaseConnection =
+        new MetabaseConnection()
+            .withHostPort(new URI("http://localhost:8080"))
+            .withUsername("user")
+            .withPassword("password");
+    DashboardConnection dashboardConnection =
+        new DashboardConnection().withConfig(metabaseConnection);
+    CreateDashboardService createRequest = createRequest(test).withConnection(dashboardConnection);
+    DashboardService service = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(service.getConnection(), "Service should have connection");
+
+    deleteEntity(service.getId(), false, true, ADMIN_AUTH_HEADERS);
+
+    assertEntityDeleted(service.getId(), true);
+  }
+
+  @Test
+  void test_softDeleteDashboardService_preservesSecrets(TestInfo test)
+      throws IOException, URISyntaxException {
+    MetabaseConnection metabaseConnection =
+        new MetabaseConnection()
+            .withHostPort(new URI("http://localhost:8080"))
+            .withUsername("user")
+            .withPassword("password");
+    DashboardConnection dashboardConnection =
+        new DashboardConnection().withConfig(metabaseConnection);
+    CreateDashboardService createRequest = createRequest(test).withConnection(dashboardConnection);
+    DashboardService service = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(service.getConnection(), "Service should have connection");
+
+    deleteEntity(service.getId(), false, false, ADMIN_AUTH_HEADERS);
+
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("include", "deleted");
+    DashboardService deletedService =
+        getEntity(service.getId(), queryParams, "", ADMIN_AUTH_HEADERS);
+    assertTrue(deletedService.getDeleted(), "Service should be marked as deleted");
+    assertNotNull(
+        deletedService.getConnection(), "Connection should be preserved after soft delete");
   }
 }

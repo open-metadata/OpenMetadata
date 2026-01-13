@@ -25,6 +25,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.type.DataQualityDimensions;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -34,7 +35,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class MigrationUtil {
@@ -109,7 +109,7 @@ public class MigrationUtil {
                 }
               });
     } catch (Exception ex) {
-      LOG.warn("Error running the automator migration ", ex);
+      LOG.warn("Error running the automator migration: {} ", ex.getMessage());
     }
   }
 
@@ -201,7 +201,7 @@ public class MigrationUtil {
                 }
               });
     } catch (Exception e) {
-      LOG.warn("Error running the policy migration ", e);
+      LOG.warn("Error running the policy migration, Message: {} ", e.getMessage());
     }
   }
 
@@ -265,30 +265,29 @@ public class MigrationUtil {
                 }
               });
     } catch (Exception e) {
-      LOG.warn("Error running the test case resolution migration ", e);
+      LOG.warn("Error running the test case resolution migration: {} ", e.getMessage());
     }
   }
 
   static DataInsightSystemChartRepository dataInsightSystemChartRepository;
 
   private static void createChart(String chartName, Object chartObject) {
-    DataInsightCustomChart chart =
-        new DataInsightCustomChart()
-            .withId(UUID.randomUUID())
-            .withName(chartName)
-            .withChartDetails(chartObject)
-            .withUpdatedAt(System.currentTimeMillis())
-            .withUpdatedBy("ingestion-bot")
-            .withDeleted(false)
-            .withIsSystemChart(true);
-    dataInsightSystemChartRepository.prepareInternal(chart, false);
     try {
+      DataInsightCustomChart chart =
+          new DataInsightCustomChart()
+              .withId(UUID.randomUUID())
+              .withName(chartName)
+              .withChartDetails(chartObject)
+              .withUpdatedAt(System.currentTimeMillis())
+              .withUpdatedBy("ingestion-bot")
+              .withDeleted(false)
+              .withIsSystemChart(true);
+      dataInsightSystemChartRepository.prepareInternal(chart, false);
       dataInsightSystemChartRepository
           .getDao()
           .insert("fqnHash", chart, chart.getFullyQualifiedName());
     } catch (Exception ex) {
-      LOG.warn(ex.toString());
-      LOG.warn(String.format("Chart %s exists", chart));
+      LOG.warn(String.format("Chart %s exists, Exception Message: {}", chartName, ex.getMessage()));
     }
   }
 

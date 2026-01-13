@@ -7,7 +7,8 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Table",
   "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface", "org.openmetadata.schema.ColumnsEntityInterface"
+    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.ColumnsEntityInterface"
   ],
   "definitions": {
     "profileSampleType": {
@@ -170,7 +171,11 @@
         "BIT",
         "MONEY",
         "MEASURE HIDDEN",
-        "MEASURE VISIBLE"
+        "MEASURE VISIBLE",
+        "MEASURE",
+        "KPI",
+        "HEIRARCHY",
+        "HIERARCHYID"
       ]
     },
     "constraint": {
@@ -288,7 +293,9 @@
     "column": {
       "type": "object",
       "javaType": "org.openmetadata.schema.type.Column",
-      "javaInterfaces": ["org.openmetadata.schema.FieldInterface"],
+      "javaInterfaces": [
+        "org.openmetadata.schema.FieldInterface"
+      ],
       "description": "This schema defines the type for a column in a table.",
       "properties": {
         "name": {
@@ -354,8 +361,7 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/column"
-          },
-          "default": null
+          }
         },
         "profile": {
           "description": "Latest Data profile for a Column.",
@@ -369,6 +375,10 @@
             "$ref": "../../tests/customMetric.json"
           },
           "default": null
+        },
+        "extension": {
+          "description": "Entity extension data with custom attributes added to the entity.",
+          "$ref": "../../type/basic.json#/definitions/entityExtension"
         }
       },
       "required": [
@@ -652,6 +662,38 @@
             "$ref": "#/definitions/customMetricProfile"
           },
           "default": null
+        },
+        "cardinalityDistribution": {
+          "description": "Cardinality distribution showing top categories with an 'Others' bucket.",
+          "type": "object",
+          "properties": {
+            "categories": {
+              "description": "List of category names including 'Others'.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "counts": {
+              "description": "List of counts corresponding to each category.",
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            },
+            "percentages": {
+              "description": "List of percentages corresponding to each category.",
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "allValuesUnique": {
+              "description": "Flag indicating that all values in the column are unique, so no distribution is calculated.",
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
         }
       },
       "required": [
@@ -667,7 +709,8 @@
       "enum": [
         "UPDATE",
         "INSERT",
-        "DELETE"
+        "DELETE",
+        "WRITE"
       ]
     },
     "systemProfile": {
@@ -755,6 +798,39 @@
         }
       }
     },
+    "sparkTableProfilerConfig": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.SparkTableProfilerConfig",
+      "description": "Table Specific configuration for Profiling it with a Spark Engine. It is ignored for other engines.",
+      "properties": {
+        "partitioning": {
+          "type": "object",
+          "description": "When reading big tables from sources, we optimize the reading by partitioning the data. This configuration is responsible for it.",
+          "properties": {
+            "partitionColumn": {
+              "type": "string",
+              "description": "Column to partition on. It should be a date, timestamp or integer column. It is important for the data to be reasonably equally distributed across the partitions.",
+              "default": null
+            },
+            "lowerBound": {
+              "type": "string",
+              "description": "Lower bound of the partition range. If not provided, it will be fetched from the source.",
+              "default": null
+            },
+            "upperBound": {
+              "type": "string",
+              "description": "Upper bound of the partition range. If not provided, it will be fetched from the source.",
+              "default": null
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "partitionColumn"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
     "tableProfilerConfig": {
       "type": "object",
       "javaType": "org.openmetadata.schema.type.TableProfilerConfig",
@@ -818,6 +894,11 @@
           "type": "boolean",
           "default": true,
           "title": "Compute Column Metrics"
+        },
+        "sparkTableProfilerConfig": {
+          "description": "Table Specific configuration for Profiling it with a Spark Engine. It is ignored for other engines.",
+          "$ref": "#/definitions/sparkTableProfilerConfig",
+          "default": null
         }
       }
     },
@@ -899,6 +980,11 @@
           "description": "Resource Type of the model.",
           "type": "string"
         },
+        "dbtSourceProject": {
+          "description": "The DBT project name that served as the source for ingesting this table's metadata and lineage information.",
+          "type": "string",
+          "default": null
+        },
         "description": {
           "description": "Description of the Table from the model.",
           "$ref": "../../type/basic.json#/definitions/markdown"
@@ -955,7 +1041,24 @@
     "fileFormat": {
       "description": "File format in case of file/datalake tables.",
       "type": "string",
-      "enum": ["csv", "tsv", "avro", "parquet", "json", "json.gz", "json.zip", "jsonl", "jsonl.gz", "jsonl.zip"]
+      "enum": [
+        "csv",
+        "csv.gz",
+        "tsv",
+        "avro",
+        "parquet",
+        "pq",
+        "pqt",
+        "parq",
+        "parquet.snappy",
+        "json",
+        "json.gz",
+        "json.zip",
+        "jsonl",
+        "jsonl.gz",
+        "jsonl.zip",
+        "MF4"
+      ]
     }
   },
   "properties": {
@@ -991,6 +1094,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
     "href": {
       "description": "Link to this table resource.",
       "$ref": "../../type/basic.json#/definitions/href"
@@ -1003,8 +1110,7 @@
       "type": "array",
       "items": {
         "$ref": "#/definitions/column"
-      },
-      "default": null
+      }
     },
     "tableConstraints": {
       "description": "Table constraints.",
@@ -1117,9 +1223,61 @@
       "type": "boolean",
       "default": false
     },
-    "retentionPeriod" : {
+    "retentionPeriod": {
       "description": "Retention period of the data in the table. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`. When not set, the retention period is inherited from the parent database schema, if it exists.",
       "$ref": "../../type/basic.json#/definitions/duration"
+    },
+    "compressionEnabled": {
+      "description": "Indicates whether compression is enabled on this table. Applicable for databases that support compression like Snowflake, TimescaleDB, ClickHouse, BigQuery, Redshift, etc.",
+      "type": "boolean",
+      "default": null
+    },
+    "compressionCodec": {
+      "description": "Compression algorithm/codec used. Examples: LZ4, ZSTD, Snappy, Gorilla, Delta, etc. Database-specific values allowed.",
+      "type": "string",
+      "default": null
+    },
+    "compressionStrategy": {
+      "description": "Compression strategy configuration including segment/partition/order keys",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.CompressionStrategy",
+      "properties": {
+        "compressionType": {
+          "description": "Type of compression: AUTOMATIC (Snowflake/BigQuery), MANUAL (Redshift), POLICY_BASED (TimescaleDB)",
+          "type": "string",
+          "enum": [
+            "AUTOMATIC",
+            "MANUAL",
+            "POLICY_BASED"
+          ],
+          "default": null
+        },
+        "segmentColumns": {
+          "description": "Columns used for segmenting/partitioning compressed data (TimescaleDB segment-by, ClickHouse partition key)",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": null
+        },
+        "orderColumns": {
+          "description": "Columns defining sort order within compressed blocks (TimescaleDB order-by, ClickHouse order by)",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": null
+        },
+        "compressionLevel": {
+          "description": "Compression level (1-9) for codecs that support it",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9,
+          "default": null
+        }
+      },
+      "additionalProperties": false,
+      "default": null
     },
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
@@ -1129,19 +1287,19 @@
       "description": "Source URL of table.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
-    "domain" : {
-      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains": {
+      "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
-    "dataProducts" : {
+    "dataProducts": {
       "description": "List of data products this entity is part of.",
-      "$ref" : "../../type/entityReferenceList.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "fileFormat": {
       "description": "File format in case of file/datalake tables.",
-      "$ref" : "#/definitions/fileFormat"
+      "$ref": "#/definitions/fileFormat"
     },
-    "votes" : {
+    "votes": {
       "description": "Votes on the entity.",
       "$ref": "../../type/votes.json"
     },
@@ -1164,12 +1322,24 @@
       "default": false
     },
     "queries": {
-      "description": "List of queries that are used to create this table.", 
+      "description": "List of queries that are used to create this table.",
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/sqlQuery"
       },
       "default": null
+    },
+    "pipelineObservability": {
+      "description": "Pipeline observability information for the table. Multiple pipelines can process the same table.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/pipelineObservability.json"
+      },
+      "default": null
+    },
+    "entityStatus": {
+      "description": "Status of the Table.",
+      "$ref": "../../type/status.json"
     }
   },
   "required": [

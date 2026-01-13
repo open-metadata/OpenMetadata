@@ -14,9 +14,9 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Collapse, Row, Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as PlusOutlined } from '../../assets/svg/plus-outlined.svg';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -53,7 +53,7 @@ import { UpdateConfigParams } from './searchSettings.interface';
 
 const SearchSettingsPage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { permissions } = usePermissionProvider();
   const { isAdminUser } = useAuth();
   const { setAppPreferences, appPreferences } = useApplicationStore();
@@ -284,7 +284,7 @@ const SearchSettingsPage = () => {
 
   const handleViewDetailClick = (key: string) => {
     const [category, option, entity] = key.split('.');
-    history.push(getSettingsPathWithFqn(category, option, entity));
+    navigate(getSettingsPathWithFqn(category, option, entity));
   };
 
   useEffect(() => {
@@ -305,7 +305,12 @@ const SearchSettingsPage = () => {
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
         <Col span={24}>
-          <PageHeader data={PAGE_HEADERS.SEARCH_SETTINGS} />
+          <PageHeader
+            data={{
+              header: t(PAGE_HEADERS.SEARCH_SETTINGS.header),
+              subHeader: t(PAGE_HEADERS.SEARCH_SETTINGS.subHeader),
+            }}
+          />
         </Col>
       </Row>
       <Row className="p-md settings-row m-x-0" gutter={[0, 16]}>
@@ -336,7 +341,7 @@ const SearchSettingsPage = () => {
             {globalSettings.map(({ key, label, max, min }) => (
               <Col className="global-setting-card" key={key}>
                 <GlobalSettingItem
-                  label={label}
+                  label={t(label)}
                   max={max}
                   min={min}
                   value={searchConfig?.globalSettings?.[key] ?? 0}

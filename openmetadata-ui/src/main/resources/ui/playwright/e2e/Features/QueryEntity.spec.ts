@@ -33,7 +33,7 @@ const entityData = [table1, table2, table3, user1, user2];
 const queryData = {
   query: `select * from table ${table1.entity.name}`,
   description: 'select all the field from table',
-  owner: user1.getUserName(),
+  owner: user1.getUserDisplayName(),
   tagFqn: 'PersonalData.Personal',
   tagName: 'Personal',
   queryUsedIn: {
@@ -51,6 +51,10 @@ test.beforeAll(async ({ browser }) => {
     apiContext,
     tableResponseData: table2.entityResponseData,
   });
+
+  // set owner name for queryData
+  queryData.owner = user1.getUserDisplayName();
+
   await afterAction();
 });
 
@@ -66,7 +70,7 @@ test('Query Entity', async ({ page }) => {
     );
     await page.click(`[data-testid="table_queries"]`);
     const tableResponse = page.waitForResponse(
-      '/api/v1/search/query?q=**&from=0&size=*&index=table_search_index*'
+      '/api/v1/search/query?q=&index=table_search_index&from=0&size=*'
     );
     await queryResponse;
     await page.click(`[data-testid="add-query-btn"]`);
@@ -102,12 +106,15 @@ test('Query Entity', async ({ page }) => {
     await createQueryResponse;
     await page.waitForURL('**/table_queries**');
 
-    await expect(page.locator(`text=${queryData.query}`)).toBeVisible();
+    await page.waitForSelector(`text=${queryData.query}`, {
+      state: 'visible',
+      timeout: 10000,
+    });
   });
 
   await test.step('Update owner, description and tag', async () => {
     const ownerListResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
+      '/api/v1/search/query?q=&index=user_search_index&*'
     );
     await page
       .getByTestId(
@@ -121,6 +128,11 @@ test('Query Entity', async ({ page }) => {
       state: 'detached',
     });
 
+    await page
+      .locator("[data-testid='select-owner-tabs']")
+      .getByRole('tab', { name: 'Users' })
+      .click();
+
     const searchOwnerResponse = page.waitForResponse('api/v1/search/query?q=*');
     await page.fill(
       '[data-testid="owner-select-users-search-bar"]',
@@ -133,13 +145,13 @@ test('Query Entity', async ({ page }) => {
         response.url().includes('/api/v1/queries/') &&
         response.request().method() === 'PATCH'
     );
-    await page.click('[data-testid="selectable-list-update-btn"]');
+    await page.getByRole('button', { name: 'Update' }).click({
+      force: true,
+    });
     await updateOwnerResponse;
 
-    await expect(page.getByRole('link', { name: 'admin' })).toBeVisible();
-    await expect(
-      page.getByRole('link', { name: queryData.owner })
-    ).toBeVisible();
+    await expect(page.getByTestId('admin')).toBeVisible();
+    await expect(page.getByTestId(queryData.owner)).toBeVisible();
 
     // Update Description
     await page.click(`[data-testid="edit-description"]`);
@@ -159,7 +171,7 @@ test('Query Entity', async ({ page }) => {
     await page.getByTestId('add-tag').click();
     await page.locator('#tagsForm_tags').click();
     await page.locator('#tagsForm_tags').fill(queryData.tagFqn);
-    await page.getByTestId(`tag-${queryData.tagFqn}`).click();
+    await page.getByTestId(`tag-${queryData.tagFqn}`).first().click();
     const updateTagResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/queries/') &&
@@ -197,7 +209,7 @@ test('Query Entity', async ({ page }) => {
   });
 
   await test.step('Verify query filter', async () => {
-    const userName = user2.getUserName();
+    const userName = user2.getUserDisplayName();
     await queryFilters({
       filter: userName,
       apiKey: `/api/v1/search/query?*${encodeURI(
@@ -246,6 +258,51 @@ test('Query Entity', async ({ page }) => {
     expect(updatedQueryCards.length).toBeGreaterThan(0);
   });
 
+  await test.step('Verify vote for query', async () => {
+    await page
+      .getByTestId('extra-option-container')
+      .getByTestId('up-vote-btn')
+      .click();
+
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    const upVoteCount = await page
+      .getByTestId('extra-option-container')
+      .getByTestId('up-vote-btn')
+      .textContent();
+
+    expect(upVoteCount).toBe('1');
+
+    await page
+      .getByTestId('extra-option-container')
+      .getByTestId('down-vote-btn')
+      .click();
+
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    const downVoteCount = await page
+      .getByTestId('extra-option-container')
+      .getByTestId('down-vote-btn')
+      .textContent();
+
+    expect(downVoteCount).toBe('1');
+
+    const upVoteCount2 = await page
+      .getByTestId('extra-option-container')
+      .getByTestId('up-vote-btn')
+      .textContent();
+
+    expect(upVoteCount2).toBe('0');
+  });
+
   await test.step('Visit full screen view of query and Delete', async () => {
     const queryResponse = page.waitForResponse('/api/v1/queries/*');
     await page.click(`[data-testid="query-entity-expand-button"]`);
@@ -276,6 +333,84 @@ test('Verify query duration', async ({ page }) => {
   );
 
   expect(durationText).toContain('6.199 sec');
+});
+
+test('Verify Query Pagination', async ({ page, browser }) => {
+  test.slow(true);
+
+  const { apiContext, afterAction } = await createNewPage(browser);
+
+  Array.from({ length: 26 }).forEach(async (_, index) => {
+    await table1.createQuery(
+      apiContext,
+      `select * from table ${table1.entity.name} ${index}`
+    );
+  });
+
+  await redirectToHomePage(page);
+  await table1.visitEntityPage(page);
+  const queryResponse = page.waitForResponse(
+    '/api/v1/search/query?q=*&index=query_search_index*'
+  );
+  await page.click(`[data-testid="table_queries"]`);
+  await queryResponse;
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  await expect(page.getByTestId('previous')).toBeDisabled();
+
+  const nextResponse = page.waitForResponse(
+    '/api/v1/search/query?q=*&index=query_search_index&from=15&size=15**'
+  );
+  await page.click('[data-testid="next"]');
+  await nextResponse;
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  await expect(page.getByTestId('next')).toBeDisabled();
+
+  const previousResponse = page.waitForResponse(
+    '/api/v1/search/query?q=*&index=query_search_index&from=0&size=15**'
+  );
+  await page.click('[data-testid="previous"]');
+  await previousResponse;
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  await expect(page.getByTestId('previous')).toBeDisabled();
+
+  await expect(page.getByText('15 / page')).toBeVisible();
+
+  // Change page size to 25
+  await page.locator('.ant-pagination-options-size-changer').click();
+  const pageSizeResponse = page.waitForResponse(
+    '/api/v1/search/query?q=*&index=query_search_index&from=0&size=25&deleted=false&query_filter=**'
+  );
+  await page.getByTitle('25 / Page').click();
+  await pageSizeResponse;
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  await expect(page.getByText('25 / page')).toBeVisible();
+
+  // check if the page size list is same as the page size list in the dropdown
+  await page.locator('.ant-pagination-options-size-changer').click();
+
+  // This is to check in the options only 3 sizes are visible.
+  // 15, 25, 50  Derived from locator which is overall and not contain to check the exact text
+  await expect(page.locator('.ant-pagination-options')).toHaveText(
+    '25 / page15255015 / page25 / page50 / page'
+  );
+
+  await afterAction();
 });
 
 test.afterAll(async ({ browser }) => {

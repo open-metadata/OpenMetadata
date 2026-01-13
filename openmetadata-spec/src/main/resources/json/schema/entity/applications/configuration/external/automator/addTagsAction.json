@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/automator/addTagsAction.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AddTagsAction",
-  "description": "Apply Tags to the selected assets.",
+  "description": "Apply Classification Tags to the selected assets.",
   "type": "object",
   "definitions": {
     "addTagsActionType": {
@@ -20,7 +20,7 @@
       "default": "AddTagsAction"
     },
     "tags": {
-      "description": "Tags to apply",
+      "description": "Classification Tags to apply (source must be 'Classification')",
       "type": "array",
       "items": {
         "$ref": "../../../../../type/tagLabel.json"

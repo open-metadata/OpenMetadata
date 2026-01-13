@@ -50,6 +50,10 @@ public interface EntityInterface {
 
   Long getUpdatedAt();
 
+  default String getImpersonatedBy() {
+    return null;
+  }
+
   URI getHref();
 
   ChangeDescription getChangeDescription();
@@ -65,6 +69,10 @@ public interface EntityInterface {
   }
 
   default List<TagLabel> getTags() {
+    return null;
+  }
+
+  default EntityStatus getEntityStatus() {
     return null;
   }
 
@@ -102,7 +110,7 @@ public interface EntityInterface {
     return null;
   }
 
-  default EntityReference getDomain() {
+  default List<EntityReference> getDomains() {
     return null;
   }
 
@@ -146,9 +154,17 @@ public interface EntityInterface {
 
   void setUpdatedAt(Long updatedAt);
 
+  default void setImpersonatedBy(String botName) {
+    /* no-op implementation to be overridden */
+  }
+
   void setHref(URI href);
 
   default void setTags(List<TagLabel> tags) {
+    /* no-op implementation to be overridden */
+  }
+
+  default void setEntityStatus(EntityStatus approvalStatus) {
     /* no-op implementation to be overridden */
   }
 
@@ -172,7 +188,7 @@ public interface EntityInterface {
     /* no-op implementation to be overridden */
   }
 
-  default void setDomain(EntityReference entityReference) {
+  default void setDomains(List<EntityReference> entityReference) {
     /* no-op implementation to be overridden */
   }
 

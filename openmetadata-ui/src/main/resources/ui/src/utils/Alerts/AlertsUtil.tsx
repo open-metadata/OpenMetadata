@@ -37,8 +37,6 @@ import {
 import Form, { RuleObject } from 'antd/lib/form';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { compare, Operation } from 'fast-json-patch';
-import i18next, { t } from 'i18next';
 import {
   isEmpty,
   isEqual,
@@ -46,10 +44,9 @@ import {
   map,
   omitBy,
   startCase,
-  trim,
   uniqBy,
 } from 'lodash';
-import React, { Fragment } from 'react';
+import { Fragment } from 'react';
 import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
 import { ReactComponent as ClockIcon } from '../../assets/svg/clock.svg';
@@ -62,8 +59,8 @@ import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
 import { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
 import TeamAndUserSelectItem from '../../components/Alerts/DestinationFormItem/TeamAndUserSelectItem/TeamAndUserSelectItem';
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
-import { InlineAlertProps } from '../../components/common/InlineAlert/InlineAlert.interface';
 import {
+  DATA_CONTRACT_STATUS_OPTIONS,
   DEFAULT_READ_TIMEOUT,
   DESTINATION_DROPDOWN_TABS,
   DESTINATION_SOURCE_ITEMS,
@@ -73,12 +70,9 @@ import {
 import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
-import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { StatusType } from '../../generated/entity/data/pipeline';
 import { PipelineState } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { User } from '../../generated/entity/teams/user';
-import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import { EventsRecord } from '../../generated/events/api/eventsRecord';
 import { EventSubscriptionDiagnosticInfo } from '../../generated/events/api/eventSubscriptionDiagnosticInfo';
 import {
@@ -87,8 +81,8 @@ import {
   TypedEvent,
 } from '../../generated/events/api/typedEvent';
 import {
+  Destination,
   EventFilterRule,
-  EventSubscription,
   HTTPMethod,
   InputType,
   SubscriptionCategory,
@@ -98,18 +92,15 @@ import {
 import { Status as DestinationStatus } from '../../generated/events/testDestinationStatus';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { EventType } from '../../generated/type/changeEvent';
-import {
-  ModifiedCreateEventSubscription,
-  ModifiedDestination,
-  ModifiedEventSubscription,
-} from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import { searchData } from '../../rest/miscAPI';
+import { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { searchQuery } from '../../rest/searchAPI';
 import { ExtraInfoLabel } from '../DataAssetsHeader.utils';
 import { getEntityName, getEntityNameLabel } from '../EntityUtils';
-import { handleEntityCreationError } from '../formUtils';
+import { t } from '../i18next/LocalUtil';
 import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
 import searchClassBase from '../SearchClassBase';
-import { showErrorToast, showSuccessToast } from '../ToastUtils';
+import { getTermQuery } from '../SearchUtils';
+import { showErrorToast } from '../ToastUtils';
 import './alerts-util.less';
 
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
@@ -131,27 +122,27 @@ export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
 export const getFunctionDisplayName = (func: string): string => {
   switch (func) {
     case 'matchAnyEntityFqn':
-      return i18next.t('label.fqn-uppercase');
+      return t('label.fqn-uppercase');
     case 'matchAnyOwnerName':
-      return i18next.t('label.owner-plural');
+      return t('label.owner-plural');
     case 'matchAnyEventType':
-      return i18next.t('label.event-type');
+      return t('label.event-type');
     case 'matchTestResult':
-      return i18next.t('label.test-entity', {
-        entity: i18next.t('label.result-plural'),
+      return t('label.test-entity', {
+        entity: t('label.result-plural'),
       });
     case 'matchUpdatedBy':
-      return i18next.t('label.updated-by');
+      return t('label.updated-by');
     case 'matchAnyFieldChange':
-      return i18next.t('label.field-change');
+      return t('label.field-change');
     case 'matchPipelineState':
-      return i18next.t('label.pipeline-state');
+      return t('label.pipeline-state');
     case 'matchIngestionPipelineState':
-      return i18next.t('label.pipeline-state');
+      return t('label.pipeline-state');
     case 'matchAnySource':
-      return i18next.t('label.source-match');
+      return t('label.source-match');
     case 'matchAnyEntityId':
-      return i18next.t('label.entity-id-match');
+      return t('label.entity-id-match');
     default:
       return '';
   }
@@ -167,17 +158,13 @@ export const listLengthValidator =
   <T,>(name: string, minLengthRequired = 1) =>
   async (_: RuleObject, list: T[]) => {
     if (!list || list.length < minLengthRequired) {
-      return Promise.reject(
-        new Error(
-          i18next.t('message.length-validator-error', {
-            length: minLengthRequired,
-            field: name,
-          })
-        )
+      throw new Error(
+        t('message.length-validator-error', {
+          length: minLengthRequired,
+          field: name,
+        })
       );
     }
-
-    return Promise.resolve();
   };
 
 export const getAlertActionTypeDisplayName = (
@@ -185,17 +172,17 @@ export const getAlertActionTypeDisplayName = (
 ) => {
   switch (alertActionType) {
     case SubscriptionType.ActivityFeed:
-      return i18next.t('label.activity-feed-plural');
+      return t('label.activity-feed-plural');
     case SubscriptionType.Email:
-      return i18next.t('label.email');
+      return t('label.email');
     case SubscriptionType.Webhook:
-      return i18next.t('label.webhook');
+      return t('label.webhook');
     case SubscriptionType.Slack:
-      return i18next.t('label.slack');
+      return t('label.slack');
     case SubscriptionType.MSTeams:
-      return i18next.t('label.ms-team-plural');
+      return t('label.ms-team-plural');
     case SubscriptionType.GChat:
-      return i18next.t('label.g-chat');
+      return t('label.g-chat');
     default:
       return '';
   }
@@ -204,9 +191,9 @@ export const getAlertActionTypeDisplayName = (
 export const getDisplayNameForEntities = (entity: string) => {
   switch (entity) {
     case 'kpi':
-      return i18next.t('label.kpi-uppercase');
+      return t('label.kpi-uppercase');
     case 'mlmodel':
-      return i18next.t('label.ml-model');
+      return t('label.ml-model');
     default:
       return startCase(entity);
   }
@@ -217,31 +204,27 @@ export const EDIT_LINK_PATH = `/settings/notifications/edit-alert`;
 export const searchEntity = async ({
   searchText,
   searchIndex,
-  filters,
+  queryFilter,
   showDisplayNameAsLabel = true,
   setSourceAsValue = false,
 }: {
   searchText: string;
   searchIndex: SearchIndex | SearchIndex[];
-  filters?: string;
+  queryFilter?: Record<string, unknown>;
   showDisplayNameAsLabel?: boolean;
   setSourceAsValue?: boolean;
 }) => {
   try {
-    const response = await searchData(
-      searchText,
-      1,
-      PAGE_SIZE_LARGE,
-      filters ?? '',
-      '',
-      '',
-      searchIndex
-    );
-    const searchIndexEntityTypeMapping =
-      searchClassBase.getSearchIndexEntityTypeMapping();
+    const response = await searchQuery({
+      query: searchText,
+      pageNumber: 1,
+      pageSize: PAGE_SIZE_LARGE,
+      queryFilter,
+      searchIndex,
+    });
 
     return uniqBy(
-      response.data.hits.hits.map((d) => {
+      response.hits.hits.map((d) => {
         // Providing an option to hide display names, for inputs like 'fqnList',
         // where users can input text alongside selection options.
         // This helps avoid displaying the same option twice
@@ -253,7 +236,7 @@ export const searchEntity = async ({
         const value = setSourceAsValue
           ? JSON.stringify({
               ...d._source,
-              type: searchIndexEntityTypeMapping[d._index],
+              type: d._source.entityType,
             })
           : d._source.fullyQualifiedName ?? '';
 
@@ -296,7 +279,9 @@ const getOwnerOptions = async (searchText: string) => {
   return searchEntity({
     searchText,
     searchIndex: [SearchIndex.TEAM, SearchIndex.USER],
-    filters: 'isBot:false',
+    queryFilter: getTermQuery({
+      isBot: 'false',
+    }),
   });
 };
 
@@ -304,7 +289,9 @@ const getUserOptions = async (searchText: string) => {
   return searchEntity({
     searchText,
     searchIndex: SearchIndex.USER,
-    filters: 'isBot:false',
+    queryFilter: getTermQuery({
+      isBot: 'false',
+    }),
   });
 };
 
@@ -431,7 +418,10 @@ export const getDestinationConfigField = (
               />
             </Form.Item>
           </Col>
-          {type === SubscriptionType.Webhook && (
+          {(type === SubscriptionType.Webhook ||
+            type === SubscriptionType.Slack ||
+            type === SubscriptionType.MSTeams ||
+            type === SubscriptionType.GChat) && (
             <Col span={24}>
               <Collapse
                 className="webhook-config-collapse"
@@ -485,6 +475,7 @@ export const getDestinationConfigField = (
                                 <Col>
                                   <Col>
                                     <Button
+                                      data-testid={`add-header-button-${fieldName}`}
                                       icon={<PlusOutlined />}
                                       type="primary"
                                       onClick={() => add({})}
@@ -536,6 +527,97 @@ export const getDestinationConfigField = (
                                           ]}>
                                           <Input
                                             data-testid={`header-value-input-${name}`}
+                                            placeholder={t('label.value')}
+                                          />
+                                        </Form.Item>
+                                      </Col>
+                                    </Row>
+                                  </div>
+
+                                  <Button
+                                    icon={<CloseOutlined />}
+                                    onClick={() => remove(name)}
+                                  />
+                                </div>
+                              </Col>
+                            ))}
+
+                            <Col span={24}>
+                              <Form.ErrorList errors={errors} />
+                            </Col>
+                          </Row>
+                        )}
+                      </Form.List>
+                    </Col>
+                    <Col span={24}>
+                      <Form.List name={[fieldName, 'config', 'queryParams']}>
+                        {(fields, { add, remove }, { errors }) => (
+                          <Row
+                            data-testid={`webhook-${fieldName}-query-params-list`}
+                            gutter={[8, 8]}
+                            key="queryParams">
+                            <Col span={24}>
+                              <Row align="middle" justify="space-between">
+                                <Col>
+                                  <Typography.Text>
+                                    {`${t('label.query-parameter-plural')}:`}
+                                  </Typography.Text>
+                                </Col>
+                                <Col>
+                                  <Col>
+                                    <Button
+                                      data-testid={`add-query-param-button-${fieldName}`}
+                                      icon={<PlusOutlined />}
+                                      type="primary"
+                                      onClick={() => add({})}
+                                    />
+                                  </Col>
+                                </Col>
+                              </Row>
+                            </Col>
+                            {fields.map(({ key, name }) => (
+                              <Col key={key} span={24}>
+                                <div className="flex gap-4">
+                                  <div className="flex-1 w-min-0">
+                                    <Row gutter={[8, 8]}>
+                                      <Col span={12}>
+                                        <Form.Item
+                                          required
+                                          name={[name, 'key']}
+                                          rules={[
+                                            {
+                                              required: true,
+                                              message: t(
+                                                'message.field-text-is-required',
+                                                {
+                                                  fieldText: t('label.key'),
+                                                }
+                                              ),
+                                            },
+                                          ]}>
+                                          <Input
+                                            data-testid={`query-param-key-input-${name}`}
+                                            placeholder={t('label.key')}
+                                          />
+                                        </Form.Item>
+                                      </Col>
+                                      <Col span={12}>
+                                        <Form.Item
+                                          required
+                                          name={[name, 'value']}
+                                          rules={[
+                                            {
+                                              required: true,
+                                              message: t(
+                                                'message.field-text-is-required',
+                                                {
+                                                  fieldText: t('label.value'),
+                                                }
+                                              ),
+                                            },
+                                          ]}>
+                                          <Input
+                                            data-testid={`query-param-value-input-${name}`}
                                             placeholder={t('label.value')}
                                           />
                                         </Form.Item>
@@ -683,6 +765,14 @@ export const getMessageFromArgumentName = (argumentName: string) => {
           }),
         }),
       });
+    case 'entityNameList':
+      return t('message.field-text-is-required', {
+        fieldText: t('label.entity-list', {
+          entity: t('label.entity-name', {
+            entity: t('label.entity'),
+          }),
+        }),
+      });
     case 'ownerNameList':
       return t('message.field-text-is-required', {
         fieldText: t('label.entity-list', {
@@ -735,6 +825,12 @@ export const getMessageFromArgumentName = (argumentName: string) => {
           entity: t('label.test-case-result'),
         }),
       });
+    case 'contractStatusList':
+      return t('message.field-text-is-required', {
+        fieldText: t('label.entity-list', {
+          entity: t('label.data-contract-status'),
+        }),
+      });
     case 'testSuiteList':
       return t('message.field-text-is-required', {
         fieldText: t('label.entity-list', {
@@ -764,6 +860,12 @@ export const getFieldByArgumentType = (
       showDisplayNameAsLabel: false,
     });
   };
+  const translatedContractStatusOptions = DATA_CONTRACT_STATUS_OPTIONS.map(
+    (option) => ({
+      ...option,
+      label: t(option.label),
+    })
+  );
 
   switch (argument) {
     case 'fqnList':
@@ -810,6 +912,23 @@ export const getFieldByArgumentType = (
           optionFilterProp="label"
           placeholder={t('label.search-by-type', {
             type: t('label.table-lowercase'),
+          })}
+        />
+      );
+
+      break;
+
+    case 'entityNameList':
+      field = (
+        <AsyncSelect
+          api={getTableSuggestions}
+          className="w-full"
+          data-testid="entity-name-select"
+          maxTagTextLength={45}
+          mode="tags"
+          optionFilterProp="label"
+          placeholder={t('label.search-by-type', {
+            type: t('label.entity-lowercase'),
           })}
         />
       );
@@ -943,6 +1062,21 @@ export const getFieldByArgumentType = (
 
       break;
 
+    case 'contractStatusList':
+      field = (
+        <Select
+          className="w-full"
+          data-testid="contract-status-select"
+          mode="multiple"
+          options={translatedContractStatusOptions}
+          placeholder={t('label.select-field', {
+            field: t('label.data-contract-status'),
+          })}
+        />
+      );
+
+      break;
+
     case 'testSuiteList':
       field = (
         <AsyncSelect
@@ -1049,182 +1183,130 @@ export const getConfigHeaderArrayFromObject = (headers?: Webhook['headers']) =>
         value,
       }));
 
+/**
+ * @description Function to get query params webhook config converted from an array
+ */
+export const getConfigQueryParamsObjectFromArray = (
+  queryParams?: {
+    key: string;
+    value: string;
+  }[]
+) =>
+  queryParams?.reduce(
+    (prev, curr) => ({
+      ...prev,
+      [curr.key]: curr.value,
+    }),
+    {} as { [key: string]: string }
+  );
+
+/**
+ * @description Function to get query params webhook config converted from an object
+ */
+export const getConfigQueryParamsArrayFromObject = (
+  queryParams?: Webhook['queryParams']
+) =>
+  isUndefined(queryParams)
+    ? queryParams
+    : Object.entries(queryParams).map(([key, value]) => ({
+        key,
+        value,
+      }));
+
+/**
+ * @description Normalizes destination config for comparison by converting headers and queryParams to array format
+ */
+export const normalizeDestinationConfig = (config?: Destination['config']) =>
+  omitBy(
+    {
+      ...config,
+      headers: getConfigHeaderArrayFromObject(config?.headers),
+      queryParams: getConfigQueryParamsArrayFromObject(config?.queryParams),
+    },
+    isUndefined
+  );
+
 export const getFormattedDestinations = (
   destinations?: ModifiedDestination[]
 ) => {
   const formattedDestinations = destinations?.map((destination) => {
-    const { destinationType, config, ...otherData } = destination;
+    const {
+      destinationType: _destinationType,
+      config,
+      ...otherData
+    } = destination;
 
     const headers = getConfigHeaderObjectFromArray(config?.headers);
+    const queryParams = getConfigQueryParamsObjectFromArray(
+      config?.queryParams
+    );
 
     return {
       ...otherData,
-      config: {
-        ...config,
-        headers: isEmpty(headers) ? undefined : headers,
-      },
+      config: omitBy(
+        {
+          ...config,
+          headers: isEmpty(headers) ? undefined : headers,
+          queryParams: isEmpty(queryParams) ? undefined : queryParams,
+        },
+        isUndefined
+      ),
     };
   });
 
   return formattedDestinations;
 };
 
-export const handleAlertSave = async ({
-  data,
-  fqn,
-  initialData,
-  createAlertAPI,
-  updateAlertAPI,
-  afterSaveAction,
-  setInlineAlertDetails,
-  currentUser,
-}: {
-  initialData?: EventSubscription;
-  data: ModifiedCreateEventSubscription;
-  createAlertAPI: (
-    alert: CreateEventSubscription
-  ) => Promise<EventSubscription>;
-  updateAlertAPI: (id: string, data: Operation[]) => Promise<EventSubscription>;
-  afterSaveAction: (fqn: string) => Promise<void>;
-  setInlineAlertDetails: (alertDetails?: InlineAlertProps | undefined) => void;
-  fqn?: string;
-  currentUser?: User;
-}) => {
-  try {
-    const destinations = data.destinations?.map((d) => {
-      const initialDestination = initialData?.destinations?.find(
-        (destination) => destination.type === d.type
-      );
-
-      return {
-        ...(initialDestination ?? {}),
-        type: d.type,
-        config: {
-          ...d.config,
-          headers: getConfigHeaderObjectFromArray(d.config?.headers),
-        },
-        category: d.category,
-        timeout: data.timeout,
-        readTimeout: data.readTimeout,
-      };
-    });
-    let alertDetails;
-    const alertName = trim(initialData?.name ?? getRandomizedAlertName());
-    const alertDisplayName = trim(getEntityName(data));
-
-    if (fqn && !isUndefined(initialData)) {
-      const { description, input, owners, resources } = data;
-
-      const newAlertData: EventSubscription = {
-        ...initialData,
-        description,
-        displayName: alertDisplayName,
-        name: alertName,
-        input: {
-          actions: input?.actions ?? [],
-          filters: input?.filters ?? [],
-        },
-        owners,
-        filteringRules: {
-          ...initialData.filteringRules,
-          resources: resources ?? [],
-        },
-        destinations: destinations ?? [],
-      };
-
-      const jsonPatch = compare(omitBy(initialData, isUndefined), newAlertData);
-
-      alertDetails = await updateAlertAPI(initialData.id, jsonPatch);
-    } else {
-      // Remove timeout from alert object since it's only for UI
-      const { timeout, readTimeout, ...finalData } = data;
-
-      alertDetails = await createAlertAPI({
-        ...finalData,
-        destinations,
-        name: alertName,
-        displayName: alertDisplayName,
-        ...(currentUser?.id
-          ? {
-              owners: [
-                {
-                  id: currentUser.id,
-                  type: EntityType.USER,
-                },
-              ],
-            }
-          : {}),
-      });
-    }
-
-    showSuccessToast(
-      t(`server.${'create'}-entity-success`, {
-        entity: t('label.alert-plural'),
-      })
-    );
-    afterSaveAction(alertDetails.fullyQualifiedName ?? '');
-  } catch (error) {
-    handleEntityCreationError({
-      error: error as AxiosError,
-      entity: t('label.alert'),
-      entityLowercase: t('label.alert-lowercase'),
-      entityLowercasePlural: t('label.alert-lowercase-plural'),
-      setInlineAlertDetails,
-      name: data.name,
-      defaultErrorType: 'create',
-    });
-  }
+// Destination category exclusions by entity type
+const DESTINATION_CATEGORY_EXCLUDES: Record<string, SubscriptionCategory[]> = {
+  // Default: exclude Assignees and Mentions for all non-thread entities
+  __default__: [SubscriptionCategory.Assignees, SubscriptionCategory.Mentions],
+  // Thread-specific exclusions
+  task: [
+    SubscriptionCategory.Followers,
+    SubscriptionCategory.Admins,
+    SubscriptionCategory.Users,
+    SubscriptionCategory.Teams,
+  ],
+  conversation: [
+    SubscriptionCategory.Followers,
+    SubscriptionCategory.Admins,
+    SubscriptionCategory.Users,
+    SubscriptionCategory.Teams,
+    SubscriptionCategory.Assignees,
+  ],
+  announcement: [SubscriptionCategory.Assignees],
 };
 
 export const getFilteredDestinationOptions = (
   key: keyof typeof DESTINATION_SOURCE_ITEMS,
   selectedSource: string
 ) => {
-  // Get options based on destination type key ("Internal" OR "External").
-  const newOptions = DESTINATION_SOURCE_ITEMS[key];
+  const options = DESTINATION_SOURCE_ITEMS[key];
+  const isExternalDestination = !isEqual(
+    key,
+    DESTINATION_DROPDOWN_TABS.internal
+  );
 
-  const isInternalOptions = isEqual(key, DESTINATION_DROPDOWN_TABS.internal);
+  if (isExternalDestination) {
+    return options;
+  }
 
-  // Logic to filter the options based on destination type and selected source.
-  const filteredOptions = newOptions.filter((option) => {
-    // If the destination type is external, always show all options.
-    if (!isInternalOptions) {
-      return true;
-    }
+  const excludedCategories =
+    DESTINATION_CATEGORY_EXCLUDES[selectedSource] ||
+    DESTINATION_CATEGORY_EXCLUDES.__default__;
 
-    // Logic to filter options for destination type "Internal"
-
-    // Show all options except "Assignees" and "Mentions" for all sources.
-    let shouldShowOption =
-      option.value !== SubscriptionCategory.Assignees &&
-      option.value !== SubscriptionCategory.Mentions;
-
-    // Only show "Owners" and "Assignees" options for "Task" source.
-    if (selectedSource === 'task') {
-      shouldShowOption = [
-        SubscriptionCategory.Owners,
-        SubscriptionCategory.Assignees,
-      ].includes(option.value as SubscriptionCategory);
-    }
-
-    // Only show "Owners" and "Mentions" options for "Conversation" source.
-    if (selectedSource === 'conversation') {
-      shouldShowOption = [
-        SubscriptionCategory.Owners,
-        SubscriptionCategory.Mentions,
-      ].includes(option.value as SubscriptionCategory);
-    }
-
-    return shouldShowOption;
-  });
-
-  return filteredOptions;
+  return options.filter(
+    (option) =>
+      !excludedCategories.includes(option.value as SubscriptionCategory)
+  );
 };
 
 export const getSourceOptionsFromResourceList = (
   resources: Array<string>,
   showCheckbox?: boolean,
-  selectedResource?: string[]
+  selectedResource?: string[],
+  showIcon?: boolean
 ) =>
   resources.map((resource) => {
     const sourceIcon = searchClassBase.getEntityIcon(resource ?? '');
@@ -1237,7 +1319,9 @@ export const getSourceOptionsFromResourceList = (
           {showCheckbox && (
             <Checkbox checked={selectedResource?.includes(resource)} />
           )}
-          {sourceIcon && <div className="d-flex h-4 w-4">{sourceIcon}</div>}
+          {sourceIcon && showIcon && (
+            <div className="d-flex h-4 w-4">{sourceIcon}</div>
+          )}
           <span>{getEntityNameLabel(resource ?? '')}</span>
         </div>
       ),
@@ -1355,14 +1439,12 @@ export const getAlertExtraInfo = (
   if (alertEventCountsLoading) {
     return (
       <>
-        {Array(3)
-          .fill(null)
-          .map((_, id) => (
-            <Fragment key={id}>
-              <Divider className="self-center" type="vertical" />
-              <Skeleton.Button active className="extra-info-skeleton" />
-            </Fragment>
-          ))}
+        {new Array(3).fill(null).map((_, id) => (
+          <Fragment key={id}>
+            <Divider className="self-center" type="vertical" />
+            <Skeleton.Button active className="extra-info-skeleton" />
+          </Fragment>
+        ))}
       </>
     );
   }
@@ -1420,31 +1502,6 @@ export const getDestinationStatusAlertData = (destinationStatus?: string) => {
     alertType,
     statusLabel,
     alertIcon,
-  };
-};
-
-export const getModifiedAlertDataForForm = (
-  alertData: EventSubscription
-): ModifiedEventSubscription => {
-  return {
-    ...alertData,
-    timeout: alertData.destinations[0].timeout ?? 10,
-    readTimeout: alertData.destinations[0].readTimeout ?? DEFAULT_READ_TIMEOUT,
-    destinations: alertData.destinations.map((destination) => {
-      const isExternalDestination =
-        destination.category === SubscriptionCategory.External;
-
-      return {
-        ...destination,
-        destinationType: isExternalDestination
-          ? destination.type
-          : destination.category,
-        config: {
-          ...destination.config,
-          headers: getConfigHeaderArrayFromObject(destination.config?.headers),
-        },
-      };
-    }),
   };
 };
 

@@ -84,3 +84,21 @@ class QlikAppResponse(BaseModel):
 
     apps: Optional[List[QlikApp]] = Field(None, alias="data")
     links: Optional[QlikLinks] = None
+
+
+class QlikScript(BaseModel):
+    qScript: Optional[str] = None
+
+
+class QlikScriptResult(BaseModel):
+    result: Optional[QlikScript] = QlikScript()
+
+
+class QlikDataFile(BaseModel):
+    id: str
+    name: str
+    folder: bool = False
+
+
+class QlikDataFiles(BaseModel):
+    data: Optional[List[QlikDataFile]] = None

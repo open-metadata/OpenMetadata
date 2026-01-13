@@ -1,16 +1,18 @@
 package org.openmetadata.service.resources.system;
 
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.stream.Collectors;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 
+@Slf4j
 @Path("/")
 public class IndexResource {
   private String indexHtml;
@@ -28,6 +30,7 @@ public class IndexResource {
   }
 
   public static String getIndexFile(String basePath) {
+    LOG.info("IndexResource.getIndexFile called with basePath: [{}]", basePath);
 
     InputStream inputStream = IndexResource.class.getResourceAsStream("/assets/index.html");
     String indexHtml =
@@ -35,7 +38,16 @@ public class IndexResource {
             .lines()
             .collect(Collectors.joining("\n"));
 
-    return indexHtml.replace("${basePath}", basePath);
+    String result = indexHtml.replace("${basePath}", basePath);
+    String basePathLine =
+        result
+            .lines()
+            .filter(line -> line.contains("window.BASE_PATH"))
+            .findFirst()
+            .orElse("NOT FOUND");
+    LOG.info("After replacement, window.BASE_PATH line: {}", basePathLine.trim());
+
+    return result;
   }
 
   @GET

@@ -12,20 +12,19 @@
  */
 
 import Icon, { CloseCircleOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Checkbox, MenuProps, Space, Typography } from 'antd';
-import i18next from 'i18next';
-import { isArray, isEmpty, toLower } from 'lodash';
-import React from 'react';
 import {
-  AsyncFetchListValues,
-  JsonTree,
   ListValues,
+  OldJsonTree,
   RenderSettings,
   Utils as QbUtils,
-} from 'react-awesome-query-builder';
+} from '@react-awesome-query-builder/antd';
+import { Button, Checkbox, MenuProps, Space, Typography } from 'antd';
+import { isArray, isEmpty, toLower } from 'lodash';
+import React from 'react';
 import { ReactComponent as IconDeleteColored } from '../assets/svg/ic-delete-colored.svg';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
+import { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
@@ -35,7 +34,10 @@ import {
   LINEAGE_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
 import { NOT_INCLUDE_AGGREGATION_QUICK_FILTER } from '../constants/explore.constants';
-import { EntityFields } from '../enums/AdvancedSearch.enum';
+import {
+  EntityFields,
+  EntityReferenceFields,
+} from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import {
@@ -53,10 +55,11 @@ import { getTags } from '../rest/tagAPI';
 import { getCountBadge } from '../utils/CommonUtils';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { getEntityName } from './EntityUtils';
+import { t } from './i18next/LocalUtil';
 import jsonLogicSearchClassBase from './JSONLogicSearchClassBase';
 import searchClassBase from './SearchClassBase';
 
-export const getDropDownItems = (index: string) => {
+export const getDropDownItems = (index: string): ExploreQuickFilterField[] => {
   return searchClassBase.getDropDownItems(index);
 };
 
@@ -85,10 +88,7 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
     return (
       <Icon
         className="action action--DELETE"
-        component={
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          CloseCircleOutlined as React.ForwardRefExoticComponent<any>
-        }
+        component={CloseCircleOutlined as React.ForwardRefExoticComponent<any>}
         data-testid="advanced-search-delete-rule"
         onClick={props?.onClick}
       />
@@ -102,7 +102,7 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
         icon={<PlusOutlined />}
         type="primary"
         onClick={props?.onClick}>
-        {i18next.t('label.add')}
+        {t('label.add')}
       </Button>
     );
   } else if (type === 'addGroup') {
@@ -113,14 +113,14 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
         icon={<PlusOutlined />}
         type="primary"
         onClick={props?.onClick}>
-        {i18next.t('label.add')}
+        {t('label.add')}
       </Button>
     );
   } else if (type === 'delGroup') {
     return (
       <Icon
-        alt={i18next.t('label.delete-entity', {
-          entity: i18next.t('label.group'),
+        alt={t('label.delete-entity', {
+          entity: t('label.group'),
         })}
         className="action action--DELETE cursor-pointer align-middle"
         component={IconDeleteColored}
@@ -356,7 +356,7 @@ export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
     }));
 };
 
-export const getTierOptions: () => Promise<AsyncFetchListValues> = async () => {
+export const getTierOptions = async (): Promise<ListValues> => {
   try {
     const { data: tiers } = await getTags({
       parent: 'Tier',
@@ -368,7 +368,7 @@ export const getTierOptions: () => Promise<AsyncFetchListValues> = async () => {
       value: tier.fullyQualifiedName,
     }));
 
-    return tierFields;
+    return tierFields as ListValues;
   } catch (error) {
     return [];
   }
@@ -378,18 +378,16 @@ export const getTreeConfig = ({
   searchOutputType,
   searchIndex,
   isExplorePage,
-  tierOptions,
 }: {
   searchOutputType: SearchOutputType;
   searchIndex: SearchIndex | SearchIndex[];
-  tierOptions: Promise<ListValues>;
   isExplorePage: boolean;
 }) => {
   const index = isArray(searchIndex) ? searchIndex : [searchIndex];
 
   return searchOutputType === SearchOutputType.ElasticSearch
-    ? advancedSearchClassBase.getQbConfigs(tierOptions, index, isExplorePage)
-    : jsonLogicSearchClassBase.getQbConfigs(tierOptions, index, isExplorePage);
+    ? advancedSearchClassBase.getQbConfigs(index, isExplorePage)
+    : jsonLogicSearchClassBase.getQbConfigs(index, isExplorePage);
 };
 
 export const formatQueryValueBasedOnType = (
@@ -416,7 +414,7 @@ export const getCustomPropertyAdvanceSearchEnumOptions = (
 
 export const getEmptyJsonTree = (
   defaultField: string = EntityFields.OWNERS
-): JsonTree => {
+): OldJsonTree => {
   return {
     id: QbUtils.uuid(),
     type: 'group',
@@ -439,6 +437,54 @@ export const getEmptyJsonTree = (
               operator: null,
               value: [],
               valueSrc: ['value'],
+            },
+          },
+        },
+      },
+    },
+  };
+};
+
+/**
+ * Creates an empty JSON tree structure specifically optimized for QueryBuilderWidget
+ * This structure allows easy addition of groups and rules
+ */
+export const getEmptyJsonTreeForQueryBuilder = (
+  defaultField: string = EntityReferenceFields.OWNERS,
+  subField = 'fullyQualifiedName'
+): OldJsonTree => {
+  const uuid1 = QbUtils.uuid();
+  const uuid2 = QbUtils.uuid();
+  const uuid3 = QbUtils.uuid();
+
+  return {
+    id: uuid1,
+    type: 'group',
+    properties: {
+      conjunction: 'AND',
+      not: false,
+    },
+    children1: {
+      [uuid2]: {
+        type: 'rule_group',
+        id: uuid2,
+        properties: {
+          conjunction: 'AND',
+          not: false,
+          mode: 'some',
+          field: defaultField,
+          fieldSrc: 'field',
+        },
+        children1: {
+          [uuid3]: {
+            type: 'rule',
+            id: uuid3,
+            properties: {
+              field: `${defaultField}.${subField}`,
+              operator: 'select_equals',
+              value: [],
+              valueSrc: ['value'],
+              fieldSrc: 'field',
             },
           },
         },

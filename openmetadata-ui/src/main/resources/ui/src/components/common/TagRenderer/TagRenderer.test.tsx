@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { TagRenderer } from './TagRenderer';
 
 describe('TagRenderer', () => {
@@ -23,6 +22,7 @@ describe('TagRenderer', () => {
     onClose: mockOnClose,
     disabled: false,
     onMouseDown: jest.fn(),
+    isMaxTag: false,
   };
 
   beforeEach(() => {

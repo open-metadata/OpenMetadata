@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { SearchSettings } from '../../generated/configuration/searchSettings';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -62,7 +61,9 @@ jest.mock('../../utils/GlobalSettingsUtils', () => ({
 }));
 
 jest.mock('../../utils/SearchSettingsUtils', () => ({
-  getSearchSettingCategories: jest.fn().mockReturnValue(mockSettingCategories),
+  getSearchSettingCategories: jest
+    .fn()
+    .mockImplementation(() => mockSettingCategories),
 }));
 
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {

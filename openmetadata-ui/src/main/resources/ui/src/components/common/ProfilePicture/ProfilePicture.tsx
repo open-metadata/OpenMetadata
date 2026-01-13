@@ -15,7 +15,7 @@ import { Avatar } from 'antd';
 import classNames from 'classnames';
 import { parseInt } from 'lodash';
 import { ImageShape } from 'Models';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { User } from '../../../generated/entity/teams/user';
@@ -65,7 +65,7 @@ const ProfilePicture = ({
   const getAvatarByName = () => {
     return (
       <Avatar
-        className={classNames('flex-center', className)}
+        className={classNames('flex-center flex-shrink', className)}
         data-testid="profile-avatar"
         icon={character}
         shape={type}

@@ -18,11 +18,11 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export interface PipelineVersionProp {
-  version: string;
+  version?: string;
   currentVersionData: Pipeline;
   isVersionLoading: boolean;
   owners: Pipeline['owners'];
-  domain: Pipeline['domain'];
+  domains: Pipeline['domains'];
   dataProducts: Pipeline['dataProducts'];
   tier: TagLabel;
   slashedPipelineName: TitleBreadcrumbProps['titleLinks'];

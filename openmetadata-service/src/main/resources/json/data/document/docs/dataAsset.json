@@ -1,7 +1,7 @@
 {
   "name": "DataAssets",
   "displayName": "Data Assets",
-  "description": "Data Assets KnowledgePanel shows all the data assets present in the application",
+  "description": "Highlights data assets across the platform for quicker access to frequently used or high-value datasets.",
   "entityType": "KnowledgePanel",
   "fullyQualifiedName": "KnowledgePanel.DataAssets",
   "data": {

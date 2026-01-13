@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button } from 'antd';
-import { t } from 'i18next';
-import { isUndefined } from 'lodash';
-import React from 'react';
 import {
-  FieldGroup,
+  FieldOrGroup,
   Fields,
+  OldJsonItem,
+  OldJsonTree,
   RenderSettings,
-} from 'react-awesome-query-builder';
+} from '@react-awesome-query-builder/antd';
+import { Button } from 'antd';
+import { isBoolean, isEmpty, isUndefined } from 'lodash';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import {
@@ -30,6 +30,7 @@ import {
   QueryFieldInterface,
   QueryFilterInterface,
 } from '../pages/ExplorePage/ExplorePage.interface';
+import { t } from './i18next/LocalUtil';
 import { generateUUID } from './StringsUtils';
 
 export const JSONLOGIC_FIELDS_TO_IGNORE_SPLIT = [
@@ -63,23 +64,22 @@ export const resolveFieldType = (
 
   // Traverse nested subfields if there are more parts
   for (let i = 1; i < fieldParts.length; i++) {
-    // First check if a more specific path exists (e.g., "expert.name" as a direct subfield)
-    if (i === 1 && (currentField as FieldGroup)?.subfields) {
+    if (i === 1 && (currentField as Field)?.subfields) {
       // Join the remaining parts and check if it exists as a single subfield
       const remainingPath = fieldParts.slice(1).join('.');
-      const remainingField = (currentField as FieldGroup).subfields[
-        remainingPath
-      ];
+      const remainingField = (currentField as Field).subfields[remainingPath];
       if (remainingField?.type) {
         return remainingField.type;
       }
     }
 
     // If no specific path found, continue with normal traversal
-    if (!(currentField as FieldGroup)?.subfields?.[fieldParts[i]]) {
+    if (!(currentField as Field)?.subfields?.[fieldParts[i]]) {
       return undefined; // Subfield not found
     }
-    currentField = (currentField as FieldGroup).subfields[fieldParts[i]];
+    currentField = (currentField as Field).subfields[
+      fieldParts[i]
+    ] as FieldOrGroup;
   }
 
   return currentField?.type;
@@ -94,7 +94,9 @@ export const getSelectEqualsNotEqualsProperties = (
   const id = generateUUID();
   const isEqualNotEqualOp = ['equal', 'not_equal'].includes(operator);
   const valueType = isEqualNotEqualOp
-    ? ['text']
+    ? isBoolean(value)
+      ? ['boolean']
+      : ['text']
     : Array.isArray(value)
     ? ['multiselect']
     : ['select'];
@@ -388,7 +390,7 @@ export const getJsonTreePropertyFromQueryFilter = (
 export const getJsonTreeFromQueryFilter = (
   queryFilter: QueryFilterInterface,
   fields?: Fields
-) => {
+): OldJsonTree => {
   try {
     const id1 = generateUUID();
     const id2 = generateUUID();
@@ -409,13 +411,12 @@ export const getJsonTreeFromQueryFilter = (
           ),
           id: id2,
           path: [id1, id2],
-        },
+        } as OldJsonItem,
       },
       id: id1,
-      path: [id1],
     };
   } catch {
-    return {};
+    return {} as OldJsonTree;
   }
 };
 
@@ -514,7 +515,7 @@ interface ElasticsearchQuery {
   };
 }
 
-interface JsonLogic {
+export interface JsonLogic {
   [key: string]: any;
 }
 
@@ -833,7 +834,7 @@ export const addEntityTypeFilter = (
         must: [
           {
             term: {
-              entityType: entityType,
+              'entityType.keyword': entityType,
             },
           },
         ],
@@ -846,20 +847,100 @@ export const addEntityTypeFilter = (
 
 export const getEntityTypeAggregationFilter = (
   qFilter: QueryFilterInterface,
-  entityType: string
+  entityType: string | string[]
 ): QueryFilterInterface => {
   if (Array.isArray((qFilter.query?.bool as EsBoolQuery)?.must)) {
     const firstMustBlock = (
       qFilter.query?.bool?.must as QueryFieldInterface[]
     )[0];
     if (firstMustBlock?.bool?.must) {
-      (firstMustBlock.bool.must as QueryFieldInterface[]).push({
-        term: {
-          entityType: entityType,
-        },
+      const entityTypes = Array.isArray(entityType) ? entityType : [entityType];
+      entityTypes.forEach((entityType) => {
+        (firstMustBlock?.bool?.must as QueryFieldInterface[])?.push({
+          term: {
+            'entityType.keyword': entityType,
+          },
+        });
       });
     }
   }
 
   return qFilter;
 };
+
+/**
+ * Migrates old JsonLogic format to new format for specific entity reference fields.
+ * @param jsonLogic The original JsonLogic object
+ * @returns The migrated JsonLogic object
+ */
+export const migrateJsonLogic = (
+  jsonLogic: Record<string, unknown>
+): Record<string, unknown> => {
+  const FIELD_MAPPING: Record<string, string> = {
+    [EntityReferenceFields.OWNERS]: 'fullyQualifiedName',
+    [EntityReferenceFields.REVIEWERS]: 'fullyQualifiedName',
+    [EntityReferenceFields.TAG]: 'tagFqn',
+  };
+
+  const isVarObject = (value: unknown): value is { var: string } => {
+    return (
+      typeof value === 'object' &&
+      value !== null &&
+      !Array.isArray(value) &&
+      'var' in value &&
+      typeof (value as Record<string, unknown>)['var'] === 'string'
+    );
+  };
+
+  const migrateNode = (node: JsonLogic): JsonLogic => {
+    if (node === null || typeof node !== 'object') {
+      return node;
+    }
+    if (!Array.isArray(node) && '!!' in node && isVarObject(node['!!'])) {
+      const varName = node['!!'].var;
+      const mappedField = FIELD_MAPPING[varName];
+      if (mappedField) {
+        return {
+          some: [{ var: varName }, { '!=': [{ var: mappedField }, null] }],
+        };
+      }
+    }
+    // Handle arrays
+    if (Array.isArray(node)) {
+      return node.map(migrateNode);
+    }
+    // Handle objects
+    const result: Record<string, JsonLogic> = {};
+    for (const key in node) {
+      result[key] = migrateNode(node[key] as JsonLogic);
+    }
+
+    return result;
+  };
+
+  return migrateNode(jsonLogic) as Record<string, unknown>;
+};
+
+export const getFieldsByKeys = (
+  keys: EntityReferenceFields[],
+  mapFields: Record<string, FieldOrGroup>
+): Record<string, FieldOrGroup> => {
+  const filteredFields: Record<string, FieldOrGroup> = {};
+
+  keys.forEach((key) => {
+    if (mapFields[key]) {
+      filteredFields[key] = mapFields[key];
+    }
+  });
+
+  return filteredFields;
+};
+
+export const buildExploreUrlParams = (
+  tree: unknown,
+  qFilter?: QueryFilterInterface
+): Record<string, string> => ({
+  ...(!isEmpty(tree) && { queryFilter: JSON.stringify(tree) }),
+  ...(!isEmpty(qFilter) &&
+    qFilter?.query && { quickFilter: JSON.stringify(qFilter) }),
+});

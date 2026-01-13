@@ -85,10 +85,6 @@ public class ReflectionUtil {
 
   /**
    * Creates a class instance from a fully qualified class name
-   *
-   * @param className The fully qualified class name
-   * @return Class object
-   * @throws ClassNotFoundException If class cannot be found
    */
   public static Class<?> createClass(String className) throws ClassNotFoundException {
     try {

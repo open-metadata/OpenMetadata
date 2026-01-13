@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
@@ -42,6 +41,11 @@ jest.mock('../../../../rest/tableAPI', () => ({
 }));
 jest.mock('../../../../rest/testAPI', () => ({
   getTestCaseExecutionSummary: jest.fn(),
+  TestCaseType: {
+    all: 'all',
+    table: 'table',
+    column: 'column',
+  },
 }));
 
 jest.mock('../SummaryList/SummaryList.component', () =>

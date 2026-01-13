@@ -14,13 +14,7 @@
 import { Button, Divider, Popover, Select, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, toLower } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
@@ -57,6 +51,7 @@ const UserProfileRoles = ({
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
 
   const useRolesOption = useMemo(() => {
     const options = roles?.map((role) => ({
@@ -102,6 +97,8 @@ const UserProfileRoles = ({
 
     setSelectedRoles(defaultUserRoles);
   }, [userRoles, isUserAdmin]);
+
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   const handleRolesSave = async () => {
     setIsLoading(true);
@@ -150,7 +147,7 @@ const UserProfileRoles = ({
   const handleCloseEditRole = useCallback(() => {
     setIsRolesEdit(false);
     setUserRoles();
-  }, [setUserRoles, setIsRolesEdit]);
+  }, [setUserRoles]);
 
   useEffect(() => {
     setUserRoles();
@@ -162,11 +159,21 @@ const UserProfileRoles = ({
     }
   }, [isRolesEdit, roles]);
 
-  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
+  useEffect(() => {
+    setIsDropdownOpen(isRolesEdit);
+  }, [isRolesEdit]);
+
+  const handleDropdownChange = (open: boolean) => {
+    setIsDropdownOpen(open);
+  };
+
   const [popoverHeight, setPopoverHeight] = useState<number>(156);
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    if (!isDropdownOpen) {
+      return;
+    }
+
     const observer = new MutationObserver(() => {
       const dropdown = document.querySelector(
         '.roles-custom-dropdown-class'
@@ -202,6 +209,7 @@ const UserProfileRoles = ({
             {t('label.role-plural')}
           </Typography.Text>
           <Popover
+            destroyTooltipOnHide
             content={
               <div
                 className="user-profile-edit-popover-card relative"
@@ -248,9 +256,7 @@ const UserProfileRoles = ({
                     tagRender={TagRenderer}
                     value={selectedRoles}
                     onChange={setSelectedRoles}
-                    onDropdownVisibleChange={(open) => {
-                      setIsDropdownOpen(open);
-                    }}
+                    onDropdownVisibleChange={handleDropdownChange}
                   />
                 </div>
 

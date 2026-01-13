@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 import { ExclamationCircleFilled } from '@ant-design/icons';
-import { Button, Card, Space, Typography } from 'antd';
+import { Button, Card, Typography } from 'antd';
 import classNames from 'classnames';
 import { kebabCase } from 'lodash';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
-import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import AppLogo from '../AppLogo/AppLogo.component';
 import './application-card.less';
 import { ApplicationCardProps } from './ApplicationCard.interface';
@@ -45,7 +44,7 @@ const ApplicationCard = ({
         <div className="application-logo">
           <AppLogo appName={appName} />
         </div>
-        <Space className="application-info" direction="vertical" size={0}>
+        <div className="application-info">
           <div className="d-flex gap-2">
             <Typography.Title className="m-0" level={5}>
               {title}
@@ -60,8 +59,8 @@ const ApplicationCard = ({
             )}
           </div>
           {showDescription && (
-            <RichTextEditorPreviewerV1
-              className="max-two-lines"
+            <RichTextEditorPreviewerNew
+              enableSeeMoreVariant={false}
               markdown={description}
             />
           )}
@@ -72,7 +71,7 @@ const ApplicationCard = ({
             onClick={onClick}>
             {linkTitle}
           </Button>
-        </Space>
+        </div>
       </div>
     </Card>
   );

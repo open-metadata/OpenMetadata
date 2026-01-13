@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('antd/dist/antd.variable.less');
-@import (reference) url('../../../styles/variables.less');
+@import (reference) 'antd/dist/antd.variable.less';
+@import (reference) '../../../styles/variables.less';
 
 .grid-container {
   position: relative;
@@ -33,14 +33,14 @@
 
   &.custom-tab {
     background: @white;
-    border-radius: @border-radius-sm;
-    margin-top: @padding-sm;
+    border-radius: @border-rad-sm;
+    padding: @padding-sm;
   }
 
   > #KnowledgePanel\.LeftPanel {
     background: white;
     padding: @padding-md;
-    border-radius: @border-radius-sm;
+    border-radius: @border-rad-sm;
     border: 1px solid @grey-15;
     box-shadow: 0px 0px 0px 4px @grey-100;
     box-shadow: 0px 1px 2px 0px #0a0d120d;
@@ -63,4 +63,8 @@
   height: auto !important;
   min-height: 54px; // Minimum height to prevent collapse
   overflow: visible;
+}
+
+.height-auto {
+  height: auto !important;
 }

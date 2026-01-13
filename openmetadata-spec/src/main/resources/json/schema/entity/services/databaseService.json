@@ -21,6 +21,7 @@
         "Redshift",
         "Snowflake",
         "Postgres",
+        "Timescale",
         "Mssql",
         "Oracle",
         "Athena",
@@ -60,7 +61,11 @@
         "SapErp",
         "Synapse",
         "Exasol",
-        "Cockroach"
+        "Cockroach",
+        "SSAS",
+        "Epic",
+        "ServiceNow",
+        "Dremio"
       ],
       "javaEnums": [
         {
@@ -80,6 +85,9 @@
         },
         {
           "name": "Postgres"
+        },
+        {
+          "name": "Timescale"
         },
         {
           "name": "Mssql"
@@ -200,6 +208,18 @@
         },
         {
           "name": "Cockroach"
+        },
+        {
+          "name": "SSAS"
+        },
+        {
+          "name": "Epic"
+        },
+        {
+          "name": "ServiceNow"
+        },
+        {
+          "name": "Dremio"
         }
       ]
     },
@@ -269,6 +289,9 @@
             },
             {
               "$ref": "./connections/database/postgresConnection.json"
+            },
+            {
+              "$ref": "./connections/database/timescaleConnection.json"
             },
             {
               "$ref": "./connections/database/prestoConnection.json"
@@ -344,6 +367,18 @@
             },
             {
               "$ref": "./connections/database/cockroachConnection.json"
+            },
+            {
+              "$ref": "./connections/database/ssasConnection.json"
+            },
+            {
+              "$ref": "./connections/database/epicConnection.json"
+            },
+            {
+              "$ref": "./connections/database/serviceNowConnection.json"
+            },
+            {
+              "$ref": "./connections/database/dremioConnection.json"
             }
           ]
         }
@@ -407,6 +442,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
     "owners": {
       "description": "Owners of this database service.",
       "$ref": "../../type/entityReferenceList.json"
@@ -436,9 +475,9 @@
       "description": "List of data products this entity is part of.",
       "$ref" : "../../type/entityReferenceList.json"
     },
-    "domain" : {
-      "description": "Domain the Database service belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the Database service belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "ingestionRunner" : {
       "description": "The ingestion agent responsible for executing the ingestion pipeline.",

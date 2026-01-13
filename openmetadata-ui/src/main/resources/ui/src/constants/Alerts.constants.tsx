@@ -12,7 +12,6 @@
  */
 
 import { filter, startCase } from 'lodash';
-import React from 'react';
 import {
   SubscriptionCategory,
   SubscriptionType,
@@ -74,3 +73,22 @@ export const DESTINATION_TYPE_BASED_PLACEHOLDERS = {
 };
 
 export const DEFAULT_READ_TIMEOUT = 12;
+
+export const DATA_CONTRACT_ALERT_FILTERS = [
+  'filterByFqn',
+  'filterByDomain',
+  'filterByOwner',
+  'filterByEntityName',
+];
+
+export const DATA_CONTRACT_ALERT_ACTIONS = [
+  'GetDataContractStatusUpdates',
+  'GetDataContractValidationFailures',
+];
+
+export const DATA_CONTRACT_STATUS_OPTIONS = [
+  { label: 'label.success', value: 'Success' },
+  { label: 'label.failed', value: 'Failed' },
+  { label: 'label.running', value: 'Running' },
+  { label: 'label.aborted', value: 'Aborted' },
+];

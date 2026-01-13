@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
+import Icon, { InfoCircleOutlined } from '@ant-design/icons';
 import {
   Button,
   Card,
   Col,
-  DatePicker,
   Form,
   Input,
   Row,
@@ -28,7 +27,6 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { t } from 'i18next';
 import {
   isArray,
   isEmpty,
@@ -38,15 +36,10 @@ import {
   omitBy,
   toNumber,
 } from 'lodash';
+import { DateTime } from 'luxon';
 import moment, { Moment } from 'moment';
-import React, {
-  CSSProperties,
-  FC,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { CSSProperties, FC, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ArrowIconComponent } from '../../../assets/svg/drop-down.svg';
 import { ReactComponent as EditIconComponent } from '../../../assets/svg/edit-new.svg';
@@ -55,6 +48,7 @@ import { ReactComponent as EndTimeIcon } from '../../../assets/svg/end-time.svg'
 import { ReactComponent as StartTimeIcon } from '../../../assets/svg/start-time.svg';
 import {
   DE_ACTIVE_COLOR,
+  GRAYED_OUT_COLOR,
   ICON_DIMENSION,
   VALIDATION_MESSAGES,
 } from '../../../constants/constants';
@@ -64,7 +58,8 @@ import { CSMode } from '../../../enums/codemirror.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { Config } from '../../../generated/type/customProperty';
-import { getCustomPropertyMomentFormat } from '../../../utils/CustomProperty.utils';
+import { getTextFromHtmlString } from '../../../utils/BlockEditorUtils';
+import { getCustomPropertyLuxonFormat } from '../../../utils/CustomProperty.utils';
 import { calculateInterval } from '../../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -74,6 +69,7 @@ import DataAssetAsyncSelectList from '../../DataAssets/DataAssetAsyncSelectList/
 import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import DatePicker from '../DatePicker/DatePicker';
 import InlineEdit from '../InlineEdit/InlineEdit.component';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
@@ -111,6 +107,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     };
   }, [property, extension]);
 
+  const { t } = useTranslation();
   const [showInput, setShowInput] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -278,13 +275,13 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
       case 'date-cp':
       case 'dateTime-cp': {
-        const format = getCustomPropertyMomentFormat(
+        const format = getCustomPropertyLuxonFormat(
           propertyType.name,
           property.customPropertyConfig?.config
         );
 
         const initialValues = {
-          dateTimeValue: value ? moment(value, format) : undefined,
+          dateTimeValue: value ? DateTime.fromFormat(value, format) : undefined,
         };
 
         const formId = `dateTime-form-${propertyName}`;
@@ -304,10 +301,10 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               id={formId}
               initialValues={initialValues}
               layout="vertical"
-              onFinish={(values: { dateTimeValue: Moment }) => {
+              onFinish={(values: { dateTimeValue: DateTime }) => {
                 onInputSave(
                   values.dateTimeValue
-                    ? values.dateTimeValue.format(format)
+                    ? values.dateTimeValue.toFormat(format)
                     : values.dateTimeValue // If date is cleared and set undefined
                 );
               }}>
@@ -327,7 +324,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       }
 
       case 'time-cp': {
-        const format = getCustomPropertyMomentFormat(
+        const format = getCustomPropertyLuxonFormat(
           propertyType.name,
           property.customPropertyConfig?.config
         );
@@ -1013,11 +1010,25 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       <Col span={24}>
         <Row gutter={[0, 2]}>
           <Col className="d-flex justify-between items-center w-full" span={24}>
-            <Typography.Text
-              className="text-grey-body property-name"
-              data-testid="property-name">
-              {getEntityName(property)}
-            </Typography.Text>
+            <div className="d-flex items-center gap-1">
+              <Typography.Text
+                className="text-grey-body property-name"
+                data-testid="property-name">
+                {getEntityName(property)}
+              </Typography.Text>
+              {property.description && (
+                <Tooltip
+                  destroyTooltipOnHide
+                  placement="top"
+                  title={getTextFromHtmlString(property.description)}>
+                  <InfoCircleOutlined
+                    className="custom-property-description-icon"
+                    data-testid="custom-property-description-icon"
+                    style={{ color: GRAYED_OUT_COLOR, fontSize: '14px' }}
+                  />
+                </Tooltip>
+              )}
+            </div>
             {hasEditPermissions && !showInput && (
               <Tooltip
                 placement="left"
@@ -1030,7 +1041,13 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                     isRenderedInRightPanel ? '-right-panel' : ''
                   }`}
                   style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                  tabIndex={0}
                   onClick={onShowInput}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      onShowInput();
+                    }
+                  }}
                 />
               </Tooltip>
             )}
@@ -1066,7 +1083,13 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               component={ArrowIconComponent}
               data-testid={`toggle-${propertyName}`}
               style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+              tabIndex={0}
               onClick={toggleExpand}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  toggleExpand();
+                }
+              }}
             />
           )}
         </div>

@@ -12,10 +12,10 @@
  */
 import { Col, Row, Space, Tag, Typography } from 'antd';
 import classNames from 'classnames';
-import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { isEmpty } from 'lodash';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
@@ -36,21 +36,23 @@ interface DataProductsContainerProps {
   showHeader?: boolean;
   hasPermission: boolean;
   dataProducts: EntityReference[];
-  activeDomain?: EntityReference;
+  activeDomains?: EntityReference[];
   onSave?: (dataProducts: DataProduct[]) => Promise<void>;
   newLook?: boolean;
+  multiple?: boolean;
 }
 
 const DataProductsContainer = ({
   showHeader = true,
   hasPermission,
   dataProducts,
-  activeDomain,
+  activeDomains,
   onSave,
   newLook = false,
+  multiple = true,
 }: DataProductsContainerProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [isEditMode, setIsEditMode] = useState(false);
 
   const handleAddClick = () => {
@@ -60,19 +62,38 @@ const DataProductsContainer = ({
   const fetchAPI = useCallback(
     (searchValue: string, page = 1) => {
       const searchText = searchValue ?? '';
-      const domainFQN = activeDomain?.fullyQualifiedName ?? '';
+      const domainFQNs =
+        activeDomains?.map((domain) => domain.fullyQualifiedName ?? '') ?? [];
 
-      return fetchDataProductsElasticSearch(searchText, domainFQN, page);
+      return fetchDataProductsElasticSearch(searchText, domainFQNs, page);
     },
-    [activeDomain]
+    [activeDomains]
   );
 
-  const redirectLink = useCallback((fqn: string) => {
-    history.push(getEntityDetailsPath(EntityType.DATA_PRODUCT, fqn));
-  }, []);
+  const redirectLink = useCallback(
+    (fqn: string) => {
+      navigate(getEntityDetailsPath(EntityType.DATA_PRODUCT, fqn));
+    },
+    [navigate]
+  );
 
-  const handleSave = async (dataProducts: DataProduct[]) => {
-    await onSave?.(dataProducts);
+  const handleSave = async (udpatedValues: DataProduct[]) => {
+    const finalData = udpatedValues.reduce((acc, item) => {
+      if (!item.id) {
+        const existingItem = dataProducts.find(
+          (dp) => dp.fullyQualifiedName === item.fullyQualifiedName
+        );
+        if (existingItem) {
+          acc.push(existingItem as unknown as DataProduct);
+        }
+      } else {
+        acc.push(item);
+      }
+
+      return acc;
+    }, [] as DataProduct[]);
+
+    await onSave?.(finalData);
     setIsEditMode(false);
   };
 
@@ -88,7 +109,7 @@ const DataProductsContainer = ({
           (item) => item.fullyQualifiedName ?? ''
         )}
         fetchOptions={fetchAPI}
-        mode="multiple"
+        mode={multiple ? 'multiple' : undefined}
         placeholder={t('label.data-product-plural')}
         onCancel={handleCancel}
         onSubmit={handleSave}
@@ -97,8 +118,8 @@ const DataProductsContainer = ({
   }, [handleCancel, handleSave, dataProducts, fetchAPI]);
 
   const showAddTagButton = useMemo(
-    () => hasPermission && !isUndefined(activeDomain) && isEmpty(dataProducts),
-    [hasPermission, dataProducts, activeDomain]
+    () => hasPermission && !isEmpty(activeDomains) && isEmpty(dataProducts),
+    [hasPermission, dataProducts, activeDomains]
   );
 
   const renderDataProducts = useMemo(() => {
@@ -106,7 +127,7 @@ const DataProductsContainer = ({
       return NO_DATA_PLACEHOLDER;
     }
 
-    if (isEmpty(dataProducts) && hasPermission && isUndefined(activeDomain)) {
+    if (isEmpty(dataProducts) && hasPermission && isEmpty(activeDomains)) {
       return (
         <Typography.Text className="text-sm text-grey-muted">
           {t('message.select-domain-to-add-data-product')}
@@ -137,7 +158,7 @@ const DataProductsContainer = ({
         </Tag>
       );
     });
-  }, [dataProducts, activeDomain]);
+  }, [dataProducts, activeDomains]);
 
   const header = useMemo(() => {
     return (
@@ -156,7 +177,7 @@ const DataProductsContainer = ({
               onClick={handleAddClick}
             />
           )}
-          {hasPermission && !isUndefined(activeDomain) && (
+          {hasPermission && !isEmpty(activeDomains) && (
             <Row gutter={12}>
               {!isEmpty(dataProducts) && (
                 <Col>

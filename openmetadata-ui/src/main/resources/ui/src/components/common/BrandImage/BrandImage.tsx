@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React, { FC, useMemo } from 'react';
+import { FC, useMemo } from 'react';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 
@@ -33,20 +33,21 @@ const BrandImage: FC<BrandImageProps> = ({
   src,
   isMonoGram = false,
 }) => {
-  const { MonoGram, Logo } = useMemo(
-    () => ({
-      MonoGram: brandClassBase.getMonogram().src,
-      Logo: brandClassBase.getLogo().src,
-    }),
-    []
-  );
   const { applicationConfig } = useApplicationStore();
-  const { customLogoUrlPath = '', customMonogramUrlPath = '' } =
-    applicationConfig?.customLogoConfig ?? {};
 
-  const logoSource = isMonoGram
-    ? customMonogramUrlPath || MonoGram
-    : customLogoUrlPath || Logo;
+  const { defaultLogo, logoSource } = useMemo(() => {
+    const { customLogoUrlPath = '', customMonogramUrlPath = '' } =
+      applicationConfig?.customLogoConfig ?? {};
+    const monoGram = brandClassBase.getMonogram().src;
+    const logo = brandClassBase.getLogo().src;
+
+    const defaultLogo = isMonoGram ? monoGram : logo;
+    const logoSource = isMonoGram
+      ? customMonogramUrlPath || monoGram
+      : customLogoUrlPath || logo;
+
+    return { defaultLogo, logoSource };
+  }, [isMonoGram, applicationConfig?.customLogoConfig]);
 
   return (
     <img
@@ -58,7 +59,7 @@ const BrandImage: FC<BrandImageProps> = ({
       src={src ?? logoSource}
       width={width}
       onError={(e) => {
-        e.currentTarget.src = logoSource;
+        e.currentTarget.src = defaultLogo;
       }}
     />
   );

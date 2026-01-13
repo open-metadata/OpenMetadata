@@ -17,8 +17,8 @@ import { User } from '../../../generated/entity/teams/user';
 export interface Props {
   userData: User;
   queryFilters: {
-    myData: string;
-    following: string;
+    myData: string | Record<string, unknown>;
+    following: string | Record<string, unknown>;
   };
   handlePaginate: (page: string | number) => void;
   afterDeleteAction: (isSoftDelete?: boolean, version?: number) => void;
@@ -32,4 +32,5 @@ export enum UserPageTabs {
   MY_DATA = 'mydata',
   FOLLOWING = 'following',
   ACCESS_TOKEN = 'access-token',
+  PERMISSIONS = 'permissions',
 }

@@ -30,6 +30,7 @@ from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.source.dashboard.powerbi.file_client import PowerBiFileClient
 from metadata.ingestion.source.dashboard.powerbi.models import (
     DashboardsResponse,
+    DataflowExportResponse,
     Dataset,
     DatasetResponse,
     Group,
@@ -38,6 +39,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     PowerBIReport,
     PowerBiTable,
     PowerBiToken,
+    ReportPagesAPIResponse,
     ReportsResponse,
     TablesResponse,
     Tile,
@@ -46,6 +48,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     WorkSpaceScanResponse,
 )
 from metadata.utils.filters import validate_regex
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -74,7 +77,7 @@ class PowerBiApiClient:
             authority=self.config.authorityURI + self.config.tenantId,
         )
         client_config = ClientConfig(
-            base_url="https://api.powerbi.com",
+            base_url=clean_uri(self.config.apiURL),
             api_version="v1.0",
             auth_token=self.get_auth_token,
             auth_header="Authorization",
@@ -164,6 +167,10 @@ class PowerBiApiClient:
             List[PowerBIDashboard]
         """
         if self.config.useAdminApis:
+            logger.debug(
+                f"Calling the API({str(self.client._base_url)}/myorg/admin/dashboards)"  # pylint: disable=protected-access
+                " to get dashboards"
+            )
             response_data = self.client.get("/myorg/admin/dashboards")
             response = DashboardsResponse(**response_data)
             return response.value
@@ -178,6 +185,10 @@ class PowerBiApiClient:
             List[PowerBIDashboard]
         """
         try:
+            logger.debug(
+                f"Calling the API({str(self.client._base_url)}/myorg/groups/{group_id}/dashboards)"  # pylint: disable=protected-access
+                " to get group dashboards"
+            )
             response_data = self.client.get(f"/myorg/groups/{group_id}/dashboards")
             response = DashboardsResponse(**response_data)
             return response.value
@@ -193,6 +204,10 @@ class PowerBiApiClient:
             List[PowerBIReport]
         """
         try:
+            logger.debug(
+                f"Calling the API({str(self.client._base_url)}/myorg/groups/{group_id}/reports)"  # pylint: disable=protected-access
+                " to get group reports"
+            )
             response_data = self.client.get(f"/myorg/groups/{group_id}/reports")
             response = ReportsResponse(**response_data)
             return response.value
@@ -202,12 +217,44 @@ class PowerBiApiClient:
 
         return None
 
+    def fetch_report_details(
+        self, group_id: str, report_id: str
+    ) -> Optional[PowerBIReport]:
+        """Method to fetch details of an individual report within a group
+        API: https://learn.microsoft.com/en-us/rest/api/power-bi/reports/get-report-in-group
+        Returns:
+            PowerBIReport
+        """
+        try:
+            logger.debug(
+                f"Calling the API({str(self.client._base_url)}/myorg/groups/{group_id}/reports/{report_id})"  # pylint: disable=protected-access
+                " to get report details"
+            )
+            response_data = self.client.get(
+                f"/myorg/groups/{group_id}/reports/{report_id}"
+            )
+            if not response_data:
+                logger.debug(
+                    f"report details could not be fetched from api for report_id = {report_id}"
+                )
+                return None
+            return PowerBIReport(**response_data)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error fetching report details: {exc}")
+
+        return None
+
     def fetch_all_org_datasets(self, group_id: str) -> Optional[List[Dataset]]:
         """Method to fetch all powerbi datasets within the group
         Returns:
             List[Dataset]
         """
         try:
+            logger.debug(
+                f"Calling the API({str(self.client._base_url)}/myorg/groups/{group_id}/datasets)"  # pylint: disable=protected-access
+                " to get group datasets"
+            )
             response_data = self.client.get(f"/myorg/groups/{group_id}/datasets")
             response = DatasetResponse(**response_data)
             return response.value
@@ -225,6 +272,10 @@ class PowerBiApiClient:
             List[Tile]
         """
         try:
+            logger.debug(
+                f"Calling the API({str(self.client._base_url)}/myorg/groups/{group_id}/dashboards/{dashboard_id}/tiles)"  # pylint: disable=protected-access
+                " to get dashboard tiles"
+            )
             response_data = self.client.get(
                 f"/myorg/groups/{group_id}/dashboards/{dashboard_id}/tiles"
             )
@@ -244,6 +295,10 @@ class PowerBiApiClient:
             List[PowerBiTable]
         """
         try:
+            logger.debug(
+                f"Calling the API({str(self.client._base_url)}/myorg/groups/{group_id}/datasets/{dataset_id}/tables)"  # pylint: disable=protected-access
+                " to get dataset tables"
+            )
             response_data = self.client.get(
                 f"/myorg/groups/{group_id}/datasets/{dataset_id}/tables"
             )
@@ -255,6 +310,21 @@ class PowerBiApiClient:
             logger.warning(f"Error fetching dataset tables: {exc}")
 
         return None
+
+    def fetch_report_pages(self, group_id: str, report_id: str) -> Optional[List[dict]]:
+        # get report pages for report url formation
+        try:
+            # https://api.powerbi.com/v1.0/myorg/groups/4e57dcbb-***/reports/a2902011-***/pages
+            response_data = self.client.get(
+                f"/myorg/groups/{group_id}/reports/{report_id}/pages"
+            )
+            if response_data:
+                response = ReportPagesAPIResponse(**response_data)
+                return response.value
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error fetching report pages: {exc}")
+        return []
 
     def regex_to_odata_condition(self, regex: str) -> str:
         """
@@ -357,6 +427,11 @@ class PowerBiApiClient:
             params_data = deepcopy(GETGROUPS_DEFAULT_PARAMS)
             if parsed_filter_query:
                 params_data["$filter"] = parsed_filter_query
+            logger.debug(
+                f"Calling the API({str(self.client._base_url)}/myorg/{admin}groups)"  # pylint: disable=protected-access
+                " to get workspaces(initial call to get count of workspaces and then"
+                " further paginate all workspace calls)"
+            )
             response = self.client.get(api_url, data=params_data)
             if (
                 not response
@@ -391,17 +466,20 @@ class PowerBiApiClient:
                 }
                 if parsed_filter_query:
                     params_data["$filter"] = parsed_filter_query
-
+                index_range = (
+                    int(params_data.get("$skip")),
+                    int(params_data.get("$skip")) + int(params_data.get("$top")),
+                )
+                logger.debug(
+                    f"Calling the API({str(self.client._base_url)}/myorg/{admin}groups)"  # pylint: disable=protected-access
+                    f" to get workspaces between results: {str(index_range)}"
+                )
                 response = self.client.get(api_url, data=params_data)
                 if (
                     not response
                     or API_RESPONSE_MESSAGE_KEY in response
                     or len(response) != len(GroupsResponse.__annotations__)
                 ):
-                    index_range = (
-                        int(params_data.get("$skip")),
-                        int(params_data.get("$skip")) + int(params_data.get("$top")),
-                    )
                     logger.warning(
                         f"Error fetching workspaces between results: {str(index_range)}"
                     )
@@ -423,17 +501,20 @@ class PowerBiApiClient:
                     "Retrying one more time on failed indexes to get workspaces"
                 )
                 for params_data in failed_indexes:
+                    index_range = (
+                        int(params_data.get("$skip")),
+                        int(params_data.get("$skip")) + int(params_data.get("$top")),
+                    )
+                    logger.debug(
+                        f"Calling the API({str(self.client._base_url)}/myorg/{admin}groups)"  # pylint: disable=protected-access
+                        f" to get workspaces between results: {str(index_range)}"
+                    )
                     response = self.client.get(api_url, data=params_data)
                     if (
                         not response
                         or API_RESPONSE_MESSAGE_KEY in response
                         or len(response) != len(GroupsResponse.__annotations__)
                     ):
-                        index_range = (
-                            int(params_data.get("$skip")),
-                            int(params_data.get("$skip"))
-                            + int(params_data.get("$top")),
-                        )
                         logger.warning(
                             f"Workspaces between results {str(index_range)} "
                             "could not be fetched on multiple attempts"
@@ -471,6 +552,10 @@ class PowerBiApiClient:
                 "datasetExpressions=True&datasetSchema=True"
                 "&datasourceDetails=True&getArtifactUsers=True&lineage=True"
             )
+            logger.debug(
+                f"Calling the API({str(self.client._base_url)}{path})"  # pylint: disable=protected-access
+                " to initiate workspace scan"
+            )
             response_data = self.client.post(path=path, data=data)
             return WorkSpaceScanResponse(**response_data)
         except Exception as exc:  # pylint: disable=broad-except
@@ -489,6 +574,10 @@ class PowerBiApiClient:
             WorkSpaceScanResponse
         """
         try:
+            logger.debug(
+                f"Calling the API({str(self.client._base_url)}/myorg/admin/workspaces/scanStatus/{scan_id})"  # pylint: disable=protected-access
+                " to get workspace scan status"
+            )
             response_data = self.client.get(
                 f"/myorg/admin/workspaces/scanStatus/{scan_id}"
             )
@@ -507,6 +596,10 @@ class PowerBiApiClient:
             Workspaces
         """
         try:
+            logger.debug(
+                f"Calling the API({str(self.client._base_url)}/myorg/admin/workspaces/scanResult/{scan_id})"  # pylint: disable=protected-access
+                " to get workspace scan result"
+            )
             response_data = self.client.get(
                 f"/myorg/admin/workspaces/scanResult/{scan_id}"
             )
@@ -543,6 +636,33 @@ class PowerBiApiClient:
             poll += 1
 
         return False
+
+    def fetch_dataflow_export(
+        self, dataflow_id: str
+    ) -> Optional[DataflowExportResponse]:
+        """Method to export dataflow definition using admin API
+        API: https://api.powerbi.com/v1.0/myorg/admin/dataflows/{dataflowId}/export
+        API doc: https://learn.microsoft.com/en-us/rest/api/power-bi/admin/dataflows-export-dataflow-as-admin
+        Args:
+            dataflow_id: The ID of the dataflow to export
+        Returns:
+            DataflowExportResponse containing entities and their attributes
+        """
+        try:
+            logger.debug(
+                f"Calling the API({str(self.client._base_url)}/myorg/admin/dataflows/{dataflow_id}/export)"  # pylint: disable=protected-access
+                " to export dataflow definition"
+            )
+            response_data = self.client.get(
+                f"/myorg/admin/dataflows/{dataflow_id}/export"
+            )
+            if response_data:
+                return DataflowExportResponse(**response_data)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error exporting dataflow {dataflow_id}: {exc}")
+
+        return None
 
 
 class PowerBiClient(BaseModel):

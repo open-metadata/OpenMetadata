@@ -22,10 +22,6 @@
         }
       },
       "additionalProperties": false
-    },
-    "status": {
-      "type": "string",
-      "enum": ["Draft", "In Review", "Approved", "Deprecated", "Rejected"]
     }
   },
   "properties": {
@@ -94,6 +90,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
     "href": {
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
@@ -126,9 +126,9 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
-    "status": {
-      "description": "Status of the glossary term.",
-      "$ref": "#/definitions/status"
+    "entityStatus": {
+      "description": "Approval status of the glossary term.",
+      "$ref": "../../type/status.json"
     },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
@@ -151,9 +151,9 @@
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
-    "domain" : {
-      "description": "Domain the Glossary Term belongs to. When not set, the Glossary TErm inherits the domain from the Glossary it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the Glossary Term belongs to. When not set, the Glossary TErm inherits the domain from the Glossary it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "dataProducts" : {
       "description": "List of data products this entity is part of.",

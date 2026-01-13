@@ -121,6 +121,10 @@
       "description": "User who made the query.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
     "href": {
       "description": "Link to this Query resource.",
       "$ref": "../../type/basic.json#/definitions/href"
@@ -187,9 +191,9 @@
       "description": "Source URL of database schema.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
-    "domain": {
-      "description": "Domain the Stored Procedure belongs to. When not set, the Stored Procedure inherits the domain from the database schemna it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains": {
+      "description": "Domains the Stored Procedure belongs to. When not set, the Stored Procedure inherits the domain from the database schemna it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "lifeCycle": {
       "description": "Life Cycle properties of the entity",
@@ -208,6 +212,10 @@
       "description": "Processed lineage for the stored procedure",
       "type": "boolean",
       "default": false
+    },
+    "entityStatus": {
+      "description": "Status of the StoredProcedure.",
+      "$ref": "../../type/status.json"
     }
   },
   "required": [

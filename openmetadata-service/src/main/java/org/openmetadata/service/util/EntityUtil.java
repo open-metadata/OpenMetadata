@@ -34,9 +34,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
@@ -61,12 +63,14 @@ import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.type.TagLabel.TagSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -195,6 +199,109 @@ public final class EntityUtil {
   }
 
   public static List<EntityReference> populateEntityReferences(List<EntityReference> list) {
+    if (nullOrEmpty(list)) {
+      return list;
+    }
+
+    long startTime = System.currentTimeMillis();
+
+    // Create a mutable copy to avoid UnsupportedOperationException on immutable lists
+    List<EntityReference> mutableList = new ArrayList<>(list);
+
+    // Group references by type and whether they have ID or need name-based lookup
+    Map<String, List<EntityReference>> byIdByType =
+        mutableList.stream()
+            .filter(ref -> ref.getId() != null)
+            .collect(Collectors.groupingBy(EntityReference::getType));
+
+    Map<String, List<EntityReference>> byNameByType =
+        mutableList.stream()
+            .filter(ref -> ref.getId() == null && ref.getFullyQualifiedName() != null)
+            .collect(Collectors.groupingBy(EntityReference::getType));
+
+    // Track which references were successfully populated (not orphaned)
+    Set<EntityReference> populatedRefs = new HashSet<>();
+    int queryCount = 0;
+
+    // Batch fetch by ID (most common case) - one query per entity type
+    for (Map.Entry<String, List<EntityReference>> entry : byIdByType.entrySet()) {
+      String entityType = entry.getKey();
+      List<UUID> ids =
+          entry.getValue().stream().map(EntityReference::getId).collect(Collectors.toList());
+      queryCount++;
+
+      try {
+        List<EntityReference> fetched = Entity.getEntityReferencesByIds(entityType, ids, ALL);
+        Map<UUID, EntityReference> fetchedMap =
+            fetched.stream()
+                .collect(Collectors.toMap(EntityReference::getId, ref -> ref, (a, b) -> a));
+
+        for (EntityReference ref : entry.getValue()) {
+          EntityReference fetched2 = fetchedMap.get(ref.getId());
+          if (fetched2 != null) {
+            copy(fetched2, ref);
+            populatedRefs.add(ref);
+          } else {
+            LOG.info("Skipping orphaned entity reference: {} {}", ref.getType(), ref.getId());
+          }
+        }
+      } catch (Exception e) {
+        // Fallback to individual fetch on batch failure
+        LOG.warn(
+            "Batch fetch failed for type {}, falling back to individual fetch: {}",
+            entityType,
+            e.getMessage());
+        for (EntityReference ref : entry.getValue()) {
+          try {
+            EntityReference ref2 = Entity.getEntityReference(ref, ALL);
+            copy(ref2, ref);
+            populatedRefs.add(ref);
+          } catch (EntityNotFoundException ex) {
+            LOG.info(
+                "Skipping orphaned entity reference: {} {} - {}",
+                ref.getType(),
+                ref.getId(),
+                ex.getMessage());
+          }
+        }
+      }
+    }
+
+    // Fetch by name (less common path - still individual queries)
+    for (Map.Entry<String, List<EntityReference>> entry : byNameByType.entrySet()) {
+      for (EntityReference ref : entry.getValue()) {
+        queryCount++;
+        try {
+          EntityReference ref2 =
+              Entity.getEntityReferenceByName(ref.getType(), ref.getFullyQualifiedName(), ALL);
+          copy(ref2, ref);
+          populatedRefs.add(ref);
+        } catch (EntityNotFoundException e) {
+          LOG.info(
+              "Skipping orphaned entity reference: {} {} - {}",
+              ref.getType(),
+              ref.getFullyQualifiedName(),
+              e.getMessage());
+        }
+      }
+    }
+
+    // Remove orphaned references (those that weren't successfully populated)
+    mutableList.removeIf(ref -> !populatedRefs.contains(ref));
+
+    mutableList.sort(compareEntityReference);
+
+    LOG.debug(
+        "populateEntityReferences: {} refs -> {} queries in {}ms",
+        mutableList.size(),
+        queryCount,
+        System.currentTimeMillis() - startTime);
+
+    return mutableList;
+  }
+
+  public static List<EntityReference> validateAndPopulateEntityReferences(
+      List<EntityReference> list) {
     if (list != null) {
       for (EntityReference ref : list) {
         EntityReference ref2 = Entity.getEntityReference(ref, ALL);
@@ -209,11 +316,55 @@ public final class EntityUtil {
     if (nullOrEmpty(list)) {
       return Collections.emptyList();
     }
+
+    long startTime = System.currentTimeMillis();
+
+    // Group by entity type for batch fetch - reduces N queries to M queries (where M = unique
+    // types)
+    Map<String, List<UUID>> idsByType =
+        list.stream()
+            .collect(
+                Collectors.groupingBy(
+                    EntityRelationshipRecord::getType,
+                    Collectors.mapping(EntityRelationshipRecord::getId, Collectors.toList())));
+
     List<EntityReference> refs = new ArrayList<>();
-    for (EntityRelationshipRecord ref : list) {
-      refs.add(Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL));
+    int queryCount = 0;
+
+    for (Map.Entry<String, List<UUID>> entry : idsByType.entrySet()) {
+      String entityType = entry.getKey();
+      List<UUID> ids = entry.getValue();
+      queryCount++;
+
+      try {
+        List<EntityReference> typeRefs = Entity.getEntityReferencesByIds(entityType, ids, ALL);
+        refs.addAll(typeRefs);
+      } catch (Exception e) {
+        // Fallback for partial failures - fetch individually to handle deleted entities gracefully
+        LOG.warn(
+            "Batch fetch failed for type {}, falling back to individual fetch: {}",
+            entityType,
+            e.getMessage());
+        for (UUID id : ids) {
+          try {
+            refs.add(Entity.getEntityReferenceById(entityType, id, ALL));
+          } catch (EntityNotFoundException ex) {
+            LOG.info(
+                "Skipping deleted entity reference: {} {} - {}", entityType, id, ex.getMessage());
+          }
+        }
+      }
     }
+
     refs.sort(compareEntityReference);
+
+    LOG.debug(
+        "getEntityReferences: {} records -> {} types -> {} queries in {}ms",
+        list.size(),
+        idsByType.size(),
+        queryCount,
+        System.currentTimeMillis() - startTime);
+
     return refs;
   }
 
@@ -227,6 +378,10 @@ public final class EntityUtil {
     String entityType = entityLink.getEntityType();
     String fqn = entityLink.getEntityFQN();
     return Entity.getEntityReferenceByName(entityType, fqn, ALL);
+  }
+
+  public static String buildEntityLink(String entityType, String fullyQualifiedName) {
+    return String.format("<#E::%s::%s>", entityType, fullyQualifiedName);
   }
 
   public static UsageDetails getLatestUsage(UsageDAO usageDAO, UUID entityId) {
@@ -243,6 +398,46 @@ public final class EntityUtil {
               .withDate(RestUtil.DATE_FORMAT.format(LocalDate.now()));
     }
     return details;
+  }
+
+  public static Map<UUID, UsageDetails> getLatestUsageForEntities(
+      UsageDAO usageDAO, List<UUID> entityIds) {
+    Map<UUID, UsageDetails> usageMap = new HashMap<>();
+    if (entityIds == null || entityIds.isEmpty()) {
+      return usageMap;
+    }
+
+    // Convert UUIDs to strings for the batch query
+    List<String> entityIdStrings =
+        entityIds.stream().map(UUID::toString).collect(java.util.stream.Collectors.toList());
+
+    // Use the new batch query method for efficient bulk fetching
+    List<org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsWithId>
+        usageDetailsList = usageDAO.getLatestUsageBatch(entityIdStrings);
+
+    // Convert the list back to a map keyed by UUID
+    for (org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsWithId usageWithId :
+        usageDetailsList) {
+      if (usageWithId != null && usageWithId.getEntityId() != null) {
+        usageMap.put(UUID.fromString(usageWithId.getEntityId()), usageWithId.getUsageDetails());
+      }
+    }
+
+    // For entities without usage data, provide default usage details
+    for (UUID entityId : entityIds) {
+      if (!usageMap.containsKey(entityId)) {
+        UsageStats defaultStats = new UsageStats().withCount(0).withPercentileRank(0.0);
+        UsageDetails defaultUsage =
+            new UsageDetails()
+                .withDailyStats(defaultStats)
+                .withWeeklyStats(defaultStats)
+                .withMonthlyStats(defaultStats)
+                .withDate(RestUtil.DATE_FORMAT.format(LocalDate.now()));
+        usageMap.put(entityId, defaultUsage);
+      }
+    }
+
+    return usageMap;
   }
 
   /** Merge two sets of tags */
@@ -285,6 +480,18 @@ public final class EntityUtil {
     return ids.stream()
         .map(id -> new EntityReference().withId(id).withType(entityType))
         .collect(Collectors.toList());
+  }
+
+  public static List<EntityReference> validateToEntityReferences(
+      List<UUID> ids, String entityType) {
+    if (ids == null) {
+      return null;
+    }
+    List<EntityReference> refs = new ArrayList<>();
+    for (UUID id : ids) {
+      refs.add(Entity.getEntityReferenceById(entityType, id, ALL));
+    }
+    return refs;
   }
 
   public static List<UUID> refToIds(List<EntityReference> refs) {
@@ -343,6 +550,26 @@ public final class EntityUtil {
         throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
       }
       fieldList.add(field);
+    }
+
+    // Create Fields Objects by excluding certain fields
+    public static Fields createWithExcludedFields(
+        Set<String> allowedFields, Set<String> excludeFields) {
+      Set<String> resultFields = new HashSet<>(allowedFields);
+      if (excludeFields != null) {
+        resultFields.removeAll(excludeFields);
+      }
+      return new Fields(allowedFields, resultFields);
+    }
+
+    public static Fields createWithExcludedFields(
+        Set<String> allowedFields, String excludeFieldsParam) {
+      Set<String> excludeFields = new HashSet<>();
+      if (!nullOrEmpty(excludeFieldsParam)) {
+        excludeFields =
+            new HashSet<>(Arrays.asList(excludeFieldsParam.replace(" ", "").split(",")));
+      }
+      return createWithExcludedFields(allowedFields, excludeFields);
     }
 
     @Override
@@ -635,6 +862,33 @@ public final class EntityUtil {
     return refs;
   }
 
+  public static String getFilteredFields(String entityType, String fields) {
+    // Helper method to filter fields based on what the entity supports
+    if (fields == null || fields.isEmpty() || entityType == null) {
+      return fields;
+    }
+
+    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+    Set<String> allowed = new HashSet<>(repository.getAllowedFields());
+
+    // Always allow these common fields
+    allowed.add("owners");
+    allowed.add("tags");
+    allowed.add("domains");
+
+    // Filter the requested fields to only include those supported by the entity's allowed list
+    String[] requestedFields = fields.split(",");
+    List<String> validFields = new ArrayList<>();
+    for (String field : requestedFields) {
+      field = field.trim();
+      if (allowed.contains(field)) {
+        validFields.add(field);
+      }
+    }
+
+    return String.join(",", validFields);
+  }
+
   public static void validateProfileSample(String profileSampleType, double profileSampleValue) {
     if (profileSampleType.equals("PERCENTAGE")
         && (profileSampleValue < 0 || profileSampleValue > 100.0)) {
@@ -696,7 +950,7 @@ public final class EntityUtil {
 
   public static <T extends FieldInterface> List<T> getFlattenedEntityField(List<T> fields) {
     List<T> flattenedFields = new ArrayList<>();
-    fields.forEach(column -> flattenEntityField(column, flattenedFields));
+    listOrEmpty(fields).forEach(column -> flattenEntityField(column, flattenedFields));
     return flattenedFields;
   }
 
@@ -741,6 +995,7 @@ public final class EntityUtil {
       if (!nullOrEmpty(subjectContext.getUserDomains())) {
         filter.addQueryParam(
             "domainId", getCommaSeparatedIdsFromRefs(subjectContext.getUserDomains()));
+        filter.addQueryParam("domainAccessControl", "true");
       } else {
         filter.addQueryParam("domainId", NULL_PARAM);
         filter.addQueryParam("entityType", entityType);
@@ -753,13 +1008,43 @@ public final class EntityUtil {
   }
 
   /**
+   * Improved FQN encoding that is more resilient to double-encoding scenarios
+   * such as when URLs pass through email security systems like Outlook SafeLinks.
+   * Only encodes characters that are absolutely necessary for URL safety.
+   */
+  public static String encodeEntityFqnSafe(String fqn) {
+    if (fqn == null || fqn.trim().isEmpty()) {
+      return "";
+    }
+
+    // Only encode characters that are truly problematic in URLs
+    // This reduces double-encoding issues with email security systems
+    // Note: % must be encoded first to avoid double-encoding
+    return fqn.trim()
+        .replace("%", "%25") // percent (must be first to avoid double-encoding)
+        .replace(" ", "%20") // spaces
+        .replace("#", "%23") // hash
+        .replace("?", "%3F") // question mark
+        .replace("&", "%26") // ampersand
+        .replace("+", "%2B") // plus sign
+        .replace("=", "%3D") // equals sign
+        .replace("/", "%2F") // forward slash (if needed in FQN context)
+        .replace("\\", "%5C") // backslash
+        .replace("|", "%7C") // pipe
+        .replace("\"", "%22") // double quote
+        .replace("'", "%27") // single quote
+        .replace("<", "%3C") // less than
+        .replace(">", "%3E") // greater than
+        .replace("[", "%5B") // left bracket
+        .replace("]", "%5D") // right bracket
+        .replace("{", "%7B") // left brace
+        .replace("}", "%7D"); // right brace
+  }
+
+  /**
    * Gets the value of a field from an entity using reflection.
    * This method checks if the entity supports the given field and returns its value.
    * If the field is not supported, returns null.
-   *
-   * @param entity The entity to get the field value from
-   * @param fieldName The name of the field to get (corresponds to getter method name without 'get' prefix)
-   * @return The value of the field, or null if field is not supported by the entity
    */
   public static Object getEntityField(EntityInterface entity, String fieldName) {
     if (entity == null || fieldName == null || fieldName.isEmpty()) {

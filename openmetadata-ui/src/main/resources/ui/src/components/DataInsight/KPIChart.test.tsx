@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
 import { KPI_LIST } from '../../pages/KPIPage/KPIMock.mock';
@@ -21,6 +20,14 @@ jest.mock('../../rest/KpiAPI', () => ({
   getListKPIs: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: KPI_LIST })),
+}));
+
+jest.mock('../../utils/i18next/LocalUtil', () => ({
+  t: jest.fn((key: string) => key),
+  translateWithNestedKeys: jest.fn((key: string, nestedKey?: string) => {
+    return nestedKey ? `${key}.${nestedKey}` : key;
+  }),
+  detectBrowserLanguage: jest.fn(() => 'en-US'),
 }));
 
 describe('Test KPIChart Component', () => {

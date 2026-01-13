@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.util;
 
+import jakarta.ws.rs.BadRequestException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -20,7 +21,6 @@ import java.net.URL;
 import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
-import javax.ws.rs.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 

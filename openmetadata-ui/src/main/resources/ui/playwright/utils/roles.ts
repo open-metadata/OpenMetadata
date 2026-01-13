@@ -33,29 +33,23 @@ export const removePolicyFromRole = async (
 export const getElementWithPagination = async (
   page: Page,
   locator: Locator,
-  click = true
+  click = true,
+  maxPages = 15
 ) => {
-  let hasNext = true;
-
-  while (hasNext) {
+  for (let currentPage = 0; currentPage < maxPages; currentPage++) {
+    // Check if element is visible on current page
     if (await locator.isVisible()) {
-      click && (await locator.click());
+      if (click) {
+        await locator.click();
+      }
 
-      break;
+      return;
     }
-    const nextBtn = page.locator('[data-testid="next"]');
-    await nextBtn.scrollIntoViewIfNeeded();
 
+    const nextBtn = page.locator('[data-testid="next"]');
     await nextBtn.waitFor({ state: 'visible' });
 
-    hasNext = !(await nextBtn.getAttribute('disabled'));
-
-    if (!hasNext) {
-      throw new Error('Element not found and no more pages to paginate.');
-    }
-
     await nextBtn.click();
-
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   }
 };

@@ -12,9 +12,9 @@
  */
 import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { groupBy, omit, uniqBy } from 'lodash';
+import { groupBy, isEmpty, omit, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
 import {
@@ -43,6 +43,7 @@ import {
   getAllTags,
   searchTagInData,
 } from '../../../../../utils/TableTags/TableTags.utils';
+import { pruneEmptyChildren } from '../../../../../utils/TableUtils';
 import DisplayName from '../../../../common/DisplayName/DisplayName';
 import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -62,6 +63,7 @@ const ModelTab = () => {
   const { t } = useTranslation();
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
   const [searchText, setSearchText] = useState('');
+  const { openColumnDetailPanel } = useGenericContext<DashboardDataModel>();
 
   const [paginatedColumns, setPaginatedColumns] = useState<Column[]>([]);
   const [columnsLoading, setColumnsLoading] = useState(true);
@@ -108,13 +110,13 @@ const ModelTab = () => {
               fields: TabSpecificField.TAGS,
             });
 
-        setPaginatedColumns(response.data || []);
+        setPaginatedColumns(pruneEmptyChildren(response.data) || []);
         handlePagingChange(response.paging);
-      } catch (error) {
+      } catch {
         setPaginatedColumns([]);
         handlePagingChange({
           offset: 1,
-          limit: PAGE_SIZE_LARGE,
+          limit: pageSize,
           total: 0,
         });
       }
@@ -176,12 +178,15 @@ const ModelTab = () => {
     field?: keyof Column
   ) => {
     const response = await updateDataModelColumn(columnFqn, column);
+    const cleanResponse = isEmpty(response.children)
+      ? omit(response, 'children')
+      : response;
 
     setPaginatedColumns((prev) =>
       prev.map((col) =>
         col.fullyQualifiedName === columnFqn
           ? // Have to omit the field which is being updated to avoid persisted old value
-            { ...omit(col, field ?? ''), ...response }
+            { ...omit(col, field ?? ''), ...cleanResponse }
           : col
       )
     );
@@ -240,6 +245,21 @@ const ModelTab = () => {
     );
   };
 
+  const handleColumnClick = useCallback(
+    (column: Column, event: React.MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (
+        target.closest(
+          'button, a, input, textarea, select, .table-expand-icon'
+        ) !== null
+      ) {
+        return;
+      }
+      openColumnDetailPanel(column);
+    },
+    [openColumnDetailPanel]
+  );
+
   const searchProps = useMemo(
     () => ({
       placeholder: t('message.find-in-table'),
@@ -283,7 +303,13 @@ const ModelTab = () => {
         key: TABLE_COLUMNS_KEYS.NAME,
         width: 250,
         fixed: 'left',
+        className: 'cursor-pointer',
         sorter: getColumnSorter<Column, 'name'>('name'),
+        onCell: (record: Column) => ({
+          onClick: (event: React.MouseEvent) =>
+            handleColumnClick(record, event),
+          'data-testid': 'column-name-cell',
+        }),
         render: (_, record: Column) => {
           const { displayName } = record;
 
@@ -313,7 +339,6 @@ const ModelTab = () => {
         title: t('label.description'),
         dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
         key: TABLE_COLUMNS_KEYS.DESCRIPTION,
-        accessor: TABLE_COLUMNS_KEYS.DESCRIPTION,
         width: 350,
         render: (_, record, index) => (
           <TableDescription
@@ -334,7 +359,6 @@ const ModelTab = () => {
         title: t('label.tag-plural'),
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.TAGS,
-        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 250,
         filters: tagFilter.Classification,
         filterIcon: columnFilterIcon,
@@ -358,7 +382,6 @@ const ModelTab = () => {
         title: t('label.glossary-term-plural'),
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.GLOSSARY,
-        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 250,
         filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
@@ -388,6 +411,9 @@ const ModelTab = () => {
       editColumnDescription,
       hasEditDescriptionPermission,
       handleFieldTagsChange,
+      handleColumnClick,
+      editDisplayNamePermission,
+      handleEditColumnData,
     ]
   );
 

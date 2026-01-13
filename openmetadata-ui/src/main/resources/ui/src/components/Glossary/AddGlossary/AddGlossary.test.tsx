@@ -12,7 +12,6 @@
  */
 
 import { fireEvent, getByTestId, render } from '@testing-library/react';
-import React from 'react';
 import AddGlossary from './AddGlossary.component';
 
 jest.mock('../../MyData/LeftSidebar/LeftSidebar.component', () =>
@@ -31,6 +30,15 @@ jest.mock('../../common/ResizablePanels/ResizablePanels', () =>
     </>
   ))
 );
+
+jest.mock('../../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockImplementation(() => ({
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
+}));
 
 const mockOnCancel = jest.fn();
 const mockOnSave = jest.fn();

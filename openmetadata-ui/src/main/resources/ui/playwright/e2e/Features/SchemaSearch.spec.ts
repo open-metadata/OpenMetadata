@@ -50,18 +50,25 @@ test.describe('Schema search', { tag: '@ingestion' }, () => {
 
     const serviceName = table.serviceResponseData?.name ?? '';
     const schemaName = table.schemaResponseData?.name;
+
+    const searchServiceResponse = page.waitForResponse(
+      '/api/v1/search/query?q=*'
+    );
+
     await page.getByPlaceholder('Search Services').fill(serviceName);
+    await searchServiceResponse;
+    await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+
     await page.click(`[data-testid="service-name-${serviceName}"]`);
 
-    const databasesResponse = page.waitForResponse('/api/v1/databases?**');
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
 
     const headerText = await page.textContent(
       `[data-testid="entity-header-name"]`
     );
 
     expect(headerText).toBe(serviceName);
-
-    await databasesResponse;
 
     const schemaResponse = page.waitForResponse('/api/v1/databaseSchemas?**');
     await page.click('[data-testid="databases"]');

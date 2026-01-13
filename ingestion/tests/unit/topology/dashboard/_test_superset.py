@@ -176,20 +176,10 @@ EXPECTED_DASH = CreateDashboardRequest(
 EXPECTED_API_DASHBOARD = CreateDashboardRequest(
     name=EntityName("10"),
     displayName="Unicode Test",
-    description=None,
     dashboardType=DashboardType.Dashboard.value,
     sourceUrl=SourceUrl("http://localhost:54510/superset/dashboard/unicode-test/"),
-    project=None,
     charts=[],
-    dataModels=None,
-    tags=None,
-    owners=None,
     service=FullyQualifiedEntityName("test_supserset"),
-    extension=None,
-    domain=None,
-    dataProducts=None,
-    lifeCycle=None,
-    sourceHash=None,
 )
 
 EXPECTED_CHART = CreateChartRequest(
@@ -203,16 +193,9 @@ EXPECTED_CHART = CreateChartRequest(
 EXPECTED_CHART_2 = CreateChartRequest(
     name=EntityName("69"),
     displayName="Unicode Cloud",
-    description=None,
     chartType=ChartType.Other.value,
     sourceUrl=SourceUrl("http://localhost:54510/explore/?slice_id=69"),
-    tags=None,
-    owners=None,
     service=FullyQualifiedEntityName("test_supserset"),
-    domain=None,
-    dataProducts=None,
-    lifeCycle=None,
-    sourceHash=None,
 )
 MOCK_DATASOURCE = [
     FetchColumn(
@@ -507,6 +490,68 @@ class SupersetUnitTest(TestCase):
             MOCK_DASHBOARD
         )
         self.assertEqual(result, [69])
+
+    def test_charts_of_dashboard_superset_5(self):
+        """
+        Test for Superset 5.0.0+ where position_json is missing from list endpoint
+        Mock the client.fetch_dashboard to return position_json
+        """
+        from unittest.mock import Mock
+
+        from metadata.ingestion.source.dashboard.superset.models import (
+            DashboardResult,
+            FetchedDashboard,
+        )
+
+        # Create a dashboard without position_json (Superset 5.0.0 list endpoint)
+        dashboard_without_position = DashboardResult(
+            id=10,
+            dashboard_title="Test Dashboard",
+            url="/superset/dashboard/test/",
+            position_json=None,
+        )
+
+        # Mock the client's fetch_dashboard method to return FetchedDashboard model
+        mock_response = FetchedDashboard(
+            id=10,
+            result=DashboardResult(
+                position_json='{"CHART-test123": {"meta": {"chartId": 69}}}'
+            ),
+        )
+        self.superset_api.client.fetch_dashboard = Mock(return_value=mock_response)
+
+        result = self.superset_api._get_charts_of_dashboard(  # pylint: disable=protected-access
+            dashboard_without_position
+        )
+        self.assertEqual(result, [69])
+        self.superset_api.client.fetch_dashboard.assert_called_once_with(10)
+
+    def test_charts_of_dashboard_backward_compatibility(self):
+        """
+        Test backward compatibility - when position_json is present (Superset 4.x),
+        it should be used directly without calling fetch_dashboard
+        """
+        from unittest.mock import Mock
+
+        from metadata.ingestion.source.dashboard.superset.models import DashboardResult
+
+        # Create a dashboard WITH position_json (Superset 4.x list endpoint)
+        dashboard_with_position = DashboardResult(
+            id=10,
+            dashboard_title="Test Dashboard",
+            url="/superset/dashboard/test/",
+            position_json='{"CHART-abc": {"meta": {"chartId": 42}}}',
+        )
+
+        # Mock fetch_dashboard - it should NOT be called
+        self.superset_api.client.fetch_dashboard = Mock()
+
+        result = self.superset_api._get_charts_of_dashboard(  # pylint: disable=protected-access
+            dashboard_with_position
+        )
+        self.assertEqual(result, [42])
+        # Verify fetch_dashboard was NOT called since position_json was already present
+        self.superset_api.client.fetch_dashboard.assert_not_called()
 
     # disabled due to container being flaky
     def x_test_datamodels_of_dashboard(self):

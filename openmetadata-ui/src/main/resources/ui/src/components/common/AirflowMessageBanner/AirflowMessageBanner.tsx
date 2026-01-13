@@ -13,16 +13,24 @@
 import { Space, SpaceProps } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import React, { FC } from 'react';
+import { FC } from 'react';
 import { ReactComponent as IconRetry } from '../../../assets/svg/ic-retry-icon.svg';
+import { AIRFLOW_HYBRID } from '../../../constants/constants';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import './airflow-message-banner.less';
 
 const AirflowMessageBanner: FC<SpaceProps> = ({ className }) => {
-  const { reason, isAirflowAvailable, isFetchingStatus } = useAirflowStatus();
+  const { reason, isAirflowAvailable, isFetchingStatus, platform } =
+    useAirflowStatus();
 
-  if (isAirflowAvailable || isFetchingStatus || isEmpty(reason)) {
+  if (isFetchingStatus || isEmpty(reason)) {
+    return null;
+  }
+
+  // For hybrid runner, always show the banner even if status is 200
+  // For other platforms, only show when Airflow is not available
+  if (platform !== AIRFLOW_HYBRID && isAirflowAvailable) {
     return null;
   }
 

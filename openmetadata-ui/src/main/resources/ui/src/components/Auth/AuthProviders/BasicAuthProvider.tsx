@@ -12,9 +12,9 @@
  */
 
 import { AxiosError } from 'axios';
-import React, { createContext, ReactNode, useContext } from 'react';
+import { createContext, ReactNode, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   HTTP_STATUS_CODE,
   LOGIN_FAILED_ERROR,
@@ -43,8 +43,7 @@ import {
   getOidcToken,
   getRefreshToken,
   setOidcToken,
-  setRefreshToken,
-} from '../../../utils/LocalStorageUtils';
+} from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from './AuthProvider';
 interface BasicAuthProps {
   children: ReactNode;
@@ -81,7 +80,7 @@ export const BasicAuthContext = createContext<InitialContext>(initialContext);
 
 const BasicAuthProvider = ({ children }: BasicAuthProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { handleSuccessfulLogin, handleFailedLogin, handleSuccessfulLogout } =
     useAuthProvider();
 
@@ -94,8 +93,7 @@ const BasicAuthProvider = ({ children }: BasicAuthProps) => {
         });
 
         if (response.accessToken) {
-          setRefreshToken(response.refreshToken);
-          setOidcToken(response.accessToken);
+          await setOidcToken(response.accessToken);
 
           handleSuccessfulLogin({
             id_token: response.accessToken,
@@ -130,7 +128,7 @@ const BasicAuthProvider = ({ children }: BasicAuthProps) => {
         t('server.create-entity-success', { entity: t('label.user-account') })
       );
       showInfoToast(t('server.email-confirmation'));
-      history.push(ROUTES.SIGNIN);
+      navigate(ROUTES.SIGNIN);
     } catch (err) {
       if (
         (err as AxiosError).response?.status ===
@@ -140,7 +138,7 @@ const BasicAuthProvider = ({ children }: BasicAuthProps) => {
           t('server.create-entity-success', { entity: t('label.user-account') })
         );
         showErrorToast(err as AxiosError, t('server.email-verification-error'));
-        history.push(ROUTES.SIGNIN);
+        navigate(ROUTES.SIGNIN);
       } else {
         showErrorToast(err as AxiosError, t('server.unexpected-response'));
       }
@@ -159,8 +157,8 @@ const BasicAuthProvider = ({ children }: BasicAuthProps) => {
   };
 
   const handleLogout = async () => {
-    const token = getOidcToken();
-    const refreshToken = getRefreshToken();
+    const token = await getOidcToken();
+    const refreshToken = await getRefreshToken();
     const isExpired = extractDetailsFromToken(token).isExpired;
     if (token && !isExpired) {
       try {

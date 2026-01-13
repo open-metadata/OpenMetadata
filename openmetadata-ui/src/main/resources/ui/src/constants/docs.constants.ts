@@ -41,4 +41,6 @@ export const {
   DATA_DISCOVERY_DOCS,
   HOW_TO_GUIDE_DOCS,
   AUTO_CLASSIFICATION_DOCS,
+  TEST_SUITE_DOCS,
+  METRICS_DOCS,
 } = documentationLinksClassBase.getDocsURLS();

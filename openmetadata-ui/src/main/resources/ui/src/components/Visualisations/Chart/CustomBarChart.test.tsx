@@ -12,7 +12,6 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import '../../../test/unit/mocks/recharts.mock';
 import { CustomBarChartProps } from './Chart.interface';
 import CustomBarChart from './CustomBarChart';
@@ -49,6 +48,8 @@ const mockData = Array.from({ length: 501 }, (_, index) => ({
 
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
   formatDateTimeLong: jest.fn(),
+  getEpochMillisForPastDays: jest.fn().mockReturnValue(1609459200000),
+  getCurrentMillis: jest.fn().mockReturnValue(1640995200000),
 }));
 
 jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
@@ -58,12 +59,18 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
 
 jest.mock('../../../constants/profiler.constant', () => ({
   PROFILER_CHART_DATA_SIZE: 500,
+  DEFAULT_SELECTED_RANGE: {
+    key: 'last7Days',
+    title: 'Last 7 days',
+    days: 7,
+  },
 }));
 
 jest.mock('../../../utils/ChartUtils', () => ({
   axisTickFormatter: jest.fn(),
   tooltipFormatter: jest.fn(),
   updateActiveChartFilter: jest.fn(),
+  createHorizontalGridLineRenderer: jest.fn(() => jest.fn()),
 }));
 
 describe('CustomBarChart component test', () => {

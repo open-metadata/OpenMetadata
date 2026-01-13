@@ -28,13 +28,12 @@ import {
 import classNames from 'classnames';
 import cronstrue from 'cronstrue/i18n';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DAY_IN_MONTH_OPTIONS,
   DAY_OPTIONS,
   PERIOD_OPTIONS,
-  SCHEDULAR_OPTIONS,
 } from '../../../../../constants/Schedular.constants';
 import { LOADING_STATE } from '../../../../../enums/common.enum';
 import {
@@ -80,7 +79,7 @@ const ScheduleInterval = <T,>({
   defaultSchedule,
   topChildren,
   showActionButtons = true,
-  schedularOptions = SCHEDULAR_OPTIONS,
+  schedularOptions,
 }: ScheduleIntervalProps<T>) => {
   const { t } = useTranslation();
   // Since includePeriodOptions can limit the schedule options
@@ -98,12 +97,11 @@ const ScheduleInterval = <T,>({
     ...getStateValue(initialCron, initialDefaultSchedule),
   };
   const [state, setState] = useState<StateValue>(initialValues);
-  const [selectedSchedular, setSelectedSchedular] =
-    React.useState<SchedularOptions>(
-      isEmpty(initialCron)
-        ? SchedularOptions.ON_DEMAND
-        : SchedularOptions.SCHEDULE
-    );
+  const [selectedSchedular, setSelectedSchedular] = useState<SchedularOptions>(
+    isEmpty(initialCron)
+      ? SchedularOptions.ON_DEMAND
+      : SchedularOptions.SCHEDULE
+  );
   const [form] = Form.useForm<StateValue>();
   const { cron: cronString, selectedPeriod, dow, dom } = state;
 
@@ -200,14 +198,17 @@ const ScheduleInterval = <T,>({
   };
 
   const filteredPeriodOptions = useMemo(() => {
-    if (includePeriodOptions) {
-      return PERIOD_OPTIONS.filter((option) =>
-        includePeriodOptions.includes(option.value)
-      );
-    } else {
-      return PERIOD_OPTIONS;
-    }
-  }, [includePeriodOptions]);
+    const options = includePeriodOptions
+      ? PERIOD_OPTIONS.filter((option) =>
+          includePeriodOptions.includes(option.value)
+        )
+      : PERIOD_OPTIONS;
+
+    return options.map((option) => ({
+      ...option,
+      label: t(option.label),
+    }));
+  }, [includePeriodOptions, t]);
 
   return (
     <Form
@@ -420,7 +421,7 @@ const ScheduleInterval = <T,>({
                 htmlType="submit"
                 loading={status === LOADING_STATE.WAITING}
                 type="primary">
-                {buttonProps?.okText ?? t('label.submit')}
+                {buttonProps?.okText ?? t('label.create')}
               </Button>
             )}
           </Col>

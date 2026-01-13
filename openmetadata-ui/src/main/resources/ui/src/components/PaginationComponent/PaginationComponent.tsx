@@ -12,9 +12,13 @@
  */
 import Icon from '@ant-design/icons';
 import { Button, Pagination, PaginationProps } from 'antd';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowRightOutlined } from '../../assets/svg/arrow-right.svg';
+import {
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+} from '../../constants/constants';
 
 const PaginationComponent = (props: PaginationProps) => {
   const { t } = useTranslation();
@@ -26,7 +30,7 @@ const PaginationComponent = (props: PaginationProps) => {
     if (type === 'prev') {
       return (
         <Button
-          className="pagination-button hover-button"
+          className="pagination-button hover-button h-full"
           data-testid="previous"
           icon={
             <Icon
@@ -42,7 +46,7 @@ const PaginationComponent = (props: PaginationProps) => {
     if (type === 'next') {
       return (
         <Button
-          className="pagination-button hover-button"
+          className="pagination-button hover-button h-full"
           data-testid="next"
           type="text">
           <span> {t('label.next')}</span>
@@ -61,7 +65,7 @@ const PaginationComponent = (props: PaginationProps) => {
     <Pagination
       hideOnSinglePage
       itemRender={itemRender}
-      pageSizeOptions={[10, 25, 50]}
+      pageSizeOptions={[PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE]}
       {...props}
     />
   );

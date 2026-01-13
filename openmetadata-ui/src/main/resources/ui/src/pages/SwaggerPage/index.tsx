@@ -11,19 +11,35 @@
  *  limitations under the License.
  */
 
-import React from 'react';
+import { useEffect, useState } from 'react';
+import Loader from '../../components/common/Loader/Loader';
 import {
   GRAPH_BACKGROUND_COLOR,
   TEXT_BODY_COLOR,
 } from '../../constants/constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { getOidcToken } from '../../utils/LocalStorageUtils';
+import { getOidcToken } from '../../utils/SwTokenStorageUtils';
 import RapiDocReact from './RapiDocReact';
 import './swagger.less';
 
 const SwaggerPage = () => {
   const { theme } = useApplicationStore();
-  const idToken = getOidcToken();
+  const [idToken, setIdToken] = useState<string>('');
+
+  const fetchIdToken = async () => {
+    const token = await getOidcToken();
+    setIdToken(token);
+  };
+
+  useEffect(() => {
+    fetchIdToken();
+  }, []);
+
+  const apiKeyValue = `Bearer ${idToken}`;
+
+  if (!idToken) {
+    return <Loader />;
+  }
 
   return (
     <div
@@ -34,7 +50,7 @@ const SwaggerPage = () => {
         allow-spec-file-download
         api-key-location="header"
         api-key-name="Authorization"
-        api-key-value={`Bearer ${idToken}`}
+        api-key-value={apiKeyValue}
         font-size="large"
         nav-bg-color={GRAPH_BACKGROUND_COLOR}
         nav-item-spacing="compact"

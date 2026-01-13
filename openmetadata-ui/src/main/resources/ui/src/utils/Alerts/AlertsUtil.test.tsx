@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
 import { ReactComponent as ClockIcon } from '../../assets/svg/clock.svg';
@@ -24,6 +22,7 @@ import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
 import { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
 import { DESTINATION_DROPDOWN_TABS } from '../../constants/Alerts.constants';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import { EventType, Status } from '../../generated/events/api/typedEvent';
 import {
   SubscriptionCategory,
@@ -31,14 +30,14 @@ import {
 } from '../../generated/events/eventSubscription';
 import {
   mockExternalDestinationOptions,
-  mockNonTaskInternalDestinationOptions,
-  mockTaskInternalDestinationOptions,
   mockTypedEvent1,
   mockTypedEvent2,
   mockTypedEvent3,
   mockTypedEvent4,
 } from '../../mocks/AlertUtil.mock';
-import { searchData } from '../../rest/miscAPI';
+import { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { searchQuery } from '../../rest/searchAPI';
+import { getTermQuery } from '../SearchUtils';
 import {
   getAlertActionTypeDisplayName,
   getAlertEventsFilterLabels,
@@ -47,14 +46,21 @@ import {
   getAlertsActionTypeIcon,
   getAlertStatusIcon,
   getChangeEventDataFromTypedEvent,
+  getConfigHeaderArrayFromObject,
+  getConfigHeaderObjectFromArray,
+  getConfigQueryParamsArrayFromObject,
+  getConfigQueryParamsObjectFromArray,
   getConnectionTimeoutField,
   getDestinationConfigField,
   getDisplayNameForEntities,
   getFieldByArgumentType,
   getFilteredDestinationOptions,
+  getFormattedDestinations,
   getFunctionDisplayName,
   getLabelsForEventDetails,
   listLengthValidator,
+  normalizeDestinationConfig,
+  searchEntity,
 } from './AlertsUtil';
 
 jest.mock('antd', () => ({
@@ -72,8 +78,16 @@ jest.mock('../../components/common/AsyncSelect/AsyncSelect', () => ({
     )),
 }));
 
-jest.mock('../../rest/miscAPI', () => ({
-  searchData: jest.fn(),
+jest.mock('../../rest/searchAPI', () => ({
+  searchQuery: jest.fn(),
+}));
+
+jest.mock('../ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
+jest.mock('../ToastUtils', () => ({
+  showErrorToast: jest.fn(),
 }));
 
 describe('AlertsUtil tests', () => {
@@ -225,18 +239,70 @@ describe('AlertsUtil tests', () => {
       'task'
     );
 
-    expect(resultTask).toHaveLength(2);
+    expect(resultTask).toHaveLength(3);
 
-    resultTask.map((result) =>
-      expect(
-        mockTaskInternalDestinationOptions.includes(
-          result.value as SubscriptionCategory
-        )
-      ).toBeTruthy()
+    const taskCategories = resultTask.map(
+      (result) => result.value as SubscriptionCategory
+    );
+
+    expect(taskCategories).toContain(SubscriptionCategory.Owners);
+    expect(taskCategories).toContain(SubscriptionCategory.Assignees);
+    expect(taskCategories).toContain(SubscriptionCategory.Mentions);
+    expect(taskCategories).not.toContain(SubscriptionCategory.Followers);
+    expect(taskCategories).not.toContain(SubscriptionCategory.Admins);
+    expect(taskCategories).not.toContain(SubscriptionCategory.Users);
+    expect(taskCategories).not.toContain(SubscriptionCategory.Teams);
+  });
+
+  it('getFilteredDestinationOptions should return correct internal options for "conversation" source', () => {
+    const resultConversation = getFilteredDestinationOptions(
+      DESTINATION_DROPDOWN_TABS.internal,
+      'conversation'
+    );
+
+    expect(resultConversation).toHaveLength(2);
+
+    const conversationCategories = resultConversation.map(
+      (result) => result.value as SubscriptionCategory
+    );
+
+    expect(conversationCategories).toContain(SubscriptionCategory.Owners);
+    expect(conversationCategories).toContain(SubscriptionCategory.Mentions);
+    expect(conversationCategories).not.toContain(
+      SubscriptionCategory.Followers
+    );
+    expect(conversationCategories).not.toContain(SubscriptionCategory.Admins);
+    expect(conversationCategories).not.toContain(SubscriptionCategory.Users);
+    expect(conversationCategories).not.toContain(SubscriptionCategory.Teams);
+    expect(conversationCategories).not.toContain(
+      SubscriptionCategory.Assignees
     );
   });
 
-  it('getFilteredDestinationOptions should return correct internal options for non "task" source', () => {
+  it('getFilteredDestinationOptions should return correct internal options for "announcement" source', () => {
+    const resultAnnouncement = getFilteredDestinationOptions(
+      DESTINATION_DROPDOWN_TABS.internal,
+      'announcement'
+    );
+
+    expect(resultAnnouncement).toHaveLength(6);
+
+    const announcementCategories = resultAnnouncement.map(
+      (result) => result.value as SubscriptionCategory
+    );
+
+    expect(announcementCategories).toContain(SubscriptionCategory.Owners);
+    expect(announcementCategories).toContain(SubscriptionCategory.Followers);
+    expect(announcementCategories).toContain(SubscriptionCategory.Admins);
+    expect(announcementCategories).toContain(SubscriptionCategory.Users);
+    expect(announcementCategories).toContain(SubscriptionCategory.Teams);
+    expect(announcementCategories).toContain(SubscriptionCategory.Mentions);
+    expect(announcementCategories).not.toContain(
+      SubscriptionCategory.Assignees
+    );
+  });
+
+  it('getFilteredDestinationOptions should return correct internal options for default/other sources', () => {
     const resultContainer = getFilteredDestinationOptions(
       DESTINATION_DROPDOWN_TABS.internal,
       'container'
@@ -249,16 +315,17 @@ describe('AlertsUtil tests', () => {
     [resultContainer, resultTestSuite].forEach((results) => {
       expect(results).toHaveLength(5);
 
-      results.map((result) =>
-        expect(
-          mockNonTaskInternalDestinationOptions.includes(
-            result.value as Exclude<
-              SubscriptionCategory,
-              SubscriptionCategory.External | SubscriptionCategory.Assignees
-            >
-          )
-        ).toBeTruthy()
+      const defaultCategories = results.map(
+        (result) => result.value as SubscriptionCategory
       );
+
+      expect(defaultCategories).toContain(SubscriptionCategory.Owners);
+      expect(defaultCategories).toContain(SubscriptionCategory.Followers);
+      expect(defaultCategories).toContain(SubscriptionCategory.Admins);
+      expect(defaultCategories).toContain(SubscriptionCategory.Users);
+      expect(defaultCategories).toContain(SubscriptionCategory.Teams);
+      expect(defaultCategories).not.toContain(SubscriptionCategory.Assignees);
+      expect(defaultCategories).not.toContain(SubscriptionCategory.Mentions);
     });
   });
 });
@@ -271,19 +338,15 @@ describe('getFieldByArgumentType tests', () => {
 
     const selectDiv = screen.getByText('AsyncSelect');
 
-    await act(async () => {
-      userEvent.click(selectDiv);
-    });
+    fireEvent.click(selectDiv);
 
-    expect(searchData).toHaveBeenCalledWith(
-      undefined,
-      1,
-      50,
-      '',
-      '',
-      '',
-      'table_search_index'
-    );
+    expect(searchQuery).toHaveBeenCalledWith({
+      query: undefined,
+      pageNumber: 1,
+      pageSize: 50,
+      queryFilter: undefined,
+      searchIndex: 'table_search_index',
+    });
   });
 
   it('should return correct fields for argumentType domainList', async () => {
@@ -293,19 +356,15 @@ describe('getFieldByArgumentType tests', () => {
 
     const selectDiv = screen.getByText('AsyncSelect');
 
-    await act(async () => {
-      userEvent.click(selectDiv);
-    });
+    fireEvent.click(selectDiv);
 
-    expect(searchData).toHaveBeenCalledWith(
-      undefined,
-      1,
-      50,
-      '',
-      '',
-      '',
-      'domain_search_index'
-    );
+    expect(searchQuery).toHaveBeenCalledWith({
+      query: undefined,
+      pageNumber: 1,
+      pageSize: 50,
+      queryFilter: undefined,
+      searchIndex: 'domain_search_index',
+    });
   });
 
   it('should return correct fields for argumentType tableNameList', async () => {
@@ -320,19 +379,15 @@ describe('getFieldByArgumentType tests', () => {
 
     const selectDiv = screen.getByText('AsyncSelect');
 
-    await act(async () => {
-      userEvent.click(selectDiv);
-    });
+    fireEvent.click(selectDiv);
 
-    expect(searchData).toHaveBeenCalledWith(
-      undefined,
-      1,
-      50,
-      '',
-      '',
-      '',
-      'table_search_index'
-    );
+    expect(searchQuery).toHaveBeenCalledWith({
+      query: undefined,
+      pageNumber: 1,
+      pageSize: 50,
+      queryFilter: undefined,
+      searchIndex: 'table_search_index',
+    });
   });
 
   it('should return correct fields for argumentType ownerNameList', async () => {
@@ -347,19 +402,15 @@ describe('getFieldByArgumentType tests', () => {
 
     const selectDiv = screen.getByText('AsyncSelect');
 
-    await act(async () => {
-      userEvent.click(selectDiv);
-    });
+    fireEvent.click(selectDiv);
 
-    expect(searchData).toHaveBeenCalledWith(
-      undefined,
-      1,
-      50,
-      'isBot:false',
-      '',
-      '',
-      ['team_search_index', 'user_search_index']
-    );
+    expect(searchQuery).toHaveBeenCalledWith({
+      query: undefined,
+      pageNumber: 1,
+      pageSize: 50,
+      queryFilter: getTermQuery({ isBot: 'false' }),
+      searchIndex: ['team_search_index', 'user_search_index'],
+    });
   });
 
   it('should return correct fields for argumentType updateByUserList', async () => {
@@ -374,19 +425,15 @@ describe('getFieldByArgumentType tests', () => {
 
     const selectDiv = screen.getByText('AsyncSelect');
 
-    await act(async () => {
-      userEvent.click(selectDiv);
-    });
+    fireEvent.click(selectDiv);
 
-    expect(searchData).toHaveBeenCalledWith(
-      undefined,
-      1,
-      50,
-      '',
-      '',
-      '',
-      'user_search_index'
-    );
+    expect(searchQuery).toHaveBeenCalledWith({
+      query: undefined,
+      pageNumber: 1,
+      pageSize: 50,
+      queryFilter: undefined,
+      searchIndex: 'user_search_index',
+    });
   });
 
   it('should return correct fields for argumentType userList', async () => {
@@ -396,19 +443,15 @@ describe('getFieldByArgumentType tests', () => {
 
     const selectDiv = screen.getByText('AsyncSelect');
 
-    await act(async () => {
-      userEvent.click(selectDiv);
-    });
+    fireEvent.click(selectDiv);
 
-    expect(searchData).toHaveBeenCalledWith(
-      undefined,
-      1,
-      50,
-      'isBot:false',
-      '',
-      '',
-      'user_search_index'
-    );
+    expect(searchQuery).toHaveBeenCalledWith({
+      query: undefined,
+      pageNumber: 1,
+      pageSize: 50,
+      queryFilter: getTermQuery({ isBot: 'false' }),
+      searchIndex: 'user_search_index',
+    });
   });
 
   it('should return correct fields for argumentType eventTypeList', async () => {
@@ -513,19 +556,15 @@ describe('getFieldByArgumentType tests', () => {
 
     const selectDiv = screen.getByText('AsyncSelect');
 
-    await act(async () => {
-      userEvent.click(selectDiv);
-    });
+    fireEvent.click(selectDiv);
 
-    expect(searchData).toHaveBeenCalledWith(
-      undefined,
-      1,
-      50,
-      '',
-      '',
-      '',
-      'test_suite_search_index'
-    );
+    expect(searchQuery).toHaveBeenCalledWith({
+      query: undefined,
+      pageNumber: 1,
+      pageSize: 50,
+      queryFilter: undefined,
+      searchIndex: 'test_suite_search_index',
+    });
   });
 
   it('should not return select component for random argumentType', () => {
@@ -554,6 +593,9 @@ describe('getFieldByArgumentType tests', () => {
     expect(await screen.findByTestId('secret-key')).toBeInTheDocument();
     expect(
       await screen.findByTestId('webhook-4-headers-list')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('webhook-4-query-params-list')
     ).toBeInTheDocument();
     expect(await screen.findByTestId('http-method-4')).toBeInTheDocument();
   });
@@ -591,9 +633,9 @@ describe('getAlertEventsFilterLabels', () => {
       AlertRecentEventFilters.FAILED
     );
 
-    expect(allLabel).toStrictEqual('label.all');
-    expect(successLabel).toStrictEqual('label.successful');
-    expect(failedLabel).toStrictEqual('label.failed');
+    expect(allLabel).toBe('label.all');
+    expect(successLabel).toBe('label.successful');
+    expect(failedLabel).toBe('label.failed');
   });
 
   it('should return empty string for unknown filter', () => {
@@ -601,7 +643,7 @@ describe('getAlertEventsFilterLabels', () => {
       'unknown' as AlertRecentEventFilters
     );
 
-    expect(unknownLabel).toStrictEqual('');
+    expect(unknownLabel).toBe('');
   });
 });
 
@@ -797,5 +839,931 @@ describe('getAlertExtraInfo', () => {
     const eventCounts = screen.getAllByText('0');
 
     expect(eventCounts).toHaveLength(3);
+  });
+});
+
+describe('Query Parameters Utility Functions', () => {
+  describe('getConfigQueryParamsObjectFromArray', () => {
+    it('should convert query params array to object', () => {
+      const queryParamsArray = [
+        { key: 'param1', value: 'value1' },
+        { key: 'param2', value: 'value2' },
+      ];
+
+      const result = getConfigQueryParamsObjectFromArray(queryParamsArray);
+
+      expect(result).toEqual({
+        param1: 'value1',
+        param2: 'value2',
+      });
+    });
+
+    it('should return undefined for undefined input', () => {
+      const result = getConfigQueryParamsObjectFromArray(undefined);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should handle empty array', () => {
+      const result = getConfigQueryParamsObjectFromArray([]);
+
+      expect(result).toEqual({});
+    });
+
+    it('should handle duplicate keys by using last value', () => {
+      const queryParamsArray = [
+        { key: 'param1', value: 'value1' },
+        { key: 'param1', value: 'value2' },
+      ];
+
+      const result = getConfigQueryParamsObjectFromArray(queryParamsArray);
+
+      expect(result).toEqual({
+        param1: 'value2',
+      });
+    });
+  });
+
+  describe('getConfigQueryParamsArrayFromObject', () => {
+    it('should convert query params object to array', () => {
+      const queryParamsObject = {
+        param1: 'value1',
+        param2: 'value2',
+      };
+
+      const result = getConfigQueryParamsArrayFromObject(queryParamsObject);
+
+      expect(result).toEqual([
+        { key: 'param1', value: 'value1' },
+        { key: 'param2', value: 'value2' },
+      ]);
+    });
+
+    it('should return undefined for undefined input', () => {
+      const result = getConfigQueryParamsArrayFromObject(undefined);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should handle empty object', () => {
+      const result = getConfigQueryParamsArrayFromObject({});
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle object with various value types', () => {
+      const queryParamsObject = {
+        param1: 'string',
+        param2: 123,
+        param3: true,
+      };
+
+      const result = getConfigQueryParamsArrayFromObject(queryParamsObject);
+
+      expect(result).toEqual([
+        { key: 'param1', value: 'string' },
+        { key: 'param2', value: 123 },
+        { key: 'param3', value: true },
+      ]);
+    });
+  });
+});
+
+describe('Headers Utility Functions', () => {
+  describe('getConfigHeaderObjectFromArray', () => {
+    it('should convert headers array to object', () => {
+      const headersArray = [
+        { key: 'Content-Type', value: 'application/json' },
+        { key: 'Authorization', value: 'Bearer token123' },
+      ];
+
+      const result = getConfigHeaderObjectFromArray(headersArray);
+
+      expect(result).toEqual({
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token123',
+      });
+    });
+
+    it('should return undefined for undefined input', () => {
+      const result = getConfigHeaderObjectFromArray(undefined);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should handle empty array', () => {
+      const result = getConfigHeaderObjectFromArray([]);
+
+      expect(result).toEqual({});
+    });
+  });
+
+  describe('getConfigHeaderArrayFromObject', () => {
+    it('should convert headers object to array', () => {
+      const headersObject = {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token123',
+      };
+
+      const result = getConfigHeaderArrayFromObject(headersObject);
+
+      expect(result).toEqual([
+        { key: 'Content-Type', value: 'application/json' },
+        { key: 'Authorization', value: 'Bearer token123' },
+      ]);
+    });
+
+    it('should return undefined for undefined input', () => {
+      const result = getConfigHeaderArrayFromObject(undefined);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should handle empty object', () => {
+      const result = getConfigHeaderArrayFromObject({});
+
+      expect(result).toEqual([]);
+    });
+  });
+});
+
+describe('handleAlertSave - downstream notification fields', () => {
+  it('should properly map downstream notification fields in destinations', () => {
+    // Since handleAlertSave transforms the destinations data before saving,
+    // we can test that the transformation logic handles the new fields correctly
+    // by verifying the structure of the mapped data
+
+    interface TestDestination {
+      category: SubscriptionCategory;
+      type?: SubscriptionType;
+      config?: Record<string, unknown>;
+      destinationType?: SubscriptionCategory;
+      notifyDownstream?: boolean;
+      downstreamDepth?: number;
+    }
+
+    const testDestinations: TestDestination[] = [
+      {
+        category: SubscriptionCategory.External,
+        type: SubscriptionType.Webhook,
+        config: {},
+        notifyDownstream: true,
+        downstreamDepth: 3,
+      },
+      {
+        category: SubscriptionCategory.Users,
+        destinationType: SubscriptionCategory.Users,
+        notifyDownstream: false,
+      },
+    ];
+
+    // The handleAlertSave function maps destinations correctly
+    // The new fields (notifyDownstream, downstreamDepth) should be preserved
+    const mappedDestinations = testDestinations.map((d) => {
+      return {
+        ...d.config,
+        id: d.destinationType ?? d.type,
+        category: d.category,
+        timeout: 30,
+        readTimeout: 60,
+        notifyDownstream: d.notifyDownstream,
+        downstreamDepth: d.downstreamDepth,
+      };
+    });
+
+    expect(mappedDestinations[0]).toHaveProperty('notifyDownstream', true);
+    expect(mappedDestinations[0]).toHaveProperty('downstreamDepth', 3);
+    expect(mappedDestinations[1]).toHaveProperty('notifyDownstream', false);
+    expect(mappedDestinations[1]).toHaveProperty('downstreamDepth', undefined);
+  });
+
+  it('should handle destinations without downstream notification fields', () => {
+    interface TestDestination {
+      category: SubscriptionCategory;
+      type: SubscriptionType;
+      config: Record<string, unknown>;
+      destinationType?: SubscriptionCategory;
+      notifyDownstream?: boolean;
+      downstreamDepth?: number;
+    }
+
+    const testDestinations: TestDestination[] = [
+      {
+        category: SubscriptionCategory.External,
+        type: SubscriptionType.Email,
+        config: {},
+      },
+    ];
+
+    const mappedDestinations = testDestinations.map((d) => {
+      return {
+        ...d.config,
+        id: d.destinationType ?? d.type,
+        category: d.category,
+        timeout: 30,
+        readTimeout: 60,
+        notifyDownstream: d.notifyDownstream,
+        downstreamDepth: d.downstreamDepth,
+      };
+    });
+
+    expect(mappedDestinations[0]).toHaveProperty('notifyDownstream', undefined);
+    expect(mappedDestinations[0]).toHaveProperty('downstreamDepth', undefined);
+  });
+
+  describe('searchEntity', () => {
+    const mockSearchQueryResponse = {
+      hits: {
+        hits: [
+          {
+            _source: {
+              displayName: 'Test Table',
+              fullyQualifiedName: 'test.database.table',
+              entityType: 'table',
+              name: 'table',
+            },
+            _index: 'table_search_index',
+          },
+          {
+            _source: {
+              displayName: 'Test User',
+              fullyQualifiedName: 'test.user',
+              entityType: 'user',
+              name: 'user',
+            },
+            _index: 'user_search_index',
+          },
+        ],
+      },
+    };
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should return search results with default options', async () => {
+      (searchQuery as jest.Mock).mockResolvedValue(mockSearchQueryResponse);
+
+      const result = await searchEntity({
+        searchText: 'test',
+        searchIndex: SearchIndex.TABLE,
+      });
+
+      expect(searchQuery).toHaveBeenCalledWith({
+        query: 'test',
+        pageNumber: 1,
+        pageSize: 50,
+        queryFilter: undefined,
+        searchIndex: SearchIndex.TABLE,
+      });
+
+      expect(result).toEqual([
+        {
+          label: 'Test Table',
+          value: 'test.database.table',
+        },
+        {
+          label: 'Test User',
+          value: 'test.user',
+        },
+      ]);
+    });
+
+    it('should return search results with showDisplayNameAsLabel false', async () => {
+      (searchQuery as jest.Mock).mockResolvedValue(mockSearchQueryResponse);
+
+      const result = await searchEntity({
+        searchText: 'test',
+        searchIndex: SearchIndex.TABLE,
+        showDisplayNameAsLabel: false,
+      });
+
+      expect(result).toEqual([
+        {
+          label: 'test.database.table',
+          value: 'test.database.table',
+        },
+        {
+          label: 'test.user',
+          value: 'test.user',
+        },
+      ]);
+    });
+
+    it('should return search results with setSourceAsValue true and use entityType from source', async () => {
+      (searchQuery as jest.Mock).mockResolvedValue(mockSearchQueryResponse);
+
+      const result = await searchEntity({
+        searchText: 'test',
+        searchIndex: SearchIndex.TABLE,
+        setSourceAsValue: true,
+      });
+
+      expect(result).toEqual([
+        {
+          label: 'Test Table',
+          value: JSON.stringify({
+            displayName: 'Test Table',
+            fullyQualifiedName: 'test.database.table',
+            entityType: 'table',
+            name: 'table',
+            type: 'table',
+          }),
+        },
+        {
+          label: 'Test User',
+          value: JSON.stringify({
+            displayName: 'Test User',
+            fullyQualifiedName: 'test.user',
+            entityType: 'user',
+            name: 'user',
+            type: 'user',
+          }),
+        },
+      ]);
+    });
+
+    it('should handle search results with custom queryFilter', async () => {
+      (searchQuery as jest.Mock).mockResolvedValue(mockSearchQueryResponse);
+      const customQueryFilter = { isBot: 'false' };
+
+      const result = await searchEntity({
+        searchText: 'test',
+        searchIndex: [SearchIndex.TEAM, SearchIndex.USER],
+        queryFilter: customQueryFilter,
+      });
+
+      expect(searchQuery).toHaveBeenCalledWith({
+        query: 'test',
+        pageNumber: 1,
+        pageSize: 50,
+        queryFilter: customQueryFilter,
+        searchIndex: [SearchIndex.TEAM, SearchIndex.USER],
+      });
+
+      expect(result).toEqual([
+        {
+          label: 'Test Table',
+          value: 'test.database.table',
+        },
+        {
+          label: 'Test User',
+          value: 'test.user',
+        },
+      ]);
+    });
+
+    it('should handle empty fullyQualifiedName gracefully', async () => {
+      const mockResponseWithEmptyFQN = {
+        hits: {
+          hits: [
+            {
+              _source: {
+                displayName: 'Test Entity',
+                entityType: 'test',
+              },
+              _index: 'test_search_index',
+            },
+          ],
+        },
+      };
+
+      (searchQuery as jest.Mock).mockResolvedValue(mockResponseWithEmptyFQN);
+
+      const result = await searchEntity({
+        searchText: 'test',
+        searchIndex: SearchIndex.TABLE,
+      });
+
+      expect(result).toEqual([
+        {
+          label: 'Test Entity',
+          value: '',
+        },
+      ]);
+    });
+
+    it('should remove duplicate entries based on label', async () => {
+      const mockResponseWithDuplicates = {
+        hits: {
+          hits: [
+            {
+              _source: {
+                displayName: 'Test Table',
+                fullyQualifiedName: 'test.database.table1',
+                entityType: 'table',
+              },
+              _index: 'table_search_index',
+            },
+            {
+              _source: {
+                displayName: 'Test Table', // Same display name
+                fullyQualifiedName: 'test.database.table2',
+                entityType: 'table',
+              },
+              _index: 'table_search_index',
+            },
+          ],
+        },
+      };
+
+      (searchQuery as jest.Mock).mockResolvedValue(mockResponseWithDuplicates);
+
+      const result = await searchEntity({
+        searchText: 'test',
+        searchIndex: SearchIndex.TABLE,
+      });
+
+      // Should only return one item due to duplicate label removal
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        label: 'Test Table',
+        value: 'test.database.table1',
+      });
+    });
+
+    it('should handle search API errors gracefully', async () => {
+      const mockError = new Error('API Error');
+      (searchQuery as jest.Mock).mockRejectedValue(mockError);
+
+      const result = await searchEntity({
+        searchText: 'test',
+        searchIndex: SearchIndex.TABLE,
+      });
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle missing entityType in source when setSourceAsValue is true', async () => {
+      const mockResponseWithoutEntityType = {
+        hits: {
+          hits: [
+            {
+              _source: {
+                displayName: 'Test Entity',
+                fullyQualifiedName: 'test.entity',
+                // entityType is missing
+              },
+              _index: 'test_search_index',
+            },
+          ],
+        },
+      };
+
+      (searchQuery as jest.Mock).mockResolvedValue(
+        mockResponseWithoutEntityType
+      );
+
+      const result = await searchEntity({
+        searchText: 'test',
+        searchIndex: SearchIndex.TABLE,
+        setSourceAsValue: true,
+      });
+
+      expect(result).toEqual([
+        {
+          label: 'Test Entity',
+          value: JSON.stringify({
+            displayName: 'Test Entity',
+            fullyQualifiedName: 'test.entity',
+            type: undefined, // entityType is undefined, so type should be undefined
+          }),
+        },
+      ]);
+    });
+
+    it('should use entityType from source for type field when setSourceAsValue is true (regression test)', async () => {
+      const mockResponseWithEntityType = {
+        hits: {
+          hits: [
+            {
+              _source: {
+                displayName: 'Custom Entity',
+                fullyQualifiedName: 'custom.entity',
+                entityType: 'customType', // This should be used as the type field
+                name: 'customEntity',
+              },
+              _index: 'some_other_index', // This _index value should not be used for type
+            },
+          ],
+        },
+      };
+
+      (searchQuery as jest.Mock).mockResolvedValue(mockResponseWithEntityType);
+
+      const result = await searchEntity({
+        searchText: 'custom',
+        searchIndex: SearchIndex.TABLE,
+        setSourceAsValue: true,
+      });
+
+      expect(result).toEqual([
+        {
+          label: 'Custom Entity',
+          value: JSON.stringify({
+            displayName: 'Custom Entity',
+            fullyQualifiedName: 'custom.entity',
+            entityType: 'customType',
+            name: 'customEntity',
+            type: 'customType', // Should use entityType from source, not from index mapping
+          }),
+        },
+      ]);
+    });
+  });
+});
+
+describe('normalizeDestinationConfig', () => {
+  it('should normalize config with headers and queryParams as objects to arrays', () => {
+    const config = {
+      endpoint: 'https://example.com/webhook',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token123',
+      },
+      queryParams: {
+        param1: 'value1',
+        param2: 'value2',
+      },
+      timeout: 30,
+    };
+
+    const result = normalizeDestinationConfig(config);
+
+    expect(result).toEqual({
+      endpoint: 'https://example.com/webhook',
+      headers: [
+        { key: 'Content-Type', value: 'application/json' },
+        { key: 'Authorization', value: 'Bearer token123' },
+      ],
+      queryParams: [
+        { key: 'param1', value: 'value1' },
+        { key: 'param2', value: 'value2' },
+      ],
+      timeout: 30,
+    });
+  });
+
+  it('should handle config with undefined headers and queryParams', () => {
+    const config = {
+      endpoint: 'https://example.com/webhook',
+      timeout: 30,
+    };
+
+    const result = normalizeDestinationConfig(config);
+
+    expect(result).toEqual({
+      endpoint: 'https://example.com/webhook',
+      timeout: 30,
+    });
+  });
+
+  it('should handle config with empty headers and queryParams objects', () => {
+    const config = {
+      endpoint: 'https://example.com/webhook',
+      headers: {},
+      queryParams: {},
+      timeout: 30,
+    };
+
+    const result = normalizeDestinationConfig(config);
+
+    expect(result).toEqual({
+      endpoint: 'https://example.com/webhook',
+      headers: [],
+      queryParams: [],
+      timeout: 30,
+    });
+  });
+
+  it('should omit undefined values from config', () => {
+    const config = {
+      endpoint: 'https://example.com/webhook',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      queryParams: undefined,
+      timeout: undefined,
+      secretKey: 'secret123',
+    };
+
+    const result = normalizeDestinationConfig(config);
+
+    expect(result).toEqual({
+      endpoint: 'https://example.com/webhook',
+      headers: [{ key: 'Content-Type', value: 'application/json' }],
+      secretKey: 'secret123',
+    });
+    expect(result).not.toHaveProperty('timeout');
+    expect(result).not.toHaveProperty('queryParams');
+  });
+
+  it('should handle undefined config', () => {
+    const result = normalizeDestinationConfig(undefined);
+
+    expect(result).toEqual({});
+  });
+
+  it('should handle config with only headers', () => {
+    const config = {
+      endpoint: 'https://example.com/webhook',
+      headers: {
+        Authorization: 'Bearer token',
+      },
+    };
+
+    const result = normalizeDestinationConfig(config);
+
+    expect(result).toEqual({
+      endpoint: 'https://example.com/webhook',
+      headers: [{ key: 'Authorization', value: 'Bearer token' }],
+    });
+  });
+
+  it('should handle config with only queryParams', () => {
+    const config = {
+      endpoint: 'https://example.com/webhook',
+      queryParams: {
+        apiKey: 'key123',
+      },
+    };
+
+    const result = normalizeDestinationConfig(config);
+
+    expect(result).toEqual({
+      endpoint: 'https://example.com/webhook',
+      queryParams: [{ key: 'apiKey', value: 'key123' }],
+    });
+  });
+
+  it('should preserve other config properties unchanged', () => {
+    const config = {
+      endpoint: 'https://example.com/webhook',
+      secretKey: 'secret',
+      sendToFollowers: true,
+      sendToOwners: false,
+      readTimeout: 60,
+      headers: {
+        'X-Custom-Header': 'value',
+      },
+    };
+
+    const result = normalizeDestinationConfig(config);
+
+    expect(result).toEqual({
+      endpoint: 'https://example.com/webhook',
+      secretKey: 'secret',
+      sendToFollowers: true,
+      sendToOwners: false,
+      readTimeout: 60,
+      headers: [{ key: 'X-Custom-Header', value: 'value' }],
+    });
+  });
+});
+
+describe('getFormattedDestinations', () => {
+  it('should convert headers and queryParams from arrays to objects', () => {
+    const destinations = [
+      {
+        destinationType: 'Webhook',
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+          headers: [
+            { key: 'Content-Type', value: 'application/json' },
+            { key: 'Authorization', value: 'Bearer token123' },
+          ],
+          queryParams: [
+            { key: 'param1', value: 'value1' },
+            { key: 'param2', value: 'value2' },
+          ],
+        },
+      },
+    ];
+
+    const result = getFormattedDestinations(
+      destinations as ModifiedDestination[]
+    );
+
+    expect(result).toEqual([
+      {
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer token123',
+          },
+          queryParams: {
+            param1: 'value1',
+            param2: 'value2',
+          },
+        },
+      },
+    ]);
+  });
+
+  it('should omit empty headers and queryParams', () => {
+    const destinations = [
+      {
+        destinationType: 'Webhook',
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+          headers: [],
+          queryParams: [],
+        },
+      },
+    ];
+
+    const result = getFormattedDestinations(
+      destinations as unknown as ModifiedDestination[]
+    );
+
+    expect(result).toEqual([
+      {
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+        },
+      },
+    ]);
+  });
+
+  it('should handle undefined headers and queryParams', () => {
+    const destinations = [
+      {
+        destinationType: 'Webhook',
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+        },
+      },
+    ];
+
+    const result = getFormattedDestinations(
+      destinations as ModifiedDestination[]
+    );
+
+    expect(result).toEqual([
+      {
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+        },
+      },
+    ]);
+  });
+
+  it('should remove destinationType from result', () => {
+    const destinations = [
+      {
+        destinationType: 'Webhook',
+        category: 'External',
+        type: 'Webhook',
+        config: {
+          endpoint: 'https://example.com/webhook',
+        },
+      },
+    ];
+
+    const result = getFormattedDestinations(
+      destinations as ModifiedDestination[]
+    );
+
+    expect(result).toEqual([
+      {
+        category: 'External',
+        type: 'Webhook',
+        config: {
+          endpoint: 'https://example.com/webhook',
+        },
+      },
+    ]);
+    expect(result?.[0]).not.toHaveProperty('destinationType');
+  });
+
+  it('should handle undefined destinations', () => {
+    const result = getFormattedDestinations(undefined);
+
+    expect(result).toBeUndefined();
+  });
+
+  it('should handle empty array', () => {
+    const result = getFormattedDestinations([]);
+
+    expect(result).toEqual([]);
+  });
+
+  it('should preserve other config properties', () => {
+    const destinations = [
+      {
+        destinationType: 'Webhook',
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+          secretKey: 'secret123',
+          timeout: 30,
+          readTimeout: 60,
+          headers: [{ key: 'X-Custom', value: 'test' }],
+        },
+      },
+    ];
+
+    const result = getFormattedDestinations(
+      destinations as unknown as ModifiedDestination[]
+    );
+
+    expect(result).toEqual([
+      {
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+          secretKey: 'secret123',
+          timeout: 30,
+          readTimeout: 60,
+          headers: {
+            'X-Custom': 'test',
+          },
+        },
+      },
+    ]);
+  });
+
+  it('should handle multiple destinations', () => {
+    const destinations = [
+      {
+        destinationType: 'Webhook',
+        category: 'External',
+        config: {
+          endpoint: 'https://example1.com/webhook',
+          headers: [{ key: 'Auth', value: 'token1' }],
+        },
+      },
+      {
+        destinationType: 'Slack',
+        category: 'External',
+        config: {
+          endpoint: 'https://slack.com/webhook',
+          queryParams: [{ key: 'channel', value: 'general' }],
+        },
+      },
+    ];
+
+    const result = getFormattedDestinations(
+      destinations as ModifiedDestination[]
+    );
+
+    expect(result).toEqual([
+      {
+        category: 'External',
+        config: {
+          endpoint: 'https://example1.com/webhook',
+          headers: {
+            Auth: 'token1',
+          },
+        },
+      },
+      {
+        category: 'External',
+        config: {
+          endpoint: 'https://slack.com/webhook',
+          queryParams: {
+            channel: 'general',
+          },
+        },
+      },
+    ]);
+  });
+
+  it('should omit undefined config values', () => {
+    const destinations = [
+      {
+        destinationType: 'Webhook',
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+          timeout: undefined,
+          secretKey: 'secret',
+          readTimeout: undefined,
+        },
+      },
+    ];
+
+    const result = getFormattedDestinations(
+      destinations as unknown as ModifiedDestination[]
+    );
+
+    expect(result).toEqual([
+      {
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+          secretKey: 'secret',
+        },
+      },
+    ]);
+    expect(result?.[0]?.config).not.toHaveProperty('timeout');
+    expect(result?.[0]?.config).not.toHaveProperty('readTimeout');
   });
 });

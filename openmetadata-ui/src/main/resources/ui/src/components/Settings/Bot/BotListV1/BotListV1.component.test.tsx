@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import LimitWrapper from '../../../../hoc/LimitWrapper';
 import BotListV1 from './BotListV1.component';
@@ -52,10 +51,7 @@ describe('BotListV1', () => {
     const showDeletedSwitch = await screen.findByTestId('switch-deleted');
     fireEvent.click(showDeletedSwitch);
 
-    expect(mockHandleShowDeleted).toHaveBeenCalledWith(
-      true,
-      expect.objectContaining({})
-    );
+    expect(mockHandleShowDeleted).toHaveBeenCalledWith(true);
   });
 
   it('should render LimitWrapper', async () => {

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import TabsLabel from './TabsLabel.component';
 import { TabsLabelProps } from './TabsLabel.interface';
 
@@ -48,5 +47,30 @@ describe('TabsLabel component', () => {
     const container = await screen.findByTestId('label-description');
 
     expect(container).toBeVisible();
+  });
+
+  it('Loading skeleton should be visible when isLoading is true', async () => {
+    render(<TabsLabel {...mockProps} isLoading />);
+    const skeleton = await screen.findByTestId('loading-skeleton');
+
+    expect(skeleton).toBeVisible();
+    expect(screen.queryByTestId('count')).not.toBeInTheDocument();
+  });
+
+  it('Loading skeleton should be shown instead of count when isLoading is true', async () => {
+    render(<TabsLabel {...mockProps} isLoading count={5} />);
+    const skeleton = await screen.findByTestId('loading-skeleton');
+
+    expect(skeleton).toBeVisible();
+    expect(screen.queryByTestId('count')).not.toBeInTheDocument();
+  });
+
+  it('Count should be visible when isLoading is false', async () => {
+    render(<TabsLabel {...mockProps} count={5} isLoading={false} />);
+    const count = await screen.findByTestId('count');
+
+    expect(count).toBeVisible();
+    expect(count.textContent).toStrictEqual('5');
+    expect(screen.queryByTestId('loading-skeleton')).not.toBeInTheDocument();
   });
 });

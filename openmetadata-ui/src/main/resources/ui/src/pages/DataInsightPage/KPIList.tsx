@@ -15,15 +15,14 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../components/common/Table/Table';
 import { EmptyGraphPlaceholder } from '../../components/DataInsight/EmptyGraphPlaceholder';
 import {
@@ -44,9 +43,10 @@ import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getKpiPath } from '../../utils/RouterUtils';
+import { descriptionTableObject } from '../../utils/TableColumn.util';
 
 const KPIList = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const isAdminUser = currentUser?.isAdmin ?? false;
   const { t } = useTranslation();
@@ -96,22 +96,7 @@ const KPIList = () => {
           <Link to={getKpiPath(name)}>{getEntityName(record)}</Link>
         ),
       },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        width: 300,
-        render: (description: string | undefined) =>
-          description ? (
-            <RichTextEditorPreviewerNew markdown={description} />
-          ) : (
-            <span data-testid="no-description">
-              {t('label.no-entity', {
-                entity: t('label.description'),
-              })}
-            </span>
-          ),
-      },
+      ...descriptionTableObject<Kpi>({ width: 300 }),
       {
         title: t('label.start-entity', { entity: t('label.date') }),
         dataIndex: 'startDate',
@@ -169,7 +154,7 @@ const KPIList = () => {
                   disabled={!isAdminUser}
                   icon={<EditIcon width="16px" />}
                   type="text"
-                  onClick={() => history.push(getKpiPath(record.name))}
+                  onClick={() => navigate(getKpiPath(record.name))}
                 />
               </Tooltip>
               <Tooltip

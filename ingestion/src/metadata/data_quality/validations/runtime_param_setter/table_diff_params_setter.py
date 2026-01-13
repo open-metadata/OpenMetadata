@@ -10,11 +10,26 @@
 #  limitations under the License.
 """Module that defines the TableDiffParamsSetter class."""
 from ast import literal_eval
-from typing import List, Optional, Set
-from urllib.parse import urlparse
+from typing import (
+    Any,
+    Callable,
+    List,
+    Optional,
+    Protocol,
+    Set,
+    Union,
+    runtime_checkable,
+)
 
 from metadata.data_quality.validations import utils
-from metadata.data_quality.validations.models import Column, TableDiffRuntimeParameters
+from metadata.data_quality.validations.models import (
+    Column,
+    TableDiffRuntimeParameters,
+    TableParameter,
+)
+from metadata.data_quality.validations.runtime_param_setter.base_diff_params_setter import (
+    ServiceSpecPatch,
+)
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
     RuntimeParameterSetter,
 )
@@ -22,29 +37,36 @@ from metadata.generated.schema.entity.data.table import Constraint, Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.tests.testCase import TestCase
-from metadata.ingestion.source.connections import get_connection
-from metadata.profiler.orm.registry import Dialects
 from metadata.utils import fqn
 from metadata.utils.collections import CaseInsensitiveList
-from metadata.utils.importer import get_module_dir, import_from_module
 
 
-def get_for_source(
-    service_type: ServiceType, source_type: str, from_: str = "ingestion"
-):
-    return import_from_module(
-        "metadata.{}.source.{}.{}.{}.ServiceSpec".format(  # pylint: disable=C0209
-            from_,
-            service_type.name.lower(),
-            get_module_dir(source_type),
-            "service_spec",
-        )
-    )
+@runtime_checkable
+class TableParameterSetter(Protocol):
+    def get(
+        self,
+        service: DatabaseService,
+        entity: Table,
+        key_columns,
+        extra_columns,
+        case_sensitive_columns,
+        service_url: Optional[Union[str, dict]],
+    ) -> TableParameter:
+        ...
+
+    def get_service_connection_config(self, service: DatabaseService):
+        ...
+
+
+def get_service_url(
+    param_setter: TableParameterSetter, service: DatabaseService
+) -> Optional[Union[str, dict[str, Any]]]:
+    return param_setter.get_service_connection_config(service)
 
 
 class TableDiffParamsSetter(RuntimeParameterSetter):
     """
-    Set runtime parameters for a the table diff test.
+    Set runtime parameters for a table diff test.
     Sets the following variables:
     - service1Url: The url of the first service (data diff compliant)
     - service2Url: The url of the second service (data diff compliant)
@@ -52,56 +74,68 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
     - table2: The table path for the second service (only schema and table name)
     - keyColumns: If not defined, construct the key columns based on primary key or unique constraint.
     - extraColumns: If not defined, construct the extra columns as all columns except the key columns.
-    - whereClause: Exrtact where clause based on partitioning and user input
+    - whereClause: Extract where clause based on partitioning and user input
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(
+        self,
+        *args,
+        service_url_getter: Callable[
+            [TableParameterSetter, DatabaseService],
+            Optional[Union[str, dict[str, Any]]],
+        ] = get_service_url,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
-        self._table_columns = {
-            column.name.root: column for column in self.table_entity.columns
-        }
+        self.get_service_url = service_url_getter
 
     def get_parameters(self, test_case) -> TableDiffRuntimeParameters:
-        # Using the specs class method causes circular import as TestSuiteInterface
-        # imports RuntimeParameterSetter
-        cls_path = get_for_source(
-            ServiceType.Database,
-            source_type=self.service_connection_config.type.value.lower(),
-        ).data_diff
-        cls = import_from_module(cls_path)()
-
         service1: DatabaseService = self.ometa_client.get_by_id(
             DatabaseService, self.table_entity.service.id, nullable=False
-        )
-
-        service1_url = (
-            str(get_connection(self.service_connection_config).url)
-            if self.service_connection_config
-            else None
         )
 
         table2_fqn = self.get_parameter(test_case, "table2")
         if table2_fqn is None:
             raise ValueError("table2 not set")
+
         table2: Table = self.ometa_client.get_by_name(
             Table, fqn=table2_fqn, nullable=False
         )
         service2: DatabaseService = self.ometa_client.get_by_id(
             DatabaseService, table2.service.id, nullable=False
         )
-        service2_url = (
-            self.get_parameter(test_case, "service2Url") or service1_url
-            if table2.service == self.table_entity.service
-            else None
-        )
+
+        table1_param_setter = self.get_param_setter(service1)
+        table2_param_setter = self.get_param_setter(service2)
+
+        service1_url = self.get_service_url(table1_param_setter, service1)
+
+        if table2.service == self.table_entity.service:
+            service2_url = self.get_parameter(test_case, "service2Url") or service1_url
+        else:
+            service2_url = self.get_service_url(table2_param_setter, service2)
 
         key_columns = self.get_key_columns(test_case)
+        table2_key_columns = (
+            self.get_table_key_columns(test_case, table2) or key_columns
+        )
+
         extra_columns = (
             self.get_extra_columns(
-                key_columns, test_case, self.table_entity.columns, table2.columns
+                key_columns | table2_key_columns,
+                test_case,
+                self.table_entity.columns,
+                table2.columns,
             )
             or set()
         )
+        table1_extra_columns = self.get_table_extra_columns(
+            test_case, self.table_entity
+        )
+        table2_extra_columns = (
+            self.get_table_extra_columns(test_case, table2) or extra_columns
+        )
+
         case_sensitive_columns: bool = (
             utils.get_bool_test_case_param(
                 test_case.parameterValues, "caseSensitiveColumns"
@@ -111,19 +145,19 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
 
         return TableDiffRuntimeParameters(
             table_profile_config=self.table_entity.tableProfilerConfig,
-            table1=cls.get(
+            table1=table1_param_setter.get(
                 service1,
                 self.table_entity,
                 key_columns,
-                extra_columns,
+                table1_extra_columns or extra_columns,
                 case_sensitive_columns,
                 service1_url,
             ),
-            table2=cls.get(
+            table2=table2_param_setter.get(
                 service2,
                 table2,
-                key_columns,
-                extra_columns,
+                table2_key_columns,
+                table2_extra_columns,
                 case_sensitive_columns,
                 service2_url,
             ),
@@ -189,6 +223,45 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
             )
         return set(key_columns)
 
+    def get_table_key_columns(
+        self, test_case: TestCase, table: Table
+    ) -> Optional[set[str]]:
+        key = "table1" if table is self.table_entity else "table2"
+        param = self.get_parameter(test_case, f"{key}.keyColumns", "[]")
+        key_columns: List[str] = literal_eval(param)
+
+        if not key_columns:
+            return None
+
+        self.validate_columns(key_columns, table)
+        return set(key_columns)
+
+    def get_table_extra_columns(
+        self, test_case: TestCase, table: Table
+    ) -> Optional[List[str]]:
+        key = "table1" if table is self.table_entity else "table2"
+        param = self.get_parameter(test_case, f"{key}.extraColumns", "[]")
+        extra_columns: List[str] = literal_eval(param)
+        if not extra_columns:
+            return None
+        self.validate_columns(extra_columns, table)
+        return extra_columns
+
+    def validate_columns(
+        self, column_names: List[str], table: Optional[Table] = None
+    ) -> None:
+        if table is None:
+            table = self.table_entity
+
+        table_columns_names: Set[str] = {c.name.root for c in table.columns}
+
+        for column in column_names:
+            if column not in table_columns_names:
+                raise ValueError(
+                    f"Failed to resolve key columns for table diff.\n"
+                    f"Column '{column}' not found in table '{table.name.root}'.\n"
+                )
+
     @staticmethod
     def filter_relevant_columns(
         columns: List[Column],
@@ -210,41 +283,6 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         )
 
     @staticmethod
-    def get_data_diff_url(
-        db_service: DatabaseService, table_fqn, override_url: Optional[str] = None
-    ) -> str:
-        """Get the url for the data diff service.
-
-        Args:
-            db_service (DatabaseService): The database service entity
-            table_fqn (str): The fully qualified name of the table
-            override_url (Optional[str], optional): Override the url. Defaults to None.
-
-        Returns:
-            str: The url for the data diff service
-        """
-        source_url = (
-            str(get_connection(db_service.connection.config).url)
-            if not override_url
-            else override_url
-        )
-        url = urlparse(source_url)
-        # remove the driver name from the url because table-diff doesn't support it
-        kwargs = {"scheme": url.scheme.split("+")[0]}
-        service, database, schema, table = fqn.split(  # pylint: disable=unused-variable
-            table_fqn
-        )
-        # path needs to include the database AND schema in some of the connectors
-        if hasattr(db_service.connection.config, "supportsDatabase"):
-            kwargs["path"] = f"/{database}"
-        # this can be found by going to:
-        # https://github.com/open-metadata/collate-data-diff/blob/main/data_diff/databases/<connector>.py
-        # and looking at the `CONNECT_URI_HELPER` variable
-        if kwargs["scheme"] in {Dialects.MSSQL, Dialects.Snowflake, Dialects.Trino}:
-            kwargs["path"] = f"/{database}/{schema}"
-        return url._replace(**kwargs).geturl()
-
-    @staticmethod
     def get_data_diff_table_path(table_fqn: str) -> str:
         service, database, schema, table = fqn.split(  # pylint: disable=unused-variable
             table_fqn
@@ -253,10 +291,9 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
             "___SERVICE___", "__DATABASE__", schema, table
         ).replace("___SERVICE___.__DATABASE__.", "")
 
-    def validate_columns(self, column_names: List[str]):
-        for column in column_names:
-            if not self._table_columns.get(column):
-                raise ValueError(
-                    f"Failed to resolve key columns for table diff.\n"
-                    f"Column '{column}' not found in table '{self.table_entity.name.root}'.\n"
-                )
+    @staticmethod
+    def get_param_setter(service: DatabaseService) -> TableParameterSetter:
+        patch = ServiceSpecPatch(
+            ServiceType.Database, service.connection.config.type.value.lower()
+        )
+        return patch.get_data_diff_class()()

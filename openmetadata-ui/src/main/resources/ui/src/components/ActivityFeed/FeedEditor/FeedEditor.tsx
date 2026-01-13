@@ -18,7 +18,7 @@ import { debounce, isNil } from 'lodash';
 import { Parchment } from 'quill';
 import 'quill-mention/autoregister';
 import QuillMarkdown from 'quilljs-markdown';
-import React, {
+import {
   forwardRef,
   KeyboardEvent,
   useCallback,
@@ -50,7 +50,7 @@ import { LinkBlot } from '../../../utils/QuillLink/QuillLink';
 import { insertMention, insertRef } from '../../../utils/QuillUtils';
 import { getSanitizeContent } from '../../../utils/sanitize.utils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import { editorRef } from '../../common/RichTextEditor/RichTextEditor.interface';
+import { EditorContentRef } from '../../common/RichTextEditor/RichTextEditor.interface';
 import './feed-editor.less';
 import { FeedEditorProp, MentionSuggestionsItem } from './FeedEditor.interface';
 import './quill-emoji.css';
@@ -59,7 +59,7 @@ Quill.register('modules/markdownOptions', QuillMarkdown);
 Quill.register(LinkBlot as unknown as Parchment.RegistryDefinition);
 Quill.register('modules/emoji-textarea', TextAreaEmoji, true);
 const Delta = Quill.import('delta');
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const strikethrough = (_node: any, delta: typeof Delta) => {
   // @ts-ignore
   return 'compose' in delta && delta.compose instanceof Function
@@ -68,7 +68,7 @@ const strikethrough = (_node: any, delta: typeof Delta) => {
     : null;
 };
 
-export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
+export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
   (
     {
       className,
@@ -224,9 +224,8 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
             toggleMentionList(true);
           },
           onSelect: (
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             item: Record<string, any>,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             insertItem: (item: Record<string, any>) => void
           ) => {
             toggleMentionList(true);
@@ -309,14 +308,17 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
      * Handle forward ref logic and provide method access to parent component
      */
     useImperativeHandle(ref, () => ({
-      getEditorValue() {
+      getEditorContent() {
         setValue('');
 
         // sanitize the content before sending it to the parent component
         return HTMLToMarkdown.turndown(getSanitizeContent(value));
       },
-      clearEditorValue() {
+      clearEditorContent() {
         setValue('');
+      },
+      setEditorContent(content: string) {
+        setValue(content);
       },
     }));
 

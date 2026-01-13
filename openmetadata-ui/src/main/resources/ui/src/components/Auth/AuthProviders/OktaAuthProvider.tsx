@@ -13,14 +13,9 @@
 
 import { OktaAuth, OktaAuthOptions } from '@okta/okta-auth-js';
 import { Security } from '@okta/okta-react';
-import React, {
-  FunctionComponent,
-  ReactNode,
-  useCallback,
-  useMemo,
-} from 'react';
+import { FunctionComponent, ReactNode, useCallback, useMemo } from 'react';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { setOidcToken } from '../../../utils/LocalStorageUtils';
+import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from './AuthProvider';
 
 interface Props {
@@ -45,16 +40,19 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
         scopes,
         pkce,
         tokenManager: {
-          autoRenew: false,
+          autoRenew: true,
+          storage: 'memory',
+          syncStorage: true,
           expireEarlySeconds: 60,
+          secure: true,
         },
         cookies: {
           secure: true,
-          sameSite: 'none',
+          sameSite: 'lax',
         },
         services: {
-          autoRenew: false,
-          renewOnTabActivation: false,
+          autoRenew: true,
+          renewOnTabActivation: true,
           tabInactivityDuration: 3600,
         },
       }),
@@ -83,7 +81,7 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
       const idToken = _oktaAuth.getIdToken() ?? '';
       const scopes =
         _oktaAuth.authStateManager.getAuthState()?.idToken?.scopes.join() || '';
-      setOidcToken(idToken);
+      await setOidcToken(idToken);
       _oktaAuth
         .getUser()
         .then((info) => {
@@ -93,7 +91,7 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
             profile: {
               email: info.email ?? '',
               name: info.name ?? '',
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
               picture: (info as any).imageUrl ?? '',
               locale: info.locale ?? '',
               sub: info.sub,
@@ -104,7 +102,7 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
         .catch(async (err) => {
           // eslint-disable-next-line no-console
           console.error(err);
-          // Redirect to login on error
+          // Redirect to login on error.
           await customAuthHandler();
         });
     },

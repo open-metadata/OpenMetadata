@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 import { Button, Modal, Typography } from 'antd';
-import React, { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-
 import { AxiosError } from 'axios';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { Table } from '../../../generated/entity/data/table';
 import { Type } from '../../../generated/entity/type';
@@ -27,6 +26,7 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import { ExtentionEntities } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
+import { KeyDownStopPropagationWrapper } from '../../common/KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import {
@@ -95,51 +95,55 @@ export const ModalWithCustomPropertyEditor = ({
       className="description-markdown-editor"
       closable={false}
       data-testid="custom-property-editor"
-      footer={[
-        <Button
-          data-testid="cancel"
-          disabled={isSaveLoading}
-          key="cancelButton"
-          type="link"
-          onClick={onCancel}>
-          {t('label.cancel')}
-        </Button>,
-        <Button
-          data-testid="save"
-          key="saveButton"
-          loading={isSaveLoading}
-          type="primary"
-          onClick={handleSaveData}>
-          {t('label.save')}
-        </Button>,
-      ]}
+      footer={
+        <KeyDownStopPropagationWrapper>
+          <Button
+            data-testid="cancel"
+            disabled={isSaveLoading}
+            key="cancelButton"
+            type="link"
+            onClick={onCancel}>
+            {t('label.cancel')}
+          </Button>
+          <Button
+            data-testid="save"
+            key="saveButton"
+            loading={isSaveLoading}
+            type="primary"
+            onClick={handleSaveData}>
+            {t('label.save')}
+          </Button>
+        </KeyDownStopPropagationWrapper>
+      }
       maskClosable={false}
       open={visible}
       title={<Typography.Text data-testid="header">{header}</Typography.Text>}
       width={650}
       onCancel={onCancel}>
-      {isLoading ? (
-        <Loader />
-      ) : (
-        <GenericProvider<Table>
-          customizedPage={null}
-          data={
-            {
-              extension: extensionObject,
-            } as Table
-          }
-          isVersionView={false}
-          permissions={DEFAULT_ENTITY_PERMISSION}
-          type={entityType as CustomizeEntityType}
-          onUpdate={onExtensionUpdate}>
-          <CustomPropertyTable
-            hasEditAccess
-            hasPermission
-            isRenderedInRightPanel
-            entityType={entityType as keyof ExtentionEntities}
-          />
-        </GenericProvider>
-      )}
+      <KeyDownStopPropagationWrapper>
+        {isLoading ? (
+          <Loader />
+        ) : (
+          <GenericProvider<Table>
+            customizedPage={null}
+            data={
+              {
+                extension: extensionObject,
+              } as Table
+            }
+            isVersionView={false}
+            permissions={DEFAULT_ENTITY_PERMISSION}
+            type={entityType as CustomizeEntityType}
+            onUpdate={onExtensionUpdate}>
+            <CustomPropertyTable
+              hasEditAccess
+              hasPermission
+              isRenderedInRightPanel
+              entityType={entityType as keyof ExtentionEntities}
+            />
+          </GenericProvider>
+        )}
+      </KeyDownStopPropagationWrapper>
     </Modal>
   );
 };

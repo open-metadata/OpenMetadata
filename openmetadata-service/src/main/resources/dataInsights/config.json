@@ -12,7 +12,7 @@
       "extension",
       "votes",
       "fullyQualifiedName",
-      "domain",
+      "domains",
       "dataProducts",
       "certification"
     ],
@@ -20,6 +20,7 @@
       "tableType",
       "columns",
       "databaseSchema",
+      "tableConstraint",
       "database",
       "service",
       "serviceType"
@@ -96,7 +97,7 @@
     ],
     "dataProduct": [
       "experts",
-      "domain",
+      "domains",
       "assets"
     ],
     "glossaryTerm": [

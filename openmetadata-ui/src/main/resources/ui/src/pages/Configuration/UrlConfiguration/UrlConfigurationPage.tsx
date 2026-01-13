@@ -13,9 +13,9 @@
 import Icon from '@ant-design/icons';
 import { Button, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -29,11 +29,12 @@ import { OpenMetadataBaseURLConfiguration } from '../../../generated/configurati
 import { SettingType } from '../../../generated/settings/settings';
 import { getSettingsConfigFromConfigType } from '../../../rest/settingConfigAPI';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
+import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 const UrlConfigurationPage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState<boolean>(false);
   const [urlConfig, setUrlConfig] =
     useState<OpenMetadataBaseURLConfiguration>();
@@ -66,7 +67,7 @@ const UrlConfigurationPage = () => {
   };
 
   const handleEditClick = () => {
-    history.push(ROUTES.SETTINGS_OM_URL_CONFIG);
+    navigate(ROUTES.SETTINGS_OM_URL_CONFIG);
   };
 
   useEffect(() => {
@@ -89,7 +90,18 @@ const UrlConfigurationPage = () => {
         <Col span={24}>
           <Row align="middle" justify="space-between">
             <Col>
-              <PageHeader data={PAGE_HEADERS.OM_URL_CONFIG} />
+              <PageHeader
+                data={{
+                  header: translateWithNestedKeys(
+                    PAGE_HEADERS.OM_URL_CONFIG.header,
+                    PAGE_HEADERS.OM_URL_CONFIG.headerParams
+                  ),
+                  subHeader: translateWithNestedKeys(
+                    PAGE_HEADERS.OM_URL_CONFIG.subHeader,
+                    PAGE_HEADERS.OM_URL_CONFIG.subHeaderParams
+                  ),
+                }}
+              />
             </Col>
             <Col>
               <Button

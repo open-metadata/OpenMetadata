@@ -12,15 +12,9 @@
  */
 import { Button, Col, Form, InputNumber, Row, Select, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, {
-  FocusEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
@@ -32,6 +26,7 @@ import { OPEN_METADATA } from '../../constants/service-guide.constant';
 import {
   LineageLayer,
   LineageSettings,
+  PipelineViewMode,
 } from '../../generated/configuration/lineageSettings';
 import { Settings, SettingType } from '../../generated/settings/settings';
 import { withPageLayout } from '../../hoc/withPageLayout';
@@ -41,7 +36,6 @@ import {
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
-import i18n from '../../utils/i18next/LocalUtil';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const LineageConfigPage = () => {
@@ -51,7 +45,7 @@ const LineageConfigPage = () => {
   const [lineageConfig, setLineageConfig] = useState<LineageSettings>();
   const [isUpdating, setIsUpdating] = useState(false);
   const [form] = Form.useForm();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { setAppPreferences, appPreferences } = useApplicationStore();
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
@@ -89,6 +83,7 @@ const LineageConfigPage = () => {
           upstreamDepth: Number(values.upstreamDepth),
           downstreamDepth: Number(values.downstreamDepth),
           lineageLayer: values.lineageLayer,
+          pipelineViewMode: values.pipelineViewMode,
         },
       };
 
@@ -210,12 +205,27 @@ const LineageConfigPage = () => {
                         </Select.Option>
                       </Select>
                     </Form.Item>
+
+                    <Form.Item
+                      className="m-t-sm"
+                      id="root/pipelineViewMode"
+                      label={t('label.pipeline-view-mode')}
+                      name="pipelineViewMode">
+                      <Select data-testid="field-pipeline-view-mode">
+                        <Select.Option value={PipelineViewMode.Edge}>
+                          {t('label.edge')}
+                        </Select.Option>
+                        <Select.Option value={PipelineViewMode.Node}>
+                          {t('label.node')}
+                        </Select.Option>
+                      </Select>
+                    </Form.Item>
                   </Form>
                   <Row className="m-b-xl" justify="end">
                     <Col className="d-flex justify-end gap-2" span={24}>
                       <Button
                         data-testid="cancel-button"
-                        onClick={() => history.goBack()}>
+                        onClick={() => navigate(-1)}>
                         {t('label.cancel')}
                       </Button>
                       <Button
@@ -253,6 +263,4 @@ const LineageConfigPage = () => {
   );
 };
 
-export default withPageLayout(i18n.t('label.lineage-config'))(
-  LineageConfigPage
-);
+export default withPageLayout(LineageConfigPage);

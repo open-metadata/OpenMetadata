@@ -8,7 +8,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 public class AppUtil {
   public enum RunType {

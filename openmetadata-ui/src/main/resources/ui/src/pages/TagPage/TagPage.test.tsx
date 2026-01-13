@@ -12,9 +12,8 @@
  */
 
 import { render, waitFor } from '@testing-library/react';
-import React from 'react';
 import { useFqn } from '../../hooks/useFqn';
-import { searchData } from '../../rest/miscAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import { getTagByFqn } from '../../rest/tagAPI';
 import TagPage from './TagPage';
 
@@ -25,12 +24,10 @@ jest.mock('../../rest/tagAPI', () => ({
   }),
 }));
 
-jest.mock('../../rest/miscAPI', () => ({
-  searchData: jest.fn().mockResolvedValue({
-    data: {
-      hits: {
-        total: { value: 0 },
-      },
+jest.mock('../../rest/searchAPI', () => ({
+  searchQuery: jest.fn().mockResolvedValue({
+    hits: {
+      total: { value: 0 },
     },
   }),
 }));
@@ -39,8 +36,10 @@ jest.mock('../../hooks/useFqn', () => ({
   useFqn: jest.fn(),
 }));
 
+const mockNavigate = jest.fn();
+
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({ push: jest.fn() }),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockReturnValue({ fqn: 'PII.NonSensitive' }),
   useLocation: jest
     .fn()
@@ -158,9 +157,9 @@ describe('TagPage', () => {
     // Verify initial API calls
     await waitFor(() => {
       expect(getTagByFqn).toHaveBeenCalledWith('PII.NonSensitive', {
-        fields: ['domain', 'owners'],
+        fields: ['domains', 'owners', 'reviewers'],
       });
-      expect(searchData).toHaveBeenCalled();
+      expect(searchQuery).toHaveBeenCalled();
     });
 
     jest.clearAllMocks();
@@ -177,9 +176,9 @@ describe('TagPage', () => {
 
     await waitFor(() => {
       expect(getTagByFqn).toHaveBeenCalledWith('Certification.Gold', {
-        fields: ['domain', 'owners'],
+        fields: ['domains', 'owners', 'reviewers'],
       });
-      expect(searchData).toHaveBeenCalled();
+      expect(searchQuery).toHaveBeenCalled();
     });
   });
 });

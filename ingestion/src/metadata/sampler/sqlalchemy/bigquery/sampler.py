@@ -12,6 +12,7 @@
 Helper module to handle data sampling
 for the profiler
 """
+from copy import deepcopy
 from typing import Dict, Optional, Union
 
 from sqlalchemy import Column
@@ -31,11 +32,14 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
     DatalakeConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
+from metadata.generated.schema.security.credentials.gcpValues import SingleProjectId
+from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.logger import profiler_interface_registry_logger
+from metadata.utils.ssl_manager import get_ssl_connection
 
 logger = profiler_interface_registry_logger()
 
@@ -73,13 +77,19 @@ class BigQuerySampler(SQASampler):
             **kwargs,
         )
         self.raw_dataset_type: Optional[TableType] = entity.tableType
-        if self._table.__table__.schema and self.entity.database.name:
-            self._table.__table__.schema = (
-                f"{self.entity.database.name}.{self._table.__table__.schema}"
+
+        connection_config = deepcopy(service_connection_config)
+        # Create a modified connection for BigQuery with the correct project ID
+        if (
+            hasattr(connection_config.credentials.gcpConfig, "projectId")
+            and self.entity.database
+        ):
+            connection_config.credentials.gcpConfig.projectId = SingleProjectId(
+                root=self.entity.database.name
             )
-            self._table.__table_args__[
-                "schema"
-            ] = f"{self.entity.database.name}.{self._table.__table_args__['schema']}"
+            self.connection = get_ssl_connection(connection_config)
+
+        self.session_factory = create_and_bind_thread_safe_session(self.connection)
 
     def set_tablesample(self, selectable: SqaTable):
         """Set the TABLESAMPLE clause for BigQuery

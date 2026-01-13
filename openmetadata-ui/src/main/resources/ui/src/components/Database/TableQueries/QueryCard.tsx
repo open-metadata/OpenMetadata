@@ -17,9 +17,9 @@ import classNames from 'classnames';
 import { isUndefined, split } from 'lodash';
 import { Duration } from 'luxon';
 import Qs from 'qs';
-import React, { FC, useMemo, useState } from 'react';
+import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-screen.svg';
 import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.svg';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
@@ -63,7 +63,7 @@ const QueryCard: FC<QueryCardProp> = ({
   const QueryExtras = queryClassBase.getQueryExtras();
   const { fqn: datasetFQN } = useFqn();
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { onCopyToClipBoard } = useClipboard(query.query);
   const searchFilter = useMemo(
     () => parseSearchParams(location.search),
@@ -149,7 +149,7 @@ const QueryCard: FC<QueryCardProp> = ({
 
   const handleExpandClick = () => {
     if (isExpanded) {
-      history.push({
+      navigate({
         search: Qs.stringify(searchFilter),
         pathname: getEntityDetailsPath(
           EntityType.TABLE,
@@ -158,7 +158,7 @@ const QueryCard: FC<QueryCardProp> = ({
         ),
       });
     } else {
-      history.push({
+      navigate({
         search: Qs.stringify({ ...searchFilter, query: query.id }),
         pathname: getQueryPath(datasetFQN, query.id ?? ''),
       });

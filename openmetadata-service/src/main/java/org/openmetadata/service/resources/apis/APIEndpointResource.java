@@ -42,6 +42,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateAPIEndpoint;
@@ -50,6 +51,7 @@ import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.APIEndpointRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -57,7 +59,6 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/apiEndpoints")
 @Tag(
@@ -71,7 +72,7 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
   public static final String COLLECTION_PATH = "v1/apiEndpoints/";
   private final APIEndpointMapper mapper = new APIEndpointMapper();
 
-  static final String FIELDS = "owners,followers,tags,extension,domain,dataProducts,sourceHash";
+  static final String FIELDS = "owners,followers,tags,extension,domains,dataProducts,sourceHash";
 
   @Override
   public APIEndpoint addHref(UriInfo uriInfo, APIEndpoint apiEndpoint) {
@@ -309,6 +310,45 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
     APIEndpoint apiEndpoint =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, apiEndpoint);
+  }
+
+  @PUT
+  @Path("/bulk")
+  @Operation(
+      operationId = "bulkCreateOrUpdateAPIEndpoints",
+      summary = "Bulk create or update API endpoints",
+      description =
+          "Create or update multiple API endpoints in a single operation. "
+              + "Returns a BulkOperationResult with success/failure details for each API endpoint.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Bulk operation results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.schema.type.api.BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Bulk operation accepted for async processing",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.schema.type.api.BulkOperationResult.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response bulkCreateOrUpdate(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @DefaultValue("false") @QueryParam("async") boolean async,
+      List<CreateAPIEndpoint> createRequests) {
+    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
   @PATCH

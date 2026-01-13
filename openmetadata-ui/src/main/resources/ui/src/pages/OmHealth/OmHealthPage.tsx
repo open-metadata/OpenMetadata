@@ -13,7 +13,7 @@
 import { Button, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { map, startCase } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../components/common/Loader/Loader';
 import ConnectionStepCard from '../../components/common/TestConnection/ConnectionStepCard/ConnectionStepCard';
@@ -70,7 +70,12 @@ const OmHealthPage = () => {
         <Col span={24}>
           <Row align="middle" justify="space-between">
             <Col>
-              <PageHeader data={PAGE_HEADERS.OM_HEALTH} />
+              <PageHeader
+                data={{
+                  header: t(PAGE_HEADERS.OM_HEALTH.header),
+                  subHeader: t(PAGE_HEADERS.OM_HEALTH.subHeader),
+                }}
+              />
             </Col>
             <Col>
               <Button type="primary" onClick={getHealthData}>

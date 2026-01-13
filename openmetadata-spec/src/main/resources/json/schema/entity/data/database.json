@@ -54,6 +54,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
     "href": {
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
@@ -113,9 +117,9 @@
       "description": "Source URL of database.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
-    "domain": {
-      "description": "Domain the Database belongs to. When not set, the Database inherits the domain from the database service it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains": {
+      "description": "Domains the Database belongs to. When not set, the Database inherits the domain from the database service it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "votes": {
       "description": "Votes on the entity.",
@@ -170,6 +174,10 @@
           "default": true
         }
       }
+    },
+    "entityStatus": {
+      "description": "Status of the Database.",
+      "$ref": "../../type/status.json"
     }
   },
   "required": ["id", "name", "service"],

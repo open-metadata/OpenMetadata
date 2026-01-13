@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useAuthProvider } from '../../components/Auth/AuthProviders/AuthProvider';
 import Loader from '../../components/common/Loader/Loader';
 

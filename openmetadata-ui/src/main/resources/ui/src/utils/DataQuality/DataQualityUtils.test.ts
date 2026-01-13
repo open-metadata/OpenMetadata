@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { StatusData } from '../../components/DataQuality/ChartWidgets/StatusCardWidget/StatusCardWidget.interface';
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
 import { DataQualityReport } from '../../generated/tests/dataQualityReport';
 import {
   TestDataType,
   TestDefinition,
+  TestPlatform,
 } from '../../generated/tests/testDefinition';
 import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
 import {
@@ -26,7 +26,6 @@ import {
   buildTestCaseParams,
   createTestCaseParameters,
   getTestCaseFiltersValue,
-  transformToTestCaseStatusByDimension,
   transformToTestCaseStatusObject,
 } from './DataQualityUtils';
 
@@ -41,7 +40,18 @@ jest.mock('../../constants/profiler.constant', () => ({
     tags: 'tags',
     service: 'serviceName',
   },
-  DEFAULT_DIMENSIONS_DATA: {},
+  DEFAULT_SELECTED_RANGE: {
+    key: 'last7Days',
+    title: 'Last 7 days',
+    days: 7,
+  },
+  PROFILER_CHART_DATA_SIZE: 500,
+}));
+
+jest.mock('../date-time/DateTimeUtils', () => ({
+  formatDateTimeLong: jest.fn(),
+  getEpochMillisForPastDays: jest.fn().mockReturnValue(1609459200000),
+  getCurrentMillis: jest.fn().mockReturnValue(1640995200000),
 }));
 
 jest.mock('../TableUtils', () => ({
@@ -66,7 +76,7 @@ describe('DataQualityUtils', () => {
         endTimestamp: 1234567890,
         startTimestamp: 1234567890,
         entityLink: 'table1',
-        testPlatforms: ['DBT'],
+        testPlatforms: [TestPlatform.Dbt],
       } as ListTestCaseParamsBySearch;
       const filters = ['lastRunRange', 'tableFqn'];
 
@@ -204,7 +214,7 @@ describe('DataQualityUtils', () => {
       testCaseType: 'column',
       testCaseStatus: 'Success',
       searchValue: 'between',
-      testPlatforms: ['DBT', 'Deequ'],
+      testPlatforms: [TestPlatform.Dbt, TestPlatform.Deequ],
       lastRunRange: {
         startTs: '1720417883445',
         endTs: '1721022683445',
@@ -234,7 +244,7 @@ describe('DataQualityUtils', () => {
         endTimestamp: '1721022683445',
         startTimestamp: '1720417883445',
         entityLink: '<#E::table::sample_data.ecommerce_db.shopify.fact_sale>',
-        testPlatforms: ['DBT', 'Deequ'],
+        testPlatforms: [TestPlatform.Dbt, TestPlatform.Deequ],
         testCaseType: 'column',
         testCaseStatus: 'Success',
         tags: ['PII.None'],
@@ -254,7 +264,7 @@ describe('DataQualityUtils', () => {
       const selectedFilter = ['testPlatforms', 'lastRunRange'];
 
       const expected = {
-        testPlatforms: ['DBT', 'Deequ'],
+        testPlatforms: [TestPlatform.Dbt, TestPlatform.Deequ],
         endTimestamp: '1721022683445',
         startTimestamp: '1720417883445',
       };
@@ -272,14 +282,14 @@ describe('DataQualityUtils', () => {
         testCaseType: 'column',
         testCaseStatus: 'Success',
         searchValue: 'between',
-        testPlatforms: ['DBT', 'Deequ'],
+        testPlatforms: [TestPlatform.Dbt, TestPlatform.Deequ],
         tags: ['PII.None'],
         tier: 'Tier.Tier1',
       } as unknown as TestCaseSearchParams;
       const selectedFilter = ['testPlatforms', 'tags', 'testCaseStatus'];
 
       const expected = {
-        testPlatforms: ['DBT', 'Deequ'],
+        testPlatforms: [TestPlatform.Dbt, TestPlatform.Deequ],
         tags: ['PII.None'],
         testCaseStatus: 'Success',
       };
@@ -505,241 +515,6 @@ describe('DataQualityUtils', () => {
     });
   });
 
-  describe('transformToTestCaseStatusByDimension', () => {
-    it('should return correct counts for provided input', () => {
-      const inputData = [
-        {
-          document_count: '1',
-          'testCaseResult.testCaseStatus': 'aborted',
-          dataQualityDimension: 'Accuracy',
-        },
-        {
-          document_count: '1',
-          'testCaseResult.testCaseStatus': 'failed',
-          dataQualityDimension: 'Accuracy',
-        },
-        {
-          document_count: '1',
-          'testCaseResult.testCaseStatus': 'success',
-          dataQualityDimension: 'Accuracy',
-        },
-        {
-          document_count: '2',
-          'testCaseResult.testCaseStatus': 'failed',
-          dataQualityDimension: 'Consistency',
-        },
-        {
-          document_count: '2',
-          'testCaseResult.testCaseStatus': 'success',
-          dataQualityDimension: 'Integrity',
-        },
-        {
-          document_count: '1',
-          'testCaseResult.testCaseStatus': 'success',
-          dataQualityDimension: 'Validity',
-        },
-      ];
-      const expectedOutput = [
-        {
-          title: 'Accuracy',
-          success: 1,
-          failed: 1,
-          aborted: 1,
-          total: 3,
-        },
-        {
-          title: 'Consistency',
-          success: 0,
-          failed: 2,
-          aborted: 0,
-          total: 2,
-        },
-        {
-          title: 'Integrity',
-          success: 2,
-          failed: 0,
-          aborted: 0,
-          total: 2,
-        },
-        {
-          title: 'Validity',
-          success: 1,
-          failed: 0,
-          aborted: 0,
-          total: 1,
-        },
-      ];
-
-      expect(transformToTestCaseStatusByDimension(inputData)).toEqual(
-        expectedOutput
-      );
-    });
-
-    it('should return empty array for empty input', () => {
-      const inputData: DataQualityReport['data'] = [];
-      const expectedOutput: StatusData[] = [];
-
-      expect(transformToTestCaseStatusByDimension(inputData)).toEqual(
-        expectedOutput
-      );
-    });
-
-    it('should handle input with only success statuses', () => {
-      const inputData = [
-        {
-          document_count: '1',
-          'testCaseResult.testCaseStatus': 'success',
-          dataQualityDimension: 'Accuracy',
-        },
-        {
-          document_count: '2',
-          'testCaseResult.testCaseStatus': 'success',
-          dataQualityDimension: 'Consistency',
-        },
-      ];
-      const expectedOutput = [
-        {
-          title: 'Accuracy',
-          success: 1,
-          failed: 0,
-          aborted: 0,
-          total: 1,
-        },
-        {
-          title: 'Consistency',
-          success: 2,
-          failed: 0,
-          aborted: 0,
-          total: 2,
-        },
-      ];
-
-      expect(transformToTestCaseStatusByDimension(inputData)).toEqual(
-        expectedOutput
-      );
-    });
-
-    it('should handle input with only failed statuses', () => {
-      const inputData = [
-        {
-          document_count: '1',
-          'testCaseResult.testCaseStatus': 'failed',
-          dataQualityDimension: 'Accuracy',
-        },
-        {
-          document_count: '2',
-          'testCaseResult.testCaseStatus': 'failed',
-          dataQualityDimension: 'Consistency',
-        },
-      ];
-      const expectedOutput = [
-        {
-          title: 'Accuracy',
-          success: 0,
-          failed: 1,
-          aborted: 0,
-          total: 1,
-        },
-        {
-          title: 'Consistency',
-          success: 0,
-          failed: 2,
-          aborted: 0,
-          total: 2,
-        },
-      ];
-
-      expect(transformToTestCaseStatusByDimension(inputData)).toEqual(
-        expectedOutput
-      );
-    });
-
-    it('should handle input with only aborted statuses', () => {
-      const inputData = [
-        {
-          document_count: '1',
-          'testCaseResult.testCaseStatus': 'aborted',
-          dataQualityDimension: 'Accuracy',
-        },
-        {
-          document_count: '2',
-          'testCaseResult.testCaseStatus': 'aborted',
-          dataQualityDimension: 'Consistency',
-        },
-      ];
-      const expectedOutput = [
-        {
-          title: 'Accuracy',
-          success: 0,
-          failed: 0,
-          aborted: 1,
-          total: 1,
-        },
-        {
-          title: 'Consistency',
-          success: 0,
-          failed: 0,
-          aborted: 2,
-          total: 2,
-        },
-      ];
-
-      expect(transformToTestCaseStatusByDimension(inputData)).toEqual(
-        expectedOutput
-      );
-    });
-
-    it('should handle input with mixed statuses', () => {
-      const inputData = [
-        {
-          document_count: '1',
-          'testCaseResult.testCaseStatus': 'success',
-          dataQualityDimension: 'Accuracy',
-        },
-        {
-          document_count: '1',
-          'testCaseResult.testCaseStatus': 'failed',
-          dataQualityDimension: 'Accuracy',
-        },
-        {
-          document_count: '1',
-          'testCaseResult.testCaseStatus': 'aborted',
-          dataQualityDimension: 'Accuracy',
-        },
-        {
-          document_count: '1',
-          'testCaseResult.testCaseStatus': 'success',
-          dataQualityDimension: 'Consistency',
-        },
-        {
-          document_count: '1',
-          'testCaseResult.testCaseStatus': 'failed',
-          dataQualityDimension: 'Consistency',
-        },
-      ];
-      const expectedOutput = [
-        {
-          title: 'Accuracy',
-          success: 1,
-          failed: 1,
-          aborted: 1,
-          total: 3,
-        },
-        {
-          title: 'Consistency',
-          success: 1,
-          failed: 1,
-          aborted: 0,
-          total: 2,
-        },
-      ];
-
-      expect(transformToTestCaseStatusByDimension(inputData)).toEqual(
-        expectedOutput
-      );
-    });
-  });
-
   describe('buildDataQualityDashboardFilters', () => {
     it('should include deleted:false filter by default', () => {
       const result = buildDataQualityDashboardFilters({});
@@ -757,7 +532,7 @@ describe('DataQualityUtils', () => {
       const result = buildDataQualityDashboardFilters({
         filters: {
           serviceName: 'test-service',
-          testPlatforms: ['DBT'],
+          testPlatforms: [TestPlatform.Dbt],
         },
       });
 
@@ -769,7 +544,7 @@ describe('DataQualityUtils', () => {
         },
         {
           terms: {
-            testPlatforms: ['DBT'],
+            testPlatforms: [TestPlatform.Dbt],
           },
         },
         {

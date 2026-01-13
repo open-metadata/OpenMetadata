@@ -27,7 +27,6 @@ import org.openmetadata.service.resources.system.IndexResource;
 
 public class OpenMetadataAssetServlet extends AssetServlet {
   private final OMWebConfiguration webConfiguration;
-
   private final String basePath;
 
   public OpenMetadataAssetServlet(
@@ -49,16 +48,53 @@ public class OpenMetadataAssetServlet extends AssetServlet {
     String requestUri = req.getRequestURI();
 
     if (requestUri.endsWith("/")) {
-      IndexResource index = new IndexResource();
-      // Write the dynamic config.js content to the response
+      // Serve index.html for directory requests
       resp.setContentType("text/html");
       resp.getWriter().write(IndexResource.getIndexFile(this.basePath));
       return;
     }
 
     super.doGet(req, resp);
+
+    // For SPA routing: serve index.html for 404s that don't look like static asset requests
     if (!resp.isCommitted() && (resp.getStatus() == 404)) {
-      resp.sendError(404);
+      if (isSpaRoute(requestUri)) {
+        // Serve index file for SPA routes instead of 404
+        resp.setStatus(200);
+        resp.setContentType("text/html");
+        resp.getWriter().write(IndexResource.getIndexFile(this.basePath));
+      } else {
+        resp.sendError(404);
+      }
     }
+  }
+
+  /**
+   * Check if the request URI looks like a SPA route (not a static asset)
+   * Static assets typically have file extensions, SPA routes don't
+   * @param requestUri The request URI to check
+   * @return true if this should be treated as a SPA route, false if it's a static asset
+   */
+  private boolean isSpaRoute(String requestUri) {
+    // Remove base path if present
+    String pathToCheck = requestUri;
+    String normalizedBasePath =
+        basePath.endsWith("/") ? basePath.substring(0, basePath.length() - 1) : basePath;
+
+    if (!"/".equals(normalizedBasePath)
+        && !normalizedBasePath.isEmpty()
+        && requestUri.startsWith(normalizedBasePath)) {
+      pathToCheck = requestUri.substring(normalizedBasePath.length());
+    }
+
+    // If path has a file extension, it's likely a static asset
+    // Don't serve index.html for these
+    String fileName = pathToCheck.substring(pathToCheck.lastIndexOf('/') + 1);
+    if (fileName.contains(".")) {
+      return false; // Has extension, likely a static asset
+    }
+
+    // No file extension, treat as SPA route
+    return true;
   }
 }

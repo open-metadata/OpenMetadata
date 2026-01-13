@@ -14,9 +14,9 @@
 import { Button, Form, Input, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ADD_ROLE_PAGE_BREADCRUMB } from '../../../constants/Breadcrumb.constants';
@@ -28,16 +28,17 @@ import { Policy } from '../../../generated/entity/policies/policy';
 import { withPageLayout } from '../../../hoc/withPageLayout';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { addRole, getPolicies } from '../../../rest/rolesAPIV1';
+import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import { getField } from '../../../utils/formUtils';
-import i18n from '../../../utils/i18next/LocalUtil';
+import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import { getPath, getRoleWithFqnPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 const { Option } = Select;
 const rolesPath = getPath(GlobalSettingOptions.ROLES);
 
 const AddRolePage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [name, setName] = useState<string>('');
@@ -61,7 +62,7 @@ const AddRolePage = () => {
   };
 
   const handleCancel = () => {
-    history.push(rolesPath);
+    navigate(rolesPath);
   };
 
   const handleSubmit = async () => {
@@ -76,7 +77,7 @@ const AddRolePage = () => {
     try {
       const dataResponse = await addRole(data);
       if (dataResponse) {
-        history.push(getRoleWithFqnPath(dataResponse.fullyQualifiedName || ''));
+        navigate(getRoleWithFqnPath(dataResponse.fullyQualifiedName || ''));
       }
     } catch (error) {
       showErrorToast(
@@ -117,6 +118,15 @@ const AddRolePage = () => {
     fetchPolicies();
   }, []);
 
+  const translatedRoleBreadcrumb = useMemo(
+    () =>
+      ADD_ROLE_PAGE_BREADCRUMB.map((option) => ({
+        ...option,
+        name: translateWithNestedKeys(option.name, option.nameData),
+      })),
+    [t]
+  );
+
   return (
     <ResizablePanels
       className="content-height-with-resizable-panel"
@@ -126,7 +136,7 @@ const AddRolePage = () => {
         allowScroll: true,
         children: (
           <div data-testid="add-role-container">
-            <TitleBreadcrumb titleLinks={ADD_ROLE_PAGE_BREADCRUMB} />
+            <TitleBreadcrumb titleLinks={translatedRoleBreadcrumb} />
             <div className="m-t-md">
               <Typography.Paragraph
                 className="text-base"
@@ -190,7 +200,7 @@ const AddRolePage = () => {
                     htmlType="submit"
                     loading={isSaveLoading}
                     type="primary">
-                    {t('label.submit')}
+                    {t('label.create')}
                   </Button>
                 </Space>
               </Form>
@@ -211,7 +221,11 @@ const AddRolePage = () => {
                 entity: t('label.role'),
               })}
             </Typography.Paragraph>
-            <Typography.Text>{t('message.add-role-message')}</Typography.Text>
+            <Typography.Text>
+              {t('message.add-role-message', {
+                brandName: brandClassBase.getPageTitle(),
+              })}
+            </Typography.Text>
           </>
         ),
         className: 'content-resizable-panel-container',
@@ -222,8 +236,4 @@ const AddRolePage = () => {
   );
 };
 
-export default withPageLayout(
-  i18n.t('label.add-new-entity', {
-    entity: i18n.t('label.role'),
-  })
-)(AddRolePage);
+export default withPageLayout(AddRolePage);

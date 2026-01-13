@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/* eslint-disable max-len */
 
 import { DashboardVersionProp } from '../components/Dashboard/DashboardVersion/DashboardVersion.interface';
 import { Dashboard, DashboardType } from '../generated/entity/data/dashboard';
@@ -109,7 +108,7 @@ export const dashboardVersionProps: DashboardVersionProp = {
   currentVersionData: mockDashboardData,
   isVersionLoading: false,
   owners: mockOwner,
-  domain: mockDomain,
+  domains: [mockDomain],
   dataProducts: [],
   tier: mockTier,
   slashedDashboardName: [

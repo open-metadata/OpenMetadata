@@ -14,10 +14,10 @@
 package org.openmetadata.service.resources.databases;
 
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
-import static org.apache.commons.lang.StringEscapeUtils.escapeCsv;
+import static jakarta.ws.rs.core.Response.Status.OK;
+import static org.apache.commons.lang3.StringEscapeUtils.escapeCsv;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -31,47 +31,63 @@ import static org.openmetadata.csv.EntityCsvTest.getFailedRecord;
 import static org.openmetadata.csv.EntityCsvTest.getSuccessRecord;
 import static org.openmetadata.service.util.EntityUtil.getFqn;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
+import jakarta.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseResource.DatabaseList;
+import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.RdfTestUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDatabase> {
   public DatabaseResourceTest() {
     super(
         Entity.DATABASE, Database.class, DatabaseList.class, "databases", DatabaseResource.FIELDS);
+    supportsBulkAPI = true;
     supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
   }
 
@@ -211,7 +227,8 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     assertTrue(
         listOrEmpty(updatedSchema.getTags()).isEmpty(), "Tags should be empty after clearing");
     assertTrue(listOrEmpty(updatedSchema.getOwners()).isEmpty(), "Owner should be cleared");
-    assertNull(updatedSchema.getDomain(), "Domain should be null after clearing");
+    assertTrue(
+        listOrEmpty(updatedSchema.getDomains()).isEmpty(), "Domain should be null after clearing");
   }
 
   @Test
@@ -400,7 +417,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     assertNotNull(database.getServiceType());
     assertReference(createRequest.getService(), database.getService());
     assertEquals(
-        FullyQualifiedName.build(database.getService().getName(), database.getName()),
+        FullyQualifiedName.add(database.getService().getFullyQualifiedName(), database.getName()),
         database.getFullyQualifiedName());
   }
 
@@ -409,8 +426,27 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
       Database expected, Database updated, Map<String, String> authHeaders) {
     assertReference(expected.getService(), updated.getService());
     assertEquals(
-        FullyQualifiedName.build(updated.getService().getName(), updated.getName()),
+        FullyQualifiedName.add(updated.getService().getFullyQualifiedName(), updated.getName()),
         updated.getFullyQualifiedName());
+  }
+
+  @Override
+  protected EntityReference createContainerWithDotsInName(String name) throws IOException {
+    DatabaseServiceResourceTest serviceTest = new DatabaseServiceResourceTest();
+    CreateDatabaseService createService = serviceTest.createRequest(name);
+    DatabaseService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+    return service.getEntityReference();
+  }
+
+  @Override
+  protected CreateDatabase createRequestUnderContainer(String name, EntityReference container) {
+    return new CreateDatabase().withName(name).withService(container.getFullyQualifiedName());
+  }
+
+  @Override
+  protected void deleteContainerWithDotsInName(EntityReference container) throws IOException {
+    DatabaseServiceResourceTest serviceTest = new DatabaseServiceResourceTest();
+    serviceTest.deleteEntity(container.getId(), true, true, ADMIN_AUTH_HEADERS);
   }
 
   @Override
@@ -423,9 +459,435 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
               : JsonUtils.readObjects(expected.toString(), EntityReference.class);
       List<EntityReference> actualOwners =
           JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertOwners(expectedOwners, actualOwners);
+      assertReferenceList(expectedOwners, actualOwners);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
+  }
+
+  @Order(2)
+  @Test
+  void testBulkServiceFetchingForDatabases(TestInfo test) throws IOException {
+    // This test verifies that when databases are fetched in bulk with the service field,
+    // each database maintains its correct service reference (not all databases sharing the same
+    // service)
+    // The bug was in fetchAndSetService which used getContainer(entities.get(0).getId()) for ALL
+    // databases
+
+    // To avoid interfering with entity count, we'll only create databases in the default container
+    // but we'll verify the fix by checking existing databases from different services
+
+    // First, verify the fix with existing databases from different services
+    ResultList<Database> existingDatabases =
+        listEntities(Map.of("fields", "service", "limit", "50"), ADMIN_AUTH_HEADERS);
+
+    // Group by service to check if each database has its correct service
+    Map<String, List<Database>> dbByService = new HashMap<>();
+    for (Database db : existingDatabases.getData()) {
+      assertNotNull(db.getService(), "Database " + db.getName() + " should have a service");
+      String serviceName = db.getService().getName();
+      dbByService.computeIfAbsent(serviceName, k -> new ArrayList<>()).add(db);
+    }
+
+    // If we have databases from different services, verify each has the correct service
+    if (dbByService.size() > 1) {
+      for (Map.Entry<String, List<Database>> entry : dbByService.entrySet()) {
+        String serviceName = entry.getKey();
+        for (Database db : entry.getValue()) {
+          assertEquals(
+              serviceName,
+              db.getService().getName(),
+              "Database " + db.getName() + " should have service " + serviceName);
+        }
+      }
+      LOG.info(
+          "Verified databases maintain correct services across {} different services",
+          dbByService.size());
+    }
+
+    // Now test with new databases in the default container to ensure entity count isn't affected
+    String timestamp = String.valueOf(System.currentTimeMillis());
+    CreateDatabase createDb1 = createRequest("bulkTestDb1_" + timestamp);
+    CreateDatabase createDb2 = createRequest("bulkTestDb2_" + timestamp);
+
+    Database db1 = createAndCheckEntity(createDb1, ADMIN_AUTH_HEADERS);
+    Database db2 = createAndCheckEntity(createDb2, ADMIN_AUTH_HEADERS);
+
+    try {
+      // Fetch with service field
+      ResultList<Database> databases =
+          listEntities(
+              Map.of("fields", "service", "service", getContainer().getFullyQualifiedName()),
+              ADMIN_AUTH_HEADERS);
+
+      // Find our databases
+      Database foundDb1 =
+          databases.getData().stream()
+              .filter(db -> db.getId().equals(db1.getId()))
+              .findFirst()
+              .orElse(null);
+      Database foundDb2 =
+          databases.getData().stream()
+              .filter(db -> db.getId().equals(db2.getId()))
+              .findFirst()
+              .orElse(null);
+
+      assertNotNull(foundDb1, "Database 1 should be found");
+      assertNotNull(foundDb2, "Database 2 should be found");
+
+      // Both should have the same service (SNOWFLAKE_REFERENCE) since they're in the same container
+      assertEquals(getContainer().getId(), foundDb1.getService().getId());
+      assertEquals(getContainer().getId(), foundDb2.getService().getId());
+      assertEquals(getContainer().getName(), foundDb1.getService().getName());
+      assertEquals(getContainer().getName(), foundDb2.getService().getName());
+
+    } finally {
+      // Clean up - these will be properly handled by recursive delete since they're in the default
+      // container
+      deleteEntity(db1.getId(), ADMIN_AUTH_HEADERS);
+      deleteEntity(db2.getId(), ADMIN_AUTH_HEADERS);
+    }
+  }
+
+  @Test
+  void testDatabaseRdfRelationships(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create database with owner and tags
+    CreateDatabase createDatabase =
+        createRequest(test)
+            .withService(getContainer().getName())
+            .withOwners(listOf(USER1_REF))
+            .withTags(listOf(TIER1_TAG_LABEL));
+
+    Database database = createEntity(createDatabase, ADMIN_AUTH_HEADERS);
+
+    // Verify database exists in RDF
+    RdfTestUtils.verifyEntityInRdf(database, RdfUtils.getRdfType("database"));
+
+    // Verify hierarchical relationship (service CONTAINS database)
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), database.getEntityReference());
+
+    // Verify owner relationship
+    RdfTestUtils.verifyOwnerInRdf(database.getFullyQualifiedName(), USER1_REF);
+
+    // Verify database tags
+    RdfTestUtils.verifyTagsInRdf(database.getFullyQualifiedName(), database.getTags());
+  }
+
+  @Test
+  void testFieldFetchersForServiceAndName(TestInfo test) throws IOException {
+    DatabaseServiceResourceTest databaseServiceResourceTest = new DatabaseServiceResourceTest();
+    String timestamp = String.valueOf(System.currentTimeMillis());
+
+    CreateDatabaseService createDatabaseService =
+        new CreateDatabaseService()
+            .withName("fieldFetcherTestService_" + timestamp)
+            .withServiceType(CreateDatabaseService.DatabaseServiceType.Mysql)
+            .withConnection(TestUtils.MYSQL_DATABASE_CONNECTION);
+    DatabaseService databaseService =
+        databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
+
+    String dbName1 = "fieldFetcherTestDb1_" + timestamp;
+    String dbName2 = "fieldFetcherTestDb2_" + timestamp;
+
+    CreateDatabase createDb1 =
+        new CreateDatabase().withName(dbName1).withService(databaseService.getFullyQualifiedName());
+    CreateDatabase createDb2 =
+        new CreateDatabase().withName(dbName2).withService(databaseService.getFullyQualifiedName());
+
+    Database db1 = createAndCheckEntity(createDb1, ADMIN_AUTH_HEADERS);
+    Database db2 = createAndCheckEntity(createDb2, ADMIN_AUTH_HEADERS);
+
+    try {
+      ResultList<Database> dbListWithService =
+          listEntities(
+              Map.of("fields", "service", "service", databaseService.getFullyQualifiedName()),
+              ADMIN_AUTH_HEADERS);
+
+      Database foundDb1 =
+          dbListWithService.getData().stream()
+              .filter(db -> db.getId().equals(db1.getId()))
+              .findFirst()
+              .orElse(null);
+      Database foundDb2 =
+          dbListWithService.getData().stream()
+              .filter(db -> db.getId().equals(db2.getId()))
+              .findFirst()
+              .orElse(null);
+
+      assertNotNull(foundDb1, "Database 1 should be found in list");
+      assertNotNull(foundDb2, "Database 2 should be found in list");
+
+      assertNotNull(foundDb1.getName(), "Database name should always be present in list response");
+      assertEquals(dbName1, foundDb1.getName(), "Database 1 name should match");
+
+      assertNotNull(foundDb2.getName(), "Database name should always be present in list response");
+      assertEquals(dbName2, foundDb2.getName(), "Database 2 name should match");
+
+      assertNotNull(
+          foundDb1.getService(),
+          "Service should be fetched via fieldFetcher when 'service' field is requested");
+      assertEquals(
+          databaseService.getName(),
+          foundDb1.getService().getName(),
+          "Database 1 service name should be correct via field fetcher");
+      assertEquals(
+          databaseService.getId(),
+          foundDb1.getService().getId(),
+          "Database 1 service ID should be correct via field fetcher");
+
+      assertNotNull(
+          foundDb2.getService(),
+          "Service should be fetched via fieldFetcher when 'service' field is requested");
+      assertEquals(
+          databaseService.getName(),
+          foundDb2.getService().getName(),
+          "Database 2 service name should be correct via field fetcher");
+      assertEquals(
+          databaseService.getId(),
+          foundDb2.getService().getId(),
+          "Database 2 service ID should be correct via field fetcher");
+
+      ResultList<Database> dbListWithoutService =
+          listEntities(
+              Map.of("fields", "", "service", databaseService.getFullyQualifiedName()),
+              ADMIN_AUTH_HEADERS);
+
+      Database foundDb1WithoutService =
+          dbListWithoutService.getData().stream()
+              .filter(db -> db.getId().equals(db1.getId()))
+              .findFirst()
+              .orElse(null);
+
+      assertNotNull(foundDb1WithoutService, "Database should be found even without service field");
+      assertNotNull(
+          foundDb1WithoutService.getName(),
+          "Database name should always be present regardless of fields");
+      assertEquals(
+          dbName1,
+          foundDb1WithoutService.getName(),
+          "Database name should match even without service field");
+
+      assertNotNull(
+          foundDb1WithoutService.getService(),
+          "Service is always fetched as default field even when not in fields param");
+
+    } finally {
+      deleteEntity(db1.getId(), ADMIN_AUTH_HEADERS);
+      deleteEntity(db2.getId(), ADMIN_AUTH_HEADERS);
+      databaseServiceResourceTest.deleteEntity(
+          databaseService.getId(), true, true, ADMIN_AUTH_HEADERS);
+    }
+  }
+
+  @Test
+  void testDatabaseRdfSoftDeleteAndRestore(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create database
+    CreateDatabase createDatabase =
+        createRequest(test).withService(getContainer().getName()).withOwners(listOf(USER1_REF));
+    Database database = createEntity(createDatabase, ADMIN_AUTH_HEADERS);
+
+    // Verify database exists
+    RdfTestUtils.verifyEntityInRdf(database, RdfUtils.getRdfType("database"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), database.getEntityReference());
+    RdfTestUtils.verifyOwnerInRdf(database.getFullyQualifiedName(), USER1_REF);
+
+    // Soft delete the database
+    deleteEntity(database.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify database still exists in RDF after soft delete
+    RdfTestUtils.verifyEntityInRdf(database, RdfUtils.getRdfType("database"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), database.getEntityReference());
+    RdfTestUtils.verifyOwnerInRdf(database.getFullyQualifiedName(), USER1_REF);
+
+    // Restore the database
+    Database restored =
+        restoreEntity(new RestoreEntity().withId(database.getId()), OK, ADMIN_AUTH_HEADERS);
+
+    // Verify database still exists after restore
+    RdfTestUtils.verifyEntityInRdf(restored, RdfUtils.getRdfType("database"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), restored.getEntityReference());
+    RdfTestUtils.verifyOwnerInRdf(restored.getFullyQualifiedName(), USER1_REF);
+  }
+
+  @Test
+  void testDatabaseRdfHardDelete(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create database
+    CreateDatabase createDatabase = createRequest(test).withService(getContainer().getName());
+    Database database = createEntity(createDatabase, ADMIN_AUTH_HEADERS);
+
+    // Verify database exists
+    RdfTestUtils.verifyEntityInRdf(database, RdfUtils.getRdfType("database"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), database.getEntityReference());
+
+    // Hard delete the database
+    deleteEntity(database.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    // Verify database no longer exists in RDF after hard delete
+    RdfTestUtils.verifyEntityNotInRdf(database.getFullyQualifiedName());
+  }
+
+  @Test
+  void testBulk_PreservesUserEditsOnUpdate(TestInfo test) throws IOException {
+    // Critical test: Verify that bulk updates preserve user-made changes
+    // and only update the fields sent in the bulk request (incremental updates)
+
+    // Step 1: Bot creates initial database (using regular create, not bulk)
+    CreateDatabase botCreate =
+        createRequest(test.getDisplayName())
+            .withDescription("Bot initial description")
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL));
+
+    Database entity = createEntity(botCreate, INGESTION_BOT_AUTH_HEADERS);
+    assertEquals("Bot initial description", entity.getDescription());
+    assertEquals(1, entity.getTags().size());
+
+    // Step 2: User edits description and adds tag
+    String originalJson = JsonUtils.pojoToJson(entity);
+    String userDescription = "User-edited description - should be preserved";
+    entity.setDescription(userDescription);
+    entity.setTags(List.of(USER_ADDRESS_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+
+    Database userEditedEntity =
+        patchEntity(entity.getId(), originalJson, entity, ADMIN_AUTH_HEADERS);
+    assertEquals(userDescription, userEditedEntity.getDescription());
+    assertEquals(2, userEditedEntity.getTags().size());
+
+    // Step 3: Bot sends bulk update with new tag and different description
+    // Bot's description should be IGNORED (bot protection)
+    // Bot's tag should be MERGED (added to existing)
+    CreateDatabase botUpdate =
+        createRequest(test.getDisplayName())
+            .withDescription("Bot trying to overwrite - should be ignored")
+            .withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult updateResult =
+        TestUtils.put(
+            bulkTarget,
+            List.of(botUpdate),
+            BulkOperationResult.class,
+            OK,
+            INGESTION_BOT_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, updateResult.getStatus());
+    assertEquals(1, updateResult.getNumberOfRowsPassed());
+
+    // Step 4: Verify user edits were preserved
+    Database verifyEntity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+
+    // Description should still be user's (bot protection)
+    assertEquals(
+        userDescription,
+        verifyEntity.getDescription(),
+        "Bot should NOT be able to overwrite user-edited description");
+
+    // Tags should be merged (original 2 + new 1 from bot)
+    assertEquals(3, verifyEntity.getTags().size(), "Tags should be merged, not replaced");
+
+    List<String> tagFqns =
+        verifyEntity.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
+    assertTrue(tagFqns.contains(USER_ADDRESS_TAG_LABEL.getTagFQN()));
+    assertTrue(tagFqns.contains(PERSONAL_DATA_TAG_LABEL.getTagFQN()));
+    assertTrue(tagFqns.contains(PII_SENSITIVE_TAG_LABEL.getTagFQN()));
+
+    // Cleanup
+    deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testBulk_TagMergeBehavior(TestInfo test) throws IOException {
+    // Test that bulk updates MERGE tags (add new, keep existing)
+    // NOT replace tags completely
+
+    // Step 1: Create database with initial tags
+    CreateDatabase createRequest =
+        createRequest(test.getDisplayName())
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+
+    Database entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+    assertEquals(2, entity.getTags().size());
+
+    // Step 2: Send bulk update with additional tag (not replacing existing)
+    CreateDatabase updateRequest =
+        createRequest(test.getDisplayName()).withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget, List.of(updateRequest), BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    // Step 3: Verify tags were merged (original 2 + new 1 = 3 total)
+    Database updatedEntity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        3, updatedEntity.getTags().size(), "Tags should be merged: 2 original + 1 new = 3 total");
+
+    List<String> tagFqns =
+        updatedEntity.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
+
+    assertTrue(
+        tagFqns.contains(USER_ADDRESS_TAG_LABEL.getTagFQN()),
+        "Original tag USER_ADDRESS should still exist");
+    assertTrue(
+        tagFqns.contains(PERSONAL_DATA_TAG_LABEL.getTagFQN()),
+        "Original tag PERSONAL_DATA should still exist");
+    assertTrue(
+        tagFqns.contains(PII_SENSITIVE_TAG_LABEL.getTagFQN()),
+        "New tag PII_SENSITIVE should be added");
+
+    // Cleanup
+    deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testBulk_AdminCanOverrideDescription(TestInfo test) throws IOException {
+    // Test that while bots cannot overwrite user descriptions,
+    // admins CAN update descriptions via bulk
+
+    // Step 1: User creates database
+    CreateDatabase createRequest =
+        createRequest(test.getDisplayName()).withDescription("User-created description");
+
+    Database entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+    assertEquals("User-created description", entity.getDescription());
+
+    // Step 2: Admin updates description via bulk
+    String adminDescription = "Admin-updated description via bulk";
+    CreateDatabase adminUpdate =
+        createRequest(test.getDisplayName()).withDescription(adminDescription);
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget, List.of(adminUpdate), BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    // Step 3: Verify admin's description was applied
+    Database updatedEntity = getEntity(entity.getId(), "", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        adminDescription,
+        updatedEntity.getDescription(),
+        "Admin should be able to update description via bulk");
+
+    // Cleanup
+    deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
   }
 }

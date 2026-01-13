@@ -14,16 +14,17 @@
 import { Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { isEmpty } from 'lodash';
+import QueryString from 'qs';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import TableAntd from '../../components/common/Table/Table';
 import { useGenericContext } from '../../components/Customization/GenericProvider/GenericProvider';
 import { API_COLLECTION_API_ENDPOINTS } from '../../constants/APICollection.constants';
-import { NO_DATA, PAGE_SIZE } from '../../constants/constants';
+import { INITIAL_PAGING_VALUE, NO_DATA } from '../../constants/constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_API_ENDPOINT_TAB_VISIBLE_COLUMNS,
@@ -31,18 +32,28 @@ import {
 } from '../../constants/TableKeys.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import { APICollection } from '../../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
 import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import {
   getApiEndPoints,
   GetApiEndPointsType,
 } from '../../rest/apiEndpointsAPI';
+import { searchQuery } from '../../rest/searchAPI';
+import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../utils/EntityUtils';
+import {
+  getColumnSorter,
+  getEntityName,
+  highlightSearchText,
+} from '../../utils/EntityUtils';
+import { stringToHTML } from '../../utils/StringsUtils';
+import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 interface APIEndpointsTabProps {
@@ -55,6 +66,7 @@ function APIEndpointsTab({
   isCustomizationPage = false,
 }: Readonly<APIEndpointsTabProps>) {
   const { t } = useTranslation();
+  const location = useCustomLocation();
   const { fqn: decodedAPICollectionFQN } = useFqn();
   const { data: apiCollection } = useGenericContext<APICollection>();
   const [apiEndpoints, setAPIEndpoints] = useState<APIEndpoint[]>([]);
@@ -68,10 +80,50 @@ function APIEndpointsTab({
     pageSize,
     handlePagingChange,
     handlePageSizeChange,
-  } = usePaging(PAGE_SIZE);
+    pagingCursor,
+  } = usePaging();
   const { filters, setFilters } = useTableFilters({
     showDeletedEndpoints: false,
   });
+
+  const searchValue = useMemo(() => {
+    const param = location.search;
+    const searchData = QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
+    return searchData.endpoint as string | undefined;
+  }, [location.search]);
+
+  const searchAPIEndpoints = useCallback(
+    async (searchValue: string, pageNumber = INITIAL_PAGING_VALUE) => {
+      setAPIEndpointsLoading(true);
+      try {
+        const response = await searchQuery({
+          query: '',
+          pageNumber,
+          pageSize: pageSize,
+          queryFilter: buildSchemaQueryFilter(
+            'apiCollection.fullyQualifiedName',
+            decodedAPICollectionFQN,
+            searchValue
+          ),
+          searchIndex: SearchIndex.API_ENDPOINT_INDEX,
+          includeDeleted: filters.showDeletedEndpoints,
+          trackTotalHits: true,
+        });
+        const data = response.hits.hits.map((endpoint) => endpoint._source);
+        const total = response.hits.total.value;
+        setAPIEndpoints(data);
+        handlePagingChange({ total });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setAPIEndpointsLoading(false);
+      }
+    },
+    [decodedAPICollectionFQN, filters.showDeletedEndpoints, handlePagingChange]
+  );
 
   const getAPICollectionEndpoints = useCallback(
     async (params?: Pick<GetApiEndPointsType, 'paging'>) => {
@@ -112,6 +164,7 @@ function APIEndpointsTab({
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
         width: 400,
+        sorter: getColumnSorter<APIEndpoint, 'name'>('name'),
         render: (_, record: APIEndpoint) => {
           return (
             <div className="d-inline-flex w-max-90">
@@ -122,7 +175,9 @@ function APIEndpointsTab({
                   EntityType.API_ENDPOINT,
                   record.fullyQualifiedName as string
                 )}>
-                {getEntityName(record)}
+                {stringToHTML(
+                  highlightSearchText(getEntityName(record), searchValue)
+                )}
               </Link>
             </div>
           );
@@ -137,38 +192,86 @@ function APIEndpointsTab({
           return <Typography.Text>{requestMethod ?? NO_DATA}</Typography.Text>;
         },
       },
-      {
-        title: t('label.description'),
-        dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
-        key: TABLE_COLUMNS_KEYS.DESCRIPTION,
-        render: (text: string) =>
-          text?.trim() ? (
-            <RichTextEditorPreviewerNew markdown={text} />
-          ) : (
-            <span className="text-grey-muted">{t('label.no-description')}</span>
-          ),
-      },
+      ...descriptionTableObject(),
     ],
-    []
+    [searchValue, t]
   );
 
   const handleEndpointsPagination = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (cursorType) {
-        getAPICollectionEndpoints({
-          paging: {
-            [cursorType]: paging[cursorType],
-          },
-        });
+      if (searchValue) {
+        handlePageChange(currentPage);
+      } else if (cursorType) {
+        handlePageChange(
+          currentPage,
+          { cursorType, cursorValue: paging[cursorType] },
+          pageSize
+        );
       }
-      handlePageChange(currentPage);
     },
-    [paging, getAPICollectionEndpoints]
+    [paging, handlePageChange, searchValue, pageSize]
   );
 
+  const onEndpointSearch = useCallback(
+    (value: string) => {
+      setFilters({ endpoint: isEmpty(value) ? undefined : value });
+      handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
+    },
+    [setFilters, handlePageChange]
+  );
+
+  const handleDeleteAction = () => {
+    setFilters({
+      ...filters,
+      showDeletedEndpoints: !filters.showDeletedEndpoints,
+    });
+    handlePageChange(INITIAL_PAGING_VALUE, {
+      cursorType: null,
+      cursorValue: undefined,
+    });
+  };
+
   useEffect(() => {
-    getAPICollectionEndpoints({ paging: { limit: pageSize } });
-  }, [apiCollection, pageSize]);
+    if (searchValue) {
+      searchAPIEndpoints(searchValue, currentPage);
+    }
+  }, [searchValue, currentPage, filters.showDeletedEndpoints]);
+
+  useEffect(() => {
+    if (searchValue) {
+      return;
+    }
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      getAPICollectionEndpoints({
+        paging: { [cursorType]: cursorValue, limit: pageSize },
+      });
+    } else {
+      getAPICollectionEndpoints({ paging: { limit: pageSize } });
+    }
+  }, [
+    apiCollection,
+    pageSize,
+    pagingCursor,
+    searchValue,
+    filters.showDeletedEndpoints,
+  ]);
+
+  const searchProps = useMemo(
+    () => ({
+      placeholder: t('label.search-for-type', {
+        type: t('label.api-endpoint'),
+      }),
+      typingInterval: 500,
+      searchValue: searchValue,
+      onSearch: onEndpointSearch,
+    }),
+    [onEndpointSearch, searchValue, t]
+  );
 
   return (
     <TableAntd
@@ -177,6 +280,7 @@ function APIEndpointsTab({
         currentPage,
         isLoading: apiEndpointsLoading,
         showPagination,
+        isNumberBased: Boolean(searchValue),
         pageSize,
         paging,
         pagingHandler: handleEndpointsPagination,
@@ -191,12 +295,7 @@ function APIEndpointsTab({
             <Switch
               checked={filters.showDeletedEndpoints}
               data-testid="show-deleted"
-              onClick={() =>
-                setFilters({
-                  ...filters,
-                  showDeletedEndpoints: !filters.showDeletedEndpoints,
-                })
-              }
+              onClick={handleDeleteAction}
             />
             <Typography.Text className="m-l-xs">
               {t('label.deleted')}
@@ -215,6 +314,7 @@ function APIEndpointsTab({
       }}
       pagination={false}
       rowKey="id"
+      searchProps={searchProps}
       size="small"
       staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
     />

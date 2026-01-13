@@ -12,8 +12,8 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import * as CommonUtils from '../../../utils/CommonUtils';
 import EntityDeleteModal from './EntityDeleteModal';
 
 const onCancel = jest.fn();
@@ -28,8 +28,18 @@ const mockProp = {
   visible: false,
 };
 
-jest.mock('../../../utils/CommonUtils', () => ({
-  Transi18next: jest.fn().mockImplementation(() => <div>Trans</div>),
+jest.mock('../../../utils/BrandData/BrandClassBase', () => ({
+  __esModule: true,
+  default: {
+    getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
+  },
+}));
+
+jest.mock('react-i18next', () => ({
+  Trans: jest.fn().mockImplementation(() => <div>Trans</div>),
+  useTranslation: () => ({
+    t: (key: string) => key,
+  }),
 }));
 
 describe('Test EntityDelete Modal Component', () => {
@@ -120,9 +130,7 @@ describe('Test EntityDelete Modal Component', () => {
       });
     });
 
-    await act(async () => {
-      jest.runAllTimers();
-    });
+    jest.runOnlyPendingTimers();
 
     const inputBox = await screen.findByTestId('confirmation-text-input');
 
@@ -130,5 +138,45 @@ describe('Test EntityDelete Modal Component', () => {
     expect(inputBox).toHaveFocus();
 
     jest.useRealTimers();
+  });
+
+  it('should render with correct brandName (OpenMetadata or Collate)', async () => {
+    // Mock Transi18next to actually render interpolated values
+    const mockTransi18next = jest.fn(({ values }) => (
+      <div data-testid="transi18next-mock">
+        {values?.entityName && `Entity: ${values.entityName}`}
+        {values?.brandName && ` Brand: ${values.brandName}`}
+      </div>
+    ));
+
+    jest
+      .spyOn(CommonUtils, 'Transi18next')
+      .mockImplementation(mockTransi18next);
+
+    await act(async () => {
+      render(<EntityDeleteModal {...mockProp} visible />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const bodyText = await screen.findByTestId('body-text');
+
+    expect(bodyText).toBeInTheDocument();
+
+    // Verify actual brand name is rendered
+    expect(bodyText.textContent).toMatch(/OpenMetadata|Collate/);
+    expect(bodyText.textContent).not.toContain('{{brandName}}');
+
+    // Verify Transi18next was called with brandName parameter
+    expect(mockTransi18next).toHaveBeenCalledWith(
+      expect.objectContaining({
+        i18nKey: 'message.permanently-delete-metadata',
+        values: expect.objectContaining({
+          entityName: 'zyx',
+          brandName: 'OpenMetadata',
+        }),
+      }),
+      expect.anything()
+    );
   });
 });

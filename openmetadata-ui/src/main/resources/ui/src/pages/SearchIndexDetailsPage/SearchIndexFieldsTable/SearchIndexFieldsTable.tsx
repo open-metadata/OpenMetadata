@@ -24,12 +24,13 @@ import {
   uniqBy,
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../../components/common/Table/Table';
 import ToggleExpandButton from '../../../components/common/ToggleExpandButton/ToggleExpandButton';
+import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../../components/Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../components/Database/TableDescription/TableDescription.component';
 import TableTags from '../../../components/Database/TableTags/TableTags.component';
@@ -42,7 +43,10 @@ import {
   TABLE_COLUMNS_KEYS,
 } from '../../../constants/TableKeys.constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
+import {
+  SearchIndex,
+  SearchIndexField,
+} from '../../../generated/entity/data/searchIndex';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import {
@@ -88,6 +92,9 @@ const SearchIndexFieldsTable = ({
     []
   );
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+
+  const { openColumnDetailPanel, permissions } =
+    useGenericContext<SearchIndex>();
 
   const sortByOrdinalPosition = useMemo(
     () => sortBy(searchIndexFields, 'ordinalPosition'),
@@ -160,6 +167,25 @@ const SearchIndexFieldsTable = ({
     [handleEditField]
   );
 
+  const hasViewPermission = useMemo(
+    () => permissions?.ViewAll || permissions?.ViewBasic,
+    [permissions]
+  );
+
+  const handleFieldClick = useCallback(
+    (field: SearchIndexField, event: React.MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const isExpandIcon = target.closest('.table-expand-icon') !== null;
+
+      if (!isExpandIcon) {
+        if (hasViewPermission) {
+          openColumnDetailPanel(field);
+        }
+      }
+    },
+    [openColumnDetailPanel, hasViewPermission]
+  );
+
   const renderDataTypeDisplay: SearchIndexCellRendered<
     SearchIndexField,
     'dataTypeDisplay'
@@ -218,10 +244,14 @@ const SearchIndexFieldsTable = ({
         title: t('label.name'),
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
-        accessor: TABLE_COLUMNS_KEYS.NAME,
         width: 220,
         fixed: 'left',
         sorter: getColumnSorter<SearchIndexField, 'name'>('name'),
+        className: 'cursor-pointer',
+        onCell: (record: SearchIndexField) => ({
+          onClick: (event: React.MouseEvent) => handleFieldClick(record, event),
+          'data-testid': 'column-name-cell',
+        }),
         render: (_, record: SearchIndexField) => (
           <div className="d-inline-flex w-max-90">
             <span className="break-word">
@@ -236,7 +266,6 @@ const SearchIndexFieldsTable = ({
         title: t('label.type'),
         dataIndex: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
         key: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
-        accessor: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
         ellipsis: true,
         width: 180,
         render: renderDataTypeDisplay,
@@ -245,7 +274,6 @@ const SearchIndexFieldsTable = ({
         title: t('label.description'),
         dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
         key: TABLE_COLUMNS_KEYS.DESCRIPTION,
-        accessor: TABLE_COLUMNS_KEYS.DESCRIPTION,
         width: 320,
         render: renderDescription,
       },
@@ -253,7 +281,6 @@ const SearchIndexFieldsTable = ({
         title: t('label.tag-plural'),
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.TAGS,
-        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 250,
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
@@ -276,7 +303,6 @@ const SearchIndexFieldsTable = ({
         title: t('label.glossary-term-plural'),
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.GLOSSARY,
-        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 250,
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
@@ -306,6 +332,9 @@ const SearchIndexFieldsTable = ({
       renderDataTypeDisplay,
       renderDescription,
       tagFilter,
+      searchText,
+      handleFieldClick,
+      hasViewPermission,
     ]
   );
 
@@ -330,16 +359,16 @@ const SearchIndexFieldsTable = ({
   );
 
   useEffect(() => {
-    if (!searchText) {
-      setSearchedFields(sortByOrdinalPosition);
-      setExpandedRowKeys([]);
-    } else {
+    if (searchText) {
       const searchFields = searchInFields<SearchIndexField>(
         sortByOrdinalPosition,
         searchText
       );
       setSearchedFields(searchFields);
       setExpandedRowKeys(fieldAllRowKeys);
+    } else {
+      setSearchedFields(sortByOrdinalPosition);
+      setExpandedRowKeys([]);
     }
   }, [searchText, searchIndexFields]);
 
@@ -367,7 +396,7 @@ const SearchIndexFieldsTable = ({
         scroll={TABLE_SCROLL_VALUE}
         searchProps={{
           placeholder: `${t('message.find-in-table')}`,
-          value: searchText,
+          searchValue: searchText,
           typingInterval: 500,
           onSearch: handleSearchAction,
         }}

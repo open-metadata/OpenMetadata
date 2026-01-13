@@ -1,5 +1,5 @@
 ## Adding a new resource to load tests
-Add a new `*.py` file to `test_resources/tasks`. The naming does not matter, but we use the resource name as defined in Java, but seperated by `_` (e.g. `TestCaseResource` becomes `test_case_tasks.py`).
+Add a new `*.py` file to `test_resources/tasks`. The naming does not matter, but we use the resource name as defined in Java, but separated by `_` (e.g. `TestCaseResource` becomes `test_case_tasks.py`).
 
 In your newly created file, you'll need to import at minimum 1 package
 ```python

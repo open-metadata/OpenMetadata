@@ -20,23 +20,25 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.TestCaseDimensionResult;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.ResultList;
 
 public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCaseResult> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseResults";
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
   private static final String TEST_CASE_RESULT_FIELD = "testCaseResult";
   private final TestCaseRepository testCaseRepository;
+  private final TestCaseDimensionResultRepository dimensionResultRepository;
   public static String INCLUDE_SEARCH_FIELDS =
       "id,testCaseFQN,timestamp,testCaseStatus,result,sampleData,testResultValue,passedRows,failedRows,passedRowsPercentage,failedRowsPercentage,incidentId,maxBound,minBound";
 
@@ -53,6 +55,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
         TestCaseResult.class,
         Entity.TEST_CASE_RESULT);
     this.testCaseRepository = new TestCaseRepository();
+    this.dimensionResultRepository = new TestCaseDimensionResultRepository();
   }
 
   public ResultList<TestCaseResult> getTestCaseResults(String fqn, Long startTs, Long endTs) {
@@ -74,8 +77,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
                     endTs,
                     EntityTimeSeriesDAO.OrderBy.DESC),
             TestCaseResult.class);
-    return new ResultList<>(
-        testCaseResults, String.valueOf(startTs), String.valueOf(endTs), testCaseResults.size());
+    return new ResultList<>(testCaseResults, null, null, testCaseResults.size());
   }
 
   public Response addTestCaseResult(
@@ -85,6 +87,14 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
       testCaseRepository.deleteTestCaseFailedRowsSample(testCase.getId());
     }
     setTestCaseResultIncidentId(testCaseResult, testCase, updatedBy);
+
+    // Store dimensional results if present
+    if (testCaseResult.getDimensionResults() != null
+        && !testCaseResult.getDimensionResults().isEmpty()) {
+      storeDimensionalResults(testCase, testCaseResult);
+      // Clear dimensional results from main result to avoid duplication
+      testCaseResult.setDimensionResults(null);
+    }
 
     ((CollectionDAO.TestCaseResultTimeSeriesDAO) timeSeriesDao)
         .insert(
@@ -127,8 +137,8 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   }
 
   @Override
-  protected void postDelete(TestCaseResult entity) {
-    super.postDelete(entity);
+  protected void postDelete(TestCaseResult entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
     updateTestCaseStatus(entity, OperationType.DELETE);
   }
 
@@ -153,9 +163,14 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
             TestCaseResult.class);
 
     if (storedTestCaseResult != null) {
+      // Delete main result
       timeSeriesDao.deleteAtTimestamp(fqn, TESTCASE_RESULT_EXTENSION, timestamp);
       searchRepository.deleteTimeSeriesEntityById(storedTestCaseResult);
-      postDelete(storedTestCaseResult);
+
+      // Delete associated dimensional results
+      dimensionResultRepository.deleteByTestCaseAndTimestamp(fqn, timestamp);
+
+      postDelete(storedTestCaseResult, true); // Hard delete for specific timestamp
       return new RestUtil.DeleteResponse<>(storedTestCaseResult, ENTITY_DELETED);
     }
     throw new EntityNotFoundException(
@@ -248,13 +263,12 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
                       s.setStatus(testCase.getTestCaseStatus());
                       s.setTimestamp(testCase.getTestCaseResult().getTimestamp());
                     },
-                    () -> {
-                      resultSummaries.add(
-                          new ResultSummary()
-                              .withTestCaseName(testCase.getFullyQualifiedName())
-                              .withStatus(testCase.getTestCaseStatus())
-                              .withTimestamp(testCase.getTestCaseResult().getTimestamp()));
-                    });
+                    () ->
+                        resultSummaries.add(
+                            new ResultSummary()
+                                .withTestCaseName(testCase.getFullyQualifiedName())
+                                .withStatus(testCase.getTestCaseStatus())
+                                .withTimestamp(testCase.getTestCaseResult().getTimestamp())));
           } else {
             testSuite.setTestCaseResultSummary(
                 List.of(
@@ -287,11 +301,37 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   protected void deleteAllTestCaseResults(String fqn) {
     // Delete all the test case results
     daoCollection.dataQualityDataTimeSeriesDao().deleteAll(fqn);
+
+    // Delete all dimensional results
+    dimensionResultRepository.deleteAllByTestCase(fqn);
+
     Map<String, Object> params = Map.of("fqn", fqn);
     searchRepository.deleteByScript(
         TEST_CASE_RESULT,
         "if (!(doc['testCaseFQN.keyword'].empty)) { doc['testCaseFQN.keyword'].value == params.fqn}",
         params);
+  }
+
+  private void storeDimensionalResults(TestCase testCase, TestCaseResult testCaseResult) {
+    List<TestCaseDimensionResult> dimensionResults = testCaseResult.getDimensionResults();
+    if (dimensionResults == null || dimensionResults.isEmpty()) {
+      return;
+    }
+
+    String testCaseFQN = testCase.getFullyQualifiedName();
+
+    // Set common fields for each dimensional result
+    for (TestCaseDimensionResult dimResult : dimensionResults) {
+      // Set the test case reference
+      dimResult.setTestCase(testCase.getEntityReference());
+      // Set the parent test case result ID
+      dimResult.setTestCaseResultId(testCaseResult.getId());
+      // Ensure timestamp matches the parent result
+      dimResult.setTimestamp(testCaseResult.getTimestamp());
+
+      // Store each dimensional result
+      dimensionResultRepository.storeDimensionResult(testCaseFQN, dimResult);
+    }
   }
 
   public boolean hasTestCaseFailure(String fqn) throws IOException {

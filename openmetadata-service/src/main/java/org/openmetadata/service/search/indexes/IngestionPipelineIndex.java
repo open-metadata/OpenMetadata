@@ -7,9 +7,9 @@ import java.util.Set;
 import org.json.JSONObject;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
-import org.openmetadata.service.util.JsonUtils;
 
 public class IngestionPipelineIndex implements SearchIndex {
   final IngestionPipeline ingestionPipeline;
@@ -42,6 +42,8 @@ public class IngestionPipelineIndex implements SearchIndex {
             : ingestionPipeline.getDisplayName());
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
+    doc.put("classificationTags", parseTags.getClassificationTags());
+    doc.put("glossaryTags", parseTags.getGlossaryTags());
     doc.put("pipelineStatuses", ingestionPipeline.getPipelineStatuses());
     doc.put("service", getEntityWithDisplayName(ingestionPipeline.getService()));
     // Add only 'scheduleInterval' to avoid exposing sensitive info in 'airflowConfig'

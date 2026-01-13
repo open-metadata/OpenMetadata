@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { NodeViewProps } from '@tiptap/core';
-import React from 'react';
 import CalloutComponent from './CalloutComponent';
 
 const mockNode = {
@@ -60,9 +59,7 @@ describe('CalloutComponent', () => {
 
     const calloutButton = screen.getByTestId('callout-info-btn');
 
-    await act(async () => {
-      userEvent.click(calloutButton);
-    });
+    fireEvent.click(calloutButton);
 
     const popover = screen.getByRole('tooltip');
 

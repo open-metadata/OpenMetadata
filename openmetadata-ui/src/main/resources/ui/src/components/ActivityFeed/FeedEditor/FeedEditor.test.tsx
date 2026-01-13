@@ -12,7 +12,7 @@
  */
 
 import { findByTestId, fireEvent, render } from '@testing-library/react';
-import React, { KeyboardEvent } from 'react';
+import { KeyboardEvent } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { FeedEditor } from './FeedEditor';
 

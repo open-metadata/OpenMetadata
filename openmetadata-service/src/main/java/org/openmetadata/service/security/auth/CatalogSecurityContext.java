@@ -24,9 +24,48 @@ import lombok.extern.slf4j.Slf4j;
 /** Holds authenticated principal and security context which is passed to the JAX-RS request methods */
 @Slf4j
 public record CatalogSecurityContext(
-    Principal principal, String scheme, String authenticationScheme, Set<String> userRoles)
+    Principal principal,
+    String scheme,
+    String authenticationScheme,
+    Set<String> userRoles,
+    boolean isBot,
+    String impersonatedUser)
     implements SecurityContext {
   public static final String OPENID_AUTH = "openid";
+
+  // Thread-local storage for impersonatedUser to work around Jersey SecurityContext wrapping
+  private static final ThreadLocal<String> THREAD_LOCAL_IMPERSONATED_USER = new ThreadLocal<>();
+
+  public static void setThreadLocalImpersonatedUser(String impersonatedUser) {
+    if (impersonatedUser != null) {
+      THREAD_LOCAL_IMPERSONATED_USER.set(impersonatedUser);
+    } else {
+      THREAD_LOCAL_IMPERSONATED_USER.remove();
+    }
+  }
+
+  public static String getThreadLocalImpersonatedUser() {
+    return THREAD_LOCAL_IMPERSONATED_USER.get();
+  }
+
+  public static void clearThreadLocalImpersonatedUser() {
+    THREAD_LOCAL_IMPERSONATED_USER.remove();
+  }
+
+  // Backward compatibility constructors
+  public CatalogSecurityContext(
+      Principal principal, String scheme, String authenticationScheme, Set<String> userRoles) {
+    this(principal, scheme, authenticationScheme, userRoles, false, null);
+  }
+
+  public CatalogSecurityContext(
+      Principal principal,
+      String scheme,
+      String authenticationScheme,
+      Set<String> userRoles,
+      boolean isBot) {
+    this(principal, scheme, authenticationScheme, userRoles, isBot, null);
+  }
 
   @Override
   public Principal getUserPrincipal() {

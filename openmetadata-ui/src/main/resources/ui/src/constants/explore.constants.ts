@@ -15,10 +15,9 @@ import { SortingField } from '../components/Explore/SortingDropDown';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SORT_ORDER } from '../enums/common.enum';
 import { EntityType } from '../enums/entity.enum';
-import i18n from '../utils/i18next/LocalUtil';
 
 export const INITIAL_SORT_FIELD = 'totalVotes';
-export const TAGS_INITIAL_SORT_FIELD = 'name.keyword';
+export const TAGS_INITIAL_SORT_FIELD = 'displayName.keyword';
 export const TAGS_INITIAL_SORT_ORDER = SORT_ORDER.ASC;
 export const TIER_FQN_KEY = 'tier.tagFQN';
 export const TAG_FQN_KEY = 'tags.tagFQN';
@@ -27,7 +26,7 @@ export const MAX_RESULT_HITS = 10000;
 
 export const SUPPORTED_EMPTY_FILTER_FIELDS = [
   EntityFields.OWNERS,
-  EntityFields.DOMAIN,
+  EntityFields.DOMAINS,
   EntityFields.TIER,
   EntityFields.TAG,
   EntityFields.CERTIFICATION,
@@ -37,51 +36,50 @@ export const NOT_INCLUDE_AGGREGATION_QUICK_FILTER = [
   EntityType.INGESTION_PIPELINE,
 ];
 
-// as it is used only in unit tests it's not needed for translation
 export const tableSortingFields: SortingField[] = [
   {
-    name: i18n.t('label.popularity'),
+    name: 'label.popularity',
     value: 'totalVotes',
   },
   {
-    name: i18n.t('label.name'),
-    value: 'name.keyword',
+    name: 'label.name',
+    value: 'displayName.keyword',
   },
   {
-    name: i18n.t('label.weekly-usage'),
+    name: 'label.weekly-usage',
     value: 'usageSummary.weeklyStats.count',
   },
-  { name: i18n.t('label.relevance'), value: '_score' },
+  { name: 'label.relevance', value: '_score' },
   {
-    name: i18n.t('label.last-updated'),
+    name: 'label.last-updated',
     value: 'updatedAt',
   },
 ];
 
 export const entitySortingFields = [
   {
-    name: i18n.t('label.popularity'),
+    name: 'label.popularity',
     value: 'totalVotes',
   },
   {
-    name: i18n.t('label.name'),
-    value: 'name.keyword',
+    name: 'label.name',
+    value: 'displayName.keyword',
   },
-  { name: i18n.t('label.relevance'), value: '_score' },
+  { name: 'label.relevance', value: '_score' },
   {
-    name: i18n.t('label.last-updated'),
+    name: 'label.last-updated',
     value: 'updatedAt',
   },
 ];
 
 export const tagSortingFields = [
   {
-    name: i18n.t('label.name'),
-    value: 'name.keyword',
+    name: 'label.name',
+    value: 'displayName.keyword',
   },
-  { name: i18n.t('label.relevance'), value: '_score' },
+  { name: 'label.relevance', value: '_score' },
   {
-    name: i18n.t('label.last-updated'),
+    name: 'label.last-updated',
     value: 'updatedAt',
   },
 ];

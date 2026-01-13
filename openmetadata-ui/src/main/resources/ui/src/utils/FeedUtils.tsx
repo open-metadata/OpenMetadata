@@ -16,9 +16,8 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
-import i18next from 'i18next';
 import { isEqual, isUndefined, lowerCase } from 'lodash';
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 import ReactDOM from 'react-dom';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
@@ -57,7 +56,7 @@ import {
   updatePost,
   updateThread,
 } from '../rest/feedsAPI';
-import { searchData } from '../rest/miscAPI';
+import { searchQuery } from '../rest/searchAPI';
 import {
   getEntityPlaceHolder,
   getPartialNameFromFQN,
@@ -74,10 +73,13 @@ import {
   getEntityName,
 } from './EntityUtils';
 import Fqn from './Fqn';
+import { t } from './i18next/LocalUtil';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from './ProfilerUtils';
+import { getSanitizeContent } from './sanitize.utils';
+import { getTermQuery } from './SearchUtils';
 import { getDecodedFqn, getEncodedFqn } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -130,15 +132,13 @@ export const getReplyText = (
   plural?: string
 ) => {
   if (count === 0) {
-    return i18next.t('label.reply-in-conversation');
+    return t('label.reply-in-conversation');
   }
   if (count === 1) {
-    return `${count} ${singular ?? i18next.t('label.older-reply-lowercase')}`;
+    return `${count} ${singular ?? t('label.older-reply-lowercase')}`;
   }
 
-  return `${count} ${
-    plural ?? i18next.t('label.older-reply-plural-lowercase')
-  }`;
+  return `${count} ${plural ?? t('label.older-reply-plural-lowercase')}`;
 };
 
 export const buildMentionLink = (entityType: string, entityFqn: string) => {
@@ -150,6 +150,10 @@ export const buildMentionLink = (entityType: string, entityFqn: string) => {
     const classificationFqn = Fqn.split(entityFqn);
 
     return `${document.location.protocol}//${document.location.host}/tags/${classificationFqn[0]}`;
+  } else if (entityType === EntityType.KNOWLEDGE_PAGE) {
+    return `${document.location.protocol}//${
+      document.location.host
+    }/knowledge-center/${getEncodedFqn(entityFqn)}`;
   }
 
   return `${document.location.protocol}//${
@@ -164,16 +168,16 @@ export async function suggestions(
   if (mentionChar === '@') {
     let atValues = [];
 
-    const data = await searchData(
-      searchTerm ?? '',
-      1,
-      5,
-      'isBot:false',
-      'displayName.keyword',
-      'asc',
-      [SearchIndex.USER, SearchIndex.TEAM]
-    );
-    const hits = data.data.hits.hits;
+    const data = await searchQuery({
+      query: searchTerm ?? '',
+      pageNumber: 1,
+      pageSize: 5,
+      queryFilter: getTermQuery({ isBot: 'false' }),
+      sortField: 'displayName.keyword',
+      sortOrder: 'asc',
+      searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
+    });
+    const hits = data.hits.hits;
 
     atValues = await Promise.all(
       hits.map(async (hit) => {
@@ -201,16 +205,15 @@ export async function suggestions(
     return atValues as MentionSuggestionsItem[];
   } else {
     let hashValues = [];
-    const data = await searchData(
-      searchTerm ?? '',
-      1,
-      5,
-      '',
-      'displayName.keyword',
-      'asc',
-      SearchIndex.DATA_ASSET
-    );
-    const hits = data.data.hits.hits;
+    const data = await searchQuery({
+      query: searchTerm ?? '',
+      pageNumber: 1,
+      pageSize: 5,
+      sortField: 'displayName.keyword',
+      sortOrder: 'asc',
+      searchIndex: SearchIndex.DATA_ASSET,
+    });
+    const hits = data.hits.hits;
 
     hashValues = hits.map((hit) => {
       const entityType = hit._source.entityType;
@@ -331,7 +334,7 @@ export const getBackendFormat = (message: string) => {
     updatedMessage = updatedMessage.replaceAll(h, entityLink);
   });
 
-  return updatedMessage;
+  return getSanitizeContent(updatedMessage);
 };
 
 export const getFrontEndFormat = (message: string) => {
@@ -345,7 +348,7 @@ export const getFrontEndFormat = (message: string) => {
     updatedMessage = updatedMessage.replaceAll(m, markdownLink);
   });
 
-  return updatedMessage;
+  return getSanitizeContent(updatedMessage);
 };
 
 export const getUpdatedThread = (id: string) => {
@@ -408,7 +411,7 @@ export const deletePost = async (
           });
         });
       } else {
-        throw i18next.t('server.fetch-updated-conversation-error');
+        throw t('server.fetch-updated-conversation-error');
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -432,7 +435,7 @@ export const getEntityFieldDisplay = (entityField: string) => {
     return entityFields.map((field, i) => {
       return (
         <span key={`field-${i}`}>
-          {field}
+          {t(`label.${field}`, { defaultValue: field })}
           {i < entityFields.length - 1 ? separator : null}
         </span>
       );
@@ -499,18 +502,23 @@ export const updateThreadData = async (
   }
 };
 
-export const prepareFeedLink = (entityType: string, entityFQN: string) => {
+export const prepareFeedLink = (
+  entityType: string,
+  entityFQN: string,
+  subTab?: string
+) => {
   const withoutFeedEntities = [
     EntityType.WEBHOOK,
-    EntityType.GLOSSARY,
-    EntityType.GLOSSARY_TERM,
     EntityType.TYPE,
+    EntityType.KNOWLEDGE_PAGE,
   ];
 
   const entityLink = entityUtilClassBase.getEntityLink(entityType, entityFQN);
 
   if (!withoutFeedEntities.includes(entityType as EntityType)) {
-    return `${entityLink}/${TabSpecificField.ACTIVITY_FEED}`;
+    const activityFeedLink = `${entityLink}/${TabSpecificField.ACTIVITY_FEED}`;
+
+    return subTab ? `${activityFeedLink}/${subTab}` : activityFeedLink;
   } else {
     return entityLink;
   }
@@ -590,44 +598,45 @@ export const getFeedPanelHeaderText = (
 ) => {
   switch (threadType) {
     case ThreadType.Announcement:
-      return i18next.t('label.announcement');
+      return t('label.announcement');
     case ThreadType.Task:
-      return i18next.t('label.task');
+      return t('label.task');
     case ThreadType.Conversation:
     default:
-      return i18next.t('label.conversation');
+      return t('label.conversation');
   }
 };
 
 export const getFeedChangeFieldLabel = (fieldName?: EntityField) => {
   const fieldNameLabelMapping = {
-    [EntityField.DESCRIPTION]: i18next.t('label.description'),
-    [EntityField.COLUMNS]: i18next.t('label.column-plural'),
-    [EntityField.SCHEMA_FIELDS]: i18next.t('label.schema-field-plural'),
-    [EntityField.TAGS]: i18next.t('label.tag-plural'),
-    [EntityField.TASKS]: i18next.t('label.task-plural'),
-    [EntityField.ML_FEATURES]: i18next.t('label.ml-feature-plural'),
-    [EntityField.SCHEMA_TEXT]: i18next.t('label.schema-text'),
-    [EntityField.OWNER]: i18next.t('label.owner-plural'),
-    [EntityField.REVIEWERS]: i18next.t('label.reviewer-plural'),
-    [EntityField.SYNONYMS]: i18next.t('label.synonym-plural'),
-    [EntityField.RELATEDTERMS]: i18next.t('label.related-term-plural'),
-    [EntityField.REFERENCES]: i18next.t('label.reference-plural'),
-    [EntityField.EXTENSION]: i18next.t('label.extension'),
-    [EntityField.DISPLAYNAME]: i18next.t('label.display-name'),
-    [EntityField.NAME]: i18next.t('label.name'),
-    [EntityField.MESSAGE_SCHEMA]: i18next.t('label.message-schema'),
-    [EntityField.CHARTS]: i18next.t('label.chart-plural'),
-    [EntityField.DATA_MODEL]: i18next.t('label.data-model'),
-    [EntityField.CONSTRAINT]: i18next.t('label.constraint'),
-    [EntityField.TABLE_CONSTRAINTS]: i18next.t('label.table-constraint-plural'),
-    [EntityField.PARTITIONS]: i18next.t('label.partition-plural'),
-    [EntityField.REPLICATION_FACTOR]: i18next.t('label.replication-factor'),
-    [EntityField.SOURCE_URL]: i18next.t('label.source-url'),
-    [EntityField.MUTUALLY_EXCLUSIVE]: i18next.t('label.mutually-exclusive'),
-    [EntityField.EXPERTS]: i18next.t('label.expert-plural'),
-    [EntityField.FIELDS]: i18next.t('label.field-plural'),
-    [EntityField.PARAMETER_VALUES]: i18next.t('label.parameter-plural'),
+    [EntityField.DESCRIPTION]: t('label.description'),
+    [EntityField.COLUMNS]: t('label.column-plural'),
+    [EntityField.SCHEMA_FIELDS]: t('label.schema-field-plural'),
+    [EntityField.TAGS]: t('label.tag-plural'),
+    [EntityField.TASKS]: t('label.task-plural'),
+    [EntityField.ML_FEATURES]: t('label.ml-feature-plural'),
+    [EntityField.SCHEMA_TEXT]: t('label.schema-text'),
+    [EntityField.OWNER]: t('label.owner-plural'),
+    [EntityField.REVIEWERS]: t('label.reviewer-plural'),
+    [EntityField.SYNONYMS]: t('label.synonym-plural'),
+    [EntityField.RELATEDTERMS]: t('label.related-term-plural'),
+    [EntityField.REFERENCES]: t('label.reference-plural'),
+    [EntityField.EXTENSION]: t('label.extension'),
+    [EntityField.DISPLAYNAME]: t('label.display-name'),
+    [EntityField.NAME]: t('label.name'),
+    [EntityField.MESSAGE_SCHEMA]: t('label.message-schema'),
+    [EntityField.CHARTS]: t('label.chart-plural'),
+    [EntityField.DATA_MODEL]: t('label.data-model'),
+    [EntityField.CONSTRAINT]: t('label.constraint'),
+    [EntityField.TABLE_CONSTRAINTS]: t('label.table-constraint-plural'),
+    [EntityField.PARTITIONS]: t('label.partition-plural'),
+    [EntityField.REPLICATION_FACTOR]: t('label.replication-factor'),
+    [EntityField.SOURCE_URL]: t('label.source-url'),
+    [EntityField.MUTUALLY_EXCLUSIVE]: t('label.mutually-exclusive'),
+    [EntityField.EXPERTS]: t('label.expert-plural'),
+    [EntityField.FIELDS]: t('label.field-plural'),
+    [EntityField.PARAMETER_VALUES]: t('label.parameter-plural'),
+    [EntityField.DATA_TYPE_DISPLAY]: t('label.data-type-display'),
   };
 
   return isUndefined(fieldName) ? '' : fieldNameLabelMapping[fieldName];
@@ -721,19 +730,19 @@ const getActionLabelFromCardStyle = (
   isApplication?: boolean
 ) => {
   let action: ReactNode = isApplication
-    ? i18next.t('label.installed-lowercase')
-    : i18next.t('label.added-lowercase');
+    ? t('label.installed-lowercase')
+    : t('label.added-lowercase');
 
   if (cardStyle === CardStyle.EntityDeleted) {
     action = (
       <Typography.Text className="text-danger">
         {isApplication
-          ? i18next.t('label.uninstalled-lowercase')
-          : i18next.t('label.deleted-lowercase')}
+          ? t('label.uninstalled-lowercase')
+          : t('label.deleted-lowercase')}
       </Typography.Text>
     );
   } else if (cardStyle === CardStyle.EntitySoftDeleted) {
-    action = i18next.t('label.soft-deleted-lowercase');
+    action = t('label.soft-deleted-lowercase');
   }
 
   return action;
@@ -784,10 +793,10 @@ export const getFeedHeaderTextFromCardStyle = (
             />
           }
           values={{
-            field: i18next.t(
+            field: t(
               `label.${cardStyle === CardStyle.Tags ? 'tag-plural' : cardStyle}`
             ),
-            action: i18next.t(
+            action: t(
               `label.${fieldOperation ?? FieldOperation.Updated}-lowercase`
             ),
           }}
@@ -801,7 +810,7 @@ export const getFeedHeaderTextFromCardStyle = (
         return (
           <Typography.Text>
             {getActionLabelFromCardStyle(cardStyle, true)}{' '}
-            {i18next.t('label.app-lowercase')}
+            {t('label.app-lowercase')}
           </Typography.Text>
         );
       }
@@ -810,6 +819,6 @@ export const getFeedHeaderTextFromCardStyle = (
 
     case CardStyle.Default:
     default:
-      return i18next.t('label.posted-on-lowercase');
+      return t('label.posted-on-lowercase');
   }
 };

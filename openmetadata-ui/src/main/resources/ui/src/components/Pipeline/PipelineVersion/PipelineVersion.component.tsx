@@ -14,9 +14,8 @@
 import { Col, Row, Space, Table, Tabs, TabsProps } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-import { t } from 'i18next';
-import React, { FC, useEffect, useMemo, useState } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
+import { FC, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -24,6 +23,7 @@ import {
   ChangeDescription,
   Task,
 } from '../../../generated/entity/data/pipeline';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { TagSource } from '../../../generated/type/schema';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
@@ -31,14 +31,17 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
+import { t } from '../../../utils/i18next/LocalUtil';
+import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getUpdatedPipelineTasks } from '../../../utils/PipelineVersionUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
+import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import Loader from '../../common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
@@ -53,7 +56,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   currentVersionData,
   isVersionLoading,
   owners,
-  domain,
+  domains,
   dataProducts,
   tier,
   slashedPipelineName,
@@ -63,8 +66,8 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   versionHandler,
   entityPermissions,
 }: PipelineVersionProp) => {
-  const history = useHistory();
-  const { tab } = useParams<{ tab: EntityTabs }>();
+  const navigate = useNavigate();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
@@ -76,9 +79,9 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           changeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [changeDescription, owners, tier, domain]
+      [changeDescription, owners, tier, domains]
     );
 
   const pipelineVersionTableData = useMemo(
@@ -93,7 +96,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   }, [currentVersionData]);
 
   const handleTabChange = (activeKey: string) => {
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.PIPELINE,
         currentVersionData.fullyQualifiedName ?? '',
@@ -122,22 +125,11 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         key: 'taskType',
         render: (taskType) => <RichTextEditorPreviewerV1 markdown={taskType} />,
       },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        render: (text) =>
-          text ? (
-            <RichTextEditorPreviewerNew markdown={text} />
-          ) : (
-            <span className="text-grey-muted">{t('label.no-description')}</span>
-          ),
-      },
+      ...descriptionTableObject(),
       {
         title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
-        accessor: 'tags',
         width: 272,
         render: (tags) => (
           <TagsViewer
@@ -150,7 +142,6 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         title: t('label.glossary-term-plural'),
         dataIndex: 'tags',
         key: 'tags',
-        accessor: 'tags',
         width: 272,
         render: (tags) => (
           <TagsViewer sizeCap={-1} tags={getFilterTags(tags || []).Glossary} />
@@ -179,6 +170,15 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
       currentVersionData.displayName
     );
   }, [currentVersionData, changeDescription]);
+
+  const viewCustomPropertiesPermission = useMemo(
+    () =>
+      getPrioritizedViewPermission(
+        entityPermissions,
+        Operation.ViewCustomFields
+      ),
+    [entityPermissions]
+  );
 
   const tabItems: TabsProps['items'] = useMemo(
     () => [
@@ -218,7 +218,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
                 />
@@ -250,7 +250,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
             isVersionView
             entityType={EntityType.PIPELINE}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },
@@ -260,7 +260,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
       tableColumn,
       pipelineVersionTableData,
       currentVersionData,
-      entityPermissions,
+      viewCustomPropertiesPermission,
       tags,
     ]
   );
@@ -309,7 +309,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
       )}
 
       <EntityVersionTimeLine
-        currentVersion={version}
+        currentVersion={version ?? ''}
         entityType={EntityType.PIPELINE}
         versionHandler={versionHandler}
         versionList={versionList}

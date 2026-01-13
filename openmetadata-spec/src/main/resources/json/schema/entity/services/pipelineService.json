@@ -19,6 +19,7 @@
       "enum": [
         "Airflow",
         "GluePipeline",
+        "KinesisFirehose",
         "Airbyte",
         "Fivetran",
         "Flink",
@@ -36,7 +37,9 @@
         "Stitch",
         "DataFactory",
         "Wherescape",
-        "SSIS"
+        "SSIS",
+        "Snowplow",
+        "Mulesoft"
       ],
       "javaEnums": [
         {
@@ -44,6 +47,9 @@
         },
         {
           "name": "GluePipeline"
+        },
+        {
+          "name": "KinesisFirehose"
         },
         {
           "name": "Airbyte"
@@ -98,6 +104,12 @@
         },
         {
           "name": "SSIS"
+        },
+        {
+          "name": "Snowplow"
+        },
+        {
+          "name": "Mulesoft"
         }
       ]
     },
@@ -123,6 +135,9 @@
             },
             {
               "$ref": "./connections/pipeline/gluePipelineConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/kinesisFirehoseConnection.json"
             },
             {
               "$ref": "./connections/pipeline/airbyteConnection.json"
@@ -171,6 +186,12 @@
             },
             {
               "$ref": "./connections/pipeline/stitchConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/snowplowConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/mulesoftConnection.json"
             }
           ]
         }
@@ -214,6 +235,10 @@
     "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
     },
     "testConnectionResult": {
       "description": "Last test connection results for this service",
@@ -263,9 +288,9 @@
       "description": "Followers of this entity.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "domain" : {
-      "description": "Domain the Pipeline service belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the Pipeline service belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "ingestionRunner" : {
       "description": "The ingestion agent responsible for executing the ingestion pipeline.",

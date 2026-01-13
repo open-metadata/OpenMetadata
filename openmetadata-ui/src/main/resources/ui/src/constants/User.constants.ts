@@ -12,9 +12,25 @@
  */
 
 import { TokenType } from '../generated/auth/personalAccessToken';
+import { JWTTokenExpiry } from '../generated/entity/teams/user';
 
 export const USER_DEFAULT_AUTHENTICATION_MECHANISM = {
   tokenType: TokenType.PersonalAccessToken,
+};
+
+// Mapping of JWTTokenExpiry enum to numeric values in days
+// This is used to sort the options in the JWTTokenExpiry dropdown
+export const TOKEN_EXPIRY_NUMERIC_VALUES_IN_DAYS: Record<
+  JWTTokenExpiry,
+  number
+> = {
+  [JWTTokenExpiry.OneHour]: 0.0417,
+  [JWTTokenExpiry.The1]: 1,
+  [JWTTokenExpiry.The7]: 7,
+  [JWTTokenExpiry.The30]: 30,
+  [JWTTokenExpiry.The60]: 60,
+  [JWTTokenExpiry.The90]: 90,
+  [JWTTokenExpiry.Unlimited]: Infinity,
 };
 
 export const MASKED_EMAIL = '********@masked.com';

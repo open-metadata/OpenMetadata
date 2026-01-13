@@ -12,7 +12,8 @@
  */
 import { Typography } from 'antd';
 import classNames from 'classnames';
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import './badge.style.less';
 
 interface AppBadgeProps {
@@ -59,3 +60,13 @@ const AppBadge = ({
 };
 
 export default AppBadge;
+
+export const BetaBadge = ({ className }: { className?: string }) => {
+  const { t } = useTranslation();
+
+  return (
+    <span className={classNames('beta-badge', className)}>
+      {t('label.beta')}
+    </span>
+  );
+};

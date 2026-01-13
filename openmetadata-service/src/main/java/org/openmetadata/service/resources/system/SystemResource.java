@@ -1,6 +1,8 @@
 package org.openmetadata.service.resources.system;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
 
@@ -15,11 +17,13 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.json.JsonPatch;
+import jakarta.json.JsonValue;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PATCH;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -31,21 +35,30 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.auth.EmailRequest;
+import org.openmetadata.schema.configuration.EntityRulesSettings;
+import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.system.SecurityValidationResponse;
 import org.openmetadata.schema.system.ValidationResponse;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -54,13 +67,14 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.rules.LogicOps;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.email.EmailUtil;
 
 @Path("/v1/system")
@@ -93,7 +107,9 @@ public class SystemResource {
             config.getPipelineServiceClientConfiguration());
 
     this.jwtFilter =
-        new JwtFilter(config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration());
+        new JwtFilter(
+            SecurityConfigurationManager.getCurrentAuthConfig(),
+            SecurityConfigurationManager.getCurrentAuthzConfig());
     this.isNlqEnabled =
         config.getElasticSearchConfiguration().getNaturalLanguageSearch() != null
             ? config.getElasticSearchConfiguration().getNaturalLanguageSearch().getEnabled()
@@ -108,7 +124,7 @@ public class SystemResource {
     if (defaultSearchSettingsCache != null) {
       try {
         List<String> jsonDataFiles =
-            EntityUtil.getJsonDataResources(".*json/data/searchSettings/searchSettings.json$");
+            EntityUtil.getJsonDataResources(".*json/data/settings/searchSettings.json$");
         if (!jsonDataFiles.isEmpty()) {
           String json =
               CommonUtil.getResourceAsStream(
@@ -161,7 +177,20 @@ public class SystemResource {
   public ResultList<Settings> list(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
-    return systemRepository.listAllConfigs();
+    ResultList<Settings> allConfigs = systemRepository.listAllConfigs();
+
+    // Filter out authenticationConfiguration and authorizerConfiguration
+    List<Settings> filteredSettings = new ArrayList<>();
+    if (allConfigs != null && allConfigs.getData() != null) {
+      for (Settings setting : allConfigs.getData()) {
+        if (setting.getConfigType() != AUTHENTICATION_CONFIGURATION
+            && setting.getConfigType() != AUTHORIZER_CONFIGURATION) {
+          filteredSettings.add(setting);
+        }
+      }
+    }
+
+    return new ResultList<>(filteredSettings, null, null, filteredSettings.size());
   }
 
   @GET
@@ -185,10 +214,52 @@ public class SystemResource {
       @Parameter(description = "Name of the setting", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
+    // Restrict access to authentication and authorizer configurations
+    if (name.equalsIgnoreCase(AUTHENTICATION_CONFIGURATION.value())
+        || name.equalsIgnoreCase(AUTHORIZER_CONFIGURATION.value())) {
+      throw new SystemSettingsException(
+          "Access to authentication and authorizer configurations is not allowed through this endpoint");
+    }
+
     if (!name.equalsIgnoreCase(LINEAGE_SETTINGS.toString())) {
       authorizer.authorizeAdmin(securityContext);
     }
     return systemRepository.getConfigWithKey(name);
+  }
+
+  @GET
+  @Path("/settings/entityRulesSettings/{entityType}")
+  @Operation(
+      operationId = "getEntityRulesSetting",
+      summary = "Get a setting for an entity type",
+      description = "Get the list of available entity rules settings for a given entity type",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Settings",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Settings.class)))
+      })
+  public List<SemanticsRule> getEntityRulesSettingByType(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Entity Type", schema = @Schema(type = "string"))
+          @PathParam("entityType")
+          String entityType) {
+    return SettingsCache.getSetting(SettingsType.ENTITY_RULES_SETTINGS, EntityRulesSettings.class)
+        .getEntitySemantics()
+        .stream()
+        .filter(SemanticsRule::getEnabled)
+        .filter(
+            rule ->
+                rule.getEntityType() == null || rule.getEntityType().equalsIgnoreCase(entityType))
+        .filter(
+            rule ->
+                nullOrEmpty(rule.getIgnoredEntities())
+                    || !rule.getIgnoredEntities().contains(entityType))
+        .toList();
   }
 
   @GET
@@ -242,6 +313,26 @@ public class SystemResource {
     return systemRepository.getConfigWithKey(SettingsType.PROFILER_CONFIGURATION.value());
   }
 
+  @GET
+  @Path("/settings/customLogicOps")
+  @Operation(
+      operationId = "getCustomLogicOps",
+      summary = "Get a list of custom JSON logic operations",
+      description = "Get a list of custom JSON logic operations used in rules",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Custom Logic Operations Keys as Strings",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Settings.class)))
+      })
+  public Response getCustomLogicOps(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    return Response.ok().entity(LogicOps.getCustomOpsKeys()).build();
+  }
+
   @PUT
   @Path("/settings")
   @Operation(
@@ -261,6 +352,13 @@ public class SystemResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid Settings settingName) {
+    // Restrict updating authentication and authorizer configurations
+    if (settingName.getConfigType() == AUTHENTICATION_CONFIGURATION
+        || settingName.getConfigType() == AUTHORIZER_CONFIGURATION) {
+      throw new SystemSettingsException(
+          "Access to authentication and authorizer configurations is not allowed through this endpoint");
+    }
+
     authorizer.authorizeAdmin(securityContext);
     if (SettingsType.SEARCH_SETTINGS
         .value()
@@ -300,6 +398,13 @@ public class SystemResource {
       @Parameter(description = "Name of the setting", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
+    // Restrict resetting authentication and authorizer configurations
+    if (name.equalsIgnoreCase(AUTHENTICATION_CONFIGURATION.value())
+        || name.equalsIgnoreCase(AUTHORIZER_CONFIGURATION.value())) {
+      throw new SystemSettingsException(
+          "Access to authentication and authorizer configurations is not allowed through this endpoint");
+    }
+
     authorizer.authorizeAdmin(securityContext);
 
     if (!SettingsType.SEARCH_SETTINGS.value().equalsIgnoreCase(name)) {
@@ -371,6 +476,13 @@ public class SystemResource {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
+    // Restrict patching authentication and authorizer configurations
+    if (settingName.equalsIgnoreCase(AUTHENTICATION_CONFIGURATION.value())
+        || settingName.equalsIgnoreCase(AUTHORIZER_CONFIGURATION.value())) {
+      throw new SystemSettingsException(
+          "Access to authentication and authorizer configurations is not allowed through this endpoint");
+    }
+
     authorizer.authorizeAdmin(securityContext);
     return systemRepository.patchSetting(settingName, patch);
   }
@@ -447,5 +559,239 @@ public class SystemResource {
       })
   public ValidationResponse validate() {
     return systemRepository.validateSystem(applicationConfig, pipelineServiceClient, jwtFilter);
+  }
+
+  @GET
+  @Path("/health")
+  @Operation(
+      operationId = "healthCheck",
+      summary = "Health check endpoint",
+      description = "Simple health check endpoint that returns 200 OK",
+      responses = {@ApiResponse(responseCode = "200", description = "Service is healthy")})
+  public Response healthCheck() {
+    return Response.ok("OK").build();
+  }
+
+  @GET
+  @Path("/security/config")
+  @Operation(
+      operationId = "getSecurityConfig",
+      summary = "Get complete security configuration",
+      description = "Get both authentication and authorization configuration",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Security Configuration",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SecurityConfiguration.class)))
+      })
+  public SecurityConfiguration getSecurityConfig(@Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
+    SecurityConfiguration originalConfig =
+        SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
+
+    // Create a deep copy to avoid mutating the original shared objects
+    String configJson = JsonUtils.pojoToJson(originalConfig);
+    SecurityConfiguration config = JsonUtils.readValue(configJson, SecurityConfiguration.class);
+
+    // Apply password masking if needed - only to the copy
+    if (authorizer.shouldMaskPasswords(securityContext)) {
+      // Mask OIDC configuration if present
+      if (config.getAuthenticationConfiguration() != null
+          && config.getAuthenticationConfiguration().getOidcConfiguration() != null) {
+        config
+            .getAuthenticationConfiguration()
+            .getOidcConfiguration()
+            .setSecret(PasswordEntityMasker.PASSWORD_MASK);
+      }
+
+      // Mask LDAP configuration if present
+      if (config.getAuthenticationConfiguration() != null
+          && config.getAuthenticationConfiguration().getLdapConfiguration() != null) {
+        config
+            .getAuthenticationConfiguration()
+            .getLdapConfiguration()
+            .setDnAdminPassword(PasswordEntityMasker.PASSWORD_MASK);
+      }
+    }
+    return config;
+  }
+
+  @PUT
+  @Path("/security/config")
+  @Operation(
+      operationId = "updateSecurityConfig",
+      summary = "Update complete security configuration",
+      description = "Update both authentication and authorization configuration atomically",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Updated Security Configuration",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SecurityConfiguration.class)))
+      })
+  public Response updateSecurityConfig(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid SecurityConfiguration securityConfig) {
+    authorizer.authorizeAdmin(securityContext);
+
+    try {
+      // Update both configurations in a transaction
+      Settings authSettings =
+          new Settings()
+              .withConfigType(AUTHENTICATION_CONFIGURATION)
+              .withConfigValue(securityConfig.getAuthenticationConfiguration());
+
+      Settings authzSettings =
+          new Settings()
+              .withConfigType(AUTHORIZER_CONFIGURATION)
+              .withConfigValue(securityConfig.getAuthorizerConfiguration());
+
+      // Save both to database
+      systemRepository.createOrUpdate(authSettings);
+      systemRepository.createOrUpdate(authzSettings);
+
+      // Invalidate both caches
+      SettingsCache.invalidateSettings(AUTHENTICATION_CONFIGURATION.toString());
+      SettingsCache.invalidateSettings(AUTHORIZER_CONFIGURATION.toString());
+
+      // Reload entire security system
+      SecurityConfigurationManager.getInstance().reloadSecuritySystem();
+
+      return Response.ok(securityConfig).build();
+    } catch (Exception e) {
+      LOG.error("Failed to update security configuration", e);
+      throw new RuntimeException("Failed to update security configuration: " + e.getMessage());
+    }
+  }
+
+  @PATCH
+  @Path("/security/config")
+  @Operation(
+      operationId = "patchSecurityConfig",
+      summary = "Patch security configuration",
+      description = "Update security configuration using JsonPatch with validation and reload",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patchSecurityConfig(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    authorizer.authorizeAdmin(securityContext);
+
+    try {
+      SecurityConfiguration originalConfig =
+          SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
+
+      String configJson = JsonUtils.pojoToJson(originalConfig);
+      SecurityConfiguration currentConfig =
+          JsonUtils.readValue(configJson, SecurityConfiguration.class);
+
+      JsonPatch filteredPatch = systemRepository.filterInvalidPatchOperations(patch, currentConfig);
+
+      JsonValue patched = JsonUtils.applyPatch(currentConfig, filteredPatch);
+      String jsonString = patched.toString();
+      SecurityConfiguration updatedConfig =
+          JsonUtils.readValue(jsonString, SecurityConfiguration.class);
+
+      SecurityValidationResponse validationResponse =
+          systemRepository.validateSecurityConfiguration(updatedConfig, applicationConfig);
+
+      boolean isValidConfig =
+          validationResponse.getStatus() == SecurityValidationResponse.Status.SUCCESS;
+
+      if (!isValidConfig) {
+        // Consolidate all error messages for logging
+        List<String> failedMessages = new ArrayList<>();
+        if (validationResponse.getErrors() != null) {
+          for (var error : validationResponse.getErrors()) {
+            failedMessages.add(error.getField() + ": " + error.getError());
+          }
+        }
+
+        // Log the errors
+        if (!failedMessages.isEmpty()) {
+          LOG.error(
+              "Security configuration validation failed: {}", String.join("; ", failedMessages));
+        }
+
+        return Response.status(Response.Status.BAD_REQUEST).entity(validationResponse).build();
+      }
+      Settings authSettings =
+          new Settings()
+              .withConfigType(AUTHENTICATION_CONFIGURATION)
+              .withConfigValue(updatedConfig.getAuthenticationConfiguration());
+
+      Settings authzSettings =
+          new Settings()
+              .withConfigType(AUTHORIZER_CONFIGURATION)
+              .withConfigValue(updatedConfig.getAuthorizerConfiguration());
+
+      systemRepository.createOrUpdate(authSettings);
+      systemRepository.createOrUpdate(authzSettings);
+
+      SettingsCache.invalidateSettings(AUTHENTICATION_CONFIGURATION.toString());
+      SettingsCache.invalidateSettings(AUTHORIZER_CONFIGURATION.toString());
+
+      SecurityConfigurationManager.getInstance().reloadSecuritySystem();
+      return Response.noContent().build();
+    } catch (Exception e) {
+      LOG.error("Failed to patch security configuration", e);
+      throw new RuntimeException("Failed to patch security configuration: " + e.getMessage());
+    }
+  }
+
+  @POST
+  @Path("/security/validate")
+  @Operation(
+      operationId = "validateSecurityConfig",
+      summary = "Validate security configuration",
+      description = "Test the security configuration before applying it",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Security configuration validation results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SecurityValidationResponse.class)))
+      })
+  public SecurityValidationResponse validateSecurityConfig(
+      @Context SecurityContext securityContext, @Valid SecurityConfiguration securityConfig) {
+    authorizer.authorizeAdmin(securityContext);
+    return systemRepository.validateSecurityConfiguration(securityConfig, applicationConfig);
+  }
+
+  @GET
+  @Path("/cache/stats")
+  @Operation(
+      operationId = "getCacheStats",
+      summary = "Get cache statistics",
+      description = "Get cache statistics including hit rates and sizes",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Cache statistics"),
+        @ApiResponse(responseCode = "403", description = "Forbidden")
+      })
+  public Response getCacheStats(@Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
+
+    Map<String, Object> stats = CacheBundle.getCacheProvider().getStats();
+    return Response.ok(stats).build();
   }
 }

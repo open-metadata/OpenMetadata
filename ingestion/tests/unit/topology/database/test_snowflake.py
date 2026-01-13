@@ -14,7 +14,9 @@ snowflake unit tests
 """
 # pylint: disable=line-too-long
 from unittest import TestCase
-from unittest.mock import PropertyMock, patch
+from unittest.mock import Mock, PropertyMock, patch
+
+import sqlalchemy.types as sqltypes
 
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
@@ -23,7 +25,13 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.ingestion.source.database.snowflake.metadata import SnowflakeSource
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
+)
+from metadata.ingestion.source.database.snowflake.metadata import MAP, SnowflakeSource
 from metadata.ingestion.source.database.snowflake.models import SnowflakeStoredProcedure
 
 SNOWFLAKE_CONFIGURATION = {
@@ -53,6 +61,22 @@ SNOWFLAKE_CONFIGURATION = {
     "ingestionPipelineFQN": "snowflake.mock_pipeline",
 }
 
+SNOWFLAKE_CONFIGURATION_CUSTOM_HOST = {
+    **SNOWFLAKE_CONFIGURATION,
+    **{
+        "source": {
+            **SNOWFLAKE_CONFIGURATION["source"],
+            "serviceConnection": {
+                **SNOWFLAKE_CONFIGURATION["source"]["serviceConnection"],
+                "config": {
+                    **SNOWFLAKE_CONFIGURATION["source"]["serviceConnection"]["config"],
+                    "snowflakeSourceHost": "custom.snowflake.com",
+                },
+            },
+        }
+    },
+}
+
 SNOWFLAKE_INCREMENTAL_CONFIGURATION = {
     **SNOWFLAKE_CONFIGURATION,
     **{
@@ -68,6 +92,7 @@ SNOWFLAKE_INCREMENTAL_CONFIGURATION = {
 SNOWFLAKE_CONFIGURATIONS = {
     "incremental": SNOWFLAKE_INCREMENTAL_CONFIGURATION,
     "not_incremental": SNOWFLAKE_CONFIGURATION,
+    "custom_host": SNOWFLAKE_CONFIGURATION_CUSTOM_HOST,
 }
 
 MOCK_PIPELINE_STATUSES = [
@@ -115,11 +140,36 @@ MOCK_SCHEMA_NAME_1 = "INFORMATION_SCHEMA"
 MOCK_SCHEMA_NAME_2 = "TPCDS_SF10TCL"
 MOCK_VIEW_NAME = "COLUMNS"
 MOCK_TABLE_NAME = "CALL_CENTER"
-EXPECTED_SNOW_URL_VIEW = "https://app.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/view/COLUMNS"
+
+# Table URLs
 EXPECTED_SNOW_URL_TABLE = "https://app.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/TPCDS_SF10TCL/table/CALL_CENTER"
+EXPECTED_SNOW_URL_TABLE_CUSTOM = "https://custom.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/TPCDS_SF10TCL/table/CALL_CENTER"
+EXPECTED_SNOW_URL_TRANSIENT = "https://app.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/table/TEST_TRANSIENT"
+EXPECTED_SNOW_URL_TRANSIENT_CUSTOM = "https://custom.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/table/TEST_TRANSIENT"
+EXPECTED_SNOW_URL_DYNAMIC = "https://app.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/dynamic-table/TEST_DYNAMIC"
+EXPECTED_SNOW_URL_DYNAMIC_CUSTOM = "https://custom.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/dynamic-table/TEST_DYNAMIC"
+EXPECTED_SNOW_URL_EXTERNAL = "https://app.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/external-table/TEST_EXTERNAL"
+EXPECTED_SNOW_URL_EXTERNAL_CUSTOM = "https://custom.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/external-table/TEST_EXTERNAL"
+
+EXPECTED_SNOW_URL_VIEW = "https://app.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/view/COLUMNS"
+EXPECTED_SNOW_URL_VIEW_CUSTOM = "https://custom.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/view/COLUMNS"
+EXPECTED_SNOW_URL_MATERIALIZED_VIEW = "https://app.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/materialized-view/TEST_MV"
+EXPECTED_SNOW_URL_MATERIALIZED_VIEW_CUSTOM = "https://custom.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/materialized-view/TEST_MV"
+
+EXPECTED_SNOW_URL_STREAM = "https://app.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/stream/TEST_STREAM"
+EXPECTED_SNOW_URL_STREAM_CUSTOM = "https://custom.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/stream/TEST_STREAM"
+
+# Procedure URLs
+EXPECTED_SNOW_URL_PROCEDURE = "https://app.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/procedure/TEST_PROC(VARCHAR)"
+EXPECTED_SNOW_URL_PROCEDURE_CUSTOM = "https://custom.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/procedure/TEST_PROC(VARCHAR)"
+EXPECTED_SNOW_URL_UDF = "https://app.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/user-function/TEST_UDF(NUMBER)"
+EXPECTED_SNOW_URL_UDF_CUSTOM = "https://custom.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/user-function/TEST_UDF(NUMBER)"
 
 
 def get_snowflake_sources():
+    """
+    Get snowflake sources
+    """
     sources = {}
 
     with patch(
@@ -133,6 +183,15 @@ def get_snowflake_sources():
             SNOWFLAKE_CONFIGURATIONS["not_incremental"]["source"],
             config.workflowConfig.openMetadataServerConfig,
             SNOWFLAKE_CONFIGURATIONS["not_incremental"]["ingestionPipelineFQN"],
+        )
+
+        config_custom = OpenMetadataWorkflowConfig.model_validate(
+            SNOWFLAKE_CONFIGURATIONS["custom_host"]
+        )
+        sources["custom_host"] = SnowflakeSource.create(
+            SNOWFLAKE_CONFIGURATIONS["custom_host"]["source"],
+            config_custom.workflowConfig.openMetadataServerConfig,
+            SNOWFLAKE_CONFIGURATIONS["custom_host"]["ingestionPipelineFQN"],
         )
 
         with patch(
@@ -183,7 +242,31 @@ class SnowflakeUnitTest(TestCase):
         )
 
     def _assert_urls(self):
-        for source in self.sources.values():
+        for source_key, source in self.sources.items():
+            if source_key == "custom_host":
+                expected_table_url = EXPECTED_SNOW_URL_TABLE_CUSTOM
+                expected_transient_url = EXPECTED_SNOW_URL_TRANSIENT_CUSTOM
+                expected_dynamic_url = EXPECTED_SNOW_URL_DYNAMIC_CUSTOM
+                expected_external_url = EXPECTED_SNOW_URL_EXTERNAL_CUSTOM
+                expected_view_url = EXPECTED_SNOW_URL_VIEW_CUSTOM
+                expected_materialized_view_url = (
+                    EXPECTED_SNOW_URL_MATERIALIZED_VIEW_CUSTOM
+                )
+                expected_stream_url = EXPECTED_SNOW_URL_STREAM_CUSTOM
+                expected_procedure_url = EXPECTED_SNOW_URL_PROCEDURE_CUSTOM
+                expected_udf_url = EXPECTED_SNOW_URL_UDF_CUSTOM
+            else:
+                expected_table_url = EXPECTED_SNOW_URL_TABLE
+                expected_transient_url = EXPECTED_SNOW_URL_TRANSIENT
+                expected_dynamic_url = EXPECTED_SNOW_URL_DYNAMIC
+                expected_external_url = EXPECTED_SNOW_URL_EXTERNAL
+                expected_view_url = EXPECTED_SNOW_URL_VIEW
+                expected_materialized_view_url = EXPECTED_SNOW_URL_MATERIALIZED_VIEW
+                expected_stream_url = EXPECTED_SNOW_URL_STREAM
+                expected_procedure_url = EXPECTED_SNOW_URL_PROCEDURE
+                expected_udf_url = EXPECTED_SNOW_URL_UDF
+
+            # Test regular table URL
             self.assertEqual(
                 source.get_source_url(
                     database_name=MOCK_DB_NAME,
@@ -191,9 +274,43 @@ class SnowflakeUnitTest(TestCase):
                     table_name=MOCK_TABLE_NAME,
                     table_type=TableType.Regular,
                 ),
-                EXPECTED_SNOW_URL_TABLE,
+                expected_table_url,
             )
 
+            # Test transient table URL (should use 'table')
+            self.assertEqual(
+                source.get_source_url(
+                    database_name=MOCK_DB_NAME,
+                    schema_name=MOCK_SCHEMA_NAME_1,
+                    table_name="TEST_TRANSIENT",
+                    table_type=TableType.Transient,
+                ),
+                expected_transient_url,
+            )
+
+            # Test dynamic table URL
+            self.assertEqual(
+                source.get_source_url(
+                    database_name=MOCK_DB_NAME,
+                    schema_name=MOCK_SCHEMA_NAME_1,
+                    table_name="TEST_DYNAMIC",
+                    table_type=TableType.Dynamic,
+                ),
+                expected_dynamic_url,
+            )
+
+            # Test external table URL
+            self.assertEqual(
+                source.get_source_url(
+                    database_name=MOCK_DB_NAME,
+                    schema_name=MOCK_SCHEMA_NAME_1,
+                    table_name="TEST_EXTERNAL",
+                    table_type=TableType.External,
+                ),
+                expected_external_url,
+            )
+
+            # Test view URL
             self.assertEqual(
                 source.get_source_url(
                     database_name=MOCK_DB_NAME,
@@ -201,7 +318,53 @@ class SnowflakeUnitTest(TestCase):
                     table_name=MOCK_VIEW_NAME,
                     table_type=TableType.View,
                 ),
-                EXPECTED_SNOW_URL_VIEW,
+                expected_view_url,
+            )
+
+            # Test materialized view URL
+            self.assertEqual(
+                source.get_source_url(
+                    database_name=MOCK_DB_NAME,
+                    schema_name=MOCK_SCHEMA_NAME_1,
+                    table_name="TEST_MV",
+                    table_type=TableType.MaterializedView,
+                ),
+                expected_materialized_view_url,
+            )
+
+            # Test stream URL
+            self.assertEqual(
+                source.get_source_url(
+                    database_name=MOCK_DB_NAME,
+                    schema_name=MOCK_SCHEMA_NAME_1,
+                    table_name="TEST_STREAM",
+                    table_type=TableType.Stream,
+                ),
+                expected_stream_url,
+            )
+
+            # Test stored procedure URL
+            self.assertEqual(
+                source.get_procedure_source_url(
+                    database_name=MOCK_DB_NAME,
+                    schema_name=MOCK_SCHEMA_NAME_1,
+                    procedure_name="TEST_PROC",
+                    procedure_signature="(VARCHAR)",
+                    procedure_type="StoredProcedure",
+                ),
+                expected_procedure_url,
+            )
+
+            # Test UDF URL
+            self.assertEqual(
+                source.get_procedure_source_url(
+                    database_name=MOCK_DB_NAME,
+                    schema_name=MOCK_SCHEMA_NAME_1,
+                    procedure_name="TEST_UDF",
+                    procedure_signature="(NUMBER)",
+                    procedure_type="UDF",
+                ),
+                expected_udf_url,
             )
 
     def test_source_url(self):
@@ -238,6 +401,46 @@ class SnowflakeUnitTest(TestCase):
                         )
                     )
 
+    def test_source_url_custom_host(self):
+        """
+        Test source URL generation with custom snowflakeSourceHost
+        """
+        with patch.object(
+            SnowflakeSource,
+            "account",
+            return_value="random_account",
+            new_callable=PropertyMock,
+        ):
+            with patch.object(
+                SnowflakeSource,
+                "org_name",
+                return_value="random_org",
+                new_callable=PropertyMock,
+            ):
+                custom_source = self.sources["custom_host"]
+
+                # Test custom host URL generation for table
+                self.assertEqual(
+                    custom_source.get_source_url(
+                        database_name=MOCK_DB_NAME,
+                        schema_name=MOCK_SCHEMA_NAME_2,
+                        table_name=MOCK_TABLE_NAME,
+                        table_type=TableType.Regular,
+                    ),
+                    EXPECTED_SNOW_URL_TABLE_CUSTOM,
+                )
+
+                # Test custom host URL generation for view
+                self.assertEqual(
+                    custom_source.get_source_url(
+                        database_name=MOCK_DB_NAME,
+                        schema_name=MOCK_SCHEMA_NAME_1,
+                        table_name=MOCK_VIEW_NAME,
+                        table_type=TableType.View,
+                    ),
+                    EXPECTED_SNOW_URL_VIEW_CUSTOM,
+                )
+
     def test_stored_procedure_validator(self):
         """Review how we are building the SP signature"""
 
@@ -261,3 +464,143 @@ class SnowflakeUnitTest(TestCase):
         )
 
         self.assertEqual("()", sp_payload.unquote_signature())
+
+    def test_map_class_default_initialization(self):
+        """Test MAP class with default parameters"""
+        map_type = MAP()
+
+        # Test default values
+        self.assertEqual(map_type.key_type, sqltypes.VARCHAR)
+        self.assertEqual(map_type.value_type, sqltypes.VARCHAR)
+        self.assertFalse(map_type.not_null)
+
+        # Test visit name
+        self.assertEqual(map_type.__visit_name__, "MAP")
+
+    def test_map_class_custom_initialization(self):
+        """Test MAP class with custom parameters"""
+        key_type = sqltypes.INTEGER
+        value_type = sqltypes.TEXT
+        not_null = True
+
+        map_type = MAP(key_type=key_type, value_type=value_type, not_null=not_null)
+
+        # Test custom values
+        self.assertEqual(map_type.key_type, key_type)
+        self.assertEqual(map_type.value_type, value_type)
+        self.assertTrue(map_type.not_null)
+
+        # Test visit name remains the same
+        self.assertEqual(map_type.__visit_name__, "MAP")
+
+    def test_map_class_partial_custom_initialization(self):
+        """Test MAP class with some custom parameters"""
+        key_type = sqltypes.BIGINT
+
+        map_type = MAP(key_type=key_type)
+
+        # Test mixed values
+        self.assertEqual(map_type.key_type, key_type)
+        self.assertEqual(map_type.value_type, sqltypes.VARCHAR)  # default
+        self.assertFalse(map_type.not_null)  # default
+
+    @patch(
+        "metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_tag_labels"
+    )
+    @patch("metadata.ingestion.source.database.snowflake.metadata.get_tag_label")
+    def test_schema_tag_inheritance(
+        self, mock_get_tag_label, mock_parent_get_tag_labels
+    ):
+        """Test schema tag inheritance"""
+        for source in self.sources.values():
+            # Verify tags are fetched and stored
+            mock_schema_tags = [
+                Mock(
+                    SCHEMA_NAME="TEST_SCHEMA", TAG_NAME="SCHEMA_TAG", TAG_VALUE="VALUE"
+                ),
+            ]
+            mock_execute = Mock()
+            mock_execute.all.return_value = mock_schema_tags
+            source.engine.execute = Mock(return_value=mock_execute)
+
+            source.set_schema_tags_map("TEST_DATABASE")
+            self.assertEqual(len(source.schema_tags_map["TEST_SCHEMA"]), 1)
+            self.assertEqual(
+                source.schema_tags_map["TEST_SCHEMA"][0],
+                {"tag_name": "SCHEMA_TAG", "tag_value": "VALUE"},
+            )
+
+            # Verify schema tag labels
+            mock_get_tag_label.return_value = TagLabel(
+                tagFQN="SnowflakeTag.SCHEMA_TAG",
+                labelType=LabelType.Automated,
+                state=State.Suggested,
+                source=TagSource.Classification,
+            )
+
+            schema_labels = source.get_schema_tag_labels(schema_name="TEST_SCHEMA")
+            self.assertIsNotNone(schema_labels)
+            self.assertEqual(len(schema_labels), 1)
+
+            # Verify tag inheritance
+            source.context.get().__dict__["database_schema"] = "TEST_SCHEMA"
+            mock_parent_get_tag_labels.return_value = [
+                TagLabel(
+                    tagFQN="SnowflakeTag.TABLE_TAG",
+                    labelType=LabelType.Automated,
+                    state=State.Suggested,
+                    source=TagSource.Classification,
+                )
+            ]
+
+            table_labels = source.get_tag_labels(table_name="TEST_TABLE")
+            self.assertEqual(len(table_labels), 2)
+            tag_fqns = [tag.tagFQN.root for tag in table_labels]
+            self.assertIn("SnowflakeTag.SCHEMA_TAG", tag_fqns)
+            self.assertIn("SnowflakeTag.TABLE_TAG", tag_fqns)
+
+    def test_table_names_full_query_generation(self):
+        """Test complete SQL query generation for full extraction with different parameters"""
+        from snowflake.sqlalchemy.snowdialect import SnowflakeDialect
+
+        from metadata.ingestion.source.database.snowflake.utils import get_table_names
+
+        dialect = SnowflakeDialect()
+
+        mock_cursor_case1 = Mock()
+        mock_cursor_case1.__iter__ = Mock(return_value=iter([]))
+
+        mock_connection = Mock()
+        mock_connection.execute = Mock(return_value=mock_cursor_case1)
+
+        get_table_names(
+            dialect,
+            mock_connection,
+            schema="TEST_SCHEMA",
+            include_transient_tables=False,
+            include_views=True,
+        )
+
+        call_args = mock_connection.execute.call_args
+        executed_query_case1 = call_args[0][0]
+
+        self.assertIn("COALESCE(IS_TRANSIENT, 'NO') != 'YES'", executed_query_case1)
+        self.assertNotIn("TABLE_TYPE != 'VIEW'", executed_query_case1)
+
+        mock_cursor_case2 = Mock()
+        mock_cursor_case2.__iter__ = Mock(return_value=iter([]))
+        mock_connection.execute = Mock(return_value=mock_cursor_case2)
+
+        get_table_names(
+            dialect,
+            mock_connection,
+            schema="TEST_SCHEMA",
+            include_transient_tables=True,
+            include_views=False,
+        )
+
+        call_args = mock_connection.execute.call_args
+        executed_query_case2 = call_args[0][0]
+
+        self.assertIn("TABLE_TYPE != 'VIEW'", executed_query_case2)
+        self.assertNotIn("COALESCE(IS_TRANSIENT, 'NO') != 'YES'", executed_query_case2)

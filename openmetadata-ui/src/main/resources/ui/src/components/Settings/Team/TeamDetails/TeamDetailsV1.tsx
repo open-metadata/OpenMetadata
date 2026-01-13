@@ -30,9 +30,9 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as ExportIcon } from '../../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../../assets/svg/ic-import.svg';
@@ -50,13 +50,10 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../../constants/GlobalSettings.constants';
-import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityAction, EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { OwnerType } from '../../../../enums/user.enum';
-import { Operation } from '../../../../generated/entity/policies/policy';
 import { Team, TeamType } from '../../../../generated/entity/teams/team';
 import {
   EntityReference as UserTeams,
@@ -73,15 +70,12 @@ import { exportTeam, restoreTeam } from '../../../../rest/teamsAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
-import { checkPermission } from '../../../../utils/PermissionsUtils';
 import {
   getSettingsPathWithFqn,
   getTeamsWithFqnPath,
 } from '../../../../utils/RouterUtils';
-import {
-  filterChildTeams,
-  getDeleteMessagePostFix,
-} from '../../../../utils/TeamUtils';
+import { getTermQuery } from '../../../../utils/SearchUtils';
+import { getDeleteMessagePostFix } from '../../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -130,9 +124,10 @@ const TeamDetailsV1 = ({
   entityPermissions,
   isFetchingAdvancedDetails,
   isFetchingAllTeamAdvancedDetails,
+  isTeamBasicDataLoading,
 }: TeamDetailsProp) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useCustomLocation();
   const { isAdminUser } = useAuth();
   const { currentUser } = useApplicationStore();
@@ -153,7 +148,6 @@ const TeamDetailsV1 = ({
     state: false,
     leave: false,
   };
-  const { permissions } = usePermissionProvider();
   const currentTab = useMemo(() => {
     if (activeTab) {
       return activeTab;
@@ -168,6 +162,7 @@ const TeamDetailsV1 = ({
   }>(DELETE_USER_INITIAL_STATE);
   const [searchTerm, setSearchTerm] = useState('');
   const [childTeamList, setChildTeamList] = useState<Team[]>([]);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
   const [slashedTeamName, setSlashedTeamName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -204,23 +199,12 @@ const TeamDetailsV1 = ({
   );
 
   const teamCount = useMemo(
-    () => currentTeam.childrenCount ?? childTeamList.length,
-    [childTeamList, currentTeam.childrenCount]
+    () => (isTeamBasicDataLoading ? 0 : childTeamList.length),
+    [childTeamList, isTeamBasicDataLoading]
   );
   const updateActiveTab = (key: string) => {
-    history.push({ search: Qs.stringify({ activeTab: key }) });
+    navigate({ search: Qs.stringify({ activeTab: key }) });
   };
-
-  const { createTeamPermission, editUserPermission } = useMemo(() => {
-    return {
-      createTeamPermission:
-        !isEmpty(permissions) &&
-        checkPermission(Operation.Create, ResourceEntity.TEAM, permissions),
-      editUserPermission:
-        checkPermission(Operation.EditAll, ResourceEntity.TEAM, permissions) ||
-        checkPermission(Operation.EditUsers, ResourceEntity.TEAM, permissions),
-    };
-  }, [permissions]);
 
   /**
    * Take user id as input to find out the user data and set it for delete
@@ -271,6 +255,7 @@ const TeamDetailsV1 = ({
   );
 
   const searchTeams = async (text: string) => {
+    setIsSearchLoading(true);
     try {
       const res = await searchQuery({
         query: `*${text}*`,
@@ -290,6 +275,7 @@ const TeamDetailsV1 = ({
           },
         },
         searchIndex: SearchIndex.TEAM,
+        includeDeleted: showDeletedTeam,
       });
 
       const data = res.hits.hits.map((value) => value._source as Team);
@@ -306,6 +292,8 @@ const TeamDetailsV1 = ({
       );
     } catch {
       setChildTeamList([]);
+    } finally {
+      setIsSearchLoading(false);
     }
   };
 
@@ -376,7 +364,7 @@ const TeamDetailsV1 = ({
     if (value) {
       searchTeams(value);
     } else {
-      setChildTeamList(filterChildTeams(childTeams ?? [], showDeletedTeam));
+      setChildTeamList(childTeams);
     }
   };
 
@@ -463,7 +451,7 @@ const TeamDetailsV1 = ({
           ? parentTeams.map((parent) => ({
               name: getEntityName(parent),
               url: getTeamsWithFqnPath(
-                parent.name ?? parent.fullyQualifiedName ?? ''
+                parent.fullyQualifiedName ?? parent.name ?? ''
               ),
             }))
           : [];
@@ -479,7 +467,7 @@ const TeamDetailsV1 = ({
   }, [currentTeam, parentTeams, showDeletedTeam]);
 
   useEffect(() => {
-    setChildTeamList(filterChildTeams(childTeams ?? [], showDeletedTeam));
+    setChildTeamList(childTeams);
     setSearchTerm('');
   }, [childTeams, showDeletedTeam]);
 
@@ -505,7 +493,7 @@ const TeamDetailsV1 = ({
     }
   }, [currentTeam]);
   const handleImportClick = useCallback(async () => {
-    history.push({
+    navigate({
       pathname: getSettingsPathWithFqn(
         GlobalSettingsMenuCategory.MEMBERS,
         GlobalSettingOptions.TEAMS,
@@ -629,12 +617,12 @@ const TeamDetailsV1 = ({
   );
 
   const teamsTableRender = useMemo(() => {
-    let addUserButtonTitle = editUserPermission
+    let addTeamButtonTitle = entityPermissions.Create
       ? t('label.add-entity', { entity: t('label.team') })
       : t('message.no-permission-for-action');
 
     if (isTeamDeleted) {
-      addUserButtonTitle = t(
+      addTeamButtonTitle = t(
         'message.this-action-is-not-allowed-for-deleted-entities'
       );
     }
@@ -660,11 +648,11 @@ const TeamDetailsV1 = ({
             }}
           />
         </Typography.Paragraph>
-        <Tooltip placement="top" title={addUserButtonTitle}>
+        <Tooltip placement="top" title={addTeamButtonTitle}>
           <Button
             ghost
             data-testid="add-placeholder-button"
-            disabled={!editUserPermission || isTeamDeleted}
+            disabled={!entityPermissions.Create || isTeamDeleted}
             icon={<PlusOutlined />}
             type="primary"
             onClick={handleAddTeamButtonClick}>
@@ -674,12 +662,14 @@ const TeamDetailsV1 = ({
       </ErrorPlaceHolder>
     ) : (
       <TeamHierarchy
-        createTeamPermission={createTeamPermission}
+        createTeamPermission={entityPermissions.Create}
         currentTeam={currentTeam}
         data={childTeamList}
         handleAddTeamButtonClick={handleAddTeamButtonClick}
         handleTeamSearch={handleTeamSearch}
         isFetchingAllTeamAdvancedDetails={isFetchingAllTeamAdvancedDetails}
+        isSearchLoading={isSearchLoading}
+        isTeamBasicDataLoading={isTeamBasicDataLoading}
         isTeamDeleted={isTeamDeleted}
         searchTerm={searchTerm}
         showDeletedTeam={showDeletedTeam}
@@ -693,8 +683,9 @@ const TeamDetailsV1 = ({
     currentTeam,
     childTeamList,
     showDeletedTeam,
-    createTeamPermission,
+    entityPermissions.Create,
     isFetchingAllTeamAdvancedDetails,
+    isSearchLoading,
     onTeamExpand,
     handleAddTeamButtonClick,
     handleTeamSearch,
@@ -727,8 +718,9 @@ const TeamDetailsV1 = ({
         isEntityDeleted={isTeamDeleted}
         noDataPlaceholder={t('message.adding-new-asset-to-team')}
         permissions={entityPermissions}
+        queryFilter={getTermQuery({ 'owners.id': currentTeam.id })}
         type={AssetsOfEntity.TEAM}
-        onAddAsset={() => history.push(ROUTES.EXPLORE)}
+        onAddAsset={() => navigate(ROUTES.EXPLORE)}
         onAssetClick={setPreviewAsset}
       />
     ),
@@ -1080,7 +1072,8 @@ const TeamDetailsV1 = ({
         isGroupType,
         isOrganization,
         teamCount,
-        assetsCount
+        assetsCount,
+        isTeamBasicDataLoading
       ).map((tab) => ({
         ...tab,
         label: (
@@ -1088,6 +1081,7 @@ const TeamDetailsV1 = ({
             count={tab.count}
             id={tab.key}
             isActive={currentTab === tab.key}
+            isLoading={tab?.isLoading}
             name={tab.name}
           />
         ),
@@ -1102,6 +1096,7 @@ const TeamDetailsV1 = ({
       assetsCount,
       getTabChildren,
       tabsChildrenRender,
+      isTeamBasicDataLoading,
     ]
   );
 
@@ -1112,7 +1107,7 @@ const TeamDetailsV1 = ({
   if (isEmpty(currentTeam)) {
     return fetchErrorPlaceHolder({
       onClick: () => handleAddTeam(true),
-      permission: createTeamPermission,
+      permission: entityPermissions.Create,
       heading: t('label.team-plural'),
       doc: TEAMS_DOCS,
     });

@@ -39,6 +39,7 @@ import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PersonaRepository;
@@ -46,7 +47,6 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 @Path("/v1/personas")
@@ -278,6 +278,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePersona cp) {
+    authorizer.authorizeAdmin(securityContext);
     Persona persona = mapper.createToEntity(cp, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, persona);
   }
@@ -299,6 +300,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePersona cp) {
+    authorizer.authorizeAdmin(securityContext);
     Persona persona = mapper.createToEntity(cp, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, persona);
   }
@@ -329,6 +331,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
+    authorizer.authorizeAdmin(securityContext);
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -358,6 +361,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
+    authorizer.authorizeAdmin(securityContext);
     return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
@@ -377,6 +381,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
       @Parameter(description = "Id of the Persona", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
+    authorizer.authorizeAdmin(securityContext);
     return delete(uriInfo, securityContext, id, false, true);
   }
 
@@ -396,6 +401,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
       @Parameter(description = "Id of the Persona", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
+    authorizer.authorizeAdmin(securityContext);
     return deleteByIdAsync(uriInfo, securityContext, id, false, true);
   }
 
@@ -415,6 +421,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
       @Parameter(description = "Name of the Persona", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
+    authorizer.authorizeAdmin(securityContext);
     return deleteByName(uriInfo, securityContext, name, false, true);
   }
 }

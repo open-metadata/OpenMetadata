@@ -17,7 +17,6 @@ import {
   getByText,
   render,
 } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router';
 import { TAG_CONSTANT } from '../../constants/Tag.constants';
 import { SearchIndex } from '../../enums/search.enum';
@@ -94,7 +93,11 @@ const mockPaginate = jest.fn();
 const mockHandleSummaryPanelDisplay = jest.fn();
 
 jest.mock('../Database/TableDataCardBody/TableDataCardBody', () => {
-  return jest.fn().mockReturnValue(<p>TableDataCardBody</p>);
+  return jest.fn().mockReturnValue(
+    <div data-testid="description-text">
+      raw_<span className="text-highlighter">customer</span> data description
+    </div>
+  );
 });
 
 jest.mock('../common/NextPrevious/NextPrevious', () => {
@@ -163,6 +166,27 @@ describe('Test SearchedData Component', () => {
     );
   });
 
+  it('Should display table card with description highlighted', () => {
+    const { container } = render(<SearchedData {...MOCK_PROPS} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const card1 = getByTestId(container, 'table-data-card_fullyQualifiedName1');
+
+    expect(card1).toBeInTheDocument();
+
+    const descriptionElements = getAllByTestId(container, 'description-text');
+
+    expect(descriptionElements.length).toBeGreaterThan(0);
+
+    const highlightedSpan = descriptionElements[0].querySelector(
+      'span.text-highlighter'
+    );
+
+    expect(highlightedSpan).toBeInTheDocument();
+    expect(highlightedSpan).toHaveTextContent('customer');
+  });
+
   it('If children is provided it should display', () => {
     const { container } = render(
       <SearchedData {...MOCK_PROPS}>
@@ -196,7 +220,7 @@ describe('Test SearchedData Component', () => {
 
     expect(searchedDataContainer).toBeInTheDocument();
     expect(getByTestId(container, 'matches-stats')).toHaveTextContent(
-      'label.matches:1 in Name,1 in Display Name'
+      'label.matches:1 label.in-lowercase Name,1 label.in-lowercase Display Name'
     );
   });
 });

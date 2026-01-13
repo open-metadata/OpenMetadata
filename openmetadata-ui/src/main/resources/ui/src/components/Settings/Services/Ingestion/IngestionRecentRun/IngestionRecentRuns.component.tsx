@@ -14,7 +14,7 @@
 import { Popover, Skeleton, Space, Tag, Typography } from 'antd';
 import classNamesFunc from 'classnames';
 import { isEmpty, isNumber, isUndefined, upperFirst } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import { App } from '../../../../../generated/entity/applications/app';
@@ -65,7 +65,10 @@ export const IngestionRecentRuns = <
           queryParams
         );
 
-        const runs = response.data.splice(0, 5).reverse() ?? [];
+        const runs =
+          response.data
+            .sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0))
+            .slice(-5) ?? [];
 
         setRecentRunStatus(
           (runs.length === 0 && ingestionPipeline?.pipelineStatuses
@@ -86,7 +89,11 @@ export const IngestionRecentRuns = <
 
   useEffect(() => {
     if (!isEmpty(appRuns)) {
-      setRecentRunStatus(appRuns?.splice(0, 5).reverse() ?? []);
+      setRecentRunStatus(
+        appRuns
+          ?.sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0))
+          .slice(-5) ?? []
+      );
     }
   }, [appRuns]);
 

@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
@@ -24,16 +23,13 @@ import { useFqn } from '../../../hooks/useFqn';
 import { getContainerChildrenByName } from '../../../rest/storageAPI';
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../common/Table/Table';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
-
-interface ContainerChildrenProps {
-  isReadOnly?: boolean;
-}
+import { ContainerChildrenProps } from './ContainerChildren.interface';
 
 const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
   const { t } = useTranslation();
@@ -75,24 +71,7 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
           </div>
         ),
       },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        render: (description: EntityReference['description']) => (
-          <>
-            {description ? (
-              <RichTextEditorPreviewerNew markdown={description} />
-            ) : (
-              <Typography.Text className="text-grey-muted">
-                {t('label.no-entity', {
-                  entity: t('label.description'),
-                })}
-              </Typography.Text>
-            )}
-          </>
-        ),
-      },
+      ...descriptionTableObject<EntityReference>(),
     ],
     []
   );

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { fireEvent, render } from '@testing-library/react';
-import React from 'react';
 import { getSanitizeContent } from '../../../utils/sanitize.utils';
 import SanitizedInput from './SanitizedInput';
 

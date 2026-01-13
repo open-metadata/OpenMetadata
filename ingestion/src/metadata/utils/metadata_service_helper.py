@@ -83,7 +83,7 @@ SERVICE_TYPE_MAPPER = {
         "connection": {"config": {"awsConfig": "aws_config"}},
     },
     "snowflake": {
-        "service_nmae": "Snowflake",
+        "service_name": "Snowflake",
         "connection": {
             "config": {
                 "username": "randomName",

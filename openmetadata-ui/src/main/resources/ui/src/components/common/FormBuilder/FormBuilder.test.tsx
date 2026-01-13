@@ -12,7 +12,6 @@
  */
 import validator from '@rjsf/validator-ajv8';
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { LOADING_STATE } from '../../../enums/common.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { transformErrors } from '../../../utils/formUtils';

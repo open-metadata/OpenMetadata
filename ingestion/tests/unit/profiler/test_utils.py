@@ -22,11 +22,11 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql.sqltypes import Integer, String
 
 from metadata.ingestion.source.database.snowflake.models import SnowflakeQueryLogEntry
-from metadata.ingestion.source.database.snowflake.profiler.system import (
+from metadata.profiler.metrics.hybrid.histogram import Histogram
+from metadata.profiler.metrics.system.snowflake.system import (
     SnowflakeTableResovler,
     get_snowflake_system_queries,
 )
-from metadata.profiler.metrics.hybrid.histogram import Histogram
 from metadata.profiler.metrics.system.system import recursive_dic
 from metadata.utils.profiler_utils import (
     get_identifiers_from_string,
@@ -86,6 +86,36 @@ class TestHistogramUtils(TestCase):
         """test label formatter for histogram for floats"""
         formatted_label = self.histogram._format_bin_labels(167893.98542, 194993.98542)
         assert formatted_label == "167.894K to 194.994K"
+
+
+class TestCardinalityDistributionUtils(TestCase):
+    """Test utility functions for cardinality distribution"""
+
+    @classmethod
+    def setUpClass(cls):
+        from metadata.profiler.metrics.hybrid.cardinality_distribution import (
+            CardinalityDistribution,
+        )
+
+        cls.cardinality_dist = CardinalityDistribution()
+
+    def test_cardinality_distribution_threshold_calculation(self):
+        """Test threshold calculation for cardinality distribution"""
+        total_count = 1000
+        threshold = self.cardinality_dist.threshold_percentage * total_count
+        assert threshold == 20.0  # 2% of 1000
+
+    def test_cardinality_distribution_min_buckets(self):
+        """Test minimum buckets configuration"""
+        assert self.cardinality_dist.min_buckets == 5
+
+    def test_cardinality_distribution_metric_name(self):
+        """Test metric name"""
+        assert self.cardinality_dist.name() == "cardinalityDistribution"
+
+    def test_cardinality_distribution_metric_type(self):
+        """Test metric type"""
+        assert self.cardinality_dist.metric_type == dict
 
 
 def test_is_array():

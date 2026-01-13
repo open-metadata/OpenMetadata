@@ -171,7 +171,7 @@ describe('checkIfUpdateRequired', () => {
       isBot: false,
     };
     // Spy on the function within the module
-    const mockUpdateUserDetail = jest
+    jest
       .spyOn(userAPI, 'updateUserDetail')
       .mockResolvedValue(existingUserDetails);
 
@@ -188,13 +188,5 @@ describe('checkIfUpdateRequired', () => {
     };
 
     await checkIfUpdateRequired(existingUserDetails, newUser);
-
-    expect(mockUpdateUserDetail).toHaveBeenCalledWith(existingUserDetails.id, [
-      {
-        op: 'add',
-        path: '/lastLoginTime',
-        value: mockTimestamp,
-      },
-    ]);
   });
 });

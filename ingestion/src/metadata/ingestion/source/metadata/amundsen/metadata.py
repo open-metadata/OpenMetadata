@@ -147,18 +147,18 @@ class AmundsenSource(Source):
     def _iter(self, *_, **__) -> Iterable[Either[Entity]]:
         table_entities = self.client.execute_query(NEO4J_AMUNDSEN_TABLE_QUERY)
         for table in table_entities:
-            yield from Either(right=self.create_table_entity(table))
+            yield from self.create_table_entity(table)
 
         user_entities = self.client.execute_query(NEO4J_AMUNDSEN_USER_QUERY)
         for user in user_entities:
-            yield from Either(right=self.create_user_entity(user))
-            yield from Either(right=self.add_owner_to_entity(user))
+            yield from self.create_user_entity(user)
+            yield from self.add_owner_to_entity(user)
 
         dashboard_entities = self.client.execute_query(NEO4J_AMUNDSEN_DASHBOARD_QUERY)
         for dashboard in dashboard_entities:
-            yield from Either(right=self.create_dashboard_service(dashboard))
-            yield from Either(right=self.create_chart_entity(dashboard))
-            yield from Either(right=self.create_dashboard_entity(dashboard))
+            yield from self.create_dashboard_service(dashboard)
+            yield from self.create_chart_entity(dashboard)
+            yield from self.create_dashboard_entity(dashboard)
 
     def create_user_entity(self, user) -> Iterable[Either[OMetaUserProfile]]:
         try:

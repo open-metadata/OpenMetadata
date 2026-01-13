@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import {
   Button,
   Col,
@@ -20,10 +19,10 @@ import {
   Table as AntdTable,
   Typography,
 } from 'antd';
-import { ColumnType } from 'antd/lib/table';
+import { ColumnsType, ColumnType } from 'antd/es/table';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import React, {
+import {
   forwardRef,
   Ref,
   useCallback,
@@ -32,20 +31,15 @@ import React, {
   useState,
 } from 'react';
 import { useAntdColumnResize } from 'react-antd-column-resize';
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
+import { Column } from 'react-antd-column-resize/dist/useAntdColumnResize/types';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column.svg';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-customize.svg';
+import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import {
   getCustomizeColumnDetails,
   getReorderedColumns,
 } from '../../../utils/CustomizeColumnUtils';
-import {
-  getTableColumnConfigSelections,
-  getTableExpandableConfig,
-  handleUpdateTableColumnSelections,
-} from '../../../utils/TableUtils';
+import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import Loader from '../Loader/Loader';
 import NextPrevious from '../NextPrevious/NextPrevious';
@@ -72,8 +66,7 @@ const Table = <T extends Record<string, unknown>>(
 ) => {
   const { t } = useTranslation();
   const { type } = useGenericContext();
-  const { currentUser } = useApplicationStore();
-  const [propsColumns, setPropsColumns] = useState<ColumnType<T>[]>([]);
+  const [propsColumns, setPropsColumns] = useState<ColumnsType<T>>([]);
   const [isDropdownVisible, setIsDropdownVisible] = useState<boolean>(false);
   const [dropdownColumnList, setDropdownColumnList] = useState<
     TableColumnDropdownList[]
@@ -82,9 +75,13 @@ const Table = <T extends Record<string, unknown>>(
     string[]
   >([]);
   const { resizableColumns, components, tableWidth } = useAntdColumnResize(
-    () => ({ columns: propsColumns, minWidth: 80 }),
+    () => ({ columns: propsColumns as Column[], minWidth: 80 }),
     [propsColumns]
   );
+  const {
+    preferences: { selectedEntityTableColumns },
+    setPreference,
+  } = useCurrentUserPreferences();
 
   const isLoading = useMemo(
     () => (loading as SpinProps)?.spinning ?? (loading as boolean) ?? false,
@@ -93,9 +90,10 @@ const Table = <T extends Record<string, unknown>>(
 
   const entityKey = useMemo(() => entityType ?? type, [type, entityType]);
 
-  // Check if the table is in Full View mode, if so, the dropdown and Customize Column feature is not available
-  const isFullViewTable = useMemo(
-    () => isEmpty(rest.staticVisibleColumns) && isEmpty(defaultVisibleColumns),
+  // Check if the table is customizable, if so, the dropdown and Customize Column feature is available
+  const isCustomizeColumnEnable = useMemo(
+    () =>
+      !isEmpty(rest.staticVisibleColumns) && !isEmpty(defaultVisibleColumns),
     [rest.staticVisibleColumns, defaultVisibleColumns]
   );
 
@@ -109,28 +107,47 @@ const Table = <T extends Record<string, unknown>>(
 
   const handleColumnItemSelect = useCallback(
     (key: string, selected: boolean) => {
-      const updatedSelections = handleUpdateTableColumnSelections(
-        selected,
-        key,
-        columnDropdownSelections,
-        currentUser?.fullyQualifiedName ?? '',
-        entityKey
-      );
+      const updatedSelections = selected
+        ? [...columnDropdownSelections, key]
+        : columnDropdownSelections.filter((item) => item !== key);
+
+      setPreference({
+        selectedEntityTableColumns: {
+          ...selectedEntityTableColumns,
+          [entityKey]: updatedSelections,
+        },
+      });
 
       setColumnDropdownSelections(updatedSelections);
     },
-    [columnDropdownSelections, entityKey]
+    [columnDropdownSelections, selectedEntityTableColumns, entityKey]
   );
 
   const handleBulkColumnAction = useCallback(() => {
     if (dropdownColumnList.length === columnDropdownSelections.length) {
       setColumnDropdownSelections([]);
+      setPreference({
+        selectedEntityTableColumns: {
+          ...selectedEntityTableColumns,
+          [entityKey]: [],
+        },
+      });
     } else {
-      setColumnDropdownSelections(
-        dropdownColumnList.map((option) => option.value)
-      );
+      const columns = dropdownColumnList.map((option) => option.value);
+      setColumnDropdownSelections(columns);
+      setPreference({
+        selectedEntityTableColumns: {
+          ...selectedEntityTableColumns,
+          [entityKey]: columns,
+        },
+      });
     }
-  }, [dropdownColumnList, columnDropdownSelections]);
+  }, [
+    dropdownColumnList,
+    columnDropdownSelections,
+    selectedEntityTableColumns,
+    entityKey,
+  ]);
 
   const menu = useMemo(
     () => ({
@@ -202,17 +219,15 @@ const Table = <T extends Record<string, unknown>>(
   };
 
   useEffect(() => {
-    if (!isFullViewTable) {
+    if (isCustomizeColumnEnable) {
       setDropdownColumnList(
         getCustomizeColumnDetails<T>(rest.columns, rest.staticVisibleColumns)
       );
     }
-  }, [isFullViewTable, rest.columns, rest.staticVisibleColumns]);
+  }, [isCustomizeColumnEnable, rest.columns, rest.staticVisibleColumns]);
 
   useEffect(() => {
-    if (isFullViewTable) {
-      setPropsColumns(rest.columns ?? []);
-    } else {
+    if (isCustomizeColumnEnable) {
       const filteredColumns = (rest.columns ?? []).filter(
         (item) =>
           columnDropdownSelections.includes(item.key as string) ||
@@ -220,30 +235,35 @@ const Table = <T extends Record<string, unknown>>(
       );
 
       setPropsColumns(getReorderedColumns(dropdownColumnList, filteredColumns));
+    } else {
+      setPropsColumns(rest.columns ?? []);
     }
   }, [
-    isFullViewTable,
+    isCustomizeColumnEnable,
     rest.columns,
     columnDropdownSelections,
     rest.staticVisibleColumns,
   ]);
 
   useEffect(() => {
-    const selections = getTableColumnConfigSelections(
-      currentUser?.fullyQualifiedName ?? '',
-      entityKey,
-      isFullViewTable,
-      defaultVisibleColumns
-    );
-
-    setColumnDropdownSelections(selections);
-  }, [entityKey, defaultVisibleColumns, isFullViewTable]);
+    if (isCustomizeColumnEnable) {
+      setColumnDropdownSelections(
+        selectedEntityTableColumns?.[entityKey] ?? defaultVisibleColumns ?? []
+      );
+    }
+  }, [
+    isCustomizeColumnEnable,
+    selectedEntityTableColumns,
+    entityKey,
+    defaultVisibleColumns,
+  ]);
 
   return (
     <Row className={classNames('table-container', rest.containerClassName)}>
       <Col
         className={classNames({
-          'p-y-md': searchProps ?? rest.extraTableFilters ?? !isFullViewTable,
+          'p-y-md':
+            searchProps ?? rest.extraTableFilters ?? isCustomizeColumnEnable,
         })}
         span={24}>
         <Row className="p-x-md">
@@ -253,13 +273,13 @@ const Table = <T extends Record<string, unknown>>(
                 {...searchProps}
                 removeMargin
                 placeholder={searchProps?.placeholder ?? t('label.search')}
-                searchValue={searchProps?.value}
-                typingInterval={searchProps?.searchDebounceTime ?? 500}
+                searchValue={searchProps?.searchValue}
+                typingInterval={searchProps?.typingInterval ?? 500}
                 onSearch={handleSearchAction}
               />
             </Col>
           ) : null}
-          {(rest.extraTableFilters || !isFullViewTable) && (
+          {(rest.extraTableFilters || isCustomizeColumnEnable) && (
             <Col
               className={classNames(
                 'd-flex justify-end items-center gap-5',
@@ -267,25 +287,24 @@ const Table = <T extends Record<string, unknown>>(
               )}
               span={searchProps ? 12 : 24}>
               {rest.extraTableFilters}
-              {!isFullViewTable && (
-                <DndProvider backend={HTML5Backend}>
-                  <Dropdown
-                    className="custom-column-dropdown-menu text-primary"
-                    menu={menu}
-                    open={isDropdownVisible}
-                    placement="bottomRight"
-                    trigger={['click']}
-                    onOpenChange={setIsDropdownVisible}>
-                    <Button
-                      className="remove-button-background-hover"
-                      data-testid="column-dropdown"
-                      icon={<Icon component={ColumnIcon} />}
-                      size="small"
-                      type="text">
-                      {t('label.column-plural')}
-                    </Button>
-                  </Dropdown>
-                </DndProvider>
+              {isCustomizeColumnEnable && (
+                <Dropdown
+                  className="custom-column-dropdown-menu"
+                  menu={menu}
+                  open={isDropdownVisible}
+                  placement="bottomRight"
+                  trigger={['click']}
+                  onOpenChange={setIsDropdownVisible}>
+                  <Button
+                    className="remove-button-background-hover"
+                    data-testid="column-dropdown"
+                    icon={<ColumnIcon />}
+                    size="small"
+                    title={t('label.show-or-hide-column-plural')}
+                    type="text">
+                    {t('label.customize')}
+                  </Button>
+                </Dropdown>
               )}
             </Col>
           )}
@@ -295,7 +314,7 @@ const Table = <T extends Record<string, unknown>>(
       <Col span={24}>
         <AntdTable
           {...rest}
-          columns={propsColumns}
+          columns={propsColumns as unknown as ColumnType<T>[]}
           expandable={{
             ...getTableExpandableConfig<T>(),
             ...rest.expandable,

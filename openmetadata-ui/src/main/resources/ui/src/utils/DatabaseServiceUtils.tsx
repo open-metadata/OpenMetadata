@@ -12,8 +12,7 @@
  */
 
 import { cloneDeep } from 'lodash';
-import React from 'react';
-import { useHistory } from 'react-router-dom';
+import { NavigateFunction } from 'react-router-dom';
 import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../assets/svg/ic-import.svg';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
@@ -64,12 +63,13 @@ import snowflakeConnection from '../jsons/connectionSchemas/connections/database
 import sqliteConnection from '../jsons/connectionSchemas/connections/database/sqliteConnection.json';
 import synapseConnection from '../jsons/connectionSchemas/connections/database/synapseConnection.json';
 import teradataConnection from '../jsons/connectionSchemas/connections/database/teradataConnection.json';
+import timescaleConnection from '../jsons/connectionSchemas/connections/database/timescaleConnection.json';
 import trinoConnection from '../jsons/connectionSchemas/connections/database/trinoConnection.json';
 import unityCatalogConnection from '../jsons/connectionSchemas/connections/database/unityCatalogConnection.json';
 import verticaConnection from '../jsons/connectionSchemas/connections/database/verticaConnection.json';
 import { exportDatabaseServiceDetailsInCSV } from '../rest/serviceAPI';
 import { getEntityImportPath } from './EntityUtils';
-import i18n from './i18next/LocalUtil';
+import { t } from './i18next/LocalUtil';
 
 export const getDatabaseConfig = (type: DatabaseServiceType) => {
   let schema = {};
@@ -296,6 +296,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
 
       break;
     }
+    case DatabaseServiceType.Timescale: {
+      schema = timescaleConnection;
+
+      break;
+    }
     default: {
       schema = {};
 
@@ -309,11 +314,10 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
 export const ExtraDatabaseServiceDropdownOptions = (
   fqn: string,
   permission: OperationPermission,
-  deleted: boolean
+  deleted: boolean,
+  navigate: NavigateFunction
 ) => {
   const { showModal } = useEntityExportModalProvider();
-  const history = useHistory();
-
   const { ViewAll, EditAll } = permission;
 
   return [
@@ -322,16 +326,16 @@ export const ExtraDatabaseServiceDropdownOptions = (
           {
             label: (
               <ManageButtonItemLabel
-                description={i18n.t('message.import-entity-help', {
-                  entity: i18n.t('label.entity-service', {
-                    entity: i18n.t('label.database'),
+                description={t('message.import-entity-help', {
+                  entity: t('label.entity-service', {
+                    entity: t('label.database'),
                   }),
                 })}
                 icon={ImportIcon}
                 id="import-button"
-                name={i18n.t('label.import')}
+                name={t('label.import')}
                 onClick={() =>
-                  history.push(
+                  navigate(
                     getEntityImportPath(EntityType.DATABASE_SERVICE, fqn)
                   )
                 }
@@ -346,14 +350,14 @@ export const ExtraDatabaseServiceDropdownOptions = (
           {
             label: (
               <ManageButtonItemLabel
-                description={i18n.t('message.export-entity-help', {
-                  entity: i18n.t('label.entity-service', {
-                    entity: i18n.t('label.database'),
+                description={t('message.export-entity-help', {
+                  entity: t('label.entity-service', {
+                    entity: t('label.database'),
                   }),
                 })}
                 icon={ExportIcon}
                 id="export-button"
-                name={i18n.t('label.export')}
+                name={t('label.export')}
                 onClick={() =>
                   showModal({
                     name: fqn,

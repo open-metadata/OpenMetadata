@@ -16,15 +16,17 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.service.Entity.API_COLLCECTION;
+import static org.openmetadata.service.Entity.API_COLLECTION;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiPredicate;
@@ -42,6 +44,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
@@ -51,7 +54,6 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
 
@@ -64,6 +66,9 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
         "",
         "");
     supportsSearch = true;
+
+    // Register bulk field fetchers for efficient database operations
+    fieldFetchers.put(FIELD_TAGS, this::fetchAndSetSchemaFieldTags);
   }
 
   @Override
@@ -85,11 +90,21 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
 
   @Override
   public void setInheritedFields(APIEndpoint endpoint, Fields fields) {
-    APICollection apiCollection =
-        Entity.getEntity(
-            API_COLLCECTION, endpoint.getApiCollection().getId(), "owners,domain", ALL);
-    inheritOwners(endpoint, fields, apiCollection);
-    inheritDomain(endpoint, fields, apiCollection);
+    // Ensure apiCollection is populated before accessing it
+    if (endpoint.getApiCollection() == null) {
+      EntityReference apiCollectionRef = getContainer(endpoint.getId());
+      if (apiCollectionRef != null) {
+        endpoint.withApiCollection(apiCollectionRef);
+      }
+    }
+
+    if (endpoint.getApiCollection() != null) {
+      APICollection apiCollection =
+          Entity.getEntity(
+              API_COLLECTION, endpoint.getApiCollection().getId(), "owners,domains", ALL);
+      inheritOwners(endpoint, fields, apiCollection);
+      inheritDomains(endpoint, fields, apiCollection);
+    }
   }
 
   @Override
@@ -163,6 +178,54 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
   @Override
   public void clearFields(APIEndpoint apiEndpoint, Fields fields) {
     /* Nothing to do */
+  }
+
+  // Individual field fetchers registered in constructor
+  private void fetchAndSetSchemaFieldTags(List<APIEndpoint> apiEndpoints, Fields fields) {
+    if (!fields.contains(FIELD_TAGS) || apiEndpoints == null || apiEndpoints.isEmpty()) {
+      return;
+    }
+
+    // First, fetch endpoint-level tags (important for search indexing)
+    List<String> entityFQNs =
+        apiEndpoints.stream().map(APIEndpoint::getFullyQualifiedName).toList();
+    Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
+    for (APIEndpoint endpoint : apiEndpoints) {
+      endpoint.setTags(
+          addDerivedTagsGracefully(
+              tagsMap.getOrDefault(endpoint.getFullyQualifiedName(), Collections.emptyList())));
+    }
+
+    // Then, if schemas are requested, also fetch schema field tags
+    if (fields.contains("requestSchema") || fields.contains("responseSchema")) {
+      // Bulk fetch tags for request schemas
+      List<APIEndpoint> endpointsWithRequestSchema =
+          apiEndpoints.stream()
+              .filter(e -> e.getRequestSchema() != null)
+              .collect(java.util.stream.Collectors.toList());
+
+      if (!endpointsWithRequestSchema.isEmpty()) {
+        bulkPopulateEntityFieldTags(
+            endpointsWithRequestSchema,
+            entityType,
+            e -> e.getRequestSchema().getSchemaFields(),
+            e -> e.getFullyQualifiedName() + ".requestSchema");
+      }
+
+      // Bulk fetch tags for response schemas
+      List<APIEndpoint> endpointsWithResponseSchema =
+          apiEndpoints.stream()
+              .filter(e -> e.getResponseSchema() != null)
+              .collect(java.util.stream.Collectors.toList());
+
+      if (!endpointsWithResponseSchema.isEmpty()) {
+        bulkPopulateEntityFieldTags(
+            endpointsWithResponseSchema,
+            entityType,
+            e -> e.getResponseSchema().getSchemaFields(),
+            e -> e.getFullyQualifiedName() + ".responseSchema");
+      }
+    }
   }
 
   @Override

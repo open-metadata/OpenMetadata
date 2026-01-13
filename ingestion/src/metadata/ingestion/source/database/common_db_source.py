@@ -217,15 +217,34 @@ class CommonDbSourceService(
             else None
         )
 
-        yield Either(
-            right=CreateDatabaseRequest(
-                name=EntityName(database_name),
-                service=FullyQualifiedEntityName(self.context.get().database_service),
-                description=description,
-                sourceUrl=source_url,
-                tags=self.get_database_tag_labels(database_name=database_name),
+        # Store database owner in context BEFORE yielding (for multi-threading)
+        # This ensures worker threads get the correct parent_owner when they copy context
+        database_owner_ref = self.get_database_owner_ref(database_name)
+        if database_owner_ref and database_owner_ref.root:
+            # Store ALL owner names (support multiple owners for inheritance)
+            database_owner_names = [owner.name for owner in database_owner_ref.root]
+            # If only one owner, store as string; otherwise store as list
+            database_owner = (
+                database_owner_names[0]
+                if len(database_owner_names) == 1
+                else database_owner_names
             )
+            self.context.get().upsert("database_owner", database_owner)
+        else:
+            # Clear context to avoid residual owner from previous database
+            self.context.get().upsert("database_owner", None)
+
+        database_request = CreateDatabaseRequest(
+            name=EntityName(database_name),
+            service=FullyQualifiedEntityName(self.context.get().database_service),
+            description=description,
+            sourceUrl=source_url,
+            tags=self.get_database_tag_labels(database_name=database_name),
+            owners=database_owner_ref,
         )
+
+        yield Either(right=database_request)
+        self.register_record_database_request(database_request=database_request)
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
         if self.service_connection.__dict__.get("databaseSchema"):
@@ -264,22 +283,41 @@ class CommonDbSourceService(
             else None
         )
 
-        yield Either(
-            right=CreateDatabaseSchemaRequest(
-                name=EntityName(schema_name),
-                database=FullyQualifiedEntityName(
-                    fqn.build(
-                        metadata=self.metadata,
-                        entity_type=Database,
-                        service_name=self.context.get().database_service,
-                        database_name=self.context.get().database,
-                    )
-                ),
-                description=description,
-                sourceUrl=source_url,
-                tags=self.get_schema_tag_labels(schema_name=schema_name),
+        # Store schema owner in context BEFORE yielding (for multi-threading)
+        # This ensures worker threads get the correct parent_owner when they copy context
+        schema_owner_ref = self.get_schema_owner_ref(schema_name)
+        if schema_owner_ref and schema_owner_ref.root:
+            # Store ALL owner names (support multiple owners for inheritance)
+            schema_owner_names = [owner.name for owner in schema_owner_ref.root]
+            # If only one owner, store as string; otherwise store as list
+            schema_owner = (
+                schema_owner_names[0]
+                if len(schema_owner_names) == 1
+                else schema_owner_names
             )
+            self.context.get().upsert("schema_owner", schema_owner)
+        else:
+            # Clear schema_owner if not present, tables will inherit from database_owner
+            self.context.get().upsert("schema_owner", None)
+
+        schema_request = CreateDatabaseSchemaRequest(
+            name=EntityName(schema_name),
+            database=FullyQualifiedEntityName(
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                )
+            ),
+            description=description,
+            sourceUrl=source_url,
+            tags=self.get_schema_tag_labels(schema_name=schema_name),
+            owners=schema_owner_ref,
         )
+
+        yield Either(right=schema_request)
+        self.register_record_schema_request(schema_request=schema_request)
 
     @staticmethod
     @calculate_execution_time()

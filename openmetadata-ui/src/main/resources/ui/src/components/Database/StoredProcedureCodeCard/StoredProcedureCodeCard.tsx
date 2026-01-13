@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Card } from 'antd';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { CSMode } from '../../../enums/codemirror.enum';
 import {
   StoredProcedure,

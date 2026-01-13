@@ -13,7 +13,8 @@
 import { SuggestionProps } from '@tiptap/suggestion';
 import { Space, Typography } from 'antd';
 import classNames from 'classnames';
-import React, { forwardRef, useImperativeHandle, useState } from 'react';
+import { isEmpty } from 'lodash';
+import { forwardRef, useImperativeHandle, useState } from 'react';
 import { isInViewport } from '../../../../utils/BlockEditorUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { ExtensionRef, SuggestionItem } from '../../BlockEditor.interface';
@@ -39,7 +40,7 @@ export default forwardRef<
     setSelectedIndex((prev) => {
       const newIndex = (prev + items.length - 1) % items.length;
       const commandListing = document.getElementById(
-        `hashtag-item-${items[newIndex].id}`
+        `hashtag-item-${items[newIndex]?.id}`
       );
       const commandList = document.getElementById('hashtag-viewport');
       if (
@@ -58,7 +59,7 @@ export default forwardRef<
     setSelectedIndex((prev) => {
       const newIndex = (prev + 1) % items.length;
       const commandListing = document.getElementById(
-        `hashtag-item-${items[newIndex].id}`
+        `hashtag-item-${items[newIndex]?.id}`
       );
       const commandList = document.getElementById('hashtag-viewport');
       if (
@@ -79,6 +80,11 @@ export default forwardRef<
 
   useImperativeHandle(ref, () => ({
     onKeyDown: ({ event }) => {
+      // Allow default behavior when there are no items
+      if (isEmpty(items)) {
+        return false;
+      }
+
       if (event.key === 'ArrowUp') {
         upHandler();
 
@@ -116,6 +122,7 @@ export default forwardRef<
             className={classNames('w-full cursor-pointer hashtag-item', {
               'bg-grey-2': index === selectedIndex,
             })}
+            data-testid={`hash-mention-${item.label}`}
             direction="vertical"
             id={`hashtag-item-${item.id}`}
             key={item.id}

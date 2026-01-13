@@ -12,7 +12,6 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { TagsTabs } from './TagsTabs';
 
 jest.mock('./TagSuggestion', () =>

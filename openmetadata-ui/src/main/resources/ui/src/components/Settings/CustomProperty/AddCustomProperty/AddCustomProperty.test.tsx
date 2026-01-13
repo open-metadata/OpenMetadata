@@ -11,12 +11,10 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import AddCustomProperty from './AddCustomProperty';
 
-const mockGoBack = jest.fn();
+const mockNavigate = jest.fn();
 
 const mockPropertyTypes = [
   {
@@ -179,7 +177,7 @@ const mockPropertyTypes = [
 ];
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({ goBack: mockGoBack })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockReturnValue({
     entityTypeFQN: 'entityTypeFQN',
   }),
@@ -256,8 +254,8 @@ describe('Test Add Custom Property Component', () => {
 
     const backButton = screen.getByTestId('back-button');
 
-    userEvent.click(backButton);
+    fireEvent.click(backButton);
 
-    expect(mockGoBack).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith(-1);
   });
 });

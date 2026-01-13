@@ -13,7 +13,7 @@
 import { Form, Modal, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase, unionBy } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { CreateTestCaseResolutionStatus } from '../../../generated/api/tests/createTestCaseResolutionStatus';
@@ -33,6 +33,7 @@ import {
   PAGE_SIZE_MEDIUM,
   VALIDATION_MESSAGES,
 } from '../../../constants/constants';
+import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../../constants/TestSuite.constant';
 import { EntityReference } from '../../../generated/tests/testCase';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
@@ -83,7 +84,7 @@ export const TestCaseStatusModal = ({
         : Object.values(TestCaseResolutionStatusTypes);
 
     return status.map((value) => ({
-      label: value,
+      label: TEST_CASE_RESOLUTION_STATUS_LABELS[value],
       value,
     }));
   }, [data]);
@@ -175,7 +176,7 @@ export const TestCaseStatusModal = ({
         EntityType.USER
       );
       setUsersList(filterData);
-    } catch (error) {
+    } catch {
       setUsersList([]);
     }
   }, []);
@@ -210,7 +211,7 @@ export const TestCaseStatusModal = ({
         htmlType: 'submit',
         loading: isLoading,
       }}
-      okText={t('label.submit')}
+      okText={t('label.save')}
       open={open}
       title={t('label.update-entity', { entity: t('label.status') })}
       width={750}

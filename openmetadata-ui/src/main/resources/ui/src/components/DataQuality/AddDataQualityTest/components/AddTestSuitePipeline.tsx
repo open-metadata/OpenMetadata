@@ -14,10 +14,13 @@ import { Col, Form, Row } from 'antd';
 import { FormProviderProps } from 'antd/lib/form/context';
 import { isEmpty, isString } from 'lodash';
 import QueryString from 'qs';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
-import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
+import { useNavigate } from 'react-router-dom';
+import {
+  DEFAULT_SCHEDULE_CRON_DAILY,
+  SCHEDULAR_OPTIONS,
+} from '../../../../constants/Schedular.constants';
 import { TestCase } from '../../../../generated/tests/testCase';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
@@ -47,7 +50,7 @@ const AddTestSuitePipeline = ({
   testSuite,
 }: AddTestSuitePipelineProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn, ingestionFQN } = useFqn();
   const location = useCustomLocation();
 
@@ -100,7 +103,7 @@ const AddTestSuitePipeline = ({
   ];
 
   const handleCancelBtn = () => {
-    history.goBack();
+    navigate(-1);
   };
 
   const onFinish = (
@@ -140,14 +143,28 @@ const AddTestSuitePipeline = ({
 
   const raiseOnErrorFormField = useMemo(() => getRaiseOnErrorFormField(), []);
 
+  const schedularOptionsTranslated = useMemo(
+    () =>
+      SCHEDULAR_OPTIONS.map((option) => ({
+        ...option,
+        title: t(option.title),
+        description: t(option.description),
+      })),
+    [t]
+  );
+
   return (
     <Form.Provider onFormChange={handleFromChange}>
       <ScheduleInterval
+        buttonProps={{
+          okText: isEditMode ? t('label.save') : t('label.create'),
+        }}
         debugLog={{ allow: true }}
         defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
         includePeriodOptions={includePeriodOptions}
         initialData={initialData}
         isEditMode={isEditMode}
+        schedularOptions={schedularOptionsTranslated}
         status={isLoading ? 'waiting' : 'initial'}
         topChildren={
           <>

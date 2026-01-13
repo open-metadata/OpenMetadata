@@ -24,6 +24,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.jdbi3.TestSuiteRepository;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
 
@@ -36,6 +37,9 @@ import org.openmetadata.service.util.EntityUtil;
 @Builder
 public class TestCaseResourceContext implements ResourceContextInterface {
   private final EntityLink entityLink;
+  private final UUID testSuiteId;
+  private final String entityFQN;
+  private final String entityType;
   private final UUID id;
   private final String name;
   private EntityInterface
@@ -64,9 +68,9 @@ public class TestCaseResourceContext implements ResourceContextInterface {
   }
 
   @Override
-  public EntityReference getDomain() {
+  public List<EntityReference> getDomains() {
     resolveEntity();
-    return entity == null ? null : entity.getDomain();
+    return entity == null ? null : entity.getDomains();
   }
 
   private EntityInterface resolveEntity() {
@@ -75,11 +79,20 @@ public class TestCaseResourceContext implements ResourceContextInterface {
         entity = resolveEntityByEntityLink(entityLink);
       } else if (id != null) {
         entity = resolveEntityById(id);
+      } else if (testSuiteId != null) {
+        entity = resolveTestSuiteById(testSuiteId);
+      } else if (entityFQN != null && entityType != null) {
+        entity = resolveEntityFQN(entityFQN, entityType);
       } else {
         entity = resolveEntityByName(name);
       }
     }
     return entity;
+  }
+
+  private static EntityInterface resolveTestSuiteById(UUID id) {
+    TestSuiteRepository dao = (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+    return dao.get(null, id, dao.getFields("owners,tags,domains"), Include.ALL, true);
   }
 
   private static EntityInterface resolveEntityByEntityLink(EntityLink entityLink) {
@@ -91,6 +104,9 @@ public class TestCaseResourceContext implements ResourceContextInterface {
     }
     if (entityRepository.isSupportsTags()) {
       fields = EntityUtil.addField(fields, Entity.FIELD_TAGS);
+    }
+    if (entityRepository.isSupportsDomains()) {
+      fields = EntityUtil.addField(fields, Entity.FIELD_DOMAINS);
     }
     return entityRepository.getByName(
         null, entityLink.getEntityFQN(), entityRepository.getFields(fields));
@@ -107,5 +123,10 @@ public class TestCaseResourceContext implements ResourceContextInterface {
     TestCaseRepository dao = (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
     TestCase testCase = dao.getByName(null, fqn, dao.getFields("entityLink"), Include.ALL, true);
     return resolveEntityByEntityLink(EntityLink.parse(testCase.getEntityLink()));
+  }
+
+  private static EntityInterface resolveEntityFQN(String entityFQN, String entityType) {
+    EntityRepository<? extends EntityInterface> dao = Entity.getEntityRepository(entityType);
+    return dao.getByName(null, entityFQN, dao.getFields("owners,tags,domains"));
   }
 }

@@ -13,17 +13,8 @@
 
 import { EyeFilled, MoreOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Dropdown, Input, Modal, Space } from 'antd';
-import {
-  cloneDeep,
-  isEmpty,
-  isNil,
-  isUndefined,
-  toString,
-  uniqueId,
-} from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
+import { cloneDeep, isEmpty, isNil, isUndefined, uniqueId } from 'lodash';
+import { useCallback, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import {
@@ -50,6 +41,7 @@ import {
   getCustomizableWidgetByPage,
   getDefaultTabs,
   getDefaultWidgetForTab,
+  getTabDisplayName,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { TabItem } from '../../common/DraggableTabs/DraggableTabs';
@@ -58,7 +50,10 @@ import EmptyWidgetPlaceholder from '../../MyData/CustomizableComponents/EmptyWid
 import { LeftPanelContainer } from '../GenericTab/LeftPanelContainer';
 import { GenericWidget } from '../GenericWidget/GenericWidget';
 
-const ReactGridLayout = WidthProvider(RGL);
+// Create a properly typed ReactGridLayout component
+const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
+  ReactGridLayout.ReactGridLayoutProps & { children?: React.ReactNode }
+>;
 
 export type CustomizeTabWidgetProps = WidgetCommonProps;
 
@@ -276,12 +271,21 @@ export const CustomizeTabWidget = () => {
     });
   };
 
+  /**
+   * Memoized widgets array optimized for drag and drop performance
+   * Re-renders only when tabLayouts or leftPanelWidget changes, preventing unnecessary updates
+   * during drag operations
+   */
   const widgets = useMemo(
     // Re-render upon leftPanelWidget change
     () => getWidgetFromLayout(tabLayouts),
     [tabLayouts, leftPanelWidget]
   );
 
+  /**
+   * Layout update handler for drag and drop operations
+   * Updates the current page with the new layout while preserving left panel widget children
+   */
   const handleLayoutUpdate = useCallback(
     (updatedLayout: Layout[]) => {
       if (!isEmpty(tabLayouts) && !isEmpty(updatedLayout)) {
@@ -376,46 +380,44 @@ export const CustomizeTabWidget = () => {
             </Button>
           }
           title={t('label.customize-tab-plural')}>
-          <DndProvider backend={HTML5Backend}>
-            <div className="d-flex flex-wrap gap-4">
-              {items.map((item, index) => (
-                <TabItem
-                  index={index}
-                  item={item}
-                  key={item.id}
-                  moveTab={moveTab}
-                  shouldHide={systemTabIds.includes(item.id)}
-                  onEdit={onChange}
-                  onRemove={remove}
-                  onRename={handleTabEditClick}
-                />
-              ))}
-              {hiddenTabs.map((item) => (
-                <Dropdown
-                  key={item.id}
-                  menu={{
-                    items: [
-                      {
-                        label: t('label.show'),
-                        key: 'show',
-                        icon: <EyeFilled />,
-                      },
-                    ],
-                    onClick: () => add(item),
-                  }}
-                  trigger={['click']}>
-                  <Button
-                    className="draggable-hidden-tab-item bg-grey"
-                    data-testid={`tab-${item.displayName}`}>
-                    <Space>
-                      {getEntityName(item)}
-                      <MoreOutlined />
-                    </Space>
-                  </Button>
-                </Dropdown>
-              ))}
-            </div>
-          </DndProvider>
+          <div className="d-flex flex-wrap gap-4">
+            {items.map((item, index) => (
+              <TabItem
+                index={index}
+                item={item}
+                key={item.id}
+                moveTab={moveTab}
+                shouldHide={systemTabIds.includes(item.id)}
+                onEdit={onChange}
+                onRemove={remove}
+                onRename={handleTabEditClick}
+              />
+            ))}
+            {hiddenTabs.map((item) => (
+              <Dropdown
+                key={item.id}
+                menu={{
+                  items: [
+                    {
+                      label: t('label.show'),
+                      key: 'show',
+                      icon: <EyeFilled />,
+                    },
+                  ],
+                  onClick: () => add(item),
+                }}
+                trigger={['click']}>
+                <Button
+                  className="draggable-hidden-tab-item bg-grey"
+                  data-testid={`tab-${item.name}`}>
+                  <Space>
+                    {getTabDisplayName(item)}
+                    <MoreOutlined />
+                  </Space>
+                </Button>
+              </Dropdown>
+            ))}
+          </div>
         </Card>
       </Col>
       <Col span={24}>
@@ -437,11 +439,20 @@ export const CustomizeTabWidget = () => {
               items.find((item) => item.id === activeKey) as Tab
             ),
           })}>
+          {/* 
+            ReactGridLayout with optimized drag and drop behavior for tab customization
+            - verticalCompact: Packs widgets tightly without gaps
+            - preventCollision={false}: Enables automatic widget repositioning on collision
+            - useCSSTransforms: Uses CSS transforms for better performance during drag
+          */}
           <ReactGridLayout
+            useCSSTransforms
+            verticalCompact
             className="grid-container"
             cols={TAB_GRID_MAX_COLUMNS}
             draggableHandle=".drag-widget-icon"
             margin={[16, 16]}
+            preventCollision={false}
             rowHeight={100}
             onLayoutChange={handleLayoutUpdate}>
             {widgets}
@@ -487,7 +498,7 @@ export const CustomizeTabWidget = () => {
           onOk={handleRenameSave}>
           <Input
             autoFocus
-            value={toString(getEntityName(editableItem))}
+            value={getTabDisplayName(editableItem)}
             onChange={handleChange}
           />
         </Modal>

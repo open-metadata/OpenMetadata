@@ -13,16 +13,9 @@
 
 import { Col, Row, Typography } from 'antd';
 import { isUndefined } from 'lodash';
-import QueryString from 'qs';
-import {
-  default as React,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
 import { mockTablePermission } from '../../../../constants/mockTourData.constants';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
@@ -32,7 +25,7 @@ import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLoca
 import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { TableProfilerTab } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
+import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import './table-summary.less';
 import { TableSummaryProps } from './TableSummary.interface';
 
@@ -42,7 +35,7 @@ function TableSummary({
 }: Readonly<TableSummaryProps>) {
   const { t } = useTranslation();
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const isTourPage = location.pathname.includes(ROUTES.TOUR);
 
   const [testSuiteSummary, setTestSuiteSummary] = useState<TestSummary>();
@@ -75,16 +68,14 @@ function TableSummary({
   };
 
   const handleDqRedirection = () => {
-    history.push({
-      pathname: getEntityDetailsPath(
+    navigate(
+      getEntityDetailsPath(
         EntityType.TABLE,
         tableDetails.fullyQualifiedName ?? '',
-        EntityTabs.PROFILER
-      ),
-      search: QueryString.stringify({
-        activeTab: TableProfilerTab.DATA_QUALITY,
-      }),
-    });
+        EntityTabs.PROFILER,
+        ProfilerTabPath.DATA_QUALITY
+      )
+    );
   };
 
   const testCasesSummary = useMemo(() => {

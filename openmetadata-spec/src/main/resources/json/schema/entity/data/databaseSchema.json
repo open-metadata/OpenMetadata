@@ -8,7 +8,7 @@
   "javaType": "org.openmetadata.schema.entity.data.DatabaseSchema",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
 "definitions": {
-   
+
   },
   "properties": {
     "id": {
@@ -46,6 +46,10 @@
     "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
     },
     "href": {
       "description": "Link to the resource corresponding to this entity.",
@@ -109,9 +113,9 @@
       "description": "Source URL of database schema.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
-    "domain": {
-      "description": "Domain the Database Schema belongs to. When not set, the Schema inherits the domain from the database it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains": {
+      "description": "Domains the Database Schema belongs to. When not set, the Schema inherits the domain from the database it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "votes": {
       "description": "Votes on the entity.",
@@ -166,6 +170,10 @@
           "default": true
         }
       }
+    },
+    "entityStatus": {
+      "description": "Status of the DatabaseSchema.",
+      "$ref": "../../type/status.json"
     }
   },
   "required": ["id", "name", "database", "service"],

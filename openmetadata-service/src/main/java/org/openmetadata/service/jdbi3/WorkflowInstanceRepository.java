@@ -10,11 +10,11 @@ import java.util.UUID;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.governance.WorkflowInstanceResource;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ResultList;
 
 public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<WorkflowInstance> {
   public WorkflowInstanceRepository() {
@@ -108,5 +108,22 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
     }
 
     getTimeSeriesDao().update(JsonUtils.pojoToJson(workflowInstance), workflowInstanceId);
+  }
+
+  /**
+   * Marks a workflow instance as FAILED with the given reason.
+   * Preserves audit trail instead of deleting the instance.
+   */
+  public void markInstanceAsFailed(UUID workflowInstanceId, String reason) {
+    WorkflowInstance workflowInstance =
+        JsonUtils.readValue(timeSeriesDao.getById(workflowInstanceId), WorkflowInstance.class);
+
+    WorkflowInstance updatedInstance =
+        workflowInstance
+            .withStatus(WorkflowInstance.WorkflowStatus.FAILURE)
+            .withException(reason)
+            .withEndedAt(System.currentTimeMillis());
+
+    getTimeSeriesDao().update(JsonUtils.pojoToJson(updatedInstance), workflowInstanceId);
   }
 }

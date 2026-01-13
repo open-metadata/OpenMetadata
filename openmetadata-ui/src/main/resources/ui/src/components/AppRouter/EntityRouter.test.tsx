@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
-import { MemoryRouter, Route } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import EntityRouter from './EntityRouter';
 
 jest.mock('../../pages/EntityVersionPage/EntityVersionPage.component', () => {
@@ -25,26 +25,32 @@ jest.mock('../../utils/ApplicationRoutesClassBase', () => {
   };
 });
 
-jest.mock('../../utils/EntityUtilClassBase', () => {
-  return {
-    getEntityDetailComponent: jest.fn((entityType) => {
-      return entityType === 'table' ? () => <>EntityDetails</> : null;
-    }),
-  };
-});
+jest.mock('../../utils/EntityUtilClassBase', () => ({
+  getEntityDetailComponent: jest.fn().mockImplementation((entityType) => {
+    if (entityType === 'table') {
+      return () => <>EntityDetails</>;
+    }
+
+    return null;
+  }),
+}));
+
+jest.mock('../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest.fn().mockImplementation(() => ({
+    entityType: 'table',
+  })),
+}));
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  Redirect: jest.fn(({ to }) => `Redirected to ${to}`),
+  Navigate: jest.fn(({ to }) => <div>Redirected to {to}</div>),
 }));
 
 describe('EntityRouter', () => {
   it('should render EntityVersionPage component for entity version details route', async () => {
     render(
-      <MemoryRouter initialEntries={['/table/testTable/versions/123']}>
-        <Route path="/:entityType">
-          <EntityRouter />
-        </Route>
+      <MemoryRouter initialEntries={['/testTable/versions/123']}>
+        <EntityRouter />
       </MemoryRouter>
     );
 
@@ -53,10 +59,8 @@ describe('EntityRouter', () => {
 
   it('should render EntityVersionPage component for entity version details route with tab', async () => {
     render(
-      <MemoryRouter initialEntries={['/table/testTable/versions/123/all']}>
-        <Route path="/:entityType">
-          <EntityRouter />
-        </Route>
+      <MemoryRouter initialEntries={['/testTable/versions/123/all']}>
+        <EntityRouter />
       </MemoryRouter>
     );
 
@@ -65,10 +69,8 @@ describe('EntityRouter', () => {
 
   it('should render EntityDetails component for entity details route', async () => {
     render(
-      <MemoryRouter initialEntries={['/table/testTable']}>
-        <Route path="/:entityType">
-          <EntityRouter />
-        </Route>
+      <MemoryRouter initialEntries={['/testTable']}>
+        <EntityRouter />
       </MemoryRouter>
     );
 
@@ -77,10 +79,8 @@ describe('EntityRouter', () => {
 
   it('should render EntityDetails component for entity details route with tab', async () => {
     render(
-      <MemoryRouter initialEntries={['/table/testTable/schema']}>
-        <Route path="/:entityType">
-          <EntityRouter />
-        </Route>
+      <MemoryRouter initialEntries={['/testTable/schema']}>
+        <EntityRouter />
       </MemoryRouter>
     );
 
@@ -89,10 +89,8 @@ describe('EntityRouter', () => {
 
   it('should render EntityDetails component for entity details route with tab & subtab', async () => {
     render(
-      <MemoryRouter initialEntries={['/table/testTable/activity_feed/tasks']}>
-        <Route path="/:entityType">
-          <EntityRouter />
-        </Route>
+      <MemoryRouter initialEntries={['/testTable/activity_feed/tasks']}>
+        <EntityRouter />
       </MemoryRouter>
     );
 
@@ -100,14 +98,16 @@ describe('EntityRouter', () => {
   });
 
   it('should render NotFound component for unknown route', () => {
+    (useRequiredParams as jest.Mock).mockReturnValue({
+      entityType: 'unknown',
+    });
+
     render(
       <MemoryRouter initialEntries={['/unknown']}>
-        <Route path="/:entityType">
-          <EntityRouter />
-        </Route>
+        <EntityRouter />
       </MemoryRouter>
     );
 
-    expect(screen.getByText(`Redirected to /404`)).toBeInTheDocument();
+    expect(screen.getByText('Redirected to /404')).toBeInTheDocument();
   });
 });

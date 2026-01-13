@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.util.OpenMetadataOperations.printToAsciiTable;
 
 import java.util.ArrayList;
@@ -26,23 +27,33 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
+import org.openmetadata.service.jdbi3.FeedRepository;
+import org.openmetadata.service.util.relationshipcleanup.DefaultRelationshipValidator;
+import org.openmetadata.service.util.relationshipcleanup.LineageRelationshipValidator;
+import org.openmetadata.service.util.relationshipcleanup.RelationshipValidator;
 
 @Slf4j
 public class EntityRelationshipCleanup {
 
   private final CollectionDAO collectionDAO;
-  private final Map<String, EntityRepository<?>> entityRepositories;
+  private final Map<String, EntityRepository<?>> entityRepositories = new HashMap<>();
+  private final Map<String, EntityTimeSeriesRepository<?>> entityTimeSeriesRepositoy =
+      new HashMap<>();
+  private final FeedRepository feedRepository;
   private final boolean dryRun;
 
   public EntityRelationshipCleanup(CollectionDAO collectionDAO, boolean dryRun) {
     this.collectionDAO = collectionDAO;
     this.dryRun = dryRun;
-    this.entityRepositories = new HashMap<>();
+    this.feedRepository = new FeedRepository();
     initializeEntityRepositories();
+    initializeTimeSeriesRepositories();
   }
 
   @Data
@@ -63,7 +74,7 @@ public class EntityRelationshipCleanup {
   @Builder
   @NoArgsConstructor
   @AllArgsConstructor
-  public static class CleanupResult {
+  public static class EntityCleanupResult {
     private int totalRelationshipsScanned;
     private int orphanedRelationshipsFound;
     private int relationshipsDeleted;
@@ -78,17 +89,28 @@ public class EntityRelationshipCleanup {
         EntityRepository<?> repository = Entity.getEntityRepository(entityType);
         entityRepositories.put(entityType, repository);
       } catch (EntityNotFoundException e) {
-        LOG.error("No repository found for entity type: {}", entityType);
+        LOG.debug("No repository found for entity type: {}", entityType);
       }
     }
   }
 
-  public CleanupResult performCleanup(int batchSize) {
+  private void initializeTimeSeriesRepositories() {
+    for (String entityType : Entity.getEntityList()) {
+      try {
+        EntityTimeSeriesRepository<?> repository = Entity.getEntityTimeSeriesRepository(entityType);
+        entityTimeSeriesRepositoy.put(entityType, repository);
+      } catch (EntityNotFoundException e) {
+        LOG.debug("No repository found for entity type: {}", entityType);
+      }
+    }
+  }
+
+  public EntityCleanupResult performCleanup(int batchSize) {
     LOG.info(
         "Starting entity relationship cleanup. Dry run: {}, Batch size: {}", dryRun, batchSize);
 
-    CleanupResult result =
-        CleanupResult.builder()
+    EntityCleanupResult result =
+        EntityCleanupResult.builder()
             .orphanedRelationships(new ArrayList<>())
             .orphansByEntityType(new HashMap<>())
             .orphansByRelationType(new HashMap<>())
@@ -173,24 +195,28 @@ public class EntityRelationshipCleanup {
   private OrphanedRelationship validateRelationship(
       CollectionDAO.EntityRelationshipObject relationship) {
     try {
-      UUID fromId = UUID.fromString(relationship.getFromId());
-      UUID toId = UUID.fromString(relationship.getToId());
       String fromEntity = relationship.getFromEntity();
       String toEntity = relationship.getToEntity();
-      boolean fromExists = entityExists(fromId, fromEntity);
-      boolean toExists = entityExists(toId, toEntity);
 
-      if (fromExists && toExists) {
+      if (!doEntityHaveAnyRepository(fromEntity)) {
+        LOG.error(
+            "No repository found for from entity type: {}, the entity will not be cleaned",
+            fromEntity);
         return null;
       }
 
-      String reason;
-      if (!fromExists && !toExists) {
-        reason = "Both fromEntity and toEntity do not exist";
-      } else if (!fromExists) {
-        reason = "fromEntity does not exist";
-      } else {
-        reason = "toEntity does not exist";
+      if (!doEntityHaveAnyRepository(toEntity)) {
+        LOG.error(
+            "No repository found for to entity type: {}, the entity will not be cleaned", toEntity);
+        return null;
+      }
+
+      RelationshipValidator validator = getValidatorForRelationship(relationship.getRelation());
+      RelationshipValidator.ValidationResult result =
+          validator.validate(relationship, this::entityExists);
+
+      if (!result.isOrphaned()) {
+        return null;
       }
 
       return OrphanedRelationship.builder()
@@ -199,7 +225,7 @@ public class EntityRelationshipCleanup {
           .fromEntity(fromEntity)
           .toEntity(toEntity)
           .relation(relationship.getRelation())
-          .reason(reason)
+          .reason(result.getReason())
           .relationshipName(getRelationshipName(relationship.getRelation()))
           .build();
 
@@ -222,30 +248,75 @@ public class EntityRelationshipCleanup {
     }
   }
 
+  private RelationshipValidator getValidatorForRelationship(int relation) {
+    if (relation == Relationship.UPSTREAM.ordinal()) {
+      return new LineageRelationshipValidator();
+    }
+    return new DefaultRelationshipValidator();
+  }
+
+  private boolean doEntityHaveAnyRepository(String entityType) {
+    return entityRepositories.containsKey(entityType)
+        || entityTimeSeriesRepositoy.containsKey(entityType)
+        || entityType.equals(Entity.THREAD);
+  }
+
   private boolean entityExists(UUID entityId, String entityType) {
+    if (entityRepositories.get(entityType) != null) {
+      return checkInEntityRepository(entityId, entityType);
+    }
+
+    if (entityTimeSeriesRepositoy.get(entityType) != null) {
+      return checkInEntityTimeSeriesRepository(entityId, entityType);
+    }
+
+    if (entityType.equals(Entity.THREAD)) {
+      return checkInFeedRepository(entityId);
+    }
+
+    return true;
+  }
+
+  private boolean checkInEntityRepository(UUID entityId, String entityType) {
     try {
       EntityRepository<?> repository = entityRepositories.get(entityType);
-      if (repository == null) {
-        LOG.debug("No repository found for entity type: {}", entityType);
-        return false;
-      }
-      repository.get(null, entityId, EntityUtil.Fields.EMPTY_FIELDS);
+      repository.get(null, entityId, EntityUtil.Fields.EMPTY_FIELDS, ALL, false);
       return true;
     } catch (EntityNotFoundException e) {
-      LOG.debug("Entity {}:{} not found", entityType, entityId);
+      LOG.debug("Entity {}:{} not found in repository: {}", entityType, entityId, e.getMessage());
       return false;
-    } catch (Exception e) {
+    } catch (Exception ex) {
+      LOG.debug("Entity {}:{} encountered exception: {}", entityType, entityId, ex.getMessage());
+      // If any other exception occurs, we assume the entity is not valid
+      return true;
+    }
+  }
+
+  private boolean checkInEntityTimeSeriesRepository(UUID entityId, String entityType) {
+    try {
+      EntityTimeSeriesRepository<?> repository = entityTimeSeriesRepositoy.get(entityType);
+      return repository.getById(entityId) != null;
+    } catch (Exception ex) {
+      LOG.debug("Entity {}:{} encountered exception: {}", entityType, entityId, ex.getMessage());
+      return true;
+    }
+  }
+
+  private boolean checkInFeedRepository(UUID entityId) {
+    try {
+      return feedRepository.get(entityId) != null;
+    } catch (EntityNotFoundException e) {
       LOG.debug(
-          "Error checking existence of entity {}:{}: {}", entityType, entityId, e.getMessage());
+          "Entity {}:{} not found in repository: {}", Entity.THREAD, entityId, e.getMessage());
       return false;
+    } catch (Exception ex) {
+      LOG.debug("Entity {}:{} encountered exception: {}", Entity.THREAD, entityId, ex.getMessage());
+      return true;
     }
   }
 
   /**
    * Deletes orphaned relationships from the database
-   *
-   * @param orphanedRelationships List of orphaned relationships to delete
-   * @return Number of relationships successfully deleted
    */
   private int deleteOrphanedRelationships(List<OrphanedRelationship> orphanedRelationships) {
     LOG.info("Deleting {} orphaned relationships", orphanedRelationships.size());
@@ -293,7 +364,7 @@ public class EntityRelationshipCleanup {
     return deletedCount;
   }
 
-  private void displayOrphanedRelationships(CleanupResult result) {
+  private void displayOrphanedRelationships(EntityCleanupResult result) {
     if (result.getOrphanedRelationships().isEmpty()) {
       LOG.info("No orphaned relationships found. All entity relationships are valid.");
       return;
@@ -323,7 +394,7 @@ public class EntityRelationshipCleanup {
     displaySummaryStatistics(result);
   }
 
-  private void displaySummaryStatistics(CleanupResult result) {
+  private void displaySummaryStatistics(EntityCleanupResult result) {
     if (!result.getOrphansByEntityType().isEmpty()) {
       LOG.info("Orphaned relationships by entity type:");
       List<String> entityColumns = Arrays.asList("Entity Type Pair", "Count");
@@ -353,22 +424,15 @@ public class EntityRelationshipCleanup {
   }
 
   private String getRelationshipName(int relation) {
-    // Map common relationship types to names
-    // These constants should ideally be imported from the actual schema
-    return switch (relation) {
-      case 10 -> "CONTAINS";
-      case 11 -> "CREATED_BY";
-      case 12 -> "MENTIONED_IN";
-      case 13 -> "PARENT_OF";
-      case 14 -> "OWNS";
-      case 15 -> "FOLLOWS";
-      case 16 -> "JOINED";
-      case 17 -> "REACTED_TO";
-      case 18 -> "REPLIED_TO";
-      case 19 -> "TESTED_BY";
-      case 20 -> "UPSTREAM";
-      case 21 -> "DOWNSTREAM";
-      default -> "RELATION_" + relation;
-    };
+    try {
+      Relationship[] relationships = Relationship.values();
+      if (relation >= 0 && relation < relationships.length) {
+        return relationships[relation].name();
+      }
+      return "UNKNOWN_RELATION_" + relation;
+    } catch (Exception e) {
+      LOG.debug("Error getting relationship name for ordinal {}: {}", relation, e.getMessage());
+      return "UNKNOWN_RELATION_" + relation;
+    }
   }
 }

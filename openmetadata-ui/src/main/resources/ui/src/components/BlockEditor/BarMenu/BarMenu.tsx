@@ -12,7 +12,7 @@
  */
 import classNames from 'classnames';
 import { uniqueId } from 'lodash';
-import React, { FC, Fragment } from 'react';
+import { FC, Fragment } from 'react';
 import BlockQuoteIcon from '../../../assets/svg/ic-format-block-quote.svg';
 import BoldIcon from '../../../assets/svg/ic-format-bold.svg';
 import UnorderedListIcon from '../../../assets/svg/ic-format-bullet-list.svg';
@@ -156,7 +156,13 @@ const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
                     )}
                     key={item.name}
                     title={item.name}
-                    onClick={item.command}>
+                    onMouseDown={(e) => {
+                      // To prevent losing focus from editor
+                      // The mouseDown event fires before the click event and before focus changes,
+                      // so we can intercept it and prevent the default focus behavior.
+                      e.preventDefault();
+                      item.command();
+                    }}>
                     <img
                       alt={item.name}
                       className="bar-menu-wrapper--format--button--icon"

@@ -25,13 +25,7 @@ import {
   startCase,
   toLower,
 } from 'lodash';
-import {
-  default as React,
-  ReactNode,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ResponsiveContainer } from 'recharts';

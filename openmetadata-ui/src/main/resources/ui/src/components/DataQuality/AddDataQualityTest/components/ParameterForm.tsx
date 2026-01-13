@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button,
@@ -21,17 +21,13 @@ import {
   InputNumber,
   Select,
   Switch,
+  Tooltip,
+  Typography,
 } from 'antd';
 import { FormListProps, RuleRender } from 'antd/lib/form';
 import 'codemirror/addon/fold/foldgutter.css';
 import { debounce, isUndefined } from 'lodash';
-import React, {
-  ReactElement,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { WILD_CARD_CHAR } from '../../../../constants/char.constants';
@@ -40,6 +36,7 @@ import { SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME } from '../../../../constants/pr
 import { TABLE_DIFF } from '../../../../constants/TestSuite.constant';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { Column } from '../../../../generated/entity/data/table';
 import {
   Rule,
   TestCaseParameterDefinition,
@@ -51,14 +48,16 @@ import {
 } from '../../../../interface/search.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import { getPopupContainer } from '../../../../utils/formUtils';
 import {
+  getSelectedColumnsSet,
   validateEquals,
   validateGreaterThanOrEquals,
   validateLessThanOrEquals,
   validateNotEquals,
 } from '../../../../utils/ParameterForm/ParameterFormUtils';
 import '../../../Database/Profiler/TableProfiler/table-profiler.less';
-import SchemaEditor from '../../../Database/SchemaEditor/SchemaEditor';
+import CodeEditor from '../../../Database/SchemaEditor/CodeEditor';
 import { ParameterFormProps } from '../AddDataQualityTest.interface';
 
 const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
@@ -105,6 +104,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
     if (data.optionValues?.length) {
       Field = (
         <Select
+          getPopupContainer={getPopupContainer}
           placeholder={`${t('label.please-select-entity', {
             entity: label,
           })}`}>
@@ -143,21 +143,35 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
             );
             Field = (
               <Select
+                getPopupContainer={getPopupContainer}
                 options={partitionColumnOptions}
                 placeholder={t('message.select-column-name')}
               />
             );
           } else if (data.name === 'sqlExpression') {
             Field = (
-              <SchemaEditor
+              <CodeEditor
+                showCopyButton
                 className="custom-query-editor query-editor-h-200"
                 mode={{ name: CSMode.SQL }}
-                showCopyButton={false}
+                title={
+                  <div className="ant-form-item-label">
+                    <label className="d-flex align-items-center">
+                      <Typography.Text className="form-label-title">
+                        {label}
+                      </Typography.Text>
+                      <Tooltip title={data.description}>
+                        <QuestionCircleOutlined className="ant-form-item-tooltip" />
+                      </Tooltip>
+                    </label>
+                  </div>
+                }
               />
             );
           } else if (data.name === 'column') {
             Field = (
               <Select
+                getPopupContainer={getPopupContainer}
                 options={table?.columns.map((column) => ({
                   label: getEntityName(column),
                   value: column.name,
@@ -221,7 +235,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                     <>
                       <span>{data.displayName}</span>
                       <Button
-                        className="m-x-sm"
+                        className="m-x-sm list-add-btn"
                         icon={<PlusOutlined />}
                         size="small"
                         type="primary"
@@ -234,7 +248,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                   {fields.map(({ key, name, ...restField }) => (
                     <div className="d-flex w-full" key={key}>
                       <Form.Item
-                        className="w-full"
+                        className="w-full m-b-0"
                         {...restField}
                         name={[name, 'value']}
                         rules={[
@@ -273,47 +287,64 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
       }
     }
 
-    return (
+    const commonFormItemProps = {
+      'data-testid': 'parameter',
+      key: data.name,
+
+      name: data.name,
+      rules: [
+        {
+          required: data.required,
+          message: `${t('message.field-text-is-required', {
+            fieldText: label,
+          })}`,
+        },
+        ruleValidation,
+      ],
+      tooltip: data.description,
+      ...internalFormItemProps,
+    };
+
+    return data.dataType === TestDataType.Boolean ? (
+      <div className="d-flex gap-2 form-switch-container">
+        <Form.Item {...commonFormItemProps} className="m-b-0">
+          {Field}
+        </Form.Item>
+        <Typography.Text className="font-medium">{label}</Typography.Text>
+      </div>
+    ) : (
       <Form.Item
-        data-testid="parameter"
-        key={data.name}
-        label={label}
-        name={data.name}
-        rules={[
-          {
-            required: data.required,
-            message: `${t('message.field-text-is-required', {
-              fieldText: label,
-            })}`,
-          },
-          ruleValidation,
-        ]}
-        tooltip={data.description}
-        {...internalFormItemProps}>
+        {...commonFormItemProps}
+        label={data.name === 'sqlExpression' ? undefined : label}>
         {DynamicField ?? Field}
       </Form.Item>
     );
   };
 
   const TableDiffForm = () => {
+    const form = Form.useFormInstance();
     const [isOptionsLoading, setIsOptionsLoading] = useState(false);
     const [tableList, setTableList] = useState<
       SearchHitBody<
         SearchIndex.TABLE,
-        Pick<TableSearchSource, 'name' | 'displayName' | 'fullyQualifiedName'>
+        Pick<
+          TableSearchSource,
+          'name' | 'displayName' | 'fullyQualifiedName' | 'columns'
+        >
       >[]
     >([]);
+    const [table2Columns, setTable2Columns] = useState<Column[] | undefined>();
+
     const tableOptions = useMemo(
       () =>
-        tableList.map((hit) => {
-          return {
-            label: hit._source.fullyQualifiedName,
-            value: hit._source.fullyQualifiedName,
-          };
-        }),
+        tableList.map((hit) => ({
+          label: hit._source.fullyQualifiedName,
+          value: hit._source.fullyQualifiedName,
+        })),
       [tableList]
     );
-    const fetchTableData = async (search = WILD_CARD_CHAR) => {
+
+    const fetchTableData = useCallback(async (search = WILD_CARD_CHAR) => {
       setIsOptionsLoading(true);
       try {
         const response = await searchQuery({
@@ -322,74 +353,129 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
           pageSize: PAGE_SIZE_LARGE,
           searchIndex: SearchIndex.TABLE,
           fetchSource: true,
-          includeFields: ['name', 'fullyQualifiedName', 'displayName'],
+          includeFields: [
+            'name',
+            'fullyQualifiedName',
+            'displayName',
+            'columns',
+          ],
         });
-
         setTableList(response.hits.hits);
-      } catch (error) {
+      } catch {
         setTableList([]);
       } finally {
         setIsOptionsLoading(false);
       }
-    };
+    }, []);
 
-    const debounceFetchTableData = useCallback(debounce(fetchTableData, 1000), [
-      fetchTableData,
-    ]);
+    const debounceFetchTableData = useMemo(
+      () => debounce(fetchTableData, 1000),
+      [fetchTableData]
+    );
+
+    useEffect(() => {
+      fetchTableData();
+    }, [fetchTableData]);
+
+    useEffect(() => {
+      const table2Value = form.getFieldValue(['params', 'table2']);
+      if (table2Value && !table2Columns && tableList.length > 0) {
+        const selectedTable = tableList.find(
+          (hit) => hit._source.fullyQualifiedName === table2Value
+        );
+        if (selectedTable) {
+          setTable2Columns(selectedTable._source.columns);
+        }
+      }
+    }, [tableList, table2Columns, form]);
 
     const getFormData = (data: TestCaseParameterDefinition) => {
       switch (data.name) {
         case 'table2':
-          return prepareForm(
-            data,
-            <Select
-              allowClear
-              showSearch
-              data-testid="table2"
-              loading={isOptionsLoading}
-              options={tableOptions}
-              placeholder={t('label.table')}
-              popupClassName="no-wrap-option"
-              onSearch={debounceFetchTableData}
-            />
+          return (
+            <Form.Item noStyle shouldUpdate key={data.name}>
+              {({ setFieldsValue }) =>
+                prepareForm(
+                  data,
+                  <Select
+                    allowClear
+                    showSearch
+                    data-testid="table2"
+                    getPopupContainer={getPopupContainer}
+                    loading={isOptionsLoading}
+                    options={tableOptions}
+                    placeholder={t('label.table')}
+                    popupClassName="no-wrap-option"
+                    onChange={(value) => {
+                      // Clear key columns when table2 changes
+                      setFieldsValue({
+                        params: { 'table2.keyColumns': [{ value: undefined }] },
+                      });
+
+                      // Update columns or clear them
+                      if (value) {
+                        const selectedTable = tableList.find(
+                          (hit) => hit._source.fullyQualifiedName === value
+                        );
+                        setTable2Columns(selectedTable?._source.columns);
+                      } else {
+                        setTable2Columns(undefined);
+                      }
+                    }}
+                    onSearch={debounceFetchTableData}
+                  />
+                )
+              }
+            </Form.Item>
           );
 
         case 'keyColumns':
+        case 'table2.keyColumns':
         case 'useColumns':
           return (
-            <Form.Item noStyle shouldUpdate>
+            <Form.Item noStyle shouldUpdate key={data.name}>
               {({ getFieldValue }) => {
-                // Convert selectedKeyColumn and selectedUseColumns to Sets for efficient lookup
-                const selectedKeyColumnSet = new Set(
-                  getFieldValue(['params', 'keyColumns'])?.map(
-                    (item: { value: string }) => item?.value
-                  )
-                );
-                const selectedUseColumnsSet = new Set(
-                  getFieldValue(['params', 'useColumns'])?.map(
-                    (item: { value: string }) => item?.value
-                  )
+                const isTable2KeyColumns = data.name === 'table2.keyColumns';
+                const table2Value = getFieldValue(['params', 'table2']);
+
+                let sourceColumns = table?.columns;
+                if (isTable2KeyColumns) {
+                  if (table2Value) {
+                    const selectedTable =
+                      tableList.find(
+                        (hit) => hit._source.fullyQualifiedName === table2Value
+                      ) ?? undefined;
+                    sourceColumns =
+                      selectedTable?._source.columns ?? table2Columns;
+                  } else {
+                    sourceColumns = undefined;
+                  }
+                }
+
+                // Disable when no table2 selected
+                const isDisabled = isTable2KeyColumns && !table2Value;
+
+                const selectedColumnsSet = getSelectedColumnsSet(
+                  data,
+                  getFieldValue
                 );
 
-                // Combine both Sets for a single lookup operation
-                const selectedColumnsSet = new Set([
-                  ...selectedKeyColumnSet,
-                  ...selectedUseColumnsSet,
-                ]);
-
-                const columns = table?.columns.map((column) => ({
-                  label: getEntityName(column),
-                  value: column.name,
-                  // Check if column.name is in the combined Set to determine if it should be disabled
-                  disabled: selectedColumnsSet.has(column.name),
-                }));
+                const columnOptions =
+                  sourceColumns?.map((column) => ({
+                    label: getEntityName(column),
+                    value: column.name,
+                    disabled: selectedColumnsSet.has(column.name),
+                  })) ?? [];
 
                 return prepareForm(
                   data,
                   <Select
                     allowClear
                     showSearch
-                    options={columns}
+                    data-testid={`${data.name}-select`}
+                    disabled={isDisabled}
+                    getPopupContainer={getPopupContainer}
+                    options={columnOptions}
                     placeholder={t('label.column')}
                   />
                 );
@@ -401,10 +487,6 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
           return prepareForm(data);
       }
     };
-
-    useEffect(() => {
-      fetchTableData();
-    }, []);
 
     return <>{definition.parameterDefinition?.map(getFormData)}</>;
   };

@@ -18,10 +18,9 @@ import {
   fireEvent,
   render,
   screen,
-  waitForElement,
+  waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import {
   MOCK_SELECT_WIDGET,
   MOCK_TREE_SELECT_WIDGET,
@@ -57,7 +56,9 @@ describe('Test SelectWidget Component', () => {
   it('Should render select component', async () => {
     render(<SelectWidget {...mockSelectProps} />);
 
-    const selectInput = screen.getByTestId('select-widget');
+    const selectInput = screen.getByTestId(
+      'select-widget-root/searchIndexMappingLanguage'
+    );
     const treeSelectWidget = screen.queryByText('TreeSelectWidget');
 
     expect(selectInput).toBeInTheDocument();
@@ -68,7 +69,7 @@ describe('Test SelectWidget Component', () => {
     render(<SelectWidget {...mockSelectProps} disabled />);
 
     const selectInput = await findByRole(
-      screen.getByTestId('select-widget'),
+      screen.getByTestId('select-widget-root/searchIndexMappingLanguage'),
       'combobox'
     );
 
@@ -78,7 +79,9 @@ describe('Test SelectWidget Component', () => {
   it('Should call onFocus', async () => {
     render(<SelectWidget {...mockSelectProps} />);
 
-    const selectInput = screen.getByTestId('select-widget');
+    const selectInput = screen.getByTestId(
+      'select-widget-root/searchIndexMappingLanguage'
+    );
 
     fireEvent.focus(selectInput);
 
@@ -88,7 +91,9 @@ describe('Test SelectWidget Component', () => {
   it('Should call onBlur', async () => {
     render(<SelectWidget {...mockSelectProps} />);
 
-    const selectInput = screen.getByTestId('select-widget');
+    const selectInput = screen.getByTestId(
+      'select-widget-root/searchIndexMappingLanguage'
+    );
 
     fireEvent.blur(selectInput);
 
@@ -99,7 +104,7 @@ describe('Test SelectWidget Component', () => {
     render(<SelectWidget {...mockSelectProps} />);
 
     const selectInput = await findByRole(
-      screen.getByTestId('select-widget'),
+      screen.getByTestId('select-widget-root/searchIndexMappingLanguage'),
       'combobox'
     );
 
@@ -107,7 +112,7 @@ describe('Test SelectWidget Component', () => {
       userEvent.click(selectInput);
     });
 
-    await waitForElement(() => screen.getByTestId('select-option-JP'));
+    await waitFor(() => screen.getByTestId('select-option-JP'));
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('select-option-EN'));
@@ -119,7 +124,9 @@ describe('Test SelectWidget Component', () => {
   it('Should render TreeSelectWidget component if uiFieldType is treeSelect', async () => {
     render(<SelectWidget {...mockTreeSelectProps} />);
 
-    const selectWidget = screen.queryByTestId('select-widget');
+    const selectWidget = screen.queryByTestId(
+      'select-widget-root/searchIndexMappingLanguage'
+    );
     const treeSelectWidget = screen.getByText('TreeSelectWidget');
 
     expect(treeSelectWidget).toBeInTheDocument();

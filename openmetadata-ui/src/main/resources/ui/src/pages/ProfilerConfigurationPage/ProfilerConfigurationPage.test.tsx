@@ -10,15 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
-import React from 'react';
+import { render, screen } from '@testing-library/react';
 import { SettingType } from '../../generated/settings/settings';
 import { getSettingsConfigFromConfigType } from '../../rest/settingConfigAPI';
 import ProfilerConfigurationPage from './ProfilerConfigurationPage';
 
-const mockHistory = {
-  goBack: jest.fn(),
-};
+const mockNavigate = jest.fn();
 
 jest.mock('../../components/common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div>Loading...</div>)
@@ -31,7 +28,7 @@ jest.mock('../../components/PageHeader/PageHeader.component', () =>
   jest.fn().mockReturnValue(<div>PageHeader.component</div>)
 );
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => mockHistory),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 jest.mock('../../rest/settingConfigAPI', () => ({
   getSettingsConfigFromConfigType: jest.fn().mockResolvedValue({}),
@@ -58,16 +55,14 @@ jest.mock('../../constants/profiler.constant', () => ({
 
 describe('ProfilerConfigurationPage', () => {
   beforeEach(() => {
-    act(() => {
-      render(<ProfilerConfigurationPage />);
-    });
+    render(<ProfilerConfigurationPage />);
   });
 
   it('renders the page correctly', async () => {
     expect(
       await screen.findByText('TitleBreadcrumb.component')
     ).toBeInTheDocument();
-    expect(await screen.findByText('PageHeader.component')).toBeInTheDocument();
+    expect(await screen.findAllByText('PageHeader.component')).toHaveLength(2);
     expect(await screen.findByText('label.data-type')).toBeInTheDocument();
     expect(await screen.findByText('label.disable')).toBeInTheDocument();
     expect(await screen.findByText('label.metric-type')).toBeInTheDocument();
@@ -92,12 +87,11 @@ describe('ProfilerConfigurationPage', () => {
     expect(mockGetSettingsConfigFromConfigType).toHaveBeenCalledTimes(1);
   });
 
-  it("onCancel should call history's goBack method", () => {
-    const cancelButton = screen.getByTestId('cancel-button');
-    act(() => {
-      cancelButton.click();
-    });
+  it('onCancel should call navigate', async () => {
+    const cancelButton = await screen.findByTestId('cancel-button');
 
-    expect(mockHistory.goBack).toHaveBeenCalledTimes(1);
+    cancelButton.click();
+
+    expect(mockNavigate).toHaveBeenCalledWith(-1);
   });
 });

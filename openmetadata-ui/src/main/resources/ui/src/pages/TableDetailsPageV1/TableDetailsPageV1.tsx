@@ -1,4 +1,3 @@
-/* eslint-disable i18next/no-literal-string */
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,11 +14,11 @@
 import { Col, Row, Tabs, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as RedAlertIcon } from '../../assets/svg/ic-alert-red.svg';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { withSuggestions } from '../../components/AppRouter/withSuggestions';
@@ -28,6 +27,7 @@ import { AlignRightIconButton } from '../../components/common/IconButtons/EditIc
 import Loader from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -55,8 +55,9 @@ import {
   Suggestion,
   SuggestionType,
 } from '../../generated/entity/feed/suggestion';
+import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
-import { TestSummary } from '../../generated/tests/testCase';
+import { TestCaseStatus } from '../../generated/tests/testCase';
 import { TagLabel } from '../../generated/type/tagLabel';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -64,6 +65,7 @@ import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { useSub } from '../../hooks/usePubSub';
 import { FeedCounts } from '../../interface/feed.interface';
+import { fetchTestCaseResultByTestSuiteId } from '../../rest/dataQualityDashboardAPI';
 import { getDataQualityLineage } from '../../rest/lineageAPI';
 import { getQueriesList } from '../../rest/queryAPI';
 import {
@@ -74,7 +76,6 @@ import {
   restoreTable,
   updateTablesVotes,
 } from '../../rest/tableAPI';
-import { getTestCaseExecutionSummary } from '../../rest/testAPI';
 import {
   addToRecentViewed,
   getFeedCounts,
@@ -88,7 +89,11 @@ import {
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import {
@@ -100,6 +105,7 @@ import {
 } from '../../utils/TableUtils';
 import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 
 const TableDetailsPageV1: React.FC = () => {
@@ -108,11 +114,12 @@ const TableDetailsPageV1: React.FC = () => {
   const { currentUser } = useApplicationStore();
   const { setDqLineageData } = useTestCaseStore();
   const [tableDetails, setTableDetails] = useState<Table>();
-  const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
+  const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: datasetFQN } = useFqn();
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const USERId = currentUser?.id ?? '';
+  const { getEntityPermissionByFqn } = usePermissionProvider();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -123,7 +130,6 @@ const TableDetailsPageV1: React.FC = () => {
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
-  const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
   const [dqFailureCount, setDqFailureCount] = useState(0);
   const { customizedPage, isLoading } = useCustomPages(PageType.Table);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
@@ -162,7 +168,8 @@ const TableDetailsPageV1: React.FC = () => {
             EntityType.TABLE,
             tableFqn,
             tablePermissions,
-            tableDetails
+            tableDetails,
+            navigate
           )
         : [],
     [tablePermissions, tableFqn, tableDetails]
@@ -170,12 +177,20 @@ const TableDetailsPageV1: React.FC = () => {
 
   const { viewUsagePermission, viewTestCasePermission } = useMemo(
     () => ({
-      viewUsagePermission:
-        tablePermissions.ViewAll || tablePermissions.ViewUsage,
-      viewTestCasePermission:
-        tablePermissions.ViewAll || tablePermissions.ViewTests,
+      viewUsagePermission: getPrioritizedViewPermission(
+        tablePermissions,
+        Operation.ViewUsage
+      ),
+      viewTestCasePermission: getPrioritizedViewPermission(
+        tablePermissions,
+        Operation.ViewTests
+      ),
     }),
-    [tablePermissions]
+    [
+      tablePermissions,
+      getPrioritizedViewPermission,
+      getPrioritizedEditPermission,
+    ]
   );
 
   const isViewTableType = useMemo(
@@ -195,7 +210,6 @@ const TableDetailsPageV1: React.FC = () => {
       }
 
       const details = await getTableDetailsByFQN(tableFqn, { fields });
-
       setTableDetails(details);
       addToRecentViewed({
         displayName: getEntityName(details),
@@ -207,14 +221,14 @@ const TableDetailsPageV1: React.FC = () => {
       });
     } catch (error) {
       if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       }
     } finally {
       setLoading(false);
     }
   }, [tableFqn, viewUsagePermission]);
 
-  const fetchDQFailureCount = async () => {
+  const fetchDQUpstreamFailureCount = async () => {
     if (!tableClassBase.getAlertEnableStatus()) {
       setDqFailureCount(0);
     }
@@ -234,34 +248,38 @@ const TableDetailsPageV1: React.FC = () => {
     }
   };
 
-  const fetchTestCaseSummary = async () => {
+  const getTestCaseFailureCount = async () => {
     try {
-      if (isUndefined(tableDetails?.testSuite?.id)) {
-        setTestCaseSummary(undefined);
-        await fetchDQFailureCount();
+      if (!tableClassBase.getAlertEnableStatus()) {
+        setDqFailureCount(0);
 
         return;
       }
 
-      const response = await getTestCaseExecutionSummary(
-        tableDetails?.testSuite?.id
-      );
-      setTestCaseSummary(response);
+      const testSuiteId = tableDetails?.testSuite?.id;
 
-      const failureCount =
-        response.columnTestSummary?.reduce((acc, curr) => {
-          return acc + (curr.failed ?? 0);
-        }, response.failed ?? 0) ??
-        response.failed ??
-        0;
+      if (!testSuiteId) {
+        await fetchDQUpstreamFailureCount();
+
+        return;
+      }
+
+      const { data } = await fetchTestCaseResultByTestSuiteId(
+        testSuiteId,
+        TestCaseStatus.Failed
+      );
+      const failureCount = data.reduce(
+        (acc, curr) => acc + Number.parseInt(curr.document_count ?? '0'),
+        0
+      );
 
       if (failureCount === 0) {
-        await fetchDQFailureCount();
+        await fetchDQUpstreamFailureCount();
       } else {
         setDqFailureCount(failureCount);
       }
     } catch {
-      setTestCaseSummary(undefined);
+      setDqFailureCount(0);
     }
   };
 
@@ -314,10 +332,8 @@ const TableDetailsPageV1: React.FC = () => {
     };
   }, [tableDetails, tableDetails?.tags]);
 
-  const { getEntityPermissionByFqn } = usePermissionProvider();
-
   const fetchResourcePermission = useCallback(
-    async (tableFqn) => {
+    async (tableFqn: string) => {
       try {
         const tablePermission = await getEntityPermissionByFqn(
           ResourceEntity.TABLE,
@@ -359,9 +375,9 @@ const TableDetailsPageV1: React.FC = () => {
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       if (!isTourOpen) {
-        history.replace(
-          getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey)
-        );
+        navigate(getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey), {
+          replace: true,
+        });
       }
     }
   };
@@ -380,6 +396,7 @@ const TableDetailsPageV1: React.FC = () => {
 
   const onTableUpdate = async (updatedTable: Table, key?: keyof Table) => {
     try {
+      // Generate patch and update via API
       const res = await saveUpdatedTableData(updatedTable);
 
       setTableDetails((previous) => {
@@ -437,7 +454,10 @@ const TableDetailsPageV1: React.FC = () => {
     if (!tableDetails) {
       return;
     }
-    const updatedTable = { ...tableDetails, displayName: data.displayName };
+    const updatedTable = {
+      ...tableDetails,
+      displayName: isEmpty(data.displayName) ? undefined : data.displayName,
+    };
     await onTableUpdate(updatedTable, 'displayName');
   };
 
@@ -460,33 +480,52 @@ const TableDetailsPageV1: React.FC = () => {
     viewProfilerPermission,
     viewAllPermission,
     viewBasicPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
-        (tablePermissions.EditTags || tablePermissions.EditAll) && !deleted,
+        getPrioritizedEditPermission(tablePermissions, Operation.EditTags) &&
+        !deleted,
       editGlossaryTermsPermission:
-        (tablePermissions.EditGlossaryTerms || tablePermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          tablePermissions,
+          Operation.EditGlossaryTerms
+        ) && !deleted,
       editDescriptionPermission:
-        (tablePermissions.EditDescription || tablePermissions.EditAll) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          tablePermissions,
+          Operation.EditDescription
+        ) && !deleted,
       editCustomAttributePermission:
-        (tablePermissions.EditAll || tablePermissions.EditCustomFields) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          tablePermissions,
+          Operation.EditCustomFields
+        ) && !deleted,
       editAllPermission: tablePermissions.EditAll && !deleted,
       editLineagePermission:
-        (tablePermissions.EditAll || tablePermissions.EditLineage) && !deleted,
-      viewSampleDataPermission:
-        tablePermissions.ViewAll || tablePermissions.ViewSampleData,
-      viewQueriesPermission:
-        tablePermissions.ViewAll || tablePermissions.ViewQueries,
-      viewProfilerPermission:
-        tablePermissions.ViewAll ||
-        tablePermissions.ViewDataProfile ||
-        tablePermissions.ViewTests,
+        getPrioritizedEditPermission(tablePermissions, Operation.EditLineage) &&
+        !deleted,
+      viewSampleDataPermission: getPrioritizedViewPermission(
+        tablePermissions,
+        Operation.ViewSampleData
+      ),
+      viewQueriesPermission: getPrioritizedViewPermission(
+        tablePermissions,
+        Operation.ViewQueries
+      ),
+      viewProfilerPermission: getPrioritizedViewPermission(
+        tablePermissions,
+        Operation.ViewDataProfile
+      ),
       viewAllPermission: tablePermissions.ViewAll,
-      viewBasicPermission:
-        tablePermissions.ViewAll || tablePermissions.ViewBasic,
+      viewBasicPermission: getPrioritizedViewPermission(
+        tablePermissions,
+        Operation.ViewBasic
+      ),
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        tablePermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [tablePermissions, deleted]
   );
@@ -505,13 +544,13 @@ const TableDetailsPageV1: React.FC = () => {
       getEntityFeedCount,
       handleFeedCount,
       viewAllPermission,
+      viewCustomPropertiesPermission,
       editCustomAttributePermission,
       viewSampleDataPermission,
       viewQueriesPermission,
       viewProfilerPermission,
       editLineagePermission,
       fetchTableDetails,
-      testCaseSummary,
       isViewTableType,
       labelMap: tabLabelMap,
     });
@@ -535,13 +574,13 @@ const TableDetailsPageV1: React.FC = () => {
     getEntityFeedCount,
     handleFeedCount,
     viewAllPermission,
+    viewCustomPropertiesPermission,
     editCustomAttributePermission,
     viewSampleDataPermission,
     viewQueriesPermission,
     viewProfilerPermission,
     editLineagePermission,
     fetchTableDetails,
-    testCaseSummary,
     isViewTableType,
   ]);
 
@@ -675,15 +714,15 @@ const TableDetailsPageV1: React.FC = () => {
 
   const versionHandler = useCallback(() => {
     version &&
-      history.push(getVersionPath(EntityType.TABLE, tableFqn, version + ''));
+      navigate(getVersionPath(EntityType.TABLE, tableFqn, version + ''));
   }, [version, tableFqn]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
   );
 
-  const updateTableDetailsState = useCallback((data) => {
+  const updateTableDetailsState = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as Table;
 
     setTableDetails((data) => ({
@@ -742,12 +781,12 @@ const TableDetailsPageV1: React.FC = () => {
       fetchTableDetails();
       getEntityFeedCount();
     }
-  }, [tableFqn, isTourOpen, isTourPage, tablePermissions]);
+  }, [tableFqn, isTourOpen, isTourPage, viewBasicPermission]);
 
   useEffect(() => {
     if (tableDetails) {
       fetchQueryCount();
-      fetchTestCaseSummary();
+      getTestCaseFailureCount();
     }
   }, [tableDetails?.fullyQualifiedName]);
 
@@ -796,11 +835,7 @@ const TableDetailsPageV1: React.FC = () => {
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.table'),
-      })}
-      title="Table details">
+    <PageLayoutV1 pageTitle={entityName} title="Table details">
       <GenericProvider<Table>
         customizedPage={customizedPage}
         data={tableDetails}

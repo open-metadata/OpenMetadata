@@ -13,7 +13,7 @@
 
 import { Typography } from 'antd';
 import { diffArrays } from 'diff';
-import React, { FC, Fragment, useMemo } from 'react';
+import { FC, Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   TaskType,

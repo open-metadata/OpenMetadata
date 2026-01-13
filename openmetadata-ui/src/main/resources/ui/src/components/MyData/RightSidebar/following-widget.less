@@ -11,9 +11,62 @@
  *  limitations under the License.
  */
 
+@import (reference) '../../../styles/variables.less';
+
 .following-widget-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   .ant-card-body {
     display: flex;
     flex-direction: column;
+    flex: 1;
+    padding: 0;
+    overflow: hidden;
+  }
+  .widget-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .entity-list-body {
+    flex: 1;
+    padding: @size-mlg @size-mlg @size-xxs @size-mlg;
+    margin: 0;
+    overflow-y: auto;
+    min-height: 0;
+  }
+  .following-widget-icon {
+    svg {
+      fill: none;
+    }
+  }
+
+  .following-widget-list-item {
+    border: 1px solid @grey-2;
+    background-color: @grey-29;
+    max-width: 100%;
+    overflow: hidden;
+    .item-link {
+      flex-grow: 1 !important;
+      flex: 1 1 0%;
+    }
+    .item-link:hover {
+      text-decoration: none;
+    }
+
+    .entity-button:hover {
+      background: transparent;
+    }
+    .entity-button-icon {
+      height: 32px;
+      width: 32px;
+      svg {
+        height: 100%;
+        width: 100%;
+      }
+    }
   }
 }

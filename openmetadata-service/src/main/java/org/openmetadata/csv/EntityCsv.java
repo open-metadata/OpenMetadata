@@ -32,8 +32,8 @@ import static org.openmetadata.service.util.EntityUtil.findColumnWithChildren;
 import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.networknt.schema.JsonSchema;
-import com.networknt.schema.ValidationMessage;
+import com.networknt.schema.Error;
+import com.networknt.schema.Schema;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -56,7 +56,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
@@ -74,6 +73,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -91,6 +91,7 @@ import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.customProperties.TableConfig;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -101,7 +102,6 @@ import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ValidatorUtil;
 
@@ -262,6 +262,27 @@ public abstract class EntityCsv<T extends EntityInterface> {
   public List<EntityReference> getReviewers(
       CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
     return getOwners(printer, csvRecord, fieldNumber, EntityCsv::invalidReviewer);
+  }
+
+  public List<EntityReference> getDomains(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
+      throws IOException {
+    if (!processRecord) {
+      return null;
+    }
+    String domainsRecord = csvRecord.get(fieldNumber);
+    if (nullOrEmpty(domainsRecord)) {
+      return null;
+    }
+    List<String> domains = listOrEmpty(CsvUtil.fieldToStrings(domainsRecord));
+    List<EntityReference> refs = new ArrayList<>();
+    for (String domain : domains) {
+      EntityReference domainRef =
+          getEntityReference(printer, csvRecord, fieldNumber, Entity.DOMAIN, domain);
+      if (domainRef != null) {
+        refs.add(domainRef);
+      }
+    }
+    return refs;
   }
 
   /** Owner field is in entityName format */
@@ -431,7 +452,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       String fieldName = entry.getKey();
       Object fieldValue = entry.getValue();
 
-      JsonSchema jsonSchema = TypeRegistry.instance().getSchema(entityType, fieldName);
+      Schema jsonSchema = TypeRegistry.instance().getSchema(entityType, fieldName);
       if (jsonSchema == null) {
         importFailure(printer, invalidCustomPropertyKey(fieldNumber, fieldName), csvRecord);
         return;
@@ -670,12 +691,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
       Object fieldValue,
       String customPropertyType,
       Map<String, Object> extensionMap,
-      JsonSchema jsonSchema)
+      Schema jsonSchema)
       throws IOException {
     if (fieldValue != null) {
       JsonNode jsonNodeValue = JsonUtils.convertValue(fieldValue, JsonNode.class);
 
-      Set<ValidationMessage> validationMessages = jsonSchema.validate(jsonNodeValue);
+      List<Error> validationMessages = jsonSchema.validate(jsonNodeValue);
       if (!validationMessages.isEmpty()) {
         importFailure(
             printer,
@@ -863,9 +884,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
       try {
         // In case of updating entity , prepareInternal as update=True
-        repository.prepareInternal(
-            entity,
-            repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null);
+        boolean update = repository.isUpdateForImport(entity);
+        repository.prepareInternal(entity, update);
         PutResponse<T> response = repository.createOrUpdate(null, entity, importedBy);
         responseStatus = response.getStatus();
         AsyncService.getInstance()
@@ -878,10 +898,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     } else { // Dry run don't create the entity
       repository.setFullyQualifiedName(entity);
-      responseStatus =
-          repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.NON_DELETED) == null
-              ? Response.Status.CREATED
-              : Response.Status.OK;
+      boolean exists = repository.isUpdateForImport(entity);
+      responseStatus = exists ? Response.Status.OK : Response.Status.CREATED;
       // Track the dryRun created entities, as they may be referred by other entities being created
       // during import
       dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
@@ -916,9 +934,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (Boolean.FALSE.equals(importResult.getDryRun())) {
       try {
         // In case of updating entity , prepareInternal as update=True
-        repository.prepareInternal(
-            entity,
-            repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null);
+        boolean update = repository.isUpdateForImport(entity);
+        repository.prepareInternal(entity, update);
         PutResponse<EntityInterface> response =
             repository.createOrUpdateForImport(null, entity, importedBy);
         responseStatus = response.getStatus();
@@ -932,10 +949,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     } else {
       repository.setFullyQualifiedName(entity);
-      responseStatus =
-          repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.NON_DELETED) == null
-              ? Response.Status.CREATED
-              : Response.Status.OK;
+      boolean exists = repository.isUpdateForImport(entity);
+      responseStatus = exists ? Response.Status.OK : Response.Status.CREATED;
       dryRunCreatedEntities.put(entity.getFullyQualifiedName(), (T) entity);
     }
 
@@ -973,6 +988,47 @@ public abstract class EntityCsv<T extends EntityInterface> {
       changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
 
       // Persist event and update ES
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+      Entity.getSearchRepository().updateEntity(response.getEntity().getEntityReference());
+    }
+  }
+
+  private void createChangeEventForUserAndUpdateInES(PutResponse<T> response, String importedBy) {
+    if (!response.getChangeType().equals(EventType.ENTITY_NO_CHANGE)) {
+      T entity = response.getEntity();
+      EntityInterface entityForEvent = entity;
+      if (entity instanceof User user) {
+        User userWithoutAuth =
+            new User()
+                .withId(user.getId())
+                .withName(user.getName())
+                .withFullyQualifiedName(user.getFullyQualifiedName())
+                .withDisplayName(user.getDisplayName())
+                .withDescription(user.getDescription())
+                .withEmail(user.getEmail())
+                .withVersion(user.getVersion())
+                .withUpdatedAt(user.getUpdatedAt())
+                .withUpdatedBy(user.getUpdatedBy())
+                .withHref(user.getHref())
+                .withTimezone(user.getTimezone())
+                .withIsBot(user.getIsBot())
+                .withIsAdmin(user.getIsAdmin())
+                .withTeams(user.getTeams())
+                .withRoles(user.getRoles())
+                .withOwns(user.getOwns())
+                .withFollows(user.getFollows())
+                .withDeleted(user.getDeleted())
+                .withDomains(user.getDomains())
+                .withPersonas(user.getPersonas())
+                .withDefaultPersona(user.getDefaultPersona());
+        entityForEvent = userWithoutAuth;
+      }
+      ChangeEvent changeEvent =
+          FormatterUtil.createChangeEventForEntity(
+              importedBy, response.getChangeType(), entityForEvent);
+      Object eventEntity = changeEvent.getEntity();
+      changeEvent = copyChangeEvent(changeEvent);
+      changeEvent.setEntity(JsonUtils.pojoToMaskedJson(eventEntity));
       Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
       Entity.getSearchRepository().updateEntity(response.getEntity().getEntityReference());
     }
@@ -1017,11 +1073,13 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
       try {
         // In case of updating entity , prepareInternal as update=True
-        repository.prepareInternal(
-            entity,
-            repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null);
+        boolean update = repository.isUpdateForImport(entity);
+        repository.prepareInternal(entity, update);
         PutResponse<T> response = repository.createOrUpdate(null, entity, importedBy);
         responseStatus = response.getStatus();
+        AsyncService.getInstance()
+            .getExecutorService()
+            .submit(() -> createChangeEventForUserAndUpdateInES(response, importedBy));
       } catch (Exception ex) {
         importFailure(resultsPrinter, ex.getMessage(), csvRecord);
         importResult.setStatus(ApiStatus.FAILURE);
@@ -1029,10 +1087,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     } else { // Dry run don't create the entity
       repository.setFullyQualifiedName(entity);
-      responseStatus =
-          repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.NON_DELETED) == null
-              ? Response.Status.CREATED
-              : Response.Status.OK;
+      boolean exists = repository.isUpdateForImport(entity);
+      responseStatus = exists ? Response.Status.OK : Response.Status.CREATED;
       // Track the dryRun created entities, as they may be referred by other entities being created
       // during import
       dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
@@ -1056,7 +1112,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
     Database database;
     try {
-      database = Entity.getEntityByName(DATABASE, dbFQN, "*", Include.NON_DELETED);
+      database =
+          Entity.getEntityByNameWithExcludedFields(
+              DATABASE,
+              dbFQN,
+              "name,displayName,description,owners,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension,updatedAt,updatedBy",
+              Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
       LOG.warn("Database not found: {}. Handling based on dryRun mode.", dbFQN);
       if (importResult.getDryRun()) {
@@ -1072,7 +1133,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
         (DatabaseSchemaRepository) Entity.getEntityRepository(DATABASE_SCHEMA);
     String schemaFqn = FullyQualifiedName.add(dbFQN, csvRecord.get(0));
     try {
-      schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFqn, "*", Include.NON_DELETED);
+      schema =
+          Entity.getEntityByNameWithExcludedFields(
+              DATABASE_SCHEMA,
+              schemaFqn,
+              "name,displayName,description,owners,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension,updatedAt,updatedBy",
+              Include.NON_DELETED);
     } catch (Exception ex) {
       LOG.warn("Database Schema not found: {}, it will be created with Import.", schemaFqn);
       schema =
@@ -1104,7 +1170,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         .withCertification(certification)
         .withRetentionPeriod(csvRecord.get(8))
         .withSourceUrl(csvRecord.get(9))
-        .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
+        .withDomains(getDomains(printer, csvRecord, 10))
         .withExtension(getExtension(printer, csvRecord, 11))
         .withUpdatedAt(System.currentTimeMillis())
         .withUpdatedBy(importedBy);
@@ -1126,7 +1192,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
     // Fetch Schema Entity
     DatabaseSchema schema;
     try {
-      schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFQN, "*", Include.NON_DELETED);
+      schema =
+          Entity.getEntityByName(
+              DATABASE_SCHEMA, schemaFQN, "name,displayName,service,database", Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
       LOG.warn("Schema not found: {}. Handling based on dryRun mode.", schemaFQN);
       if (importResult.getDryRun()) {
@@ -1147,7 +1215,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
     Table table;
 
     try {
-      table = Entity.getEntityByName(TABLE, tableFqn, "*", Include.NON_DELETED);
+      table =
+          Entity.getEntityByNameWithExcludedFields(
+              TABLE,
+              tableFqn,
+              "name,displayName,description,owners,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension,updatedAt,updatedBy",
+              Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
       // Table not found, create a new one
 
@@ -1183,7 +1256,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         .withCertification(certification)
         .withRetentionPeriod(csvRecord.get(8))
         .withSourceUrl(csvRecord.get(9))
-        .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
+        .withDomains(getDomains(printer, csvRecord, 10))
         .withExtension(getExtension(printer, csvRecord, 11))
         .withUpdatedAt(System.currentTimeMillis())
         .withUpdatedBy(importedBy);
@@ -1211,7 +1284,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
     DatabaseSchema schema;
 
     try {
-      schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFQN, "*", Include.NON_DELETED);
+      schema =
+          Entity.getEntityByName(
+              DATABASE_SCHEMA, schemaFQN, "name,displayName,service,database", Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
       LOG.warn("Schema not found: {}. Handling based on dryRun mode.", schemaFQN);
       if (importResult.getDryRun()) {
@@ -1228,7 +1303,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
     StoredProcedure sp;
     try {
-      sp = Entity.getEntityByName(STORED_PROCEDURE, entityFQN, "*", Include.NON_DELETED);
+      sp =
+          Entity.getEntityByName(
+              STORED_PROCEDURE,
+              entityFQN,
+              "name,displayName,fullyQualifiedName",
+              Include.NON_DELETED);
     } catch (Exception ex) {
       LOG.warn("Stored procedure not found: {}, it will be created with Import.", entityFQN);
       sp =
@@ -1268,7 +1348,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         .withTags(tagLabels)
         .withCertification(certification)
         .withSourceUrl(csvRecord.get(9))
-        .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
+        .withDomains(getDomains(printer, csvRecord, 10))
         .withStoredProcedureCode(storedProcedureCode)
         .withExtension(getExtension(printer, csvRecord, 11));
 
@@ -1291,10 +1371,17 @@ public abstract class EntityCsv<T extends EntityInterface> {
     Table table;
     DatabaseSchema schema;
     try {
-      table = Entity.getEntityByName(TABLE, tableFQN, "*", Include.NON_DELETED);
+      table =
+          Entity.getEntityByName(
+              TABLE, tableFQN, "name,displayName,fullyQualifiedName,columns", Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
       try {
-        schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFQN, "*", Include.NON_DELETED);
+        schema =
+            Entity.getEntityByName(
+                DATABASE_SCHEMA,
+                schemaFQN,
+                "name,displayName,service,database",
+                Include.NON_DELETED);
       } catch (EntityNotFoundException exception) {
         LOG.warn("Schema not found: {}. Handling based on dryRun mode.", schemaFQN);
 

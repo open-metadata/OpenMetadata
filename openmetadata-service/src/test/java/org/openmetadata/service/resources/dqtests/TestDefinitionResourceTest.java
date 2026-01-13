@@ -23,9 +23,9 @@ import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 public class TestDefinitionResourceTest
@@ -50,6 +50,12 @@ public class TestDefinitionResourceTest
     TEST_DEFINITION3 =
         testDefinitionResourceTest.getEntityByName(
             "columnValuesMissingCount", "owners", ADMIN_AUTH_HEADERS);
+    TEST_DEFINITION4 =
+        testDefinitionResourceTest.getEntityByName(
+            "tableRowCountToBeBetween", "owners", ADMIN_AUTH_HEADERS);
+    TEST_DEFINITION5 =
+        testDefinitionResourceTest.getEntityByName(
+            "tableRowCountToEqual", "owners", ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -60,6 +66,45 @@ public class TestDefinitionResourceTest
         testDefinitions.getData().stream()
             .allMatch(t -> t.getSupportedDataTypes().contains(ColumnDataType.BOOLEAN));
     Assertions.assertTrue(b);
+  }
+
+  @Test
+  void list_testDefinitionsForSupportedService(TestInfo test) throws HttpResponseException {
+    CreateTestDefinition createBigQuery =
+        createRequest("testForBigQuery").withSupportedServices(List.of("BigQuery", "Databricks"));
+    createEntity(createBigQuery, ADMIN_AUTH_HEADERS);
+
+    CreateTestDefinition createSnowflake =
+        createRequest("testForSnowflake").withSupportedServices(List.of("Snowflake"));
+    createEntity(createSnowflake, ADMIN_AUTH_HEADERS);
+
+    CreateTestDefinition createAllServices =
+        createRequest("testForAllServices").withSupportedServices(List.of());
+    createEntity(createAllServices, ADMIN_AUTH_HEADERS);
+
+    Map<String, String> params = Map.of("supportedService", "BigQuery", "limit", "1000");
+    ResultList<TestDefinition> testDefinitions = listEntities(params, ADMIN_AUTH_HEADERS);
+
+    boolean allMatch =
+        testDefinitions.getData().stream()
+            .allMatch(
+                t ->
+                    t.getSupportedServices() == null
+                        || t.getSupportedServices().isEmpty()
+                        || t.getSupportedServices().contains("BigQuery"));
+    Assertions.assertTrue(allMatch);
+
+    boolean containsBigQueryTest =
+        testDefinitions.getData().stream().anyMatch(t -> t.getName().equals("testForBigQuery"));
+    Assertions.assertTrue(containsBigQueryTest);
+
+    boolean containsAllServicesTest =
+        testDefinitions.getData().stream().anyMatch(t -> t.getName().equals("testForAllServices"));
+    Assertions.assertTrue(containsAllServicesTest);
+
+    boolean doesNotContainSnowflakeTest =
+        testDefinitions.getData().stream().noneMatch(t -> t.getName().equals("testForSnowflake"));
+    Assertions.assertTrue(doesNotContainSnowflakeTest);
   }
 
   @Test
@@ -143,6 +188,7 @@ public class TestDefinitionResourceTest
     assertEquals(request.getName(), createdEntity.getName());
     assertEquals(request.getDescription(), createdEntity.getDescription());
     assertEquals(request.getTestPlatforms(), createdEntity.getTestPlatforms());
+    assertEquals(request.getSupportedServices(), createdEntity.getSupportedServices());
   }
 
   @Override
@@ -151,6 +197,7 @@ public class TestDefinitionResourceTest
     assertEquals(expected.getName(), updated.getName());
     assertEquals(expected.getDescription(), updated.getDescription());
     assertEquals(expected.getTestPlatforms(), updated.getTestPlatforms());
+    assertEquals(expected.getSupportedServices(), updated.getSupportedServices());
   }
 
   @Override

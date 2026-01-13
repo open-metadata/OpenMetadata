@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,6 +14,11 @@
  * Metabase Connection Config
  */
 export interface MetabaseConnection {
+    /**
+     * API token to connect to Metabase. Use this instead of username/password for token-based
+     * authentication.
+     */
+    apiKey?: string;
     /**
      * Regex exclude or include charts that matches the pattern.
      */
@@ -31,7 +36,7 @@ export interface MetabaseConnection {
      */
     hostPort: string;
     /**
-     * Password to connect to Metabase.
+     * Password to connect to Metabase. Required for basic authentication.
      */
     password?: string;
     /**
@@ -44,10 +49,9 @@ export interface MetabaseConnection {
      */
     type?: MetabaseType;
     /**
-     * Username to connect to Metabase. This user should have privileges to read all the
-     * metadata in Metabase.
+     * Username to connect to Metabase. Required for basic authentication.
      */
-    username: string;
+    username?: string;
 }
 
 /**

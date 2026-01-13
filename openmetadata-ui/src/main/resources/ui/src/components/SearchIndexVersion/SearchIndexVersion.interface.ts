@@ -17,11 +17,11 @@ import { TagLabel } from '../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export interface SearchIndexVersionProps {
-  version: string;
+  version?: string;
   currentVersionData: SearchIndex;
   isVersionLoading: boolean;
   owners: SearchIndex['owners'];
-  domain: SearchIndex['domain'];
+  domains: SearchIndex['domains'];
   dataProducts: SearchIndex['dataProducts'];
   tier: TagLabel;
   breadCrumbList: TitleBreadcrumbProps['titleLinks'];

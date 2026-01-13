@@ -14,9 +14,9 @@
 import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep } from 'lodash';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { EntityTabs, EntityType, FqnPart } from '../../../../enums/entity.enum';
@@ -25,6 +25,7 @@ import {
   Column,
   DashboardDataModel,
 } from '../../../../generated/entity/data/dashboardDataModel';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import { TagSource } from '../../../../generated/type/schema';
 import { getPartialNameFromTableFQN } from '../../../../utils/CommonUtils';
 import {
@@ -33,7 +34,9 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../../utils/EntityVersionUtils';
+import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../../utils/RouterUtils';
+import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import Loader from '../../../common/Loader/Loader';
@@ -51,7 +54,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   currentVersionData,
   isVersionLoading,
   owners,
-  domain,
+  domains,
   dataProducts,
   tier,
   slashedDataModelName,
@@ -61,9 +64,9 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   versionHandler,
   entityPermissions,
 }: DataModelVersionProp) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
-  const { tab } = useParams<{ tab: EntityTabs }>();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
@@ -80,9 +83,9 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
           changeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [changeDescription, owners, tier, domain]
+      [changeDescription, owners, tier, domains]
     );
 
   const columns: DashboardDataModel['columns'] = useMemo(() => {
@@ -120,7 +123,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   }, [currentVersionData, changeDescription]);
 
   const handleTabChange = (activeKey: string) => {
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.DASHBOARD_DATA_MODEL,
         entityFqn,
@@ -129,6 +132,13 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
       )
     );
   };
+
+  const viewCustomPropertiesPermission = useMemo(() => {
+    return getPrioritizedViewPermission(
+      entityPermissions,
+      Operation.ViewCustomFields
+    );
+  }, [entityPermissions]);
 
   const tabItems: TabsProps['items'] = useMemo(
     () => [
@@ -166,7 +176,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
                 />
@@ -198,12 +208,12 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
             isVersionView
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },
     ],
-    [description, columns, currentVersionData, entityPermissions]
+    [description, columns, currentVersionData, viewCustomPropertiesPermission]
   );
 
   return (
@@ -250,7 +260,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
       )}
 
       <EntityVersionTimeLine
-        currentVersion={version}
+        currentVersion={version ?? ''}
         entityType={EntityType.DASHBOARD_DATA_MODEL}
         versionHandler={versionHandler}
         versionList={versionList}

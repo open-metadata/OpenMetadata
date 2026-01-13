@@ -15,7 +15,7 @@ import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Input, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconBotProfile } from '../../../../assets/svg/bot-profile.svg';
 import { PAGE_SIZE_LARGE, TERM_ADMIN } from '../../../../constants/constants';

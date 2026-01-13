@@ -1,6 +1,7 @@
 name: SonarCloud + Jest Coverage
 
 on:
+  workflow_dispatch:
   # Trigger analysis when pushing in master or pull requests, and when creating
   # a pull request.
   pull_request_target:
@@ -20,9 +21,6 @@ concurrency:
   cancel-in-progress: true
 jobs:
   ui-coverage-tests:
-    strategy:
-      matrix:
-        node-version: [18.x]
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft }}
     steps:
@@ -50,6 +48,11 @@ jobs:
           # Disabling shallow clone is recommended for improving relevancy of reporting
           fetch-depth: 0
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
+
       - name: Get yarn cache directory path
         id: yarn-cache-dir-path
         run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
@@ -59,9 +62,9 @@ jobs:
         id: yarn-cache
         with:
           path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          key: ${{ runner.os }}-node-yarn-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
-            ${{ runner.os }}-yarn-
+            ${{ runner.os }}-node-yarn-
 
       - name: Get npm cache directory
         id: npm-cache-dir
@@ -77,17 +80,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-      - name: Use Node.js ${{ matrix.node-version }}
-        if: steps.npm-cache.outputs.exit-code == 0
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node-version }}
-
       - name: Install Antlr4 CLI
         run: |
           sudo make install_antlr_cli
       - name: Install Yarn Packages
-        if: steps.yarn-cache.outputs.exit-code == 0
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: yarn install
       - name: Run Coverage

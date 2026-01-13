@@ -33,13 +33,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.apiSchema import APISchema
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Markdown
 from metadata.generated.schema.type.schema import DataTypeTopic, FieldModel
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.api.api_service import ApiServiceSource
 from metadata.ingestion.source.api.rest.models import RESTCollection, RESTEndpoint
+from metadata.ingestion.source.api.rest.parser import parse_openapi_schema
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_collection
 from metadata.utils.helpers import clean_uri
@@ -77,7 +78,7 @@ class RestSource(ApiServiceSource):
         Here is where filtering happens
         """
         try:
-            self.json_response = self.connection.json()
+            self.json_response = parse_openapi_schema(self.connection)
             collections_list = []
             tags_collection_set = set()
             if self.json_response.get("tags", []):
@@ -252,8 +253,9 @@ class RestSource(ApiServiceSource):
         return None
 
     def _get_request_schema(self, info: dict) -> Optional[APISchema]:
-        """fetch request schema"""
+        """fetch request schema - supports both OpenAPI 3.0 and Swagger 2.0"""
         try:
+            # Try OpenAPI 3.0 format first (requestBody)
             schema_ref = (
                 info.get("requestBody", {})
                 .get("content", {})
@@ -261,77 +263,325 @@ class RestSource(ApiServiceSource):
                 .get("schema", {})
                 .get("$ref")
             )
-            if not schema_ref:
-                logger.debug("No request schema found for the endpoint")
-                return None
-            return APISchema(schemaFields=self.process_schema_fields(schema_ref))
+
+            if schema_ref:
+                return APISchema(schemaFields=self.process_schema_fields(schema_ref))
+
+            # Try Swagger 2.0 format (parameters with "in": "body")
+            parameters = info.get("parameters", [])
+            for param in parameters:
+                if param.get("in") == "body" and "schema" in param:
+                    schema_ref = param["schema"].get("$ref")
+                    if schema_ref:
+                        return APISchema(
+                            schemaFields=self.process_schema_fields(schema_ref)
+                        )
+
+            # Try to get query/path parameters for GET/DELETE requests
+            # This handles Swagger 2.0 and OpenAPI 3.0 query parameters
+            param_fields = []
+            for param in parameters:
+                # Resolve parameter $ref if present
+                if "$ref" in param:
+                    param = self._resolve_parameter_ref(param.get("$ref"))
+                    if not param:
+                        continue
+
+                if param.get("in") in ["query", "path"]:
+                    field = self._convert_parameter_to_field(param)
+                    if field:
+                        param_fields.append(field)
+
+            if param_fields:
+                return APISchema(schemaFields=param_fields)
+
+            logger.debug("No request schema found for the endpoint")
+            return None
         except Exception as err:
             logger.warning(f"Error while parsing request schema: {err}")
         return None
 
-    def _get_response_schema(self, info: dict) -> Optional[APISchema]:
-        """fetch response schema"""
+    def _resolve_parameter_ref(self, param_ref: str) -> Optional[dict]:
+        """Resolve parameter $ref to actual parameter definition"""
         try:
-            schema_ref = (
-                info.get("responses", {})
-                .get("200", {})
-                .get("content", {})
-                .get("application/json", {})
-                .get("schema", {})
-                .get("$ref", {})
-            )
-            if not schema_ref:
-                logger.debug("Trying to parse response schema from schema property")
-                schema_ref = (
-                    info.get("responses", {})
-                    .get("200", {})
-                    .get("content", {})
-                    .get("application/json", {})
-                    .get("schema", {})
-                    .get("properties", {})
-                    .get("data", {})
-                    .get("$ref")
+            # Parameter refs look like: "#/parameters/ParameterName"
+            if not param_ref or not param_ref.startswith("#/parameters/"):
+                return None
+
+            param_name = param_ref.split("/")[-1]
+
+            # Swagger 2.0: parameters at root level
+            if self.json_response.get("parameters"):
+                return self.json_response.get("parameters", {}).get(param_name)
+
+            # OpenAPI 3.0: components.parameters
+            if self.json_response.get("components"):
+                return (
+                    self.json_response.get("components", {})
+                    .get("parameters", {})
+                    .get(param_name)
                 )
-            if not schema_ref:
+
+            logger.debug(f"Parameter reference '{param_name}' not found")
+            return None
+        except Exception as err:
+            logger.warning(f"Error resolving parameter reference: {err}")
+            return None
+
+    def _parse_openapi_type(self, openapi_type: Optional[str]) -> DataTypeTopic:
+        """
+        Parse OpenAPI type string to DataTypeTopic enum.
+        Shared type conversion logic used across the codebase.
+        """
+        if not openapi_type:
+            return DataTypeTopic.UNKNOWN
+
+        # Handle INTEGER -> INT conversion
+        normalized_type = (
+            "INT" if openapi_type.upper() == "INTEGER" else openapi_type.upper()
+        )
+
+        # Check if type exists in DataTypeTopic enum
+        if normalized_type in DataTypeTopic.__members__:
+            return DataTypeTopic[normalized_type]
+
+        return DataTypeTopic.UNKNOWN
+
+    def _convert_parameter_to_field(self, param: dict) -> Optional[FieldModel]:
+        """Convert OpenAPI/Swagger parameter to FieldModel for query/path parameters"""
+        try:
+            param_name = param.get("name")
+            if not param_name:
+                return None
+
+            # Get type from parameter (Swagger 2.0 format)
+            param_type = param.get("type")
+
+            # Get type from schema (OpenAPI 3.0 format)
+            if not param_type and "schema" in param:
+                param_type = param["schema"].get("type")
+
+            data_type = self._parse_openapi_type(param_type)
+
+            # Handle array items
+            children = None
+            if data_type == DataTypeTopic.ARRAY:
+                items = param.get("items") or param.get("schema", {}).get("items")
+                if items:
+                    item_type = items.get("type")
+                    child_data_type = self._parse_openapi_type(item_type)
+                    children = [FieldModel(name="item", dataType=child_data_type)]
+
+            return FieldModel(
+                name=param_name,
+                dataType=data_type,
+                children=children,
+                description=param.get("description"),
+            )
+        except Exception as err:
+            logger.warning(f"Error converting parameter to field: {err}")
+            return None
+
+    def _process_inline_schema(self, properties: dict) -> Optional[APISchema]:
+        """Process inline schema properties (schemas without $ref)"""
+        try:
+            fields = []
+            for prop_name, prop_def in properties.items():
+                prop_type = prop_def.get("type")
+
+                data_type = self._parse_openapi_type(prop_type)
+
+                # Handle array items
+                children = None
+                if data_type == DataTypeTopic.ARRAY:
+                    items = prop_def.get("items", {})
+                    if items:
+                        item_type = items.get("type")
+                        child_data_type = self._parse_openapi_type(item_type)
+                        children = [FieldModel(name="item", dataType=child_data_type)]
+
+                fields.append(
+                    FieldModel(
+                        name=prop_name,
+                        dataType=data_type,
+                        children=children,
+                        description=prop_def.get("description"),
+                    )
+                )
+
+            return APISchema(schemaFields=fields) if fields else None
+        except Exception as err:
+            logger.warning(f"Error processing inline schema: {err}")
+            return None
+
+    def _extract_schema_from_response(self, response: dict) -> dict:
+        """Extract schema from a response object (supports both OpenAPI 3.0 and Swagger 2.0)"""
+        # OpenAPI 3.0: response.content.application/json.schema
+        schema = (
+            response.get("content", {}).get("application/json", {}).get("schema", {})
+        )
+        # Swagger 2.0: response.schema
+        if not schema:
+            schema = response.get("schema", {})
+        return schema
+
+    def _get_response_schema(self, info: dict) -> Optional[APISchema]:
+        """fetch response schema - supports OpenAPI 3.0, Swagger 2.0, arrays, and inline schemas"""
+        try:
+            # Try response code 200 first
+            response_200 = info.get("responses", {}).get("200", {})
+            schema = self._extract_schema_from_response(response_200)
+
+            # Fallback: Try other success response codes if 200 not found
+            if not schema:
+                responses = info.get("responses", {})
+                for code in ["201", "202", "203", "204"]:
+                    if code in responses:
+                        logger.debug(f"Using response code {code} as 200 not found")
+                        schema = self._extract_schema_from_response(responses[code])
+                        if schema:
+                            break
+
+            if not schema:
                 logger.debug("No response schema found for the endpoint")
                 return None
-            return APISchema(schemaFields=self.process_schema_fields(schema_ref))
+
+            # Case 1: Direct $ref (object response)
+            schema_ref = schema.get("$ref")
+            if schema_ref:
+                return APISchema(schemaFields=self.process_schema_fields(schema_ref))
+
+            # Case 2: Array response with $ref in items
+            if schema.get("type") == "array":
+                items_ref = schema.get("items", {}).get("$ref")
+                if items_ref:
+                    logger.debug(f"Processing array response schema: {items_ref}")
+                    return APISchema(schemaFields=self.process_schema_fields(items_ref))
+
+            # Case 3: Nested $ref in schema.properties.data
+            schema_ref = schema.get("properties", {}).get("data", {}).get("$ref")
+            if schema_ref:
+                logger.debug("Found response schema in schema.properties.data")
+                return APISchema(schemaFields=self.process_schema_fields(schema_ref))
+
+            # Case 4: Inline schema with properties (no $ref)
+            properties = schema.get("properties", {})
+            if properties:
+                logger.debug("Processing inline response schema with properties")
+                return self._process_inline_schema(properties)
+
+            logger.debug("No processable response schema found for the endpoint")
+            return None
         except Exception as err:
             logger.warning(f"Error while parsing response schema: {err}")
         return None
 
-    def process_schema_fields(self, schema_ref: str) -> Optional[List[FieldModel]]:
+    def process_schema_fields(
+        self, schema_ref: str, parent_refs: Optional[List[str]] = None
+    ) -> Optional[List[FieldModel]]:
         try:
+            if parent_refs is None:
+                parent_refs = []
             schema_name = schema_ref.split("/")[-1]
-            schema_fields = (
-                self.json_response.get("components").get("schemas").get(schema_name)
-            )
 
+            # Support both OpenAPI 3.0 (components.schemas) and Swagger 2.0 (definitions)
+            schema_fields = None
+            if self.json_response.get("components"):
+                # OpenAPI 3.0: components.schemas.{SchemaName}
+                schema_fields = (
+                    self.json_response.get("components", {})
+                    .get("schemas", {})
+                    .get(schema_name)
+                )
+            elif self.json_response.get("definitions"):
+                # Swagger 2.0: definitions.{SchemaName}
+                schema_fields = self.json_response.get("definitions", {}).get(
+                    schema_name
+                )
+
+            if not schema_fields:
+                logger.warning(
+                    f"Schema '{schema_name}' not found in components.schemas or definitions"
+                )
+                return None
+
+            parent_refs.append(schema_ref)
             fetched_fields = []
             for key, val in schema_fields.get("properties", {}).items():
                 dtype = val.get("type")
                 if dtype:
-                    parsed_dtype = (
-                        DataTypeTopic[dtype.upper()]
-                        if dtype.upper() in DataTypeTopic.__members__
-                        else DataTypeTopic.UNKNOWN
+                    parsed_dtype = self._parse_openapi_type(dtype)
+                    children = None
+                    if parsed_dtype.value == DataTypeTopic.ARRAY.value:
+                        # If field of array type then parse children
+                        children_ref = val.get("items", {}).get("$ref")
+                        if children_ref:
+                            # check infinite recursion by checking pre-processed schemas(parent_refs)
+                            if children_ref not in parent_refs:
+                                logger.debug(
+                                    f"Processing array fields inside schema: {children_ref}"
+                                )
+                                children = self.process_schema_fields(
+                                    children_ref, parent_refs
+                                )
+                                logger.debug(
+                                    f"Completed processing array fields inside schema: {children_ref}"
+                                )
+                            else:
+                                logger.debug(
+                                    f"Skipping array fields inside schema: {children_ref} to avoid infinite recursion"
+                                )
+                    # Extract description if available
+                    description = val.get("description")
+                    description_obj = (
+                        Markdown(root=description) if description is not None else None
                     )
-                    fetched_fields.append(FieldModel(name=key, dataType=parsed_dtype))
+
+                    fetched_fields.append(
+                        FieldModel(
+                            name=key,
+                            dataType=parsed_dtype,
+                            children=children,
+                            description=description_obj,
+                        )
+                    )
                 else:
                     # If type of field is not defined then check for sub-schema
                     # Check if it's `object` type field
-                    # check infinite recrusrion by comparing with parent(schema_ref)
-                    object_children = None
-                    if val.get("$ref") and val.get("$ref") != schema_ref:
-                        object_children = self.process_schema_fields(val.get("$ref"))
+                    children = None
+                    if val.get("$ref"):
+                        # check infinite recursion by checking pre-processed schemas(parent_refs)
+                        if val.get("$ref") not in parent_refs:
+                            children = self.process_schema_fields(
+                                val.get("$ref"), parent_refs
+                            )
+                        else:
+                            logger.debug(
+                                f"Skipping object fields inside schema: {val.get('$ref')} to avoid infinite recursion"
+                            )
+                    # Extract description if available
+                    description = val.get("description")
+                    description_obj = (
+                        Markdown(root=description) if description is not None else None
+                    )
+
                     fetched_fields.append(
                         FieldModel(
                             name=key,
                             dataType=DataTypeTopic.UNKNOWN,
-                            children=object_children,
+                            dataTypeDisplay="OBJECT",
+                            children=children,
+                            description=description_obj,
                         )
                     )
+            if parent_refs and (schema_ref in parent_refs):
+                parent_refs.pop()
             return fetched_fields
         except Exception as err:
             logger.warning(f"Error while processing schema fields: {err}")
+            if parent_refs and (schema_ref in parent_refs):
+                parent_refs.pop()
+                logger.debug(
+                    f"Popping {schema_ref} from parent_refs due to processing error"
+                )
         return None

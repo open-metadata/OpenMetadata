@@ -16,7 +16,7 @@
       {
         "name": "matchAnyFieldChange",
         "effect": "include",
-        "condition": "matchAnyFieldChange({'description', 'domain', 'owners', 'tags', 'followers','parameterValues', 'assets'})",
+        "condition": "matchAnyFieldChange({'description', 'domains', 'owners', 'tags', 'followers','parameterValues', 'assets'})",
         "prefixCondition": "OR"
       },
       {
@@ -26,7 +26,7 @@
         "condition": "matchAnySource({'chart','container','dashboard','dashboardDataModel','database','databaseSchema','glossary','glossaryTerm','mlmodel','pipeline','query','report','searchIndex','storedProcedure','table','topic', 'domain', 'dataProduct', 'metric'})"
       },
       {
-        "name": "isBot",
+        "name": "noBotAllowed",
         "effect": "exclude",
         "condition": "isBot()",
         "prefixCondition": "AND"
@@ -66,7 +66,7 @@
             "name": "fieldChangeList",
             "input": [
               "description",
-              "domain",
+              "domains",
               "owners",
               "tags",
               "followers",

@@ -41,6 +41,7 @@ from metadata.ingestion.source.dashboard.tableau.queries import (
     TALEAU_GET_CUSTOM_SQL_QUERY,
 )
 from metadata.utils.logger import ometa_logger
+from metadata.utils.ssl_manager import SSLManager
 
 logger = ometa_logger()
 
@@ -80,6 +81,7 @@ class TableauClient:
         config,
         verify_ssl: Union[bool, str],
         pagination_limit: int,
+        ssl_manager: Optional[SSLManager] = None,
     ):
         self.tableau_server = Server(str(config.hostPort), use_server_version=True)
         if config.apiVersion:
@@ -91,6 +93,7 @@ class TableauClient:
         self.custom_sql_table_queries: Dict[str, List[str]] = {}
         self.owner_cache: Dict[str, TableauOwner] = {}
         self.all_projects: List[ProjectItem] = []
+        self.ssl_manager = ssl_manager
 
     @cached_property
     def server_info(self) -> Callable:
@@ -103,14 +106,21 @@ class TableauClient:
     def site_id(self) -> str:
         return self.tableau_server.site_id
 
-    def get_tableau_owner(self, owner_id: str) -> Optional[TableauOwner]:
+    def get_tableau_owner(
+        self, owner_id: str, include_owners: bool = True
+    ) -> Optional[TableauOwner]:
+        """
+        Get tableau owner with optional include_owners flag
+        """
         try:
+            if not include_owners:
+                return None
             if owner_id in self.owner_cache:
                 return self.owner_cache[owner_id]
             owner = self.tableau_server.users.get_by_id(owner_id) if owner_id else None
-            if owner and owner.email:
+            if owner:
                 owner_obj = TableauOwner(
-                    id=owner.id, name=owner.name, email=owner.email
+                    id=str(owner.id), name=owner.name, email=owner.email
                 )
                 self.owner_cache[owner_id] = owner_obj
                 return owner_obj
@@ -119,7 +129,7 @@ class TableauClient:
         return None
 
     def get_workbook_charts_and_user_count(
-        self, views: List[ViewItem]
+        self, views: List[ViewItem], include_owners: bool = True
     ) -> Optional[Tuple[Optional[int], Optional[List[TableauChart]]]]:
         """
         Fetches workbook charts and dashboard user view count
@@ -130,10 +140,10 @@ class TableauClient:
             try:
                 charts.append(
                     TableauChart(
-                        id=view.id,
+                        id=str(view.id),
                         name=view.name,
                         tags=view.tags,
-                        owner=self.get_tableau_owner(view.owner_id),
+                        owner=self.get_tableau_owner(view.owner_id, include_owners),
                         contentUrl=view.content_url,
                         sheetType=view.sheet_type,
                     )
@@ -199,7 +209,7 @@ class TableauClient:
             logger.debug(f"Failed to get project parents by id: {str(e)}")
         return None
 
-    def get_workbooks(self) -> Iterable[TableauDashboard]:
+    def get_workbooks(self, include_owners: bool = True) -> Iterable[TableauDashboard]:
         """
         Fetch all tableau workbooks
         """
@@ -209,15 +219,15 @@ class TableauClient:
             try:
                 self.tableau_server.workbooks.populate_views(workbook, usage=True)
                 charts, user_views = self.get_workbook_charts_and_user_count(
-                    workbook.views
+                    workbook.views, include_owners
                 )
                 workbook = TableauDashboard(
-                    id=workbook.id,
+                    id=str(workbook.id),
                     name=workbook.name,
                     project=TableauBaseModel(
-                        id=workbook.project_id, name=workbook.project_name
+                        id=str(workbook.project_id), name=workbook.project_name
                     ),
-                    owner=self.get_tableau_owner(workbook.owner_id),
+                    owner=self.get_tableau_owner(workbook.owner_id, include_owners),
                     description=workbook.description,
                     tags=workbook.tags,
                     webpageUrl=workbook.webpage_url,
@@ -245,9 +255,11 @@ class TableauClient:
             "Please check if the user has permissions to access the Dashboards information"
         )
 
-    def test_get_workbook_views(self):
+    def test_get_workbook_views(self, include_owners: bool = True):
         workbook = self.test_get_workbooks()
-        charts, _ = self.get_workbook_charts_and_user_count(workbook.views)
+        charts, _ = self.get_workbook_charts_and_user_count(
+            workbook.views, include_owners
+        )
         if charts:
             return True
         raise TableauChartsException(
@@ -255,9 +267,9 @@ class TableauClient:
             "Please check if the user has permissions to access the Charts information"
         )
 
-    def test_get_owners(self) -> Optional[List[TableauOwner]]:
+    def test_get_owners(self, include_owners: bool = True) -> Optional[TableauOwner]:
         workbook = self.test_get_workbooks()
-        owners = self.get_tableau_owner(workbook.owner_id)
+        owners = self.get_tableau_owner(workbook.owner_id, include_owners)
         if owners is not None:
             return owners
         raise TableauOwnersNotFound(
@@ -317,14 +329,18 @@ class TableauClient:
                     workbook_id=dashboard_id, first=entities_per_page, offset=offset
                 )
             )
-            if datasources_graphql_result:
-                if datasources_graphql_result and datasources_graphql_result.get(
-                    "data"
-                ):
+            if datasources_graphql_result and datasources_graphql_result.get("data"):
+                if datasources_graphql_result["data"].get("workbooks"):
                     tableau_datasource_connection = TableauDatasourcesConnection(
                         **datasources_graphql_result["data"]["workbooks"][0]
                     )
                     return tableau_datasource_connection.embeddedDatasourcesConnection
+                else:
+                    logger.warning(
+                        f"No Datasources found in GraphQL datasources query result for the workbook {dashboard_id}. "
+                        "If this is a recently created or updated workbook, it may take some time "
+                        f"to become available for querying via the GraphQL API. : \n graphql = {datasources_graphql_result}\n"
+                    )
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning(
@@ -414,3 +430,11 @@ class TableauClient:
 
     def sign_out(self) -> None:
         self.tableau_server.auth.sign_out()
+        self.cleanup()
+
+    def cleanup(self) -> None:
+        """
+        Clean up temporary SSL files if they exist
+        """
+        if self.ssl_manager:
+            self.ssl_manager.cleanup_temp_files()

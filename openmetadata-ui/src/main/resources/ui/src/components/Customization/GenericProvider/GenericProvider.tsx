@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { once } from 'lodash';
-import React, {
+import { isEmpty, omit, once } from 'lodash';
+import {
+  createContext,
   useCallback,
   useContext,
   useEffect,
@@ -21,58 +22,41 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
-import {
-  CustomizeEntityType,
-  ENTITY_PAGE_TYPE_MAP,
-} from '../../../constants/Customize.constants';
-import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
-import { EntityTabs } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { CreateThread } from '../../../generated/api/feed/createThread';
+import { Column, Table } from '../../../generated/entity/data/table';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
-import { Page } from '../../../generated/system/ui/page';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { postThread } from '../../../rest/feedsAPI';
+import { handleColumnFieldUpdate as handleColumnFieldUpdateUtil } from '../../../utils/ColumnUpdateUtils';
 import {
   getLayoutFromCustomizedPage,
   updateWidgetHeightRecursively,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
+import {
+  extractColumnsFromData,
+  findFieldByFQN,
+} from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-
-interface GenericProviderProps<T extends Omit<EntityReference, 'type'>> {
-  children?: React.ReactNode;
-  data: T;
-  type: CustomizeEntityType;
-  onUpdate: (updatedData: T, key?: keyof T) => Promise<void>;
-  isVersionView?: boolean;
-  permissions: OperationPermission;
-  currentVersionData?: T;
-  isTabExpanded?: boolean;
-  customizedPage?: Page | null;
-}
-
-interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
-  data: T;
-  type: CustomizeEntityType;
-  onUpdate: (updatedData: T, key?: keyof T) => Promise<void>;
-  isVersionView?: boolean;
-  permissions: OperationPermission;
-  currentVersionData?: T;
-  onThreadLinkSelect: (link: string, threadType?: ThreadType) => void;
-  layout: WidgetConfig[];
-  filterWidgets?: (widgets: string[]) => void;
-  updateWidgetHeight: (widgetId: string, height: number) => void;
-  // Props to control the dropdown state of Tag/Glossary from the Generic Provider
-  activeTagDropdownKey: string | null;
-  updateActiveTagDropdownKey: (key: string | null) => void;
-}
+import { ColumnDetailPanel } from '../../Database/ColumnDetailPanel/ColumnDetailPanel.component';
+import {
+  ColumnFieldUpdate,
+  ColumnOrTask,
+} from '../../Database/ColumnDetailPanel/ColumnDetailPanel.interface';
+import {
+  GenericContextType,
+  GenericProviderProps,
+} from './GenericProvider.interface';
 
 const createGenericContext = once(<T extends Omit<EntityReference, 'type'>>() =>
-  React.createContext({} as GenericContextType<T>)
+  createContext({} as GenericContextType<T>)
 );
 
 export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
@@ -85,6 +69,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   currentVersionData,
   isTabExpanded = false,
   customizedPage,
+  muiTags = false,
 }: GenericProviderProps<T>) => {
   const GenericContext = createGenericContext<T>();
   const [threadLink, setThreadLink] = useState<string>('');
@@ -94,19 +79,63 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const { t } = useTranslation();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const pageType = useMemo(() => ENTITY_PAGE_TYPE_MAP[type], [type]);
-  const { tab } = useParams<{ tab: EntityTabs }>();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const expandedLayout = useRef<WidgetConfig[]>([]);
   const [layout, setLayout] = useState<WidgetConfig[]>(
-    getLayoutFromCustomizedPage(pageType, tab, customizedPage)
+    getLayoutFromCustomizedPage(pageType, tab, customizedPage, isVersionView)
   );
   const [filteredKeys, setFilteredKeys] = useState<string[]>([]);
   const [activeTagDropdownKey, setActiveTagDropdownKey] = useState<
     string | null
   >(null);
 
+  const [selectedColumn, setSelectedColumn] = useState<ColumnOrTask | null>(
+    null
+  );
+
+  // Derive isColumnDetailOpen from selectedColumn - if a column is selected, panel is open
+  const isColumnDetailOpen = useMemo(
+    () => selectedColumn !== null,
+    [selectedColumn]
+  );
+
+  const { entityRules } = useEntityRules(type);
+
+  // Extract columns from data
+  const extractedColumns = useMemo(() => {
+    return extractColumnsFromData(data, type) as ColumnOrTask[];
+  }, [data, type]);
+
+  // Helper to clean column by removing empty children array
+  const cleanColumn = useCallback((column: ColumnOrTask): ColumnOrTask => {
+    const columnWithChildren = column as Column;
+
+    return isEmpty(columnWithChildren.children)
+      ? omit(column, 'children')
+      : column;
+  }, []);
+
+  // Sync selected column when extractedColumns change (e.g., after updates)
   useEffect(() => {
-    setLayout(getLayoutFromCustomizedPage(pageType, tab, customizedPage));
-  }, [customizedPage, tab, pageType]);
+    if (!selectedColumn?.fullyQualifiedName || extractedColumns.length === 0) {
+      return;
+    }
+
+    const updatedColumn = findFieldByFQN<Column>(
+      extractedColumns as Column[],
+      selectedColumn.fullyQualifiedName
+    );
+
+    if (updatedColumn) {
+      setSelectedColumn(cleanColumn(updatedColumn));
+    }
+  }, [extractedColumns, selectedColumn?.fullyQualifiedName, cleanColumn]);
+
+  useEffect(() => {
+    setLayout(
+      getLayoutFromCustomizedPage(pageType, tab, customizedPage, isVersionView)
+    );
+  }, [customizedPage, tab, pageType, isVersionView]);
 
   const onThreadPanelClose = useCallback(() => {
     setThreadLink('');
@@ -151,6 +180,55 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const updateWidgetHeight = useCallback((widgetId: string, height: number) => {
     setLayout((prev) => updateWidgetHeightRecursively(widgetId, height, prev));
   }, []);
+
+  const openColumnDetailPanel = useCallback((column: ColumnOrTask) => {
+    setSelectedColumn(column);
+  }, []);
+
+  const closeColumnDetailPanel = useCallback(() => {
+    setSelectedColumn(null);
+  }, []);
+
+  // Wrapper for onColumnFieldUpdate that updates selectedColumn after the update completes
+  const handleColumnFieldUpdate = useCallback(
+    async (fqn: string, update: ColumnFieldUpdate) => {
+      const { updatedEntity, updatedColumn } = handleColumnFieldUpdateUtil({
+        entityType: type,
+        entityData: data,
+        fqn,
+        update,
+      });
+
+      // Call onUpdate with the updated entity (onUpdate will handle API calls)
+      await onUpdate(updatedEntity);
+
+      // Update selected column if it matches the updated one
+      if (updatedColumn && selectedColumn?.fullyQualifiedName === fqn) {
+        setSelectedColumn(cleanColumn(updatedColumn as ColumnOrTask));
+      }
+
+      return updatedColumn as ColumnOrTask | undefined;
+    },
+    [data, type, onUpdate, selectedColumn, cleanColumn]
+  );
+
+  const handleColumnNavigate = useCallback((column: ColumnOrTask) => {
+    setSelectedColumn(column);
+  }, []);
+
+  // Extract deleted status from entity data
+  const deleted = (data as { deleted?: boolean })?.deleted;
+
+  // Extract tableConstraints for Table entities
+  const tableConstraints = useMemo(() => {
+    if (type === EntityType.TABLE && 'tableConstraints' in data) {
+      const tableData = data as Partial<Table>;
+
+      return tableData.tableConstraints;
+    }
+
+    return undefined;
+  }, [type, data]);
 
   // store the left side panel widget
   const leftPanelWidget = useMemo(() => {
@@ -216,6 +294,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const values = useMemo(
     () => ({
       data,
+      entityRules,
       type,
       onUpdate,
       isVersionView,
@@ -227,9 +306,15 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       updateWidgetHeight,
       activeTagDropdownKey,
       updateActiveTagDropdownKey,
+      muiTags,
+      selectedColumn,
+      isColumnDetailOpen,
+      openColumnDetailPanel,
+      closeColumnDetailPanel,
     }),
     [
       data,
+      entityRules,
       type,
       onUpdate,
       isVersionView,
@@ -241,6 +326,11 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       updateWidgetHeight,
       activeTagDropdownKey,
       updateActiveTagDropdownKey,
+      muiTags,
+      selectedColumn,
+      isColumnDetailOpen,
+      openColumnDetailPanel,
+      closeColumnDetailPanel,
     ]
   );
 
@@ -259,6 +349,20 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
           onCancel={onThreadPanelClose}
         />
       ) : null}
+      {extractedColumns.length > 0 && (
+        <ColumnDetailPanel
+          allColumns={extractedColumns as Column[]}
+          column={selectedColumn as Column}
+          deleted={deleted}
+          entityType={type}
+          isOpen={isColumnDetailOpen}
+          tableConstraints={tableConstraints}
+          tableFqn={data.fullyQualifiedName}
+          onClose={closeColumnDetailPanel}
+          onColumnFieldUpdate={handleColumnFieldUpdate}
+          onNavigate={handleColumnNavigate}
+        />
+      )}
     </GenericContext.Provider>
   );
 };

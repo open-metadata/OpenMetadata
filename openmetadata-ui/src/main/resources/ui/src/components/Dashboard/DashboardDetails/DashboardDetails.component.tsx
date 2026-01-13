@@ -13,15 +13,17 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
+import { Operation as PermissionOperation } from '../../../generated/entity/policies/accessControl/resourcePermission';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/uiCustomization';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -36,13 +38,19 @@ import {
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import dashboardDetailsClassBase from '../../../utils/DashboardDetailsClassBase';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import {
   updateCertificationTag,
   updateTierTag,
 } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
@@ -65,9 +73,9 @@ const DashboardDetails = ({
 }: DashboardDetailsProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { tab: activeTab = EntityTabs.DETAILS } =
-    useParams<{ tab: EntityTabs }>();
+    useRequiredParams<{ tab: EntityTabs }>();
   const { customizedPage, isLoading } = useCustomPages(PageType.Dashboard);
   const { fqn: decodedDashboardFQN } = useFqn();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
@@ -133,12 +141,15 @@ const DashboardDetails = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.replace(
+      navigate(
         getEntityDetailsPath(
           EntityType.DASHBOARD,
           decodedDashboardFQN,
           activeKey
-        )
+        ),
+        {
+          replace: true,
+        }
       );
     }
   };
@@ -205,8 +216,8 @@ const DashboardDetails = ({
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
-    []
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
+    [navigate]
   );
 
   const {
@@ -214,17 +225,25 @@ const DashboardDetails = ({
     editAllPermission,
     editLineagePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editCustomAttributePermission:
-        (dashboardPermissions.EditAll ||
-          dashboardPermissions.EditCustomFields) &&
-        !deleted,
-      editAllPermission: dashboardPermissions.EditAll && !deleted,
+        getPrioritizedEditPermission(
+          dashboardPermissions,
+          PermissionOperation.EditCustomFields
+        ) && !deleted,
+      editAllPermission: PermissionOperation.EditAll && !deleted,
       editLineagePermission:
-        (dashboardPermissions.EditAll || dashboardPermissions.EditLineage) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          dashboardPermissions,
+          PermissionOperation.EditLineage
+        ) && !deleted,
       viewAllPermission: dashboardPermissions.ViewAll,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        dashboardPermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [dashboardPermissions, deleted]
   );
@@ -236,6 +255,7 @@ const DashboardDetails = ({
       editLineagePermission,
       editCustomAttributePermission,
       viewAllPermission,
+      viewCustomPropertiesPermission,
       dashboardDetails,
       deleted: deleted ?? false,
       handleFeedCount,
@@ -294,9 +314,7 @@ const DashboardDetails = ({
 
   return (
     <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.dashboard'),
-      })}
+      pageTitle={getEntityName(dashboardDetails)}
       title="Table details">
       <Row gutter={[0, 12]}>
         <Col span={24}>

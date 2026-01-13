@@ -13,10 +13,10 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Row, Typography } from 'antd';
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import { HELP_ITEMS_ENUM, SupportItem } from '../constants/Navbar.constants';
+import { t } from './i18next/LocalUtil';
 import navbarUtilClassBase from './NavbarUtilClassBase';
 
 const getHelpDropdownLabelContentRenderer = (
@@ -34,9 +34,8 @@ const getHelpDropdownLabelContentRenderer = (
       </Col>
       <Col className="flex items-center" span={20}>
         <Typography.Text className="text-base-color">
-          {item.label}{' '}
-          {item.key === HELP_ITEMS_ENUM.VERSION &&
-            (version ?? '?').split('-')[0]}
+          {t(item.label)}{' '}
+          {item.key === HELP_ITEMS_ENUM.VERSION && (version ?? '?')}
         </Typography.Text>
 
         {item.isExternal && (
@@ -56,7 +55,7 @@ const getHelpDropdownLabel = (item: SupportItem, version?: string) => {
     return (
       <a
         className="no-underline"
-        href={item.link}
+        href={item.link?.replace('{{currentVersion}}', version ?? '')}
         rel="noreferrer"
         target="_blank">
         {getHelpDropdownLabelContentRenderer(item, version)}

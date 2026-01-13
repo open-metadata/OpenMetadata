@@ -17,6 +17,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { PartitionedKeys } from '../../../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
 import entityRightPanelClassBase from '../../../utils/EntityRightPanelClassBase';
@@ -38,6 +39,7 @@ interface EntityRightPanelProps<T extends ExtentionEntitiesKeys> {
   showTaskHandler?: boolean;
   showDataProductContainer?: boolean;
   afterSlot?: React.ReactNode;
+  viewCustomPropertiesPermission?: boolean;
   onTagSelectionChange?: (selectedTags: EntityTags[]) => Promise<void>;
   viewAllPermission?: boolean;
   customProperties?: ExtentionEntities[T];
@@ -56,22 +58,23 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   afterSlot,
   showTaskHandler = true,
   showDataProductContainer = true,
-  viewAllPermission,
   customProperties,
   editCustomAttributePermission,
   editDataProductPermission,
   onDataProductUpdate,
+  viewCustomPropertiesPermission,
 }: EntityRightPanelProps<T>) => {
+  const { entityRules } = useEntityRules(entityType);
   const KnowledgeArticles =
     entityRightPanelClassBase.getKnowLedgeArticlesWidget();
   const { fqn: entityFQN } = useFqn();
   const { data } = useGenericContext<{
-    domain: EntityReference;
+    domains: EntityReference[];
     dataProducts: EntityReference[];
     id: string;
   }>();
 
-  const { domain, dataProducts, id: entityId } = data ?? {};
+  const { domains, dataProducts, id: entityId } = data ?? {};
 
   return (
     <>
@@ -81,9 +84,10 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
           <div data-testid="KnowledgePanel.DataProducts">
             <DataProductsContainer
               newLook
-              activeDomain={domain}
+              activeDomains={domains}
               dataProducts={dataProducts}
               hasPermission={editDataProductPermission ?? false}
+              multiple={entityRules.canAddMultipleDataProducts}
               onSave={onDataProductUpdate}
             />
           </div>
@@ -124,7 +128,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
             isRenderedInRightPanel
             entityType={entityType as T}
             hasEditAccess={Boolean(editCustomAttributePermission)}
-            hasPermission={Boolean(viewAllPermission)}
+            hasPermission={Boolean(viewCustomPropertiesPermission)}
             maxDataCap={5}
           />
         )}

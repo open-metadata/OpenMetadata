@@ -10,18 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { Col, Row, Tabs } from 'antd';
-import { t } from 'i18next';
 import { isEmpty } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import { useHistory, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -31,15 +24,16 @@ import {
   Glossary,
 } from '../../../generated/entity/data/glossary';
 import {
+  EntityStatus,
   GlossaryTerm,
-  Status,
 } from '../../../generated/entity/data/glossaryTerm';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { MOCK_GLOSSARY_NO_PERMISSIONS } from '../../../mocks/Glossary.mock';
-import { searchData } from '../../../rest/miscAPI';
+import { searchQuery } from '../../../rest/searchAPI';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
@@ -48,19 +42,19 @@ import {
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
+import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import {
   getGlossaryTermDetailsPath,
   getGlossaryTermsVersionsPath,
 } from '../../../utils/RouterUtils';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../../utils/StringsUtils';
+import { getTermQuery } from '../../../utils/SearchUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
+import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import {
   GenericProvider,
@@ -68,6 +62,8 @@ import {
 } from '../../Customization/GenericProvider/GenericProvider';
 import { GenericTab } from '../../Customization/GenericTab/GenericTab';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
+import EntitySummaryPanel from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from '../GlossaryTermTab/GlossaryTermTab.component';
 import { useGlossaryStore } from '../useGlossary.store';
@@ -87,38 +83,43 @@ const GlossaryTermsV1 = ({
   isTabExpanded,
   toggleTabExpanded,
 }: GlossaryTermsV1Props) => {
-  const { tab, version } = useParams<{ tab: EntityTabs; version: string }>();
+  const { tab: activeTab, version } = useRequiredParams<{
+    tab: EntityTabs;
+    version: string;
+  }>();
   const { fqn: glossaryFqn } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const assetTabRef = useRef<AssetsTabRef>(null);
   const [assetModalVisible, setAssetModalVisible] = useState(false);
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
   const [assetCount, setAssetCount] = useState<number>(0);
-  const { glossaryChildTerms, onAddGlossaryTerm } = useGlossaryStore();
+  const [previewAsset, setPreviewAsset] =
+    useState<EntityDetailsObjectInterface>();
+  const { onAddGlossaryTerm } = useGlossaryStore();
   const { permissions } = useGenericContext<GlossaryTerm>();
-  const childGlossaryTerms = glossaryChildTerms ?? [];
   const { customizedPage, isLoading } = useCustomPages(PageType.GlossaryTerm);
+  const { t } = useTranslation();
 
   const assetPermissions = useMemo(() => {
-    const glossaryTermStatus = glossaryTerm.status ?? Status.Approved;
+    const glossaryTermStatus =
+      glossaryTerm.entityStatus ?? EntityStatus.Approved;
 
-    return glossaryTermStatus === Status.Approved
+    return glossaryTermStatus === EntityStatus.Approved
       ? permissions
       : MOCK_GLOSSARY_NO_PERMISSIONS;
   }, [glossaryTerm, permissions]);
 
-  const activeTab = useMemo(() => {
-    return tab ?? EntityTabs.OVERVIEW;
-  }, [tab]);
-
   const activeTabHandler = (tab: string) => {
-    history.replace({
-      pathname: version
-        ? getGlossaryTermsVersionsPath(glossaryFqn, version, tab)
-        : getGlossaryTermDetailsPath(glossaryFqn, tab),
-    });
+    navigate(
+      {
+        pathname: version
+          ? getGlossaryTermsVersionsPath(glossaryFqn, version, tab)
+          : getGlossaryTermDetailsPath(glossaryFqn, tab),
+      },
+      { replace: true }
+    );
   };
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
@@ -136,20 +137,17 @@ const GlossaryTermsV1 = ({
   const fetchGlossaryTermAssets = async () => {
     if (glossaryTerm) {
       try {
-        const encodedFqn = getEncodedFqn(
-          escapeESReservedCharacters(glossaryTerm.fullyQualifiedName)
-        );
-        const res = await searchData(
-          '',
-          1,
-          0,
-          `(tags.tagFQN:"${encodedFqn}")`,
-          '',
-          '',
-          SearchIndex.ALL
-        );
+        const res = await searchQuery({
+          query: '',
+          pageNumber: 1,
+          pageSize: 0,
+          queryFilter: getTermQuery({
+            'tags.tagFQN': glossaryTerm.fullyQualifiedName ?? '',
+          }),
+          searchIndex: SearchIndex.ALL,
+        });
 
-        setAssetCount(res.data.hits.total.value ?? 0);
+        setAssetCount(res.hits.total.value ?? 0);
       } catch {
         setAssetCount(0);
       }
@@ -159,8 +157,8 @@ const GlossaryTermsV1 = ({
   const handleAssetSave = useCallback(() => {
     fetchGlossaryTermAssets();
     assetTabRef.current?.refreshAssets();
-    tab !== 'assets' && activeTabHandler('assets');
-  }, [assetTabRef, tab]);
+    activeTab !== EntityTabs.ASSETS && activeTabHandler(EntityTabs.ASSETS);
+  }, [assetTabRef, activeTab]);
 
   const onExtensionUpdate = useCallback(
     async (updatedTable: GlossaryTerm) => {
@@ -180,6 +178,19 @@ const GlossaryTermsV1 = ({
       getEntityFeedCount();
     }
   };
+
+  const handleAssetClick = useCallback(
+    (asset?: EntityDetailsObjectInterface) => {
+      setPreviewAsset(asset);
+      onAssetClick?.(asset);
+    },
+    [onAssetClick]
+  );
+
+  const viewCustomPropertiesPermission = useMemo(
+    () => getPrioritizedViewPermission(permissions, Operation.ViewCustomFields),
+    [permissions]
+  );
 
   const tabItems = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
@@ -203,14 +214,14 @@ const GlossaryTermsV1 = ({
                     t('label.glossary-term-plural')}
                   <span className="p-l-xs ">
                     {getCountBadge(
-                      childGlossaryTerms.length,
+                      glossaryTerm.childrenCount || 0,
                       '',
-                      activeTab === EntityTabs.TERMS
+                      activeTab === EntityTabs.GLOSSARY_TERMS
                     )}
                   </span>
                 </div>
               ),
-              key: EntityTabs.TERMS,
+              key: EntityTabs.GLOSSARY_TERMS,
               children: (
                 <GlossaryTermTab
                   className="p-md glossary-term-table-container"
@@ -229,15 +240,49 @@ const GlossaryTermsV1 = ({
               ),
               key: EntityTabs.ASSETS,
               children: (
-                <AssetsTabs
-                  assetCount={assetCount}
-                  entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
-                  isSummaryPanelOpen={isSummaryPanelOpen}
-                  permissions={assetPermissions}
-                  ref={assetTabRef}
-                  onAddAsset={() => setAssetModalVisible(true)}
-                  onAssetClick={onAssetClick}
-                  onRemoveAsset={handleAssetSave}
+                <ResizablePanels
+                  className="h-full glossary-term-resizable-panel"
+                  firstPanel={{
+                    className: 'glossary-term-resizable-panel-container',
+                    children: (
+                      <AssetsTabs
+                        assetCount={assetCount}
+                        entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
+                        isSummaryPanelOpen={Boolean(previewAsset)}
+                        permissions={assetPermissions}
+                        ref={assetTabRef}
+                        onAddAsset={() => setAssetModalVisible(true)}
+                        onAssetClick={handleAssetClick}
+                        onRemoveAsset={handleAssetSave}
+                      />
+                    ),
+                    flex: 0.7,
+                    minWidth: 700,
+                    wrapInCard: false,
+                  }}
+                  hideSecondPanel={!previewAsset}
+                  pageTitle={t('label.glossary-term')}
+                  secondPanel={{
+                    children: previewAsset && (
+                      <EntitySummaryPanel
+                        entityDetails={previewAsset}
+                        handleClosePanel={() => setPreviewAsset(undefined)}
+                        highlights={{
+                          'tag.name': [glossaryTerm.fullyQualifiedName ?? ''],
+                        }}
+                        key={
+                          previewAsset.details.id ??
+                          previewAsset.details.fullyQualifiedName
+                        }
+                        panelPath="glossary-term-assets-tab"
+                      />
+                    ),
+                    className:
+                      'entity-summary-resizable-right-panel-container glossary-term-resizable-panel-container',
+                    flex: 0.3,
+                    minWidth: 400,
+                    wrapInCard: false,
+                  }}
                 />
               ),
             },
@@ -284,7 +329,7 @@ const GlossaryTermsV1 = ({
                     !isVersionView &&
                     (permissions.EditAll || permissions.EditCustomFields)
                   }
-                  hasPermission={permissions.ViewAll}
+                  hasPermission={viewCustomPropertiesPermission}
                   isVersionView={isVersionView}
                 />
               ),
@@ -296,12 +341,13 @@ const GlossaryTermsV1 = ({
     return getDetailsTabWithNewLabel(
       items,
       customizedPage?.tabs,
-      EntityTabs.OVERVIEW
+      EntityTabs.OVERVIEW,
+      isVersionView
     );
   }, [
     customizedPage?.tabs,
     glossaryTerm,
-    permissions,
+    viewCustomPropertiesPermission,
     activeTab,
     assetCount,
     feedCount.conversationCount,
@@ -310,6 +356,8 @@ const GlossaryTermsV1 = ({
     isVersionView,
     assetPermissions,
     handleAssetSave,
+    previewAsset,
+    handleAssetClick,
     onExtensionUpdate,
   ]);
 
@@ -318,8 +366,10 @@ const GlossaryTermsV1 = ({
     setTimeout(() => {
       fetchGlossaryTermAssets();
     }, 500);
-    getEntityFeedCount();
-  }, [glossaryFqn]);
+    if (!isVersionView) {
+      getEntityFeedCount();
+    }
+  }, [glossaryFqn, isVersionView]);
 
   const updatedGlossaryTerm = useMemo(() => {
     const name = isVersionView

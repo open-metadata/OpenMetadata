@@ -10,11 +10,30 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { Form, FormInstance } from 'antd';
-import React from 'react';
 import { DESTINATION_SOURCE_ITEMS } from '../../../constants/Alerts.constants';
+import { SubscriptionCategory } from '../../../generated/events/api/createEventSubscription';
+import { SubscriptionType } from '../../../generated/events/eventSubscription';
+import { testAlertDestination } from '../../../rest/alertsAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import DestinationFormItem from './DestinationFormItem.component';
+
+jest.mock('../../../rest/alertsAPI', () => ({
+  testAlertDestination: jest.fn(),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
+const mockGetFormattedDestinations = jest.fn();
 
 jest.mock('../../../utils/Alerts/AlertsUtil', () => ({
   getDestinationConfigField: jest
@@ -31,6 +50,8 @@ jest.mock('../../../utils/Alerts/AlertsUtil', () => ({
   getReadTimeoutField: jest
     .fn()
     .mockReturnValue(<div data-testid="read-timeout" />),
+  getFormattedDestinations: (...args: unknown[]) =>
+    mockGetFormattedDestinations(...args),
 }));
 
 jest.mock('../../../utils/ObservabilityUtils', () => ({
@@ -131,5 +152,468 @@ describe('DestinationFormItem', () => {
     render(<DestinationFormItem />);
 
     expect(screen.getByTestId('connection-timeout')).toBeInTheDocument();
+  });
+
+  describe('handleTestDestinationClick', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should call testAlertDestination with formatted external destinations', async () => {
+      const mockDestinations = [
+        {
+          destinationType: 'Webhook',
+          category: SubscriptionCategory.External,
+          type: SubscriptionType.Webhook,
+          config: {
+            endpoint: 'https://example.com/webhook',
+            headers: [{ key: 'Content-Type', value: 'application/json' }],
+            queryParams: [{ key: 'param1', value: 'value1' }],
+          },
+        },
+        {
+          destinationType: 'Slack',
+          category: SubscriptionCategory.External,
+          type: SubscriptionType.Slack,
+          config: {
+            webhookUrl: 'https://hooks.slack.com/services/xxx',
+          },
+        },
+      ];
+
+      const formattedDestinations = [
+        {
+          category: SubscriptionCategory.External,
+          type: SubscriptionType.Webhook,
+          config: {
+            endpoint: 'https://example.com/webhook',
+            headers: { 'Content-Type': 'application/json' },
+            queryParams: { param1: 'value1' },
+          },
+        },
+        {
+          category: SubscriptionCategory.External,
+          type: SubscriptionType.Slack,
+          config: {
+            webhookUrl: 'https://hooks.slack.com/services/xxx',
+          },
+        },
+      ];
+
+      const setFieldValue = jest.fn();
+      const getFieldValue = jest.fn().mockReturnValue(mockDestinations);
+
+      jest.spyOn(Form, 'useFormInstance').mockImplementation(
+        () =>
+          ({
+            setFieldValue,
+            getFieldValue,
+          } as unknown as FormInstance)
+      );
+
+      const useWatchMock = jest.spyOn(Form, 'useWatch');
+      useWatchMock.mockImplementation((path) => {
+        if (path && path[0] === 'resources') {
+          return ['container'];
+        }
+        if (path && path[0] === 'destinations') {
+          return mockDestinations;
+        }
+
+        return undefined;
+      });
+
+      mockGetFormattedDestinations.mockReturnValue(formattedDestinations);
+      (testAlertDestination as jest.Mock).mockResolvedValue([
+        {
+          category: SubscriptionCategory.External,
+          type: SubscriptionType.Webhook,
+          config: {
+            endpoint: 'https://example.com/webhook',
+            headers: { 'Content-Type': 'application/json' },
+            queryParams: { param1: 'value1' },
+          },
+          statusDetails: { status: 200 },
+        },
+      ]);
+
+      render(<DestinationFormItem />);
+
+      const testButton = screen.getByTestId('test-destination-button');
+
+      expect(testButton).toBeEnabled();
+
+      await act(async () => {
+        fireEvent.click(testButton);
+      });
+
+      await waitFor(() => {
+        expect(mockGetFormattedDestinations).toHaveBeenCalledWith(
+          mockDestinations
+        );
+      });
+
+      await waitFor(() => {
+        expect(testAlertDestination).toHaveBeenCalledWith({
+          destinations: formattedDestinations,
+        });
+      });
+    });
+
+    it('should filter out internal destinations before testing', async () => {
+      const mockDestinations = [
+        {
+          destinationType: 'Webhook',
+          category: SubscriptionCategory.External,
+          type: SubscriptionType.Webhook,
+          config: {
+            endpoint: 'https://example.com/webhook',
+          },
+        },
+        {
+          destinationType: 'Owners',
+          category: SubscriptionCategory.Owners,
+          type: SubscriptionType.Email,
+          config: {},
+        },
+      ];
+
+      const formattedDestinations = [
+        {
+          category: SubscriptionCategory.External,
+          type: SubscriptionType.Webhook,
+          config: {
+            endpoint: 'https://example.com/webhook',
+          },
+        },
+        {
+          category: SubscriptionCategory.Owners,
+          type: SubscriptionType.Email,
+          config: {},
+        },
+      ];
+
+      const setFieldValue = jest.fn();
+      const getFieldValue = jest.fn().mockReturnValue(mockDestinations);
+
+      jest.spyOn(Form, 'useFormInstance').mockImplementation(
+        () =>
+          ({
+            setFieldValue,
+            getFieldValue,
+          } as unknown as FormInstance)
+      );
+
+      const useWatchMock = jest.spyOn(Form, 'useWatch');
+      useWatchMock.mockImplementation((path) => {
+        if (path && path[0] === 'resources') {
+          return ['container'];
+        }
+        if (path && path[0] === 'destinations') {
+          return mockDestinations;
+        }
+
+        return undefined;
+      });
+
+      mockGetFormattedDestinations.mockReturnValue(formattedDestinations);
+      (testAlertDestination as jest.Mock).mockResolvedValue([]);
+
+      render(<DestinationFormItem />);
+
+      const testButton = screen.getByTestId('test-destination-button');
+
+      await act(async () => {
+        fireEvent.click(testButton);
+      });
+
+      await waitFor(() => {
+        expect(testAlertDestination).toHaveBeenCalledWith({
+          destinations: [
+            {
+              category: SubscriptionCategory.External,
+              type: SubscriptionType.Webhook,
+              config: {
+                endpoint: 'https://example.com/webhook',
+              },
+            },
+          ],
+        });
+      });
+    });
+
+    it('should filter out external destinations with empty config', async () => {
+      const mockDestinations = [
+        {
+          destinationType: 'Webhook',
+          category: SubscriptionCategory.External,
+          type: SubscriptionType.Webhook,
+          config: {
+            endpoint: 'https://example.com/webhook',
+          },
+        },
+        {
+          destinationType: 'Slack',
+          category: SubscriptionCategory.External,
+          type: SubscriptionType.Slack,
+          config: {},
+        },
+      ];
+
+      const formattedDestinations = [
+        {
+          category: SubscriptionCategory.External,
+          type: SubscriptionType.Webhook,
+          config: {
+            endpoint: 'https://example.com/webhook',
+          },
+        },
+        {
+          category: SubscriptionCategory.External,
+          type: SubscriptionType.Slack,
+          config: {},
+        },
+      ];
+
+      const setFieldValue = jest.fn();
+      const getFieldValue = jest.fn().mockReturnValue(mockDestinations);
+
+      jest.spyOn(Form, 'useFormInstance').mockImplementation(
+        () =>
+          ({
+            setFieldValue,
+            getFieldValue,
+          } as unknown as FormInstance)
+      );
+
+      const useWatchMock = jest.spyOn(Form, 'useWatch');
+      useWatchMock.mockImplementation((path) => {
+        if (path && path[0] === 'resources') {
+          return ['container'];
+        }
+        if (path && path[0] === 'destinations') {
+          return mockDestinations;
+        }
+
+        return undefined;
+      });
+
+      mockGetFormattedDestinations.mockReturnValue(formattedDestinations);
+      (testAlertDestination as jest.Mock).mockResolvedValue([]);
+
+      render(<DestinationFormItem />);
+
+      const testButton = screen.getByTestId('test-destination-button');
+
+      await act(async () => {
+        fireEvent.click(testButton);
+      });
+
+      await waitFor(() => {
+        expect(testAlertDestination).toHaveBeenCalledWith({
+          destinations: [
+            {
+              category: SubscriptionCategory.External,
+              type: SubscriptionType.Webhook,
+              config: {
+                endpoint: 'https://example.com/webhook',
+              },
+            },
+          ],
+        });
+      });
+    });
+
+    it('should handle errors and show error toast', async () => {
+      const mockError = new Error('Network error');
+      const mockDestinations = [
+        {
+          destinationType: 'Webhook',
+          category: SubscriptionCategory.External,
+          type: SubscriptionType.Webhook,
+          config: {
+            endpoint: 'https://example.com/webhook',
+          },
+        },
+      ];
+
+      const setFieldValue = jest.fn();
+      const getFieldValue = jest.fn().mockReturnValue(mockDestinations);
+
+      jest.spyOn(Form, 'useFormInstance').mockImplementation(
+        () =>
+          ({
+            setFieldValue,
+            getFieldValue,
+          } as unknown as FormInstance)
+      );
+
+      const useWatchMock = jest.spyOn(Form, 'useWatch');
+      useWatchMock.mockImplementation((path) => {
+        if (path && path[0] === 'resources') {
+          return ['container'];
+        }
+        if (path && path[0] === 'destinations') {
+          return mockDestinations;
+        }
+
+        return undefined;
+      });
+
+      mockGetFormattedDestinations.mockReturnValue([
+        {
+          category: SubscriptionCategory.External,
+          type: SubscriptionType.Webhook,
+          config: {
+            endpoint: 'https://example.com/webhook',
+          },
+        },
+      ]);
+      (testAlertDestination as jest.Mock).mockRejectedValue(mockError);
+
+      render(<DestinationFormItem />);
+
+      const testButton = screen.getByTestId('test-destination-button');
+
+      await act(async () => {
+        fireEvent.click(testButton);
+      });
+
+      await waitFor(() => {
+        expect(showErrorToast).toHaveBeenCalledWith(mockError);
+      });
+    });
+
+    it('should not call API when getFormattedDestinations returns undefined', async () => {
+      const mockDestinations = [
+        {
+          destinationType: 'Webhook',
+          category: SubscriptionCategory.External,
+          type: SubscriptionType.Webhook,
+          config: {},
+        },
+      ];
+
+      const setFieldValue = jest.fn();
+      const getFieldValue = jest.fn().mockReturnValue(mockDestinations);
+
+      jest.spyOn(Form, 'useFormInstance').mockImplementation(
+        () =>
+          ({
+            setFieldValue,
+            getFieldValue,
+          } as unknown as FormInstance)
+      );
+
+      const useWatchMock = jest.spyOn(Form, 'useWatch');
+      useWatchMock.mockImplementation((path) => {
+        if (path && path[0] === 'resources') {
+          return ['container'];
+        }
+        if (path && path[0] === 'destinations') {
+          return mockDestinations;
+        }
+
+        return undefined;
+      });
+
+      mockGetFormattedDestinations.mockReturnValue(undefined);
+
+      render(<DestinationFormItem />);
+
+      const testButton = screen.getByTestId('test-destination-button');
+
+      await act(async () => {
+        fireEvent.click(testButton);
+      });
+
+      await waitFor(() => {
+        expect(mockGetFormattedDestinations).toHaveBeenCalled();
+      });
+
+      expect(testAlertDestination).not.toHaveBeenCalled();
+    });
+
+    it('test destination button should be disabled when no external destination is selected', () => {
+      const mockDestinations = [
+        {
+          destinationType: 'Owners',
+          category: SubscriptionCategory.Owners,
+          type: SubscriptionType.Email,
+          config: {},
+        },
+      ];
+
+      const setFieldValue = jest.fn();
+      const getFieldValue = jest.fn();
+
+      jest.spyOn(Form, 'useFormInstance').mockImplementation(
+        () =>
+          ({
+            setFieldValue,
+            getFieldValue,
+          } as unknown as FormInstance)
+      );
+
+      const useWatchMock = jest.spyOn(Form, 'useWatch');
+      useWatchMock.mockImplementation((path) => {
+        if (path && path[0] === 'resources') {
+          return ['container'];
+        }
+        if (path && path[0] === 'destinations') {
+          return mockDestinations;
+        }
+
+        return undefined;
+      });
+
+      render(<DestinationFormItem />);
+
+      const testButton = screen.getByTestId('test-destination-button');
+
+      expect(testButton).toBeDisabled();
+    });
+
+    it('test destination button should be enabled when external destination is selected', () => {
+      const mockDestinations = [
+        {
+          destinationType: 'Webhook',
+          category: SubscriptionCategory.External,
+          type: SubscriptionType.Webhook,
+          config: {
+            endpoint: 'https://example.com/webhook',
+          },
+        },
+      ];
+
+      const setFieldValue = jest.fn();
+      const getFieldValue = jest.fn();
+
+      jest.spyOn(Form, 'useFormInstance').mockImplementation(
+        () =>
+          ({
+            setFieldValue,
+            getFieldValue,
+          } as unknown as FormInstance)
+      );
+
+      const useWatchMock = jest.spyOn(Form, 'useWatch');
+      useWatchMock.mockImplementation((path) => {
+        if (path && path[0] === 'resources') {
+          return ['container'];
+        }
+        if (path && path[0] === 'destinations') {
+          return mockDestinations;
+        }
+
+        return undefined;
+      });
+
+      render(<DestinationFormItem />);
+
+      const testButton = screen.getByTestId('test-destination-button');
+
+      expect(testButton).toBeEnabled();
+    });
   });
 });

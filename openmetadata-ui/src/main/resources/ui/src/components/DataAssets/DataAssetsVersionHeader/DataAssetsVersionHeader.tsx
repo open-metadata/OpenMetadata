@@ -14,7 +14,7 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import { get } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
@@ -88,10 +88,11 @@ function DataAssetsVersionHeader({
               {entityType !== EntityType.METADATA_SERVICE && (
                 <>
                   <DomainLabel
-                    domain={
-                      (currentVersionData as EntitiesWithDomainField).domain
-                    }
+                    multiple
                     domainDisplayName={domainDisplayName}
+                    domains={
+                      (currentVersionData as EntitiesWithDomainField).domains
+                    }
                     entityFqn={currentVersionData.fullyQualifiedName ?? ''}
                     entityId={currentVersionData.id ?? ''}
                     entityType={entityType}

@@ -10,10 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { AxiosResponse } from 'axios';
-import React from 'react';
 import { AuthProvider as AuthProviderProps } from '../../../generated/configuration/authenticationConfiguration';
 import axiosClient from '../../../rest';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
@@ -37,7 +35,7 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({ push: jest.fn(), listen: jest.fn() }),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock('../../../rest/miscAPI', () => ({
@@ -100,6 +98,7 @@ jest.mock('../../../hooks/useApplicationStore', () => ({
     setJwtPrincipalClaimsMapping: jest.fn(),
     isApplicationLoading: false,
     setApplicationLoading: jest.fn(),
+    initializeAuthState: jest.fn(),
     authConfig: {
       provider: AuthProviderProps.Basic,
       providerName: 'Basic',
@@ -155,9 +154,7 @@ describe('Test auth provider', () => {
 
     expect(logoutButton).toBeInTheDocument();
 
-    await act(async () => {
-      userEvent.click(logoutButton);
-    });
+    fireEvent.click(logoutButton);
 
     expect(mockOnLogoutHandler).toHaveBeenCalled();
   });
@@ -311,7 +308,6 @@ describe('Test axios response interceptor', () => {
     try {
       await errorHandler?.(mockError);
     } catch (error) {
-      // eslint-disable-next-line jest/no-conditional-expect, jest/no-try-expect
       expect(error).toEqual(mockError);
     }
   });
@@ -342,7 +338,6 @@ describe('Test axios response interceptor', () => {
     try {
       await errorHandler?.(mockError);
     } catch (error) {
-      // eslint-disable-next-line jest/no-conditional-expect, jest/no-try-expect
       expect(error).toEqual(mockError);
     }
   });
@@ -373,7 +368,6 @@ describe('Test axios response interceptor', () => {
     try {
       await errorHandler?.(mockError);
     } catch (error) {
-      // eslint-disable-next-line jest/no-conditional-expect, jest/no-try-expect
       expect(error).toEqual(mockError);
     }
   });
@@ -405,9 +399,8 @@ describe('Test axios response interceptor', () => {
     try {
       await errorHandler?.(mockError);
     } catch (error) {
-      // eslint-disable-next-line jest/no-conditional-expect, jest/no-try-expect
       expect(error).toEqual(mockError);
-      // eslint-disable-next-line jest/no-conditional-expect, jest/no-try-expect
+
       expect(mockRefreshToken).toHaveBeenCalledTimes(0);
     }
   });

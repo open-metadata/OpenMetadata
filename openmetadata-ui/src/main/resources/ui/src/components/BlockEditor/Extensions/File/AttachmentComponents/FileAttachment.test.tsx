@@ -12,7 +12,6 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { NodeViewProps } from '@tiptap/react';
-import React from 'react';
 import { bytesToSize } from '../../../../../utils/StringsUtils';
 import FileAttachment from './FileAttachment';
 

@@ -17,7 +17,6 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
-import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
@@ -81,6 +80,7 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
       EditDescription: true,
       EditDisplayName: true,
       EditCustomFields: true,
+      ViewCustomFields: true,
     }),
   }),
 }));

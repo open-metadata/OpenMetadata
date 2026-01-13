@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { isEmpty } from 'lodash';
 import { SuggestionDataByTypes } from '../../components/Suggestions/SuggestionsProvider/SuggestionsProvider.interface';
 import {
   Suggestion,
@@ -47,4 +48,44 @@ export const getSuggestionByType = (suggestion: Suggestion[]) => {
       groupedSuggestions: new Map<string, SuggestionDataByTypes>(),
     }
   );
+};
+
+// Helper function to get unique suggestions
+export const getUniqueSuggestions = (
+  existingSuggestions: Suggestion[],
+  newSuggestions: Suggestion[]
+) => {
+  if (newSuggestions.length === 0) {
+    return existingSuggestions;
+  }
+  const existingMap = new Map(existingSuggestions.map((s) => [s.id, s]));
+
+  // Filter out duplicates and merge
+  const uniqueNewSuggestions = newSuggestions.filter(
+    (s) => !existingMap.has(s.id)
+  );
+
+  return [...existingSuggestions, ...uniqueNewSuggestions];
+};
+
+export const getSuggestionTypeBasedOnData = (data: Suggestion[]) => {
+  if (isEmpty(data)) {
+    return;
+  }
+  const isMultipleDescriptionSuggestion = data.every(
+    (item) => item.type === SuggestionType.SuggestDescription
+  );
+  const isMultipleTagSuggestion = data.every(
+    (item) => item.type === SuggestionType.SuggestTagLabel
+  );
+
+  if (isMultipleDescriptionSuggestion) {
+    return SuggestionType.SuggestDescription;
+  }
+
+  if (isMultipleTagSuggestion) {
+    return SuggestionType.SuggestTagLabel;
+  }
+
+  return;
 };

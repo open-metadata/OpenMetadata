@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { mockAlertDetails } from '../../../../mocks/Alerts.mock';
 import { MOCK_FILTER_RESOURCES } from '../../../../test/unit/mocks/observability.mock';
 import AlertConfigDetails from './AlertConfigDetails';
@@ -107,16 +106,13 @@ describe('AlertConfigDetails', () => {
   });
 
   it('should show loader when fetching data', async () => {
-    jest.spyOn(React, 'useState').mockImplementationOnce(() => [1, jest.fn()]);
-    await act(async () => {
-      render(
-        <AlertConfigDetails
-          alertDetails={mockAlertDetails}
-          isNotificationAlert={false}
-        />
-      );
+    render(
+      <AlertConfigDetails
+        alertDetails={mockAlertDetails}
+        isNotificationAlert={false}
+      />
+    );
 
-      expect(screen.getByText('Loader')).toBeInTheDocument();
-    });
+    expect(screen.getByText('Loader')).toBeInTheDocument();
   });
 });

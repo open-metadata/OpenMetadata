@@ -10,11 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('../../../styles/variables.less');
+@import (reference) '../../../styles/variables.less';
 
 .data-product-details {
   .ant-tabs-tabpane {
-    height: @domain-page-height;
-    overflow-y: auto;
+    min-height: 70vh;
+  }
+
+  .announcement-card {
+    margin-top: 4px;
+  }
+}
+
+.data-product-details-page-tabs {
+  .ant-tabs.tabs-new {
+    .ant-tabs-tabpane {
+      height: @domain-page-height;
+      overflow-y: hidden;
+    }
   }
 }

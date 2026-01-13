@@ -15,10 +15,9 @@ import { CustomPropertySupportedEntityList } from '../../constant/customProperty
 import { GlobalSettingOptions, ServiceTypes } from '../../constant/settings';
 import {
   assignDataProduct,
-  assignDomain,
+  assignSingleSelectDomain,
   removeDataProduct,
-  removeDomain,
-  updateDomain,
+  removeSingleSelectDomain,
 } from '../../utils/common';
 import {
   createCustomPropertyForEntity,
@@ -40,6 +39,7 @@ import {
   createInactiveAnnouncement,
   deleteAnnouncement,
   downVote,
+  editAnnouncement,
   followEntity,
   hardDeleteEntity,
   removeCertification,
@@ -88,6 +88,15 @@ export class EntityClass {
 
   public getType() {
     return this.type;
+  }
+
+  public get() {
+    return {};
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+  public set(_data: any) {
+    // handle in parent component
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -140,13 +149,17 @@ export class EntityClass {
     dataProduct2: DataProduct['responseData'],
     dataProduct3: DataProduct['responseData']
   ) {
-    await assignDomain(page, domain1);
-    await assignDataProduct(page, domain1, dataProduct1);
-    await assignDataProduct(page, domain1, dataProduct2, 'Edit');
-    await updateDomain(page, domain2);
-    await assignDataProduct(page, domain2, dataProduct3);
+    await assignSingleSelectDomain(page, domain1);
+    await assignDataProduct(page, domain1, [dataProduct1]);
+    await assignDataProduct(page, domain1, [dataProduct2], 'Edit');
+    await removeDataProduct(page, dataProduct1);
+    await removeDataProduct(page, dataProduct2);
+    await removeSingleSelectDomain(page, domain1);
+
+    await assignSingleSelectDomain(page, domain2);
+    await assignDataProduct(page, domain2, [dataProduct3]);
     await removeDataProduct(page, dataProduct3);
-    await removeDomain(page, domain2);
+    await removeSingleSelectDomain(page, domain2);
   }
 
   async owner(
@@ -310,11 +323,18 @@ export class EntityClass {
     page: Page,
     tag1: string,
     tag2: string,
-    tag2Fqn?: string,
-    entity?: EntityClass
+    entity: EntityClass,
+    tag2Fqn?: string
   ) {
-    await assignTag(page, tag1);
-    await assignTag(page, tag2, 'Edit', tag2Fqn);
+    await assignTag(page, tag1, 'Add', entity.endpoint, 'KnowledgePanel.Tags');
+    await assignTag(
+      page,
+      tag2,
+      'Edit',
+      entity.endpoint,
+      'KnowledgePanel.Tags',
+      tag2Fqn
+    );
     if (entity && tag2Fqn) {
       await checkExploreSearchFilter(
         page,
@@ -482,6 +502,10 @@ export class EntityClass {
     await createAnnouncement(page, {
       title: 'Playwright Test Announcement',
       description: 'Playwright Test Announcement Description',
+    });
+    await editAnnouncement(page, {
+      title: 'Edited Playwright Test Announcement',
+      description: 'Updated Playwright Test Announcement Description',
     });
     await replyAnnouncement(page);
     await deleteAnnouncement(page);

@@ -24,7 +24,7 @@ public final class BadRequestException extends WebServiceException {
     super(Response.Status.BAD_REQUEST, ERROR_TYPE, DEFAULT_MESSAGE);
   }
 
-  private BadRequestException(String message) {
+  public BadRequestException(String message) {
     super(Response.Status.BAD_REQUEST, ERROR_TYPE, message);
   }
 

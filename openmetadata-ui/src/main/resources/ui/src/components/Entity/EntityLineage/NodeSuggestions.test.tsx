@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
 import NodeSuggestions from './NodeSuggestions.component';
@@ -24,6 +23,7 @@ const mockProps = {
 
 const entityType = [
   SearchIndex.TABLE,
+  SearchIndex.STORED_PROCEDURE,
   SearchIndex.TOPIC,
   SearchIndex.DASHBOARD,
   SearchIndex.PIPELINE,

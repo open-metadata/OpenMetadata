@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React, { forwardRef } from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { forwardRef } from 'react';
 import { LOADING_STATE } from '../../../../enums/common.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { MOCK_ATHENA_SERVICE } from '../../../../mocks/Service.mock';
 import { getPipelineServiceHostIp } from '../../../../rest/ingestionPipelineAPI';
+import * as CommonUtils from '../../../../utils/CommonUtils';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import { getConnectionSchemas } from '../../../../utils/ServiceConnectionUtils';
 import ConnectionConfigForm from './ConnectionConfigForm';
@@ -71,10 +71,6 @@ const formData = {
   supportsProfiler: true,
   supportsQueryComment: true,
 };
-
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
-}));
 
 jest.mock('../../../../utils/DatabaseServiceUtils', () => ({
   getDatabaseConfig: jest.fn().mockReturnValue({
@@ -146,6 +142,13 @@ jest.mock('../../../common/AirflowMessageBanner/AirflowMessageBanner', () => {
 
 jest.mock('../../../../utils/CommonUtils', () => ({
   Transi18next: jest.fn().mockReturnValue('message.airflow-host-ip-address'),
+}));
+
+jest.mock('../../../../utils/BrandData/BrandClassBase', () => ({
+  __esModule: true,
+  default: {
+    getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
+  },
 }));
 
 jest.mock('../../../common/FormBuilder/FormBuilder', () =>
@@ -267,9 +270,7 @@ describe('ServiceConfig', () => {
     render(<ConnectionConfigForm {...mockProps} />);
     const submitButton = await screen.findByTestId('submit-button');
 
-    await act(async () => {
-      userEvent.click(submitButton);
-    });
+    fireEvent.click(submitButton);
 
     expect(mockSubmit).toHaveBeenCalledWith(formData);
   });
@@ -293,5 +294,42 @@ describe('ServiceConfig', () => {
     await act(async () => {
       expect(await screen.queryByTestId('ip-address')).not.toBeInTheDocument();
     });
+  });
+
+  it('should render with correct brandName (OpenMetadata or Collate)', async () => {
+    // Mock Transi18next to actually render interpolated values
+    const mockTransi18next = jest.fn(({ values }) => (
+      <div data-testid="transi18next-mock">
+        {values?.hostIp && `Host IP: ${values.hostIp}`}
+        {values?.brandName && ` Brand: ${values.brandName}`}
+      </div>
+    ));
+
+    jest
+      .spyOn(CommonUtils, 'Transi18next')
+      .mockImplementation(mockTransi18next);
+
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} />);
+    });
+
+    const ipAddress = await screen.findByTestId('ip-address');
+
+    expect(ipAddress).toBeInTheDocument();
+
+    // Verify actual brand name is rendered
+    expect(ipAddress.textContent).toMatch(/OpenMetadata|Collate/);
+    expect(ipAddress.textContent).not.toContain('{{brandName}}');
+
+    // Verify Transi18next was called with brandName parameter
+    expect(mockTransi18next).toHaveBeenCalledWith(
+      expect.objectContaining({
+        i18nKey: 'message.airflow-host-ip-address',
+        values: expect.objectContaining({
+          brandName: 'OpenMetadata',
+        }),
+      }),
+      expect.anything()
+    );
   });
 });

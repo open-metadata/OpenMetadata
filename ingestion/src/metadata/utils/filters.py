@@ -164,6 +164,21 @@ def filter_by_dashboard(
     return _filter(dashboard_filter_pattern, dashboard_name)
 
 
+def filter_by_stored_procedure(
+    stored_procedure_filter_pattern: Optional[FilterPattern], stored_procedure_name: str
+) -> bool:
+    """
+    Return True if the stored procedure needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param stored_procedure_filter_pattern: Model defining stored procedure filtering logic
+    :param stored_procedure_name: stored procedure name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(stored_procedure_filter_pattern, stored_procedure_name)
+
+
 def filter_by_fqn(fqn_filter_pattern: Optional[FilterPattern], fqn: str) -> bool:
     """
     Return True if the FQN needs to be filtered, False otherwise
@@ -323,3 +338,63 @@ def filter_by_tag(tag_pattern: Optional[FilterPattern], tag_name: str) -> bool:
     :return: True for filtering, False otherwise
     """
     return _filter(tag_pattern, tag_name)
+
+
+def filter_by_spreadsheet(
+    spreadsheet_filter_pattern: Optional[FilterPattern], spreadsheet_name: str
+) -> bool:
+    """
+    Return True if the spreadsheet needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param spreadsheet_filter_pattern: Model defining spreadsheet filtering logic
+    :param spreadsheet_name: spreadsheet name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(spreadsheet_filter_pattern, spreadsheet_name)
+
+
+def filter_by_directory(
+    directory_filter_pattern: Optional[FilterPattern], directory_name: str
+) -> bool:
+    """
+    Return True if the directory needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param directory_filter_pattern: Model defining directory filtering logic
+    :param directory_name: directory name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(directory_filter_pattern, directory_name)
+
+
+def filter_by_file(
+    file_filter_pattern: Optional[FilterPattern], file_name: str
+) -> bool:
+    """
+    Return True if the file needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param file_filter_pattern: Model defining file filtering logic
+    :param file_name: file name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(file_filter_pattern, file_name)
+
+
+def filter_by_worksheet(
+    worksheet_filter_pattern: Optional[FilterPattern], worksheet_name: str
+) -> bool:
+    """
+    Return True if the worksheet needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param worksheet_filter_pattern: Model defining worksheet filtering logic
+    :param worksheet_name: worksheet name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(worksheet_filter_pattern, worksheet_name)

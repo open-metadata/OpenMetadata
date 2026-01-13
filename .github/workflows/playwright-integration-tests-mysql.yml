@@ -16,8 +16,6 @@ name: MySQL Playwright Integration Tests
 on:
   pull_request_target:
     types: [labeled, opened, synchronize, reopened, ready_for_review]
-    paths-ignore:
-      - "openmetadata-docs/**"
 
 jobs:
   playwright-mysql:
@@ -82,7 +80,7 @@ jobs:
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
-          python-version: "3.9"
+          python-version: "3.10"
           args: "-d mysql"
           ingestion_dependency: "playwright"
       - name: Run Playwright Integration Tests with browser ${{ matrix.browser-type }}

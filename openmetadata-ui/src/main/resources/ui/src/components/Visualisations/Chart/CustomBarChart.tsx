@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { useTheme } from '@mui/material';
 import { Col, Row } from 'antd';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -29,10 +30,11 @@ import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
 import { PROFILER_CHART_DATA_SIZE } from '../../../constants/profiler.constant';
 import {
   axisTickFormatter,
+  createHorizontalGridLineRenderer,
   tooltipFormatter,
   updateActiveChartFilter,
 } from '../../../utils/ChartUtils';
-import { CustomTooltip } from '../../../utils/DataInsightUtils';
+import { CustomDQTooltip } from '../../../utils/DataQuality/DataQualityUtils';
 import { formatDateTimeLong } from '../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { CustomBarChartProps } from './Chart.interface';
@@ -43,6 +45,7 @@ const CustomBarChart = ({
   name,
   noDataPlaceholderText,
 }: CustomBarChartProps) => {
+  const theme = useTheme();
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
 
@@ -52,6 +55,11 @@ const CustomBarChart = ({
       endIndex: PROFILER_CHART_DATA_SIZE,
     };
   }, [data.length]);
+
+  const renderHorizontalGridLine = useMemo(
+    () => createHorizontalGridLineRenderer(),
+    []
+  );
 
   if (data.length === 0) {
     return (
@@ -78,27 +86,41 @@ const CustomBarChart = ({
       id={`${name}_graph`}
       minHeight={300}>
       <BarChart className="w-full" data={data} margin={{ left: 16 }}>
-        <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
+        <CartesianGrid
+          horizontal={renderHorizontalGridLine}
+          stroke={GRAPH_BACKGROUND_COLOR}
+          strokeDasharray="3 3"
+          vertical={false}
+        />
         <XAxis
+          axisLine={false}
           dataKey="name"
           padding={{ left: 16, right: 16 }}
           tick={{ fontSize: 12 }}
+          tickLine={false}
         />
 
         <YAxis
           allowDataOverflow
+          axisLine={false}
           padding={{ top: 16, bottom: 16 }}
           tick={{ fontSize: 12 }}
           tickFormatter={(props) => axisTickFormatter(props, tickFormatter)}
+          tickLine={false}
         />
         <Tooltip
           content={
-            <CustomTooltip
+            <CustomDQTooltip
               dateTimeFormatter={formatDateTimeLong}
               timeStampKey="timestamp"
               valueFormatter={(value) => tooltipFormatter(value, tickFormatter)}
             />
           }
+          cursor={{
+            fill: theme.palette.grey[100],
+            stroke: theme.palette.grey[200],
+            strokeDasharray: '3 3',
+          }}
         />
         {information.map((info) => (
           <Bar
@@ -109,7 +131,7 @@ const CustomBarChart = ({
             }
             key={info.dataKey}
             name={info.title}
-            stackId={info.stackId}
+            stackId="custom-bar-chart"
           />
         ))}
         <Legend onClick={handleClick} />

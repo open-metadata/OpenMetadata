@@ -23,9 +23,9 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as CheckMarkIcon } from '../../../../assets/svg/ic-cloud-checkmark.svg';
 import { ROUTES } from '../../../../constants/constants';
 import { TabSpecificField } from '../../../../enums/entity.enum';
@@ -34,6 +34,7 @@ import { Include } from '../../../../generated/type/include';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getApplicationByName } from '../../../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../../../rest/applicationMarketPlaceAPI';
+import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getAppInstallPath } from '../../../../utils/RouterUtils';
@@ -47,7 +48,7 @@ import './market-place-app-details.less';
 
 const MarketPlaceAppDetails = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn } = useFqn();
   const [isLoading, setIsLoading] = useState(true);
   const [appData, setAppData] = useState<AppMarketPlaceDefinition>();
@@ -113,11 +114,11 @@ const MarketPlaceAppDetails = () => {
   }, [fqn]);
 
   const installApp = useCallback(() => {
-    history.push(getAppInstallPath(fqn));
+    navigate(getAppInstallPath(fqn));
   }, [fqn]);
 
   const onBrowseAppsClick = () => {
-    history.push(ROUTES.MARKETPLACE);
+    navigate(ROUTES.MARKETPLACE);
   };
 
   const tooltipTitle = useMemo(() => {
@@ -197,7 +198,9 @@ const MarketPlaceAppDetails = () => {
         <div className="m-t-md">
           <CheckMarkIcon className="v-middle m-r-xss" />
           <Typography.Text className="text-xs font-medium text-grey-muted">
-            {t('message.marketplace-verify-msg')}
+            {t('message.marketplace-verify-msg', {
+              brandName: brandClassBase.getPageTitle(),
+            })}
           </Typography.Text>
         </div>
         <Space className="p-t-lg" direction="vertical" size={8}>

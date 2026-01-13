@@ -43,6 +43,12 @@
       "type": "boolean",
       "default": false
     },
+    "propagateDomains": {
+      "title": "Propagate Domains",
+      "description": "Propagate domains from the parent through lineage",
+      "type": "boolean",
+      "default": false
+    },
     "propagateOwner": {
       "title": "Propagate Owner",
       "description": "Propagate owner from the parent",
@@ -66,6 +72,34 @@
       "description": "Update descriptions, tags and Glossary Terms via lineage even if they are already defined in the asset. By default, descriptions are only updated if they are not already defined in the asset, and incoming tags are merged with the existing ones.",
       "type": "boolean",
       "default": false
+    },
+    "propagationDepth": {
+      "title": "Propagation Depth",
+      "description": "Number of levels to propagate lineage. If not set, it will propagate to all levels.",
+      "type": "integer",
+      "default": null
+    },
+    "propagationDepthMode": {
+      "title": "Propagation Depth Mode",
+      "description": "Mode for calculating propagation depth. 'ROOT' calculates depth from root nodes (sources with no parents). 'DATA_ASSET' calculates depth relative to each data asset being processed, ensuring each asset only receives metadata from nodes within the specified number of hops upstream.",
+      "type": "string",
+      "enum": ["ROOT", "DATA_ASSET"],
+      "default": "ROOT"
+    },
+    "propagationStopConfigs": {
+      "title": "Propagation Stop Configurations",
+      "description": "List of configurations to stop propagation based on conditions",
+      "type": "array",
+      "default": null,
+      "items": {
+        "$ref": "propagationStopConfig.json"
+      }
+    },
+    "useOptimizedPropagation": {
+      "title": "Use Optimized Propagation",
+      "description": "Use the optimized propagation algorithm that reduces memory usage and API calls. Recommended for large lineage graphs. If set to false, uses the original propagation algorithm. Default is true.",
+      "type": "boolean",
+      "default": true
     }
   },
   "required": ["type"],

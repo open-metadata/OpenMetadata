@@ -15,7 +15,16 @@ import {
   SuggestionType,
 } from '../../generated/entity/feed/suggestion';
 import { EntityReference } from '../../generated/type/entityReference';
-import { getSuggestionByType } from './SuggestionUtils';
+import {
+  mockSuggestion1,
+  mockSuggestion2,
+  mockSuggestion3,
+} from '../../mocks/Suggestions.mock';
+import {
+  getSuggestionByType,
+  getSuggestionTypeBasedOnData,
+  getUniqueSuggestions,
+} from './SuggestionUtils';
 
 describe('getSuggestionByType', () => {
   it('should correctly group suggestions by createdBy name and type', () => {
@@ -53,5 +62,214 @@ describe('getSuggestionByType', () => {
     expect(janeGroup?.tags).toHaveLength(0); // Jane has 0 SuggestTagLabel
     expect(janeGroup?.description).toHaveLength(1); // Jane has 1 SuggestDescription
     expect(janeGroup?.combinedData).toHaveLength(1); // Jane has 1 suggestion in total
+  });
+});
+
+describe('getUniqueSuggestions', () => {
+  it('should return existing suggestions when new suggestions array is empty', () => {
+    const existingSuggestions = [mockSuggestion1, mockSuggestion2];
+    const newSuggestions: Suggestion[] = [];
+
+    const result = getUniqueSuggestions(existingSuggestions, newSuggestions);
+
+    expect(result).toEqual(existingSuggestions);
+    expect(result).toHaveLength(2);
+  });
+
+  it('should merge new suggestions with existing ones, removing duplicates', () => {
+    const existingSuggestions = [mockSuggestion1, mockSuggestion2];
+    const newSuggestions = [mockSuggestion2, mockSuggestion3]; // mockSuggestion2 is duplicate
+
+    const result = getUniqueSuggestions(existingSuggestions, newSuggestions);
+
+    expect(result).toHaveLength(3); // Should have 3 unique suggestions
+    expect(result).toContainEqual(mockSuggestion1);
+    expect(result).toContainEqual(mockSuggestion2);
+    expect(result).toContainEqual(mockSuggestion3);
+
+    // Verify order: existing suggestions first, then new unique ones
+    expect(result[0]).toEqual(mockSuggestion1);
+    expect(result[1]).toEqual(mockSuggestion2);
+    expect(result[2]).toEqual(mockSuggestion3);
+  });
+
+  it('should add all new suggestions when no duplicates exist', () => {
+    const existingSuggestions = [mockSuggestion1];
+    const newSuggestions = [mockSuggestion2, mockSuggestion3];
+
+    const result = getUniqueSuggestions(existingSuggestions, newSuggestions);
+
+    expect(result).toHaveLength(3);
+    expect(result).toEqual([mockSuggestion1, mockSuggestion2, mockSuggestion3]);
+  });
+
+  it('should handle empty existing suggestions array', () => {
+    const existingSuggestions: Suggestion[] = [];
+    const newSuggestions = [mockSuggestion1, mockSuggestion2];
+
+    const result = getUniqueSuggestions(existingSuggestions, newSuggestions);
+
+    expect(result).toHaveLength(2);
+    expect(result).toEqual(newSuggestions);
+  });
+
+  it('should filter out all new suggestions if they are all duplicates', () => {
+    const existingSuggestions = [
+      mockSuggestion1,
+      mockSuggestion2,
+      mockSuggestion3,
+    ];
+    const newSuggestions = [mockSuggestion1, mockSuggestion2]; // All are duplicates
+
+    const result = getUniqueSuggestions(existingSuggestions, newSuggestions);
+
+    expect(result).toHaveLength(3); // Same as existing
+    expect(result).toEqual(existingSuggestions);
+  });
+
+  it('should handle large arrays efficiently', () => {
+    const existingSuggestions = Array.from({ length: 1000 }, (_, i) => ({
+      ...mockSuggestion1,
+      id: `existing-${i}`,
+    }));
+
+    const newSuggestions = [
+      ...Array.from({ length: 500 }, (_, i) => ({
+        ...mockSuggestion1,
+        id: `existing-${i}`, // First 500 are duplicates
+      })),
+      ...Array.from({ length: 500 }, (_, i) => ({
+        ...mockSuggestion1,
+        id: `new-${i}`, // Last 500 are unique
+      })),
+    ];
+
+    const startTime = performance.now();
+    const result = getUniqueSuggestions(existingSuggestions, newSuggestions);
+    const endTime = performance.now();
+
+    expect(result).toHaveLength(1500); // 1000 existing + 500 new unique
+    expect(endTime - startTime).toBeLessThan(100); // Should be fast (< 100ms)
+  });
+});
+
+describe('getSuggestionTypeBasedOnData', () => {
+  it('should return SuggestDescription when all suggestions are description type', () => {
+    const suggestions: Suggestion[] = [
+      {
+        id: '1',
+        type: SuggestionType.SuggestDescription,
+      } as Suggestion,
+      {
+        id: '2',
+        type: SuggestionType.SuggestDescription,
+      } as Suggestion,
+      {
+        id: '3',
+        type: SuggestionType.SuggestDescription,
+      } as Suggestion,
+    ];
+
+    const result = getSuggestionTypeBasedOnData(suggestions);
+
+    expect(result).toBe(SuggestionType.SuggestDescription);
+  });
+
+  it('should return SuggestTagLabel when all suggestions are tag type', () => {
+    const suggestions: Suggestion[] = [
+      {
+        id: '1',
+        type: SuggestionType.SuggestTagLabel,
+      } as Suggestion,
+      {
+        id: '2',
+        type: SuggestionType.SuggestTagLabel,
+      } as Suggestion,
+      {
+        id: '3',
+        type: SuggestionType.SuggestTagLabel,
+      } as Suggestion,
+    ];
+
+    const result = getSuggestionTypeBasedOnData(suggestions);
+
+    expect(result).toBe(SuggestionType.SuggestTagLabel);
+  });
+
+  it('should return undefined when suggestions contain mixed types', () => {
+    const suggestions: Suggestion[] = [
+      {
+        id: '1',
+        type: SuggestionType.SuggestDescription,
+      } as Suggestion,
+      {
+        id: '2',
+        type: SuggestionType.SuggestTagLabel,
+      } as Suggestion,
+      {
+        id: '3',
+        type: SuggestionType.SuggestDescription,
+      } as Suggestion,
+    ];
+
+    const result = getSuggestionTypeBasedOnData(suggestions);
+
+    expect(result).toBeUndefined();
+  });
+
+  it('should return undefined when suggestions array is empty', () => {
+    const suggestions: Suggestion[] = [];
+
+    const result = getSuggestionTypeBasedOnData(suggestions);
+
+    expect(result).toBeUndefined();
+  });
+
+  it('should return SuggestDescription for a single description suggestion', () => {
+    const suggestions: Suggestion[] = [
+      {
+        id: '1',
+        type: SuggestionType.SuggestDescription,
+      } as Suggestion,
+    ];
+
+    const result = getSuggestionTypeBasedOnData(suggestions);
+
+    expect(result).toBe(SuggestionType.SuggestDescription);
+  });
+
+  it('should return SuggestTagLabel for a single tag suggestion', () => {
+    const suggestions: Suggestion[] = [
+      {
+        id: '1',
+        type: SuggestionType.SuggestTagLabel,
+      } as Suggestion,
+    ];
+
+    const result = getSuggestionTypeBasedOnData(suggestions);
+
+    expect(result).toBe(SuggestionType.SuggestTagLabel);
+  });
+
+  it('should handle large arrays of description suggestions', () => {
+    const suggestions: Suggestion[] = Array.from({ length: 100 }, (_, i) => ({
+      id: `${i}`,
+      type: SuggestionType.SuggestDescription,
+    })) as Suggestion[];
+
+    const result = getSuggestionTypeBasedOnData(suggestions);
+
+    expect(result).toBe(SuggestionType.SuggestDescription);
+  });
+
+  it('should handle large arrays of tag suggestions', () => {
+    const suggestions: Suggestion[] = Array.from({ length: 100 }, (_, i) => ({
+      id: `${i}`,
+      type: SuggestionType.SuggestTagLabel,
+    })) as Suggestion[];
+
+    const result = getSuggestionTypeBasedOnData(suggestions);
+
+    expect(result).toBe(SuggestionType.SuggestTagLabel);
   });
 });
