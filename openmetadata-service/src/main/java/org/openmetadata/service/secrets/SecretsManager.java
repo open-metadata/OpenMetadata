@@ -166,8 +166,7 @@ public abstract class SecretsManager {
    * @param configType The config type (ADMIN or USER)
    * @return The auth config with password fields replaced by secret references
    */
-  public Object encryptQueryRunnerConfig(
-      Object authConfig, String serviceName, String configType) {
+  public Object encryptQueryRunnerConfig(Object authConfig, String serviceName, String configType) {
     if (authConfig == null) {
       return null;
     }
