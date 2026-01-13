@@ -631,6 +631,8 @@ export const updateDescriptionForChildren = async (
   await modalEditor.click();
   await modalEditor.clear();
   await modalEditor.fill(description);
+  await expect(modalEditor).toHaveText(description);
+
   let updateRequest;
   if (
     entityEndpoint === 'tables' ||
