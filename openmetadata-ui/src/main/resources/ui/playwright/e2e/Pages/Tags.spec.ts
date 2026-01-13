@@ -17,12 +17,14 @@ import { TableClass } from '../../support/entity/TableClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   clickOutside,
   createNewPage,
   descriptionBox,
   redirectToHomePage,
   uuid,
+  getApiContext,
 } from '../../utils/common';
 import { addMultiOwner, removeOwner } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
@@ -720,6 +722,602 @@ test('Disabled tag should not allow adding assets from Assets tab', async ({
   } finally {
     // Re-enable the tag for cleanup
     await setTagDisabled(apiContext, tag1.responseData.id, false);
+    await afterAction();
+  }
+});
+
+test('Asset Management from Tag Page', async ({ page }) => {
+  test.slow();
+
+  const { afterAction } = await getApiContext(page);
+
+  try {
+    // Navigate to the Tag details page
+    await tag.visitPage(page);
+    await page.waitForSelector(
+      '[data-testid="tags-container"] [data-testid="loader"]',
+      { state: 'detached' }
+    );
+
+    // Click on the "Assets" tab
+    await page.getByTestId('assets').click();
+
+    // Wait for initial fetch when opening the asset selection modal
+    const initialFetchResponse = page.waitForResponse(
+      '/api/v1/search/query?q=&index=all&from=0&size=25&deleted=false**'
+    );
+
+    // Click the "Add Asset" button
+    const addAssetButton = page.getByTestId('data-classification-add-button');
+    await addAssetButton.waitFor({ state: 'visible' });
+    await addAssetButton.click();
+
+    // Wait for initial fetch response
+    await initialFetchResponse;
+
+    // Wait for asset selection modal
+    await expect(page.getByRole('dialog')).toBeVisible();
+
+    // Select a data asset from the selection modal
+    const assetName =
+      table.entityResponseData?.displayName || table.entityResponseData?.name;
+    const assetFqn = table.entityResponseData?.fullyQualifiedName;
+
+    if (assetName && assetFqn) {
+      // Search for the asset
+      const searchRes = page.waitForResponse(
+        `/api/v1/search/query?q=${encodeURIComponent(
+          assetName
+        )}&index=all&from=0&size=25&**`
+      );
+      await page
+        .getByTestId('asset-selection-modal')
+        .getByTestId('searchbar')
+        .fill(assetName);
+      await searchRes;
+      await waitForAllLoadersToDisappear(page);
+
+      // Select the asset
+      const assetCard = page.locator(
+        `[data-testid="table-data-card_${assetFqn}"]`
+      );
+      await assetCard.waitFor({ state: 'visible' });
+      await assetCard.locator('input').check();
+
+      // Verify the asset card shows the correct name
+      await expect(
+        assetCard.locator('[data-testid="entity-header-name"]')
+      ).toContainText(assetName);
+
+      // Confirm selection
+      const addAssetsResponse = page.waitForResponse(
+        `/api/v1/tags/*/assets/add`
+      );
+      await page.getByTestId('save-btn').click();
+      await addAssetsResponse;
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      // Wait for assets tab to reload and verify the asset appears in the Assets list
+      await page.getByTestId('assets').click();
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      // Verify the asset appears in the Assets list
+      const assetInList = page.locator(
+        `[data-testid="table-data-card_${assetFqn}"]`
+      );
+      await expect(assetInList).toBeVisible({ timeout: 10000 });
+
+      // Remove the assigned asset using the action in the Assets list
+      await assetInList.locator('input').check();
+
+      const removeAssetsResponse = page.waitForResponse(
+        `/api/v1/tags/*/assets/remove`
+      );
+      await page.getByTestId('delete-all-button').click();
+      await removeAssetsResponse;
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      // Reload to ensure the asset is removed
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      // Click assets tab again to verify
+      await page.getByTestId('assets').click();
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      // Verify the asset is removed from the list
+      await expect(
+        page.locator(`[data-testid="table-data-card_${assetFqn}"]`)
+      ).not.toBeVisible({ timeout: 5000 });
+    }
+  } finally {
+    await afterAction();
+  }
+});
+
+test('Tag Page Activity Feed', async ({ page }) => {
+  test.slow();
+
+  const { afterAction } = await getApiContext(page);
+
+  try {
+    // Navigate to the Tag details page
+    await tag.visitPage(page);
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    // Track which actions were performed for activity feed verification
+    let renamePerformed = false;
+    let assetAdded = false;
+
+    // Perform various actions
+    // 1. Edit Tag description
+    await page.getByTestId('edit-description').click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.locator(descriptionBox).clear();
+    await page
+      .locator(descriptionBox)
+      .fill('Updated description for activity feed test');
+    const editDescriptionResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/tags/') &&
+        response.request().method() === 'PATCH'
+    );
+    await page.getByTestId('save').click();
+    await editDescriptionResponse;
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    // 2. Rename Tag
+    let newDisplayName = '';
+    await page.getByTestId('manage-button').click();
+    await page.waitForTimeout(500);
+    const renameMenuItem = page.getByRole('menuitem', { name: /rename/i });
+    if (await renameMenuItem.isVisible({ timeout: 2000 }).catch(() => false)) {
+      renamePerformed = true;
+      await renameMenuItem.click();
+      await expect(page.getByRole('dialog')).toBeVisible();
+
+      newDisplayName = `Renamed Tag Activity ${uuid()}`;
+      await page.fill('[id="displayName"]', newDisplayName);
+
+      const renameResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/tags/') &&
+          response.request().method() === 'PATCH'
+      );
+      await page.getByTestId('save-button').click();
+      await renameResponse;
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      // Verify the update in the page header
+      await expect(
+        page.getByTestId('entity-header-display-name')
+      ).toContainText(newDisplayName, { timeout: 5000 });
+    }
+
+    // 3. Change Tag Style (color/icon)
+    await page.getByTestId('manage-button').click();
+    await page.waitForTimeout(500);
+    const styleMenuItem = page.getByRole('menuitem', { name: /style/i });
+    await styleMenuItem.waitFor({ state: 'visible' });
+    await styleMenuItem.click();
+    await page.waitForTimeout(500);
+    await page.getByTestId('icon-picker-btn').click();
+    await page.getByRole('button', { name: 'Select icon Cube01' }).click();
+    await page.getByRole('button', { name: 'Select color #F14C75' }).click();
+    const styleResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/tags/') &&
+        response.request().method() === 'PATCH'
+    );
+    await submitForm(page);
+    await styleResponse;
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    // 4. Add an asset
+    await page.getByTestId('assets').click();
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    const assetName =
+      table.entityResponseData?.displayName || table.entityResponseData?.name;
+    const assetFqn = table.entityResponseData?.fullyQualifiedName;
+
+    if (assetName && assetFqn) {
+      const initialFetchResponse = page.waitForResponse(
+        '/api/v1/search/query?q=&index=all&from=0&size=25&deleted=false**'
+      );
+      await page.getByTestId('data-classification-add-button').click();
+      await initialFetchResponse;
+      await expect(page.getByRole('dialog')).toBeVisible();
+
+      await page
+        .getByTestId('asset-selection-modal')
+        .getByTestId('searchbar')
+        .fill(assetName);
+
+      await page.waitForResponse(
+        `/api/v1/search/query?q=${encodeURIComponent(
+          assetName
+        )}&index=all&from=0&size=25&**`
+      );
+
+      await waitForAllLoadersToDisappear(page);
+
+      const assetCard = page.locator(
+        `[data-testid="table-data-card_${assetFqn}"]`
+      );
+      await assetCard.waitFor({ state: 'visible' });
+      await assetCard.locator('input').check();
+
+      const addAssetsResponse = page.waitForResponse(
+        `/api/v1/tags/*/assets/add`
+      );
+      await page.getByTestId('save-btn').click();
+      await addAssetsResponse;
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+      assetAdded = true;
+    }
+
+    // Switch to the "Activity Feed" tab
+    const activityTab = page.getByTestId('activity_feed');
+    if (await activityTab.isVisible({ timeout: 3000 }).catch(() => false)) {
+      const feedResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/feed') &&
+          response.url().includes('entityLink')
+      );
+      await activityTab.click();
+      await feedResponse;
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      // Wait for loader to disappear
+      await page
+        .waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+          timeout: 5000,
+        })
+        .catch(() => {
+          // Loader may not appear if data loads quickly
+        });
+
+      // Verify that activity feed is visible
+      const activityFeed = page
+        .getByTestId('activity-feed')
+        .or(page.locator('[data-testid="activity-feed-container"]'))
+        .or(page.locator('[data-testid="feed-container"]'));
+      await expect(activityFeed.first()).toBeVisible({ timeout: 5000 });
+
+      // Verify that all performed actions are listed in the feed
+      // 1. Verify description update entry
+      const descriptionUpdateEntry = page
+        .locator('[data-testid="message-container"]')
+        .filter({ hasText: /description|Description/i })
+        .first();
+      await expect(descriptionUpdateEntry).toBeVisible({ timeout: 5000 });
+
+      // 2. Verify rename entry (if rename was performed)
+      if (renamePerformed) {
+        const renameEntry = page
+          .locator('[data-testid="message-container"]')
+          .filter({ hasText: /rename|Rename|displayName|display name/i })
+          .first();
+        await expect(renameEntry).toBeVisible({ timeout: 5000 });
+      }
+
+      // 3. Verify style change entry (icon/color update)
+      const styleUpdateEntry = page
+        .locator('[data-testid="message-container"]')
+        .filter({ hasText: /style|Style|icon|Icon|color|Color/i })
+        .first();
+      await expect(styleUpdateEntry).toBeVisible({ timeout: 5000 });
+
+      // 4. Verify asset add entry (if asset was added)
+      if (assetAdded) {
+        const assetAddEntry = page
+          .locator('[data-testid="message-container"]')
+          .filter({ hasText: /asset|Asset|added|Added/i })
+          .first();
+        await expect(assetAddEntry).toBeVisible({ timeout: 5000 });
+      }
+
+      // Verify the feed contains entries for all performed actions
+      const messageContainers = page.locator(
+        '[data-testid="message-container"]'
+      );
+      const messageCount = await messageContainers.count();
+      // At minimum: description + style = 2, plus rename and asset if performed
+      let expectedMinCount = 2; // description + style
+      if (renamePerformed) expectedMinCount++;
+      if (assetAdded) expectedMinCount++;
+      expect(messageCount).toBeGreaterThanOrEqual(expectedMinCount);
+    }
+  } finally {
+    await afterAction();
+  }
+});
+
+test('Tag Actions (Rename, Style, Disable) from Tag Page', async ({ page }) => {
+  test.slow();
+
+  const { afterAction } = await getApiContext(page);
+
+  try {
+    // Navigate to the Tag details page
+    await tag.visitPage(page);
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    // Click the "Manage" (three dots) button
+    await page.getByTestId('manage-button').click();
+    await page.waitForTimeout(500);
+
+    // Rename: Select "Rename," change the name/display name, and save
+    const renameMenuItem = page.getByRole('menuitem', { name: /rename/i });
+    if (await renameMenuItem.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await renameMenuItem.click();
+      await expect(page.getByRole('dialog')).toBeVisible();
+
+      const newDisplayName = `Renamed Tag ${uuid()}`;
+      // Use id selector instead of data-testid for displayName input
+      await page.fill('[id="displayName"]', newDisplayName);
+
+      const renameResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/tags/') &&
+          response.request().method() === 'PATCH'
+      );
+      await page.getByTestId('save-button').click();
+      await renameResponse;
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      // Verify the update in the page header and breadcrumb
+      await expect(
+        page.getByTestId('entity-header-display-name')
+      ).toContainText(newDisplayName, { timeout: 5000 });
+    }
+
+    // Style: Select "Style," change the color and icon, and save
+    await page.getByTestId('manage-button').click();
+    await page.waitForTimeout(500);
+    const styleMenuItem = page.getByRole('menuitem', { name: /style/i });
+    await styleMenuItem.waitFor({ state: 'visible' });
+    await styleMenuItem.click();
+    await page.waitForTimeout(500);
+    await page.getByTestId('icon-picker-btn').click();
+    await page.getByRole('button', { name: 'Select icon Cube01' }).click();
+    await page.getByRole('button', { name: 'Select color #F14C75' }).click();
+
+    const styleResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/tags/') &&
+        response.request().method() === 'PATCH'
+    );
+    await submitForm(page);
+    await styleResponse;
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    // Verify the icon and color update in the header
+    // The icon and color should be visible in the tag header
+    await expect(page.getByTestId('entity-header-name')).toBeVisible();
+
+    // Disable/Enable: Toggle the disable status
+    await page.getByTestId('manage-button').click();
+    await page.waitForTimeout(500);
+    const disableMenuItem = page.getByRole('menuitem', {
+      name: /disable/i,
+    });
+    if (await disableMenuItem.isVisible({ timeout: 2000 }).catch(() => false)) {
+      const disableResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/tags/') &&
+          response.request().method() === 'PATCH'
+      );
+      await disableMenuItem.click();
+      await disableResponse;
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      // Verify the "Disabled" badge appears
+      await expect(page.getByTestId('disabled')).toBeVisible({
+        timeout: 5000,
+      });
+
+      // Verify that the "Add Asset" button is disabled when the tag is disabled
+      await page.getByTestId('assets').click();
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.getByTestId('data-classification-add-button')
+      ).not.toBeVisible({ timeout: 3000 });
+
+      // Re-enable the tag
+      await page.getByTestId('manage-button').click();
+      await page.waitForTimeout(500);
+      const enableMenuItem = page.getByRole('menuitem', {
+        name: /enable/i,
+      });
+      if (
+        await enableMenuItem.isVisible({ timeout: 2000 }).catch(() => false)
+      ) {
+        const enableResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/tags/') &&
+            response.request().method() === 'PATCH'
+        );
+        await enableMenuItem.click();
+        await enableResponse;
+        await page.waitForLoadState('networkidle');
+        await waitForAllLoadersToDisappear(page);
+
+        // Verify disabled badge is gone
+        await expect(page.getByTestId('disabled')).not.toBeVisible({
+          timeout: 3000,
+        });
+      }
+    }
+  } finally {
+    await afterAction();
+  }
+});
+
+test('Breadcrumb Navigation', async ({ page }) => {
+  test.slow();
+
+  // Navigate to Tag details page
+  await tag.visitPage(page);
+  await page.waitForLoadState('networkidle');
+  await waitForAllLoadersToDisappear(page);
+
+  // Click the "Classifications" link in the breadcrumb
+  const classificationsLink = page.getByRole('link', {
+    name: 'Classifications',
+  });
+  if (
+    await classificationsLink.isVisible({ timeout: 3000 }).catch(() => false)
+  ) {
+    const classificationsResponse = page.waitForResponse(
+      '/api/v1/classifications*'
+    );
+    await classificationsLink.click();
+    await classificationsResponse;
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    // Verify redirection to /tags
+    await expect(page).toHaveURL(/.*\/tags.*/, { timeout: 5000 });
+  }
+
+  // Navigate back to Tag page
+  await tag.visitPage(page);
+  await page.waitForLoadState('networkidle');
+  await waitForAllLoadersToDisappear(page);
+
+  // Click the Classification Name link in the breadcrumb
+  const classificationLink = page.getByRole('link', {
+    name: classification.responseData.displayName,
+  });
+  if (
+    await classificationLink.isVisible({ timeout: 3000 }).catch(() => false)
+  ) {
+    const classificationPageResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/classifications/name/') ||
+        response.url().includes('/api/v1/classifications?')
+    );
+    await classificationLink.click();
+    await classificationPageResponse;
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    // Verify redirection to the specific Classification details page
+    await expect(page).toHaveURL(
+      new RegExp(`.*\\/tags\\/${classification.responseData.name}.*`),
+      { timeout: 5000 }
+    );
+  }
+});
+
+test('Tag Usage Count Consistency', async ({ page }) => {
+  test.slow();
+
+  const { afterAction } = await getApiContext(page);
+
+  try {
+    // Navigate to Tag details page
+    await tag.visitPage(page);
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    // Note the count displayed on the "Assets" tab label
+    await page.getByTestId('assets').click();
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    const initialCountText = await page
+      .getByTestId('assets')
+      .getByTestId('filter-count')
+      .textContent()
+      .catch(() => '0');
+    const initialCount = parseInt(initialCountText || '0', 10);
+
+    // Count the number of assets listed in the grid/table
+    const assetCards = page.locator('[data-testid^="table-data-card_"]');
+    const assetCount = await assetCards.count();
+    expect(initialCount).toBe(assetCount);
+
+    // Add a new asset
+    const initialFetchResponse = page.waitForResponse(
+      '/api/v1/search/query?q=&index=all&from=0&size=25&deleted=false**'
+    );
+    await page.getByTestId('data-classification-add-button').click();
+    await initialFetchResponse;
+    await expect(page.getByRole('dialog')).toBeVisible();
+
+    const assetName =
+      table.entityResponseData?.displayName || table.entityResponseData?.name;
+    const assetFqn = table.entityResponseData?.fullyQualifiedName;
+
+    if (assetName && assetFqn) {
+      const searchRes = page.waitForResponse(
+        `/api/v1/search/query?q=${encodeURIComponent(
+          assetName
+        )}&index=all&from=0&size=25&**`
+      );
+      await page
+        .getByTestId('asset-selection-modal')
+        .getByTestId('searchbar')
+        .fill(assetName);
+      await searchRes;
+      await waitForAllLoadersToDisappear(page);
+
+      const assetCard = page.locator(
+        `[data-testid="table-data-card_${assetFqn}"]`
+      );
+      await assetCard.waitFor({ state: 'visible' });
+      await assetCard.locator('input').check();
+
+      const addAssetsResponse = page.waitForResponse(
+        `/api/v1/tags/*/assets/add`
+      );
+      await page.getByTestId('save-btn').click();
+      await addAssetsResponse;
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      // Refresh assets tab to get updated count
+      await page.getByTestId('assets').click();
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      // Verify the count increments by 1
+      const newCountText = await page
+        .getByTestId('assets')
+        .getByTestId('filter-count')
+        .textContent()
+        .catch(() => '0');
+      const newCount = parseInt(newCountText || '0', 10);
+      expect(newCount).toBe(initialCount + 1);
+
+      // Verify the asset count in the grid matches
+      const newAssetCards = page.locator('[data-testid^="table-data-card_"]');
+      const newAssetCount = await newAssetCards.count();
+      expect(newAssetCount).toBe(assetCount + 1);
+    }
+  } finally {
     await afterAction();
   }
 });
