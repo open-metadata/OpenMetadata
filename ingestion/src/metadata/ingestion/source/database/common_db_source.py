@@ -444,6 +444,15 @@ class CommonDbSourceService(
                 f"Fetching tables names failed for schema {schema_name} due to - {err}"
             )
             logger.debug(traceback.format_exc())
+            # Record the failed schema to prevent unwanted table deletions
+            schema_fqn = fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.get().database_service,
+                database_name=self.context.get().database,
+                schema_name=schema_name,
+            )
+            self.schema_table_listing_failed.add(schema_fqn)
 
     @calculate_execution_time()
     def get_schema_definition(

@@ -246,24 +246,40 @@ class DatalakeSource(DatabaseServiceSource):
             metadata_entry = StorageContainerConfig.model_validate(content)
         except ReadException:
             metadata_entry = None
-        if self.source_config.includeTables:
-            for key_name in self.client.get_table_names(bucket_name, prefix):
-                table_name = self.standardize_table_name(bucket_name, key_name)
+        
+        try:
+            if self.source_config.includeTables:
+                for key_name in self.client.get_table_names(bucket_name, prefix):
+                    table_name = self.standardize_table_name(bucket_name, key_name)
 
-                if self.filter_dl_table(table_name):
-                    continue
-                logger.info(f"Processing table: {table_name}")
-                file_extension = get_file_format_type(
-                    key_name=key_name, metadata_entry=metadata_entry
-                )
-
-                if table_name.endswith("/") or not file_extension:
-                    logger.debug(
-                        f"Object filtered due to unsupported file type: {key_name}"
+                    if self.filter_dl_table(table_name):
+                        continue
+                    logger.info(f"Processing table: {table_name}")
+                    file_extension = get_file_format_type(
+                        key_name=key_name, metadata_entry=metadata_entry
                     )
-                    continue
 
-                yield table_name, TableType.Regular, file_extension
+                    if table_name.endswith("/") or not file_extension:
+                        logger.debug(
+                            f"Object filtered due to unsupported file type: {key_name}"
+                        )
+                        continue
+
+                    yield table_name, TableType.Regular, file_extension
+        except Exception as err:
+            logger.warning(
+                f"Fetching tables names failed for schema {bucket_name} due to - {err}"
+            )
+            logger.debug(traceback.format_exc())
+            # Record the failed schema to prevent unwanted table deletions
+            schema_fqn = fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.get().database_service,
+                database_name=self.context.get().database,
+                schema_name=bucket_name,
+            )
+            self.schema_table_listing_failed.add(schema_fqn)
 
     def yield_table(
         self, table_name_and_type: Tuple[str, TableType, SupportedTypes]

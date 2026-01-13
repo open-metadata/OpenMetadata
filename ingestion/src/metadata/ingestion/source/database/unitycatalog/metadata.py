@@ -275,54 +275,69 @@ class UnitycatalogSource(
         """
         schema_name = self.context.get().database_schema
         catalog_name = self.context.get().database
-        for table in self.client.tables.list(
-            catalog_name=catalog_name,
-            schema_name=schema_name,
-        ):
-            try:
-                table_name = table.name
-                table_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Table,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
-                    schema_name=self.context.get().database_schema,
-                    table_name=table_name,
-                )
-                if filter_by_table(
-                    self.config.sourceConfig.config.tableFilterPattern,
-                    (
-                        table_fqn
-                        if self.config.sourceConfig.config.useFqnForFiltering
-                        else table_name
-                    ),
-                ):
-                    self.status.filter(
-                        table_fqn,
-                        "Table Filtered Out",
+        try:
+            for table in self.client.tables.list(
+                catalog_name=catalog_name,
+                schema_name=schema_name,
+            ):
+                try:
+                    table_name = table.name
+                    table_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                        schema_name=self.context.get().database_schema,
+                        table_name=table_name,
                     )
-                    continue
-                table_type: TableType = TableType.Regular
-                if table.table_type:
-                    if table.table_type.value.lower() == TableType.View.value.lower():
-                        table_type: TableType = TableType.View
-                    if table.table_type.value.lower() == "materialized_view":
-                        table_type: TableType = TableType.MaterializedView
-                    elif (
-                        table.table_type.value.lower()
-                        == TableType.External.value.lower()
+                    if filter_by_table(
+                        self.config.sourceConfig.config.tableFilterPattern,
+                        (
+                            table_fqn
+                            if self.config.sourceConfig.config.useFqnForFiltering
+                            else table_name
+                        ),
                     ):
-                        table_type: TableType = TableType.External
-                self.context.get().table_data = table
-                yield table_name, table_type
-            except Exception as exc:
-                self.status.failed(
-                    StackTraceError(
-                        name=table.name,
-                        error=f"Unexpected exception to get table [{table.name}]: {exc}",
-                        stackTrace=traceback.format_exc(),
+                        self.status.filter(
+                            table_fqn,
+                            "Table Filtered Out",
+                        )
+                        continue
+                    table_type: TableType = TableType.Regular
+                    if table.table_type:
+                        if table.table_type.value.lower() == TableType.View.value.lower():
+                            table_type: TableType = TableType.View
+                        if table.table_type.value.lower() == "materialized_view":
+                            table_type: TableType = TableType.MaterializedView
+                        elif (
+                            table.table_type.value.lower()
+                            == TableType.External.value.lower()
+                        ):
+                            table_type: TableType = TableType.External
+                    self.context.get().table_data = table
+                    yield table_name, table_type
+                except Exception as exc:
+                    self.status.failed(
+                        StackTraceError(
+                            name=table.name,
+                            error=f"Unexpected exception to get table [{table.name}]: {exc}",
+                            stackTrace=traceback.format_exc(),
+                        )
                     )
-                )
+        except Exception as err:
+            logger.warning(
+                f"Fetching tables names failed for schema {schema_name} due to - {err}"
+            )
+            logger.debug(traceback.format_exc())
+            # Record the failed schema to prevent unwanted table deletions
+            schema_fqn = fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.get().database_service,
+                database_name=self.context.get().database,
+                schema_name=schema_name,
+            )
+            self.schema_table_listing_failed.add(schema_fqn)
 
     def yield_table(
         self, table_name_and_type: Tuple[str, TableType]
