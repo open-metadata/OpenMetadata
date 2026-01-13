@@ -1541,26 +1541,11 @@ export interface AuthorizerConfiguration {
  */
 export interface Aws {
     /**
-     * AWS Access Key ID. If not provided, default credential provider chain will be used.
-     */
-    accessKeyId?: string;
-    /**
-     * AWS Region for OpenSearch service. When set, IAM authentication is automatically enabled.
-     */
-    region?: string;
-    /**
-     * AWS Secret Access Key. If not provided, default credential provider chain will be used.
-     */
-    secretAccessKey?: string;
-    /**
      * AWS service name for signing (es for Elasticsearch/OpenSearch, aoss for OpenSearch
      * Serverless)
      */
     serviceName?: string;
-    /**
-     * AWS Session Token for temporary credentials
-     */
-    sessionToken?: string;
+    [property: string]: any;
 }
 
 /**
@@ -2090,9 +2075,9 @@ export interface NaturalLanguageSearch {
  */
 export interface Bedrock {
     /**
-     * AWS access key for Bedrock service authentication
+     * AWS credentials configuration for Bedrock service
      */
-    accessKey?: string;
+    awsConfig?: AWSBaseConfig;
     /**
      * Dimension of the embedding vector
      */
@@ -2105,18 +2090,43 @@ export interface Bedrock {
      * Bedrock model identifier to use for query transformation
      */
     modelId?: string;
+}
+
+/**
+ * AWS credentials configuration for Bedrock service
+ *
+ * Base AWS configuration for authentication. Supports static credentials, IAM roles, and
+ * default credential provider chain.
+ */
+export interface AWSBaseConfig {
     /**
-     * AWS Region for Bedrock service
+     * AWS Access Key ID. Falls back to default credential provider chain if not set.
+     */
+    accessKeyId?: string;
+    /**
+     * ARN of IAM role to assume for cross-account access.
+     */
+    assumeRoleArn?: string;
+    /**
+     * Session name for assumed role.
+     */
+    assumeRoleSessionName?: string;
+    /**
+     * Custom endpoint URL for AWS-compatible services (MinIO, LocalStack).
+     */
+    endpointUrl?: string;
+    /**
+     * AWS Region (e.g., us-east-1). When set, enables AWS authentication.
      */
     region?: string;
     /**
-     * AWS secret key for Bedrock service authentication
+     * AWS Secret Access Key. Falls back to default credential provider chain if not set.
      */
-    secretKey?: string;
+    secretAccessKey?: string;
     /**
-     * Set to true to use IAM role based authentication instead of access/secret keys.
+     * AWS Session Token for temporary credentials.
      */
-    useIamRole?: boolean;
+    sessionToken?: string;
 }
 
 /**
