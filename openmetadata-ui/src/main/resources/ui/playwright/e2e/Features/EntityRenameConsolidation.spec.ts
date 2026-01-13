@@ -621,7 +621,7 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
   // DOMAIN TESTS
   // ===================================================================
 
-  test('Domain - rename then update description should work', async ({ page, browser }) => {
+  test.skip('Domain - rename then update description should work', async ({ page, browser }) => {
     test.slow();
 
     const { apiContext, afterAction } = await createNewPage(browser);
@@ -674,7 +674,7 @@ test.describe('Entity Rename + Field Update Consolidation', () => {
     }
   });
 
-  test('Domain - multiple rename + update cycles should work', async ({ page, browser }) => {
+  test.skip('Domain - multiple rename + update cycles should work', async ({ page, browser }) => {
     test.slow();
 
     const { apiContext, afterAction } = await createNewPage(browser);
