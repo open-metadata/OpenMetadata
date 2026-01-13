@@ -29,8 +29,8 @@ import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import {
   Column,
-  ContainerDataModel as ContainerDataModelType,
   Container,
+  ContainerDataModel as ContainerDataModelType,
 } from '../generated/entity/data/container';
 import { PageType } from '../generated/system/ui/uiCustomization';
 import { EntityReference } from '../generated/type/entityReference';
@@ -272,7 +272,9 @@ export const getContainerWidgetsFromKey = (widgetConfig: WidgetConfig) => {
   );
 };
 
-export const extractContainerColumns = <T extends Omit<EntityReference, 'type'>>(
+export const extractContainerColumns = <
+  T extends Omit<EntityReference, 'type'>
+>(
   data: T
 ): Column[] => {
   const container = data as Partial<Container>;

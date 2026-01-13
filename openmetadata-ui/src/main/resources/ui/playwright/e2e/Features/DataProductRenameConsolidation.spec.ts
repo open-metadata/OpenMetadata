@@ -18,6 +18,8 @@ import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
+import { ClassificationClass } from '../../support/tag/ClassificationClass';
+import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
@@ -34,6 +36,8 @@ import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 const domain = new Domain();
+const classification = new ClassificationClass();
+const tag = new TagClass({ classification: classification.data.name });
 
 /**
  * These tests verify that assets are preserved when a DataProduct is renamed
@@ -48,11 +52,15 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await EntityDataClass.preRequisitesForTests(apiContext);
     await domain.create(apiContext);
+    await classification.create(apiContext);
+    await tag.create(apiContext);
     await afterAction();
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
+    await tag.delete(apiContext);
+    await classification.delete(apiContext);
     await domain.delete(apiContext);
     await EntityDataClass.postRequisitesForTests(apiContext);
     await afterAction();
@@ -269,8 +277,13 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       await page.waitForLoadState('networkidle');
       await page.getByTestId('tags-container').getByTestId('add-tag').click();
 
-      await page.locator('[data-testid="tag-selector"]').click();
-      await page.locator('[data-testid="tag-PersonalData.Personal"]').click();
+      await page
+        .locator('[data-testid="tag-selector"] input')
+        .fill(tag.data.name);
+
+      await page
+        .locator(`[data-testid="tag-${tag.responseData.fullyQualifiedName}"]`)
+        .click();
 
       const patchResponse = page.waitForResponse(
         (response) =>
