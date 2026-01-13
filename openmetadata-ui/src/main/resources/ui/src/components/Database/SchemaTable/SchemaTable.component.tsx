@@ -22,7 +22,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
@@ -39,7 +38,7 @@ import {
   DEFAULT_SCHEMA_TABLE_VISIBLE_COLUMNS,
   TABLE_COLUMNS_KEYS,
 } from '../../../constants/TableKeys.constants';
-import { EntityType, FqnPart } from '../../../enums/entity.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import {
   Column,
   Table as TableType,
@@ -63,7 +62,6 @@ import {
   updateTableColumn,
 } from '../../../rest/tableAPI';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
-import { buildColumnFqn, getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
   getColumnSorter,
@@ -83,6 +81,7 @@ import {
 import {
   findColumnByEntityLink,
   getAllRowKeysByKeyName,
+  getHighlightedRowClassName,
   getTableExpandableConfig,
   prepareConstraintIcon,
   pruneEmptyChildren,
@@ -137,7 +136,11 @@ const SchemaTable = () => {
   const [prevTableColumns, setPrevTableColumns] = useState<
     Column[] | undefined
   >();
-  const { fqn: decodedEntityFqn } = useFqn();
+  const {
+    entityFqn: tableFqn,
+    columnFqn: columnPart,
+    fqn,
+  } = useFqn({ type: EntityType.TABLE });
 
   const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
 
@@ -148,35 +151,19 @@ const SchemaTable = () => {
     openColumnDetailPanel,
   } = useGenericContext<TableType>();
 
-  const { tableFqn, columnPart } = useMemo(() => {
-    const parts = decodedEntityFqn.split(FQN_SEPARATOR_CHAR);
-
-    if (parts.length > 4) {
-      const tableParts = parts.slice(0, 4);
-      const columnParts = parts.slice(4);
-
-      return {
-        tableFqn: tableParts.join(FQN_SEPARATOR_CHAR),
-        columnPart: columnParts.join(FQN_SEPARATOR_CHAR),
-      };
+  const highlightedColumnFqn = useMemo(() => {
+    if (!columnPart) {
+      return undefined;
     }
 
-    return {
-      tableFqn: decodedEntityFqn,
-      columnPart: undefined,
-    };
-  }, [decodedEntityFqn]);
-
-  const highlightedColumnFqn = useMemo(() => {
-    if (!columnPart) {return undefined;}
-
-    return buildColumnFqn(tableFqn, decodeURIComponent(columnPart));
-  }, [columnPart, tableFqn]);
+    return fqn;
+  }, [columnPart, fqn]);
 
   useFqnDeepLink({
     data: table.columns || [],
     tableFqn,
     columnPart,
+    fqn,
     setExpandedRowKeys: setExpandedRowKeys,
     openColumnDetailPanel,
   });
@@ -197,16 +184,7 @@ const SchemaTable = () => {
   );
 
   const getRowClassName = useCallback(
-    (record: Column) => {
-      if (highlightedColumnFqn && record.fullyQualifiedName) {
-        // Check if this row matches the highlighted FQN
-        if (record.fullyQualifiedName === highlightedColumnFqn) {
-          return 'highlighted-row';
-        }
-      }
-
-      return '';
-    },
+    (record: Column) => getHighlightedRowClassName(record, highlightedColumnFqn),
     [highlightedColumnFqn]
   );
 
@@ -790,7 +768,7 @@ const SchemaTable = () => {
   );
 
   const handleEditTable = () => {
-    navigate(getEntityBulkEditPath(EntityType.TABLE, decodedEntityFqn));
+    navigate(getEntityBulkEditPath(EntityType.TABLE, tableFqn));
   };
 
   useEffect(() => {
@@ -799,22 +777,7 @@ const SchemaTable = () => {
     );
   }, [tableColumns]);
 
-  // Need to scroll to the selected row
-  useEffect(() => {
-    const columnName = getPartialNameFromTableFQN(decodedEntityFqn, [
-      FqnPart.Column,
-    ]);
-    if (!columnName) {
-      return;
-    }
 
-    const row = document.querySelector(`[data-row-key="${decodedEntityFqn}"]`);
-
-    if (row && tableColumns?.length && tableColumns.length > 0) {
-      // Need to wait till table loads fully so that we can call scroll accurately
-      setTimeout(() => row.scrollIntoView(), 1);
-    }
-  }, [tableColumns, decodedEntityFqn]);
 
   const searchProps = useMemo(
     () => ({

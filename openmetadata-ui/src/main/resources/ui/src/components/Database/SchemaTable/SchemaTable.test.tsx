@@ -160,6 +160,8 @@ jest.mock(
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({
     fqn: MOCK_TABLE.fullyQualifiedName,
+    entityFqn: MOCK_TABLE.fullyQualifiedName,
+    columnFqn: '',
   }),
 }));
 
@@ -289,6 +291,7 @@ jest.mock('../../../utils/TableColumn.util', () => ({
 
 jest.mock('../../../utils/EntityUtilClassBase', () => ({
   getEntityByFqn: jest.fn(),
+  getFqnParts: jest.fn().mockImplementation((fqn) => ({ entityFqn: fqn, columnFqn: '' })),
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({
@@ -472,7 +475,7 @@ describe('Test EntityTable Component', () => {
     });
 
     expect(mockWriteText).toHaveBeenCalledWith(
-      expect.stringContaining(mockColumns[0].fullyQualifiedName)
+      expect.stringContaining(mockColumns[0].fullyQualifiedName ?? '')
     );
   });
 });

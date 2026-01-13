@@ -35,29 +35,13 @@ jest.mock('../../../hooks/useFqn');
 jest.mock('../../../utils/useRequiredParams');
 jest.mock('../../../rest/driveAPI');
 const mockGetFeedCounts = jest.fn();
-const mockExtractEntityFqnAndColumnPart = jest
-  .fn()
-  .mockImplementation((entityFqn, baseFqn) => {
-    if (baseFqn && entityFqn.startsWith(baseFqn)) {
-      return {
-        entityFqn: baseFqn,
-        columnPart: undefined,
-      };
-    }
 
-    return {
-      entityFqn: entityFqn || baseFqn || '',
-      columnPart: undefined,
-    };
-  });
 
 jest.mock('../../../utils/CommonUtils', () => ({
   ...jest.requireActual('../../../utils/CommonUtils'),
   getEntityMissingError: jest.fn(),
   getFeedCounts: (...args: [EntityType, string, (data: FeedCounts) => void]) =>
     mockGetFeedCounts(...args),
-  extractEntityFqnAndColumnPart: (...args: [string, string, number]) =>
-    mockExtractEntityFqnAndColumnPart(...args),
 }));
 jest.mock('../../../utils/RouterUtils');
 jest.mock('../../../utils/ToastUtils');
@@ -144,7 +128,6 @@ const mockUseCustomPages = useCustomPages as jest.Mock;
 const mockUseFqn = useFqn as jest.Mock;
 const mockUseRequiredParams = useRequiredParams as jest.Mock;
 const mockRestoreDriveAsset = restoreDriveAsset as jest.Mock;
-// const mockGetFeedCounts = getFeedCounts as jest.Mock;
 const mockGetEntityDetailsPath = getEntityDetailsPath as jest.Mock;
 
 const mockDirectoryDetails: Directory = {
@@ -255,6 +238,7 @@ describe('DirectoryDetails', () => {
 
     mockUseFqn.mockReturnValue({
       fqn: 'test-service.test-directory',
+      entityFqn: 'test-service.test-directory',
       columnPart: undefined,
     });
 

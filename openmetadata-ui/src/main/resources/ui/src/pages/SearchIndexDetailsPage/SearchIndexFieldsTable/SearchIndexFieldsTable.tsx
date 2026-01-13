@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Tooltip, Typography } from 'antd';
+import { Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import {
@@ -27,7 +27,7 @@ import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
+
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../../components/common/Table/Table';
@@ -38,8 +38,6 @@ import TableDescription from '../../../components/Database/TableDescription/Tabl
 import TableTags from '../../../components/Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import {
-  DE_ACTIVE_COLOR,
-  ICON_DIMENSION,
   NO_DATA_PLACEHOLDER,
 } from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
@@ -61,11 +59,10 @@ import {
   highlightSearchArrayElement,
   highlightSearchText,
 } from '../../../utils/EntityUtils';
-import { useCopyEntityLink } from '../../../hooks/useCopyEntityLink';
+import CopyLinkButton from '../../../components/common/CopyLinkButton/CopyLinkButton';
 import { useFqn } from '../../../hooks/useFqn';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
-import { buildColumnFqn, extractEntityFqnAndColumnPart } from '../../../utils/CommonUtils';
 import { makeData } from '../../../utils/SearchIndexUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import {
@@ -74,6 +71,7 @@ import {
 } from '../../../utils/TableTags/TableTags.utils';
 import {
   getTableExpandableConfig,
+  getHighlightedRowClassName,
   searchInFields,
   updateFieldDescription,
   updateFieldTags,
@@ -104,37 +102,32 @@ const SearchIndexFieldsTable = ({
   );
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
-  const { copyEntityLink, copiedFqn: copiedFieldFqn } = useCopyEntityLink(
-    EntityType.SEARCH_INDEX,
-    entityFqn
-  );
 
-  const { openColumnDetailPanel, permissions, data: searchIndexData, selectedColumn } =
+
+  const { openColumnDetailPanel, permissions, selectedColumn } =
     useGenericContext<SearchIndex>();
 
-  const { fqn: urlFqn } = useFqn();
-
   // Extract base FQN and column part from URL
-  const { entityFqn: searchIndexFqn, columnPart } = useMemo(
-    () =>
-      extractEntityFqnAndColumnPart(
-        urlFqn,
-        searchIndexData?.fullyQualifiedName,
-        2
-      ),
-    [urlFqn, searchIndexData?.fullyQualifiedName]
-  );
-
+  const {
+    entityFqn: searchIndexFqn,
+    columnFqn: columnPart,
+    fqn,
+  } = useFqn({
+    type: EntityType.SEARCH_INDEX,
+  });
   const highlightedFieldFqn = useMemo(() => {
-    if (!columnPart) {return undefined;}
+    if (!columnPart) {
+      return undefined;
+    }
 
-    return buildColumnFqn(searchIndexFqn, decodeURIComponent(columnPart));
-  }, [columnPart, searchIndexFqn]);
+    return fqn;
+  }, [columnPart, fqn]);
 
   useFqnDeepLink({
     data: searchIndexFields,
     tableFqn: searchIndexFqn,
     columnPart,
+    fqn,
     setExpandedRowKeys: setExpandedRowKeys,
     openColumnDetailPanel,
     selectedColumn: selectedColumn as SearchIndexField | null,
@@ -147,25 +140,11 @@ const SearchIndexFieldsTable = ({
   );
 
   const getRowClassName = useCallback(
-    (record: SearchIndexField) => {
-      if (highlightedFieldFqn && record.fullyQualifiedName) {
-        // Only highlight the exact target field, not parent rows
-        if (record.fullyQualifiedName === highlightedFieldFqn) {
-          return 'highlighted-row';
-        }
-      }
-
-      return '';
-    },
+    (record: SearchIndexField) => getHighlightedRowClassName(record, highlightedFieldFqn),
     [highlightedFieldFqn]
   );
 
-  const handleCopyFieldLink = useCallback(
-    async (fieldFqn: string) => {
-      await copyEntityLink(fieldFqn);
-    },
-    [copyEntityLink]
-  );
+
 
 
 
@@ -333,34 +312,10 @@ const SearchIndexFieldsTable = ({
                 highlightSearchText(getEntityName(record), searchText)
               )}
             </span>
-            <Tooltip
-              placement="top"
-              title={
-                copiedFieldFqn === record.fullyQualifiedName
-                  ? t('message.link-copy-to-clipboard')
-                  : t('label.copy-item', { item: t('label.url-uppercase') })
-              }>
-              <Button
-                className="cursor-pointer hover-cell-icon flex-center"
-                data-testid="copy-field-link-button"
-                disabled={!record.fullyQualifiedName}
-                style={{
-                  color: DE_ACTIVE_COLOR,
-                  padding: 0,
-                  border: 'none',
-                  background: 'transparent',
-                  width: '24px',
-                  height: '24px',
-                }}
-                onClick={() =>
-                  record.fullyQualifiedName &&
-                  handleCopyFieldLink(record.fullyQualifiedName)
-                }>
-                <ShareIcon
-                  style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                />
-              </Button>
-            </Tooltip>
+            <CopyLinkButton
+              entityType={EntityType.SEARCH_INDEX}
+              fieldFqn={record.fullyQualifiedName || ''}
+            />
           </div>
         ),
       },
@@ -434,9 +389,6 @@ const SearchIndexFieldsTable = ({
       renderDataTypeDisplay,
       renderDescription,
       tagFilter,
-      copiedFieldFqn,
-      handleCopyFieldLink,
-      searchText,
       handleFieldClick,
       hasViewPermission,
     ]

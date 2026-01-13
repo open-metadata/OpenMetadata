@@ -71,6 +71,7 @@ jest.mock('../../../hooks/useCustomPages', () => ({
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({
     fqn: 'test.metric',
+    entityFqn: 'test.metric',
   }),
 }));
 
@@ -82,10 +83,6 @@ jest.mock('../../../utils/useRequiredParams', () => ({
 
 jest.mock('../../../utils/CommonUtils', () => ({
   getFeedCounts: jest.fn(),
-  extractEntityFqnAndColumnPart: jest.fn().mockReturnValue({
-    entityFqn: 'test.metric',
-    columnPart: undefined,
-  }),
 }));
 
 jest.mock(

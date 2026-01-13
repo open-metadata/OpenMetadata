@@ -118,10 +118,6 @@ const mockData = {
 jest.mock('../../../utils/CommonUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('entityName'),
   getHtmlForNonAdminAction: jest.fn().mockReturnValue('admin action'),
-  extractEntityFqnAndColumnPart: jest.fn().mockReturnValue({
-    entityFqn: 'eta_predictions',
-    columnPart: undefined,
-  }),
 }));
 
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {

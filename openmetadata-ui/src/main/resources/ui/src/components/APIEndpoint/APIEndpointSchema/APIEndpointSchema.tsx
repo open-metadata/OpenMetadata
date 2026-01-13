@@ -41,7 +41,6 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
-import { buildColumnFqn, extractEntityFqnAndColumnPart } from '../../../utils/CommonUtils';
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
@@ -82,7 +81,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
 }) => {
   const { theme } = useApplicationStore();
   const { t } = useTranslation();
-  const { fqn: entityFqn } = useFqn();
+
   const [editFieldDescription, setEditFieldDescription] = useState<Field>();
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [viewType, setViewType] = useState<SchemaViewType>(
@@ -97,21 +96,22 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     selectedColumn,
   } = useGenericContext<APIEndpoint>();
 
-  const { entityFqn: apiEndpointFqn, columnPart } = useMemo(
-    () =>
-      extractEntityFqnAndColumnPart(
-        entityFqn,
-        apiEndpointDetails?.fullyQualifiedName,
-        3
-      ),
-    [entityFqn, apiEndpointDetails?.fullyQualifiedName]
-  );
+
+  const {
+    entityFqn: apiEndpointFqn,
+    columnFqn: columnPart,
+    fqn,
+  } = useFqn({
+    type: EntityType.API_ENDPOINT,
+  });
 
   const highlightedFieldFqn = useMemo(() => {
-    if (!columnPart) {return undefined;}
+    if (!columnPart) {
+      return undefined;
+    }
 
-    return buildColumnFqn(apiEndpointFqn, decodeURIComponent(columnPart));
-  }, [columnPart, apiEndpointFqn]);
+    return fqn;
+  }, [columnPart, fqn]);
 
   const { hash } = useLocation();
 
@@ -236,6 +236,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     data: activeSchemaFields,
     tableFqn: apiEndpointFqn,
     columnPart,
+    fqn,
     setExpandedRowKeys: setExpandedRowKeys,
     openColumnDetailPanel,
     selectedColumn: selectedColumn as Field | null,

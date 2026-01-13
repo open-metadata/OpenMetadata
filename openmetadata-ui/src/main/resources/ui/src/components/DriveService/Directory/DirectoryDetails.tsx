@@ -39,7 +39,6 @@ import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
 import {
-  extractEntityFqnAndColumnPart,
   getFeedCounts,
 } from '../../../utils/CommonUtils';
 import {
@@ -100,23 +99,14 @@ function DirectoryDetails({
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.CHILDREN } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: urlFqn } = useFqn();
+
   const navigate = useNavigate();
   const { customizedPage, isLoading } = useCustomPages(PageType.Directory);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
-  // Extract base FQN from URL (removes column part if present)
-  // Use directoryDetails.fullyQualifiedName if available, otherwise extract from URL
-  const decodedDirectoryFQN = useMemo(() => {
-    const baseFqn = directoryDetails?.fullyQualifiedName;
-    const { entityFqn } = extractEntityFqnAndColumnPart(
-      urlFqn,
-      baseFqn,
-      2
-    );
-
-    return entityFqn;
-  }, [urlFqn, directoryDetails?.fullyQualifiedName]);
+  const { entityFqn: decodedDirectoryFQN } = useFqn({
+    type: EntityType.DIRECTORY,
+  });
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -337,7 +327,7 @@ function DirectoryDetails({
 
   useEffect(() => {
     getEntityFeedCount();
-  }, [getEntityFeedCount]);
+  }, [directoryPermissions, decodedDirectoryFQN]);
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);

@@ -74,6 +74,7 @@ jest.mock('../../../../hooks/useCustomPages', () => ({
 jest.mock('../../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({
     fqn: 'test.datamodel',
+    entityFqn: 'test.datamodel',
   }),
 }));
 
@@ -85,10 +86,6 @@ jest.mock('../../../../utils/useRequiredParams', () => ({
 
 jest.mock('../../../../utils/CommonUtils', () => ({
   getFeedCounts: jest.fn(),
-  extractEntityFqnAndColumnPart: jest.fn().mockReturnValue({
-    entityFqn: 'test.datamodel',
-    columnPart: undefined,
-  }),
 }));
 
 jest.mock(

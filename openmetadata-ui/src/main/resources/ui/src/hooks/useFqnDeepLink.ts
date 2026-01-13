@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { useEffect } from 'react';
-import { buildColumnFqn } from '../utils/CommonUtils';
 import { findFieldByFQN, getParentKeysToExpand } from '../utils/TableUtils';
 
 interface UseFqnDeepLinkProps<T> {
@@ -21,22 +20,24 @@ interface UseFqnDeepLinkProps<T> {
   setExpandedRowKeys: (keys: (prev: string[]) => string[]) => void;
   openColumnDetailPanel: (field: T) => void;
   selectedColumn?: T | null;
+  fqn?: string;
 }
 
 export const useFqnDeepLink = <T extends { fullyQualifiedName?: string; children?: T[] }>({
   data,
   tableFqn,
   columnPart,
+  fqn,
   setExpandedRowKeys,
   openColumnDetailPanel,
   selectedColumn,
 }: UseFqnDeepLinkProps<T>) => {
   useEffect(() => {
-    if (!columnPart) {
+    if (!columnPart || !fqn) {
       return;
     }
 
-    const fullColumnFqn = buildColumnFqn(tableFqn, decodeURIComponent(columnPart));
+    const fullColumnFqn = fqn;
 
     const parentKeys = getParentKeysToExpand(data, fullColumnFqn);
     if (parentKeys.length > 0) {

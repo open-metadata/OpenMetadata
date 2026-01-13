@@ -34,28 +34,12 @@ jest.mock('../../../hooks/useFqn');
 jest.mock('../../../utils/useRequiredParams');
 jest.mock('../../../rest/driveAPI');
 const mockGetFeedCounts = jest.fn();
-const mockExtractEntityFqnAndColumnPart = jest
-  .fn()
-  .mockImplementation((entityFqn, baseFqn) => {
-    if (baseFqn && entityFqn.startsWith(baseFqn)) {
-      return {
-        entityFqn: baseFqn,
-        columnPart: undefined,
-      };
-    }
 
-    return {
-      entityFqn: entityFqn || baseFqn || '',
-      columnPart: undefined,
-    };
-  });
 
 jest.mock('../../../utils/CommonUtils', () => ({
   ...jest.requireActual('../../../utils/CommonUtils'),
   getEntityMissingError: jest.fn(),
   getFeedCounts: (...args: any[]) => mockGetFeedCounts(...args),
-  extractEntityFqnAndColumnPart: (...args: any[]) =>
-    mockExtractEntityFqnAndColumnPart(...args),
 }));
 jest.mock('../../../utils/RouterUtils');
 jest.mock('../../../utils/ToastUtils');
@@ -269,6 +253,7 @@ describe('WorksheetDetails', () => {
 
     mockUseFqn.mockReturnValue({
       fqn: 'test-service.test-spreadsheet.test-worksheet',
+      entityFqn: 'test-service.test-spreadsheet.test-worksheet',
       columnPart: undefined,
     });
 

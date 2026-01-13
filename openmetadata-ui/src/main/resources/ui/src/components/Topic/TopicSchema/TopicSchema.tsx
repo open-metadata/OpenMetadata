@@ -40,7 +40,6 @@ import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
-import { buildColumnFqn, extractEntityFqnAndColumnPart } from '../../../utils/CommonUtils';
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
@@ -97,7 +96,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     { label: t('label.text'), value: SchemaViewType.TEXT },
   ];
 
-  const { fqn: entityFqn } = useFqn();
+
   const {
     data: topicDetails,
     isVersionView,
@@ -108,21 +107,20 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     selectedColumn,
   } = useGenericContext<Topic>();
 
-  const { entityFqn: topicFqn, columnPart } = useMemo(
-    () =>
-      extractEntityFqnAndColumnPart(
-        entityFqn,
-        topicDetails?.fullyQualifiedName,
-        2
-      ),
-    [entityFqn, topicDetails?.fullyQualifiedName]
-  );
-
+  const {
+    entityFqn: topicFqn,
+    columnFqn: columnPart,
+    fqn,
+  } = useFqn({
+    type: EntityType.TOPIC,
+  });
   const highlightedFieldFqn = useMemo(() => {
-    if (!columnPart) {return undefined;}
+    if (!columnPart) {
+      return undefined;
+    }
 
-    return buildColumnFqn(topicFqn, decodeURIComponent(columnPart));
-  }, [columnPart, topicFqn]);
+    return fqn;
+  }, [columnPart, fqn]);
 
   const isReadOnly = useMemo(() => {
     // If there is a current version, it should be read only
@@ -232,6 +230,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     data: topicDetails?.messageSchema?.schemaFields ?? [],
     tableFqn: topicFqn,
     columnPart,
+    fqn,
     setExpandedRowKeys: setExpandedRowKeys,
     openColumnDetailPanel,
     selectedColumn: selectedColumn as Field | null,
@@ -308,7 +307,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
           fqn: record.fullyQualifiedName ?? '',
           field: record.description,
         }}
-        entityFqn={entityFqn}
+        entityFqn={topicFqn}
         entityType={EntityType.TOPIC}
         hasEditPermission={hasDescriptionEditAccess}
         index={index}
@@ -316,13 +315,13 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         onClick={() => setEditFieldDescription(record)}
       />
     ),
-    [entityFqn, hasDescriptionEditAccess, isReadOnly]
+    [topicFqn, hasDescriptionEditAccess, isReadOnly]
   );
 
   const renderClassificationTags = useCallback(
     (tags: TagLabel[], record: Field, index: number) => (
       <TableTags<Field>
-        entityFqn={entityFqn}
+        entityFqn={topicFqn}
         entityType={EntityType.TOPIC}
         handleTagSelection={handleFieldTagsChange}
         hasTagEditAccess={hasTagEditAccess}
@@ -333,13 +332,13 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         type={TagSource.Classification}
       />
     ),
-    [entityFqn, handleFieldTagsChange, hasTagEditAccess, isReadOnly]
+    [topicFqn, handleFieldTagsChange, hasTagEditAccess, isReadOnly]
   );
 
   const renderGlossaryTags = useCallback(
     (tags: TagLabel[], record: Field, index: number) => (
       <TableTags<Field>
-        entityFqn={entityFqn}
+        entityFqn={topicFqn}
         entityType={EntityType.TOPIC}
         handleTagSelection={handleFieldTagsChange}
         hasTagEditAccess={hasGlossaryTermEditAccess}
@@ -350,7 +349,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         type={TagSource.Glossary}
       />
     ),
-    [entityFqn, handleFieldTagsChange, hasGlossaryTermEditAccess, isReadOnly]
+    [topicFqn, handleFieldTagsChange, hasGlossaryTermEditAccess, isReadOnly]
   );
 
   const columns: ColumnsType<Field> = useMemo(

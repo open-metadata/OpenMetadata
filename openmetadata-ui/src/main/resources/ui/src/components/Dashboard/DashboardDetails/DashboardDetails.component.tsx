@@ -32,7 +32,6 @@ import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDashboard } from '../../../rest/dashboardAPI';
 import {
-  extractEntityFqnAndColumnPart,
   getFeedCounts,
 } from '../../../utils/CommonUtils';
 import {
@@ -80,21 +79,11 @@ const DashboardDetails = ({
   const { tab: activeTab = EntityTabs.DETAILS } =
     useRequiredParams<{ tab: EntityTabs }>();
   const { customizedPage, isLoading } = useCustomPages(PageType.Dashboard);
-  const { fqn: urlFqn } = useFqn();
-  
-  // Extract base FQN from URL (removes column part if present)
-  // Use dashboardDetails.fullyQualifiedName if available, otherwise extract from URL
-  const decodedDashboardFQN = useMemo(() => {
-    const baseFqn = dashboardDetails?.fullyQualifiedName;
-    const { entityFqn } = extractEntityFqnAndColumnPart(
-      urlFqn,
-      baseFqn,
-      2
-    );
 
-    return entityFqn;
-  }, [urlFqn, dashboardDetails?.fullyQualifiedName]);
   
+  const { entityFqn: decodedDashboardFQN } = useFqn({
+    type: EntityType.DASHBOARD,
+  });  
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -154,14 +143,14 @@ const DashboardDetails = ({
 
   useEffect(() => {
     getEntityFeedCount();
-  }, [decodedDashboardFQN]);
+  }, [dashboardPermissions, decodedDashboardFQN]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       navigate(
         getEntityDetailsPath(
           EntityType.DASHBOARD,
-          dashboardDetails.fullyQualifiedName ?? '',
+          decodedDashboardFQN,
           activeKey
         ),
         {

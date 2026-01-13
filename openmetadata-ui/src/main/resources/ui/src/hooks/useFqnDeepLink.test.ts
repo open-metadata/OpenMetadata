@@ -12,7 +12,7 @@
  */
 
 import { renderHook } from '@testing-library/react-hooks';
-import { buildColumnFqn } from '../utils/CommonUtils';
+
 import { findFieldByFQN, getParentKeysToExpand } from '../utils/TableUtils';
 import { useFqnDeepLink } from './useFqnDeepLink';
 
@@ -21,9 +21,7 @@ jest.mock('../utils/TableUtils', () => ({
   getParentKeysToExpand: jest.fn(),
 }));
 
-jest.mock('../utils/CommonUtils', () => ({
-  buildColumnFqn: jest.fn(),
-}));
+
 
 describe('useFqnDeepLink', () => {
   const mockSetExpandedRowKeys = jest.fn();
@@ -35,9 +33,8 @@ describe('useFqnDeepLink', () => {
     jest.clearAllMocks();
     (getParentKeysToExpand as jest.Mock).mockReturnValue([]);
     (findFieldByFQN as jest.Mock).mockReturnValue(undefined);
-    (buildColumnFqn as jest.Mock).mockImplementation(
-      (table, col) => `${table}.${col}`
-    );
+    (getParentKeysToExpand as jest.Mock).mockReturnValue([]);
+    (findFieldByFQN as jest.Mock).mockReturnValue(undefined);
   });
 
   it('should not trigger anything if columnPart is empty', () => {
@@ -66,12 +63,12 @@ describe('useFqnDeepLink', () => {
         data: mockData,
         tableFqn,
         columnPart,
+        fqn,
         setExpandedRowKeys: mockSetExpandedRowKeys,
         openColumnDetailPanel: mockOpenColumnDetailPanel,
       })
     );
 
-    expect(buildColumnFqn).toHaveBeenCalledWith(tableFqn, columnPart);
     expect(getParentKeysToExpand).toHaveBeenCalledWith(mockData, fqn);
     expect(mockSetExpandedRowKeys).toHaveBeenCalled();
     expect(findFieldByFQN).toHaveBeenCalledWith(mockData, fqn);
@@ -80,21 +77,6 @@ describe('useFqnDeepLink', () => {
     });
   });
 
-  it('should handle decoding of columnPart', () => {
-    const columnPart = 'field%20with%20spaces';
-    const decodedColumnPart = 'field with spaces';
 
-    renderHook(() =>
-      useFqnDeepLink({
-        data: mockData,
-        tableFqn,
-        columnPart,
-        setExpandedRowKeys: mockSetExpandedRowKeys,
-        openColumnDetailPanel: mockOpenColumnDetailPanel,
-      })
-    );
 
-    expect(buildColumnFqn).toHaveBeenCalledWith(tableFqn, decodedColumnPart);
-  });
 });
-

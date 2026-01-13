@@ -45,7 +45,6 @@ import {
 } from '../../rest/dataModelsAPI';
 import {
   addToRecentViewed,
-  extractEntityFqnAndColumnPart,
   getEntityMissingError,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -60,14 +59,10 @@ const DataModelsPage = () => {
   const { currentUser } = useApplicationStore();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const { fqn: urlFqn } = useFqn();
-
   // Extract base FQN from URL (removes column part if present)
-  const dashboardDataModelFQN = useMemo(() => {
-    const { entityFqn } = extractEntityFqnAndColumnPart(urlFqn, undefined, 3);
-
-    return entityFqn;
-  }, [urlFqn]);
+  const { entityFqn: dashboardDataModelFQN } = useFqn({
+    type: EntityType.DASHBOARD_DATA_MODEL,
+  });
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);

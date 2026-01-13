@@ -21,7 +21,6 @@ import { MlFeature, Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { TagSource } from '../../../generated/type/schema';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
-import { extractEntityFqnAndColumnPart } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { createTagObject } from '../../../utils/TagsUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
@@ -42,14 +41,14 @@ const MlModelFeaturesList = () => {
   const { data, onUpdate, permissions, openColumnDetailPanel, selectedColumn } =
     useGenericContext<Mlmodel>();
 
-  const { fqn: urlFqn } = useFqn();
-
   // Extract base FQN and column part from URL
-  const { entityFqn: mlModelFqn, columnPart } = useMemo(
-    () => extractEntityFqnAndColumnPart(urlFqn, data?.fullyQualifiedName, 2),
-    [urlFqn, data?.fullyQualifiedName]
-  );
-
+  const {
+    entityFqn: mlModelFqn,
+    columnFqn: columnPart,
+    fqn,
+  } = useFqn({
+    type: EntityType.MLMODEL,
+  });
   const { mlFeatures, isDeleted, entityFqn } = useMemo(() => {
     return {
       mlFeatures: data?.mlFeatures,
@@ -63,6 +62,7 @@ const MlModelFeaturesList = () => {
     data: mlFeatures || [],
     tableFqn: mlModelFqn,
     columnPart,
+    fqn,
     setExpandedRowKeys: setExpandedRowKeys,
     openColumnDetailPanel,
     selectedColumn: selectedColumn as MlFeature | null,

@@ -78,6 +78,7 @@ jest.mock('../../../hooks/useCustomPages', () => ({
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({
     fqn: 'test.dashboard',
+    entityFqn: 'test.dashboard',
   }),
 }));
 
@@ -95,10 +96,6 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
 
 jest.mock('../../../utils/CommonUtils', () => ({
   getFeedCounts: jest.fn(),
-  extractEntityFqnAndColumnPart: jest.fn().mockReturnValue({
-    entityFqn: 'test.dashboard',
-    columnPart: undefined,
-  }),
 }));
 
 jest.mock(

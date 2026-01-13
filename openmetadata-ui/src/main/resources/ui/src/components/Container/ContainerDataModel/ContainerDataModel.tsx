@@ -22,6 +22,7 @@ import {
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { FC, useCallback, useMemo, useState } from 'react';
+import { useFqn } from '../../../hooks/useFqn';
 import { useTranslation } from 'react-i18next';
 import {
   HIGHLIGHTED_ROW_SELECTOR,
@@ -43,7 +44,6 @@ import {
   updateContainerColumnDescription,
   updateContainerColumnTags,
 } from '../../../utils/ContainerDetailUtils';
-import { buildColumnFqn, extractEntityFqnAndColumnPart } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
@@ -78,7 +78,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   entityFqn,
 }) => {
   const { t } = useTranslation();
-  const { openColumnDetailPanel, data: containerData, selectedColumn } = useGenericContext<Container>();
+  const { openColumnDetailPanel, selectedColumn } = useGenericContext<Container>();
 
   const [editContainerColumnDescription, setEditContainerColumnDescription] =
     useState<Column>();
@@ -86,26 +86,26 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
 
   const schema = pruneEmptyChildren(dataModel?.columns ?? []);
 
-  const { entityFqn: containerFqn, columnPart } = useMemo(
-    () =>
-      extractEntityFqnAndColumnPart(
-        entityFqn,
-        containerData?.fullyQualifiedName,
-        2
-      ),
-    [entityFqn, containerData?.fullyQualifiedName]
-  );
-
+  const {
+    entityFqn: containerFqn,
+    columnFqn: columnPart,
+    fqn,
+  } = useFqn({
+    type: EntityType.CONTAINER,
+  });
   const highlightedColumnFqn = useMemo(() => {
-    if (!columnPart) {return undefined;}
+    if (!columnPart) {
+      return undefined;
+    }
 
-    return buildColumnFqn(containerFqn, decodeURIComponent(columnPart));
-  }, [columnPart, containerFqn]);
+    return fqn;
+  }, [columnPart, fqn]);
 
   useFqnDeepLink({
     data: dataModel?.columns || [],
     tableFqn: containerFqn,
     columnPart,
+    fqn,
     setExpandedRowKeys: setExpandedRowKeys,
     openColumnDetailPanel,
     selectedColumn: selectedColumn as Column | null,

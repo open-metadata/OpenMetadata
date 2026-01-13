@@ -38,7 +38,6 @@ import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
 import {
-  extractEntityFqnAndColumnPart,
   getFeedCounts,
 } from '../../../utils/CommonUtils';
 import {
@@ -98,23 +97,14 @@ function WorksheetDetails({
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.SCHEMA } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: urlFqn } = useFqn();
+
   const navigate = useNavigate();
   const { customizedPage, isLoading } = useCustomPages(PageType.Worksheet);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
-  // Extract base FQN from URL (removes column part if present)
-  // Use worksheetDetails.fullyQualifiedName if available, otherwise extract from URL
-  const decodedWorksheetFQN = useMemo(() => {
-    const baseFqn = worksheetDetails?.fullyQualifiedName;
-    const { entityFqn } = extractEntityFqnAndColumnPart(
-      urlFqn,
-      baseFqn,
-      2
-    );
-
-    return entityFqn;
-  }, [urlFqn, worksheetDetails?.fullyQualifiedName]);
+  const { entityFqn: decodedWorksheetFQN } = useFqn({
+    type: EntityType.WORKSHEET,
+  });
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -319,7 +309,7 @@ function WorksheetDetails({
 
   useEffect(() => {
     getEntityFeedCount();
-  }, [getEntityFeedCount]);
+  }, [worksheetPermissions, decodedWorksheetFQN]);
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);

@@ -38,7 +38,6 @@ import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
 import {
-  extractEntityFqnAndColumnPart,
   getFeedCounts,
 } from '../../../utils/CommonUtils';
 import {
@@ -98,23 +97,12 @@ function FileDetails({
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.OVERVIEW } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: urlFqn } = useFqn();
+
   const navigate = useNavigate();
   const { customizedPage, isLoading } = useCustomPages(PageType.File);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
-  // Extract base FQN from URL (removes column part if present)
-  // Use fileDetails.fullyQualifiedName if available, otherwise extract from URL
-  const decodedFileFQN = useMemo(() => {
-    const baseFqn = fileDetails?.fullyQualifiedName;
-    const { entityFqn } = extractEntityFqnAndColumnPart(
-      urlFqn,
-      baseFqn,
-      2
-    );
-
-    return entityFqn;
-  }, [urlFqn, fileDetails?.fullyQualifiedName]);
+  const { entityFqn: decodedFileFQN } = useFqn({ type: EntityType.FILE });
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -309,7 +297,7 @@ function FileDetails({
 
   useEffect(() => {
     getEntityFeedCount();
-  }, [getEntityFeedCount]);
+  }, [filePermissions, decodedFileFQN]);
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);

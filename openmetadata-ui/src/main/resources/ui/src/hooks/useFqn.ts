@@ -10,26 +10,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useRequiredParams } from '../utils/useRequiredParams';
 
-type Fqn = {
-  fqn: string;
-  ingestionFQN: string;
-  ruleName: string;
-  columnPart?: string;
-};
+import { useRequiredParams } from '../utils/useRequiredParams';
+import entityUtilClassBase from '../utils/EntityUtilClassBase';
+
+type Fqn = { fqn: string; ingestionFQN: string; ruleName: string };
 
 /**
- * @description Hook to get the decoded fqn, ingestionFQN, and columnPart from the url
- * @returns {fqn: string, ingestionFQN: string, ruleName: string, columnPart?: string} - fqn, ingestionFQN, ruleName, and columnPart from the url
+ * @description Hook to get the decoded fqn and ingestionFQN from the url
+ * @returns {fqn: string, ingestionFQN: string} - fqn and ingestionFQN from the url
  */
-export const useFqn = (): Fqn => {
-  const { fqn, ingestionFQN, ruleName, columnPart } = useRequiredParams<Fqn>();
+export const useFqn = ({ type }: { type?: string } = {}): Fqn & {
+  entityFqn: string;
+  columnFqn?: string;
+} => {
+  const { fqn, ingestionFQN, ruleName } = useRequiredParams<Fqn>();
+
+  const { entityFqn, columnFqn } = entityUtilClassBase.getFqnParts(
+    fqn ?? '',
+    type
+  );
 
   return {
     fqn: fqn ?? '',
     ingestionFQN: ingestionFQN ?? '',
     ruleName: ruleName ?? '',
-    columnPart: columnPart ?? '',
+    entityFqn,
+    columnFqn,
   };
 };

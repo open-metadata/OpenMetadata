@@ -34,7 +34,6 @@ import {
   searchDataModelColumnsByFQN,
   updateDataModelColumn,
 } from '../../../../../rest/dataModelsAPI';
-import { buildColumnFqn, extractEntityFqnAndColumnPart } from '../../../../../utils/CommonUtils';
 import {
   getColumnSorter,
   getEntityName,
@@ -47,6 +46,7 @@ import {
   searchTagInData,
 } from '../../../../../utils/TableTags/TableTags.utils';
 import {
+  getHighlightedRowClassName,
   pruneEmptyChildren,
 } from '../../../../../utils/TableUtils';
 import DisplayName from '../../../../common/DisplayName/DisplayName';
@@ -66,7 +66,7 @@ import { ModalWithMarkdownEditor } from '../../../../Modals/ModalWithMarkdownEdi
 
 const ModelTab = () => {
   const { t } = useTranslation();
-  const { fqn: urlFqn } = useFqn();
+
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
@@ -90,21 +90,21 @@ const ModelTab = () => {
     useGenericContext<DashboardDataModel>();
   const { fullyQualifiedName: entityFqn, deleted: isReadOnly } = dataModel;
 
-  const { entityFqn: modelFqn, columnPart } = useMemo(
-    () =>
-      extractEntityFqnAndColumnPart(
-        urlFqn,
-        entityFqn,
-        3
-      ),
-    [urlFqn, entityFqn]
-  );
+  const {
+    entityFqn: modelFqn,
+    columnFqn: columnPart,
+    fqn,
+  } = useFqn({
+    type: EntityType.DASHBOARD_DATA_MODEL,
+  });
 
   const highlightedColumnFqn = useMemo(() => {
-    if (!columnPart) {return undefined;}
+    if (!columnPart) {
+      return undefined;
+    }
 
-    return buildColumnFqn(modelFqn, decodeURIComponent(columnPart));
-  }, [columnPart, modelFqn]);
+    return fqn;
+  }, [columnPart, fqn]);
 
   // Always use paginated columns, never dataModel.columns directly
   const data = paginatedColumns;
@@ -203,19 +203,14 @@ const ModelTab = () => {
     data: paginatedColumns,
     tableFqn: modelFqn,
     columnPart,
+    fqn,
     setExpandedRowKeys: setExpandedRowKeys,
     openColumnDetailPanel,
     selectedColumn: selectedColumn as Column | null,
   });
   
   const getRowClassName = useCallback(
-    (record: Column) => {
-      if (highlightedColumnFqn && record.fullyQualifiedName === highlightedColumnFqn) {
-        return 'highlighted-row';
-      }
-
-      return '';
-    },
+    (record: Column) => getHighlightedRowClassName(record, highlightedColumnFqn),
     [highlightedColumnFqn]
   );
 

@@ -65,7 +65,11 @@ export const PipelineTaskTab = () => {
     openColumnDetailPanel,
     selectedColumn,
   } = useGenericContext<Pipeline>();
-  const { fqn: pipelineFQN, columnPart } = useFqn();
+  const {
+    entityFqn: pipelineFQN,
+    columnFqn: columnPart,
+    fqn,
+  } = useFqn({ type: EntityType.PIPELINE });
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState(PIPELINE_TASK_TABS.LIST_VIEW);
   const [selectedExecution] = useState<PipelineStatus | undefined>(
@@ -82,6 +86,7 @@ export const PipelineTaskTab = () => {
     data: pipelineDetails.tasks ?? [],
     tableFqn: pipelineFQN,
     columnPart,
+    fqn,
     setExpandedRowKeys,
     openColumnDetailPanel,
     selectedColumn: selectedColumn as Task | null,

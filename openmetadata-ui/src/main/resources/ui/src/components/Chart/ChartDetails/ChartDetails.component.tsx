@@ -32,7 +32,6 @@ import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreChart } from '../../../rest/chartsAPI';
 import chartDetailsClassBase from '../../../utils/ChartDetailsClassBase';
 import {
-  extractEntityFqnAndColumnPart,
   getFeedCounts,
 } from '../../../utils/CommonUtils';
 import {
@@ -79,20 +78,9 @@ const ChartDetails = ({
     tab: EntityTabs;
   }>();
   const { customizedPage, isLoading } = useCustomPages('Chart' as PageType);
-  const { fqn: urlFqn } = useFqn();
-  
   // Extract base FQN from URL (removes column part if present)
   // Use chartDetails.fullyQualifiedName if available, otherwise extract from URL
-  const decodedChartFQN = useMemo(() => {
-    const baseFqn = chartDetails?.fullyQualifiedName;
-    const { entityFqn } = extractEntityFqnAndColumnPart(
-      urlFqn,
-      baseFqn,
-      2
-    );
-
-    return entityFqn;
-  }, [urlFqn, chartDetails?.fullyQualifiedName]);
+  const { entityFqn: decodedChartFQN } = useFqn({ type: EntityType.CHART });
   
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -145,7 +133,7 @@ const ChartDetails = ({
 
   useEffect(() => {
     getEntityFeedCount();
-  }, [decodedChartFQN]);
+  }, [chartPermissions, decodedChartFQN]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {

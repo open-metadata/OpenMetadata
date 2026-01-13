@@ -13,14 +13,12 @@
 import { Button, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
-import React, { ReactNode, useCallback, useMemo, useState } from 'react';
+import React, { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
-import { EntityType } from '../../../enums/entity.enum';
-import { useCopyEntityLink } from '../../../hooks/useCopyEntityLink';
+import CopyLinkButton from '../CopyLinkButton/CopyLinkButton';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -39,25 +37,12 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
   allowRename,
   hasEditPermission = false,
   entityType,
-  parentEntityFqn,
 }) => {
   const { t } = useTranslation();
 
   const [isDisplayNameEditing, setIsDisplayNameEditing] = useState(false);
 
-  const { copyEntityLink, copiedFqn } = useCopyEntityLink(
-    entityType ?? EntityType.TABLE,
-    parentEntityFqn
-  );
 
-  const handleCopyLink = useCallback(
-    async (fqn: string) => {
-      if (entityType) {
-        await copyEntityLink(fqn);
-      }
-    },
-    [copyEntityLink, entityType]
-  );
 
   const handleDisplayNameUpdate = async (data: EntityName) => {
     setIsDisplayNameEditing(true);
@@ -129,30 +114,11 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
           ) : null}
 
           {entityType && id && (
-            <Tooltip
-              placement="top"
-              title={
-                copiedFqn === id
-                  ? t('message.link-copy-to-clipboard')
-                  : t('label.copy-item', { item: t('label.url-uppercase') })
-              }>
-              <Button
-                className="cursor-pointer hover-cell-icon flex-center"
-                data-testid="copy-column-link-button"
-                style={{
-                  color: DE_ACTIVE_COLOR,
-                  padding: 0,
-                  border: 'none',
-                  background: 'transparent',
-                  width: '24px',
-                  height: '24px',
-                }}
-                onClick={() => handleCopyLink(id)}>
-                <ShareIcon
-                  style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                />
-              </Button>
-            </Tooltip>
+            <CopyLinkButton
+              entityType={entityType}
+              fieldFqn={id}
+              testId="copy-column-link-button"
+            />
           )}
         </div>
       </div>
