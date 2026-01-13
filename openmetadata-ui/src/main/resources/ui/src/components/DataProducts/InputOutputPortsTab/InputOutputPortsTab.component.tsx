@@ -20,21 +20,23 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
+import { AxiosError } from 'axios';
 import React, {
   forwardRef,
   useCallback,
+  useEffect,
   useImperativeHandle,
-  useMemo,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/ic-no-records.svg';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
-import {
-  getInputPortsQueryFilter,
-  getOutputPortsQueryFilter,
-} from '../../../utils/DataProduct/InputOutputPortsUtils';
+import { SearchIndex } from '../../../enums/search.enum';
+import { getDataProductPortsView } from '../../../rest/dataProductAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../common/Loader/Loader';
+import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
 import AssetsTabs, {
   AssetsTabRef,
@@ -52,13 +54,11 @@ export const InputOutputPortsTab = forwardRef<
   (
     {
       dataProductFqn,
-      inputPorts = [],
-      outputPorts = [],
       permissions,
       onPortsUpdate,
       onPortClick,
       isSummaryPanelOpen,
-      queryFilter,
+      initialLimit,
     },
     ref
   ) => {
@@ -69,22 +69,53 @@ export const InputOutputPortsTab = forwardRef<
     const inputPortsTabRef = React.useRef<AssetsTabRef>(null);
     const outputPortsTabRef = React.useRef<AssetsTabRef>(null);
 
-    // Create query filters for input/output ports based on their FQNs
-    const inputPortsQueryFilter = useMemo(
-      () => getInputPortsQueryFilter(inputPorts),
-      [inputPorts]
-    );
+    const [inputPortsData, setInputPortsData] = useState<
+      SearchedDataProps['data']
+    >([]);
+    const [outputPortsData, setOutputPortsData] = useState<
+      SearchedDataProps['data']
+    >([]);
+    const [inputPortsTotal, setInputPortsTotal] = useState(0);
+    const [outputPortsTotal, setOutputPortsTotal] = useState(0);
+    const [isLoadingPorts, setIsLoadingPorts] = useState(true);
 
-    const outputPortsQueryFilter = useMemo(
-      () => getOutputPortsQueryFilter(outputPorts),
-      [outputPorts]
-    );
+    const fetchPortsData = useCallback(async () => {
+      setIsLoadingPorts(true);
+      try {
+        const data = await getDataProductPortsView(dataProductFqn, {
+          inputLimit: initialLimit ?? 100,
+          inputOffset: 0,
+          outputLimit: initialLimit ?? 100,
+          outputOffset: 0,
+        });
+
+        const inputPortsSearchData = data.inputPorts.data.map((entity) => ({
+          _id: entity.id,
+          _index: SearchIndex.DATA_ASSET,
+          _source: entity,
+        })) as unknown as SearchedDataProps['data'];
+
+        const outputPortsSearchData = data.outputPorts.data.map((entity) => ({
+          _id: entity.id,
+          _index: SearchIndex.DATA_ASSET,
+          _source: entity,
+        })) as unknown as SearchedDataProps['data'];
+
+        setInputPortsData(inputPortsSearchData);
+        setInputPortsTotal(data.inputPorts.paging.total);
+        setOutputPortsData(outputPortsSearchData);
+        setOutputPortsTotal(data.outputPorts.paging.total);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoadingPorts(false);
+      }
+    }, [dataProductFqn, initialLimit]);
 
     const refreshPorts = useCallback(() => {
+      fetchPortsData();
       onPortsUpdate();
-      inputPortsTabRef.current?.refreshAssets();
-      outputPortsTabRef.current?.refreshAssets();
-    }, [onPortsUpdate]);
+    }, [fetchPortsData, onPortsUpdate]);
 
     useImperativeHandle(ref, () => ({
       refreshPorts,
@@ -107,6 +138,16 @@ export const InputOutputPortsTab = forwardRef<
       setIsAddingOutputPort(false);
       refreshPorts();
     }, [refreshPorts]);
+
+    useEffect(() => {
+      if (dataProductFqn) {
+        fetchPortsData();
+      }
+    }, [dataProductFqn, fetchPortsData]);
+
+    if (isLoadingPorts) {
+      return <Loader />;
+    }
 
     return (
       <Box
@@ -153,7 +194,7 @@ export const InputOutputPortsTab = forwardRef<
                   transition: 'all 200ms ease',
                   transitionProperty: 'height, left, top',
                 }}>
-                {inputPorts.length === 0 ? (
+                {inputPortsTotal === 0 ? (
                   <ErrorPlaceHolder
                     className="m-t-0"
                     icon={
@@ -170,11 +211,12 @@ export const InputOutputPortsTab = forwardRef<
                   </ErrorPlaceHolder>
                 ) : (
                   <AssetsTabs
-                    assetCount={inputPorts.length}
+                    skipSearch
+                    assetCount={inputPortsTotal}
                     entityFqn={dataProductFqn}
                     isSummaryPanelOpen={isSummaryPanelOpen}
                     permissions={permissions}
-                    queryFilter={inputPortsQueryFilter}
+                    preloadedData={inputPortsData}
                     ref={inputPortsTabRef}
                     type={AssetsOfEntity.DATA_PRODUCT_INPUT_PORT}
                     onAddAsset={handleAddInputPort}
@@ -225,7 +267,7 @@ export const InputOutputPortsTab = forwardRef<
                   transition: 'all 200ms ease',
                   transitionProperty: 'height, left, top',
                 }}>
-                {outputPorts.length === 0 ? (
+                {outputPortsTotal === 0 ? (
                   <ErrorPlaceHolder
                     className="m-t-0"
                     icon={
@@ -242,11 +284,12 @@ export const InputOutputPortsTab = forwardRef<
                   </ErrorPlaceHolder>
                 ) : (
                   <AssetsTabs
-                    assetCount={outputPorts.length}
+                    skipSearch
+                    assetCount={outputPortsTotal}
                     entityFqn={dataProductFqn}
                     isSummaryPanelOpen={isSummaryPanelOpen}
                     permissions={permissions}
-                    queryFilter={outputPortsQueryFilter}
+                    preloadedData={outputPortsData}
                     ref={outputPortsTabRef}
                     type={AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT}
                     onAddAsset={handleAddOutputPort}
@@ -262,7 +305,6 @@ export const InputOutputPortsTab = forwardRef<
         <AssetSelectionDrawer
           entityFqn={dataProductFqn}
           open={isAddingInputPort}
-          queryFilter={queryFilter}
           type={AssetsOfEntity.DATA_PRODUCT_INPUT_PORT}
           onCancel={() => setIsAddingInputPort(false)}
           onSave={handleInputPortSave}
@@ -271,7 +313,6 @@ export const InputOutputPortsTab = forwardRef<
         <AssetSelectionDrawer
           entityFqn={dataProductFqn}
           open={isAddingOutputPort}
-          queryFilter={queryFilter}
           type={AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT}
           onCancel={() => setIsAddingOutputPort(false)}
           onSave={handleOutputPortSave}

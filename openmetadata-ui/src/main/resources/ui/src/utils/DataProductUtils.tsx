@@ -135,8 +135,6 @@ export const getDataProductDetailTabs = ({
       ?.map((domain) => domain.fullyQualifiedName)
       .join(', ') ?? '';
 
-  const portsQueryFilter = getQueryFilterForDomainAssets(domainFqn);
-  
   return [
     {
       label: (
@@ -203,11 +201,8 @@ export const getDataProductDetailTabs = ({
                   children: (
                     <InputOutputPortsTab
                       dataProductFqn={dataProduct.fullyQualifiedName ?? ''}
-                      inputPorts={dataProduct.inputPorts}
                       isSummaryPanelOpen={Boolean(previewAsset)}
-                      outputPorts={dataProduct.outputPorts}
                       permissions={dataProductPermission}
-                      queryFilter={portsQueryFilter}
                       onPortClick={handleAssetClick}
                       onPortsUpdate={handleAssetSave}
                     />

@@ -12,6 +12,7 @@
  */
 
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 import { EntityDetailsObjectInterface } from '../../../Explore/ExplorePage.interface';
 
 export enum AssetsOfEntity {
@@ -40,6 +41,8 @@ export interface AssetsTabsProps {
   type?: AssetsOfEntity;
   queryFilter?: string | Record<string, unknown>;
   noDataPlaceholder?: string | AssetNoDataPlaceholderProps;
+  preloadedData?: SearchedDataProps['data'];
+  skipSearch?: boolean;
 }
 
 export interface AssetNoDataPlaceholderProps {

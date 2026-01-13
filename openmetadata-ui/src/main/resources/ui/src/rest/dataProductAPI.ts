@@ -19,6 +19,7 @@ import {
 } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { CreateDataProduct } from '../generated/api/domains/createDataProduct';
+import { DataProductPortsView } from '../generated/api/domains/dataProductPortsView';
 import {
   DataProduct,
   EntityReference,
@@ -244,6 +245,23 @@ export const removeOutputPortsFromDataProduct = async (
     { assets: EntityReference[] },
     AxiosResponse<DataProduct>
   >(`${BASE_URL}/${getEncodedFqn(dataProductFqn)}/outputPorts/remove`, data);
+
+  return response.data;
+};
+
+export const getDataProductPortsView = async (
+  dataProductFqn: string,
+  params?: {
+    inputLimit?: number;
+    inputOffset?: number;
+    outputLimit?: number;
+    outputOffset?: number;
+  }
+) => {
+  const response = await APIClient.get<DataProductPortsView>(
+    `${BASE_URL}/name/${getEncodedFqn(dataProductFqn)}/portsView`,
+    { params }
+  );
 
   return response.data;
 };

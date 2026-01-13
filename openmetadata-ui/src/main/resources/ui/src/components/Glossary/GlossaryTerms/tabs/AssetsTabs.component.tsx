@@ -126,6 +126,8 @@ const AssetsTabs = forwardRef(
       noDataPlaceholder,
       entityFqn,
       assetCount,
+      preloadedData,
+      skipSearch = false,
     }: AssetsTabsProps,
     ref
   ) => {
@@ -252,6 +254,19 @@ const AssetsTabs = forwardRef(
         page?: number;
         queryFilter?: QueryFilterInterface;
       }) => {
+        if (skipSearch && preloadedData) {
+          setData(preloadedData);
+          handlePagingChange({ total: assetCount ?? preloadedData.length });
+          setIsLoading(false);
+          if (preloadedData[0]) {
+            setSelectedCard(preloadedData[0]._source);
+          } else {
+            setSelectedCard(undefined);
+          }
+
+          return;
+        }
+
         try {
           setIsLoading(true);
 
@@ -289,7 +304,15 @@ const AssetsTabs = forwardRef(
           setIsLoading(false);
         }
       },
-      [currentPage, pageSize, searchValue, queryParam, assetCount]
+      [
+        currentPage,
+        pageSize,
+        searchValue,
+        queryParam,
+        assetCount,
+        skipSearch,
+        preloadedData,
+      ]
     );
 
     const hideNotification = () => {

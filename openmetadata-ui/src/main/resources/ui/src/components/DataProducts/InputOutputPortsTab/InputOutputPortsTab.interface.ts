@@ -25,6 +25,7 @@ export interface InputOutputPortsTabProps {
   onPortClick?: (port?: EntityDetailsObjectInterface) => void;
   isSummaryPanelOpen: boolean;
   queryFilter?: QueryFilterInterface;
+  initialLimit?: number;
 }
 
 export interface InputOutputPortsTabRef {
