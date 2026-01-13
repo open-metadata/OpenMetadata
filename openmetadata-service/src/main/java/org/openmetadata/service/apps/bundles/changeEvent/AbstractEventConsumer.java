@@ -62,8 +62,11 @@ public abstract class AbstractEventConsumer
 
   private AlertMetrics alertMetrics;
 
-  // Collect successful events during HTTP phase, batch write in commit phase
-  // This reduces connection pool contention from N connections to 1
+  // Collect successful events during HTTP phase, batch write in commit phase.
+  // This reduces connection pool contention from N connections to 1.
+  // Thread-safety note: ArrayList is not thread-safe, but this is safe because
+  // @DisallowConcurrentExecution ensures Quartz won't run the same job concurrently,
+  // so this instance is only accessed by a single thread at a time.
   private final List<ChangeEvent> successfulEvents = new ArrayList<>();
 
   @Getter @Setter private JobDetail jobDetail;
@@ -290,7 +293,6 @@ public abstract class AbstractEventConsumer
       return;
     }
 
-    // Build batch insert values for all successful events
     List<String> changeEventIds = new ArrayList<>();
     List<String> subscriptionIds = new ArrayList<>();
     List<String> jsonList = new ArrayList<>();
@@ -303,9 +305,19 @@ public abstract class AbstractEventConsumer
       timestamps.add(timestamp);
     }
 
-    Entity.getCollectionDAO()
-        .eventSubscriptionDAO()
-        .batchUpsertSuccessfulChangeEvents(changeEventIds, subscriptionIds, jsonList, timestamps);
+    try {
+      Entity.getCollectionDAO()
+          .eventSubscriptionDAO()
+          .batchUpsertSuccessfulChangeEvents(changeEventIds, subscriptionIds, jsonList, timestamps);
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to batch record {} successful events for subscription {}. "
+              + "Events were sent to destinations but recording failed.",
+          successfulEvents.size(),
+          subscriptionId,
+          e);
+      throw e;
+    }
   }
 
   @Override

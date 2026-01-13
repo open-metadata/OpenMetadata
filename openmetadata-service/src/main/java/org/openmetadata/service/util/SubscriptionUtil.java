@@ -623,6 +623,19 @@ public class SubscriptionUtil {
     int effectiveConnectTimeout = Math.min(Math.max(connectTimeout, 5), 30);
     int effectiveReadTimeout = Math.min(Math.max(readTimeout, 10), 120);
 
+    if (connectTimeout != effectiveConnectTimeout) {
+      LOG.debug(
+          "Connect timeout {} clamped to {} (valid range: 5-30 seconds)",
+          connectTimeout,
+          effectiveConnectTimeout);
+    }
+    if (readTimeout != effectiveReadTimeout) {
+      LOG.debug(
+          "Read timeout {} clamped to {} (valid range: 10-120 seconds)",
+          readTimeout,
+          effectiveReadTimeout);
+    }
+
     ClientBuilder clientBuilder = ClientBuilder.newBuilder();
     clientBuilder.connectTimeout(effectiveConnectTimeout, TimeUnit.SECONDS);
     clientBuilder.readTimeout(effectiveReadTimeout, TimeUnit.SECONDS);
