@@ -685,6 +685,8 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     params.setAdditionalProperty("ingestionImage", "openmetadata/ingestion:latest");
     params.setAdditionalProperty("serviceAccountName", "default");
     params.setAdditionalProperty("imagePullPolicy", "IfNotPresent");
+    // Use native Jobs/CronJobs by default instead of OMJob operator
+    params.setAdditionalProperty("useOMJobOperator", "false");
     pipelineConfig.setParameters(params);
 
     // Create the pipeline service client with K8s config

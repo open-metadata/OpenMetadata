@@ -59,10 +59,12 @@ import org.slf4j.LoggerFactory;
  * Integration tests for IngestionPipeline REST API with K8s pipeline backend.
  *
  * <p>This test validates that pipeline REST API operations work correctly with the
- * Kubernetes backend through the OpenMetadata API layer.
+ * Kubernetes backend through the OpenMetadata API layer using native Kubernetes
+ * Jobs and CronJobs (not the custom OMJob operator).
  *
- * <p>Tests are enabled via ENABLE_K8S_TESTS environment variable.
- * Run with: mvn test -Dtest=K8sIngestionPipelineResourceIT -DENABLE_K8S_TESTS=true
+ * <p>Uses native Jobs/CronJobs (useOMJobOperator=false by default in TestSuiteBootstrap).
+ *
+ * <p>Run with: ENABLE_K8S_TESTS=true mvn test -Dtest=K8sIngestionPipelineResourceIT
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class K8sIngestionPipelineResourceIT {
@@ -70,20 +72,18 @@ public class K8sIngestionPipelineResourceIT {
   private static final Logger LOG = LoggerFactory.getLogger(K8sIngestionPipelineResourceIT.class);
   private static final String K8S_NAMESPACE = "openmetadata-pipelines";
 
-  private static boolean k8sEnabled;
   private static CoreV1Api coreApi;
   private static BatchV1Api batchApi;
   private static DatabaseService testService;
 
   @BeforeAll
-  static void setupK8s() {
-    // Check if K8s tests are enabled, if not start K8s on-demand
-    if (!TestSuiteBootstrap.isK8sEnabled()) {
-      TestSuiteBootstrap.setupK8s();
-    }
+  static void setupK8s() throws Exception {
+    // Skip tests if K8s is not enabled
+    assumeTrue(
+        TestSuiteBootstrap.isK8sEnabled(),
+        "K8s tests disabled. Run with ENABLE_K8S_TESTS=true to enable.");
 
-    k8sEnabled = TestSuiteBootstrap.isK8sEnabled();
-    assumeTrue(k8sEnabled, "K8s tests disabled. Set ENABLE_K8S_TESTS=true to enable.");
+    LOG.info("K8s is running, configuring test environment with native Jobs/CronJobs");
 
     try {
       String kubeConfigYaml = TestSuiteBootstrap.getKubeConfigYaml();
@@ -94,14 +94,15 @@ public class K8sIngestionPipelineResourceIT {
       coreApi = new CoreV1Api(apiClient);
       batchApi = new BatchV1Api(apiClient);
 
+      // Create test database service (this needs the OpenMetadata server running)
       TestNamespace ns = new TestNamespace("K8sIngestionPipelineResourceIT");
       testService = DatabaseServiceTestFactory.createPostgres(ns);
 
-      LOG.info("K8s integration test environment initialized successfully");
+      LOG.info(
+          "K8s integration test environment initialized successfully with native Jobs/CronJobs (useOMJobOperator=false by default)");
     } catch (Exception e) {
       LOG.error("Failed to setup K8s test environment", e);
-      k8sEnabled = false;
-      assumeTrue(false, "Failed to setup K8s environment");
+      throw new RuntimeException("Failed to setup K8s environment", e);
     }
   }
 
@@ -169,11 +170,31 @@ public class K8sIngestionPipelineResourceIT {
 
   @Test
   @Order(1)
+  void test_k8sClusterWithNativeJobs() throws Exception {
+    LOG.info("Testing K8s cluster setup with native Jobs/CronJobs...");
+
+    // Verify namespace exists
+    var namespace = coreApi.readNamespace(K8S_NAMESPACE).execute();
+    assertNotNull(namespace);
+    assertEquals(K8S_NAMESPACE, namespace.getMetadata().getName());
+    LOG.info("Test namespace verified: {}", namespace.getMetadata().getName());
+
+    // Verify we can list native CronJobs (not CronOMJobs)
+    V1CronJobList cronJobs = batchApi.listNamespacedCronJob(K8S_NAMESPACE).execute();
+    assertNotNull(cronJobs);
+    LOG.info("Can list native CronJobs in namespace");
+
+    // Verify we can list native Jobs (not OMJobs)
+    V1JobList jobs = batchApi.listNamespacedJob(K8S_NAMESPACE).execute();
+    assertNotNull(jobs);
+    LOG.info("Can list native Jobs in namespace");
+
+    LOG.info("K8s cluster with native Jobs/CronJobs verified successfully");
+  }
+
+  @Test
+  @Order(2)
   void test_deployScheduledPipeline_withK8sBackend() throws Exception {
-    if (!k8sEnabled) {
-      LOG.info("Skipping K8s test - not enabled");
-      return;
-    }
 
     LOG.info("Testing scheduled pipeline deployment with K8s backend...");
 
@@ -218,12 +239,8 @@ public class K8sIngestionPipelineResourceIT {
   }
 
   @Test
-  @Order(2)
+  @Order(3)
   void test_deployOnDemandPipeline_withK8sBackend() throws Exception {
-    if (!k8sEnabled) {
-      LOG.info("Skipping K8s test - not enabled");
-      return;
-    }
 
     LOG.info("Testing on-demand pipeline deployment...");
 
@@ -253,12 +270,8 @@ public class K8sIngestionPipelineResourceIT {
   }
 
   @Test
-  @Order(3)
+  @Order(4)
   void test_runPipeline_withK8sBackend() throws Exception {
-    if (!k8sEnabled) {
-      LOG.info("Skipping K8s test - not enabled");
-      return;
-    }
 
     LOG.info("Testing pipeline execution...");
 
@@ -296,12 +309,8 @@ public class K8sIngestionPipelineResourceIT {
   }
 
   @Test
-  @Order(4)
+  @Order(5)
   void test_togglePipeline_withK8sBackend() throws Exception {
-    if (!k8sEnabled) {
-      LOG.info("Skipping K8s test - not enabled");
-      return;
-    }
 
     LOG.info("Testing pipeline toggle functionality...");
 
@@ -348,12 +357,8 @@ public class K8sIngestionPipelineResourceIT {
   }
 
   @Test
-  @Order(5)
+  @Order(6)
   void test_killPipeline_withK8sBackend() throws Exception {
-    if (!k8sEnabled) {
-      LOG.info("Skipping K8s test - not enabled");
-      return;
-    }
 
     LOG.info("Testing pipeline kill functionality...");
 
@@ -410,12 +415,8 @@ public class K8sIngestionPipelineResourceIT {
   }
 
   @Test
-  @Order(6)
+  @Order(7)
   void test_deletePipeline_withK8sBackend() throws Exception {
-    if (!k8sEnabled) {
-      LOG.info("Skipping K8s test - not enabled");
-      return;
-    }
 
     LOG.info("Testing pipeline deletion...");
 
@@ -465,12 +466,8 @@ public class K8sIngestionPipelineResourceIT {
   }
 
   @Test
-  @Order(7)
+  @Order(8)
   void test_getServiceStatus_withK8sBackend() throws Exception {
-    if (!k8sEnabled) {
-      LOG.info("Skipping K8s test - not enabled");
-      return;
-    }
 
     LOG.info("Testing service status with K8s backend...");
 
