@@ -1371,16 +1371,22 @@ const ServiceDetailsPage: FunctionComponent = () => {
     }, [isWorkflowStatusLoading, workflowStatesData?.mainInstanceState.status]);
 
   useEffect(() => {
-    if (searchValue) {
+    if (
+      searchValue &&
+      serviceCategory !== ServiceCategory.DRIVE_SERVICES &&
+      !isInitialPaginationLoadRef &&
+      [EntityTabs.FILES, EntityTabs.SPREADSHEETS].includes(
+        activeTab as EntityTabs
+      )
+    ) {
       return;
     }
     getOtherDetails({ limit: pageSize });
     isInitialPaginationLoadRef.current = false;
-  }, [showDeleted, deleted, pageSize, searchValue]);
+  }, [searchValue]);
 
   useEffect(() => {
     if (
-      isInitialPaginationLoadRef.current ||
       searchValue ||
       [EntityTabs.FILES, EntityTabs.SPREADSHEETS].includes(
         activeTab as EntityTabs
@@ -1393,7 +1399,17 @@ const ServiceDetailsPage: FunctionComponent = () => {
       limit: pageSize,
       ...(cursorType && { [cursorType]: cursorValue }),
     });
-  }, [pagingInfo?.pagingCursor, searchValue, activeTab]);
+    if (isInitialPaginationLoadRef.current) {
+      isInitialPaginationLoadRef.current = false;
+    }
+  }, [
+    showDeleted,
+    deleted,
+    pageSize,
+    searchValue,
+    pagingInfo?.pagingCursor,
+    activeTab,
+  ]);
 
   useEffect(() => {
     if (serviceCategory === ServiceCategory.DASHBOARD_SERVICES) {
@@ -1405,14 +1421,37 @@ const ServiceDetailsPage: FunctionComponent = () => {
       isInitialLoadRef.current
     ) {
       if (isEmpty(fileSearchValue)) {
-        fetchFiles({ limit: filesPageSize });
+        const { cursorType: fileCursorType, cursorValue: fileCursorValue } =
+          filesPagingInfo?.pagingCursor ?? {};
+        fetchFiles({
+          limit: filesPageSize,
+          ...(fileCursorType &&
+            activeTab === EntityTabs.FILES && {
+              [fileCursorType]: fileCursorValue,
+            }),
+        });
       }
       if (isEmpty(spreadSheetSearchValue)) {
-        fetchSpreadsheets({ limit: spreadsheetsPageSize });
+        const {
+          cursorType: spreadSheetCursorType,
+          cursorValue: spreadSheetCursorValue,
+        } = spreadsheetsPagingInfo?.pagingCursor ?? {};
+        fetchSpreadsheets({
+          limit: spreadsheetsPageSize,
+          ...(spreadSheetCursorType &&
+            activeTab === EntityTabs.SPREADSHEETS && {
+              [spreadSheetCursorType]: spreadSheetCursorValue,
+            }),
+        });
       }
       isInitialLoadRef.current = false;
     }
-  }, [serviceCategory]);
+  }, [
+    serviceCategory,
+    spreadsheetsPagingInfo?.pagingCursor,
+    filesPagingInfo?.pagingCursor,
+    activeTab,
+  ]);
 
   useEffect(() => {
     if (
@@ -1428,7 +1467,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
         ...(fileCursorType && { [fileCursorType]: fileCursorValue }),
       });
     }
-  }, [filesPagingInfo?.pagingCursor, filesPageSize, fileSearchValue]);
+  }, [
+    filesPagingInfo?.pagingCursor,
+    filesPageSize,
+    fileSearchValue,
+    activeTab,
+  ]);
 
   useEffect(() => {
     if (
@@ -1452,6 +1496,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     spreadsheetsPagingInfo?.pagingCursor,
     spreadsheetsPageSize,
     spreadSheetSearchValue,
+    activeTab,
   ]);
 
   useEffect(() => {
