@@ -15,7 +15,7 @@ Time utility functions
 
 from datetime import datetime, time, timedelta
 from math import floor
-from typing import Union
+from typing import Optional, Union
 
 from pytz import timezone
 from metadata.generated.schema.type.basic import Timestamp
@@ -27,28 +27,26 @@ logger = utils_logger()
 
 
 def datetime_to_timestamp(datetime_value: datetime, milliseconds=False, timezone_str: str="UTC") -> int:
-    """Convert a datetime object to timestamp integer. If datetime is timezone aware, it will be converted to UTC.
-    If it is naive it will be assumed to be in UTC.
-
-    # TODO: not sure the milliseconds flag is useful. Maybe this should return a 'Timestamp' object instead.
+    """Convert a datetime object to timestamp integer.
 
     Args:
         datetime_value (_type_): datetime object
         milliseconds (bool, optional): make it a milliseconds timestamp. Defaults to False.
+        timezone_str (str, optional): timezone string. Defaults to "UTC".
 
     Returns:
         int : timestamp in seconds or milliseconds
     """
+    tz = timezone(timezone_str)
     if not getattr(datetime_value, "timestamp", None):
         raise TypeError(
             f"Object of type {type(datetime_value).__name__} has not method `timestamp()`"
         )
 
-    datetime_value = (
-        datetime_value.replace(tzinfo=timezone(timezone_str))
-        if datetime_value.tzinfo is None
-        else datetime_value.astimezone(timezone(timezone_str))
-    )
+    if datetime_value.tzinfo is None:
+        datetime_value = tz.localize(datetime_value)
+    else:
+        datetime_value = datetime_value.astimezone(tz)
     tmsap = datetime_value.timestamp()
     if milliseconds:
         return int(tmsap * 1000)
@@ -70,7 +68,7 @@ def timestamp_to_datetime(ts: Timestamp, timezone_str: str = "UTC") -> datetime:
 def get_beginning_of_day_timestamp_mill(
     days=0, seconds=0, microseconds=0, milliseconds=0, minutes=0, hours=0, weeks=0, 
     timezone_str: str="UTC"
-) -> int:
+) -> Optional[int]:
     """Get the beginning of day timestamp
 
     Args:
@@ -81,11 +79,13 @@ def get_beginning_of_day_timestamp_mill(
         minutes (int, optional): delay in minutes. Defaults to 0.
         hours (int, optional): delay in hours. Defaults to 0.
         weeks (int, optional): delay in weeks. Defaults to 0.
+        timezone_str (str, optional): timezone string. Defaults to "UTC".
 
     Returns:
         int: timestamp milliseconds
     """
-    now_utc = datetime.now(timezone(timezone_str))
+    tz = timezone(timezone_str)
+    now_utc = datetime.now(tz)
     delta = timedelta(
         weeks=weeks,
         days=days,
@@ -95,14 +95,13 @@ def get_beginning_of_day_timestamp_mill(
         microseconds=microseconds,
         milliseconds=milliseconds,
     )
-    return datetime_to_ts(
-        datetime.combine(now_utc - delta, time.min, tzinfo=timezone(timezone_str)),
-    )
+    datetime_value = datetime.combine(now_utc - delta, time.min)
+    return datetime_to_ts(tz.localize(datetime_value))
 
 
 def get_end_of_day_timestamp_mill(
     days=0, seconds=0, microseconds=0, milliseconds=0, minutes=0, hours=0, weeks=0, timezone_str: str="UTC"
-) -> int:
+) -> Optional[int]:
     """Get the end of day timestamp
 
     Args:
@@ -113,11 +112,13 @@ def get_end_of_day_timestamp_mill(
         minutes (int, optional): delay in minutes. Defaults to 0.
         hours (int, optional): delay in hours. Defaults to 0.
         weeks (int, optional): delay in weeks. Defaults to 0.
+        timezone_str (str, optional): timezone string. Defaults to "UTC".
 
     Returns:
         int: timestamp milliseconds
     """
-    now_utc = datetime.now(timezone(timezone_str))
+    tz = timezone(timezone_str)
+    now_utc = datetime.now(tz)
     delta = timedelta(
         weeks=weeks,
         days=days,
@@ -127,9 +128,9 @@ def get_end_of_day_timestamp_mill(
         microseconds=microseconds,
         milliseconds=milliseconds,
     )
-    return datetime_to_ts(
-        datetime.combine(now_utc - delta, time.max, tzinfo=timezone(timezone_str)),
-    )
+
+    datetime_value = datetime.combine(now_utc - delta, time.max)
+    return datetime_to_ts(tz.localize(datetime_value))
 
 
 def convert_timestamp(timestamp: str) -> Union[int, float]:
