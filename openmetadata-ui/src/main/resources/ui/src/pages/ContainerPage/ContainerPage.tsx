@@ -27,7 +27,6 @@ import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHead
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
@@ -74,7 +73,6 @@ import {
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import Fqn from '../../utils/Fqn';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
@@ -94,57 +92,13 @@ const ContainerPage = () => {
   const { customizedPage, isLoading: loading } = useCustomPages(
     PageType.Container
   );
-  const { fqn: decodedEntityFqn } = useFqn();
+  const { entityFqn: decodedEntityFqn } = useFqn({
+    type: EntityType.CONTAINER,
+  });
 
   // Local states
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [containerFQN, setContainerFQN] = useState<string>('');
   const [hasError, setHasError] = useState<boolean>(false);
-
-  useEffect(() => {
-    if (!decodedEntityFqn) {
-      return;
-    }
-
-    const resolveContainerFQN = async () => {
-      if (decodedEntityFqn === containerFQN) {
-        return;
-      }
-
-      let foundFQN = decodedEntityFqn;
-      const parts = Fqn.split(decodedEntityFqn);
-
-      // Try finding the container by successively removing the last segment
-      // until we find a match or run out of segments (min 2: service.container)
-      while (parts.length >= 2) {
-        const candidateFQN = parts.join(FQN_SEPARATOR_CHAR);
-        try {
-          await getContainerByName(candidateFQN, {
-            fields: [TabSpecificField.OWNERS], // Minimal fetch to verify existence
-          });
-          foundFQN = candidateFQN;
-          break; // Found valid container
-        } catch (error) {
-          if (
-            (error as AxiosError).response?.status === ClientErrors.NOT_FOUND &&
-            parts.length > 2
-          ) {
-            parts.pop(); // Remove last segment (potential column name) and retry
-          } else {
-            // Other error or down to 2 parts, stop
-            if (parts.length === 2) {
-              // If we reached the base (service.container) and it's 404, then it really doesn't exist
-              foundFQN = candidateFQN;
-            }
-            break;
-          }
-        }
-      }
-      setContainerFQN(foundFQN);
-    };
-
-    resolveContainerFQN();
-  }, [decodedEntityFqn, containerFQN]);
 
   // Local states
   const [containerData, setContainerData] = useState<Container>();
@@ -200,7 +154,7 @@ const ContainerPage = () => {
   );
 
   const getEntityFeedCount = () =>
-    getFeedCounts(EntityType.CONTAINER, containerFQN, handleFeedCount);
+    getFeedCounts(EntityType.CONTAINER, decodedEntityFqn, handleFeedCount);
 
   const fetchResourcePermission = async (containerFQN: string) => {
     try {
@@ -233,17 +187,14 @@ const ContainerPage = () => {
   // Fetch children count to show it in Tab label
   const fetchContainerChildren = useCallback(async () => {
     try {
-      const { paging } = await getContainerChildrenByName(
-        containerFQN,
-        {
-          limit: 0,
-        }
-      );
+      const { paging } = await getContainerChildrenByName(decodedEntityFqn, {
+        limit: 0,
+      });
       setChildrenCount(paging.total);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
-  }, [containerFQN]);
+  }, [decodedEntityFqn]);
 
   const { deleted, version, isUserFollowing } = useMemo(() => {
     return {
@@ -312,7 +263,7 @@ const ContainerPage = () => {
         {
           pathname: getEntityDetailsPath(
             EntityType.CONTAINER,
-            containerData?.fullyQualifiedName ?? '',
+            decodedEntityFqn,
             tabValue
           ),
         },
@@ -495,11 +446,7 @@ const ContainerPage = () => {
 
   const versionHandler = () =>
     navigate(
-      getVersionPath(
-        EntityType.CONTAINER,
-        containerFQN,
-        toString(version)
-      )
+      getVersionPath(EntityType.CONTAINER, decodedEntityFqn, toString(version))
     );
 
   const handleContainerUpdate = async (updatedData: Container) => {
@@ -543,7 +490,7 @@ const ContainerPage = () => {
 
     const tabs = containerDetailsClassBase.getContainerDetailPageTabs({
       isDataModelEmpty,
-      decodedContainerName: containerFQN,
+      decodedContainerName: decodedEntityFqn,
       editLineagePermission,
       editCustomAttributePermission,
       viewAllPermission,
@@ -567,7 +514,7 @@ const ContainerPage = () => {
   }, [
     isDataModelEmpty,
     containerData,
-    containerFQN,
+    decodedEntityFqn,
     editLineagePermission,
     editCustomAttributePermission,
     viewAllPermission,
@@ -583,7 +530,7 @@ const ContainerPage = () => {
     try {
       await updateContainerVotes(id, data);
 
-      const details = await getContainerByName(containerFQN, {
+      const details = await getContainerByName(decodedEntityFqn, {
         fields: [
           TabSpecificField.PARENT,
           TabSpecificField.DATAMODEL,
@@ -603,11 +550,9 @@ const ContainerPage = () => {
 
   // Effects
   useEffect(() => {
-    if (containerFQN) {
-      fetchResourcePermission(containerFQN);
-      fetchContainerChildren();
-    }
-  }, [containerFQN]);
+    fetchResourcePermission(decodedEntityFqn);
+    fetchContainerChildren();
+  }, [decodedEntityFqn]);
 
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);
@@ -644,7 +589,7 @@ const ContainerPage = () => {
   if (hasError) {
     return (
       <ErrorPlaceHolder>
-        {getEntityMissingError(t('label.container'), containerFQN)}
+        {getEntityMissingError(t('label.container'), decodedEntityFqn)}
       </ErrorPlaceHolder>
     );
   }

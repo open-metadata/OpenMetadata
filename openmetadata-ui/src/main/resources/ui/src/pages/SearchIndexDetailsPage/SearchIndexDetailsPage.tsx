@@ -29,7 +29,6 @@ import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHead
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -62,7 +61,6 @@ import {
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import Fqn from '../../utils/Fqn';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
@@ -80,56 +78,11 @@ function SearchIndexDetailsPage() {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { tab: activeTab = EntityTabs.FIELDS } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedEntityFqn } = useFqn();
+  const { entityFqn: decodedSearchIndexFQN } = useFqn({
+    type: EntityType.SEARCH_INDEX,
+  });
   const { t } = useTranslation();
 
-  // Extract the search index FQN from the URL
-  // The URL might contain field path like: service.searchIndex.fieldName.nestedField
-  const [decodedSearchIndexFQN, setDecodedSearchIndexFQN] = useState<string>('');
-
-  useEffect(() => {
-    if (!decodedEntityFqn) {
-      return;
-    }
-
-    const resolveSearchIndexFQN = async () => {
-      if (decodedEntityFqn === decodedSearchIndexFQN) {
-        return;
-      }
-
-      let foundFQN = decodedEntityFqn;
-      const parts = Fqn.split(decodedEntityFqn);
-
-      // Try finding the Search Index by successively removing the last segment
-      // until we find a match or run out of segments (min 2: service.searchIndex)
-      while (parts.length >= 2) {
-        const candidateFQN = parts.join(FQN_SEPARATOR_CHAR);
-        try {
-          await getSearchIndexDetailsByFQN(candidateFQN, {
-            fields: defaultFields, // Minimal fetch check (defaultFields is used in main fetch too)
-          });
-          foundFQN = candidateFQN;
-
-          break; // Found valid entity
-        } catch {
-          // If 404 and we have more than 2 parts, pop and retry
-          if (parts.length > 2) {
-            parts.pop();
-          } else {
-            // Down to 2 parts, stop
-            if (parts.length === 2) {
-              foundFQN = candidateFQN;
-            }
-
-            break;
-          }
-        }
-      }
-      setDecodedSearchIndexFQN(foundFQN);
-    };
-
-    resolveSearchIndexFQN();
-  }, [decodedEntityFqn, decodedSearchIndexFQN]);
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
@@ -287,7 +240,7 @@ function SearchIndexDetailsPage() {
       navigate(
         getEntityDetailsPath(
           EntityType.SEARCH_INDEX,
-          searchIndexDetails?.fullyQualifiedName ?? '',
+          decodedSearchIndexFQN,
           activeKey
         ),
         { replace: true }

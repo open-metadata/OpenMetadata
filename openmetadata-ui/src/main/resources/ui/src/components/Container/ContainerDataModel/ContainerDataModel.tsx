@@ -78,7 +78,8 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   entityFqn,
 }) => {
   const { t } = useTranslation();
-  const { openColumnDetailPanel, selectedColumn } = useGenericContext<Container>();
+  const { openColumnDetailPanel, selectedColumn } =
+    useGenericContext<Container>();
 
   const [editContainerColumnDescription, setEditContainerColumnDescription] =
     useState<Column>();
@@ -93,14 +94,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   } = useFqn({
     type: EntityType.CONTAINER,
   });
-  const highlightedColumnFqn = useMemo(() => {
-    if (!columnPart) {
-      return undefined;
-    }
-
-    return fqn;
-  }, [columnPart, fqn]);
-
   useFqnDeepLink({
     data: dataModel?.columns || [],
     tableFqn: containerFqn,
@@ -113,12 +106,12 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
 
   useScrollToElement(
     HIGHLIGHTED_ROW_SELECTOR,
-    Boolean(highlightedColumnFqn && schema.length > 0)
+    Boolean(fqn && schema.length > 0)
   );
 
   const getRowClassName = useCallback(
-    (record: Column) => getHighlightedRowClassName(record, highlightedColumnFqn),
-    [highlightedColumnFqn]
+    (record: Column) => getHighlightedRowClassName(record, fqn),
+    [fqn]
   );
 
   const handleFieldTagsChange = useCallback(
@@ -154,15 +147,15 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   };
 
   const handleColumnClick = useCallback(
-      (column: Column, event: React.MouseEvent) => {
-        const target = event.target as HTMLElement;
-        const isExpandIcon = target.closest('.table-expand-icon') !== null;
-        const isButton = target.closest('button') !== null;
+    (column: Column, event: React.MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const isExpandIcon = target.closest('.table-expand-icon') !== null;
+      const isButton = target.closest('button') !== null;
 
-        if (!isExpandIcon && !isButton) {
-          openColumnDetailPanel(column);
-        }
-      },
+      if (!isExpandIcon && !isButton) {
+        openColumnDetailPanel(column);
+      }
+    },
     [openColumnDetailPanel]
   );
 

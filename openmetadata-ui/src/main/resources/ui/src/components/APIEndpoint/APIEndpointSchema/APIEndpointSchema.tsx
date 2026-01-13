@@ -17,7 +17,7 @@ import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { FC, Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
+
 import {
   HIGHLIGHTED_ROW_SELECTOR,
   TABLE_SCROLL_VALUE,
@@ -96,7 +96,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     selectedColumn,
   } = useGenericContext<APIEndpoint>();
 
-
   const {
     entityFqn: apiEndpointFqn,
     columnFqn: columnPart,
@@ -104,16 +103,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
   } = useFqn({
     type: EntityType.API_ENDPOINT,
   });
-
-  const highlightedFieldFqn = useMemo(() => {
-    if (!columnPart) {
-      return undefined;
-    }
-
-    return fqn;
-  }, [columnPart, fqn]);
-
-  const { hash } = useLocation();
 
   const viewTypeOptions = [
     {
@@ -217,16 +206,11 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     return activeSchemaDiff?.schemaFields ?? [];
   }, [activeSchema, apiEndpointDetails]);
 
-  // Detect if URL contains a field FQN or hash and switch view type
+  // Detect if URL contains a field FQN and switch view type
   useEffect(() => {
-    const fqnToSearch = hash ? decodeURIComponent(hash.slice(1)) : fqn;
-
-    if (fqnToSearch) {
-      const isInRequestSchema = fieldExistsByFQN(requestSchemaFields, fqnToSearch);
-      const isInResponseSchema = fieldExistsByFQN(
-        responseSchemaFields,
-        fqnToSearch
-      );
+    if (fqn) {
+      const isInRequestSchema = fieldExistsByFQN(requestSchemaFields, fqn);
+      const isInResponseSchema = fieldExistsByFQN(responseSchemaFields, fqn);
 
       if (isInRequestSchema) {
         setViewType(SchemaViewType.REQUEST_SCHEMA);
@@ -234,7 +218,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
         setViewType(SchemaViewType.RESPONSE_SCHEMA);
       }
     }
-  }, [hash, fqn, requestSchemaFields, responseSchemaFields]);
+  }, [fqn, requestSchemaFields, responseSchemaFields]);
 
   useFqnDeepLink({
     data: activeSchemaFields,
@@ -248,13 +232,12 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
 
   useScrollToElement(
     HIGHLIGHTED_ROW_SELECTOR,
-    Boolean(highlightedFieldFqn && activeSchemaFields?.length)
+    Boolean(fqn && activeSchemaFields?.length)
   );
 
   const getRowClassName = useCallback(
-    (record: Field) =>
-      getHighlightedRowClassName(record, highlightedFieldFqn),
-    [highlightedFieldFqn]
+    (record: Field) => getHighlightedRowClassName(record, fqn),
+    [fqn]
   );
 
   const handleExpandedRowsChange = (keys: readonly Key[]) => {

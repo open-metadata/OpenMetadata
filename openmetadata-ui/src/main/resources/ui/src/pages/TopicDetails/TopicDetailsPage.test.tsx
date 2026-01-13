@@ -39,7 +39,10 @@ jest.mock('../../utils/useRequiredParams', () => ({
 }));
 
 jest.mock('../../hooks/useFqn', () => ({
-  useFqn: jest.fn().mockReturnValue({ fqn: 'sample_kafka.sales' }),
+  useFqn: jest.fn().mockReturnValue({
+    fqn: 'sample_kafka.sales',
+    entityFqn: 'sample_kafka.sales',
+  }),
 }));
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
@@ -116,15 +119,11 @@ describe('Test TopicDetailsPage component', () => {
   });
 
   it('Should extract topic FQN from field-level deep link URL', async () => {
-    // Mock useFqn to return a field-level FQN (includes field path)
-    // Mock getTopicByFqn to return 404 for the full path (deep link)
-    // and success for the topic FQN (sample_kafka.sales)
     (getTopicByFqn as jest.Mock).mockImplementation((fqn) => {
       if (fqn === 'sample_kafka.sales') {
         return Promise.resolve({});
       }
 
-      // Return 404 for other FQNs (like the deep link)
       return Promise.reject({
         response: { status: 404 },
       });
@@ -134,7 +133,6 @@ describe('Test TopicDetailsPage component', () => {
       wrapper: MemoryRouter,
     });
 
-    // Wait for the API to be called with the resolved FQN
     await waitFor(() => {
       expect(getTopicByFqn).toHaveBeenCalledWith(
         'sample_kafka.sales',

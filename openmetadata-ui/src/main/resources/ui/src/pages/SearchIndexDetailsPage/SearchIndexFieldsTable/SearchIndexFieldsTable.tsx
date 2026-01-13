@@ -27,7 +27,6 @@ import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../../components/common/Table/Table';
@@ -37,10 +36,11 @@ import { ColumnFilter } from '../../../components/Database/ColumnFilter/ColumnFi
 import TableDescription from '../../../components/Database/TableDescription/TableDescription.component';
 import TableTags from '../../../components/Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import {
-  NO_DATA_PLACEHOLDER,
-} from '../../../constants/constants';
-import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
+  HIGHLIGHTED_ROW_SELECTOR,
+  TABLE_SCROLL_VALUE,
+} from '../../../constants/Table.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_SEARCH_INDEX_VISIBLE_COLUMNS,
@@ -102,8 +102,6 @@ const SearchIndexFieldsTable = ({
   );
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
-
-
   const { openColumnDetailPanel, permissions, selectedColumn } =
     useGenericContext<SearchIndex>();
 
@@ -115,14 +113,6 @@ const SearchIndexFieldsTable = ({
   } = useFqn({
     type: EntityType.SEARCH_INDEX,
   });
-  const highlightedFieldFqn = useMemo(() => {
-    if (!columnPart) {
-      return undefined;
-    }
-
-    return fqn;
-  }, [columnPart, fqn]);
-
   useFqnDeepLink({
     data: searchIndexFields,
     tableFqn: searchIndexFqn,
@@ -135,18 +125,14 @@ const SearchIndexFieldsTable = ({
 
   // Scroll to highlighted row when fields are loaded
   useScrollToElement(
-    '.highlighted-row',
-    Boolean(highlightedFieldFqn && searchedFields?.length)
+    HIGHLIGHTED_ROW_SELECTOR,
+    Boolean(fqn && searchedFields?.length)
   );
 
   const getRowClassName = useCallback(
-    (record: SearchIndexField) => getHighlightedRowClassName(record, highlightedFieldFqn),
-    [highlightedFieldFqn]
+    (record: SearchIndexField) => getHighlightedRowClassName(record, fqn),
+    [fqn]
   );
-
-
-
-
 
   const sortByOrdinalPosition = useMemo(
     () => sortBy(searchIndexFields, 'ordinalPosition'),

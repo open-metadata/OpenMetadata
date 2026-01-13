@@ -70,8 +70,8 @@ const ModelTab = () => {
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
-  const { openColumnDetailPanel, selectedColumn } = useGenericContext<DashboardDataModel>();
-
+  const { openColumnDetailPanel, selectedColumn } =
+    useGenericContext<DashboardDataModel>();
 
   const [paginatedColumns, setPaginatedColumns] = useState<Column[]>([]);
   const [columnsLoading, setColumnsLoading] = useState(true);
@@ -98,13 +98,20 @@ const ModelTab = () => {
     type: EntityType.DASHBOARD_DATA_MODEL,
   });
 
-  const highlightedColumnFqn = useMemo(() => {
-    if (!columnPart) {
-      return undefined;
-    }
+  useFqnDeepLink({
+    data: paginatedColumns,
+    tableFqn: modelFqn,
+    columnPart,
+    fqn,
+    setExpandedRowKeys: setExpandedRowKeys,
+    openColumnDetailPanel,
+    selectedColumn: selectedColumn as Column | null,
+  });
 
-    return fqn;
-  }, [columnPart, fqn]);
+  const getRowClassName = useCallback(
+    (record: Column) => getHighlightedRowClassName(record, fqn),
+    [fqn]
+  );
 
   // Always use paginated columns, never dataModel.columns directly
   const data = paginatedColumns;
@@ -137,8 +144,6 @@ const ModelTab = () => {
         const data = pruneEmptyChildren(response.data) || [];
         setPaginatedColumns(data);
         handlePagingChange(response.paging);
-
-
       } catch {
         setPaginatedColumns([]);
         handlePagingChange({
@@ -198,21 +203,6 @@ const ModelTab = () => {
       fetchPaginatedColumns(1, searchText || undefined);
     }
   }, [entityFqn, searchText, fetchPaginatedColumns, pageSize, dataModel]);
-
-  useFqnDeepLink({
-    data: paginatedColumns,
-    tableFqn: modelFqn,
-    columnPart,
-    fqn,
-    setExpandedRowKeys: setExpandedRowKeys,
-    openColumnDetailPanel,
-    selectedColumn: selectedColumn as Column | null,
-  });
-  
-  const getRowClassName = useCallback(
-    (record: Column) => getHighlightedRowClassName(record, highlightedColumnFqn),
-    [highlightedColumnFqn]
-  );
 
   const updateColumnDetails = async (
     columnFqn: string,
@@ -471,15 +461,17 @@ const ModelTab = () => {
         dataSource={data}
         defaultVisibleColumns={DEFAULT_DASHBOARD_DATA_MODEL_VISIBLE_COLUMNS}
         expandable={{
-           ...omit(paging.total > PAGE_SIZE_LARGE ? {} : { expandable: false }),
-           expandedRowKeys: expandedRowKeys,
-           onExpand: (expanded, record) => {
-             setExpandedRowKeys(
-               expanded
-                 ? [...expandedRowKeys, record.fullyQualifiedName ?? '']
-                 : expandedRowKeys.filter((key) => key !== record.fullyQualifiedName)
-             );
-           },
+          rowExpandable: (record) => !isEmpty(record.children),
+          expandedRowKeys: expandedRowKeys,
+          onExpand: (expanded, record) => {
+            setExpandedRowKeys(
+              expanded
+                ? [...expandedRowKeys, record.fullyQualifiedName ?? '']
+                : expandedRowKeys.filter(
+                    (key) => key !== record.fullyQualifiedName
+                  )
+            );
+          },
         }}
         loading={columnsLoading}
         locale={{

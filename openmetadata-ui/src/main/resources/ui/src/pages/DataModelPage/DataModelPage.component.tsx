@@ -59,7 +59,6 @@ const DataModelsPage = () => {
   const { currentUser } = useApplicationStore();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  // Extract base FQN from URL (removes column part if present)
   const { entityFqn: dashboardDataModelFQN } = useFqn({
     type: EntityType.DASHBOARD_DATA_MODEL,
   });

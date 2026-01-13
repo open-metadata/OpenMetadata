@@ -22,7 +22,6 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import Loader from '../../components/common/Loader/Loader';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -47,7 +46,6 @@ import {
   getEntityMissingError,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import Fqn from '../../utils/Fqn';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -59,55 +57,9 @@ const APIEndpointPage = () => {
   const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const { fqn: decodedEntityFqn } = useFqn();
-
-  // Extract the API endpoint FQN from the URL
-  // The URL might contain field path like: service.collection.endpoint.requestSchema.fieldName
-  const [apiEndpointFqn, setApiEndpointFqn] = useState<string>('');
-
-  useEffect(() => {
-    if (!decodedEntityFqn) {
-      return;
-    }
-
-    const resolveApiEndpointFQN = async () => {
-      if (decodedEntityFqn === apiEndpointFqn) {
-        return;
-      }
-
-      let foundFQN = decodedEntityFqn;
-      const parts = Fqn.split(decodedEntityFqn);
-
-      // Try finding the API Endpoint by successively removing the last segment
-      // until we find a match or run out of segments
-      while (parts.length >= 3) {
-        const candidateFQN = parts.join(FQN_SEPARATOR_CHAR);
-        try {
-          await getApiEndPointByFQN(candidateFQN, {
-            fields: TabSpecificField.OWNERS, // Minimal fetch to verify existence
-          });
-          foundFQN = candidateFQN;
-          break; // Found valid entity
-        } catch (error) {
-          if (
-            (error as AxiosError).response?.status === ClientErrors.NOT_FOUND &&
-            parts.length > 3
-          ) {
-            parts.pop(); // Remove last segment (potential field name) and retry
-          } else {
-            // Other error or down to 3 parts (service.collection.endpoint), stop
-            if (parts.length === 3) {
-              foundFQN = candidateFQN;
-            }
-            break;
-          }
-        }
-      }
-      setApiEndpointFqn(foundFQN);
-    };
-
-    resolveApiEndpointFQN();
-  }, [decodedEntityFqn, apiEndpointFqn]);
+  const { entityFqn: apiEndpointFqn } = useFqn({
+    type: EntityType.API_ENDPOINT,
+  });
 
   const [apiEndpointDetails, setApiEndpointDetails] = useState<APIEndpoint>(
     {} as APIEndpoint
@@ -304,9 +256,7 @@ const APIEndpointPage = () => {
   }, []);
 
   useEffect(() => {
-    if (apiEndpointFqn) {
-      fetchResourcePermission(apiEndpointFqn);
-    }
+    fetchResourcePermission(apiEndpointFqn);
   }, [apiEndpointFqn]);
 
   useEffect(() => {

@@ -22,7 +22,6 @@ import Loader from '../../components/common/Loader/Loader';
 import DashboardDetails from '../../components/Dashboard/DashboardDetails/DashboardDetails.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -47,7 +46,6 @@ import {
 } from '../../utils/CommonUtils';
 import { defaultFields } from '../../utils/DashboardDetailsUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import Fqn from '../../utils/Fqn';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
@@ -65,19 +63,7 @@ const DashboardDetailsPage = () => {
   const USERId = currentUser?.id ?? '';
   const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { fqn: decodedEntityFqn } = useFqn();
-
-  // Extract just the dashboard FQN (service.dashboard) from the URL
-  const dashboardFQN = useMemo(() => {
-    if (!decodedEntityFqn) {
-      return '';
-    }
-    const splitFqn = Fqn.split(decodedEntityFqn);
-
-    // Dashboard FQN has 2 parts: service, dashboard
-    // Take only the first 2 parts
-    return splitFqn.slice(0, 2).join(FQN_SEPARATOR_CHAR);
-  }, [decodedEntityFqn]);
+  const { entityFqn: dashboardFQN } = useFqn({ type: EntityType.DASHBOARD });
 
   const [dashboardDetails, setDashboardDetails] = useState<Dashboard>(
     {} as Dashboard

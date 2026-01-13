@@ -34,9 +34,7 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreMlmodel } from '../../../rest/mlModelAPI';
-import {
-  getFeedCounts,
-} from '../../../utils/CommonUtils';
+import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -87,9 +85,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const { customizedPage, isLoading } = useCustomPages(PageType.MlModel);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
-  // Extract base FQN from URL (removes column part if present)
-  // Use mlModelDetail.fullyQualifiedName if available, otherwise extract from URL
-  // MLModel FQN structure: service.mlmodel (2 parts)
   const { entityFqn: decodedMlModelFqn } = useFqn({ type: EntityType.MLMODEL });
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA

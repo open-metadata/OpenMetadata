@@ -31,7 +31,6 @@ import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHead
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
@@ -75,10 +74,7 @@ import {
   restoreTable,
   updateTablesVotes,
 } from '../../rest/tableAPI';
-import {
-  addToRecentViewed,
-  getFeedCounts,
-} from '../../utils/CommonUtils';
+import { addToRecentViewed, getFeedCounts } from '../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -113,7 +109,6 @@ const TableDetailsPageV1: React.FC = () => {
   const { setDqLineageData } = useTestCaseStore();
   const [tableDetails, setTableDetails] = useState<Table>();
   const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: datasetFQN } = useFqn();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const USERId = currentUser?.id ?? '';
@@ -132,26 +127,16 @@ const TableDetailsPageV1: React.FC = () => {
   const { customizedPage, isLoading } = useCustomPages(PageType.Table);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
-  const { tableFqn, columnFqn, columnPart } = useMemo(() => {
-    const parts = datasetFQN.split(FQN_SEPARATOR_CHAR);
+  const {
+    fqn: datasetFQN,
+    entityFqn: tableFqn,
+    columnFqn: columnPart,
+  } = useFqn({ type: EntityType.TABLE });
 
-    if (parts.length > 4) {
-      const tableParts = parts.slice(0, 4);
-      const columnParts = parts.slice(4);
-
-      return {
-        tableFqn: tableParts.join(FQN_SEPARATOR_CHAR),
-        columnFqn: datasetFQN,
-        columnPart: columnParts.join(FQN_SEPARATOR_CHAR),
-      };
-    }
-
-    return {
-      tableFqn: datasetFQN,
-      columnFqn: undefined,
-      columnPart: undefined,
-    };
-  }, [datasetFQN]);
+  const columnFqn = useMemo(
+    () => (columnPart ? datasetFQN : undefined),
+    [columnPart, datasetFQN]
+  );
 
   const alertBadge = useMemo(() => {
     return tableClassBase.getAlertEnableStatus() && dqFailureCount > 0 ? (

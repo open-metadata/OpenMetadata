@@ -96,7 +96,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     { label: t('label.text'), value: SchemaViewType.TEXT },
   ];
 
-
   const {
     data: topicDetails,
     isVersionView,
@@ -114,13 +113,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   } = useFqn({
     type: EntityType.TOPIC,
   });
-  const highlightedFieldFqn = useMemo(() => {
-    if (!columnPart) {
-      return undefined;
-    }
-
-    return fqn;
-  }, [columnPart, fqn]);
 
   const isReadOnly = useMemo(() => {
     // If there is a current version, it should be read only
@@ -162,12 +154,12 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
   useScrollToElement(
     HIGHLIGHTED_ROW_SELECTOR,
-    Boolean(highlightedFieldFqn && messageSchema?.schemaFields?.length)
+    Boolean(fqn && messageSchema?.schemaFields?.length)
   );
 
   const getRowClassName = useCallback(
-    (record: Field) => getHighlightedRowClassName(record, highlightedFieldFqn),
-    [highlightedFieldFqn]
+    (record: Field) => getHighlightedRowClassName(record, fqn),
+    [fqn]
   );
 
   const schemaStats = useMemo(() => {

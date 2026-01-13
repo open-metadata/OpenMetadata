@@ -823,8 +823,6 @@ export const getEntityDetailsPath = (
   return path;
 };
 
-
-
 export const getGlossaryTermDetailsPath = (
   glossaryFQN: string,
   tab?: string,

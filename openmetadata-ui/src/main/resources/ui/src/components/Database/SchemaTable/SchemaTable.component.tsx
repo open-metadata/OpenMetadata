@@ -31,6 +31,7 @@ import {
 } from '../../../constants/constants';
 import {
   COLUMN_CONSTRAINT_TYPE_OPTIONS,
+  HIGHLIGHTED_ROW_SELECTOR,
   TABLE_SCROLL_VALUE,
 } from '../../../constants/Table.constants';
 import {
@@ -151,14 +152,6 @@ const SchemaTable = () => {
     openColumnDetailPanel,
   } = useGenericContext<TableType>();
 
-  const highlightedColumnFqn = useMemo(() => {
-    if (!columnPart) {
-      return undefined;
-    }
-
-    return fqn;
-  }, [columnPart, fqn]);
-
   useFqnDeepLink({
     data: table.columns || [],
     tableFqn,
@@ -179,13 +172,13 @@ const SchemaTable = () => {
   );
 
   useScrollToElement(
-    '.highlighted-row',
-    Boolean(highlightedColumnFqn && tableColumns.length > 0 && !columnsLoading)
+    HIGHLIGHTED_ROW_SELECTOR,
+    Boolean(fqn && tableColumns.length > 0 && !columnsLoading)
   );
 
   const getRowClassName = useCallback(
-    (record: Column) => getHighlightedRowClassName(record, highlightedColumnFqn),
-    [highlightedColumnFqn]
+    (record: Column) => getHighlightedRowClassName(record, fqn),
+    [fqn]
   );
 
   const {
@@ -776,8 +769,6 @@ const SchemaTable = () => {
       getAllRowKeysByKeyName<Column>(tableColumns ?? [], 'fullyQualifiedName')
     );
   }, [tableColumns]);
-
-
 
   const searchProps = useMemo(
     () => ({

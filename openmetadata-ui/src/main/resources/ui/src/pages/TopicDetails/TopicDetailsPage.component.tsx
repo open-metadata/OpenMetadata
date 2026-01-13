@@ -14,12 +14,7 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
-import {
-  FunctionComponent,
-  useCallback,
-  useEffect,
-  useState,
-} from 'react';
+import { FunctionComponent, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -27,7 +22,6 @@ import Loader from '../../components/common/Loader/Loader';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import TopicDetails from '../../components/Topic/TopicDetails/TopicDetails.component';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -53,7 +47,6 @@ import {
   getEntityMissingError,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import Fqn from '../../utils/Fqn';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
@@ -68,59 +61,8 @@ const TopicDetailsPage: FunctionComponent = () => {
   const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const { fqn: decodedEntityFqn } = useFqn();
+  const { entityFqn: topicFQN } = useFqn({ type: EntityType.TOPIC });
 
-  /*
-   * Extract the topic FQN from the URL.
-   * The URL might contain field path like: service.topic.fieldName.nestedField
-   * We need to determine where the entity FQN ends and the field path starts.
-   */
-  const [topicFQN, setTopicFQN] = useState<string>('');
-
-  useEffect(() => {
-    if (!decodedEntityFqn) {
-      return;
-    }
-
-    const resolveTopicFQN = async () => {
-      if (decodedEntityFqn === topicFQN) {
-        return;
-      }
-
-      let foundFQN = decodedEntityFqn;
-      const parts = Fqn.split(decodedEntityFqn);
-
-      // Try finding the topic by successively removing the last segment
-      // until we find a match or run out of segments (min 2: service.topic)
-      while (parts.length >= 2) {
-        const candidateFQN = parts.join(FQN_SEPARATOR_CHAR);
-        try {
-          await getTopicByFqn(candidateFQN, {
-            fields: TabSpecificField.OWNERS, // Minimal fetch to verify existence
-          });
-          foundFQN = candidateFQN;
-          break; // Found valid topic
-        } catch (error) {
-          if (
-            (error as AxiosError).response?.status === ClientErrors.NOT_FOUND &&
-            parts.length > 2
-          ) {
-            parts.pop(); // Remove last segment (potential field name) and retry
-          } else {
-            // Other error or down to 2 parts, stop
-            if (parts.length === 2) {
-              // If we reached the base (service.topic) and it's 404, default to candidate
-              foundFQN = candidateFQN;
-            }
-            break;
-          }
-        }
-      }
-      setTopicFQN(foundFQN);
-    };
-
-    resolveTopicFQN();
-  }, [decodedEntityFqn, topicFQN]);
 
   const [topicDetails, setTopicDetails] = useState<Topic>({} as Topic);
   const [isLoading, setLoading] = useState<boolean>(true);

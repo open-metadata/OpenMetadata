@@ -38,9 +38,7 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
-import {
-  getFeedCounts,
-} from '../../../utils/CommonUtils';
+import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -269,14 +267,12 @@ function DirectoryDetails({
     setFeedCount(data);
   }, []);
 
-  const getEntityFeedCount = useCallback(
-    () => getFeedCounts(EntityType.DIRECTORY, decodedDirectoryFQN, handleFeedCount),
-    [decodedDirectoryFQN, handleFeedCount]
-  );
+  const getEntityFeedCount = () =>
+    getFeedCounts(EntityType.DIRECTORY, decodedDirectoryFQN, handleFeedCount);
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    [navigate]
+    []
   );
 
   const {

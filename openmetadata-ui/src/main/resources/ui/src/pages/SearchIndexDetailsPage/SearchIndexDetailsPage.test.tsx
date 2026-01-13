@@ -147,13 +147,18 @@ jest.mock('../../hooks/useEntityRules', () => ({
   })),
 }));
 
-jest.mock('../../hooks/useFqn', () => ({
-  useFqn: jest.fn(() => ({
-    fqn: 'test-service.test-search-index',
+jest.mock('../../hooks/useCustomPages', () => ({
+  useCustomPages: jest.fn().mockImplementation(() => ({
+    customizedPage: null,
+    isLoading: false,
   })),
 }));
 
-// ... imports and other mocks ...
+jest.mock('../../hooks/useFqn', () => ({
+  useFqn: jest.fn(() => ({
+    entityFqn: 'test-service.test-search-index',
+  })),
+}));
 
 describe('SearchIndexDetailsPage component', () => {
   it('SearchIndexDetailsPage should fetch permissions', async () => {
@@ -164,17 +169,17 @@ describe('SearchIndexDetailsPage component', () => {
     );
 
     await waitFor(() => {
-        expect(mockEntityPermissionByFqn).toHaveBeenCalledWith(
+      expect(mockEntityPermissionByFqn).toHaveBeenCalledWith(
         'searchIndex',
         'test-service.test-search-index'
-        );
+      );
     });
   });
 
   it('SearchIndexDetailsPage should not fetch search index details if permission is there', async () => {
     // Reset mocks to ensure clean state
     jest.clearAllMocks();
-    
+
     render(
       <MemoryRouter>
         <SearchIndexDetailsPage />
@@ -182,18 +187,18 @@ describe('SearchIndexDetailsPage component', () => {
     );
 
     await waitFor(() => {
-         // Should try to resolve FQN first, so it MIGHT be called to resolve
-         // But the test name says "should not fetch... if permission is there"?
-         // Actually, if it's default permission (which is deny all usually?)
-         // Let's stick to the logic: if viewPermission is false, it doesn't fetch details.
-         // But resolveSearchIndexFQN calls it to verify existence.
-         // We should verify it is called for resolution (with minimal fields) or not at all depending on logic.
-         // Based on previous code, expected not.toHaveBeenCalled().
-         // Wait, resolveSearchIndexFQN check runs REGARDLESS of permissions.
-         // So this test expectation might be flawed if checking strictly for ANY call.
-         // However, assuming unmodified logic worked before:
-         expect(getSearchIndexDetailsByFQN).toHaveBeenCalledTimes(1); // One call for resolution
-         // It should NOT call the main fetch implementation which happens after permissions
+      // Should try to resolve FQN first, so it MIGHT be called to resolve
+      // But the test name says "should not fetch... if permission is there"?
+      // Actually, if it's default permission (which is deny all usually?)
+      // Let's stick to the logic: if viewPermission is false, it doesn't fetch details.
+      // But resolveSearchIndexFQN calls it to verify existence.
+      // We should verify it is called for resolution (with minimal fields) or not at all depending on logic.
+      // Based on previous code, expected not.toHaveBeenCalled().
+      // Wait, resolveSearchIndexFQN check runs REGARDLESS of permissions.
+      // So this test expectation might be flawed if checking strictly for ANY call.
+      // However, assuming unmodified logic worked before:
+      expect(getSearchIndexDetailsByFQN).toHaveBeenCalledTimes(0); // No call for resolution needed anymore
+      // It should NOT call the main fetch implementation which happens after permissions
     });
   });
 
@@ -214,12 +219,18 @@ describe('SearchIndexDetailsPage component', () => {
       );
     });
 
-    await waitFor(() => {
-        expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith('test-service.test-search-index', {
-        fields:
-            'fields,followers,tags,owners,domains,votes,dataProducts,extension',
-        });
-    }, { timeout: 30000 });
+    await waitFor(
+      () => {
+        expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith(
+          'test-service.test-search-index',
+          {
+            fields:
+              'fields,followers,tags,owners,domains,votes,dataProducts,extension',
+          }
+        );
+      },
+      { timeout: 30000 }
+    );
   }, 30000);
 
   it('SearchIndexDetailsPage should render page for ViewBasic permissions', async () => {
@@ -231,18 +242,24 @@ describe('SearchIndexDetailsPage component', () => {
 
     await act(async () => {
       render(
-      <MemoryRouter>
-        <SearchIndexDetailsPage />
-      </MemoryRouter>
-    );
+        <MemoryRouter>
+          <SearchIndexDetailsPage />
+        </MemoryRouter>
+      );
     });
 
-    await waitFor(() => {
-        expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith('test-service.test-search-index', {
-        fields:
-            'fields,followers,tags,owners,domains,votes,dataProducts,extension',
-        });
-    }, { timeout: 30000 });
+    await waitFor(
+      () => {
+        expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith(
+          'test-service.test-search-index',
+          {
+            fields:
+              'fields,followers,tags,owners,domains,votes,dataProducts,extension',
+          }
+        );
+      },
+      { timeout: 30000 }
+    );
 
     expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
     expect(await screen.findByText('label.field-plural')).toBeInTheDocument();
@@ -264,13 +281,19 @@ describe('SearchIndexDetailsPage component', () => {
         </MemoryRouter>
       );
     });
-    
-    await waitFor(() => {
-        expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith('test-service.test-search-index', {
-        fields:
-            'fields,followers,tags,owners,domains,votes,dataProducts,extension',
-        });
-    }, { timeout: 30000 });
+
+    await waitFor(
+      () => {
+        expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith(
+          'test-service.test-search-index',
+          {
+            fields:
+              'fields,followers,tags,owners,domains,votes,dataProducts,extension',
+          }
+        );
+      },
+      { timeout: 30000 }
+    );
 
     expect(
       await screen.findByText('testSearchIndexFieldsTab')
@@ -304,13 +327,16 @@ describe('SearchIndexDetailsPage component', () => {
       );
     });
 
-    await waitFor(() => {
+    await waitFor(
+      () => {
         expect(PageLayoutV1).toHaveBeenCalledWith(
-        expect.objectContaining({
+          expect.objectContaining({
             pageTitle: 'test-search-index',
-        }),
-        expect.anything()
+          }),
+          expect.anything()
         );
-    }, { timeout: 30000 });
+      },
+      { timeout: 30000 }
+    );
   }, 30000);
 });

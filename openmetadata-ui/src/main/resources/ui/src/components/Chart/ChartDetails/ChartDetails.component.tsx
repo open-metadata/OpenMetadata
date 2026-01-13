@@ -31,9 +31,7 @@ import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreChart } from '../../../rest/chartsAPI';
 import chartDetailsClassBase from '../../../utils/ChartDetailsClassBase';
-import {
-  getFeedCounts,
-} from '../../../utils/CommonUtils';
+import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -78,10 +76,8 @@ const ChartDetails = ({
     tab: EntityTabs;
   }>();
   const { customizedPage, isLoading } = useCustomPages('Chart' as PageType);
-  // Extract base FQN from URL (removes column part if present)
-  // Use chartDetails.fullyQualifiedName if available, otherwise extract from URL
   const { entityFqn: decodedChartFQN } = useFqn({ type: EntityType.CHART });
-  
+
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -133,7 +129,7 @@ const ChartDetails = ({
 
   useEffect(() => {
     getEntityFeedCount();
-  }, [chartPermissions, decodedChartFQN]);
+  }, [decodedChartFQN]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {

@@ -37,9 +37,7 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
-import {
-  getFeedCounts,
-} from '../../../utils/CommonUtils';
+import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -251,14 +249,12 @@ function WorksheetDetails({
     setFeedCount(data);
   }, []);
 
-  const getEntityFeedCount = useCallback(
-    () => getFeedCounts(EntityType.WORKSHEET, decodedWorksheetFQN, handleFeedCount),
-    [decodedWorksheetFQN, handleFeedCount]
-  );
+  const getEntityFeedCount = () =>
+    getFeedCounts(EntityType.WORKSHEET, decodedWorksheetFQN, handleFeedCount);
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    [navigate]
+    []
   );
 
   const {
