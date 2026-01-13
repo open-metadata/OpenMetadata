@@ -344,8 +344,8 @@ test.describe('Explore page', () => {
 
     const { apiContext, afterAction } = await getApiContext(page);
     await table.delete(apiContext);
-    await glossary.delete(apiContext);
     await glossaryTerm.delete(apiContext);
+    await glossary.delete(apiContext);
     await dashboard.delete(apiContext);
     await storedProcedure.delete(apiContext);
     await pipeline.delete(apiContext);

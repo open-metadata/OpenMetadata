@@ -185,7 +185,8 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         width: 300,
         className: 'cursor-pointer',
         onCell: (record: Column) => ({
-          onClick: (event: React.MouseEvent) => handleColumnClick(record, event),
+          onClick: (event: React.MouseEvent) =>
+            handleColumnClick(record, event),
           'data-testid': 'column-name-cell',
         }),
         render: (_, record: Column) => (

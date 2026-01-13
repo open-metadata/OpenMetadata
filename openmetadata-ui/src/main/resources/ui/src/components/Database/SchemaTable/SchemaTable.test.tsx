@@ -81,14 +81,19 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
 }));
 
 jest.mock('../../../rest/tableAPI', () => ({
-  getTableColumnsByFQN: jest.fn().mockImplementation(() => ({
-    data: mockColumns,
-    paging: { total: mockColumns.length },
-  })),
-  searchTableColumnsByFQN: jest.fn().mockImplementation(() => ({
-    data: mockColumns,
-    paging: { total: mockColumns.length },
-  })),
+  getTableColumnsByFQN: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: mockColumns,
+      paging: { total: mockColumns.length },
+    })
+  ),
+  searchTableColumnsByFQN: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: mockColumns,
+      paging: { total: mockColumns.length },
+    })
+  ),
+  updateTableColumn: jest.fn(),
 }));
 
 jest.mock('../../../utils/CommonUtils', () => ({

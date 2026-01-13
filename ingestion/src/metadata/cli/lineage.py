@@ -24,6 +24,9 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineType,
 )
+from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
+    QueryParserType,
+)
 from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import UTF_8
@@ -40,6 +43,7 @@ class LineageWorkflow(BaseModel):
     serviceName: str
     workflowConfig: WorkflowConfig
     parseTimeout: Optional[int] = 5 * 60  # default parsing timeout to be 5 mins
+    parserType: Optional[QueryParserType] = QueryParserType.Auto
 
 
 def run_lineage(config_path: Path) -> None:

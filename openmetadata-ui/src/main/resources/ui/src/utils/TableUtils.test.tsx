@@ -12,7 +12,6 @@
  */
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
-import { extractTableColumns } from './TableUtils';
 import { TagLabel } from '../generated/entity/data/container';
 import { Column, DataType, Table } from '../generated/entity/data/table';
 import { EntityReference } from '../generated/type/entityReference';
@@ -40,6 +39,7 @@ import {
   updateColumnInNestedStructure,
 } from '../utils/TableUtils';
 import EntityLink from './EntityLink';
+import { extractTableColumns } from './TableUtils';
 
 jest.mock(
   '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',
