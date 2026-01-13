@@ -548,8 +548,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await nonStatusFilterRes;
 
     await page.click('[data-testid="test-case-select"]');
-    const testCaseResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*index=test_case_search_index*`
+    const testCaseResponse = page.waitForResponse((response) =>
+      response.url().includes(`/api/v1/search/query`) && response.url().includes("index=test_case_search_index") && response.url().includes(encodeURIComponent(testCase1))
     );
     await page.getByTestId('test-case-select').locator('input').fill(testCase1);
     await testCaseResponse;
