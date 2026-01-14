@@ -39,6 +39,14 @@ export interface QueryRunnerRequest {
      */
     ingestionRunner?: string;
     /**
+     * RUNTIME FIELD - Automatically injected by backend from admin
+     * QueryRunnerConfig.querySettings.maxResultSize. This is NOT user-configurable in the
+     * request. The backend fetches this value from the service's QueryRunnerConfig and injects
+     * it here for enforcement by the Python workflow. If query has LIMIT exceeding this value,
+     * an error is raised. If query has no LIMIT, one is automatically injected.
+     */
+    maxResultSize?: number;
+    /**
      * Query to be executed.
      */
     query?: string;
