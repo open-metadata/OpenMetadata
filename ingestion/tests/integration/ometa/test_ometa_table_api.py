@@ -420,7 +420,9 @@ class OMetaTableTest(TestCase):
 
         # Verify certification was applied
         assert patched_table.certification is not None
-        assert patched_table.certification.tagLabel.tagFQN.root == "Certification.Bronze"
+        assert (
+            patched_table.certification.tagLabel.tagFQN.root == "Certification.Bronze"
+        )
         assert patched_table.certification.tagLabel.name == "Bronze"
         assert patched_table.certification.appliedDate == 1704153600000
         assert patched_table.certification.expiryDate == 1735689600000
@@ -430,7 +432,9 @@ class OMetaTableTest(TestCase):
             entity=Table, fqn=self.entity.fullyQualifiedName
         )
         assert retrieved_table.certification is not None
-        assert retrieved_table.certification.tagLabel.tagFQN.root == "Certification.Bronze"
+        assert (
+            retrieved_table.certification.tagLabel.tagFQN.root == "Certification.Bronze"
+        )
 
     def test_ingest_table_profile_data(self):
         """
