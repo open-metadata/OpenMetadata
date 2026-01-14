@@ -226,6 +226,9 @@ test.describe('Service Databases page pagination', () => {
     await page.getByTestId('insights').click();
     const response = await responsePromise;
     expect(response.status()).toBe(200);
+    await page.waitForSelector('.ant-skeleton-active', {
+          state: 'detached',
+    });
 
     const databaseResponsePromise = page.waitForResponse((response) =>
       response.url().includes('/api/v1/databases')
@@ -233,6 +236,7 @@ test.describe('Service Databases page pagination', () => {
     await page.getByTestId('databases').click();
     const response2 = await databaseResponsePromise;
     expect(response2.status()).toBe(200);
+    await waitForAllLoadersToDisappear(page);
     await page.waitForSelector('table', { state: 'visible' });
 
     const paginationText = page.locator('[data-testid="page-indicator"]');
