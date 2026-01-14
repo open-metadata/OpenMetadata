@@ -77,9 +77,6 @@ public class QueryRepository extends EntityRepository<Query> {
   public void setInheritedFields(Query entity, EntityUtil.Fields fields) {
     super.setInheritedFields(entity, fields);
     if (fields.contains("domains")) {
-      if (entity.getQueryUsedIn() == null) {
-        entity.setQueryUsedIn(getQueryUsage(entity));
-      }
       List<EntityReference> computedDomains = computeDomainsFromQueryUsage(entity);
       if (!nullOrEmpty(computedDomains)) {
         computedDomains.forEach(domain -> domain.setInherited(true));
@@ -227,39 +224,6 @@ public class QueryRepository extends EntityRepository<Query> {
       }
     }
     return new ArrayList<>(uniqueDomains.values());
-  }
-
-  public void updateQuerySearchIndexesForRelatedEntity(EntityReference entityRef) {
-    if (entityRef == null) {
-      return;
-    }
-
-    try {
-      List<EntityReference> queries =
-          findTo(entityRef.getId(), entityRef.getType(), Relationship.MENTIONED_IN, Entity.QUERY);
-
-      if (nullOrEmpty(queries)) {
-        return;
-      }
-
-      List<UUID> queryIds = queries.stream().map(EntityReference::getId).toList();
-      List<Query> queryEntities = find(queryIds, Include.NON_DELETED);
-
-      for (Query query : queryEntities) {
-        setInheritedFields(query, new EntityUtil.Fields(allowedFields, "domains,queryUsedIn"));
-        searchRepository.updateEntityIndex(query);
-      }
-
-      LOG.info(
-          "Updated search indexes for {} queries related to entity: {}",
-          queryEntities.size(),
-          entityRef.getFullyQualifiedName());
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to update query search indexes for related entity: {}",
-          entityRef.getFullyQualifiedName(),
-          e);
-    }
   }
 
   @Override
@@ -459,8 +423,14 @@ public class QueryRepository extends EntityRepository<Query> {
       recordChange("usedBy", original.getUsedBy(), updated.getUsedBy(), true);
       storeQueryUsedIn(updated.getId(), added, deleted);
 
-      // Domains are computed on fetch, not stored
-      updated.setDomains(null);
+      List<EntityReference> originalDomains =
+          original.getDomains() != null ? original.getDomains() : Collections.emptyList();
+      List<EntityReference> recomputedDomains = computeDomainsFromQueryUsage(updated);
+
+      if (!added.isEmpty() || !deleted.isEmpty()) {
+        updateDomains(updated, originalDomains, recomputedDomains);
+      }
+      updated.setDomains(recomputedDomains);
 
       // Query is a required field. Cannot be removed.
       if (updated.getQuery() != null) {

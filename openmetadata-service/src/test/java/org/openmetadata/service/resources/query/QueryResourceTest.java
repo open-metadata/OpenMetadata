@@ -16,7 +16,6 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -466,10 +465,8 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     assertNotNull(fetchedQuery.getDomains());
     assertEquals(1, fetchedQuery.getDomains().size());
     assertEquals(DOMAIN.getId(), fetchedQuery.getDomains().get(0).getId());
-    assertEquals(
-        Boolean.TRUE,
-        fetchedQuery.getDomains().get(0).getInherited(),
-        "Domain should be marked as inherited");
+    assertTrue(
+        fetchedQuery.getDomains().get(0).getInherited(), "Domain should be marked as inherited");
 
     tableResourceTest.deleteEntity(table1.getId(), ADMIN_AUTH_HEADERS);
     deleteEntity(query.getId(), ADMIN_AUTH_HEADERS);
@@ -504,14 +501,10 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     Query fetchedQuery = getEntity(query.getId(), "domains", ADMIN_AUTH_HEADERS);
     assertNotNull(fetchedQuery.getDomains());
     assertEquals(2, fetchedQuery.getDomains().size());
-    assertEquals(
-        Boolean.TRUE,
-        fetchedQuery.getDomains().get(0).getInherited(),
-        "Domains should be marked as inherited");
-    assertEquals(
-        Boolean.TRUE,
-        fetchedQuery.getDomains().get(1).getInherited(),
-        "Domains should be marked as inherited");
+    assertTrue(
+        fetchedQuery.getDomains().get(0).getInherited(), "Domains should be marked as inherited");
+    assertTrue(
+        fetchedQuery.getDomains().get(1).getInherited(), "Domains should be marked as inherited");
 
     tableResourceTest.deleteEntity(table1.getId(), ADMIN_AUTH_HEADERS);
     tableResourceTest.deleteEntity(table2.getId(), ADMIN_AUTH_HEADERS);
@@ -547,10 +540,8 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     assertNotNull(fetchedQuery.getDomains());
     assertEquals(1, fetchedQuery.getDomains().size());
     assertEquals(DOMAIN.getId(), fetchedQuery.getDomains().get(0).getId());
-    assertEquals(
-        Boolean.TRUE,
-        fetchedQuery.getDomains().get(0).getInherited(),
-        "Domain should be marked as inherited");
+    assertTrue(
+        fetchedQuery.getDomains().get(0).getInherited(), "Domain should be marked as inherited");
 
     String origJson = JsonUtils.pojoToJson(query);
     query.setQueryUsedIn(List.of(table2.getEntityReference()));
@@ -560,10 +551,8 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     assertNotNull(updatedQuery.getDomains());
     assertEquals(1, updatedQuery.getDomains().size());
     assertEquals(DOMAIN1.getId(), updatedQuery.getDomains().get(0).getId());
-    assertEquals(
-        Boolean.TRUE,
-        updatedQuery.getDomains().get(0).getInherited(),
-        "Domain should be marked as inherited");
+    assertTrue(
+        updatedQuery.getDomains().get(0).getInherited(), "Domain should be marked as inherited");
 
     tableResourceTest.deleteEntity(table1.getId(), ADMIN_AUTH_HEADERS);
     tableResourceTest.deleteEntity(table2.getId(), ADMIN_AUTH_HEADERS);
@@ -627,10 +616,8 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     assertNotNull(fetchedQuery.getDomains());
     assertEquals(1, fetchedQuery.getDomains().size());
     assertEquals(DOMAIN.getId(), fetchedQuery.getDomains().get(0).getId());
-    assertEquals(
-        Boolean.TRUE,
-        fetchedQuery.getDomains().get(0).getInherited(),
-        "Domain should be marked as inherited");
+    assertTrue(
+        fetchedQuery.getDomains().get(0).getInherited(), "Domain should be marked as inherited");
 
     String origJson = JsonUtils.pojoToJson(query);
     query.setDomains(List.of(DOMAIN1.getEntityReference()));
@@ -643,91 +630,10 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
         DOMAIN.getId(),
         patchedQuery.getDomains().get(0).getId(),
         "Domain should remain DOMAIN (from queryUsedIn), not DOMAIN1 (from manual patch)");
-    assertEquals(
-        Boolean.TRUE,
-        patchedQuery.getDomains().get(0).getInherited(),
-        "Domain should be marked as inherited");
+    assertTrue(
+        patchedQuery.getDomains().get(0).getInherited(), "Domain should be marked as inherited");
 
     tableResourceTest.deleteEntity(table1.getId(), ADMIN_AUTH_HEADERS);
-    deleteEntity(query.getId(), ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  void test_queryDomainsReflectTableDomainChangesOnFetch(TestInfo test) throws IOException {
-    TableResourceTest tableResourceTest = new TableResourceTest();
-    List<Column> columns = List.of(TableResourceTest.getColumn(C1, ColumnDataType.INT, null));
-
-    CreateTable tableCreate =
-        tableResourceTest
-            .createRequest(test)
-            .withColumns(columns)
-            .withDomains(List.of(DOMAIN.getFullyQualifiedName()));
-    Table table = tableResourceTest.createAndCheckEntity(tableCreate, ADMIN_AUTH_HEADERS);
-
-    CreateQuery queryCreate =
-        createRequest(getEntityName(test)).withQueryUsedIn(List.of(table.getEntityReference()));
-    Query query = createAndCheckEntity(queryCreate, ADMIN_AUTH_HEADERS);
-
-    Query fetchedQuery = getEntity(query.getId(), "domains", ADMIN_AUTH_HEADERS);
-    assertNotNull(fetchedQuery.getDomains());
-    assertEquals(1, fetchedQuery.getDomains().size());
-    assertEquals(DOMAIN.getId(), fetchedQuery.getDomains().get(0).getId());
-
-    String tableJson = JsonUtils.pojoToJson(table);
-    table.setDomains(List.of(DOMAIN1.getEntityReference()));
-    tableResourceTest.patchEntity(table.getId(), tableJson, table, ADMIN_AUTH_HEADERS);
-
-    Query refetchedQuery = getEntity(query.getId(), "domains", ADMIN_AUTH_HEADERS);
-    assertNotNull(refetchedQuery.getDomains());
-    assertEquals(1, refetchedQuery.getDomains().size());
-    assertEquals(
-        DOMAIN1.getId(),
-        refetchedQuery.getDomains().get(0).getId(),
-        "Query domains should immediately reflect table's updated domain on fetch");
-
-    tableResourceTest.deleteEntity(table.getId(), ADMIN_AUTH_HEADERS);
-    deleteEntity(query.getId(), ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  void test_queryDomainsMergeFromMultipleTableUpdates(TestInfo test) throws IOException {
-    TableResourceTest tableResourceTest = new TableResourceTest();
-    List<Column> columns = List.of(TableResourceTest.getColumn(C1, ColumnDataType.INT, null));
-
-    CreateTable table1Create =
-        tableResourceTest
-            .createRequest(test)
-            .withName(getEntityName(test) + "_table1")
-            .withColumns(columns)
-            .withDomains(List.of(DOMAIN.getFullyQualifiedName()));
-    Table table1 = tableResourceTest.createAndCheckEntity(table1Create, ADMIN_AUTH_HEADERS);
-
-    CreateTable table2Create =
-        tableResourceTest
-            .createRequest(test)
-            .withName(getEntityName(test) + "_table2")
-            .withColumns(columns)
-            .withDomains(List.of(DOMAIN1.getFullyQualifiedName()));
-    Table table2 = tableResourceTest.createAndCheckEntity(table2Create, ADMIN_AUTH_HEADERS);
-
-    CreateQuery queryCreate =
-        createRequest(getEntityName(test))
-            .withQueryUsedIn(List.of(table1.getEntityReference(), table2.getEntityReference()));
-    Query query = createAndCheckEntity(queryCreate, ADMIN_AUTH_HEADERS);
-
-    Query fetchedQuery = getEntity(query.getId(), "domains", ADMIN_AUTH_HEADERS);
-    assertEquals(2, fetchedQuery.getDomains().size());
-
-    String table1Json = JsonUtils.pojoToJson(table1);
-    table1.setDomains(Collections.emptyList());
-    tableResourceTest.patchEntity(table1.getId(), table1Json, table1, ADMIN_AUTH_HEADERS);
-
-    Query refetchedQuery = getEntity(query.getId(), "domains", ADMIN_AUTH_HEADERS);
-    assertEquals(1, refetchedQuery.getDomains().size());
-    assertEquals(DOMAIN1.getId(), refetchedQuery.getDomains().get(0).getId());
-
-    tableResourceTest.deleteEntity(table1.getId(), ADMIN_AUTH_HEADERS);
-    tableResourceTest.deleteEntity(table2.getId(), ADMIN_AUTH_HEADERS);
     deleteEntity(query.getId(), ADMIN_AUTH_HEADERS);
   }
 }
