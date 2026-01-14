@@ -26,8 +26,8 @@ import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichT
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import { InputOutputPortsTab } from '../components/DataProducts/InputOutputPortsTab/InputOutputPortsTab.component';
 import { DataProductDomainWidget } from '../components/DataProducts/DataProductDomainWidget/DataProductDomainWidget';
+import { InputOutputPortsTab } from '../components/DataProducts/InputOutputPortsTab';
 import EntitySummaryPanel from '../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../components/Explore/ExplorePage.interface';
 import AssetsTabs, {
@@ -47,9 +47,7 @@ import {
   convertDataProductsToEntityReferences as convertDataProductsToEntityReferencesUtil,
   convertEntityReferencesToDataProducts as convertEntityReferencesToDataProductsUtil,
 } from './EntityReferenceUtils';
-import {
-  getQueryFilterForDomainAssets,
-} from './DomainUtils';
+
 import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 import {
@@ -130,11 +128,6 @@ export const getDataProductDetailTabs = ({
 }: DataProductDetailPageTabProps) => {
   const totalPortsCount = (inputPortsCount ?? 0) + (outputPortsCount ?? 0);
 
-  const domainFqn =
-    dataProduct.domains
-      ?.map((domain) => domain.fullyQualifiedName)
-      .join(', ') ?? '';
-
   return [
     {
       label: (
@@ -200,8 +193,8 @@ export const getDataProductDetailTabs = ({
                   wrapInCard: false,
                   children: (
                     <InputOutputPortsTab
+                      dataProduct={dataProduct}
                       dataProductFqn={dataProduct.fullyQualifiedName ?? ''}
-                      isSummaryPanelOpen={Boolean(previewAsset)}
                       permissions={dataProductPermission}
                       onPortClick={handleAssetClick}
                       onPortsUpdate={handleAssetSave}

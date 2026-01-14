@@ -12,20 +12,15 @@
  */
 
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityReference } from '../../../generated/type/entityReference';
-import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
+import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 
 export interface InputOutputPortsTabProps {
+  dataProduct: DataProduct;
   dataProductFqn: string;
-  inputPorts?: EntityReference[];
-  outputPorts?: EntityReference[];
   permissions: OperationPermission;
   onPortsUpdate: () => void;
   onPortClick?: (port?: EntityDetailsObjectInterface) => void;
-  isSummaryPanelOpen: boolean;
-  queryFilter?: QueryFilterInterface;
-  initialLimit?: number;
 }
 
 export interface InputOutputPortsTabRef {

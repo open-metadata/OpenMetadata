@@ -16,10 +16,13 @@ import {
   Button,
   Card,
   CardContent,
+  Collapse,
   Grid,
+  IconButton,
   Typography,
   useTheme,
 } from '@mui/material';
+import { ChevronDown, ChevronUp } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import React, {
   forwardRef,
@@ -29,6 +32,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactFlowProvider } from 'reactflow';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/ic-no-records.svg';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -36,56 +40,61 @@ import { getDataProductPortsView } from '../../../rest/dataProductAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
-import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
-import AssetsTabs, {
-  AssetsTabRef,
-} from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import {
   InputOutputPortsTabProps,
   InputOutputPortsTabRef,
-} from './InputOutputPortsTab.interface';
+} from './InputOutputPortsTab.types';
+import { PortsLineageView } from './PortsLineageView';
+import { PortsListView, PortsListViewRef } from './PortsListView';
 
 export const InputOutputPortsTab = forwardRef<
   InputOutputPortsTabRef,
   InputOutputPortsTabProps
 >(
   (
-    {
-      dataProductFqn,
-      permissions,
-      onPortsUpdate,
-      onPortClick,
-      isSummaryPanelOpen,
-      initialLimit,
-    },
+    { dataProduct, dataProductFqn, permissions, onPortsUpdate, onPortClick },
     ref
   ) => {
     const { t } = useTranslation();
     const theme = useTheme();
     const [isAddingInputPort, setIsAddingInputPort] = useState(false);
     const [isAddingOutputPort, setIsAddingOutputPort] = useState(false);
-    const inputPortsTabRef = React.useRef<AssetsTabRef>(null);
-    const outputPortsTabRef = React.useRef<AssetsTabRef>(null);
+    const [isLineageFullScreen, setIsLineageFullScreen] = useState(false);
+    const [isLineageCollapsed, setIsLineageCollapsed] = useState(true);
+    const [isInputPortsCollapsed, setIsInputPortsCollapsed] = useState(false);
+    const [isOutputPortsCollapsed, setIsOutputPortsCollapsed] = useState(false);
+    const inputPortsListRef = React.useRef<PortsListViewRef>(null);
+    const outputPortsListRef = React.useRef<PortsListViewRef>(null);
 
-    const [inputPortsData, setInputPortsData] = useState<
+    // Lineage data - lazy loaded when expanded
+    const [lineageInputPortsData, setLineageInputPortsData] = useState<
       SearchedDataProps['data']
     >([]);
-    const [outputPortsData, setOutputPortsData] = useState<
+    const [lineageOutputPortsData, setLineageOutputPortsData] = useState<
       SearchedDataProps['data']
     >([]);
-    const [inputPortsTotal, setInputPortsTotal] = useState(0);
-    const [outputPortsTotal, setOutputPortsTotal] = useState(0);
-    const [isLoadingPorts, setIsLoadingPorts] = useState(true);
+    const [isLoadingLineage, setIsLoadingLineage] = useState(false);
+    const [lineageLoaded, setLineageLoaded] = useState(false);
 
-    const fetchPortsData = useCallback(async () => {
-      setIsLoadingPorts(true);
+    // Port counts - fetched from portsView API
+    const [inputPortsCount, setInputPortsCount] = useState(0);
+    const [outputPortsCount, setOutputPortsCount] = useState(0);
+
+    // Fetch lineage data and counts (only when lineage section is expanded, or on initial load for counts)
+    const fetchLineageData = useCallback(async () => {
+      if (lineageLoaded || !dataProductFqn) {
+        return;
+      }
+
+      setIsLoadingLineage(true);
       try {
         const data = await getDataProductPortsView(dataProductFqn, {
-          inputLimit: initialLimit ?? 100,
+          inputLimit: 100,
           inputOffset: 0,
-          outputLimit: initialLimit ?? 100,
+          outputLimit: 100,
           outputOffset: 0,
         });
 
@@ -101,21 +110,54 @@ export const InputOutputPortsTab = forwardRef<
           _source: entity,
         })) as unknown as SearchedDataProps['data'];
 
-        setInputPortsData(inputPortsSearchData);
-        setInputPortsTotal(data.inputPorts.paging.total);
-        setOutputPortsData(outputPortsSearchData);
-        setOutputPortsTotal(data.outputPorts.paging.total);
+        setLineageInputPortsData(inputPortsSearchData);
+        setLineageOutputPortsData(outputPortsSearchData);
+        setInputPortsCount(data.inputPorts.paging.total);
+        setOutputPortsCount(data.outputPorts.paging.total);
+        setLineageLoaded(true);
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
-        setIsLoadingPorts(false);
+        setIsLoadingLineage(false);
       }
-    }, [dataProductFqn, initialLimit]);
+    }, [dataProductFqn, lineageLoaded]);
+
+    // Fetch just counts on initial load
+    const fetchPortCounts = useCallback(async () => {
+      if (!dataProductFqn) {
+        return;
+      }
+
+      try {
+        const data = await getDataProductPortsView(dataProductFqn, {
+          inputLimit: 1,
+          inputOffset: 0,
+          outputLimit: 1,
+          outputOffset: 0,
+        });
+        setInputPortsCount(data.inputPorts.paging.total);
+        setOutputPortsCount(data.outputPorts.paging.total);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    }, [dataProductFqn]);
 
     const refreshPorts = useCallback(() => {
-      fetchPortsData();
+      // Reset lineage data so it will be refetched when expanded
+      setLineageLoaded(false);
+      setLineageInputPortsData([]);
+      setLineageOutputPortsData([]);
+
+      // Refresh the PortsListView components
+      inputPortsListRef.current?.refreshPorts();
+      outputPortsListRef.current?.refreshPorts();
+
+      // Refresh counts
+      fetchPortCounts();
+
+      // Notify parent
       onPortsUpdate();
-    }, [fetchPortsData, onPortsUpdate]);
+    }, [onPortsUpdate, fetchPortCounts]);
 
     useImperativeHandle(ref, () => ({
       refreshPorts,
@@ -139,15 +181,50 @@ export const InputOutputPortsTab = forwardRef<
       refreshPorts();
     }, [refreshPorts]);
 
-    useEffect(() => {
-      if (dataProductFqn) {
-        fetchPortsData();
-      }
-    }, [dataProductFqn, fetchPortsData]);
+    const handleToggleFullScreen = useCallback(() => {
+      setIsLineageFullScreen((prev) => !prev);
+    }, []);
 
-    if (isLoadingPorts) {
-      return <Loader />;
-    }
+    const handleLineagePortClick = useCallback(
+      (port: SearchedDataProps['data'][number]['_source']) => {
+        if (onPortClick) {
+          onPortClick({ details: port });
+        }
+      },
+      [onPortClick]
+    );
+
+    const handleToggleLineageCollapse = useCallback(() => {
+      setIsLineageCollapsed((prev) => !prev);
+    }, []);
+
+    // Fetch port counts on initial load
+    useEffect(() => {
+      fetchPortCounts();
+    }, [fetchPortCounts]);
+
+    // Lazy load lineage data when section is expanded
+    useEffect(() => {
+      if (!isLineageCollapsed && !lineageLoaded) {
+        fetchLineageData();
+      }
+    }, [isLineageCollapsed, lineageLoaded, fetchLineageData]);
+
+    useEffect(() => {
+      const handleKeyDown = (event: KeyboardEvent) => {
+        if (event.key === 'Escape' && isLineageFullScreen) {
+          setIsLineageFullScreen(false);
+        }
+      };
+
+      if (isLineageFullScreen) {
+        document.addEventListener('keydown', handleKeyDown);
+      }
+
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown);
+      };
+    }, [isLineageFullScreen]);
 
     return (
       <Box
@@ -155,12 +232,13 @@ export const InputOutputPortsTab = forwardRef<
         data-testid="input-output-ports-tab"
         sx={{ p: 2, height: '100%', overflowY: 'auto' }}>
         <Grid container spacing={2}>
+          {/* Lineage View Section */}
           <Grid size={12}>
             <Card
               sx={{
                 border: `1px solid ${theme.palette.grey[300]}`,
                 borderRadius: '8px',
-                height: 'auto',
+                overflow: 'visible',
               }}
               variant="outlined">
               <Box
@@ -170,70 +248,71 @@ export const InputOutputPortsTab = forwardRef<
                   alignItems: 'center',
                   p: 2,
                   backgroundColor: theme.palette.grey[50],
-                  borderRadius: '8px 8px 0 0',
-                  fontSize: '14px',
-                  fontWeight: 500,
-                }}>
-                <Typography fontWeight={500} variant="body1">
-                  {t('label.entity-port-plural', { entity: t('label.input') })}
-                </Typography>
-                {permissions.EditAll && (
-                  <Button
-                    data-testid="add-input-port-button"
-                    size="small"
-                    variant="contained"
-                    onClick={handleAddInputPort}>
-                    {t('label.add')}
-                  </Button>
-                )}
-              </Box>
-              <CardContent
-                sx={{
-                  height: 'auto',
-                  maxHeight: 'none',
-                  transition: 'all 200ms ease',
-                  transitionProperty: 'height, left, top',
-                }}>
-                {inputPortsTotal === 0 ? (
-                  <ErrorPlaceHolder
-                    className="m-t-0"
-                    icon={
-                      <AddPlaceHolderIcon
-                        className="w-16 h-16"
-                        data-testid="no-input-ports-placeholder"
-                      />
-                    }
-                    size={SIZE.SMALL}
-                    type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                    <Typography className="text-center">
-                      {t('message.no-input-ports-added')}
+                  borderRadius: isLineageCollapsed ? '8px' : '8px 8px 0 0',
+                  cursor: 'pointer',
+                }}
+                onClick={handleToggleLineageCollapse}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography fontWeight={500} variant="body1">
+                    {t('label.port-plural')} {t('label.lineage')}
+                  </Typography>
+                  {isLineageCollapsed && (
+                    <Typography color="text.secondary" variant="caption">
+                      ({inputPortsCount} {t('label.input').toLowerCase()},{' '}
+                      {outputPortsCount} {t('label.output').toLowerCase()})
                     </Typography>
-                  </ErrorPlaceHolder>
-                ) : (
-                  <AssetsTabs
-                    skipSearch
-                    assetCount={inputPortsTotal}
-                    entityFqn={dataProductFqn}
-                    isSummaryPanelOpen={isSummaryPanelOpen}
-                    permissions={permissions}
-                    preloadedData={inputPortsData}
-                    ref={inputPortsTabRef}
-                    type={AssetsOfEntity.DATA_PRODUCT_INPUT_PORT}
-                    onAddAsset={handleAddInputPort}
-                    onAssetClick={onPortClick}
-                    onRemoveAsset={refreshPorts}
-                  />
-                )}
-              </CardContent>
+                  )}
+                </Box>
+                <IconButton
+                  data-testid="toggle-lineage-collapse"
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleLineageCollapse();
+                  }}>
+                  {isLineageCollapsed ? (
+                    <ChevronDown height={20} width={20} />
+                  ) : (
+                    <ChevronUp height={20} width={20} />
+                  )}
+                </IconButton>
+              </Box>
+              <Collapse in={!isLineageCollapsed}>
+                <CardContent sx={{ p: 0 }}>
+                  {isLoadingLineage ? (
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        height: 250,
+                      }}>
+                      <Loader />
+                    </Box>
+                  ) : (
+                    <ReactFlowProvider>
+                      <PortsLineageView
+                        dataProduct={dataProduct}
+                        height={250}
+                        inputPortsData={lineageInputPortsData}
+                        isFullScreen={isLineageFullScreen}
+                        outputPortsData={lineageOutputPortsData}
+                        onPortClick={handleLineagePortClick}
+                        onToggleFullScreen={handleToggleFullScreen}
+                      />
+                    </ReactFlowProvider>
+                  )}
+                </CardContent>
+              </Collapse>
             </Card>
           </Grid>
 
-          <Grid size={12}>
+          {/* Input Ports Section */}
+          <Grid size={{ xs: 12, md: 6 }}>
             <Card
               sx={{
                 border: `1px solid ${theme.palette.grey[300]}`,
                 borderRadius: '8px',
-                height: 'auto',
               }}
               variant="outlined">
               <Box
@@ -243,61 +322,178 @@ export const InputOutputPortsTab = forwardRef<
                   alignItems: 'center',
                   p: 2,
                   backgroundColor: theme.palette.grey[50],
-                  borderRadius: '8px 8px 0 0',
+                  borderRadius: isInputPortsCollapsed ? '8px' : '8px 8px 0 0',
                   fontSize: '14px',
                   fontWeight: 500,
-                }}>
-                <Typography fontWeight={500} variant="body1">
-                  {t('label.entity-port-plural', { entity: t('label.output') })}
-                </Typography>
-                {permissions.EditAll && (
-                  <Button
-                    data-testid="add-output-port-button"
+                  cursor: 'pointer',
+                }}
+                onClick={() => setIsInputPortsCollapsed((prev) => !prev)}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography fontWeight={500} variant="body1">
+                    {t('label.entity-port-plural', {
+                      entity: t('label.input'),
+                    })}
+                  </Typography>
+                  <Typography color="text.secondary" variant="caption">
+                    ({inputPortsCount})
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {permissions.EditAll && !isInputPortsCollapsed && (
+                    <Button
+                      data-testid="add-input-port-button"
+                      size="small"
+                      variant="contained"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddInputPort();
+                      }}>
+                      {t('label.add')}
+                    </Button>
+                  )}
+                  <IconButton
+                    data-testid="toggle-input-ports-collapse"
                     size="small"
-                    variant="contained"
-                    onClick={handleAddOutputPort}>
-                    {t('label.add')}
-                  </Button>
-                )}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsInputPortsCollapsed((prev) => !prev);
+                    }}>
+                    {isInputPortsCollapsed ? (
+                      <ChevronDown height={20} width={20} />
+                    ) : (
+                      <ChevronUp height={20} width={20} />
+                    )}
+                  </IconButton>
+                </Box>
               </Box>
-              <CardContent
+              <Collapse in={!isInputPortsCollapsed}>
+                <CardContent
+                  sx={{
+                    maxHeight: 400,
+                    overflowY: 'auto',
+                  }}>
+                  {inputPortsCount === 0 ? (
+                    <ErrorPlaceHolder
+                      className="m-t-0"
+                      icon={
+                        <AddPlaceHolderIcon
+                          className="w-16 h-16"
+                          data-testid="no-input-ports-placeholder"
+                        />
+                      }
+                      size={SIZE.SMALL}
+                      type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+                      <Typography className="text-center">
+                        {t('message.no-input-ports-added')}
+                      </Typography>
+                    </ErrorPlaceHolder>
+                  ) : (
+                    <PortsListView
+                      dataProductFqn={dataProductFqn}
+                      permissions={permissions}
+                      portType="input"
+                      ref={inputPortsListRef}
+                      onAddPort={handleAddInputPort}
+                      onRemovePort={refreshPorts}
+                    />
+                  )}
+                </CardContent>
+              </Collapse>
+            </Card>
+          </Grid>
+
+          {/* Output Ports Section */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Card
+              sx={{
+                border: `1px solid ${theme.palette.grey[300]}`,
+                borderRadius: '8px',
+              }}
+              variant="outlined">
+              <Box
                 sx={{
-                  height: 'auto',
-                  maxHeight: 'none',
-                  transition: 'all 200ms ease',
-                  transitionProperty: 'height, left, top',
-                }}>
-                {outputPortsTotal === 0 ? (
-                  <ErrorPlaceHolder
-                    className="m-t-0"
-                    icon={
-                      <AddPlaceHolderIcon
-                        className="w-16 h-16"
-                        data-testid="no-output-ports-placeholder"
-                      />
-                    }
-                    size={SIZE.SMALL}
-                    type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                    <Typography className="text-center">
-                      {t('message.no-output-ports-added')}
-                    </Typography>
-                  </ErrorPlaceHolder>
-                ) : (
-                  <AssetsTabs
-                    skipSearch
-                    assetCount={outputPortsTotal}
-                    entityFqn={dataProductFqn}
-                    isSummaryPanelOpen={isSummaryPanelOpen}
-                    permissions={permissions}
-                    preloadedData={outputPortsData}
-                    ref={outputPortsTabRef}
-                    type={AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT}
-                    onAddAsset={handleAddOutputPort}
-                    onAssetClick={onPortClick}
-                    onRemoveAsset={refreshPorts}
-                  />
-                )}
-              </CardContent>
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  p: 2,
+                  backgroundColor: theme.palette.grey[50],
+                  borderRadius: isOutputPortsCollapsed ? '8px' : '8px 8px 0 0',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                }}
+                onClick={() => setIsOutputPortsCollapsed((prev) => !prev)}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography fontWeight={500} variant="body1">
+                    {t('label.entity-port-plural', {
+                      entity: t('label.output'),
+                    })}
+                  </Typography>
+                  <Typography color="text.secondary" variant="caption">
+                    ({outputPortsCount})
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {permissions.EditAll && !isOutputPortsCollapsed && (
+                    <Button
+                      data-testid="add-output-port-button"
+                      size="small"
+                      variant="contained"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddOutputPort();
+                      }}>
+                      {t('label.add')}
+                    </Button>
+                  )}
+                  <IconButton
+                    data-testid="toggle-output-ports-collapse"
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsOutputPortsCollapsed((prev) => !prev);
+                    }}>
+                    {isOutputPortsCollapsed ? (
+                      <ChevronDown height={20} width={20} />
+                    ) : (
+                      <ChevronUp height={20} width={20} />
+                    )}
+                  </IconButton>
+                </Box>
+              </Box>
+              <Collapse in={!isOutputPortsCollapsed}>
+                <CardContent
+                  sx={{
+                    maxHeight: 400,
+                    overflowY: 'auto',
+                  }}>
+                  {outputPortsCount === 0 ? (
+                    <ErrorPlaceHolder
+                      className="m-t-0"
+                      icon={
+                        <AddPlaceHolderIcon
+                          className="w-16 h-16"
+                          data-testid="no-output-ports-placeholder"
+                        />
+                      }
+                      size={SIZE.SMALL}
+                      type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+                      <Typography className="text-center">
+                        {t('message.no-output-ports-added')}
+                      </Typography>
+                    </ErrorPlaceHolder>
+                  ) : (
+                    <PortsListView
+                      dataProductFqn={dataProductFqn}
+                      permissions={permissions}
+                      portType="output"
+                      ref={outputPortsListRef}
+                      onAddPort={handleAddOutputPort}
+                      onRemovePort={refreshPorts}
+                    />
+                  )}
+                </CardContent>
+              </Collapse>
             </Card>
           </Grid>
         </Grid>

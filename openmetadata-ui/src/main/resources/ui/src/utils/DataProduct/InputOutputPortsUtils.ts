@@ -33,6 +33,7 @@ const extractFqnsFromPorts = (ports: EntityReference[]): string[] => {
  */
 export const getInputPortsQueryFilter = (inputPorts: EntityReference[]) => {
   const fqns = extractFqnsFromPorts(inputPorts);
+
   return getEntityFqnQueryFilter(fqns);
 };
 
@@ -45,6 +46,6 @@ export const getInputPortsQueryFilter = (inputPorts: EntityReference[]) => {
  */
 export const getOutputPortsQueryFilter = (outputPorts: EntityReference[]) => {
   const fqns = extractFqnsFromPorts(outputPorts);
+
   return getEntityFqnQueryFilter(fqns);
 };
-

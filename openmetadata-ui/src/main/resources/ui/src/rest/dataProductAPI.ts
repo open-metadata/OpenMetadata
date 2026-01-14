@@ -19,7 +19,10 @@ import {
 } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { CreateDataProduct } from '../generated/api/domains/createDataProduct';
-import { DataProductPortsView } from '../generated/api/domains/dataProductPortsView';
+import {
+  DataProductPortsView,
+  PaginatedEntities,
+} from '../generated/api/domains/dataProductPortsView';
 import {
   DataProduct,
   EntityReference,
@@ -260,6 +263,30 @@ export const getDataProductPortsView = async (
 ) => {
   const response = await APIClient.get<DataProductPortsView>(
     `${BASE_URL}/name/${getEncodedFqn(dataProductFqn)}/portsView`,
+    { params }
+  );
+
+  return response.data;
+};
+
+export const getDataProductInputPorts = async (
+  dataProductFqn: string,
+  params?: { limit?: number; offset?: number }
+) => {
+  const response = await APIClient.get<PaginatedEntities>(
+    `${BASE_URL}/name/${getEncodedFqn(dataProductFqn)}/inputPorts`,
+    { params }
+  );
+
+  return response.data;
+};
+
+export const getDataProductOutputPorts = async (
+  dataProductFqn: string,
+  params?: { limit?: number; offset?: number }
+) => {
+  const response = await APIClient.get<PaginatedEntities>(
+    `${BASE_URL}/name/${getEncodedFqn(dataProductFqn)}/outputPorts`,
     { params }
   );
 
