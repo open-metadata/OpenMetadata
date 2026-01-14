@@ -24,12 +24,14 @@ openmetadata:
       searchType: opensearch
       scheme: http
     
-    # K8s Pipeline Client Configuration - This is what we're testing!
+    # K8s Pipeline Client Configuration - Updated structure with common configs
     pipelineServiceClientConfig:
       type: "k8s"  # Use Kubernetes native instead of Airflow
+      # Common configuration for all pipeline service clients
+      # Override metadataApiEndpoint for cross-namespace access (default uses service name only)
+      metadataApiEndpoint: "http://openmetadata.openmetadata-ingestion.svc.cluster.local:8585/api"
       k8s:
-        # Override metadataApiEndpoint for cross-namespace access (default uses service name only)
-        metadataApiEndpoint: "http://openmetadata.openmetadata-ingestion.svc.cluster.local:8585/api"
+        # K8s-specific configuration
         # Test namespace
         namespace: "openmetadata-pipelines-test"
         serviceAccountName: "openmetadata-ingestion-test"

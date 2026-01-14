@@ -24,13 +24,14 @@ openmetadata:
       searchType: opensearch
       scheme: http
     
-    # Airflow Pipeline Client Configuration (testing new nested structure)
+    # Airflow Pipeline Client Configuration (updated structure with common configs)
     pipelineServiceClientConfig:
       type: "airflow"  # Use traditional Airflow approach
+      # Common configuration for all pipeline service clients
+      metadataApiEndpoint: http://openmetadata:8585/api
       airflow:
-        # Airflow connection settings (minimal required)
+        # Airflow-specific connection settings
         apiEndpoint: http://openmetadata-dependencies-api-server:8080
-        metadataApiEndpoint: http://openmetadata:8585/api
         verifySsl: "no-ssl"
         auth:
           username: admin
