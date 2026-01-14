@@ -4608,6 +4608,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       removeDomains(entity, removedDomains);
       storeDomains(entity, newDomains);
+      propagateDomainChangesToRelatedQueries(entity);
+    }
+
+    protected void propagateDomainChangesToRelatedQueries(T entity) {
+      try {
+        EntityRepository<?> queryRepository = Entity.getEntityRepository(Entity.QUERY);
+        if (queryRepository instanceof QueryRepository) {
+          ((QueryRepository) queryRepository)
+              .updateQuerySearchIndexesForRelatedEntity(entity.getEntityReference());
+        }
+      } catch (Exception e) {
+        LOG.error(
+            "Failed to propagate domain changes to related queries for entity: {}",
+            entity.getFullyQualifiedName(),
+            e);
+      }
     }
 
     /** Remove domain relationship for a given entity */
