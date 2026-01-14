@@ -356,7 +356,6 @@ describe('Container Page Component', () => {
 
   it('show ErrorPlaceHolder if container data fetch fail', async () => {
     (getContainerByName as jest.Mock)
-      .mockResolvedValueOnce({}) // For resolution
       .mockRejectedValue('failed to fetch container data'); // For fetch
 
     render(
@@ -371,7 +370,7 @@ describe('Container Page Component', () => {
       expect(mockGetEntityPermissionByFqn).toHaveBeenCalled()
     );
 
-    await waitFor(() => expect(getContainerByName).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(getContainerByName).toHaveBeenCalledTimes(1));
 
     expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
   });

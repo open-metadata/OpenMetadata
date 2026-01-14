@@ -225,6 +225,7 @@ describe('EntityUtilClassBase', () => {
       undefined
     );
   });
+
   describe('getFqnParts', () => {
     it('should return undefined columnFqn if type is NOT provided', () => {
       const fqn = 'service.database.schema.table';
