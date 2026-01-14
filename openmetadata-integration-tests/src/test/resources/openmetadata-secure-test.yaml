@@ -79,7 +79,6 @@ eventHandlerConfiguration:
   eventHandlerClassNames:
     - "org.openmetadata.service.events.AuditEventHandler"
     - "org.openmetadata.service.events.ChangeEventHandler"
-    - "org.openmetadata.service.governance.workflows.WorkflowEventConsumer"
 
 eventMonitoringConfiguration:
   eventMonitor: "prometheus"
