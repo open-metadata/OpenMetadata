@@ -114,8 +114,8 @@ public class SearchMetadataTool implements McpTool {
     size = Math.min(size, 50);
 
     boolean includeDeleted = false;
-    if (params.containsKey("include_deleted")) {
-      Object deletedObj = params.get("include_deleted");
+    if (params.containsKey("includeDeleted")) {
+      Object deletedObj = params.get("includeDeleted");
       if (deletedObj instanceof Boolean booleanValue) {
         includeDeleted = booleanValue;
       } else if (deletedObj instanceof String) {
