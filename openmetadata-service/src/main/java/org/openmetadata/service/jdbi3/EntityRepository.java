@@ -4804,7 +4804,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
           updatedLifeCycle.setUpdated(origLifeCycle.getUpdated());
         }
       }
-      recordChange(FIELD_LIFE_CYCLE, origLifeCycle, updatedLifeCycle, true);
+      // Use updateVersion=false to prevent version pollution from lifecycle-only changes
+      // See: https://github.com/open-metadata/OpenMetadata/issues/21326
+      recordChange(FIELD_LIFE_CYCLE, origLifeCycle, updatedLifeCycle, true, objectMatch, false);
     }
 
     private void updateCertification() {
