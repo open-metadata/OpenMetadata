@@ -76,6 +76,7 @@ const AddCustomProperty = ({
   entityType: entityTypeProp,
   open,
   onClose,
+  onCancel,
 }: AddCustomPropertyProps) => {
   const [localForm] = Form.useForm();
   const form = formRef ?? localForm;
@@ -90,7 +91,7 @@ const AddCustomProperty = ({
   const [propertyTypes, setPropertyTypes] = useState<Array<Type>>([]);
   const [activeField, setActiveField] = useState<string>('');
   const [isCreating, setIsCreating] = useState<boolean>(false);
-  const [isFormInvalid, setIsFormInvalid] = useState<boolean>(true);
+  const [isFormInvalid, setIsFormInvalid] = useState<boolean>(false);
 
   const watchedPropertyType = Form.useWatch('propertyType', form);
 
@@ -194,7 +195,13 @@ const AddCustomProperty = ({
     }
   };
 
-  const handleCancel = useCallback(() => navigate(-1), [navigate]);
+  const handleCancel = useCallback(() => {
+    if (onCancel) {
+      onCancel();
+    } else {
+      navigate(-1);
+    }
+  }, [navigate, onCancel]);
 
   const handleFieldFocus = useCallback((event: FocusEvent<HTMLFormElement>) => {
     const isDescription = event.target.classList.contains('ProseMirror');
@@ -594,7 +601,7 @@ const AddCustomProperty = ({
             <Button
               data-testid="back-button"
               type="link"
-              onClick={handleCancel || (() => navigate(-1))}>
+              onClick={handleCancel}>
               {t('label.back')}
             </Button>
           </Col>

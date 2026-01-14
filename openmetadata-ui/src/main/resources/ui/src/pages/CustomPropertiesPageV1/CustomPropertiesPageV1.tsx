@@ -94,7 +94,7 @@ const CustomEntityDetailV1 = () => {
     [propertyPermission, tab]
   );
 
-  const fetchTypeDetail = async (typeFQN: string) => {
+  const fetchTypeDetail = useCallback(async (typeFQN: string) => {
     setIsLoading(true);
     try {
       const data = await getTypeByFQN(typeFQN);
@@ -104,7 +104,7 @@ const CustomEntityDetailV1 = () => {
       setIsError(true);
     }
     setIsLoading(false);
-  };
+  }, []);
 
   const onTabChange = useCallback((activeKey: string) => {
     setActiveTab(activeKey as EntityTabs);
@@ -121,25 +121,34 @@ const CustomEntityDetailV1 = () => {
   const handleDrawerClose = useCallback(() => {
     setIsDrawerOpen(false);
     form.resetFields();
-  }, [form]);
+  }, []);
 
-  const handleDrawerSubmit = async (data: CustomProperty) => {
-    setIsButtonLoading(true);
-    try {
-      await addPropertyToEntity(selectedEntityTypeDetail.id ?? '', data);
-      showSuccessToast(
-        t('server.create-entity-success', {
-          entity: t('label.custom-property'),
-        })
-      );
-      handleDrawerClose();
-      fetchTypeDetail(tabAttributePath);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsButtonLoading(false);
-    }
-  };
+  const handleDrawerSubmit = useCallback(
+    async (data: CustomProperty) => {
+      setIsButtonLoading(true);
+      try {
+        await addPropertyToEntity(selectedEntityTypeDetail.id ?? '', data);
+        showSuccessToast(
+          t('server.create-entity-success', {
+            entity: t('label.custom-property'),
+          })
+        );
+        handleDrawerClose();
+        fetchTypeDetail(tabAttributePath);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsButtonLoading(false);
+      }
+    },
+    [
+      selectedEntityTypeDetail.id,
+      handleDrawerClose,
+      fetchTypeDetail,
+      tabAttributePath,
+      t,
+    ]
+  );
 
   const updateEntityType = useCallback(
     async (properties: Type['customProperties']) => {
@@ -239,7 +248,6 @@ const CustomEntityDetailV1 = () => {
           />
         ),
       },
-      // Remove other tabs logic or keep it? Original code had tabs array ending here.
     ];
   }, [
     selectedEntityTypeDetail.schema,
@@ -248,7 +256,7 @@ const CustomEntityDetailV1 = () => {
     customPageHeader,
     isLoading,
     activeTab,
-    handleAddProperty, // unused in deps? logic moved out.
+    handleAddProperty,
     updateEntityType,
   ]);
 
