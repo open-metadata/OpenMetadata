@@ -79,5 +79,4 @@ jobs:
         with:
           projectBaseDir: ${{ env.PROJECT_BASE_DIR }}/
           args: >
-            -Dproject.settings=${{ env.PROJECT_BASE_DIR }}/sonar-project.properties
             -Dsonar.branch.name=${{ env.BRANCH_NAME }}
