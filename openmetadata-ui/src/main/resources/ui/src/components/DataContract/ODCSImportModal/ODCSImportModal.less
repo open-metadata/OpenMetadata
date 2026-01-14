@@ -12,16 +12,15 @@
  */
 
 .odcs-import-modal {
-  .ant-modal-body {
-    padding: 16px 24px;
-    max-height: 70vh;
-    overflow: hidden;
+  .modal-subtitle {
+    display: block;
+    font-size: 14px;
+    font-weight: normal;
   }
 
   .import-content-wrapper {
     display: flex;
     gap: 20px;
-    min-height: 400px;
   }
 
   .source-panel {
@@ -48,13 +47,13 @@
   .validation-panel {
     width: 320px;
     flex-shrink: 0;
-    background: #fafafa;
     border-radius: 8px;
     padding: 16px;
     border: 1px solid #e8e8e8;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
+    align-self: flex-start;
 
     &::-webkit-scrollbar {
       width: 6px;
@@ -187,11 +186,11 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: #f6ffed;
-    border: 1px solid #b7eb8f;
-    border-radius: 6px;
     padding: 10px 12px;
     margin-bottom: 16px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    background-color: #fafafa;
 
     .file-info {
       display: flex;
@@ -199,13 +198,17 @@
       gap: 8px;
 
       .file-icon {
-        color: #52c41a;
+        color: #6b7280;
         font-size: 16px;
       }
 
       .file-name {
         font-weight: 500;
-        color: #262626;
+        color: #374151;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 280px;
       }
     }
 
@@ -218,7 +221,7 @@
 
       &:hover {
         color: #ff4d4f;
-        background: #fff1f0;
+        background: transparent;
       }
     }
   }
@@ -322,14 +325,15 @@
         font-size: 12px;
         color: #8c8c8c;
         margin: 0;
+        padding-left: 32px;
       }
     }
   }
 
   .object-selector-section {
-    background: #e6f7ff;
-    border: 1px solid #91d5ff;
-    border-radius: 6px;
+    border-radius: 12px;
+    background-color: #fafafa;
+    border: none;
     padding: 14px;
     margin-bottom: 16px;
 
@@ -340,7 +344,6 @@
       margin-bottom: 10px;
       font-weight: 600;
       font-size: 13px;
-      color: #1890ff;
 
       .info-icon {
         font-size: 16px;
@@ -351,18 +354,6 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
-
-      .object-selector-dropdown {
-        width: 100%;
-      }
-    }
-  }
-
-  .dragger-wrapper {
-    height: 200px;
-
-    .ant-upload-drag {
-      border-radius: 8px;
     }
   }
 

@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, { PlusOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons';
+import { AddOutlined, ExpandMore } from '@mui/icons-material';
+import { Button, Menu, MenuItem } from '@mui/material';
 import {
-  Button,
   Card,
   Col,
   Divider,
@@ -24,7 +25,7 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import { MenuInfo } from 'rc-menu/lib/interface';
+import type { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import approvedIcon from '../../../assets/img/approved.png';
@@ -36,6 +37,8 @@ import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export-box.
 import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
 import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-gear.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
+import { ReactComponent as ImportIconSelected } from '../../../assets/svg/import-icon-selected.svg';
+import { ReactComponent as ImportIconContract } from '../../../assets/svg/import-icon.svg';
 import {
   ContractImportFormat,
   CONTRACT_DATE_TIME_FORMAT,
@@ -104,6 +107,11 @@ const ContractDetail: React.FC<{
   const [isImportModalVisible, setIsImportModalVisible] = useState(false);
   const [importFormat, setImportFormat] =
     useState<ContractImportFormat>('odcs');
+  const [addContractMenuAnchor, setAddContractMenuAnchor] =
+    useState<null | HTMLElement>(null);
+  const [hoveredAddContractItem, setHoveredAddContractItem] = useState<
+    string | null
+  >(null);
 
   const fetchLatestContractResults = async () => {
     try {
@@ -139,46 +147,50 @@ const ContractDetail: React.FC<{
     );
   }, [latestContractResults]);
 
-  const addContractActionsItems: MenuProps['items'] = useMemo(() => {
+  const addContractActionsItems = useMemo(() => {
     return [
       {
-        label: (
-          <div
-            className="contract-action-dropdown-item"
-            data-testid="create-contract-button">
-            <PlusOutlined className="anticon" />
-
-            {t('label.create-entity', { entity: t('label.contract') })}
-          </div>
-        ),
+        label: t('label.create-contract-with-ui'),
         key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.CREATE,
+        icon: (
+          <AddOutlined
+            sx={{
+              color:
+                hoveredAddContractItem ===
+                DATA_CONTRACT_ACTION_DROPDOWN_KEY.CREATE
+                  ? '#1570EF'
+                  : 'inherit',
+            }}
+          />
+        ),
+        testId: 'create-contract-button',
       },
       {
-        label: (
-          <div
-            className="contract-action-dropdown-item"
-            data-testid="import-openmetadata-contract-button">
-            <ImportIcon className="anticon" />
-
-            {t('label.import')}
-          </div>
-        ),
+        label: t('label.import-om'),
         key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_OPENMETADATA,
+        icon:
+          hoveredAddContractItem ===
+          DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_OPENMETADATA ? (
+            <ImportIconSelected />
+          ) : (
+            <ImportIconContract />
+          ),
+        testId: 'import-openmetadata-contract-button',
       },
       {
-        label: (
-          <div
-            className="contract-action-dropdown-item"
-            data-testid="import-odcs-contract-button">
-            <ImportIcon className="anticon" />
-
-            {t('label.import-odcs')}
-          </div>
-        ),
+        label: t('label.import-odcs'),
         key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_ODCS,
+        icon:
+          hoveredAddContractItem ===
+          DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_ODCS ? (
+            <ImportIconSelected />
+          ) : (
+            <ImportIconContract />
+          ),
+        testId: 'import-odcs-contract-button',
       },
     ];
-  }, []);
+  }, [t, hoveredAddContractItem]);
 
   const contractActionsItems: MenuProps['items'] = useMemo(() => {
     return [
@@ -326,9 +338,18 @@ const ContractDetail: React.FC<{
     }
   };
 
+  const handleAddContractMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAddContractMenuAnchor(event.currentTarget);
+  };
+
+  const handleAddContractMenuClose = () => {
+    setAddContractMenuAnchor(null);
+  };
+
   const handleAddContractAction = useCallback(
-    (item: MenuInfo) => {
-      switch (item.key) {
+    (key: string) => {
+      handleAddContractMenuClose();
+      switch (key) {
         case DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_ODCS:
           return handleImportContract('odcs');
 
@@ -429,14 +450,14 @@ const ContractDetail: React.FC<{
                 <Button
                   className="contract-action-button"
                   data-testid="manage-contract-actions"
-                  icon={<Icon component={SettingIcon} />}
+                  startIcon={<Icon component={SettingIcon} />}
                   title={t('label.contract')}
-                  type="text"
+                  variant="text"
                 />
               </Dropdown>
             </div>
           </Col>
-          <Col className="d-flex items-center gap-2" span={24}>
+          <Col className="d-flex items-center gap-2 flex-wrap" span={24}>
             {contract.createdBy && (
               <>
                 <div className="d-flex items-center">
@@ -570,25 +591,42 @@ const ContractDetail: React.FC<{
             {t('message.create-contract-description')}
           </Typography.Paragraph>
 
-          <Dropdown
-            destroyPopupOnHide
-            getPopupContainer={getPopupContainer}
-            menu={{
-              items: addContractActionsItems,
-              onClick: handleAddContractAction,
-            }}
-            overlayClassName="contract-action-dropdown"
-            overlayStyle={{ width: 180 }}
-            placement="bottom"
-            trigger={['click']}>
+          <>
             <Button
-              className="m-t-md"
+              aria-controls={
+                addContractMenuAnchor ? 'add-contract-menu' : undefined
+              }
+              aria-expanded={addContractMenuAnchor ? 'true' : 'false'}
+              aria-haspopup="true"
               data-testid="add-contract-button"
-              icon={<PlusOutlined />}
-              type="primary">
+              endIcon={<ExpandMore />}
+              id="add-contract-button"
+              sx={{ marginTop: 2 }}
+              variant="contained"
+              onClick={handleAddContractMenuOpen}>
               {t('label.add-entity', { entity: t('label.contract') })}
             </Button>
-          </Dropdown>
+            <Menu
+              anchorEl={addContractMenuAnchor}
+              aria-labelledby="add-contract-button"
+              id="add-contract-menu"
+              open={Boolean(addContractMenuAnchor)}
+              onClose={handleAddContractMenuClose}>
+              {addContractActionsItems.map((item) => (
+                <MenuItem
+                  data-testid={item.testId}
+                  key={item.key}
+                  onClick={() => handleAddContractAction(item.key as string)}
+                  onMouseEnter={() => setHoveredAddContractItem(item.key)}
+                  onMouseLeave={() => setHoveredAddContractItem(null)}>
+                  <span className="contract-action-dropdown-item">
+                    {item.icon}
+                    {item.label}
+                  </span>
+                </MenuItem>
+              ))}
+            </Menu>
+          </>
         </ErrorPlaceHolder>
       </>
     );
