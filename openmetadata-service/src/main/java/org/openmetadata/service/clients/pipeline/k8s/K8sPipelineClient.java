@@ -689,7 +689,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
       if (useOMJobOperator) {
         @SuppressWarnings("unchecked")
-        Map<String, Object> cronOMJob =
+        Map<String, Object> originalCronOMJob =
             (Map<String, Object>)
                 executeWithRetry(
                     () ->
@@ -701,10 +701,18 @@ public class K8sPipelineClient extends PipelineServiceClient {
                                 CRONOMJOB_PLURAL,
                                 cronJobName)
                             .execute());
+
+        // Create a defensive copy to handle potentially unmodifiable maps from Kubernetes API
+        Map<String, Object> cronOMJob = new HashMap<>(originalCronOMJob);
+
         @SuppressWarnings("unchecked")
         Map<String, Object> spec = (Map<String, Object>) cronOMJob.get("spec");
         if (spec == null) {
           spec = new HashMap<>();
+          cronOMJob.put("spec", spec);
+        } else {
+          // Create a defensive copy of the spec map as well
+          spec = new HashMap<>(spec);
           cronOMJob.put("spec", spec);
         }
         boolean currentlySuspended = Boolean.TRUE.equals(spec.getOrDefault("suspend", false));
@@ -804,7 +812,15 @@ public class K8sPipelineClient extends PipelineServiceClient {
         if (items != null) {
           for (Map<String, Object> item : items) {
             Map<String, Object> metadata = (Map<String, Object>) item.get("metadata");
+            if (metadata == null) {
+              LOG.warn("OMJob item missing metadata, skipping [correlationId={}]", correlationId);
+              continue;
+            }
             String omJobName = (String) metadata.get("name");
+            if (omJobName == null || omJobName.isEmpty()) {
+              LOG.warn("OMJob metadata missing name, skipping [correlationId={}]", correlationId);
+              continue;
+            }
 
             // Delete the OMJob - operator will handle pod cleanup
             executeWithRetry(
