@@ -107,29 +107,6 @@ class TestDatalakeAzureBlobClient(unittest.TestCase):
         mock_container_client.get_container_properties.assert_called_once()
         self.mock_blob_service_client.list_containers.assert_not_called()
 
-    def test_get_test_list_buckets_fn_with_bucket_calls_get_container_properties(self):
-        """
-        GIVEN: A specific bucket_name is provided
-        WHEN: get_test_list_buckets_fn is called and executed
-        THEN: It should call get_container_properties() to validate access
-        """
-        # Arrange
-        mock_container_client = MagicMock()
-        mock_container_client.get_container_properties.return_value = {
-            "name": "decube",
-            "last_modified": "2026-01-13",
-        }
-        self.mock_blob_service_client.get_container_client.return_value = (
-            mock_container_client
-        )
-
-        # Act
-        test_fn = self.client.get_test_list_buckets_fn(bucket_name="my-container")
-        test_fn()
-
-        # Assert
-        mock_container_client.get_container_properties.assert_called_once()
-
     def test_get_test_list_buckets_fn_with_bucket_raises_on_invalid_container(self):
         """
         GIVEN: A bucket_name that does not exist
