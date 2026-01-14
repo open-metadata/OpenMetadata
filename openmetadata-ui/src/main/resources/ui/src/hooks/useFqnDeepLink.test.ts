@@ -21,8 +21,6 @@ jest.mock('../utils/TableUtils', () => ({
   getParentKeysToExpand: jest.fn(),
 }));
 
-
-
 describe('useFqnDeepLink', () => {
   const mockSetExpandedRowKeys = jest.fn();
   const mockOpenColumnDetailPanel = jest.fn();
@@ -76,7 +74,4 @@ describe('useFqnDeepLink', () => {
       fullyQualifiedName: fqn,
     });
   });
-
-
-
 });

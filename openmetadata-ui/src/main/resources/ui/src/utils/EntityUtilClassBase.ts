@@ -617,38 +617,40 @@ class EntityUtilClassBase {
 
     switch (type) {
       case EntityType.TABLE:
+      case EntityType.STORED_PROCEDURE:
         // Service.Database.Schema.Table
         if (fqnParts.length > 4) {
           entityFqn = Fqn.build(...fqnParts.slice(0, 4));
           columnFqn = Fqn.build(...fqnParts.slice(4));
         }
+
         break;
 
       case EntityType.API_ENDPOINT:
+      case EntityType.DATABASE_SCHEMA:
         // Service.ApiCollection.Endpoint
         if (fqnParts.length > 3) {
           entityFqn = Fqn.build(...fqnParts.slice(0, 3));
           columnFqn = Fqn.build(...fqnParts.slice(3));
         }
+
         break;
 
       case EntityType.TOPIC:
       case EntityType.SEARCH_INDEX:
       case EntityType.METRIC:
-      case EntityType.CONTAINER:
-      case EntityType.DIRECTORY:
       case EntityType.WORKSHEET:
-      case EntityType.FILE:
       case EntityType.PIPELINE:
       case EntityType.DASHBOARD:
       case EntityType.MLMODEL:
       case EntityType.CHART:
-
+      case EntityType.DATABASE:
         // Service.Topic
         if (fqnParts.length > 2) {
           entityFqn = Fqn.build(...fqnParts.slice(0, 2));
           columnFqn = Fqn.build(...fqnParts.slice(2));
         }
+
         break;
 
       case EntityType.DASHBOARD_DATA_MODEL:
@@ -657,6 +659,7 @@ class EntityUtilClassBase {
           entityFqn = Fqn.build(...fqnParts.slice(0, 3));
           columnFqn = Fqn.build(...fqnParts.slice(3));
         }
+
         break;
 
       default:
