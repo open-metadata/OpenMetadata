@@ -134,6 +134,8 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 - **Theme and Styles**: MUI theme data and styles are defined in `openmetadata-ui-core-components`
 - **Colors and Design Tokens**: Always reference theme colors and design tokens from the MUI theme, not hardcoded values
 - **Legacy Components**: Ant Design components remain in existing code but should be replaced with MUI equivalents when refactoring
+- Do not add unnecessary spacing between logs and code.
+- In Java, avoid wildcards imports (e.g., use `import java.util.List;` instead of `import java.util.*;`)
 - Custom styles in `.less` files with component-specific naming (legacy pattern)
 - Follow BEM naming convention for custom CSS classes
 - Use CSS modules where appropriate

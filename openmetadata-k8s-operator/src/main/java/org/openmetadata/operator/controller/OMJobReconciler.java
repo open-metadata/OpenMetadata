@@ -15,10 +15,16 @@ package org.openmetadata.operator.controller;
 
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import io.javaoperatorsdk.operator.api.reconciler.*;
+import io.javaoperatorsdk.operator.api.reconciler.Context;
+import io.javaoperatorsdk.operator.api.reconciler.ControllerConfiguration;
+import io.javaoperatorsdk.operator.api.reconciler.ErrorStatusHandler;
+import io.javaoperatorsdk.operator.api.reconciler.ErrorStatusUpdateControl;
+import io.javaoperatorsdk.operator.api.reconciler.Reconciler;
+import io.javaoperatorsdk.operator.api.reconciler.UpdateControl;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
+import org.openmetadata.operator.config.OperatorConfig;
 import org.openmetadata.operator.model.OMJobPhase;
 import org.openmetadata.operator.model.OMJobResource;
 import org.openmetadata.operator.model.OMJobStatus;
@@ -48,14 +54,24 @@ public class OMJobReconciler
 
   private PodManager podManager;
   private EventPublisher eventPublisher;
+  private final OperatorConfig config;
 
   // Reconciliation intervals
-  private static final Duration POLLING_INTERVAL = Duration.ofSeconds(10);
-  private static final Duration REQUEUE_DELAY = Duration.ofSeconds(30);
+  private final Duration pollingInterval;
+  private final Duration requeueDelay;
 
   public OMJobReconciler() {
-    // PodManager and EventPublisher will be initialized when reconciler is called
-    // with the client context
+    this(new OperatorConfig());
+  }
+
+  public OMJobReconciler(OperatorConfig config) {
+    this.config = config;
+    this.pollingInterval = Duration.ofSeconds(config.getPollingIntervalSeconds());
+    this.requeueDelay = Duration.ofSeconds(config.getRequeueDelaySeconds());
+    LOG.info(
+        "OMJobReconciler configured with polling interval: {} seconds, requeue delay: {} seconds",
+        config.getPollingIntervalSeconds(),
+        config.getRequeueDelaySeconds());
   }
 
   @Override
@@ -113,7 +129,7 @@ public class OMJobReconciler
       eventPublisher.publishWarningEvent(
           omJob, "ReconciliationError", "Failed to reconcile OMJob: " + e.getMessage());
 
-      return UpdateControl.updateStatus(omJob).rescheduleAfter(REQUEUE_DELAY);
+      return UpdateControl.updateStatus(omJob).rescheduleAfter(requeueDelay);
     }
   }
 
@@ -140,52 +156,33 @@ public class OMJobReconciler
   private UpdateControl<OMJobResource> handlePendingPhase(OMJobResource omJob) {
     LOG.info("Handling PENDING phase for OMJob: {}", omJob.getMetadata().getName());
 
-    // Check if main pod already exists
+    // Check if main pod already exists (using selectors for robust discovery)
     Optional<Pod> existingMainPod = podManager.findMainPod(omJob);
     if (existingMainPod.isPresent()) {
       LOG.info("Main pod already exists, transitioning to RUNNING");
       omJob.getStatus().transitionTo(OMJobPhase.RUNNING, "Main pod found");
       omJob.getStatus().setMainPodName(existingMainPod.get().getMetadata().getName());
-      return UpdateControl.updateStatus(omJob).rescheduleAfter(POLLING_INTERVAL);
-    }
-
-    // Check if we already recorded the main pod name but can't find it yet (race condition)
-    String recordedPodName = omJob.getStatus().getMainPodName();
-    if (recordedPodName != null && !recordedPodName.isEmpty()) {
-      LOG.info(
-          "Main pod {} was created but not found yet, retrying in {} seconds",
-          recordedPodName,
-          POLLING_INTERVAL.getSeconds());
-      // Stay in PENDING phase and retry
-      return UpdateControl.<OMJobResource>noUpdate().rescheduleAfter(POLLING_INTERVAL);
+      return UpdateControl.updateStatus(omJob).rescheduleAfter(pollingInterval);
     }
 
     try {
-      // Create main pod
+      // Create main pod (idempotent operation - returns existing pod if it exists)
       Pod mainPod = podManager.createMainPod(omJob);
 
-      // Update status - but stay in PENDING until we confirm the pod exists
-      // This avoids the race condition where we transition to RUNNING before the pod is visible
+      // Update status and transition to RUNNING
       omJob.getStatus().setMainPodName(mainPod.getMetadata().getName());
-      omJob.getStatus().setMessage("Main pod created, waiting for confirmation");
+      omJob.getStatus().transitionTo(OMJobPhase.RUNNING, "Main pod created");
 
       eventPublisher.publishNormalEvent(
           omJob,
           "MainPodCreated",
           "Created main ingestion pod: " + mainPod.getMetadata().getName());
 
-      // Stay in PENDING and check again to confirm pod exists
-      return UpdateControl.updateStatus(omJob).rescheduleAfter(Duration.ofSeconds(2));
+      // Transition to RUNNING phase immediately since we have the pod
+      return UpdateControl.updateStatus(omJob).rescheduleAfter(pollingInterval);
 
     } catch (Exception e) {
       LOG.error("Failed to create main pod for OMJob: {}", omJob.getMetadata().getName(), e);
-
-      // If it's an "already exists" error, the pod was created, just retry
-      if (e.getMessage() != null && e.getMessage().contains("already exists")) {
-        LOG.info("Pod already exists, will retry to find it");
-        return UpdateControl.<OMJobResource>noUpdate().rescheduleAfter(Duration.ofSeconds(2));
-      }
-
       omJob
           .getStatus()
           .transitionTo(OMJobPhase.FAILED, "Failed to create main pod: " + e.getMessage());
@@ -231,9 +228,8 @@ public class OMJobReconciler
     if (!podManager.isPodCompleted(pod)) {
       // Pod still running, continue monitoring
       LOG.info(
-          "Main pod still running, rescheduling check in {} seconds",
-          POLLING_INTERVAL.getSeconds());
-      return UpdateControl.<OMJobResource>noUpdate().rescheduleAfter(POLLING_INTERVAL);
+          "Main pod still running, rescheduling check in {} seconds", pollingInterval.getSeconds());
+      return UpdateControl.<OMJobResource>noUpdate().rescheduleAfter(pollingInterval);
     }
 
     // Main pod completed - capture exit code and transition to exit handler
@@ -268,7 +264,7 @@ public class OMJobReconciler
             "ExitHandlerCreated",
             "Created exit handler pod: " + exitPod.getMetadata().getName());
 
-        return UpdateControl.updateStatus(omJob).rescheduleAfter(POLLING_INTERVAL);
+        return UpdateControl.updateStatus(omJob).rescheduleAfter(pollingInterval);
 
       } catch (Exception e) {
         LOG.error(
@@ -285,7 +281,7 @@ public class OMJobReconciler
     // Check if exit handler has completed
     if (!podManager.isPodCompleted(exitPod)) {
       // Exit handler still running
-      return UpdateControl.<OMJobResource>noUpdate().rescheduleAfter(POLLING_INTERVAL);
+      return UpdateControl.<OMJobResource>noUpdate().rescheduleAfter(pollingInterval);
     }
 
     // Exit handler completed - determine final status

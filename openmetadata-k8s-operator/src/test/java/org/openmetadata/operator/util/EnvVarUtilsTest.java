@@ -15,7 +15,12 @@ package org.openmetadata.operator.util;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import io.fabric8.kubernetes.api.model.*;
+import io.fabric8.kubernetes.api.model.ConfigMapKeySelectorBuilder;
+import io.fabric8.kubernetes.api.model.EnvVar;
+import io.fabric8.kubernetes.api.model.EnvVarBuilder;
+import io.fabric8.kubernetes.api.model.EnvVarSource;
+import io.fabric8.kubernetes.api.model.EnvVarSourceBuilder;
+import io.fabric8.kubernetes.api.model.SecretKeySelectorBuilder;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;

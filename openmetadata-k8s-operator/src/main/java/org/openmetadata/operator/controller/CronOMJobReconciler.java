@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.openmetadata.operator.config.OperatorConfig;
 import org.openmetadata.operator.model.CronOMJobResource;
 import org.openmetadata.operator.model.CronOMJobSpec;
 import org.openmetadata.operator.model.CronOMJobStatus;
@@ -50,10 +51,25 @@ public class CronOMJobReconciler
     implements Reconciler<CronOMJobResource>, ErrorStatusHandler<CronOMJobResource> {
 
   private static final Logger LOG = LoggerFactory.getLogger(CronOMJobReconciler.class);
-  private static final Duration DEFAULT_REQUEUE = Duration.ofMinutes(1);
+  private final Duration defaultRequeue;
+  private final OperatorConfig config;
 
   private final CronParser cronParser =
       new CronParser(CronDefinitionBuilder.instanceDefinitionFor(CronType.UNIX));
+
+  public CronOMJobReconciler() {
+    this(new OperatorConfig());
+  }
+
+  public CronOMJobReconciler(OperatorConfig config) {
+    this.config = config;
+    // For CronOMJob, default requeue is 1 minute or the configured requeue delay, whichever is
+    // larger
+    this.defaultRequeue = Duration.ofSeconds(Math.max(60, config.getRequeueDelaySeconds()));
+    LOG.info(
+        "CronOMJobReconciler configured with default requeue: {} seconds",
+        defaultRequeue.getSeconds());
+  }
 
   @Override
   public UpdateControl<CronOMJobResource> reconcile(
@@ -69,16 +85,16 @@ public class CronOMJobReconciler
       CronOMJobSpec spec = cronOMJob.getSpec();
       if (spec == null || spec.getSchedule() == null || spec.getSchedule().isBlank()) {
         cronOMJob.getStatus().setMessage("Missing schedule");
-        return UpdateControl.updateStatus(cronOMJob).rescheduleAfter(DEFAULT_REQUEUE);
+        return UpdateControl.updateStatus(cronOMJob).rescheduleAfter(defaultRequeue);
       }
       if (spec.getOmJobSpec() == null) {
         cronOMJob.getStatus().setMessage("Missing OMJob template");
-        return UpdateControl.updateStatus(cronOMJob).rescheduleAfter(DEFAULT_REQUEUE);
+        return UpdateControl.updateStatus(cronOMJob).rescheduleAfter(defaultRequeue);
       }
 
       if (Boolean.TRUE.equals(spec.getSuspend())) {
         cronOMJob.getStatus().setMessage("Suspended");
-        return UpdateControl.updateStatus(cronOMJob).rescheduleAfter(DEFAULT_REQUEUE);
+        return UpdateControl.updateStatus(cronOMJob).rescheduleAfter(defaultRequeue);
       }
 
       Cron cron = cronParser.parse(spec.getSchedule());
@@ -95,9 +111,9 @@ public class CronOMJobReconciler
               .map(
                   next ->
                       Duration.between(now, next).isNegative()
-                          ? DEFAULT_REQUEUE
+                          ? defaultRequeue
                           : Duration.between(now, next))
-              .orElse(DEFAULT_REQUEUE);
+              .orElse(defaultRequeue);
 
       if (lastExecution.isEmpty()) {
         cronOMJob.getStatus().setMessage("No execution time found");
@@ -144,7 +160,7 @@ public class CronOMJobReconciler
       if (cronOMJob.getStatus() != null) {
         cronOMJob.getStatus().setMessage("Reconciliation error: " + e.getMessage());
       }
-      return UpdateControl.updateStatus(cronOMJob).rescheduleAfter(DEFAULT_REQUEUE);
+      return UpdateControl.updateStatus(cronOMJob).rescheduleAfter(defaultRequeue);
     }
   }
 

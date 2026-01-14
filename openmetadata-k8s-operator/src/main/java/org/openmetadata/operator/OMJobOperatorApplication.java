@@ -18,6 +18,7 @@ import io.javaoperatorsdk.operator.api.config.ConfigurationService;
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.Configuration;
 import io.kubernetes.client.util.Config;
+import org.openmetadata.operator.config.OperatorConfig;
 import org.openmetadata.operator.controller.CronOMJobReconciler;
 import org.openmetadata.operator.controller.OMJobReconciler;
 import org.openmetadata.operator.service.HealthCheckService;
@@ -45,11 +46,12 @@ public class OMJobOperatorApplication {
     try {
       LOG.info("Starting OMJob Operator...");
 
-      // Get health check port from environment
-      int healthPort = Integer.parseInt(System.getenv().getOrDefault("HEALTH_CHECK_PORT", "8080"));
+      // Load operator configuration
+      OperatorConfig operatorConfig = new OperatorConfig();
+      LOG.info("Operator configuration: {}", operatorConfig);
 
       // Start health check service
-      healthService = new HealthCheckService(healthPort);
+      healthService = new HealthCheckService(operatorConfig.getHealthCheckPort());
       healthService.start();
 
       // Initialize Kubernetes client
@@ -82,8 +84,8 @@ public class OMJobOperatorApplication {
       Operator operator = new Operator(configuration);
 
       // Register OMJob reconciler with namespace configuration
-      OMJobReconciler reconciler = new OMJobReconciler();
-      CronOMJobReconciler cronReconciler = new CronOMJobReconciler();
+      OMJobReconciler reconciler = new OMJobReconciler(operatorConfig);
+      CronOMJobReconciler cronReconciler = new CronOMJobReconciler(operatorConfig);
       if (!"ALL".equals(watchNamespaces) && !watchNamespaces.isEmpty()) {
         String targetNamespace = watchNamespaces.trim();
         // Note: Java Operator SDK only supports watching a single specific namespace or all

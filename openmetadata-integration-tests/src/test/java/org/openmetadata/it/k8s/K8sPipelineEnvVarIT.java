@@ -15,7 +15,6 @@ package org.openmetadata.it.k8s;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import io.fabric8.kubernetes.api.model.*;
 import io.kubernetes.client.openapi.models.V1ConfigMapKeySelector;
 import io.kubernetes.client.openapi.models.V1EnvVar;
 import io.kubernetes.client.openapi.models.V1EnvVarSource;

@@ -1081,35 +1081,43 @@ public class K8sPipelineClient extends PipelineServiceClient {
               .labelSelector(buildLabelSelector(labelSelectorMap))
               .execute();
 
-      if (!pods.getItems().isEmpty()) {
-        V1Pod latestPod = selectLatestPod(pods.getItems());
-
-        if (latestPod == null) {
-          return Map.of("logs", NO_PODS_MESSAGE);
-        }
-
-        String podName = latestPod.getMetadata().getName();
-        String containerName = selectContainerName(latestPod);
-
-        String logs =
-            coreApi
-                .readNamespacedPodLog(podName, k8sConfig.getNamespace())
-                .container(containerName)
-                .execute();
-
-        if (logs == null || logs.isEmpty()) {
-          return Map.of("logs", NO_LOGS_MESSAGE + podName);
-        }
-
-        String taskKey = TYPE_TO_TASK.get(ingestionPipeline.getPipelineType().value());
-        if (taskKey == null) {
-          taskKey = DEFAULT_TASK_KEY;
-        }
-
-        return IngestionLogHandler.buildLogResponse(logs, after, taskKey);
+      // Early return if no pods found - avoid processing empty lists
+      if (pods.getItems().isEmpty()) {
+        LOG.debug("No pods found for pipeline: {}", pipelineName);
+        return Map.of("logs", NO_PODS_MESSAGE);
       }
 
-      return Map.of("logs", NO_PODS_MESSAGE);
+      // Select the latest pod from the available pods
+      V1Pod latestPod = selectLatestPod(pods.getItems());
+      if (latestPod == null) {
+        // This should not happen given the isEmpty check above, but defensive programming
+        LOG.warn(
+            "selectLatestPod returned null despite having {} pods available",
+            pods.getItems().size());
+        return Map.of("logs", NO_PODS_MESSAGE);
+      }
+
+      String podName = latestPod.getMetadata().getName();
+      String containerName = selectContainerName(latestPod);
+      LOG.debug("Retrieving logs from pod: {} container: {}", podName, containerName);
+
+      String logs =
+          coreApi
+              .readNamespacedPodLog(podName, k8sConfig.getNamespace())
+              .container(containerName)
+              .execute();
+
+      if (logs == null || logs.isEmpty()) {
+        LOG.debug("No logs available for pod: {}", podName);
+        return Map.of("logs", NO_LOGS_MESSAGE + podName);
+      }
+
+      String taskKey = TYPE_TO_TASK.get(ingestionPipeline.getPipelineType().value());
+      if (taskKey == null) {
+        taskKey = DEFAULT_TASK_KEY;
+      }
+
+      return IngestionLogHandler.buildLogResponse(logs, after, taskKey);
 
     } catch (ApiException e) {
       LOG.error("Failed to get logs for pipeline {}: {}", pipelineName, e.getResponseBody());
@@ -1118,22 +1126,48 @@ public class K8sPipelineClient extends PipelineServiceClient {
   }
 
   private V1Pod selectLatestPod(List<V1Pod> pods) {
+    // Early return if pod list is null or empty - avoid unnecessary stream processing
+    if (pods == null || pods.isEmpty()) {
+      LOG.debug("No pods available for selection");
+      return null;
+    }
+
+    // Filter for main pods (preferred) - only process if we have pods
     List<V1Pod> mainPods =
         pods.stream()
             .filter(
                 pod -> {
+                  if (pod.getMetadata() == null) {
+                    LOG.warn("Pod with null metadata found, skipping");
+                    return false;
+                  }
                   Map<String, String> labels = pod.getMetadata().getLabels();
                   return labels != null
                       && OMJOB_POD_TYPE_MAIN.equals(labels.get(OMJOB_LABEL_POD_TYPE));
                 })
             .toList();
+
+    // Use main pods if available, otherwise fall back to all pods
     List<V1Pod> candidates = mainPods.isEmpty() ? pods : mainPods;
+
+    // Log selection strategy for debugging
+    LOG.debug(
+        "Selecting latest pod from {} candidates ({} main pods found out of {} total pods)",
+        candidates.size(),
+        mainPods.size(),
+        pods.size());
+
     return candidates.stream()
+        .filter(pod -> pod.getMetadata() != null) // Additional safety check
         .sorted(
             (a, b) -> {
               OffsetDateTime timeA = a.getMetadata().getCreationTimestamp();
               OffsetDateTime timeB = b.getMetadata().getCreationTimestamp();
-              return timeB.compareTo(timeA);
+              // Handle null timestamps gracefully
+              if (timeA == null && timeB == null) return 0;
+              if (timeA == null) return 1; // null timestamps go to end
+              if (timeB == null) return -1;
+              return timeB.compareTo(timeA); // Latest first
             })
         .findFirst()
         .orElse(null);

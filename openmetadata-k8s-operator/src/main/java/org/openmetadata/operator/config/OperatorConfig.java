@@ -27,18 +27,24 @@ public class OperatorConfig {
   private static final String ENV_RECONCILIATION_THREADS = "RECONCILIATION_THREADS";
   private static final String ENV_HEALTH_CHECK_PORT = "HEALTH_CHECK_PORT";
   private static final String ENV_METRICS_PORT = "METRICS_PORT";
+  private static final String ENV_POLLING_INTERVAL_SECONDS = "POLLING_INTERVAL_SECONDS";
+  private static final String ENV_REQUEUE_DELAY_SECONDS = "REQUEUE_DELAY_SECONDS";
 
   // Default values
   private static final String DEFAULT_LOG_LEVEL = "INFO";
   private static final int DEFAULT_RECONCILIATION_THREADS = 5;
   private static final int DEFAULT_HEALTH_CHECK_PORT = 8080;
   private static final int DEFAULT_METRICS_PORT = 8081;
+  private static final int DEFAULT_POLLING_INTERVAL_SECONDS = 10;
+  private static final int DEFAULT_REQUEUE_DELAY_SECONDS = 30;
 
   private final String operatorNamespace;
   private final String logLevel;
   private final int reconciliationThreads;
   private final int healthCheckPort;
   private final int metricsPort;
+  private final int pollingIntervalSeconds;
+  private final int requeueDelaySeconds;
 
   public OperatorConfig() {
     this.operatorNamespace = getEnvOrDefault(ENV_OPERATOR_NAMESPACE, "default");
@@ -47,6 +53,10 @@ public class OperatorConfig {
         getIntEnvOrDefault(ENV_RECONCILIATION_THREADS, DEFAULT_RECONCILIATION_THREADS);
     this.healthCheckPort = getIntEnvOrDefault(ENV_HEALTH_CHECK_PORT, DEFAULT_HEALTH_CHECK_PORT);
     this.metricsPort = getIntEnvOrDefault(ENV_METRICS_PORT, DEFAULT_METRICS_PORT);
+    this.pollingIntervalSeconds =
+        getIntEnvOrDefault(ENV_POLLING_INTERVAL_SECONDS, DEFAULT_POLLING_INTERVAL_SECONDS);
+    this.requeueDelaySeconds =
+        getIntEnvOrDefault(ENV_REQUEUE_DELAY_SECONDS, DEFAULT_REQUEUE_DELAY_SECONDS);
   }
 
   // Getters
@@ -69,6 +79,14 @@ public class OperatorConfig {
 
   public int getMetricsPort() {
     return metricsPort;
+  }
+
+  public int getPollingIntervalSeconds() {
+    return pollingIntervalSeconds;
+  }
+
+  public int getRequeueDelaySeconds() {
+    return requeueDelaySeconds;
   }
 
   // Utility methods
@@ -100,8 +118,16 @@ public class OperatorConfig {
             + "logLevel='%s', "
             + "reconciliationThreads=%d, "
             + "healthCheckPort=%d, "
-            + "metricsPort=%d"
+            + "metricsPort=%d, "
+            + "pollingIntervalSeconds=%d, "
+            + "requeueDelaySeconds=%d"
             + "}",
-        operatorNamespace, logLevel, reconciliationThreads, healthCheckPort, metricsPort);
+        operatorNamespace,
+        logLevel,
+        reconciliationThreads,
+        healthCheckPort,
+        metricsPort,
+        pollingIntervalSeconds,
+        requeueDelaySeconds);
   }
 }

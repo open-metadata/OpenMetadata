@@ -16,7 +16,15 @@ package org.openmetadata.service.clients.pipeline.k8s;
 import static org.junit.jupiter.api.Assertions.*;
 
 import io.kubernetes.client.custom.Quantity;
-import io.kubernetes.client.openapi.models.*;
+import io.kubernetes.client.openapi.models.V1ConfigMapKeySelector;
+import io.kubernetes.client.openapi.models.V1EnvVar;
+import io.kubernetes.client.openapi.models.V1EnvVarSource;
+import io.kubernetes.client.openapi.models.V1LocalObjectReference;
+import io.kubernetes.client.openapi.models.V1ObjectFieldSelector;
+import io.kubernetes.client.openapi.models.V1PodSecurityContext;
+import io.kubernetes.client.openapi.models.V1ResourceFieldSelector;
+import io.kubernetes.client.openapi.models.V1ResourceRequirements;
+import io.kubernetes.client.openapi.models.V1SecretKeySelector;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;

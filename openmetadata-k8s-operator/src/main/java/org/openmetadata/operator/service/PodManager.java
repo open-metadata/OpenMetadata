@@ -13,7 +13,19 @@
 
 package org.openmetadata.operator.service;
 
-import io.fabric8.kubernetes.api.model.*;
+import io.fabric8.kubernetes.api.model.CapabilitiesBuilder;
+import io.fabric8.kubernetes.api.model.Container;
+import io.fabric8.kubernetes.api.model.ContainerBuilder;
+import io.fabric8.kubernetes.api.model.EnvVar;
+import io.fabric8.kubernetes.api.model.EnvVarBuilder;
+import io.fabric8.kubernetes.api.model.ObjectMetaBuilder;
+import io.fabric8.kubernetes.api.model.OwnerReference;
+import io.fabric8.kubernetes.api.model.OwnerReferenceBuilder;
+import io.fabric8.kubernetes.api.model.Pod;
+import io.fabric8.kubernetes.api.model.PodBuilder;
+import io.fabric8.kubernetes.api.model.PodSpecBuilder;
+import io.fabric8.kubernetes.api.model.PodStatus;
+import io.fabric8.kubernetes.api.model.SecurityContextBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -46,19 +58,36 @@ public class PodManager {
   }
 
   /**
-   * Create main ingestion pod from OMJob specification
+   * Create main ingestion pod from OMJob specification.
+   * This method is idempotent - it will return the existing pod if it already exists
+   * with the expected name, preventing race conditions.
    */
   public Pod createMainPod(OMJobResource omJob) {
     LOG.info("Creating main pod for OMJob: {}", omJob.getMetadata().getName());
 
-    OMJobSpec.OMJobPodSpec podSpec = omJob.getSpec().getMainPodSpec();
     String podName = generateMainPodName(omJob);
+    String namespace = omJob.getMetadata().getNamespace();
 
+    // First check if pod already exists with the expected name (idempotent operation)
+    try {
+      Pod existingPod = client.pods().inNamespace(namespace).withName(podName).get();
+      if (existingPod != null) {
+        LOG.info(
+            "Main pod already exists: {} in namespace: {}, returning existing pod",
+            podName,
+            namespace);
+        return existingPod;
+      }
+    } catch (Exception e) {
+      LOG.debug("Pod {} does not exist yet, proceeding with creation", podName);
+    }
+
+    // Build the pod specification
+    OMJobSpec.OMJobPodSpec podSpec = omJob.getSpec().getMainPodSpec();
     Pod pod = buildPod(omJob, podName, podSpec, LabelBuilder.buildMainPodLabels(omJob), null);
 
     try {
-      Pod createdPod =
-          client.pods().inNamespace(omJob.getMetadata().getNamespace()).resource(pod).create();
+      Pod createdPod = client.pods().inNamespace(namespace).resource(pod).create();
 
       LOG.info(
           "Created main pod: {} in namespace: {}",
@@ -68,19 +97,50 @@ public class PodManager {
       return createdPod;
 
     } catch (Exception e) {
+      // If creation fails due to "already exists", try to fetch the existing pod
+      if (e.getMessage() != null && e.getMessage().toLowerCase().contains("already exists")) {
+        LOG.info("Pod {} already exists (race condition), fetching existing pod", podName);
+        try {
+          Pod existingPod = client.pods().inNamespace(namespace).withName(podName).get();
+          if (existingPod != null) {
+            return existingPod;
+          }
+        } catch (Exception fetchException) {
+          LOG.warn("Failed to fetch existing pod after creation conflict", fetchException);
+        }
+      }
       LOG.error("Failed to create main pod for OMJob: {}", omJob.getMetadata().getName(), e);
       throw new RuntimeException("Failed to create main pod", e);
     }
   }
 
   /**
-   * Create exit handler pod from OMJob specification
+   * Create exit handler pod from OMJob specification.
+   * This method is idempotent - it will return the existing pod if it already exists
+   * with the expected name, preventing race conditions.
    */
   public Pod createExitHandlerPod(OMJobResource omJob) {
     LOG.info("Creating exit handler pod for OMJob: {}", omJob.getMetadata().getName());
 
-    OMJobSpec.OMJobPodSpec podSpec = omJob.getSpec().getExitHandlerSpec();
     String podName = generateExitHandlerPodName(omJob);
+    String namespace = omJob.getMetadata().getNamespace();
+
+    // First check if pod already exists with the expected name (idempotent operation)
+    try {
+      Pod existingPod = client.pods().inNamespace(namespace).withName(podName).get();
+      if (existingPod != null) {
+        LOG.info(
+            "Exit handler pod already exists: {} in namespace: {}, returning existing pod",
+            podName,
+            namespace);
+        return existingPod;
+      }
+    } catch (Exception e) {
+      LOG.debug("Pod {} does not exist yet, proceeding with creation", podName);
+    }
+
+    // Build the pod specification
+    OMJobSpec.OMJobPodSpec podSpec = omJob.getSpec().getExitHandlerSpec();
 
     List<EnvVar> envVars = new ArrayList<>();
     if (podSpec.getEnv() != null) {
@@ -98,8 +158,7 @@ public class PodManager {
         buildPod(omJob, podName, podSpec, LabelBuilder.buildExitHandlerLabels(omJob), envVars);
 
     try {
-      Pod createdPod =
-          client.pods().inNamespace(omJob.getMetadata().getNamespace()).resource(pod).create();
+      Pod createdPod = client.pods().inNamespace(namespace).resource(pod).create();
 
       LOG.info(
           "Created exit handler pod: {} in namespace: {}",
@@ -109,6 +168,18 @@ public class PodManager {
       return createdPod;
 
     } catch (Exception e) {
+      // If creation fails due to "already exists", try to fetch the existing pod
+      if (e.getMessage() != null && e.getMessage().toLowerCase().contains("already exists")) {
+        LOG.info("Pod {} already exists (race condition), fetching existing pod", podName);
+        try {
+          Pod existingPod = client.pods().inNamespace(namespace).withName(podName).get();
+          if (existingPod != null) {
+            return existingPod;
+          }
+        } catch (Exception fetchException) {
+          LOG.warn("Failed to fetch existing pod after creation conflict", fetchException);
+        }
+      }
       LOG.error(
           "Failed to create exit handler pod for OMJob: {}", omJob.getMetadata().getName(), e);
       throw new RuntimeException("Failed to create exit handler pod", e);
@@ -211,12 +282,10 @@ public class PodManager {
    */
   public void deletePods(OMJobResource omJob) {
     LOG.info("Deleting pods for OMJob: {}", omJob.getMetadata().getName());
-
     Map<String, String> selector = LabelBuilder.buildPodSelector(omJob);
 
     try {
       client.pods().inNamespace(omJob.getMetadata().getNamespace()).withLabels(selector).delete();
-
       LOG.info("Deleted pods for OMJob: {}", omJob.getMetadata().getName());
 
     } catch (Exception e) {
