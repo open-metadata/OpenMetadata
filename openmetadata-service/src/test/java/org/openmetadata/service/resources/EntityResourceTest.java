@@ -1300,7 +1300,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   void patchWrongDomainId(TestInfo test) throws IOException {
-    Assumptions.assumeTrue(supportsDomains);
+    Assumptions.assumeTrue(supportsDomains && supportsPatchDomains);
     T entity = createEntity(createRequest(test, 0), ADMIN_AUTH_HEADERS);
     // Data Product domain cannot be modified see DataProductRepository.restorePatchAttributes
     Assumptions.assumeTrue(!(entity.getEntityReference().getType().equals(DATA_PRODUCT)));
