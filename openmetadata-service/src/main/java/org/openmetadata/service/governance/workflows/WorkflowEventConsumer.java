@@ -6,10 +6,14 @@ import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENT
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -26,6 +30,15 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 @Slf4j
 public class WorkflowEventConsumer implements Destination<ChangeEvent> {
   public static final String GOVERNANCE_BOT = "governance-bot";
+
+  private static final RetryConfig RETRY_CONFIG =
+      RetryConfig.custom()
+          .maxAttempts(3)
+          .waitDuration(Duration.ofMillis(100))
+          .retryOnException(WorkflowEventConsumer::isTransientDatabaseError)
+          .build();
+
+  private final Retry retry = Retry.of("workflow-event-consumer", RETRY_CONFIG);
   private final SubscriptionDestination subscriptionDestination;
   private final EventSubscription eventSubscription;
 
@@ -133,7 +146,9 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
               event.getUserName());
         }
 
-        WorkflowHandler.getInstance().triggerWithSignal(signal, variables);
+        Retry.decorateRunnable(
+                retry, () -> WorkflowHandler.getInstance().triggerWithSignal(signal, variables))
+            .run();
       }
     } catch (Exception exc) {
       String message =
@@ -145,6 +160,19 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
               GOVERNANCE_WORKFLOW_CHANGE_EVENT, exc.getMessage()),
           Pair.of(subscriptionDestination.getId(), event));
     }
+  }
+
+  private static boolean isTransientDatabaseError(Throwable e) {
+    String rootCauseMessage = ExceptionUtils.getRootCauseMessage(e);
+    if (rootCauseMessage == null) {
+      return false;
+    }
+    String lowerMessage = rootCauseMessage.toLowerCase();
+    return lowerMessage.contains("deadlock")
+        || lowerMessage.contains("lock wait timeout")
+        || lowerMessage.contains("try restarting transaction")
+        || lowerMessage.contains("updated by another transaction concurrently")
+        || lowerMessage.contains("optimisticlockingfailureexception");
   }
 
   @Override
