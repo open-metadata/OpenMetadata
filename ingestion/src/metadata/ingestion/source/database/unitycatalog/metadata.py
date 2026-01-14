@@ -367,6 +367,7 @@ class UnitycatalogSource(
                 ),
                 owners=self.get_owner_ref(table.owner),
                 tags=self.get_tag_labels(table_name),
+                locationPath=table.storage_location,
             )
             yield Either(right=table_request)
 
