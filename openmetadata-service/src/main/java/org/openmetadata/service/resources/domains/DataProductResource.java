@@ -965,6 +965,13 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @PathParam("id")
           UUID id,
       @Parameter(
+              description =
+                  "Fields to include (comma-separated): owners,tags,followers,extension,domains,dataProducts,sourceHash,votes,lifeCycle,certification",
+              schema = @Schema(type = "string", defaultValue = "owners,tags"))
+          @QueryParam("fields")
+          @DefaultValue("owners,tags")
+          String fields,
+      @Parameter(
               description = "Limit the number of results returned",
               schema = @Schema(type = "integer", defaultValue = "50"))
           @QueryParam("limit")
@@ -982,7 +989,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return Response.ok(repository.getPaginatedInputPorts(id, limit, offset)).build();
+    return Response.ok(repository.getPaginatedInputPorts(id, fields, limit, offset)).build();
   }
 
   @GET
@@ -1011,6 +1018,13 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @PathParam("fqn")
           String fqn,
       @Parameter(
+              description =
+                  "Fields to include (comma-separated): owners,tags,followers,extension,domains,dataProducts,sourceHash,votes,lifeCycle,certification",
+              schema = @Schema(type = "string", defaultValue = "owners,tags"))
+          @QueryParam("fields")
+          @DefaultValue("owners,tags")
+          String fields,
+      @Parameter(
               description = "Limit the number of results returned",
               schema = @Schema(type = "integer", defaultValue = "50"))
           @QueryParam("limit")
@@ -1028,7 +1042,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return Response.ok(repository.getPaginatedInputPortsByName(fqn, limit, offset)).build();
+    return Response.ok(repository.getPaginatedInputPortsByName(fqn, fields, limit, offset)).build();
   }
 
   @GET
@@ -1057,6 +1071,13 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @PathParam("id")
           UUID id,
       @Parameter(
+              description =
+                  "Fields to include (comma-separated): owners,tags,followers,extension,domains,dataProducts,sourceHash,votes,lifeCycle,certification",
+              schema = @Schema(type = "string", defaultValue = "owners,tags"))
+          @QueryParam("fields")
+          @DefaultValue("owners,tags")
+          String fields,
+      @Parameter(
               description = "Limit the number of results returned",
               schema = @Schema(type = "integer", defaultValue = "50"))
           @QueryParam("limit")
@@ -1074,7 +1095,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return Response.ok(repository.getPaginatedOutputPorts(id, limit, offset)).build();
+    return Response.ok(repository.getPaginatedOutputPorts(id, fields, limit, offset)).build();
   }
 
   @GET
@@ -1103,6 +1124,13 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @PathParam("fqn")
           String fqn,
       @Parameter(
+              description =
+                  "Fields to include (comma-separated): owners,tags,followers,extension,domains,dataProducts,sourceHash,votes,lifeCycle,certification",
+              schema = @Schema(type = "string", defaultValue = "owners,tags"))
+          @QueryParam("fields")
+          @DefaultValue("owners,tags")
+          String fields,
+      @Parameter(
               description = "Limit the number of results returned",
               schema = @Schema(type = "integer", defaultValue = "50"))
           @QueryParam("limit")
@@ -1120,7 +1148,8 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return Response.ok(repository.getPaginatedOutputPortsByName(fqn, limit, offset)).build();
+    return Response.ok(repository.getPaginatedOutputPortsByName(fqn, fields, limit, offset))
+        .build();
   }
 
   @GET
@@ -1149,6 +1178,20 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       @Parameter(description = "Id of the data product", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id,
+      @Parameter(
+              description =
+                  "Fields to include for input ports (comma-separated): owners,tags,followers,extension,domains,dataProducts,sourceHash,votes,lifeCycle,certification",
+              schema = @Schema(type = "string", defaultValue = "owners,tags"))
+          @QueryParam("inputFields")
+          @DefaultValue("owners,tags")
+          String inputFields,
+      @Parameter(
+              description =
+                  "Fields to include for output ports (comma-separated): owners,tags,followers,extension,domains,dataProducts,sourceHash,votes,lifeCycle,certification",
+              schema = @Schema(type = "string", defaultValue = "owners,tags"))
+          @QueryParam("outputFields")
+          @DefaultValue("owners,tags")
+          String outputFields,
       @Parameter(
               description = "Limit the number of input ports returned",
               schema = @Schema(type = "integer", defaultValue = "50"))
@@ -1183,7 +1226,8 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     return Response.ok(
-            repository.getPortsView(id, inputLimit, inputOffset, outputLimit, outputOffset))
+            repository.getPortsView(
+                id, inputFields, outputFields, inputLimit, inputOffset, outputLimit, outputOffset))
         .build();
   }
 
@@ -1214,6 +1258,20 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @PathParam("fqn")
           String fqn,
       @Parameter(
+              description =
+                  "Fields to include for input ports (comma-separated): owners,tags,followers,extension,domains,dataProducts,sourceHash,votes,lifeCycle,certification",
+              schema = @Schema(type = "string", defaultValue = "owners,tags"))
+          @QueryParam("inputFields")
+          @DefaultValue("owners,tags")
+          String inputFields,
+      @Parameter(
+              description =
+                  "Fields to include for output ports (comma-separated): owners,tags,followers,extension,domains,dataProducts,sourceHash,votes,lifeCycle,certification",
+              schema = @Schema(type = "string", defaultValue = "owners,tags"))
+          @QueryParam("outputFields")
+          @DefaultValue("owners,tags")
+          String outputFields,
+      @Parameter(
               description = "Limit the number of input ports returned",
               schema = @Schema(type = "integer", defaultValue = "50"))
           @QueryParam("inputLimit")
@@ -1247,7 +1305,8 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return Response.ok(
-            repository.getPortsViewByName(fqn, inputLimit, inputOffset, outputLimit, outputOffset))
+            repository.getPortsViewByName(
+                fqn, inputFields, outputFields, inputLimit, inputOffset, outputLimit, outputOffset))
         .build();
   }
 }
