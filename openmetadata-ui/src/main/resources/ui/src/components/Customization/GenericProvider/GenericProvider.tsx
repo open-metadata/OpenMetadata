@@ -249,26 +249,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     [data, type, onUpdate, selectedColumn, cleanColumn]
   );
 
-  const handleColumnNavigate = useCallback(
-    (column: ColumnOrTask) => {
-      const columnFqn = column.fullyQualifiedName;
 
-      if (selectedColumn?.fullyQualifiedName === columnFqn) {
-        return;
-      }
-
-      setSelectedColumn(column);
-
-      if (columnFqn && data.fullyQualifiedName) {
-        const newPath = getEntityDetailsPath(type, columnFqn, tab);
-
-        if (location.pathname !== newPath) {
-          navigate(newPath, { replace: true });
-        }
-      }
-    },
-    [selectedColumn, data, type, tab, location, navigate]
-  );
 
   // Extract deleted status from entity data
   const deleted = (data as { deleted?: boolean })?.deleted;
@@ -414,7 +395,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
           tableFqn={data.fullyQualifiedName}
           onClose={closeColumnDetailPanel}
           onColumnFieldUpdate={handleColumnFieldUpdate}
-          onNavigate={handleColumnNavigate}
+          onNavigate={openColumnDetailPanel}
         />
       )}
     </GenericContext.Provider>

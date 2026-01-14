@@ -507,7 +507,7 @@ a[href].link-text-grey,
 // Row highlight animation for direct URL navigation
 @keyframes highlight-fade {
   0% {
-    background-color: rgba(64, 169, 255, 0.3);
+    background-color: fade(@blue-2, 30%);
   }
   100% {
     background-color: transparent;
@@ -518,7 +518,7 @@ a[href].link-text-grey,
   animation: highlight-fade 3s ease-out forwards;
 
   > td {
-    background-color: rgba(64, 169, 255, 0.15) !important;
+    background-color: fade(@blue-2, 15%) !important;
   }
 }
 
