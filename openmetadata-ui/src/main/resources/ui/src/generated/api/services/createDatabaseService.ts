@@ -689,6 +689,16 @@ export interface ConfigObject {
      */
     trustServerCertificate?: boolean;
     /**
+     * Full path to the Microsoft Access database file (.mdb or .accdb). Example:
+     * C:\path\to\database.accdb
+     */
+    databaseFilePath?: string;
+    /**
+     * ODBC driver name for Microsoft Access. Default is 'Microsoft Access Driver (*.mdb,
+     * *.accdb)'.
+     */
+    odbcDriver?: string;
+    /**
      * Use slow logs to extract lineage.
      */
     useSlowLogs?: boolean;
