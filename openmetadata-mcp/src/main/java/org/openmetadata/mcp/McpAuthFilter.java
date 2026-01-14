@@ -1,6 +1,6 @@
 package org.openmetadata.mcp;
 
-import static org.openmetadata.service.socket.SocketAddressFilter.validatePrefixedTokenRequest;
+import static org.openmetadata.service.socket.SocketAddressFilter.checkForUsernameAndImpersonationValidation;
 
 import com.auth0.jwt.interfaces.Claim;
 import jakarta.servlet.Filter;
@@ -56,9 +56,7 @@ public class McpAuthFilter implements Filter {
         ImpersonationContext.setImpersonatedBy(impersonatedBy);
       }
 
-      // Complete token validation (uses validatePrefixedTokenRequest which will validate again,
-      // but this is consistent with existing patterns in SocketAddressFilter)
-      validatePrefixedTokenRequest(jwtFilter, tokenWithType);
+      checkForUsernameAndImpersonationValidation(token, claims, jwtFilter);
 
       // Continue with the filter chain
       filterChain.doFilter(servletRequest, servletResponse);
