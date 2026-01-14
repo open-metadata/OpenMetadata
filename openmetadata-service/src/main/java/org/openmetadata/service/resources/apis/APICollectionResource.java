@@ -72,7 +72,7 @@ import org.openmetadata.service.security.Authorizer;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "apiCollections")
 public class APICollectionResource extends EntityResource<APICollection, APICollectionRepository> {
-  public static final String COLLECTION_PATH = "v1/apiCollections/";
+  public static final String COLLECTION_PATH = "/v1/apiCollections/";
   private final APICollectionMapper mapper = new APICollectionMapper();
   static final String FIELDS = "owners,apiEndpoints,tags,extension,domains,sourceHash";
 

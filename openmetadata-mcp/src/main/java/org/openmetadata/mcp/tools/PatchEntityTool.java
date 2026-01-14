@@ -27,7 +27,7 @@ public class PatchEntityTool implements McpTool {
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params) {
     String entityType = (String) params.get("entityType");
-    String entityFqn = (String) params.get("entityFqn");
+    String fqn = (String) params.get("fqn");
     String jsonPatchString = (String) params.get("patch");
     if (nullOrEmpty(jsonPatchString)) {
       throw new IllegalArgumentException("Patch cannot be null or empty");
@@ -39,7 +39,7 @@ public class PatchEntityTool implements McpTool {
     // Validate If the User Can Perform the Patch Operation
     OperationContext operationContext = new OperationContext(entityType, jsonPatch);
     authorizer.authorize(
-        securityContext, operationContext, new ResourceContext<>(entityType, null, entityFqn));
+        securityContext, operationContext, new ResourceContext<>(entityType, null, fqn));
 
     EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
 
@@ -49,7 +49,7 @@ public class PatchEntityTool implements McpTool {
     RestUtil.PatchResponse<? extends EntityInterface> response =
         repository.patch(
             null,
-            entityFqn,
+            fqn,
             securityContext.getUserPrincipal().getName(),
             jsonPatch,
             ChangeSource.MANUAL,
