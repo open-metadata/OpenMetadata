@@ -29,6 +29,25 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
+jest.mock('../../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
+    authConfig: {
+      provider: 'basic',
+    },
+    inlineAlertDetails: undefined,
+  })),
+}));
+
+jest.mock('../../../../hooks/useDomainStore', () => ({
+  useDomainStore: jest.fn().mockImplementation(() => ({
+    activeDomainEntityRef: undefined,
+  })),
+}));
+
+jest.mock('../../../../rest/auth-API', () => ({
+  generateRandomPwd: jest.fn().mockResolvedValue('randomPassword123!'),
+}));
+
 jest.mock('../../Team/TeamsSelectable/TeamsSelectable', () => {
   return jest.fn().mockReturnValue(<p>TeamsSelectable component</p>);
 });
@@ -96,5 +115,49 @@ describe('Test CreateUser component', () => {
 
     expect(roleSelectInput).not.toBeInTheDocument();
     expect(teamsSelectable).not.toBeInTheDocument();
+  });
+
+  it('should render password fields for Basic auth provider', async () => {
+    const { useApplicationStore } = require('../../../../hooks/useApplicationStore');
+    
+    (useApplicationStore as jest.Mock).mockImplementation(() => ({
+      authConfig: {
+        provider: 'basic',
+      },
+      inlineAlertDetails: undefined,
+    }));
+
+    const { container } = render(<CreateUser {...propsValue} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const passwordGenerator = await findByText(
+      container,
+      'label.automatically-generate'
+    );
+
+    expect(passwordGenerator).toBeInTheDocument();
+  });
+
+  it('should not render password fields for SSO auth provider', async () => {
+    const { useApplicationStore } = require('../../../../hooks/useApplicationStore');
+    
+    (useApplicationStore as jest.Mock).mockImplementation(() => ({
+      authConfig: {
+        provider: 'google',
+      },
+      inlineAlertDetails: undefined,
+    }));
+
+    const { container } = render(<CreateUser {...propsValue} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const passwordGenerator = queryByText(
+      container,
+      'label.automatically-generate'
+    );
+
+    expect(passwordGenerator).not.toBeInTheDocument();
   });
 });
