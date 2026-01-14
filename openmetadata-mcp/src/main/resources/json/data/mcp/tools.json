@@ -190,7 +190,7 @@
             "type": "string",
             "description": "Entity Type to patch."
           },
-          "entityFqn": {
+          "fqn": {
             "type": "string",
             "description": "Fully Qualified Name of the Entity to be patched."
           },
@@ -201,7 +201,7 @@
         },
         "required": [
           "entityType",
-          "entityFqn",
+          "fqn",
           "patch"
         ]
       }

@@ -30,6 +30,7 @@
         "slackBot",
         "slackInstaller",
         "slackState",
+        "teamsAppConfiguration",
         "profilerConfiguration",
         "searchSettings",
         "assetCertificationSettings",
@@ -81,6 +82,9 @@
         },
         {
           "$ref": "../configuration/slackAppConfiguration.json"
+        },
+        {
+          "$ref": "../configuration/teamsAppConfiguration.json"
         },
         {
           "$ref": "../configuration/profilerConfiguration.json"
