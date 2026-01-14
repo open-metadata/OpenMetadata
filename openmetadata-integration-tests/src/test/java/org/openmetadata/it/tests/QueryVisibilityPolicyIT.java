@@ -9,19 +9,22 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateQuery;
-import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -31,6 +34,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 
@@ -91,16 +95,19 @@ public class QueryVisibilityPolicyIT {
         CreateTeam createTeam = new CreateTeam();
         createTeam.setName(testPrefix + "_team");
         createTeam.setDefaultRoles(List.of(role.getId()));
-        createTeam.setTeamType(org.openmetadata.schema.entity.teams.Team.TeamType.GROUP);
+        createTeam.setTeamType(CreateTeam.TeamType.GROUP);
 
         Team team = adminClient.teams().create(createTeam);
         assertNotNull(team, "Team should be created");
 
         try {
           // Step 4: Create a user in that team
-          String userEmail = testPrefix + "_user@test.openmetadata.org";
+          // Use a simpler name for the user to avoid email validation issues
+          String uniqueId = java.util.UUID.randomUUID().toString().substring(0, 8);
+          String userName = "qvptest_" + uniqueId;
+          String userEmail = userName + "@test.openmetadata.org";
           CreateUser createUser = new CreateUser();
-          createUser.setName(testPrefix + "_user");
+          createUser.setName(userName);
           createUser.setEmail(userEmail);
           createUser.setTeams(List.of(team.getId()));
 
@@ -108,90 +115,100 @@ public class QueryVisibilityPolicyIT {
           assertNotNull(testUser, "User should be created");
 
           try {
-            // Step 5: Create a table WITH the PII.Sensitive tag
-            // First, we need a database schema reference
-            // For this test, we'll use an existing database schema
-            CreateTable createTable = new CreateTable();
-            createTable.setName(testPrefix + "_table");
-            createTable.setDatabaseSchema("sample_data.ecommerce_db.shopify");
-            Column column = new Column();
-            column.setName("id");
-            column.setDataType(ColumnDataType.INT);
-            createTable.setColumns(List.of(column));
-
-            TagLabel piiTag = new TagLabel();
-            piiTag.setTagFQN(PII_SENSITIVE_TAG);
-            piiTag.setSource(TagLabel.TagSource.CLASSIFICATION);
-            piiTag.setLabelType(TagLabel.LabelType.MANUAL);
-            piiTag.setState(TagLabel.State.CONFIRMED);
-            createTable.setTags(List.of(piiTag));
-
-            Table taggedTable = adminClient.tables().create(createTable);
-            assertNotNull(taggedTable, "Table should be created");
+            // Step 5: Create database service and schema using factories
+            DatabaseService dbService = DatabaseServiceTestFactory.createPostgres(ns);
+            assertNotNull(dbService, "Database service should be created");
 
             try {
-              // Step 6: Create a query that references the table (query does NOT have the tag)
-              CreateQuery createQuery = new CreateQuery();
-              createQuery.setName(testPrefix + "_query");
-              createQuery.setQuery("SELECT * FROM " + taggedTable.getFullyQualifiedName());
-              EntityReference tableRef = new EntityReference();
-              tableRef.setId(taggedTable.getId());
-              tableRef.setType("table");
-              createQuery.setQueryUsedIn(List.of(tableRef));
-              createQuery.setDuration(0.0);
-              createQuery.setQueryDate(System.currentTimeMillis());
-              createQuery.setService("sample_data");
+              DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, dbService);
+              assertNotNull(schema, "Database schema should be created");
 
-              Query queryForTable = adminClient.queries().create(createQuery);
-              assertNotNull(queryForTable, "Query should be created");
+              // Step 6: Create a table WITH the PII.Sensitive tag using fluent API
+              TagLabel piiTag = new TagLabel();
+              piiTag.setTagFQN(PII_SENSITIVE_TAG);
+              piiTag.setSource(TagLabel.TagSource.CLASSIFICATION);
+              piiTag.setLabelType(TagLabel.LabelType.MANUAL);
+              piiTag.setState(TagLabel.State.CONFIRMED);
+
+              Column column = new Column();
+              column.setName("id");
+              column.setDataType(ColumnDataType.INT);
+
+              Table taggedTable =
+                  Tables.create()
+                      .name(testPrefix + "_table")
+                      .inSchema(schema.getFullyQualifiedName())
+                      .withColumns(List.of(column))
+                      .withTags(List.of(piiTag))
+                      .execute();
+              assertNotNull(taggedTable, "Table should be created");
 
               try {
-                // Create client for the test user
-                OpenMetadataClient testUserClient =
-                    SdkClients.createClient(userEmail, userEmail, new String[] {});
+                // Step 7: Create a query that references the table (query does NOT have the tag)
+                CreateQuery createQuery = new CreateQuery();
+                createQuery.setName(testPrefix + "_query");
+                createQuery.setQuery("SELECT * FROM " + taggedTable.getFullyQualifiedName());
+                EntityReference tableRef = new EntityReference();
+                tableRef.setId(taggedTable.getId());
+                tableRef.setType("table");
+                createQuery.setQueryUsedIn(List.of(tableRef));
+                createQuery.setDuration(0.0);
+                createQuery.setQueryDate(System.currentTimeMillis());
+                createQuery.setService(dbService.getFullyQualifiedName());
 
-                // Step 7: Verify the test user CAN view the table (due to tag-based policy)
-                Table retrievedTable =
-                    testUserClient.tables().get(taggedTable.getId().toString(), "tags");
-                assertNotNull(retrievedTable, "User should be able to view the tagged table");
-                assertTrue(
-                    retrievedTable.getTags().stream()
-                        .anyMatch(t -> PII_SENSITIVE_TAG.equals(t.getTagFQN())),
-                    "Table should have the PII.Sensitive tag");
+                Query queryForTable = adminClient.queries().create(createQuery);
+                assertNotNull(queryForTable, "Query should be created");
 
-                // Step 8: Verify the test user CAN view queries for that table
-                // This is the key test - with the bug, this would fail with FORBIDDEN
-                // After the fix, this should succeed because user has VIEW_ALL (which includes
-                // VIEW_QUERIES) on the table
-                ListParams listParams = new ListParams();
-                listParams.addQueryParam("entityId", taggedTable.getId().toString());
-                listParams.setFields("*");
+                try {
+                  // Create client for the test user
+                  OpenMetadataClient testUserClient =
+                      SdkClients.createClient(userEmail, userEmail, new String[] {});
 
-                ListResponse<Query> queriesForTable = testUserClient.queries().list(listParams);
+                  // Step 8: Verify the test user CAN view the table (due to tag-based policy)
+                  Table retrievedTable =
+                      testUserClient.tables().get(taggedTable.getId().toString(), "tags");
+                  assertNotNull(retrievedTable, "User should be able to view the tagged table");
+                  assertTrue(
+                      retrievedTable.getTags().stream()
+                          .anyMatch(t -> PII_SENSITIVE_TAG.equals(t.getTagFQN())),
+                      "Table should have the PII.Sensitive tag");
 
-                // The user should be able to see queries associated with the table they have access
-                // to
-                assertNotNull(queriesForTable, "Query response should not be null");
-                assertNotNull(queriesForTable.getData(), "Query data should not be null");
-                assertFalse(
-                    queriesForTable.getData().isEmpty(),
-                    "User with VIEW_ALL on table should be able to see queries for that table");
+                  // Step 9: Verify the test user CAN view queries for that table
+                  // This is the key test - with the bug, this would fail with FORBIDDEN
+                  // After the fix, this should succeed because user has VIEW_ALL (which includes
+                  // VIEW_QUERIES) on the table
+                  ListParams listParams = new ListParams();
+                  listParams.addQueryParam("entityId", taggedTable.getId().toString());
+                  listParams.addQueryParam("entityType", "table");
+                  listParams.setFields("*");
 
-                boolean foundQuery =
-                    queriesForTable.getData().stream()
-                        .anyMatch(q -> q.getId().equals(queryForTable.getId()));
-                assertTrue(foundQuery, "The query for the tagged table should be visible");
+                  ListResponse<Query> queriesForTable = testUserClient.queries().list(listParams);
 
+                  assertNotNull(queriesForTable, "Query response should not be null");
+                  assertNotNull(queriesForTable.getData(), "Query data should not be null");
+                  assertFalse(
+                      queriesForTable.getData().isEmpty(),
+                      "User with VIEW_ALL on table should be able to see queries for that table");
+
+                  boolean foundQuery =
+                      queriesForTable.getData().stream()
+                          .anyMatch(q -> q.getId().equals(queryForTable.getId()));
+                  assertTrue(foundQuery, "The query for the tagged table should be visible");
+
+                } finally {
+                  adminClient.queries().delete(queryForTable.getId());
+                }
               } finally {
-                // Cleanup query
-                adminClient.queries().delete(queryForTable.getId());
+                adminClient.tables().delete(taggedTable.getId());
               }
             } finally {
-              // Cleanup table
-              adminClient.tables().delete(taggedTable.getId());
+              adminClient
+                  .databaseServices()
+                  .delete(
+                      dbService.getId().toString(),
+                      java.util.Map.of("recursive", "true", "hardDelete", "true"));
             }
           } finally {
-            // Cleanup user
             adminClient.users().delete(testUser.getId());
           }
         } finally {

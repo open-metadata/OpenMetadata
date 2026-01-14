@@ -41,7 +41,6 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -99,7 +98,9 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       description =
           "Get a list of queries. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
-              + "entries in the list using `limit` and `before` or `after` query params.",
+              + "entries in the list using `limit` and `before` or `after` query params. "
+              + "When filtering by `entityId`, also provide `entityType` to enable proper authorization "
+              + "based on the parent entity's permissions.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -122,6 +123,12 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
               schema = @Schema(type = "UUID"))
           @QueryParam("entityId")
           UUID entityId,
+      @Parameter(
+              description =
+                  "Type of the entity specified by entityId (e.g., 'table', 'storedProcedure'). "
+                      + "Required when entityId is provided for proper authorization.")
+          @QueryParam("entityType")
+          String parentEntityType,
       @Parameter(
               description = "Filter Queries by service Fully Qualified Name",
               schema = @Schema(type = "string"))
@@ -147,6 +154,9 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     if (!CommonUtil.nullOrEmpty(entityId)) {
       filter.addQueryParam("entityId", entityId.toString());
     }
+    if (!CommonUtil.nullOrEmpty(parentEntityType)) {
+      filter.addQueryParam("entityType", parentEntityType);
+    }
     filter.addQueryParam("service", service);
 
     Fields fields = getFields(fieldsParam);
@@ -158,22 +168,14 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     ResourceContext<?> queryResourceContext = filter.getResourceContext(entityType);
     authRequests.add(new AuthRequest(queryOperationContext, queryResourceContext));
 
-    // Fix for GitHub Issue #22551: When filtering by entityId, also check if user has
-    // VIEW_QUERIES permission on the parent entity (e.g., table). This allows users with
+    // Fix for GitHub Issue #22551: When filtering by entityId and entityType, also check if user
+    // has VIEW_QUERIES permission on the parent entity (e.g., table). This allows users with
     // tag-based policies on tables to view queries associated with those tables.
-    if (!CommonUtil.nullOrEmpty(entityId)) {
-      // Look up the entity type from the relationship table
-      String parentEntityType =
-          Entity.getCollectionDAO()
-              .relationshipDAO()
-              .findFromEntityType(entityId, Entity.QUERY, Relationship.MENTIONED_IN.ordinal());
-      if (parentEntityType != null) {
-        OperationContext parentOperationContext =
-            new OperationContext(parentEntityType, MetadataOperation.VIEW_QUERIES);
-        ResourceContext<?> parentResourceContext =
-            new ResourceContext<>(parentEntityType, entityId, null);
-        authRequests.add(new AuthRequest(parentOperationContext, parentResourceContext));
-      }
+    ResourceContext<?> parentResourceContext = filter.getParentResourceContext();
+    if (parentResourceContext != null) {
+      OperationContext parentOperationContext =
+          new OperationContext(parentResourceContext.getResource(), MetadataOperation.VIEW_QUERIES);
+      authRequests.add(new AuthRequest(parentOperationContext, parentResourceContext));
     }
 
     ResultList<Query> queries =
