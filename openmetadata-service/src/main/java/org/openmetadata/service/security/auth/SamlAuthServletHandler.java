@@ -212,10 +212,10 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
         return;
       }
 
-      // Get user
+      // Get user with roles and teams
       User user =
           Entity.getEntityByName(
-              Entity.USER, username, "id,roles,isAdmin,email", Include.NON_DELETED);
+              Entity.USER, username, "id,roles,teams,isAdmin,email", Include.NON_DELETED);
 
       // Generate new access token
       JWTAuthMechanism jwtAuthMechanism =
@@ -291,9 +291,10 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
 
   private User getOrCreateUser(String username, String email) {
     try {
+      // Fetch user with roles and teams to preserve existing assignments
       User existingUser =
           Entity.getEntityByName(
-              Entity.USER, username, "id,roles,isAdmin,email", Include.NON_DELETED);
+              Entity.USER, username, "id,roles,teams,isAdmin,email", Include.NON_DELETED);
 
       boolean shouldBeAdmin = getAdminPrincipals().contains(username);
       LOG.info(

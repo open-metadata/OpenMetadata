@@ -767,28 +767,27 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
   private User getOrCreateOidcUser(String userName, String email) {
     try {
-      String storedUserStr =
-          Entity.getCollectionDAO().userDAO().findUserByNameAndEmail(userName, email);
-      if (storedUserStr != null) {
-        User user = JsonUtils.readValue(storedUserStr, User.class);
+      // Fetch user with roles and teams to preserve existing assignments
+      User user =
+          Entity.getEntityByName(
+              Entity.USER, userName, "id,roles,teams,isAdmin,email", Include.NON_DELETED);
 
-        boolean shouldBeAdmin = getAdminPrincipals().contains(userName);
+      boolean shouldBeAdmin = getAdminPrincipals().contains(userName);
 
-        LOG.info(
-            "OIDC login - Username: {}, Email: {}, Should be admin: {}, Current admin status: {}",
-            userName,
-            email,
-            shouldBeAdmin,
-            user.getIsAdmin());
-        LOG.info("Admin principals list: {}", getAdminPrincipals());
+      LOG.info(
+          "OIDC login - Username: {}, Email: {}, Should be admin: {}, Current admin status: {}",
+          userName,
+          email,
+          shouldBeAdmin,
+          user.getIsAdmin());
+      LOG.info("Admin principals list: {}", getAdminPrincipals());
 
-        if (shouldBeAdmin && !Boolean.TRUE.equals(user.getIsAdmin())) {
-          LOG.info("Updating user {} to admin based on adminPrincipals", userName);
-          user.setIsAdmin(true);
-          UserUtil.addOrUpdateUser(user);
-        }
-        return user;
+      if (shouldBeAdmin && !Boolean.TRUE.equals(user.getIsAdmin())) {
+        LOG.info("Updating user {} to admin based on adminPrincipals", userName);
+        user.setIsAdmin(true);
+        UserUtil.addOrUpdateUser(user);
       }
+      return user;
     } catch (Exception e) {
       LOG.debug("User not found, will create new user: {}", userName);
     }
