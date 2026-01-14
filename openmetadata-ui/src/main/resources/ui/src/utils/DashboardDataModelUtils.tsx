@@ -185,7 +185,9 @@ export const getDashboardDataModelDetailPageTabs = ({
   ];
 };
 
-export const extractDataModelColumns = <T extends Omit<EntityReference, 'type'>>(
+export const extractDataModelColumns = <
+  T extends Omit<EntityReference, 'type'>
+>(
   data: T
 ): Column[] => {
   const dataModel = data as Partial<DashboardDataModel>;

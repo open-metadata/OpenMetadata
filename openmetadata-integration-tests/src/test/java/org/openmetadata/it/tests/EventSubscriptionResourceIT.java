@@ -1559,8 +1559,7 @@ public class EventSubscriptionResourceIT
   }
 
   private List<SubscriptionDestination> getEmailDestination(TestNamespace ns) {
-    Map<String, Object> emailConfig =
-        Map.of("emailAddress", List.of("test@example.com"), "subject", "Test Alert");
+    Map<String, Object> emailConfig = Map.of("receivers", List.of("test@example.com"));
 
     return List.of(
         new SubscriptionDestination()
