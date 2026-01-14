@@ -55,7 +55,7 @@ import org.openmetadata.service.security.Authorizer;
 @Collection(name = "promptTemplates")
 public class PromptTemplateResource
     extends EntityResource<PromptTemplate, PromptTemplateRepository> {
-  public static final String COLLECTION_PATH = "v1/promptTemplates/";
+  public static final String COLLECTION_PATH = "/v1/promptTemplates/";
   private final PromptTemplateMapper mapper = new PromptTemplateMapper();
   static final String FIELDS = "owners,followers,tags,extension,domains";
 

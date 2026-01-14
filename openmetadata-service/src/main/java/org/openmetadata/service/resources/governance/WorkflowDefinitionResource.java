@@ -69,7 +69,7 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 @Slf4j
 public class WorkflowDefinitionResource
     extends EntityResource<WorkflowDefinition, WorkflowDefinitionRepository> {
-  public static final String COLLECTION_PATH = "v1/governance/workflowDefinitions/";
+  public static final String COLLECTION_PATH = "/v1/governance/workflowDefinitions/";
   static final String FIELDS = "owners";
   private final WorkflowDefinitionMapper mapper = new WorkflowDefinitionMapper();
 

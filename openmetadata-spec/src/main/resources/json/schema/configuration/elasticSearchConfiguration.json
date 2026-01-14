@@ -21,11 +21,11 @@
   },
   "properties": {
     "host": {
-      "description": "Elastic Search Host",
+      "description": "Elastic Search Host. Supports single host or comma-separated list for multiple hosts (e.g., 'localhost' or 'es-node1:9200,es-node2:9200,es-node3:9200').",
       "type": "string"
     },
     "port": {
-      "description": "Elastic Search port",
+      "description": "Elastic Search port. Used when host does not include port. Ignored when using comma-separated hosts with ports.",
       "type": "integer"
     },
     "scheme": {
@@ -103,6 +103,21 @@
       "description": "Index factory name",
       "type": "string"
     },
+    "aws": {
+      "description": "AWS IAM authentication configuration for OpenSearch. IAM auth is automatically enabled when region is configured. Uses standard AWS environment variables (AWS_DEFAULT_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN).",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.service.configuration.elasticsearch.AwsConfiguration",
+      "extends": {
+        "$ref": "../security/credentials/awsBaseConfig.json"
+      },
+      "properties": {
+        "serviceName": {
+          "description": "AWS service name for signing (es for Elasticsearch/OpenSearch, aoss for OpenSearch Serverless)",
+          "type": "string",
+          "default": "es"
+        }
+      }
+    },
     "naturalLanguageSearch": {
       "description": "Configuration for natural language search capabilities",
       "type": "object",
@@ -127,10 +142,9 @@
           "description": "AWS Bedrock configuration for natural language processing",
           "type": "object",
           "properties": {
-            "region": {
-              "description": "AWS Region for Bedrock service",
-              "type": "string",
-              "default": "us-east-1"
+            "awsConfig": {
+              "description": "AWS credentials configuration for Bedrock service",
+              "$ref": "../security/credentials/awsBaseConfig.json"
             },
             "modelId": {
               "description": "Bedrock model identifier to use for query transformation",
@@ -146,19 +160,6 @@
               "description": "Dimension of the embedding vector",
               "type": "integer",
               "default": 512
-            },
-            "accessKey": {
-              "description": "AWS access key for Bedrock service authentication",
-              "type": "string"
-            },
-            "secretKey": {
-              "description": "AWS secret key for Bedrock service authentication",
-              "type": "string"
-            },
-            "useIamRole": {
-              "description": "Set to true to use IAM role based authentication instead of access/secret keys.",
-              "type": "boolean",
-              "default": false
             }
           },
           "additionalProperties": false
