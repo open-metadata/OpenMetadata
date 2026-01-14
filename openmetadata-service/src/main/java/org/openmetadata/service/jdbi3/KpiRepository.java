@@ -33,7 +33,6 @@ import org.openmetadata.service.util.EntityUtil;
 @Slf4j
 public class KpiRepository extends EntityRepository<Kpi> {
   private static final String KPI_RESULT_FIELD = "kpiResult";
-  public static final String COLLECTION_PATH = "/v1/kpi";
   private static final String UPDATE_FIELDS =
       "targetValue,dataInsightChart,startDate,endDate,metricType";
   private static final String PATCH_FIELDS =

@@ -60,7 +60,7 @@ import org.openmetadata.service.security.Authorizer;
 @Collection(name = "containers")
 public class ContainerResource extends EntityResource<Container, ContainerRepository> {
   private final ContainerMapper mapper = new ContainerMapper();
-  public static final String COLLECTION_PATH = "v1/containers/";
+  public static final String COLLECTION_PATH = "/v1/containers/";
   static final String FIELDS =
       "parent,children,dataModel,owners,tags,followers,extension,domains,sourceHash";
 
