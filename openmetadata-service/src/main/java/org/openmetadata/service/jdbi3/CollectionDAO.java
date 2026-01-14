@@ -1870,6 +1870,14 @@ public interface CollectionDAO {
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
 
+    @SqlQuery(
+        "SELECT DISTINCT fromEntity FROM entity_relationship "
+            + "WHERE fromId = :fromId AND toEntity = :toEntity AND relation = :relation LIMIT 1")
+    String findFromEntityType(
+        @BindUUID("fromId") UUID fromId,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation);
+
     // Fetch relationships for specific relation types (TO direction: others -> entity)
     // Used for owners, followers, domains, dataProducts, reviewers
     @SqlQuery(
