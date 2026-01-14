@@ -118,7 +118,9 @@ const CommentCard = ({
     return (
       <RichTextEditorPreviewerV1
         className="text-wrap text-xs"
-        markdown={getFrontEndFormat(post.message)}
+        markdown={MarkdownToHTMLConverter.makeHtml(
+          getFrontEndFormat(post.message)
+        )}
       />
     );
   }, [isEditPost, postMessage, handleSave]);
