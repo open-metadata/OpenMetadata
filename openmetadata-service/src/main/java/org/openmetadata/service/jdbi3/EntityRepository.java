@@ -285,6 +285,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final CollectionDAO daoCollection;
   @Getter protected final JobDAO jobDao;
   @Getter protected final SearchRepository searchRepository;
+  @Getter protected final EntityRelationshipRepository relationshipRepository;
   @Getter protected final Set<String> allowedFields;
   public final boolean supportsSoftDelete;
   @Getter protected final boolean supportsTags;
@@ -357,6 +358,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     this.daoCollection = Entity.getCollectionDAO();
     this.jobDao = Entity.getJobDAO();
     this.searchRepository = Entity.getSearchRepository();
+    this.relationshipRepository = new EntityRelationshipRepository(this.daoCollection);
     this.entityType = entityType;
     this.patchFields = getFields(patchFields);
     this.putFields = getFields(putFields);
@@ -2882,8 +2884,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         downVoterRecords.add(entityRelationshipRecord);
       }
     }
-    List<EntityReference> upVoters = getEntityReferences(upVoterRecords);
-    List<EntityReference> downVoters = getEntityReferences(downVoterRecords);
+    List<EntityReference> upVoters = relationshipRepository.getEntityReferences(upVoterRecords);
+    List<EntityReference> downVoters = relationshipRepository.getEntityReferences(downVoterRecords);
     return new Votes()
         .withUpVotes(upVoters.size())
         .withDownVotes(downVoters.size())
@@ -3028,9 +3030,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final List<EntityReference> findFrom(
       UUID toId, String toEntityType, Relationship relationship, String fromEntityType) {
+    return findFrom(toId, toEntityType, relationship, fromEntityType, NON_DELETED);
+  }
+
+  public final List<EntityReference> findFrom(
+      UUID toId,
+      String toEntityType,
+      Relationship relationship,
+      String fromEntityType,
+      Include include) {
     List<EntityRelationshipRecord> records =
         findFromRecords(toId, toEntityType, relationship, fromEntityType);
-    return getEntityReferences(records);
+    return relationshipRepository.getEntityReferences(records, include);
   }
 
   public final List<CollectionDAO.EntityRelationshipObject> findFromRecordsBatch(
@@ -3079,7 +3090,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         toEntity, toId, records, relationship.value(), fromEntityType, mustHaveRelationship);
     if (!records.isEmpty()) {
       try {
-        return Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL);
+        return Entity.getEntityReferenceById(
+            records.get(0).getType(), records.get(0).getId(), NON_DELETED);
       } catch (EntityNotFoundException e) {
         // Entity was deleted but relationship still exists - return null
         LOG.debug(
@@ -3100,7 +3112,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         entityType, toId, records, relationship.value(), fromEntityType, mustHaveRelationship);
     if (!records.isEmpty()) {
       try {
-        return Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL);
+        return Entity.getEntityReferenceById(
+            records.get(0).getType(), records.get(0).getId(), NON_DELETED);
       } catch (EntityNotFoundException e) {
         // Entity was deleted but relationship still exists - return null
         LOG.info(
@@ -3116,21 +3129,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final List<EntityReference> getFromEntityRefs(
       UUID toId, Relationship relationship, String fromEntityType) {
+    return getFromEntityRefs(toId, relationship, fromEntityType, NON_DELETED);
+  }
+
+  public final List<EntityReference> getFromEntityRefs(
+      UUID toId, Relationship relationship, String fromEntityType, Include include) {
     List<EntityRelationshipRecord> records =
         findFromRecords(toId, entityType, relationship, fromEntityType);
-    if (!records.isEmpty()) {
-      List<EntityReference> refs = new ArrayList<>();
-      for (EntityRelationshipRecord record : records) {
-        try {
-          refs.add(Entity.getEntityReferenceById(record.getType(), record.getId(), ALL));
-        } catch (EntityNotFoundException e) {
-          // Skip deleted entities
-          LOG.debug("Skipping deleted entity reference: {} {}", record.getType(), record.getId());
-        }
-      }
-      return refs.isEmpty() ? null : refs;
-    }
-    return null;
+    return relationshipRepository.getEntityReferences(records, include);
   }
 
   public final EntityReference getToEntityRef(
@@ -3141,7 +3147,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         entityType, fromId, records, relationship.value(), toEntityType, mustHaveRelationship);
     if (!records.isEmpty()) {
       try {
-        return getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL);
+        return getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), NON_DELETED);
       } catch (EntityNotFoundException e) {
         // Entity was deleted but relationship still exists - return null
         LOG.debug(
@@ -3181,10 +3187,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final List<EntityReference> findTo(
       UUID fromId, String fromEntityType, Relationship relationship, String toEntityType) {
+    return findTo(fromId, fromEntityType, relationship, toEntityType, NON_DELETED);
+  }
+
+  public final List<EntityReference> findTo(
+      UUID fromId,
+      String fromEntityType,
+      Relationship relationship,
+      String toEntityType,
+      Include include) {
     // When toEntityType is null, all the relationships to any entity is returned
     List<EntityRelationshipRecord> records =
         findToRecords(fromId, fromEntityType, relationship, toEntityType);
-    return getEntityReferences(records);
+    return relationshipRepository.getEntityReferences(records, include);
   }
 
   public final List<EntityRelationshipRecord> findToRecords(
