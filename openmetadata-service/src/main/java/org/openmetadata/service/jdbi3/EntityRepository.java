@@ -91,8 +91,8 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.google.gson.Gson;
-import com.networknt.schema.JsonSchema;
-import com.networknt.schema.ValidationMessage;
+import com.networknt.schema.Error;
+import com.networknt.schema.Schema;
 import jakarta.json.JsonPatch;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.constraints.NotNull;
@@ -2451,29 +2451,81 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection.entityExtensionTimeSeriesDao().deleteBeforeTimestamp(fqn, extension, timestamp);
   }
 
-  private void validateExtension(T entity, Entry<String, JsonNode> field) {
-    if (entity.getExtension() == null) {
+  /**
+   * Public utility method to validate custom properties extension for any entity type.
+   * This method can be used by other repositories that need to validate extensions
+   * without extending EntityRepository.
+   */
+  public static void validateExtension(Object extension, String entityTypeName) {
+    if (extension == null) {
       return;
     }
 
-    // Validate single extension field
-    JsonNode jsonNode = JsonUtils.valueToTree(entity.getExtension());
-    String fieldName = field.getKey();
-    JsonNode fieldValue = field.getValue();
+    JsonNode jsonNode = JsonUtils.valueToTree(extension);
+    Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
 
-    JsonSchema jsonSchema = TypeRegistry.instance().getSchema(entityType, fieldName);
-    if (jsonSchema == null) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.unknownCustomField(fieldName));
+    while (customFields.hasNext()) {
+      Entry<String, JsonNode> entry = customFields.next();
+      String fieldName = entry.getKey();
+      JsonNode fieldValue = entry.getValue();
+
+      // Validate that the custom property exists for this entity type
+      Schema jsonSchema = TypeRegistry.instance().getSchema(entityTypeName, fieldName);
+      if (jsonSchema == null) {
+        throw new IllegalArgumentException(CatalogExceptionMessage.unknownCustomField(fieldName));
+      }
+
+      // Validate against JSON schema - this handles all validation including type-specific rules
+      List<Error> validationMessages = jsonSchema.validate(fieldValue);
+      if (!validationMessages.isEmpty()) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.jsonValidationError(fieldName, validationMessages.toString()));
+      }
     }
-    String customPropertyType = TypeRegistry.getCustomPropertyType(entityType, fieldName);
-    String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityType, fieldName);
-    validateAndUpdateExtensionBasedOnPropertyType(
-        entity, (ObjectNode) jsonNode, fieldName, fieldValue, customPropertyType, propertyConfig);
-    Set<ValidationMessage> validationMessages = jsonSchema.validate(fieldValue);
-    if (!validationMessages.isEmpty()) {
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.jsonValidationError(fieldName, validationMessages.toString()));
+  }
+
+  public static Object validateAndTransformExtension(Object extension, String entityTypeName) {
+    if (extension == null) {
+      return null;
     }
+
+    // Validate custom properties existence and schema compliance
+    validateExtension(extension, entityTypeName);
+
+    // Apply property type-specific transformations (date formatting, enum sorting, etc.)
+    ObjectNode jsonNode = (ObjectNode) JsonUtils.valueToTree(extension);
+    Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
+
+    while (customFields.hasNext()) {
+      Entry<String, JsonNode> entry = customFields.next();
+      String fieldName = entry.getKey();
+      JsonNode fieldValue = entry.getValue();
+
+      String customPropertyType = TypeRegistry.getCustomPropertyType(entityTypeName, fieldName);
+      String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityTypeName, fieldName);
+
+      switch (customPropertyType) {
+        case "date-cp", "dateTime-cp", "time-cp" -> {
+          String formattedValue =
+              getFormattedDateTimeField(
+                  fieldValue.textValue(), customPropertyType, propertyConfig, fieldName);
+          jsonNode.put(fieldName, formattedValue);
+        }
+        case "table-cp" -> validateTableType(fieldValue, propertyConfig, fieldName);
+        case "enum" -> {
+          validateEnumKeys(fieldName, fieldValue, propertyConfig);
+          List<String> enumValues =
+              StreamSupport.stream(fieldValue.spliterator(), false)
+                  .map(JsonNode::asText)
+                  .sorted()
+                  .collect(Collectors.toList());
+          jsonNode.set(fieldName, JsonUtils.valueToTree(enumValues));
+        }
+        default -> {}
+      }
+    }
+
+    return JsonUtils.treeToValue(jsonNode, Object.class);
   }
 
   private void validateExtension(T entity, boolean update) {
@@ -2482,62 +2534,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return;
     }
 
-    JsonNode jsonNode = JsonUtils.valueToTree(entity.getExtension());
-    Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
-    while (customFields.hasNext()) {
-      Entry<String, JsonNode> entry = customFields.next();
-      String fieldName = entry.getKey();
-      JsonNode fieldValue = entry.getValue();
-
-      // Validate the customFields using jsonSchema
-      JsonSchema jsonSchema = TypeRegistry.instance().getSchema(entityType, fieldName);
-      if (jsonSchema == null) {
-        throw new IllegalArgumentException(CatalogExceptionMessage.unknownCustomField(fieldName));
-      }
-      String customPropertyType = TypeRegistry.getCustomPropertyType(entityType, fieldName);
-      String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityType, fieldName);
-
-      validateAndUpdateExtensionBasedOnPropertyType(
-          entity, (ObjectNode) jsonNode, fieldName, fieldValue, customPropertyType, propertyConfig);
-      Set<ValidationMessage> validationMessages = jsonSchema.validate(entry.getValue());
-      if (!validationMessages.isEmpty()) {
-        throw new IllegalArgumentException(
-            CatalogExceptionMessage.jsonValidationError(fieldName, validationMessages.toString()));
-      }
-    }
+    Object transformedExtension = validateAndTransformExtension(entity.getExtension(), entityType);
+    entity.setExtension(transformedExtension);
   }
 
-  private void validateAndUpdateExtensionBasedOnPropertyType(
-      T entity,
-      ObjectNode jsonNode,
-      String fieldName,
-      JsonNode fieldValue,
-      String customPropertyType,
-      String propertyConfig) {
-
-    switch (customPropertyType) {
-      case "date-cp", "dateTime-cp", "time-cp" -> {
-        String formattedValue =
-            getFormattedDateTimeField(
-                fieldValue.textValue(), customPropertyType, propertyConfig, fieldName);
-        jsonNode.put(fieldName, formattedValue);
-      }
-      case "table-cp" -> validateTableType(fieldValue, propertyConfig, fieldName);
-      case "enum" -> {
-        validateEnumKeys(fieldName, fieldValue, propertyConfig);
-        List<String> enumValues =
-            StreamSupport.stream(fieldValue.spliterator(), false)
-                .map(JsonNode::asText)
-                .sorted()
-                .collect(Collectors.toList());
-        jsonNode.set(fieldName, JsonUtils.valueToTree(enumValues));
-        entity.setExtension(jsonNode);
-      }
-      default -> {}
-    }
-  }
-
-  private String getFormattedDateTimeField(
+  private static String getFormattedDateTimeField(
       String fieldValue, String customPropertyType, String propertyConfig, String fieldName) {
     DateTimeFormatter formatter;
 
@@ -2570,7 +2571,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private void validateTableType(JsonNode fieldValue, String propertyConfig, String fieldName) {
+  private static void validateTableType(
+      JsonNode fieldValue, String propertyConfig, String fieldName) {
     TableConfig tableConfig =
         JsonUtils.convertValue(JsonUtils.readTree(propertyConfig), TableConfig.class);
     org.openmetadata.schema.type.customProperties.Table tableValue =
@@ -4013,6 +4015,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private ChangeSource changeSource;
     private final boolean useOptimisticLocking;
 
+    // Store the original FQN at construction time, before any modifications or revert.
+    // This is needed because during change consolidation, revert() reassigns 'original' to
+    // 'previous',
+    // which would cause original.getFullyQualifiedName() to return an outdated value.
+    @Getter private final String originalFqn;
+
     public EntityUpdater(T original, T updated, Operation operation) {
       this(original, updated, operation, null);
     }
@@ -4030,6 +4038,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.original = original;
       this.updated = updated;
       this.operation = operation;
+      this.originalFqn = original.getFullyQualifiedName();
       User updatingUser =
           updated.getUpdatedBy().equalsIgnoreCase(ADMIN_USER_NAME)
               ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
@@ -4527,10 +4536,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       if (!consolidatingChanges) {
-        for (JsonNode node :
-            Stream.of(addedFields, updatedFields, deletedFields).flatMap(List::stream).toList()) {
-          node.fields().forEachRemaining(field -> validateExtension(updated, field));
+        ObjectNode extensionNode = (ObjectNode) JsonUtils.valueToTree(updated.getExtension());
+        for (JsonNode node : Stream.of(addedFields, updatedFields).flatMap(List::stream).toList()) {
+          node.fields()
+              .forEachRemaining(
+                  field -> {
+                    Map<String, Object> singleField = new HashMap<>();
+                    singleField.put(
+                        field.getKey(), JsonUtils.treeToValue(field.getValue(), Object.class));
+                    Object transformedField =
+                        validateAndTransformExtension(singleField, entityType);
+                    JsonNode transformedNode = JsonUtils.valueToTree(transformedField);
+                    extensionNode.set(field.getKey(), transformedNode.get(field.getKey()));
+                  });
         }
+        updated.setExtension(JsonUtils.treeToValue(extensionNode, Object.class));
       }
       if (!addedFields.isEmpty()) {
         fieldAdded(changeDescription, FIELD_EXTENSION, JsonUtils.pojoToJson(addedFields));
@@ -5282,7 +5302,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void storeNewVersion() {
-      LOG.info("storeNewVersion called for entity: {} {}", entityType, updated.getId());
+      LOG.info(
+          "storeNewVersion called for entity: {} {}, changeDescription={}",
+          entityType,
+          updated.getId(),
+          updated.getChangeDescription());
       EntityRepository.this.storeEntity(updated, true);
       // Write-through cache after update
       EntityRepository.this.writeThroughCache(updated, true);
@@ -5316,6 +5340,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return false;
       }
 
+      // Skip consolidation if the name is being changed in this update.
+      // Renaming updates FQN and related entity references (assets, relationships).
+      // Consolidation would revert to a previous version with the old name/FQN,
+      // causing inconsistencies with already-updated references.
+      if (!original.getName().equals(updated.getName())) {
+        LOG.debug("Skipping consolidation for {} - name change detected", original.getId());
+        return false;
+      }
+
+      // Skip consolidation if a previous change in the session was a name change.
+      // The previous version would have the old name/FQN, and reverting to it
+      // would cause the same issues as above.
+      if (wasRenamedInSession(original)) {
+        LOG.debug(
+            "Skipping consolidation for {} - entity was renamed in session", original.getId());
+        return false;
+      }
+
       // If user is the same and the new update is with in the user session timeout
       return original.getVersion() > 0.1 // First update on an entity that
           && operation == Operation.PATCH
@@ -5328,6 +5370,32 @@ public abstract class EntityRepository<T extends EntityInterface> {
               <= sessionTimeoutMillis // With in session timeout
           && diffChangeSource();
       // changes to children
+    }
+
+    /**
+     * Check if the entity was renamed in a previous update within the consolidation window.
+     * This is detected by checking if the changeDescription contains a 'name' field update.
+     */
+    private boolean wasRenamedInSession(T original) {
+      ChangeDescription changeDesc = original.getChangeDescription();
+      ChangeDescription incChangeDesc = original.getIncrementalChangeDescription();
+
+      // Check main changeDescription first
+      if (changeDesc != null && changeDesc.getFieldsUpdated() != null) {
+        if (changeDesc.getFieldsUpdated().stream().anyMatch(fc -> "name".equals(fc.getName()))) {
+          return true;
+        }
+      }
+
+      // Also check incrementalChangeDescription - this captures the name change
+      // even when renameProcessed prevents it from being in the main changeDescription
+      if (incChangeDesc != null && incChangeDesc.getFieldsUpdated() != null) {
+        if (incChangeDesc.getFieldsUpdated().stream().anyMatch(fc -> "name".equals(fc.getName()))) {
+          return true;
+        }
+      }
+
+      return false;
     }
 
     /**

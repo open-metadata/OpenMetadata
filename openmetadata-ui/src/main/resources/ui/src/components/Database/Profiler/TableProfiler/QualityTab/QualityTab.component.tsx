@@ -360,7 +360,7 @@ export const QualityTab = () => {
                   backgroundColor: `${theme.palette.grey['50']}`,
                   color: `${theme.palette.grey['800']}`,
                 },
-                'MuiTabs-root': {
+                '.MuiButtonBase-root': {
                   minHeight: 'unset',
                 },
                 '.MuiTabs-indicator': {
@@ -376,6 +376,9 @@ export const QualityTab = () => {
                   borderLeft: `1px solid ${theme.palette.grey['200']}`,
                   borderTopLeftRadius: 0,
                   borderBottomLeftRadius: 0,
+                },
+                '& .MuiTabs-flexContainer': {
+                  gap: '0px',
                 },
               }}
               value={qualityTab}

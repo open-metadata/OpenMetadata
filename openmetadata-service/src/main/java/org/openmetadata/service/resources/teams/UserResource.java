@@ -176,7 +176,7 @@ import org.openmetadata.service.util.email.TemplateConstants;
     order = 3,
     requiredForOps = true) // Initialize user resource before bot resource (at default order 9)
 public class UserResource extends EntityResource<User, UserRepository> {
-  public static final String COLLECTION_PATH = "v1/users/";
+  public static final String COLLECTION_PATH = "/v1/users/";
   public static final String USER_PROTECTED_FIELDS = "authenticationMechanism";
   private final JWTTokenGenerator jwtTokenGenerator;
   private final TokenRepository tokenRepository;

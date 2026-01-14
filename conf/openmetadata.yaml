@@ -29,6 +29,10 @@ server:
       bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_PORT:-8585}
 
+      # Jetty 12 URI Compliance - UNSAFE allows all special characters in entity names
+      # Required for backward compatibility with entity names containing /, ", etc.
+      uriCompliance: UNSAFE
+
       # Jetty Acceptor and Selector threads for high concurrency
       acceptorThreads: ${SERVER_ACCEPTOR_THREADS:-2}  # 1-2 per CPU core
       selectorThreads: ${SERVER_SELECTOR_THREADS:-8}  # 2-4 per CPU core
@@ -64,11 +68,18 @@ server:
   gzip:
     enabled: false
 
+  # Thread pool configuration
+  # With virtual threads enabled (Java 21+), these settings become less critical
+  # as blocking operations are handled efficiently by the JVM
   maxThreads: ${SERVER_MAX_THREADS:-150}
   minThreads: ${SERVER_MIN_THREADS:-100}
   idleThreadTimeout: ${SERVER_IDLE_THREAD_TIMEOUT:-1 minute}
+
+  # Virtual Threads (Project Loom) - Recommended for Java 21+
+  # Jetty 12 uses AdaptiveExecutionStrategy to route blocking tasks to virtual threads
+  # while keeping non-blocking I/O on platform threads for optimal cache locality
   enableVirtualThreads: ${SERVER_ENABLE_VIRTUAL_THREAD:-false}
-  maxQueuedRequests: ${SERVER_REQUEST_QUEUE:-1024}
+  # Note: maxQueuedRequests removed in Dropwizard 5.0/Jetty 12
 
   # Request/Response logging (disable in production for performance)
   requestLog:
@@ -386,6 +397,8 @@ jwtTokenConfiguration:
 
 elasticsearch:
   searchType: ${SEARCH_TYPE:- "elasticsearch"}
+  # Single host or comma-separated list for multiple hosts
+  # Examples: "localhost" or "es-node1:9200,es-node2:9200,es-node3:9200"
   host: ${ELASTICSEARCH_HOST:-localhost}
   port: ${ELASTICSEARCH_PORT:-9200}
   scheme: ${ELASTICSEARCH_SCHEME:-http}
@@ -404,6 +417,16 @@ elasticsearch:
   payLoadSize: ${ELASTICSEARCH_PAYLOAD_BYTES_SIZE:-10485760}
   searchIndexMappingLanguage : ${ELASTICSEARCH_INDEX_MAPPING_LANG:-EN}
   searchIndexFactoryClassName : org.openmetadata.service.search.SearchIndexFactory
+  # AWS IAM Authentication for OpenSearch (only applicable when searchType is "opensearch")
+  # Uses standard AWS environment variables: https://docs.aws.amazon.com/cli/v1/userguide/cli-configure-envvars.html
+  # IAM auth is automatically enabled when AWS_DEFAULT_REGION is set
+  # Credentials: Use AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY or rely on AWS SDK default credential provider chain
+  aws:
+    region: ${AWS_DEFAULT_REGION:-""}
+    accessKeyId: ${AWS_ACCESS_KEY_ID:-""}
+    secretAccessKey: ${AWS_SECRET_ACCESS_KEY:-""}
+    sessionToken: ${AWS_SESSION_TOKEN:-""}
+    serviceName: ${SEARCH_AWS_SERVICE_NAME:-"es"}  # Use "es" for OpenSearch, "aoss" for OpenSearch Serverless
   naturalLanguageSearch:
     enabled: false
     embeddingProvider: ${EMBEDDING_PROVIDER:-bedrock}

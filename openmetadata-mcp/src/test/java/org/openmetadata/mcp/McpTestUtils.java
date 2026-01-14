@@ -189,7 +189,7 @@ public class McpTestUtils {
       String entityType, String fqn, String patch) {
     Map<String, Object> arguments = new HashMap<>();
     arguments.put("entityType", entityType);
-    arguments.put("entityFqn", fqn);
+    arguments.put("fqn", fqn);
     arguments.put("patch", patch);
     arguments.put("Authorization", createAuthorizationHeader("test-token"));
 

@@ -80,7 +80,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 @Collection(name = "driveServices")
 public class DriveServiceResource
     extends ServiceEntityResource<DriveService, DriveServiceRepository, DriveConnection> {
-  public static final String COLLECTION_PATH = "v1/services/driveServices/";
+  public static final String COLLECTION_PATH = "/v1/services/driveServices/";
   public static final String FIELDS = "pipelines,owners,tags,domains,followers";
   private final DriveServiceMapper driveServiceMapper = new DriveServiceMapper();
 
