@@ -74,7 +74,7 @@ public class MessagingServiceResource
     extends ServiceEntityResource<
         MessagingService, MessagingServiceRepository, MessagingConnection> {
   private final MessagingServiceMapper mapper = new MessagingServiceMapper();
-  public static final String COLLECTION_PATH = "v1/services/messagingServices/";
+  public static final String COLLECTION_PATH = "/v1/services/messagingServices/";
   public static final String FIELDS = "owners,domains,followers";
 
   public MessagingServiceResource(Authorizer authorizer, Limits limits) {
