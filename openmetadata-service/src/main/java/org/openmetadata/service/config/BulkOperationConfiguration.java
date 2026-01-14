@@ -19,27 +19,26 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * Configuration for bulk operations that controls parallelism and resource usage. This
- * configuration helps prevent bulk operations from exhausting database connections and ensures
- * regular user traffic is prioritized.
+ * Configuration for bulk operations that controls parallelism and resource usage.
+ *
+ * <p>This uses a bounded thread pool to limit concurrent database operations, preventing bulk
+ * operations from exhausting the connection pool and starving regular API requests.
  *
  * <p>Environment variables (for Helm/Docker configuration):
  *
  * <ul>
- *   <li>BULK_OPERATION_MAX_CONCURRENT_DB_OPERATIONS - Max concurrent DB operations
- *   <li>BULK_OPERATION_CONNECTION_PERCENTAGE - % of pool allocated to bulk ops
- *   <li>BULK_OPERATION_AUTO_SCALE - Enable auto-scaling based on pool size
- *   <li>BULK_OPERATION_ACQUIRE_TIMEOUT_MS - Timeout for acquiring permits
+ *   <li>BULK_OPERATION_MAX_THREADS - Maximum threads for bulk operations
+ *   <li>BULK_OPERATION_QUEUE_SIZE - Maximum queued operations before rejection
+ *   <li>BULK_OPERATION_TIMEOUT_SECONDS - Timeout for entire bulk operation
  * </ul>
  *
- * <p>Example YAML configuration with env vars:
+ * <p>Example YAML configuration:
  *
  * <pre>
  * bulkOperation:
- *   maxConcurrentDbOperations: ${BULK_OPERATION_MAX_CONCURRENT_DB_OPERATIONS:-10}
- *   bulkConnectionPercentage: ${BULK_OPERATION_CONNECTION_PERCENTAGE:-20}
- *   autoScale: ${BULK_OPERATION_AUTO_SCALE:-true}
- *   acquireTimeoutMs: ${BULK_OPERATION_ACQUIRE_TIMEOUT_MS:-30000}
+ *   maxThreads: ${BULK_OPERATION_MAX_THREADS:-10}
+ *   queueSize: ${BULK_OPERATION_QUEUE_SIZE:-1000}
+ *   timeoutSeconds: ${BULK_OPERATION_TIMEOUT_SECONDS:-300}
  * </pre>
  */
 @Getter
@@ -47,72 +46,44 @@ import lombok.Setter;
 public class BulkOperationConfiguration {
 
   /**
-   * Maximum number of concurrent database operations allowed during bulk processing. This uses a
-   * semaphore to limit concurrent DB access, not thread count. Virtual threads are cheap; DB
-   * connections are the limited resource.
-   *
-   * <p>Default: 10 (conservative for small DB instances)
+   * Maximum number of threads for bulk operation processing. This directly controls how many
+   * concurrent database operations can occur during bulk processing.
    *
    * <p>Recommendations based on DB capacity:
    *
    * <ul>
-   *   <li>2 vCore DB: 5-10
-   *   <li>4 vCore DB: 10-20
-   *   <li>8 vCore DB: 20-40
-   *   <li>16+ vCore DB: 40-80
+   *   <li>2 vCore DB: 5-8
+   *   <li>4 vCore DB: 8-15
+   *   <li>8 vCore DB: 15-25
+   *   <li>16+ vCore DB: 25-50
    * </ul>
    *
-   * <p>Env var: BULK_OPERATION_MAX_CONCURRENT_DB_OPERATIONS
+   * <p>Default: 10 (conservative, works for most deployments)
    */
   @JsonProperty
   @Min(1)
-  @Max(200)
-  private int maxConcurrentDbOperations = 10;
+  @Max(100)
+  private int maxThreads = 10;
 
   /**
-   * Percentage of the connection pool to allocate for bulk operations. The remaining connections
-   * are reserved for regular user traffic (API requests, UI, etc.).
+   * Maximum number of operations that can be queued waiting for a thread. When the queue is full,
+   * new bulk requests will be rejected with 503 Service Unavailable.
    *
-   * <p>User traffic is prioritized - bulk operations only get a portion of the pool.
-   *
-   * <p>Default: 20% (bulk operations get 20%, regular traffic gets 80%)
-   *
-   * <p>Examples:
-   *
-   * <ul>
-   *   <li>Pool size 100, percentage 20% → Bulk gets max 20 concurrent ops
-   *   <li>Pool size 50, percentage 30% → Bulk gets max 15 concurrent ops
-   * </ul>
-   *
-   * <p>Env var: BULK_OPERATION_CONNECTION_PERCENTAGE
+   * <p>Default: 1000 (allows bursts while preventing memory exhaustion)
    */
   @JsonProperty
-  @Min(5)
-  @Max(50)
-  private int bulkConnectionPercentage = 20;
+  @Min(100)
+  @Max(10000)
+  private int queueSize = 1000;
 
   /**
-   * Whether to automatically calculate maxConcurrentDbOperations based on the connection pool size.
-   * When enabled: effectiveMax = min(poolSize * bulkConnectionPercentage / 100,
-   * maxConcurrentDbOperations)
+   * Timeout in seconds for the entire bulk operation. If the operation doesn't complete within this
+   * time, it will be cancelled and return partial results.
    *
-   * <p>Default: true (auto-calculate based on pool size)
-   *
-   * <p>Env var: BULK_OPERATION_AUTO_SCALE
-   */
-  @JsonProperty private boolean autoScale = true;
-
-  /**
-   * Timeout in milliseconds to wait for a permit before failing a bulk operation. This prevents
-   * indefinite blocking when the system is overloaded. Failed operations return 503 Service
-   * Unavailable.
-   *
-   * <p>Default: 30000ms (30 seconds)
-   *
-   * <p>Env var: BULK_OPERATION_ACQUIRE_TIMEOUT_MS
+   * <p>Default: 300 seconds (5 minutes)
    */
   @JsonProperty
-  @Min(1000)
-  @Max(300000)
-  private long acquireTimeoutMs = 30000;
+  @Min(30)
+  @Max(3600)
+  private int timeoutSeconds = 300;
 }

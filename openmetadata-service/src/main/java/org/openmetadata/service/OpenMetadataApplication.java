@@ -97,7 +97,7 @@ import org.openmetadata.service.exception.JsonMappingExceptionMapper;
 import org.openmetadata.service.exception.OMErrorPageHandler;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
-import org.openmetadata.service.jdbi3.BulkOperationSemaphore;
+import org.openmetadata.service.jdbi3.BulkExecutor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MigrationDAO;
@@ -242,10 +242,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.setJdbi(jdbi);
 
-    // Initialize bulk operation semaphore for connection-aware throttling
-    BulkOperationSemaphore.initialize(
-        catalogConfig.getBulkOperationConfiguration(),
-        catalogConfig.getDataSourceFactory().getMaxSize());
+    // Initialize bulk operation executor for bounded concurrent processing
+    BulkExecutor.initialize(catalogConfig.getBulkOperationConfiguration());
 
     initializeSearchRepository(catalogConfig);
     // Initialize the MigrationValidationClient, used in the Settings Repository

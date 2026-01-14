@@ -14,8 +14,23 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Thread-local context for tracking request latencies using Micrometer.
- * This provides accurate latency measurements including percentiles.
+ * Thread-local context for tracking request latencies using Micrometer. This provides accurate
+ * latency measurements including percentiles.
+ *
+ * <p><b>Thread-Safety and Multi-threaded Requests:</b>
+ *
+ * <p>This context can be shared across multiple worker threads using {@link #setContext} for
+ * operations like bulk processing. When shared:
+ *
+ * <ul>
+ *   <li>Database and search time tracking uses atomic operations and aggregates correctly
+ *   <li>Operation counts (dbOperationCount, searchOperationCount) aggregate correctly
+ *   <li><b>Internal time calculation may be inaccurate</b> when multiple threads work concurrently,
+ *       as the internal timer start point is shared. This is a known limitation.
+ * </ul>
+ *
+ * <p>For parallel operations, the "internal" percentage should be interpreted as approximate. The
+ * database and search percentages remain accurate as they track cumulative time across all threads.
  */
 @Slf4j
 public class RequestLatencyContext {
@@ -58,6 +73,9 @@ public class RequestLatencyContext {
     requestContext.set(context);
     String normalizedEndpoint = normalizeUri(endpoint);
     String timerKey = normalizedEndpoint + "|" + normalizedMethod;
+    // Total request timer with histogram for percentile analysis.
+    // Uses reduced SLO buckets (5 instead of 9) to minimize Prometheus cardinality.
+    // Histogram provides p50/p95/p99/p99.9 percentiles automatically.
     Timer timer =
         requestTimers.computeIfAbsent(
             timerKey,
@@ -70,15 +88,11 @@ public class RequestLatencyContext {
                     .minimumExpectedValue(Duration.ofMillis(1))
                     .maximumExpectedValue(Duration.ofSeconds(60))
                     .serviceLevelObjectives(
-                        Duration.ofMillis(10),
-                        Duration.ofMillis(50),
-                        Duration.ofMillis(100),
-                        Duration.ofMillis(200),
-                        Duration.ofMillis(500),
-                        Duration.ofSeconds(1),
-                        Duration.ofSeconds(2),
-                        Duration.ofSeconds(5),
-                        Duration.ofSeconds(10))
+                        Duration.ofMillis(100), // Fast response
+                        Duration.ofMillis(500), // Acceptable
+                        Duration.ofSeconds(1), // Slow
+                        Duration.ofSeconds(5), // Very slow
+                        Duration.ofSeconds(10)) // Timeout threshold
                     .register(Metrics.globalRegistry));
     LOG.debug(
         "Created/retrieved timer for endpoint: {}, method: {}, timer: {}",
@@ -86,7 +100,7 @@ public class RequestLatencyContext {
         normalizedMethod,
         timer);
     context.requestTimerSample = Timer.start(Metrics.globalRegistry);
-    context.internalTimerStartNanos = System.nanoTime();
+    context.internalTimerStartNanos.set(System.nanoTime());
   }
 
   /**
@@ -98,10 +112,11 @@ public class RequestLatencyContext {
       return null;
     }
 
-    long internalStart = context.internalTimerStartNanos;
+    // Atomically read and reset internalTimerStartNanos to prevent race conditions
+    // when multiple threads call this concurrently on the same context
+    long internalStart = context.internalTimerStartNanos.getAndSet(0);
     if (internalStart > 0) {
       context.internalTime.addAndGet(System.nanoTime() - internalStart);
-      context.internalTimerStartNanos = 0;
     }
 
     context.dbOperationCount.incrementAndGet();
@@ -120,7 +135,7 @@ public class RequestLatencyContext {
     long duration = timerSample.stop(DUMMY_TIMER);
     context.dbTime.addAndGet(duration);
 
-    context.internalTimerStartNanos = System.nanoTime();
+    context.internalTimerStartNanos.set(System.nanoTime());
   }
 
   public static Timer.Sample startSearchOperation() {
@@ -128,10 +143,11 @@ public class RequestLatencyContext {
     if (context == null) {
       return null;
     }
-    long internalStart = context.internalTimerStartNanos;
+
+    // Atomically read and reset internalTimerStartNanos to prevent race conditions
+    long internalStart = context.internalTimerStartNanos.getAndSet(0);
     if (internalStart > 0) {
       context.internalTime.addAndGet(System.nanoTime() - internalStart);
-      context.internalTimerStartNanos = 0;
     }
 
     context.searchOperationCount.incrementAndGet();
@@ -151,7 +167,7 @@ public class RequestLatencyContext {
     context.searchTime.addAndGet(duration);
 
     // Resume internal timer
-    context.internalTimerStartNanos = System.nanoTime();
+    context.internalTimerStartNanos.set(System.nanoTime());
   }
 
   public static void endRequest() {
@@ -176,8 +192,9 @@ public class RequestLatencyContext {
         }
       }
 
-      if (context.internalTimerStartNanos > 0) {
-        context.internalTime.addAndGet(System.nanoTime() - context.internalTimerStartNanos);
+      long finalInternalStart = context.internalTimerStartNanos.get();
+      if (finalInternalStart > 0) {
+        context.internalTime.addAndGet(System.nanoTime() - finalInternalStart);
       }
 
       // Get final values from atomic fields
@@ -187,8 +204,10 @@ public class RequestLatencyContext {
       int dbOps = context.dbOperationCount.get();
       int searchOps = context.searchOperationCount.get();
 
-      // Record per-request timers (not per-operation)
-      // This gives us the total DB time for THIS request
+      // Record per-request component timers (not per-operation)
+      // These use simple timers without histograms to reduce Prometheus cardinality.
+      // The total request timer (request.latency.total) has histograms for percentile analysis.
+      // Component timers provide mean/max/count which is sufficient for bottleneck identification.
       Timer dbTimer =
           databaseTimers.computeIfAbsent(
               timerKey,
@@ -197,19 +216,6 @@ public class RequestLatencyContext {
                       .tag(ENDPOINT, normalizedEndpoint)
                       .tag(METHOD, context.method)
                       .description("Total database latency per request")
-                      .publishPercentileHistogram(true)
-                      .minimumExpectedValue(Duration.ofMillis(1))
-                      .maximumExpectedValue(Duration.ofSeconds(30))
-                      .serviceLevelObjectives(
-                          Duration.ofMillis(5),
-                          Duration.ofMillis(10),
-                          Duration.ofMillis(25),
-                          Duration.ofMillis(50),
-                          Duration.ofMillis(100),
-                          Duration.ofMillis(250),
-                          Duration.ofMillis(500),
-                          Duration.ofSeconds(1),
-                          Duration.ofSeconds(2))
                       .register(Metrics.globalRegistry));
       if (dbTimeNanos > 0) {
         dbTimer.record(dbTimeNanos, java.util.concurrent.TimeUnit.NANOSECONDS);
@@ -224,19 +230,6 @@ public class RequestLatencyContext {
                       .tag(ENDPOINT, normalizedEndpoint)
                       .tag(METHOD, context.method)
                       .description("Total search latency per request")
-                      .publishPercentileHistogram(true)
-                      .minimumExpectedValue(Duration.ofMillis(1))
-                      .maximumExpectedValue(Duration.ofSeconds(30))
-                      .serviceLevelObjectives(
-                          Duration.ofMillis(5),
-                          Duration.ofMillis(10),
-                          Duration.ofMillis(25),
-                          Duration.ofMillis(50),
-                          Duration.ofMillis(100),
-                          Duration.ofMillis(250),
-                          Duration.ofMillis(500),
-                          Duration.ofSeconds(1),
-                          Duration.ofSeconds(2))
                       .register(Metrics.globalRegistry));
       if (searchTimeNanos > 0) {
         searchTimer.record(searchTimeNanos, java.util.concurrent.TimeUnit.NANOSECONDS);
@@ -251,19 +244,6 @@ public class RequestLatencyContext {
                       .tag(ENDPOINT, normalizedEndpoint)
                       .tag(METHOD, context.method)
                       .description("Internal processing latency per request")
-                      .publishPercentileHistogram(true)
-                      .minimumExpectedValue(Duration.ofMillis(1))
-                      .maximumExpectedValue(Duration.ofSeconds(10))
-                      .serviceLevelObjectives(
-                          Duration.ofMillis(1),
-                          Duration.ofMillis(5),
-                          Duration.ofMillis(10),
-                          Duration.ofMillis(25),
-                          Duration.ofMillis(50),
-                          Duration.ofMillis(100),
-                          Duration.ofMillis(250),
-                          Duration.ofMillis(500),
-                          Duration.ofSeconds(1))
                       .register(Metrics.globalRegistry));
       if (internalTimeNanos > 0) {
         internalTimer.record(internalTimeNanos, java.util.concurrent.TimeUnit.NANOSECONDS);
@@ -393,7 +373,7 @@ public class RequestLatencyContext {
     final String endpoint;
     final String method;
     volatile Timer.Sample requestTimerSample;
-    volatile long internalTimerStartNanos = 0;
+    final AtomicLong internalTimerStartNanos = new AtomicLong(0);
 
     volatile long totalTime = 0;
     final AtomicLong dbTime = new AtomicLong(0);
