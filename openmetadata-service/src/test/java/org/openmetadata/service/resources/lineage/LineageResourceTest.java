@@ -1631,4 +1631,117 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
         (Set<String>) getChildrenNamesMethod.invoke(lineageRepository, unknownRef);
     assertTrue(unknownChildren.isEmpty(), "Unknown entity type should return empty set");
   }
+
+  @Order(9)
+  @Test
+  void test_lineage_withSchemalessEntities() throws HttpResponseException {
+    // Test creating lineage between schemaless entities to ensure consistency
+    // Create schemaless topic
+    TopicResourceTest topicResourceTest = new TopicResourceTest();
+    CreateTopic schemalessTopicRequest = topicResourceTest.createRequest("schemalessTopicLineage");
+    schemalessTopicRequest.setMessageSchema(null);
+    Topic schemalessTopic =
+        topicResourceTest.createEntity(schemalessTopicRequest, ADMIN_AUTH_HEADERS);
+
+    // Create schemaless container
+    ContainerResourceTest containerResourceTest = new ContainerResourceTest();
+    CreateContainer schemalessContainerRequest =
+        containerResourceTest.createRequest("schemalessContainerLineage");
+    schemalessContainerRequest.setDataModel(null);
+    Container schemalessContainer =
+        containerResourceTest.createEntity(schemalessContainerRequest, ADMIN_AUTH_HEADERS);
+
+    // Test 1: Add lineage between schemaless topic and a table
+    // This should work - entities without children can still have entity-level lineage
+    addEdge(schemalessTopic, TABLES.get(0), null, ADMIN_AUTH_HEADERS);
+    EntityLineage topicLineage =
+        getLineage(
+            schemalessTopic.getEntityReference().getType(),
+            schemalessTopic.getId(),
+            1,
+            1,
+            ADMIN_AUTH_HEADERS);
+    assertNotNull(topicLineage, "Lineage should be created for schemaless topic");
+    assertEquals(
+        1,
+        topicLineage.getDownstreamEdges().size(),
+        "Should have one downstream edge from schemaless topic");
+
+    // Test 2: Add lineage between schemaless container and a table
+    addEdge(schemalessContainer, TABLES.get(1), null, ADMIN_AUTH_HEADERS);
+    EntityLineage containerLineage =
+        getLineage(
+            schemalessContainer.getEntityReference().getType(),
+            schemalessContainer.getId(),
+            1,
+            1,
+            ADMIN_AUTH_HEADERS);
+    assertNotNull(containerLineage, "Lineage should be created for schemaless container");
+    assertEquals(
+        1,
+        containerLineage.getDownstreamEdges().size(),
+        "Should have one downstream edge from schemaless container");
+
+    // Test 3: Add lineage between two schemaless entities
+    addEdge(schemalessTopic, schemalessContainer, null, ADMIN_AUTH_HEADERS);
+    EntityLineage topicToContainerLineage =
+        getLineage(
+            schemalessTopic.getEntityReference().getType(),
+            schemalessTopic.getId(),
+            1,
+            1,
+            ADMIN_AUTH_HEADERS);
+    assertNotNull(topicToContainerLineage, "Lineage should be created between schemaless entities");
+    assertEquals(
+        2,
+        topicToContainerLineage.getDownstreamEdges().size(),
+        "Should have two downstream edges from schemaless topic (table and container)");
+
+    // Test 4: Add reverse lineage - table to schemaless topic
+    addEdge(TABLES.get(2), schemalessTopic, null, ADMIN_AUTH_HEADERS);
+    EntityLineage reverseLineage =
+        getLineage(TABLES.get(2).getType(), TABLES.get(2).getId(), 1, 1, ADMIN_AUTH_HEADERS);
+    assertNotNull(reverseLineage, "Reverse lineage should be created");
+    assertEquals(
+        1,
+        reverseLineage.getDownstreamEdges().size(),
+        "Should have one downstream edge from table to schemaless topic");
+
+    // Test 5: Delete lineage between schemaless entities
+    EntitiesEdge deleteEdge1 =
+        new EntitiesEdge()
+            .withFromEntity(schemalessTopic.getEntityReference())
+            .withToEntity(schemalessContainer.getEntityReference());
+    deleteLineageAndCheck(deleteEdge1, ADMIN_AUTH_HEADERS);
+    EntityLineage afterDeleteLineage =
+        getLineage(
+            schemalessTopic.getEntityReference().getType(),
+            schemalessTopic.getId(),
+            1,
+            1,
+            ADMIN_AUTH_HEADERS);
+    assertEquals(
+        1,
+        afterDeleteLineage.getDownstreamEdges().size(),
+        "Should have one downstream edge after deleting one lineage");
+
+    // Cleanup - delete other lineages
+    EntitiesEdge deleteEdge2 =
+        new EntitiesEdge()
+            .withFromEntity(schemalessTopic.getEntityReference())
+            .withToEntity(TABLES.get(0).getEntityReference());
+    deleteLineageAndCheck(deleteEdge2, ADMIN_AUTH_HEADERS);
+
+    EntitiesEdge deleteEdge3 =
+        new EntitiesEdge()
+            .withFromEntity(schemalessContainer.getEntityReference())
+            .withToEntity(TABLES.get(1).getEntityReference());
+    deleteLineageAndCheck(deleteEdge3, ADMIN_AUTH_HEADERS);
+
+    EntitiesEdge deleteEdge4 =
+        new EntitiesEdge()
+            .withFromEntity(TABLES.get(2).getEntityReference())
+            .withToEntity(schemalessTopic.getEntityReference());
+    deleteLineageAndCheck(deleteEdge4, ADMIN_AUTH_HEADERS);
+  }
 }
