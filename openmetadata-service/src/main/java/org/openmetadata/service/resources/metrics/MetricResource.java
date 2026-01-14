@@ -73,7 +73,7 @@ import org.openmetadata.service.security.Authorizer;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "metrics")
 public class MetricResource extends EntityResource<Metric, MetricRepository> {
-  public static final String COLLECTION_PATH = "v1/metrics/";
+  public static final String COLLECTION_PATH = "/v1/metrics/";
   private final MetricMapper mapper = new MetricMapper();
   static final String FIELDS =
       "owners,reviewers,relatedMetrics,followers,tags,extension,domains,dataProducts";
