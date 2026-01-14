@@ -1,3 +1,10 @@
+-- Update ApplicationBotRole to include Trigger operation
+UPDATE policy_entity
+SET json = jsonb_set(json::jsonb, '{rules,0,operations}', (json->'rules'->0->'operations')::jsonb || '["Trigger"]'::jsonb)
+WHERE name = 'ApplicationBotPolicy'
+  AND json->'rules'->0->'operations' IS NOT NULL
+  AND NOT (json->'rules'->0->'operations' @> '"Trigger"'::jsonb);
+
 -- Create table for persisted audit log events
 CREATE TABLE IF NOT EXISTS audit_log_event (
     id BIGSERIAL PRIMARY KEY,
