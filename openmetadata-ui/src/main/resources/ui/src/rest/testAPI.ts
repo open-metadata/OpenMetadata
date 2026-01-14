@@ -17,6 +17,7 @@ import { PagingResponse } from 'Models';
 import { SORT_ORDER } from '../enums/common.enum';
 import { TestCaseType, TestSuiteType } from '../enums/TestSuite.enum';
 import { CreateTestCase } from '../generated/api/tests/createTestCase';
+import { CreateTestDefinition } from '../generated/api/tests/createTestDefinition';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
 import { DataQualityReport } from '../generated/tests/dataQualityReport';
 import {
@@ -79,8 +80,9 @@ export type ListTestCaseParamsBySearch = ListTestCaseParams & {
 
 export type ListTestDefinitionsParams = ListParams & {
   entityType?: EntityType;
-  testPlatform: TestPlatform;
+  testPlatform?: TestPlatform;
   supportedDataType?: string;
+  enabled?: boolean;
 };
 
 export type ListTestCaseResultsParams = Omit<
@@ -272,6 +274,49 @@ export const getTestDefinitionById = async (
 ) => {
   const response = await APIClient.get<TestDefinition>(
     `${testDefinitionUrl}/${id}`,
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};
+
+export const createTestDefinition = async (data: CreateTestDefinition) => {
+  const response = await APIClient.post<TestDefinition>(
+    testDefinitionUrl,
+    data
+  );
+
+  return response.data;
+};
+
+export const updateTestDefinition = async (data: TestDefinition) => {
+  const response = await APIClient.put<TestDefinition>(testDefinitionUrl, data);
+
+  return response.data;
+};
+
+export const patchTestDefinition = async (id: string, patch: Operation[]) => {
+  const response = await APIClient.patch<TestDefinition>(
+    `${testDefinitionUrl}/${id}`,
+    patch
+  );
+
+  return response.data;
+};
+
+export const deleteTestDefinitionByFqn = async (
+  fqn: string,
+  paramsValue?: { hardDelete?: boolean; recursive?: boolean }
+) => {
+  const params = {
+    hardDelete: true,
+    recursive: true,
+    ...paramsValue,
+  };
+  const response = await APIClient.delete<TestDefinition>(
+    `${testDefinitionUrl}/name/${fqn}`,
     {
       params,
     }

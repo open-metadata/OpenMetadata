@@ -73,7 +73,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 public class PipelineServiceResource
     extends ServiceEntityResource<PipelineService, PipelineServiceRepository, PipelineConnection> {
   private final PipelineServiceMapper mapper = new PipelineServiceMapper();
-  public static final String COLLECTION_PATH = "v1/services/pipelineServices/";
+  public static final String COLLECTION_PATH = "/v1/services/pipelineServices/";
   public static final String FIELDS = "pipelines,owners,domains,followers";
 
   @Override
