@@ -941,6 +941,198 @@ test('Edges are not getting hidden when column is selected and column layer is r
   }
 });
 
+test.only('Verify nodes are expanded and collapsed smoothly', async ({
+  page,
+}) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  const table1 = new TableClass();
+  const table2 = new TableClass();
+  const table3 = new TableClass();
+
+  try {
+    await Promise.all([
+      table1.create(apiContext),
+      table2.create(apiContext),
+      table3.create(apiContext),
+    ]);
+
+    const table1Fqn = get(table1, 'entityResponseData.fullyQualifiedName');
+    const table2Fqn = get(table2, 'entityResponseData.fullyQualifiedName');
+    const table3Fqn = get(table3, 'entityResponseData.fullyQualifiedName');
+
+    await connectEdgeBetweenNodesViaAPI(
+      apiContext,
+      {
+        id: table1.entityResponseData.id,
+        type: 'table',
+      },
+      {
+        id: table2.entityResponseData.id,
+        type: 'table',
+      },
+      []
+    );
+
+    await connectEdgeBetweenNodesViaAPI(
+      apiContext,
+      {
+        id: table2.entityResponseData.id,
+        type: 'table',
+      },
+      {
+        id: table3.entityResponseData.id,
+        type: 'table',
+      },
+      []
+    );
+
+    await test.step('Navigate to lineage page', async () => {
+      await table1.visitEntityPage(page);
+      await visitLineageTab(page);
+      await page.getByTestId('full-screen').click();
+    });
+
+    await test.step(
+      'Collapse downstream nodes from table1 and verify focus remains on table1',
+      async () => {
+        const table1Node = page.getByTestId(`lineage-node-${table1Fqn}`);
+
+        await expect(table1Node).toBeVisible();
+
+        const downstreamCollapseHandle = table1Node.getByTestId(
+          'downstream-collapse-handle'
+        );
+        await expect(downstreamCollapseHandle).toBeVisible();
+
+        const table1Box = await table1Node.boundingBox();
+        expect(table1Box).not.toBeNull();
+
+        await downstreamCollapseHandle.click();
+
+        await page.waitForTimeout(1000);
+
+        await expect(page.getByTestId(`lineage-node-${table2Fqn}`)).toHaveCount(
+          0
+        );
+        await expect(page.getByTestId(`lineage-node-${table3Fqn}`)).toHaveCount(
+          0
+        );
+
+        await expect(table1Node).toBeVisible();
+      }
+    );
+
+    await test.step(
+      'Expand downstream nodes from table1 and verify focus moves to newly loaded nodes',
+      async () => {
+        const table1Node = page.getByTestId(`lineage-node-${table1Fqn}`);
+
+        const plusIcon = table1Node.getByTestId('plus-icon');
+        await expect(plusIcon).toBeVisible();
+
+        const downstreamResponse = page.waitForResponse(
+          `/api/v1/lineage/getLineage/Downstream?fqn=${table1Fqn}&type=table**`
+        );
+
+        await plusIcon.click();
+        await downstreamResponse;
+
+        await page.waitForTimeout(1000);
+
+        const table2Node = page.getByTestId(`lineage-node-${table2Fqn}`);
+        await expect(table2Node).toBeVisible();
+
+        await expect(table2Node).toBeInViewport();
+      }
+    );
+
+    await test.step(
+      'Collapse and re-expand to verify smooth focusing behavior',
+      async () => {
+        const table1Node = page.getByTestId(`lineage-node-${table1Fqn}`);
+
+        const downstreamCollapseHandle = table1Node.getByTestId(
+          'downstream-collapse-handle'
+        );
+        await downstreamCollapseHandle.click();
+
+        await page.waitForTimeout(1000);
+
+        await expect(page.getByTestId(`lineage-node-${table2Fqn}`)).toHaveCount(
+          0
+        );
+
+        const plusIcon = table1Node.getByTestId('plus-icon');
+        await expect(plusIcon).toBeVisible();
+
+        const downstreamResponse = page.waitForResponse(
+          `/api/v1/lineage/getLineage/Downstream?fqn=${table1Fqn}&type=table**`
+        );
+
+        await plusIcon.click();
+        await downstreamResponse;
+
+        await page.waitForTimeout(1000);
+
+        const table2Node = page.getByTestId(`lineage-node-${table2Fqn}`);
+        await expect(table2Node).toBeVisible();
+        await expect(table2Node).toBeInViewport();
+      }
+    );
+
+    await test.step(
+      'Expand table2 downstream and verify focus moves to table3',
+      async () => {
+        const table2Node = page.getByTestId(`lineage-node-${table2Fqn}`);
+
+        const plusIcon = table2Node.getByTestId('plus-icon');
+        await expect(plusIcon).toBeVisible();
+
+        const downstreamResponse = page.waitForResponse(
+          `/api/v1/lineage/getLineage/Downstream?fqn=${table2Fqn}&type=table**`
+        );
+
+        await plusIcon.click();
+        await downstreamResponse;
+
+        await page.waitForTimeout(1000);
+
+        const table3Node = page.getByTestId(`lineage-node-${table3Fqn}`);
+        await expect(table3Node).toBeVisible();
+        await expect(table3Node).toBeInViewport();
+      }
+    );
+
+    await test.step(
+      'Collapse table2 downstream and verify focus returns to table2',
+      async () => {
+        const table2Node = page.getByTestId(`lineage-node-${table2Fqn}`);
+
+        const downstreamCollapseHandle = table2Node.getByTestId(
+          'downstream-collapse-handle'
+        );
+        await downstreamCollapseHandle.click();
+
+        await page.waitForTimeout(1000);
+
+        await expect(page.getByTestId(`lineage-node-${table3Fqn}`)).toHaveCount(
+          0
+        );
+
+        await expect(table2Node).toBeVisible();
+        await expect(table2Node).toBeInViewport();
+      }
+    );
+  } finally {
+    await Promise.all([
+      table1.delete(apiContext),
+      table2.delete(apiContext),
+      table3.delete(apiContext),
+    ]);
+    await afterAction();
+  }
+});
+
 test.describe.serial('Test pagination in column level lineage', () => {
   const generateColumnsWithNames = (count: number) => {
     const columns = [];
