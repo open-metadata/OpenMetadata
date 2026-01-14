@@ -77,6 +77,9 @@ public class QueryRepository extends EntityRepository<Query> {
   public void setInheritedFields(Query entity, EntityUtil.Fields fields) {
     super.setInheritedFields(entity, fields);
     if (fields.contains("domains")) {
+      if (entity.getQueryUsedIn() == null) {
+        entity.setQueryUsedIn(getQueryUsage(entity));
+      }
       List<EntityReference> computedDomains = computeDomainsFromQueryUsage(entity);
       if (!nullOrEmpty(computedDomains)) {
         computedDomains.forEach(domain -> domain.setInherited(true));
@@ -423,14 +426,8 @@ public class QueryRepository extends EntityRepository<Query> {
       recordChange("usedBy", original.getUsedBy(), updated.getUsedBy(), true);
       storeQueryUsedIn(updated.getId(), added, deleted);
 
-      List<EntityReference> originalDomains =
-          original.getDomains() != null ? original.getDomains() : Collections.emptyList();
-      List<EntityReference> recomputedDomains = computeDomainsFromQueryUsage(updated);
-
-      if (!added.isEmpty() || !deleted.isEmpty()) {
-        updateDomains(updated, originalDomains, recomputedDomains);
-      }
-      updated.setDomains(recomputedDomains);
+      // Domains are computed on fetch, not stored
+      updated.setDomains(null);
 
       // Query is a required field. Cannot be removed.
       if (updated.getQuery() != null) {
