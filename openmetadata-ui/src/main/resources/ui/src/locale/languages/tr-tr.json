@@ -1656,6 +1656,7 @@
     "star": "Yıldız",
     "star-open-metadata": "OpenMetadata'yı Yıldızla",
     "star-us-on-github": "GitHub'da Bizi Yıldızlayın",
+    "start-date": "Başlangıç Tarihi",
     "start-date-time-zone": "Başlangıç Tarihi: ({{timeZone}})",
     "start-elasticsearch-docker": "Elasticsearch Docker'ı Başlat",
     "start-entity": "Başlangıç {{entity}}",

@@ -1656,6 +1656,7 @@
     "star": "スター",
     "star-open-metadata": "OpenMetadata にスターを付ける",
     "star-us-on-github": "GitHub プロジェクトにスターを付ける",
+    "start-date": "開始日",
     "start-date-time-zone": "開始日:（{{timeZone}}）",
     "start-elasticsearch-docker": "Elasticsearch Docker を開始",
     "start-entity": "{{entity}} を開始",

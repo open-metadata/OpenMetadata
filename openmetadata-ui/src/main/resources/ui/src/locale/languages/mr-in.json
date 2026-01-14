@@ -1656,6 +1656,7 @@
     "star": "तारा",
     "star-open-metadata": "ओपनमेटाडेटा तारा",
     "star-us-on-github": "GitHub वर आम्हाला तारा द्या",
+    "start-date": "प्रारंभ तारीख",
     "start-date-time-zone": "प्रारंभ तारीख: ({{timeZone}})",
     "start-elasticsearch-docker": "एलॅस्टिकसर्च डॉकर प्रारंभ करा",
     "start-entity": "{{entity}} प्रारंभ करा",
