@@ -95,6 +95,9 @@ test.describe.serial('Add role and assign it to the user', () => {
     await generatePasswordResponse;
 
     await page.click('[data-testid="roles-dropdown"]');
+    await page.waitForSelector('.ant-select-dropdown', {
+      state: 'visible',
+    });
     await page.fill('#roles', roleName);
     await page.click(`[title="${roleName}"]`);
 
