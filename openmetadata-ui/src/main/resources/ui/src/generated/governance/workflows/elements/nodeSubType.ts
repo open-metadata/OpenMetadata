@@ -18,7 +18,6 @@ export enum NodeSubType {
     CreateAndRunIngestionPipelineTask = "createAndRunIngestionPipelineTask",
     DataCompletenessTask = "dataCompletenessTask",
     EndEvent = "endEvent",
-    GitSinkTask = "gitSinkTask",
     ParallelGateway = "parallelGateway",
     RollbackEntityTask = "rollbackEntityTask",
     RunAppTask = "runAppTask",
