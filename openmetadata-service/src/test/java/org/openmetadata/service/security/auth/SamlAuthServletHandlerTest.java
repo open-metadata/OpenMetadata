@@ -211,7 +211,7 @@ class SamlAuthServletHandlerTest {
           .when(
               () ->
                   Entity.getEntityByName(
-                      Entity.USER, username, "id,roles,isAdmin,email", Include.NON_DELETED))
+                      Entity.USER, username, "id,roles,teams,isAdmin,email", Include.NON_DELETED))
           .thenReturn(user);
 
       jwtMock.when(JWTTokenGenerator::getInstance).thenReturn(jwtTokenGenerator);
@@ -368,5 +368,66 @@ class SamlAuthServletHandlerTest {
     assertNotNull(handler1);
     assertNotNull(handler2);
     assertEquals(handler1, handler2); // Should be the same instance
+  }
+
+  @Test
+  void testExistingUserRolesAndTeamsPreservedOnLogin() throws Exception {
+    // This test validates the fix for issue where user roles and teams were reset on SSO login
+    String username = "existinguser";
+    String email = "existinguser@example.com";
+
+    // Create mock user with existing roles and teams
+    User mockUser = new User();
+    mockUser.setId(UUID.randomUUID());
+    mockUser.setName(username);
+    mockUser.setEmail(email);
+    mockUser.setIsAdmin(false);
+
+    // Create mock roles and teams that should be preserved
+    Set<org.openmetadata.schema.type.EntityReference> mockRoles = new HashSet<>();
+    org.openmetadata.schema.type.EntityReference roleRef =
+        new org.openmetadata.schema.type.EntityReference();
+    roleRef.setId(UUID.randomUUID());
+    roleRef.setName("DataConsumer");
+    mockRoles.add(roleRef);
+    mockUser.setRoles(java.util.List.copyOf(mockRoles));
+
+    Set<org.openmetadata.schema.type.EntityReference> mockTeams = new HashSet<>();
+    org.openmetadata.schema.type.EntityReference teamRef =
+        new org.openmetadata.schema.type.EntityReference();
+    teamRef.setId(UUID.randomUUID());
+    teamRef.setName("Engineering");
+    mockTeams.add(teamRef);
+    mockUser.setTeams(java.util.List.copyOf(mockTeams));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      // Mock Entity.getEntityByName to return our user with roles and teams
+      // The key here is that we're fetching with "id,roles,teams,isAdmin,email" fields
+      entityMock
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.USER, username, "id,roles,teams,isAdmin,email", Include.NON_DELETED))
+          .thenReturn(mockUser);
+
+      // Simulate calling getOrCreateUser (this is done internally during callback)
+      // By using reflection to access the private method for testing
+      java.lang.reflect.Method method =
+          SamlAuthServletHandler.class.getDeclaredMethod(
+              "getOrCreateUser", String.class, String.class);
+      method.setAccessible(true);
+      User result = (User) method.invoke(handler, username, email);
+
+      // Verify that roles and teams are preserved
+      assertNotNull(result);
+      assertEquals(username, result.getName());
+      assertEquals(email, result.getEmail());
+      assertNotNull(result.getRoles(), "Roles should be preserved");
+      assertEquals(1, result.getRoles().size(), "Should have 1 role");
+      assertEquals("DataConsumer", result.getRoles().get(0).getName());
+      assertNotNull(result.getTeams(), "Teams should be preserved");
+      assertEquals(1, result.getTeams().size(), "Should have 1 team");
+      assertEquals("Engineering", result.getTeams().get(0).getName());
+    }
   }
 }
