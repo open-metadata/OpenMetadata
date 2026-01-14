@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -550,9 +550,19 @@ export enum AuthProvider {
  *
  * Regex to include/exclude FHIR resource types
  *
+ * Regex to only include/exclude namespaces (sources/spaces) that match the pattern. In
+ * Dremio Cloud, namespaces are mapped as databases.
+ *
+ * Regex to only include/exclude folders that match the pattern. In Dremio Cloud, folders
+ * are mapped as schemas.
+ *
+ * Regex to only include/exclude tables that match the pattern.
+ *
  * Regex to only include/exclude domains that match the pattern.
  *
  * Regex to only include/exclude glossaries that match the pattern.
+ *
+ * Regex to filter MuleSoft applications by name.
  *
  * Regex to only fetch tags that matches the pattern.
  */
@@ -627,6 +637,12 @@ export interface OpenMetadataJWTClientConfig {
  * Client SSL configuration
  *
  * SSL Configuration details.
+ *
+ * SSL Configuration details for DB2 connection. Provide CA certificate for server
+ * validation, and optionally client certificate and key for mutual TLS authentication.
+ *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
  *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
@@ -747,6 +763,10 @@ export interface StepSummary {
      */
     name: string;
     /**
+     * Detailed progress tracking by entity type (databases, schemas, tables, stored procedures)
+     */
+    progress?: { [key: string]: Progress };
+    /**
      * Number of successfully processed records.
      */
     records?: number;
@@ -776,6 +796,22 @@ export interface StackTraceError {
      * Exception stack trace
      */
     stackTrace?: string;
+}
+
+export interface Progress {
+    /**
+     * Estimated remaining time in seconds for this entity type
+     */
+    estimatedRemainingSeconds?: number;
+    /**
+     * Number of entities processed
+     */
+    processed?: number;
+    /**
+     * Total number of entities discovered
+     */
+    total?: number;
+    [property: string]: any;
 }
 
 /**
@@ -920,6 +956,10 @@ export interface Pipeline {
      */
     markDeletedTables?: boolean;
     /**
+     * Set the 'Override Lineage' toggle to control whether to override the existing lineage.
+     */
+    overrideLineage?: boolean;
+    /**
      * Set the 'Override Metadata' toggle to control whether to override the existing metadata
      * in the OpenMetadata server with the metadata fetched from the source. If the toggle is
      * set to true, the metadata fetched from the source will override the existing metadata in
@@ -1040,6 +1080,10 @@ export interface Pipeline {
      */
     processViewLineage?: boolean;
     /**
+     * Configuration for SQL query parser selection for lineage extraction.
+     */
+    queryParserConfig?: QueryParserConfig;
+    /**
      * Regex to only fetch stored procedures that matches the pattern.
      */
     storedProcedureFilterPattern?: FilterPattern;
@@ -1080,10 +1124,6 @@ export interface Pipeline {
      * lineage, etc., with that data models will be deleted
      */
     markDeletedDataModels?: boolean;
-    /**
-     * Set the 'Override Lineage' toggle to control whether to override the existing lineage.
-     */
-    overrideLineage?: boolean;
     /**
      * Regex to exclude or include projects that matches the pattern.
      */
@@ -1402,7 +1442,7 @@ export interface Pipeline {
  *
  * Configuration for the Automator External Application.
  *
- * This schema defines the Slack App Token Configuration
+ * This schema defines the Slack App Information
  *
  * Configuration for the Collate AI Quality Agent.
  *
@@ -1418,7 +1458,7 @@ export interface Pipeline {
 export interface CollateAIAppConfig {
     /**
      * Query filter to be passed to ES. E.g.,
-     * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domain.displayName.keyword":"DG
+     * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domains.displayName.keyword":"DG
      * Anim"}}]}}]}}}`. This is the same payload as in the Explore page.
      */
     filter?: string;
@@ -1445,6 +1485,19 @@ export interface CollateAIAppConfig {
      * Bot Token
      */
     botToken?: string;
+    /**
+     * Client Id of the Application
+     */
+    clientId?: string;
+    /**
+     * Client Secret of the Application.
+     */
+    clientSecret?: string;
+    /**
+     * Signing Secret of the Application. Confirm that each request comes from Slack by
+     * verifying its unique signature.
+     */
+    signingSecret?: string;
     /**
      * User Token
      */
@@ -1537,6 +1590,10 @@ export interface CollateAIAppConfig {
      * (e.g., 30 for one month, 60 for two months).
      */
     activityThreadsRetentionPeriod?: number;
+    /**
+     * Enter the retention period for Audit Log entries in days (e.g., 90 for three months).
+     */
+    auditLogRetentionPeriod?: number;
     /**
      * Enter the retention period for change event records in days (e.g., 7 for one week, 30 for
      * one month).
@@ -1765,9 +1822,22 @@ export interface Action {
      */
     propagationDepth?: number;
     /**
+     * Mode for calculating propagation depth. 'ROOT' calculates depth from root nodes (sources
+     * with no parents). 'DATA_ASSET' calculates depth relative to each data asset being
+     * processed, ensuring each asset only receives metadata from nodes within the specified
+     * number of hops upstream.
+     */
+    propagationDepthMode?: PropagationDepthMode;
+    /**
      * List of configurations to stop propagation based on conditions
      */
     propagationStopConfigs?: PropagationStopConfig[];
+    /**
+     * Use the optimized propagation algorithm that reduces memory usage and API calls.
+     * Recommended for large lineage graphs. If set to false, uses the original propagation
+     * algorithm. Default is true.
+     */
+    useOptimizedPropagation?: boolean;
 }
 
 /**
@@ -1779,6 +1849,17 @@ export enum LabelElement {
     Automated = "Automated",
     Manual = "Manual",
     Propagated = "Propagated",
+}
+
+/**
+ * Mode for calculating propagation depth. 'ROOT' calculates depth from root nodes (sources
+ * with no parents). 'DATA_ASSET' calculates depth relative to each data asset being
+ * processed, ensuring each asset only receives metadata from nodes within the specified
+ * number of hops upstream.
+ */
+export enum PropagationDepthMode {
+    DataAsset = "DATA_ASSET",
+    Root = "ROOT",
 }
 
 /**
@@ -1835,6 +1916,14 @@ export enum MetadataAttribute {
  * Service to be modified
  */
 export interface TagLabel {
+    /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
     /**
      * Description for the tag label.
      *
@@ -1983,6 +2072,14 @@ export interface CoverImage {
  * tier to apply
  */
 export interface TierElement {
+    /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
     /**
      * Description for the tag label.
      */
@@ -2237,7 +2334,7 @@ export interface Resource {
     filterJsonTree?: string;
     /**
      * Query filter to be passed to ES. E.g.,
-     * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domain.displayName.keyword":"DG
+     * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domains.displayName.keyword":"DG
      * Anim"}}]}}]}}}`. This is the same payload as in the Explore page.
      */
     queryFilter?: string;
@@ -2314,9 +2411,10 @@ export interface AppLimitsConfig {
      */
     actions: { [key: string]: number };
     /**
-     * The start of this limit cycle.
+     * The start of this limit cycle. DEPRECATED: Use central billingCycleStart from
+     * LimitsConfiguration in openmetadata.yaml
      */
-    billingCycleStart: Date;
+    billingCycleStart?: Date;
 }
 
 /**
@@ -2824,6 +2922,42 @@ export enum ProfileSampleType {
 }
 
 /**
+ * Configuration for SQL query parser selection for lineage extraction.
+ *
+ * Configuration for SQL query parser selection for lineage and usage extraction.
+ */
+export interface QueryParserConfig {
+    /**
+     * Choose the SQL parser for lineage extraction:
+     * • Auto (default): Automatically tries SqlGlot first, falls back to SqlFluff, then
+     * SqlParse. Recommended for best results.
+     * • SqlGlot: High-performance parser with excellent dialect support. Falls back to SqlParse
+     * on failure.
+     * • SqlFluff: Comprehensive parser with strong dialect support. Falls back to SqlParse on
+     * failure.
+     */
+    type?: QueryParserType;
+}
+
+/**
+ * Choose the SQL parser for lineage extraction:
+ * • Auto (default): Automatically tries SqlGlot first, falls back to SqlFluff, then
+ * SqlParse. Recommended for best results.
+ * • SqlGlot: High-performance parser with excellent dialect support. Falls back to SqlParse
+ * on failure.
+ * • SqlFluff: Comprehensive parser with strong dialect support. Falls back to SqlParse on
+ * failure.
+ *
+ * Type of SQL query parser to use for lineage and usage extraction. Auto mode is
+ * recommended for best results.
+ */
+export enum QueryParserType {
+    Auto = "Auto",
+    SQLFluff = "SqlFluff",
+    SQLGlot = "SqlGlot",
+}
+
+/**
  * Type of Sampling Method (BERNOULLI or SYSTEM)
  */
 export enum SamplingMethodType {
@@ -3012,6 +3146,9 @@ export interface ServiceConnection {
  *
  * ServiceNow Connection Config
  *
+ * Dremio Connection Config supporting both Dremio Cloud (SaaS) and Dremio Software
+ * (self-hosted)
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -3077,6 +3214,8 @@ export interface ServiceConnection {
  * Stitch Connection
  *
  * Snowplow Pipeline Connection Config
+ *
+ * MuleSoft Anypoint Platform Connection Config
  *
  * MlFlow Connection Config
  *
@@ -3327,6 +3466,9 @@ export interface ConfigObject {
      *
      * Host and port of the Stitch API host
      *
+     * MuleSoft Anypoint Platform URL. Use https://anypoint.mulesoft.com for US cloud,
+     * https://eu1.anypoint.mulesoft.com for EU cloud, or your on-premises URL.
+     *
      * Host and port of the ElasticSearch service.
      *
      * Host and port of the OpenSearch service.
@@ -3425,8 +3567,6 @@ export interface ConfigObject {
      * password to connect  to the Atlas.
      *
      * Password to connect to the Collibra.
-     *
-     * Password to connect to Airbyte.
      */
     password?: string;
     /**
@@ -3544,8 +3684,6 @@ export interface ConfigObject {
      *
      * Username to connect to the Collibra. This user should have privileges to read all the
      * metadata in Collibra.
-     *
-     * Username to connect to Airbyte.
      */
     username?: string;
     /**
@@ -3626,6 +3764,8 @@ export interface ConfigObject {
      *
      * Choose Auth Config Type.
      *
+     * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
+     *
      * Types of methods used to authenticate to the alation instance
      *
      * Authentication type to connect to Apache Ranger.
@@ -3651,7 +3791,13 @@ export interface ConfigObject {
      */
     siteName?: string;
     /**
+     * SSL Configuration details for DB2 connection. Provide CA certificate for server
+     * validation, and optionally client certificate and key for mutual TLS authentication.
+     *
      * SSL Configuration details.
+     *
+     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+     * client certificate, and private key for mutual TLS authentication.
      *
      * SSL Configuration for OpenMetadata Server
      */
@@ -3767,6 +3913,8 @@ export interface ConfigObject {
     spaceTypes?: SpaceType[];
     /**
      * ThoughtSpot authentication configuration
+     *
+     * Choose between Connected App (OAuth 2.0) or Basic Authentication.
      */
     authentication?: Authenticationation;
     /**
@@ -3813,6 +3961,9 @@ export interface ConfigObject {
     credentials?: GCPCredentials;
     /**
      * Regex to only include/exclude databases that matches the pattern.
+     *
+     * Regex to only include/exclude namespaces (sources/spaces) that match the pattern. In
+     * Dremio Cloud, namespaces are mapped as databases.
      */
     databaseFilterPattern?: FilterPattern;
     /**
@@ -3824,6 +3975,9 @@ export interface ConfigObject {
      * Regex to only include/exclude schemas that matches the pattern.
      *
      * Regex to include/exclude FHIR resource categories
+     *
+     * Regex to only include/exclude folders that match the pattern. In Dremio Cloud, folders
+     * are mapped as schemas.
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -3853,6 +4007,8 @@ export interface ConfigObject {
      * Regex to only include/exclude tables that matches the pattern.
      *
      * Regex to include/exclude FHIR resource types
+     *
+     * Regex to only include/exclude tables that match the pattern.
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -3915,6 +4071,9 @@ export interface ConfigObject {
      *
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
+     *
+     * Optional: Restrict metadata ingestion to a specific namespace (source/space). When left
+     * blank, all namespaces will be ingested.
      */
     database?: string;
     /**
@@ -4013,6 +4172,7 @@ export interface ConfigObject {
      * License file name to connect to DB2.
      */
     licenseFileName?:               string;
+    sslMode?:                       SSLMode;
     supportsViewLineageExtraction?: boolean;
     /**
      * Available sources to fetch the metadata.
@@ -4024,8 +4184,11 @@ export interface ConfigObject {
     configSource?: DeltaLakeConfigurationSource;
     /**
      * Authentication mode to connect to hive.
+     *
+     * Choose between Basic authentication (for self-hosted) or OAuth 2.0 client credentials
+     * (for Airbyte Cloud)
      */
-    auth?: AuthEnum;
+    auth?: Authentication | AuthEnum;
     /**
      * Authentication options to pass to Hive connector. These options are based on SQLAlchemy.
      *
@@ -4052,15 +4215,15 @@ export interface ConfigObject {
      */
     authMechanism?: AuthMechanismEnum;
     /**
-     * Full path to the Microsoft Access database file (.mdb or .accdb). Example:
-     * C:\path\to\database.accdb
+     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
+     * between the client and server will be encrypted.
      */
-    databaseFilePath?: string;
+    encrypt?: boolean;
     /**
-     * ODBC driver name for Microsoft Access. Default is 'Microsoft Access Driver (*.mdb,
-     * *.accdb)'.
+     * Trust the server certificate without validation. Set to false in production to validate
+     * server certificates against the certificate authority.
      */
-    odbcDriver?: string;
+    trustServerCertificate?: boolean;
     /**
      * Use slow logs to extract lineage.
      */
@@ -4085,7 +4248,13 @@ export interface ConfigObject {
      * Custom OpenMetadata Classification name for TimescaleDB policy tags.
      */
     classificationName?: string;
-    sslMode?:            SSLMode;
+    /**
+     * Fully qualified name of the view or table to use for query logs. If not provided,
+     * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
+     * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
+     * restricted.
+     */
+    queryStatementSource?: string;
     /**
      * Protocol ( Connection Argument ) to connect to Presto.
      */
@@ -4112,6 +4281,9 @@ export interface ConfigObject {
      * Salesforce Organization ID is the unique identifier for your Salesforce identity
      *
      * Snowplow BDP Organization ID
+     *
+     * Anypoint Platform Organization ID. If not provided, the connector will use the user's
+     * default organization.
      */
     organizationId?: string;
     /**
@@ -4547,6 +4719,8 @@ export interface ConfigObject {
     numberOfStatus?: number;
     /**
      * Regex exclude pipelines.
+     *
+     * Regex to filter MuleSoft applications by name.
      */
     pipelineFilterPattern?: FilterPattern;
     /**
@@ -4629,6 +4803,10 @@ export interface ConfigObject {
      */
     discoveryAPI?: string;
     /**
+     * List of IDs of your DBT cloud environments separated by comma `,`
+     */
+    environmentIds?: string[];
+    /**
      * List of IDs of your DBT cloud jobs seperated by comma `,`
      */
     jobIds?: string[];
@@ -4673,6 +4851,11 @@ export interface ConfigObject {
      */
     deployment?: SnowplowDeployment;
     /**
+     * Anypoint Platform Environment ID. If not provided, the connector will discover all
+     * accessible environments.
+     */
+    environmentId?: string;
+    /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
     mlModelFilterPattern?: FilterPattern;
@@ -4693,6 +4876,10 @@ export interface ConfigObject {
      * Bucket Names of the data source.
      */
     bucketNames?: string[];
+    /**
+     * Console EndPoint URL for S3-compatible services
+     */
+    consoleEndpointURL?: string;
     /**
      * Regex to only fetch containers that matches the pattern.
      */
@@ -4763,6 +4950,33 @@ export interface UsernamePasswordAuthentication {
 }
 
 /**
+ * Choose between Basic authentication (for self-hosted) or OAuth 2.0 client credentials
+ * (for Airbyte Cloud)
+ *
+ * Username and password authentication
+ *
+ * OAuth 2.0 client credentials authentication for Airbyte Cloud
+ */
+export interface Authentication {
+    /**
+     * Password to connect to Airbyte.
+     */
+    password?: string;
+    /**
+     * Username to connect to Airbyte.
+     */
+    username?: string;
+    /**
+     * Client ID for the application registered in Airbyte.
+     */
+    clientId?: string;
+    /**
+     * Client Secret for the application registered in Airbyte.
+     */
+    clientSecret?: string;
+}
+
+/**
  * Authentication mode to connect to hive.
  */
 export enum AuthEnum {
@@ -4815,6 +5029,14 @@ export enum AuthMechanismEnum {
  *
  * Configuration for connecting to DataStax Astra DB in the cloud.
  *
+ * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
+ *
+ * Authentication configuration for Dremio Cloud using Personal Access Token (PAT). Dremio
+ * Cloud is a fully managed SaaS platform.
+ *
+ * Authentication configuration for self-hosted Dremio Software using username and password.
+ * Dremio Software is deployed on-premises or in your own cloud infrastructure.
+ *
  * ThoughtSpot authentication configuration
  *
  * Types of methods used to authenticate to the alation instance
@@ -4837,6 +5059,8 @@ export interface AuthenticationTypeForTableau {
      *
      * Password to connect to source.
      *
+     * Password for the Dremio Software user account.
+     *
      * Elastic Search Password for Login
      *
      * Ranger password to authenticate to the API.
@@ -4844,6 +5068,9 @@ export interface AuthenticationTypeForTableau {
     password?: string;
     /**
      * Username to access the service.
+     *
+     * Username for authenticating with Dremio Software. This user should have appropriate
+     * permissions to access metadata.
      *
      * Elastic Search Username for Login
      *
@@ -4895,6 +5122,26 @@ export interface AuthenticationTypeForTableau {
      * Configuration for connecting to DataStax Astra DB in the cloud.
      */
     cloudConfig?: DataStaxAstraDBConfiguration;
+    /**
+     * Personal Access Token for authenticating with Dremio Cloud. Generate this token from your
+     * Dremio Cloud account settings under Settings -> Personal Access Tokens.
+     */
+    personalAccessToken?: string;
+    /**
+     * Dremio Cloud Project ID (required). This unique identifier can be found in your Dremio
+     * Cloud project URL or project settings.
+     */
+    projectId?: string;
+    /**
+     * Dremio Cloud region where your organization is hosted. Choose 'US' for United States
+     * region or 'EU' for European region.
+     */
+    region?: CloudRegion;
+    /**
+     * URL to your self-hosted Dremio Software instance, including protocol and port (e.g.,
+     * http://localhost:9047 or https://dremio.example.com:9047).
+     */
+    hostPort?: string;
     /**
      * Access Token for the API
      */
@@ -5058,6 +5305,15 @@ export interface DataStaxAstraDBConfiguration {
 }
 
 /**
+ * Dremio Cloud region where your organization is hosted. Choose 'US' for United States
+ * region or 'EU' for European region.
+ */
+export enum CloudRegion {
+    Eu = "EU",
+    Us = "US",
+}
+
+/**
  * Database Authentication types not requiring config.
  */
 export enum NoConfigAuthenticationTypes {
@@ -5072,6 +5328,10 @@ export enum NoConfigAuthenticationTypes {
  * Basic Auth Credentials
  *
  * API Access Token Auth Credentials
+ *
+ * Choose between Connected App (OAuth 2.0) or Basic Authentication.
+ *
+ * OAuth 2.0 client credentials authentication for Airbyte Cloud
  */
 export interface Authenticationation {
     /**
@@ -5086,6 +5346,14 @@ export interface Authenticationation {
      * Access Token for the API
      */
     accessToken?: string;
+    /**
+     * Client ID for the application registered in Airbyte.
+     */
+    clientId?: string;
+    /**
+     * Client Secret for the application registered in Airbyte.
+     */
+    clientSecret?: string;
 }
 
 export interface AuthenticationModeObject {
@@ -5094,7 +5362,7 @@ export interface AuthenticationModeObject {
      *
      * Authentication from Connection String for Azure Synapse.
      */
-    authentication?: Authentication;
+    authentication?: AuthenticationEnum;
     /**
      * Connection Timeout from Connection String for AzureSQL.
      *
@@ -5121,7 +5389,7 @@ export interface AuthenticationModeObject {
  *
  * Authentication from Connection String for Azure Synapse.
  */
-export enum Authentication {
+export enum AuthenticationEnum {
     ActiveDirectoryIntegrated = "ActiveDirectoryIntegrated",
     ActiveDirectoryPassword = "ActiveDirectoryPassword",
     ActiveDirectoryServicePrincipal = "ActiveDirectoryServicePrincipal",
@@ -5573,7 +5841,14 @@ export interface ConfigConnection {
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
      */
-    ingestAllDatabases?:      boolean;
+    ingestAllDatabases?: boolean;
+    /**
+     * Fully qualified name of the view or table to use for query logs. If not provided,
+     * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
+     * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
+     * restricted.
+     */
+    queryStatementSource?:    string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -5760,6 +6035,12 @@ export enum ConnectionScheme {
  *
  * SSL Configuration details.
  *
+ * SSL Configuration details for DB2 connection. Provide CA certificate for server
+ * validation, and optionally client certificate and key for mutual TLS authentication.
+ *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
+ *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
  *
@@ -5886,6 +6167,11 @@ export interface DatabaseConnectionClass {
      */
     driver?: string;
     /**
+     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
+     * between the client and server will be encrypted.
+     */
+    encrypt?: boolean;
+    /**
      * Host and port of the MSSQL service.
      */
     hostPort?: string;
@@ -5905,7 +6191,12 @@ export interface DatabaseConnectionClass {
     /**
      * SQLAlchemy driver scheme options.
      */
-    scheme?:                     MssqlScheme;
+    scheme?: MssqlScheme;
+    /**
+     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+     * client certificate, and private key for mutual TLS authentication.
+     */
+    sslConfig?:                  ConsumerConfigSSLClass;
     supportsDatabase?:           boolean;
     supportsDataDiff?:           boolean;
     supportsDBTExtraction?:      boolean;
@@ -5918,6 +6209,11 @@ export interface DatabaseConnectionClass {
      * Regex to only include/exclude tables that matches the pattern.
      */
     tableFilterPattern?: FilterPattern;
+    /**
+     * Trust the server certificate without validation. Set to false in production to validate
+     * server certificates against the certificate authority.
+     */
+    trustServerCertificate?: boolean;
     /**
      * Service Type
      */
@@ -6084,7 +6380,14 @@ export interface HiveMetastoreConnectionDetails {
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
      */
-    ingestAllDatabases?:      boolean;
+    ingestAllDatabases?: boolean;
+    /**
+     * Fully qualified name of the view or table to use for query logs. If not provided,
+     * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
+     * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
+     * restricted.
+     */
+    queryStatementSource?:    string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -6227,6 +6530,10 @@ export interface S3Connection {
     bucketNames?:         string[];
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
+    /**
+     * Console EndPoint URL for S3-compatible services
+     */
+    consoleEndpointURL?: string;
     /**
      * Regex to only fetch containers that matches the pattern.
      */
@@ -6416,6 +6723,12 @@ export enum SpaceType {
  * Client SSL configuration
  *
  * SSL Configuration details.
+ *
+ * SSL Configuration details for DB2 connection. Provide CA certificate for server
+ * validation, and optionally client certificate and key for mutual TLS authentication.
+ *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
  *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
@@ -6641,6 +6954,7 @@ export enum PurpleType {
     DomoDatabase = "DomoDatabase",
     DomoPipeline = "DomoPipeline",
     Doris = "Doris",
+    Dremio = "Dremio",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
     ElasticSearch = "ElasticSearch",
@@ -6674,6 +6988,7 @@ export enum PurpleType {
     Mode = "Mode",
     MongoDB = "MongoDB",
     Mssql = "Mssql",
+    Mulesoft = "Mulesoft",
     Mysql = "Mysql",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",

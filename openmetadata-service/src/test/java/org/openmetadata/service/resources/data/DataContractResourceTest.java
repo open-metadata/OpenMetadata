@@ -484,10 +484,9 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
                               .withUsername("test")));
 
       WebTarget serviceTarget =
-          APP.client()
-              .target(
-                  String.format(
-                      "http://localhost:%s/api/v1/services/databaseServices", APP.getLocalPort()));
+          client.target(
+              String.format(
+                  "http://localhost:%s/api/v1/services/databaseServices", APP.getLocalPort()));
       Response serviceResponse =
           SecurityUtil.addHeaders(serviceTarget, ADMIN_AUTH_HEADERS)
               .post(Entity.json(createService));
@@ -502,8 +501,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
               .withService(service.getFullyQualifiedName());
 
       WebTarget dbTarget =
-          APP.client()
-              .target(String.format("http://localhost:%s/api/v1/databases", APP.getLocalPort()));
+          client.target(String.format("http://localhost:%s/api/v1/databases", APP.getLocalPort()));
       Response dbResponse =
           SecurityUtil.addHeaders(dbTarget, ADMIN_AUTH_HEADERS).post(Entity.json(createDatabase));
       Database database =
@@ -516,9 +514,8 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
               .withDatabase(database.getFullyQualifiedName());
 
       WebTarget schemaTarget =
-          APP.client()
-              .target(
-                  String.format("http://localhost:%s/api/v1/databaseSchemas", APP.getLocalPort()));
+          client.target(
+              String.format("http://localhost:%s/api/v1/databaseSchemas", APP.getLocalPort()));
       Response schemaResponse =
           SecurityUtil.addHeaders(schemaTarget, ADMIN_AUTH_HEADERS).post(Entity.json(createSchema));
       DatabaseSchema schema =
@@ -580,7 +577,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
                         .withDataType(org.openmetadata.schema.type.ColumnDataType.STRING)))
             .withTableConstraints(List.of());
 
-    WebTarget target = APP.client().target(getTableUri());
+    WebTarget target = client.target(getTableUri());
     Response response =
         SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).post(Entity.json(createTable));
     Table createdTable =
@@ -659,7 +656,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
             .withPartitions(1)
             .withMessageSchema(messageSchema);
 
-    WebTarget target = APP.client().target(getTopicUri());
+    WebTarget target = client.target(getTopicUri());
     Response response =
         SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).post(Entity.json(createTopic));
     Topic createdTopic =
@@ -714,7 +711,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
       createApiEndpoint.withResponseSchema(responseSchema);
     }
 
-    WebTarget target = APP.client().target(getApiEndpointUri());
+    WebTarget target = client.target(getApiEndpointUri());
     Response response =
         SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).post(Entity.json(createApiEndpoint));
     APIEndpoint createdApiEndpoint =
@@ -759,7 +756,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
       createDataModel.withColumns(columns);
     }
 
-    WebTarget target = APP.client().target(getDashboardDataModelUri());
+    WebTarget target = client.target(getDashboardDataModelUri());
     Response response =
         SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).post(Entity.json(createDataModel));
     DashboardDataModel createdDataModel =
@@ -893,26 +890,26 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
   }
 
   private void deleteTable(UUID id, boolean recursive) {
-    WebTarget tableTarget = APP.client().target(getTableUri() + "/" + id);
+    WebTarget tableTarget = client.target(getTableUri() + "/" + id);
     tableTarget = tableTarget.queryParam("recursive", recursive);
     Response response = SecurityUtil.addHeaders(tableTarget, ADMIN_AUTH_HEADERS).delete();
     response.readEntity(String.class); // Consume response
   }
 
   private void deleteTopic(UUID id) {
-    WebTarget topicTarget = APP.client().target(getTopicUri() + "/" + id);
+    WebTarget topicTarget = client.target(getTopicUri() + "/" + id);
     Response response = SecurityUtil.addHeaders(topicTarget, ADMIN_AUTH_HEADERS).delete();
     response.readEntity(String.class); // Consume response
   }
 
   private void deleteApiEndpoint(UUID id) {
-    WebTarget apiEndpointTarget = APP.client().target(getApiEndpointUri() + "/" + id);
+    WebTarget apiEndpointTarget = client.target(getApiEndpointUri() + "/" + id);
     Response response = SecurityUtil.addHeaders(apiEndpointTarget, ADMIN_AUTH_HEADERS).delete();
     response.readEntity(String.class); // Consume response
   }
 
   private void deleteDashboardDataModel(UUID id) {
-    WebTarget dataModelTarget = APP.client().target(getDashboardDataModelUri() + "/" + id);
+    WebTarget dataModelTarget = client.target(getDashboardDataModelUri() + "/" + id);
     Response response = SecurityUtil.addHeaders(dataModelTarget, ADMIN_AUTH_HEADERS).delete();
     response.readEntity(String.class); // Consume response
   }
@@ -928,7 +925,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
   }
 
   protected WebTarget getCollection() {
-    return APP.client().target(getDataContractUri());
+    return client.target(getDataContractUri());
   }
 
   private String getDataContractUri() {
@@ -956,7 +953,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
                 new MessagingConnection()
                     .withConfig(new KafkaConnection().withBootstrapServers("localhost:9092")));
 
-    WebTarget target = APP.client().target(getMessagingServiceUri());
+    WebTarget target = client.target(getMessagingServiceUri());
     Response response =
         SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).post(Entity.json(createService));
     MessagingService createdService =
@@ -993,7 +990,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
   private DataContractResult runValidate(DataContract dataContract) throws HttpResponseException {
     WebTarget validateTarget = getResource(dataContract.getId()).path("/validate");
     Response validateResponse =
-        SecurityUtil.addHeaders(validateTarget, ADMIN_AUTH_HEADERS).post(null);
+        SecurityUtil.addHeaders(validateTarget, ADMIN_AUTH_HEADERS).post(Entity.json("{}"));
     return TestUtils.readResponse(
         validateResponse, DataContractResult.class, Status.OK.getStatusCode());
   }
@@ -5683,5 +5680,449 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     DataContract finalState = getDataContract(created.getId(), null);
     assertEquals(1, finalState.getSecurity().getPolicies().size());
     assertEquals("policy-2", finalState.getSecurity().getPolicies().get(0).getAccessPolicy());
+  }
+
+  // ==================== ODCS Import/Export Tests ====================
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testExportDataContractToODCS(TestInfo test) throws IOException {
+    // Create a data contract with schema
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    create.withDescription("Test contract for ODCS export");
+
+    // Add schema columns
+    List<Column> schema =
+        List.of(
+            new Column()
+                .withName("id")
+                .withDataType(ColumnDataType.INT)
+                .withDescription("ID column"),
+            new Column()
+                .withName("name")
+                .withDataType(ColumnDataType.STRING)
+                .withDescription("Name column"));
+    create.withSchema(schema);
+
+    DataContract created = createDataContract(create);
+
+    // Export to ODCS JSON
+    org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract odcs =
+        exportDataContractToODCS(created.getId());
+
+    // Verify ODCS structure
+    assertNotNull(odcs);
+    assertEquals(
+        org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract.OdcsApiVersion.V_3_0_2,
+        odcs.getApiVersion());
+    assertEquals(
+        org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract.OdcsKind.DATA_CONTRACT,
+        odcs.getKind());
+    assertEquals(created.getName(), odcs.getName());
+    assertNotNull(odcs.getStatus());
+    assertNotNull(odcs.getDescription());
+    assertEquals("Test contract for ODCS export", odcs.getDescription().getPurpose());
+
+    // Verify schema was converted
+    assertNotNull(odcs.getSchema());
+    assertEquals(2, odcs.getSchema().size());
+    assertEquals("id", odcs.getSchema().get(0).getName());
+    assertEquals(
+        org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement.LogicalType.INTEGER,
+        odcs.getSchema().get(0).getLogicalType());
+    assertEquals("name", odcs.getSchema().get(1).getName());
+    assertEquals(
+        org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement.LogicalType.STRING,
+        odcs.getSchema().get(1).getLogicalType());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testExportDataContractToODCSYaml(TestInfo test) throws IOException {
+    // Create a data contract
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract created = createDataContract(create);
+
+    // Export to ODCS YAML
+    String yamlContent = exportDataContractToODCSYaml(created.getId());
+
+    // Verify YAML content
+    assertNotNull(yamlContent);
+    assertTrue(yamlContent.contains("apiVersion:"));
+    assertTrue(yamlContent.contains("v3.0.2"));
+    assertTrue(yamlContent.contains("kind:"));
+    assertTrue(yamlContent.contains("DataContract"));
+    assertTrue(yamlContent.contains("name:"));
+    assertTrue(yamlContent.contains(created.getName()));
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testExportDataContractToODCSByFqn(TestInfo test) throws IOException {
+    // Create a data contract
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract created = createDataContract(create);
+
+    // Export to ODCS by FQN
+    org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract odcs =
+        exportDataContractToODCSByFqn(created.getFullyQualifiedName());
+
+    // Verify ODCS structure
+    assertNotNull(odcs);
+    assertEquals(
+        org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract.OdcsApiVersion.V_3_0_2,
+        odcs.getApiVersion());
+    assertEquals(created.getName(), odcs.getName());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testImportDataContractFromODCS(TestInfo test) throws IOException {
+    // Create a table to associate the contract with
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Create ODCS data contract
+    org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract odcs =
+        new org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract();
+    odcs.setApiVersion(
+        org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract.OdcsApiVersion.V_3_0_2);
+    odcs.setKind(
+        org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setName("odcs_import_test_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9]", "_"));
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(
+        org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract.OdcsStatus.ACTIVE);
+
+    // Add description
+    org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription desc =
+        new org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription();
+    desc.setPurpose("Imported from ODCS");
+    odcs.setDescription(desc);
+
+    // Add schema - use column names that match the table (id, name, description, email)
+    List<org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement> schema =
+        new ArrayList<>();
+    org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement col1 =
+        new org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement();
+    col1.setName("id");
+    col1.setLogicalType(
+        org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement.LogicalType.INTEGER);
+    col1.setPrimaryKey(true);
+    col1.setDescription("ID column");
+    schema.add(col1);
+
+    org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement col2 =
+        new org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement();
+    col2.setName("email");
+    col2.setLogicalType(
+        org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement.LogicalType.STRING);
+    col2.setRequired(true);
+    schema.add(col2);
+
+    odcs.setSchema(schema);
+
+    // Import ODCS contract
+    DataContract imported = importDataContractFromODCS(odcs, table.getId(), "table");
+
+    // Verify imported contract
+    assertNotNull(imported);
+    assertNotNull(imported.getId());
+    assertEquals(odcs.getName(), imported.getName());
+    assertEquals(EntityStatus.APPROVED, imported.getEntityStatus()); // "active" maps to APPROVED
+    assertNotNull(imported.getDescription());
+    assertTrue(imported.getDescription().contains("Imported from ODCS"));
+
+    // Verify schema was imported
+    assertNotNull(imported.getSchema());
+    assertEquals(2, imported.getSchema().size());
+    assertEquals("id", imported.getSchema().get(0).getName());
+    assertEquals(ColumnDataType.INT, imported.getSchema().get(0).getDataType());
+    assertEquals("email", imported.getSchema().get(1).getName());
+
+    // Clean up
+    createdContracts.add(imported);
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testImportDataContractFromODCSYaml(TestInfo test) throws IOException {
+    // Create a table to associate the contract with
+    Table table = createUniqueTable(test.getDisplayName());
+
+    String contractName =
+        "yaml_import_test_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9]", "_");
+
+    // Create ODCS YAML content - use column names that match the table (id, name, description,
+    // email)
+    String yamlContent =
+        "apiVersion: v3.0.2\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + UUID.randomUUID()
+            + "\n"
+            + "name: "
+            + contractName
+            + "\n"
+            + "version: \"1.0.0\"\n"
+            + "status: draft\n"
+            + "description:\n"
+            + "  purpose: Imported from YAML\n"
+            + "schema:\n"
+            + "  - name: id\n"
+            + "    logicalType: integer\n"
+            + "    primaryKey: true\n"
+            + "  - name: name\n"
+            + "    logicalType: string\n";
+
+    // Import from YAML
+    DataContract imported = importDataContractFromODCSYaml(yamlContent, table.getId(), "table");
+
+    // Verify imported contract
+    assertNotNull(imported);
+    assertEquals(contractName, imported.getName());
+    assertEquals(EntityStatus.DRAFT, imported.getEntityStatus()); // "draft" maps to DRAFT
+    assertNotNull(imported.getSchema());
+    assertEquals(2, imported.getSchema().size());
+    assertEquals("id", imported.getSchema().get(0).getName());
+    assertEquals("name", imported.getSchema().get(1).getName());
+
+    // Clean up
+    createdContracts.add(imported);
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testCreateOrUpdateDataContractFromODCS(TestInfo test) throws IOException {
+    // Create a table to associate the contract with
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Create ODCS data contract
+    org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract odcs =
+        new org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract();
+    odcs.setApiVersion(
+        org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract.OdcsApiVersion.V_3_0_2);
+    odcs.setKind(
+        org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setName("upsert_odcs_test_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9]", "_"));
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(
+        org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract.OdcsStatus.DRAFT);
+
+    // Create initial contract
+    DataContract created = createOrUpdateDataContractFromODCS(odcs, table.getId(), "table");
+    assertNotNull(created);
+    assertEquals(EntityStatus.DRAFT, created.getEntityStatus());
+
+    // Clean up
+    createdContracts.add(created);
+
+    // Update the contract via ODCS
+    odcs.setStatus(
+        org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract.OdcsStatus.ACTIVE);
+    org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription desc =
+        new org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription();
+    desc.setPurpose("Updated via ODCS");
+    odcs.setDescription(desc);
+
+    DataContract updated = createOrUpdateDataContractFromODCS(odcs, table.getId(), "table");
+    assertNotNull(updated);
+    assertEquals(EntityStatus.APPROVED, updated.getEntityStatus());
+    assertTrue(updated.getDescription().contains("Updated via ODCS"));
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testODCSRoundTrip(TestInfo test) throws IOException {
+    // Create a data contract with full details
+    // Use column names that match the table (id, name, description, email)
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    create.withDescription("Round trip test contract");
+
+    List<Column> schema =
+        List.of(
+            new Column()
+                .withName("id")
+                .withDataType(ColumnDataType.INT)
+                .withDescription("Primary key"),
+            new Column()
+                .withName("name")
+                .withDataType(ColumnDataType.STRING)
+                .withDescription("Name field"),
+            new Column()
+                .withName("email")
+                .withDataType(ColumnDataType.STRING)
+                .withDescription("Email field"));
+    create.withSchema(schema);
+    create.withEntityStatus(EntityStatus.APPROVED);
+
+    DataContract original = createDataContract(create);
+
+    // Export to ODCS
+    org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract odcs =
+        exportDataContractToODCS(original.getId());
+
+    // Verify ODCS export
+    assertNotNull(odcs);
+    assertEquals(original.getName(), odcs.getName());
+    assertEquals(
+        org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract.OdcsStatus.ACTIVE,
+        odcs.getStatus()); // APPROVED -> active
+    assertEquals(3, odcs.getSchema().size());
+
+    // Verify type mappings in ODCS
+    assertEquals(
+        org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement.LogicalType.INTEGER,
+        odcs.getSchema().get(0).getLogicalType()); // INT -> integer
+    assertEquals(
+        org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement.LogicalType.STRING,
+        odcs.getSchema().get(1).getLogicalType()); // STRING -> string
+    assertEquals(
+        org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement.LogicalType.STRING,
+        odcs.getSchema().get(2).getLogicalType()); // STRING -> string
+
+    // Import back to a new table with a unique name
+    Table newTable = createUniqueTable(test.getDisplayName() + "_reimport");
+    // Generate new ID and unique name to avoid conflicts
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setName(
+        "reimported_" + UUID.randomUUID().toString().substring(0, 8) + "_" + odcs.getName());
+    DataContract reimported = importDataContractFromODCS(odcs, newTable.getId(), "table");
+
+    // Clean up
+    createdContracts.add(reimported);
+
+    // Verify round trip preserved key attributes
+    assertNotNull(reimported);
+    assertEquals(original.getEntityStatus(), reimported.getEntityStatus());
+    assertEquals(original.getSchema().size(), reimported.getSchema().size());
+    assertEquals(original.getSchema().get(0).getName(), reimported.getSchema().get(0).getName());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testODCSExportWithSLA(TestInfo test) throws IOException {
+    // Create a data contract with SLA
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+
+    // Add SLA
+    org.openmetadata.schema.api.data.ContractSLA sla =
+        new org.openmetadata.schema.api.data.ContractSLA();
+    org.openmetadata.schema.api.data.RefreshFrequency rf =
+        new org.openmetadata.schema.api.data.RefreshFrequency();
+    rf.setInterval(1);
+    rf.setUnit(org.openmetadata.schema.api.data.RefreshFrequency.Unit.DAY);
+    sla.setRefreshFrequency(rf);
+
+    org.openmetadata.schema.api.data.MaxLatency ml =
+        new org.openmetadata.schema.api.data.MaxLatency();
+    ml.setValue(2);
+    ml.setUnit(org.openmetadata.schema.api.data.MaxLatency.Unit.HOUR);
+    sla.setMaxLatency(ml);
+
+    create.withSla(sla);
+    DataContract created = createDataContract(create);
+
+    // Export to ODCS
+    org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract odcs =
+        exportDataContractToODCS(created.getId());
+
+    // Verify SLA properties
+    assertNotNull(odcs.getSlaProperties());
+    assertTrue(odcs.getSlaProperties().size() >= 2);
+
+    boolean hasRefreshFrequency =
+        odcs.getSlaProperties().stream()
+            .anyMatch(p -> "refreshFrequency".equals(p.getProperty()) && "1".equals(p.getValue()));
+    assertTrue(hasRefreshFrequency);
+
+    boolean hasMaxLatency =
+        odcs.getSlaProperties().stream()
+            .anyMatch(p -> "maxLatency".equals(p.getProperty()) && "2".equals(p.getValue()));
+    assertTrue(hasMaxLatency);
+  }
+
+  // ==================== ODCS Helper Methods ====================
+
+  private org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract
+      exportDataContractToODCS(UUID id) throws HttpResponseException {
+    WebTarget target = getResource(id).path("/odcs");
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+    return TestUtils.readResponse(
+        response,
+        org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract.class,
+        Status.OK.getStatusCode());
+  }
+
+  private String exportDataContractToODCSYaml(UUID id) throws HttpResponseException {
+    WebTarget target = getResource(id).path("/odcs/yaml");
+    Response response =
+        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).accept("application/yaml").get();
+    assertEquals(Status.OK.getStatusCode(), response.getStatus());
+    return response.readEntity(String.class);
+  }
+
+  private org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract
+      exportDataContractToODCSByFqn(String fqn) throws HttpResponseException {
+    WebTarget target = getCollection().path("/name/" + fqn + "/odcs");
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+    return TestUtils.readResponse(
+        response,
+        org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract.class,
+        Status.OK.getStatusCode());
+  }
+
+  private DataContract importDataContractFromODCS(
+      org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract odcs,
+      UUID entityId,
+      String entityType)
+      throws HttpResponseException {
+    WebTarget target =
+        getCollection()
+            .path("/odcs")
+            .queryParam("entityId", entityId)
+            .queryParam("entityType", entityType);
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).post(Entity.json(odcs));
+    // POST creates a new entity, returns 201 Created
+    return TestUtils.readResponse(response, DataContract.class, Status.CREATED.getStatusCode());
+  }
+
+  private DataContract importDataContractFromODCSYaml(
+      String yamlContent, UUID entityId, String entityType) throws HttpResponseException {
+    WebTarget target =
+        getCollection()
+            .path("/odcs/yaml")
+            .queryParam("entityId", entityId)
+            .queryParam("entityType", entityType);
+    Response response =
+        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
+            .post(Entity.entity(yamlContent, "application/yaml"));
+    // POST creates a new entity, returns 201 Created
+    return TestUtils.readResponse(response, DataContract.class, Status.CREATED.getStatusCode());
+  }
+
+  private DataContract createOrUpdateDataContractFromODCS(
+      org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract odcs,
+      UUID entityId,
+      String entityType)
+      throws HttpResponseException {
+    WebTarget target =
+        getCollection()
+            .path("/odcs")
+            .queryParam("entityId", entityId)
+            .queryParam("entityType", entityType);
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).put(Entity.json(odcs));
+    // PUT can return 200 (update) or 201 (create)
+    int status = response.getStatus();
+    assertTrue(
+        status == Status.OK.getStatusCode() || status == Status.CREATED.getStatusCode(),
+        "Expected 200 or 201 but got " + status);
+    return response.readEntity(DataContract.class);
   }
 }

@@ -10,10 +10,16 @@ import com.slack.api.model.block.composition.PlainTextObject;
 import java.util.ArrayList;
 import java.util.List;
 import org.commonmark.ext.gfm.strikethrough.Strikethrough;
+import org.commonmark.ext.gfm.tables.TableBlock;
+import org.commonmark.ext.gfm.tables.TableBody;
+import org.commonmark.ext.gfm.tables.TableCell;
+import org.commonmark.ext.gfm.tables.TableHead;
+import org.commonmark.ext.gfm.tables.TableRow;
 import org.commonmark.node.AbstractVisitor;
 import org.commonmark.node.BlockQuote;
 import org.commonmark.node.BulletList;
 import org.commonmark.node.Code;
+import org.commonmark.node.CustomBlock;
 import org.commonmark.node.CustomNode;
 import org.commonmark.node.Document;
 import org.commonmark.node.Emphasis;
@@ -33,11 +39,10 @@ import org.commonmark.node.Text;
 import org.commonmark.node.ThematicBreak;
 
 final class SlackBlockAssembler extends AbstractVisitor {
-  private static final int SLACK_MAX_TEXT_LENGTH = 3000;
-
   List<LayoutBlock> blocks = new ArrayList<>();
   StringBuilder currentText = new StringBuilder();
   private final SlackMarkdownFormatter inline = new SlackMarkdownFormatter();
+  private SlackTableAttachment tableAttachment;
 
   @Override
   public void visit(CustomNode node) {
@@ -45,6 +50,15 @@ final class SlackBlockAssembler extends AbstractVisitor {
       visit((Strikethrough) node);
     } else {
       super.visit(node);
+    }
+  }
+
+  @Override
+  public void visit(CustomBlock block) {
+    if (block instanceof TableBlock) {
+      visitTable((TableBlock) block);
+    } else {
+      super.visit(block);
     }
   }
 
@@ -247,6 +261,82 @@ final class SlackBlockAssembler extends AbstractVisitor {
     currentText.append("~");
   }
 
+  private void visitTable(TableBlock table) {
+    flushCurrentText();
+
+    // Only one table per message is allowed in Slack - skip additional tables
+    if (tableAttachment != null) {
+      return;
+    }
+
+    createTableAttachment(table);
+  }
+
+  private void createTableAttachment(TableBlock table) {
+    List<List<String>> allRows = new ArrayList<>();
+
+    for (Node child = table.getFirstChild(); child != null; child = child.getNext()) {
+      if (child instanceof TableHead || child instanceof TableBody) {
+        for (Node row = child.getFirstChild(); row != null; row = row.getNext()) {
+          if (row instanceof TableRow) {
+            allRows.add(extractTableRowCells((TableRow) row));
+          }
+        }
+      }
+    }
+
+    if (allRows.isEmpty()) return;
+
+    int colCount = allRows.stream().mapToInt(List::size).max().orElse(0);
+    if (colCount == 0) return;
+
+    List<List<SlackTableAttachment.TableCell>> slackRows = new ArrayList<>();
+
+    for (int i = 0; i < allRows.size(); i++) {
+      List<String> row = allRows.get(i);
+      List<SlackTableAttachment.TableCell> slackRow = new ArrayList<>();
+      for (int j = 0; j < colCount; j++) {
+        String cellText = j < row.size() ? row.get(j) : "";
+        slackRow.add(SlackTableAttachment.TableCell.rawText(cellText));
+      }
+      slackRows.add(slackRow);
+    }
+
+    SlackTableAttachment.TableBlock slackTable =
+        SlackTableAttachment.TableBlock.builder().rows(slackRows).build();
+
+    tableAttachment = new SlackTableAttachment(slackTable);
+  }
+
+  SlackTableAttachment getTableAttachment() {
+    return tableAttachment;
+  }
+
+  private List<String> extractTableRowCells(TableRow row) {
+    List<String> cells = new ArrayList<>();
+    for (Node cell = row.getFirstChild(); cell != null; cell = cell.getNext()) {
+      if (cell instanceof TableCell) {
+        String text = inline.renderInlineChildren(cell).trim();
+        cells.add(text.replace("|", "\\|").replace("\n", " "));
+      }
+    }
+    return cells;
+  }
+
+  private void appendTableRow(StringBuilder sb, List<String> cells, int[] colWidths, int colCount) {
+    sb.append("|");
+    for (int i = 0; i < colCount; i++) {
+      String cell = i < cells.size() ? cells.get(i) : "";
+      sb.append(" ").append(padRight(cell, colWidths[i])).append(" |");
+    }
+    sb.append("\n");
+  }
+
+  private String padRight(String s, int width) {
+    if (s.length() >= width) return s;
+    return s + " ".repeat(width - s.length());
+  }
+
   void flushCurrentText() {
     if (!currentText.isEmpty()) {
       String text = currentText.toString().trim();
@@ -258,24 +348,18 @@ final class SlackBlockAssembler extends AbstractVisitor {
   }
 
   LayoutBlock createHeaderBlock(String text) {
-    String plain = truncateContent(escapeMrkdwn(text), 150);
-    return HeaderBlock.builder().text(PlainTextObject.builder().text(plain).build()).build();
+    return HeaderBlock.builder()
+        .text(PlainTextObject.builder().text(escapeMrkdwn(text)).build())
+        .build();
   }
 
   LayoutBlock createSectionBlock(String text) {
-    String truncated = truncateContent(text, SLACK_MAX_TEXT_LENGTH);
-    return SectionBlock.builder()
-        .text(MarkdownTextObject.builder().text(truncated).build())
-        .build();
+    return SectionBlock.builder().text(MarkdownTextObject.builder().text(text).build()).build();
   }
 
   private LayoutBlock createCodeBlock(String code) {
     String body = code == null ? "" : code;
-    int fenceOverhead = 7;
-    int budget = Math.max(0, SLACK_MAX_TEXT_LENGTH - fenceOverhead);
-    String truncated =
-        body.length() <= budget ? body : body.substring(0, Math.max(0, budget - 1)) + "…";
-    String fenced = "```\n" + escapeMrkdwn(truncated) + "\n```";
+    String fenced = "```\n" + escapeMrkdwn(body) + "\n```";
     return SectionBlock.builder().text(MarkdownTextObject.builder().text(fenced).build()).build();
   }
 
@@ -296,6 +380,16 @@ final class SlackBlockAssembler extends AbstractVisitor {
       } else if (c instanceof IndentedCodeBlock) {
         String code = ((IndentedCodeBlock) c).getLiteral();
         part = formatCodeForList(code);
+      } else if (c instanceof BlockQuote) {
+        part = formatBlockQuoteForList((BlockQuote) c);
+      } else if (c instanceof TableBlock) {
+        // Create native table attachment if we don't have one yet
+        if (tableAttachment == null) {
+          createTableAttachment((TableBlock) c);
+          part = ""; // Table will appear as attachment at the bottom
+        } else {
+          part = formatTableForList((TableBlock) c);
+        }
       } else {
         SlackBlockAssembler tempVisitor = new SlackBlockAssembler();
         part = tempVisitor.inline.renderInlineChildren(c).trim();
@@ -307,7 +401,8 @@ final class SlackBlockAssembler extends AbstractVisitor {
         if (c instanceof Paragraph
             || c instanceof FencedCodeBlock
             || c instanceof IndentedCodeBlock
-            || c instanceof BlockQuote) {
+            || c instanceof BlockQuote
+            || c instanceof TableBlock) {
           sb.append("\n");
         } else {
           sb.append(" ");
@@ -321,11 +416,111 @@ final class SlackBlockAssembler extends AbstractVisitor {
 
   private String formatCodeForList(String code) {
     String body = code == null ? "" : code;
-    int fenceOverhead = 7;
-    int budget = Math.max(0, SLACK_MAX_TEXT_LENGTH - fenceOverhead);
-    String truncated =
-        body.length() <= budget ? body : body.substring(0, Math.max(0, budget - 1)) + "…";
-    return "```\n" + escapeMrkdwn(truncated) + "\n```";
+    return "```\n" + escapeMrkdwn(body) + "\n```";
+  }
+
+  private String formatBlockQuoteForList(BlockQuote blockQuote) {
+    StringBuilder quotedContent = new StringBuilder();
+
+    // Process each child of the blockquote
+    for (Node child = blockQuote.getFirstChild(); child != null; child = child.getNext()) {
+      switch (child) {
+        case Paragraph paragraph -> {
+          String text = inline.renderInlineChildren(child).trim();
+          if (!text.isEmpty()) {
+            quotedContent.append("> ").append(text).append("\n");
+          }
+        }
+        case BulletList bulletList -> {
+          StringBuilder listText = new StringBuilder();
+          appendList(listText, child, 0, null);
+          // Prefix each line with "> " for blockquote
+          String[] lines = listText.toString().split("\n");
+          for (String line : lines) {
+            if (!line.trim().isEmpty()) {
+              quotedContent.append("> ").append(line).append("\n");
+            }
+          }
+        }
+        case OrderedList orderedList -> {
+          StringBuilder listText = new StringBuilder();
+          appendList(listText, child, 0, orderedList.getMarkerStartNumber());
+          // Prefix each line with "> " for blockquote
+          String[] lines = listText.toString().split("\n");
+          for (String line : lines) {
+            if (!line.trim().isEmpty()) {
+              quotedContent.append("> ").append(line).append("\n");
+            }
+          }
+        }
+        default -> {}
+      }
+    }
+
+    return quotedContent.toString().trim();
+  }
+
+  private String formatTableForList(TableBlock table) {
+    List<List<String>> headerRows = new ArrayList<>();
+    List<List<String>> bodyRows = new ArrayList<>();
+
+    for (Node child = table.getFirstChild(); child != null; child = child.getNext()) {
+      if (child instanceof TableHead) {
+        for (Node row = child.getFirstChild(); row != null; row = row.getNext()) {
+          if (row instanceof TableRow) {
+            headerRows.add(extractTableRowCells((TableRow) row));
+          }
+        }
+      } else if (child instanceof TableBody) {
+        for (Node row = child.getFirstChild(); row != null; row = row.getNext()) {
+          if (row instanceof TableRow) {
+            bodyRows.add(extractTableRowCells((TableRow) row));
+          }
+        }
+      }
+    }
+
+    int colCount = 0;
+    for (List<String> row : headerRows) colCount = Math.max(colCount, row.size());
+    for (List<String> row : bodyRows) colCount = Math.max(colCount, row.size());
+
+    if (colCount == 0) return "";
+
+    int[] colWidths = new int[colCount];
+    for (int i = 0; i < colCount; i++) colWidths[i] = 3;
+
+    for (List<String> row : headerRows) {
+      for (int i = 0; i < row.size(); i++) {
+        colWidths[i] = Math.max(colWidths[i], Math.min(row.get(i).length(), 30));
+      }
+    }
+    for (List<String> row : bodyRows) {
+      for (int i = 0; i < row.size(); i++) {
+        colWidths[i] = Math.max(colWidths[i], Math.min(row.get(i).length(), 30));
+      }
+    }
+
+    StringBuilder tableStr = new StringBuilder();
+
+    if (!headerRows.isEmpty()) {
+      for (List<String> headerRow : headerRows) {
+        appendTableRow(tableStr, headerRow, colWidths, colCount);
+      }
+      tableStr.append("|");
+      for (int i = 0; i < colCount; i++) {
+        tableStr.append("-".repeat(colWidths[i] + 2)).append("|");
+      }
+      tableStr.append("\n");
+    }
+
+    for (List<String> row : bodyRows) {
+      appendTableRow(tableStr, row, colWidths, colCount);
+    }
+
+    String tableContent = tableStr.toString().trim();
+    if (tableContent.isEmpty()) return "";
+
+    return "```\n" + escapeMrkdwn(tableContent) + "\n```";
   }
 
   private void appendList(StringBuilder out, Node list, int indent, Integer start) {
@@ -393,12 +588,5 @@ final class SlackBlockAssembler extends AbstractVisitor {
     } catch (IllegalArgumentException ex) {
       return false;
     }
-  }
-
-  private String truncateContent(String content, int maxLength) {
-    if (content.length() <= maxLength) {
-      return content;
-    }
-    return content.substring(0, maxLength - 3) + "…";
   }
 }

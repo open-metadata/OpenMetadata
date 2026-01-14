@@ -431,7 +431,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     fetchTableCount();
   }, [filters.showDeletedTables]);
 
-  const { editCustomAttributePermission, viewAllPermission } = useMemo(
+  const {
+    editCustomAttributePermission,
+    viewAllPermission,
+    viewCustomPropertiesPermission,
+  } = useMemo(
     () => ({
       editCustomAttributePermission:
         getPrioritizedEditPermission(
@@ -439,8 +443,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           PermissionOperation.EditCustomFields
         ) && !databaseSchema.deleted,
       viewAllPermission: databaseSchemaPermission.ViewAll,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        databaseSchemaPermission,
+        PermissionOperation.ViewCustomFields
+      ),
     }),
-
     [databaseSchemaPermission, databaseSchema]
   );
 
@@ -483,6 +490,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       activeTab,
       editCustomAttributePermission,
       viewAllPermission,
+      viewCustomPropertiesPermission,
       databaseSchemaPermission,
       storedProcedureCount,
       getEntityFeedCount,
@@ -504,6 +512,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     editCustomAttributePermission,
     tableCount,
     viewAllPermission,
+    viewCustomPropertiesPermission,
     storedProcedureCount,
     databaseSchemaPermission,
     handleExtensionUpdate,
@@ -634,10 +643,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: getEntityName(databaseSchema),
-      })}>
+    <PageLayoutV1 pageTitle={getEntityName(databaseSchema)}>
       {isEmpty(databaseSchema) && !isSchemaDetailsLoading ? (
         <ErrorPlaceHolder className="m-0">
           {getEntityMissingError(

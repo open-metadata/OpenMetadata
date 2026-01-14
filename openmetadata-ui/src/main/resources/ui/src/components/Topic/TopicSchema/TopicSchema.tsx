@@ -35,7 +35,7 @@ import {
 } from '../../../generated/entity/data/topic';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
@@ -95,6 +95,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     permissions,
     onUpdate,
     currentVersionData,
+    openColumnDetailPanel,
   } = useGenericContext<Topic>();
 
   const isReadOnly = useMemo(() => {
@@ -176,6 +177,18 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     }
   };
 
+  const handleColumnClick = useCallback(
+    (field: Field, event: React.MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const isExpandIcon = target.closest('.table-expand-icon') !== null;
+
+      if (!isExpandIcon) {
+        openColumnDetailPanel(field);
+      }
+    },
+    [openColumnDetailPanel]
+  );
+
   const toggleExpandAll = () => {
     if (expandedRowKeys.length < schemaAllRowKeys.length) {
       const safeKeys = getSafeExpandAllKeys(
@@ -195,19 +208,17 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
   const renderSchemaName = useCallback(
     (_: unknown, record: Field) => (
-      <div className="d-inline-flex w-max-90 vertical-align-inherit">
-        <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
-          <span className="break-word">
-            {isVersionView ? (
-              <RichTextEditorPreviewerV1 markdown={getEntityName(record)} />
-            ) : (
-              getEntityName(record)
-            )}
-          </span>
-        </Tooltip>
-      </div>
+      <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
+        <span className="break-word">
+          {isVersionView ? (
+            <RichTextEditorPreviewerV1 markdown={getEntityName(record)} />
+          ) : (
+            getEntityName(record)
+          )}
+        </span>
+      </Tooltip>
     ),
-    [isVersionView]
+    [isVersionView, handleColumnClick]
   );
 
   const renderDataType = useCallback(
@@ -294,7 +305,13 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         key: TABLE_COLUMNS_KEYS.NAME,
         fixed: 'left',
         width: 220,
+        sorter: getColumnSorter<Field, 'name'>('name'),
         render: renderSchemaName,
+        className: 'cursor-pointer',
+        onCell: (record: Field) => ({
+          onClick: (event) => handleColumnClick(record, event),
+          'data-testid': 'column-name-cell',
+        }),
       },
       {
         title: t('label.type'),

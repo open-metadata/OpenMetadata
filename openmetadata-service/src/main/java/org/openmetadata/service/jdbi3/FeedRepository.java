@@ -150,8 +150,13 @@ public class FeedRepository {
   }
 
   public int getNextTaskId() {
-    dao.feedDAO().updateTaskId();
-    return dao.feedDAO().getTaskId();
+    return Entity.getJdbi()
+        .inTransaction(
+            handle -> {
+              CollectionDAO.FeedDAO feed = handle.attach(CollectionDAO.FeedDAO.class);
+              feed.updateTaskId();
+              return feed.getTaskId();
+            });
   }
 
   @Getter
@@ -526,6 +531,20 @@ public class FeedRepository {
     JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedEntityJson);
     EntityRepository<?> repository = threadContext.getEntityRepository();
     repository.patch(null, aboutEntity.getId(), user, patch);
+    if (!origJson.equals(updatedEntityJson)) {
+      ChangeEvent changeEvent =
+          new ChangeEvent()
+              .withId(UUID.randomUUID())
+              .withEventType(EventType.ENTITY_UPDATED)
+              .withEntityId(aboutEntity.getId())
+              .withEntityType(threadContext.getAbout().getEntityType())
+              .withEntityFullyQualifiedName(aboutEntity.getFullyQualifiedName())
+              .withUserName(user)
+              .withTimestamp(System.currentTimeMillis())
+              .withEntity(updatedEntity);
+
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToMaskedJson(changeEvent));
+    }
 
     // Update the attributes
     threadContext.getThread().getTask().withNewValue(resolveTask.getNewValue());

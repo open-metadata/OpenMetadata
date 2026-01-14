@@ -19,6 +19,7 @@ import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { useEditableSection } from '../../../hooks/useEditableSection';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { fetchDataProductsElasticSearch } from '../../../rest/dataProductAPI';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -45,6 +46,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   const [showAllDataProducts, setShowAllDataProducts] = useState(false);
   const [displayActiveDomains, setDisplayActiveDomains] =
     useState<EntityReference[]>(activeDomains);
+  const { entityRules } = useEntityRules(entityType);
 
   const {
     isEditing,
@@ -165,6 +167,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     () => (
       <DataProductsSelectListV1
         fetchOptions={fetchAPI}
+        multiSelect={entityRules.canAddMultipleDataProducts}
         popoverProps={{
           open: popoverOpen,
           onOpenChange: handlePopoverOpenChange,
@@ -184,6 +187,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
       handlePopoverOpenChange,
       editingDataProducts,
       handleSaveWithDataProducts,
+      entityRules.canAddMultipleDataProducts,
       cancelEditing,
     ]
   );
@@ -198,27 +202,32 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
 
     if (!displayActiveDomains || displayActiveDomains.length === 0) {
       return (
-        <Typography.Text className="text-sm text-grey-muted">
+        <Typography.Text className="no-data-placeholder">
           {t('message.select-domain-to-add-data-product')}
         </Typography.Text>
       );
     }
 
     return (
-      <span className="no-data-placeholder">{t('label.no-data-found')}</span>
+      <span className="no-data-placeholder">
+        {t('label.no-entity-assigned', {
+          entity: t('label.data-product-plural'),
+        })}
+      </span>
     );
   }, [isLoading, isEditing, editingState, displayActiveDomains, t]);
 
   const dataProductsDisplay = useMemo(
     () => (
       <div className="data-products-display">
-        <div className="data-products-list">
+        <div className="data-products-list" data-testid="data-products-list">
           {(showAllDataProducts
             ? displayDataProducts
             : displayDataProducts.slice(0, maxVisibleDataProducts)
           ).map((dataProduct) => (
             <div
               className="data-product-item"
+              data-testid="data-product-item"
               key={dataProduct.id || dataProduct.fullyQualifiedName}>
               <div className="data-product-card-bar">
                 <div className="data-product-card-content">
@@ -262,7 +271,6 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   const canShowEditButton =
     showEditButton &&
     hasPermission &&
-    !isEditing &&
     !isLoading &&
     displayActiveDomains?.length > 0;
 

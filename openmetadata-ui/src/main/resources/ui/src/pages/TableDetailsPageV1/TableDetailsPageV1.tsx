@@ -1,4 +1,3 @@
-/* eslint-disable i18next/no-literal-string */
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +14,7 @@
 import { Col, Row, Tabs, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -257,13 +256,13 @@ const TableDetailsPageV1: React.FC = () => {
         return;
       }
 
-      if (isUndefined(tableDetails?.testSuite?.id)) {
+      const testSuiteId = tableDetails?.testSuite?.id;
+
+      if (!testSuiteId) {
         await fetchDQUpstreamFailureCount();
 
         return;
       }
-
-      const testSuiteId = tableDetails?.testSuite?.id;
 
       const { data } = await fetchTestCaseResultByTestSuiteId(
         testSuiteId,
@@ -397,6 +396,7 @@ const TableDetailsPageV1: React.FC = () => {
 
   const onTableUpdate = async (updatedTable: Table, key?: keyof Table) => {
     try {
+      // Generate patch and update via API
       const res = await saveUpdatedTableData(updatedTable);
 
       setTableDetails((previous) => {
@@ -480,6 +480,7 @@ const TableDetailsPageV1: React.FC = () => {
     viewProfilerPermission,
     viewAllPermission,
     viewBasicPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -521,6 +522,10 @@ const TableDetailsPageV1: React.FC = () => {
         tablePermissions,
         Operation.ViewBasic
       ),
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        tablePermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [tablePermissions, deleted]
   );
@@ -539,6 +544,7 @@ const TableDetailsPageV1: React.FC = () => {
       getEntityFeedCount,
       handleFeedCount,
       viewAllPermission,
+      viewCustomPropertiesPermission,
       editCustomAttributePermission,
       viewSampleDataPermission,
       viewQueriesPermission,
@@ -568,6 +574,7 @@ const TableDetailsPageV1: React.FC = () => {
     getEntityFeedCount,
     handleFeedCount,
     viewAllPermission,
+    viewCustomPropertiesPermission,
     editCustomAttributePermission,
     viewSampleDataPermission,
     viewQueriesPermission,
@@ -774,7 +781,7 @@ const TableDetailsPageV1: React.FC = () => {
       fetchTableDetails();
       getEntityFeedCount();
     }
-  }, [tableFqn, isTourOpen, isTourPage, tablePermissions]);
+  }, [tableFqn, isTourOpen, isTourPage, viewBasicPermission]);
 
   useEffect(() => {
     if (tableDetails) {
@@ -828,11 +835,7 @@ const TableDetailsPageV1: React.FC = () => {
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.table'),
-      })}
-      title="Table details">
+    <PageLayoutV1 pageTitle={entityName} title="Table details">
       <GenericProvider<Table>
         customizedPage={customizedPage}
         data={tableDetails}

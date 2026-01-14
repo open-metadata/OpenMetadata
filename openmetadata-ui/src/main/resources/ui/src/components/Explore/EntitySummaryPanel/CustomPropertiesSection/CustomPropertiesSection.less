@@ -10,9 +10,40 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import '../../../../styles/variables.less';
+
 .view-all-container {
   margin-top: 8px;
   text-align: end;
   width: 100%;
   padding-right: 16px;
+}
+.entity-summary-panel-tab-content .permission-error-placeholder {
+  height: auto;
+  border: none;
+}
+.entity-summary-panel-tab-content .searchbar-container {
+  margin-bottom: 0;
+  margin-top: 8px;
+}
+.entity-summary-panel-tab-content .no-data-text {
+  color: @grey-500;
+  font-size: 12px;
+}
+.empty-state {
+  margin-top: 60px;
+}
+.entity-summary-panel-tab-content {
+  .property-value {
+    .block-editor-wrapper .tiptap.ProseMirror {
+      font-size: 12px;
+    }
+  }
+  .entity-button:hover {
+    background-color: transparent;
+  }
+}
+
+.table-col-min-width {
+  min-width: 80px;
 }

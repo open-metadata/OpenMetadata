@@ -162,8 +162,7 @@
     },
     "entityStatus": {
       "description": "Status of the Dashboard.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     }
   },
   "required": ["id", "name", "service"],

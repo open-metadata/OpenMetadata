@@ -17,17 +17,21 @@ swagger:
 
 assets:
   resourcePath: /assets/
-  uriPath: ${BASE_PATH:-/}
+  uriPath: /
 
 basePath: ${BASE_PATH:-/}
 
 server:
   applicationContextPath: ${BASE_PATH:-/}
-  rootPath: ${BASE_PATH:-/}api/*
+  rootPath: /api/*
   applicationConnectors:
     - type: http
       bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_PORT:-8585}
+
+      # Jetty 12 URI Compliance - UNSAFE allows all special characters in entity names
+      # Required for backward compatibility with entity names containing /, ", etc.
+      uriCompliance: UNSAFE
 
       # Jetty Acceptor and Selector threads for high concurrency
       acceptorThreads: ${SERVER_ACCEPTOR_THREADS:-2}  # 1-2 per CPU core
@@ -64,11 +68,18 @@ server:
   gzip:
     enabled: false
 
+  # Thread pool configuration
+  # With virtual threads enabled (Java 21+), these settings become less critical
+  # as blocking operations are handled efficiently by the JVM
   maxThreads: ${SERVER_MAX_THREADS:-150}
   minThreads: ${SERVER_MIN_THREADS:-100}
   idleThreadTimeout: ${SERVER_IDLE_THREAD_TIMEOUT:-1 minute}
+
+  # Virtual Threads (Project Loom) - Recommended for Java 21+
+  # Jetty 12 uses AdaptiveExecutionStrategy to route blocking tasks to virtual threads
+  # while keeping non-blocking I/O on platform threads for optimal cache locality
   enableVirtualThreads: ${SERVER_ENABLE_VIRTUAL_THREAD:-false}
-  maxQueuedRequests: ${SERVER_REQUEST_QUEUE:-1024}
+  # Note: maxQueuedRequests removed in Dropwizard 5.0/Jetty 12
 
   # Request/Response logging (disable in production for performance)
   requestLog:
@@ -226,11 +237,11 @@ database:
     preparedStatementCacheSizeMiB: ${DB_PG_PREP_STMT_CACHE_SIZE_MB:-10}  # Larger cache
     reWriteBatchedInserts: ${DB_PG_REWRITE_BATCHED_INSERTS:-true}  # Critical for batch performance
     defaultRowFetchSize: ${DB_PG_DEFAULT_ROW_FETCH_SIZE:-1000}  # Fetch more rows at once
-    socketTimeout: ${DB_PG_SOCKET_TIMEOUT:-30000}
-    connectTimeout: ${DB_PG_CONNECT_TIMEOUT:-30000}
     assumeMinServerVersion: ${DB_PG_ASSUME_MIN_SERVER_VERSION:-12}  # Skip version checks
     ApplicationName: ${DB_PG_APPLICATION_NAME:-OpenMetadata}
     loginTimeout: ${DB_PG_LOGIN_TIMEOUT:-300}  # Login timeout in seconds
+    postgresqlConnectTimeout: ${DB_POSTGRESQL_CONNECT_TIMEOUT:-60}  # Connection timeout in seconds
+    postgresqlSocketTimeout: ${DB_POSTGRESQL_SOCKET_TIMEOUT:-30000}  # Socket timeout in seconds (0 = infinite)
 
     # Aurora PostgreSQL specific optimizations
     loadBalanceHosts: ${DB_PG_LOAD_BALANCE_HOSTS:-false}  # Set to true for Aurora reader endpoints
@@ -251,6 +262,8 @@ database:
     cacheServerConfiguration: ${DB_MYSQL_CACHE_SERVER_CONFIG:-true}
     tcpKeepAlive: ${DB_MYSQL_TCP_KEEP_ALIVE:-true}
     tcpNoDelay: ${DB_MYSQL_TCP_NO_DELAY:-true}
+    mysqlConnectTimeout: ${DB_MYSQL_CONNECT_TIMEOUT:-60000}  # Connection timeout in milliseconds
+    mysqlSocketTimeout: ${DB_MYSQL_SOCKET_TIMEOUT:-30000000}  # Socket timeout in milliseconds (0 = infinite)
 
 objectStorage:
   enabled: false
@@ -289,10 +302,11 @@ authenticationConfiguration:
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
   jwtPrincipalClaimsMapping: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS_MAPPING:-[]}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
+  enableAutoRedirect: ${AUTHENTICATION_ENABLE_AUTO_REDIRECT:-false}
   # Force secure flag on session cookies even when not using HTTPS directly.
   # Enable this when running behind a proxy/load balancer that handles SSL termination.
   # Default: false (secure flag only set when HTTPS is detected)
-  forceSecureSessionCookie: ${FORCE_SECURE_SESSION_COOKIE:-true}
+  forceSecureSessionCookie: ${FORCE_SECURE_SESSION_COOKIE:-false}
   oidcConfiguration:
     id: ${OIDC_CLIENT_ID:-""}
     type: ${OIDC_TYPE:-""} # google, azure etc.
@@ -319,7 +333,6 @@ authenticationConfiguration:
       entityId: ${SAML_IDP_ENTITY_ID:-""}
       ssoLoginUrl: ${SAML_IDP_SSO_LOGIN_URL:-""}
       idpX509Certificate: ${SAML_IDP_CERTIFICATE:-""}
-      authorityUrl: ${SAML_AUTHORITY_URL:-"http://localhost:8585/api/v1/saml/login"}
       nameId: ${SAML_IDP_NAME_ID:-"urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress"}
     sp:
       entityId: ${SAML_SP_ENTITY_ID:-"http://localhost:8585/api/v1/saml/metadata"}

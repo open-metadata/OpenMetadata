@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -52,7 +52,7 @@ export interface Application {
  *
  * Configuration for the Automator External Application.
  *
- * This schema defines the Slack App Token Configuration
+ * This schema defines the Slack App Information
  *
  * Configuration for the Collate AI Quality Agent.
  *
@@ -68,7 +68,7 @@ export interface Application {
 export interface CollateAIAppConfig {
     /**
      * Query filter to be passed to ES. E.g.,
-     * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domain.displayName.keyword":"DG
+     * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domains.displayName.keyword":"DG
      * Anim"}}]}}]}}}`. This is the same payload as in the Explore page.
      */
     filter?: string;
@@ -95,6 +95,19 @@ export interface CollateAIAppConfig {
      * Bot Token
      */
     botToken?: string;
+    /**
+     * Client Id of the Application
+     */
+    clientId?: string;
+    /**
+     * Client Secret of the Application.
+     */
+    clientSecret?: string;
+    /**
+     * Signing Secret of the Application. Confirm that each request comes from Slack by
+     * verifying its unique signature.
+     */
+    signingSecret?: string;
     /**
      * User Token
      */
@@ -187,6 +200,10 @@ export interface CollateAIAppConfig {
      * (e.g., 30 for one month, 60 for two months).
      */
     activityThreadsRetentionPeriod?: number;
+    /**
+     * Enter the retention period for Audit Log entries in days (e.g., 90 for three months).
+     */
+    auditLogRetentionPeriod?: number;
     /**
      * Enter the retention period for change event records in days (e.g., 7 for one week, 30 for
      * one month).
@@ -415,9 +432,22 @@ export interface Action {
      */
     propagationDepth?: number;
     /**
+     * Mode for calculating propagation depth. 'ROOT' calculates depth from root nodes (sources
+     * with no parents). 'DATA_ASSET' calculates depth relative to each data asset being
+     * processed, ensuring each asset only receives metadata from nodes within the specified
+     * number of hops upstream.
+     */
+    propagationDepthMode?: PropagationDepthMode;
+    /**
      * List of configurations to stop propagation based on conditions
      */
     propagationStopConfigs?: PropagationStopConfig[];
+    /**
+     * Use the optimized propagation algorithm that reduces memory usage and API calls.
+     * Recommended for large lineage graphs. If set to false, uses the original propagation
+     * algorithm. Default is true.
+     */
+    useOptimizedPropagation?: boolean;
 }
 
 /**
@@ -488,6 +518,17 @@ export enum LabelElement {
 }
 
 /**
+ * Mode for calculating propagation depth. 'ROOT' calculates depth from root nodes (sources
+ * with no parents). 'DATA_ASSET' calculates depth relative to each data asset being
+ * processed, ensuring each asset only receives metadata from nodes within the specified
+ * number of hops upstream.
+ */
+export enum PropagationDepthMode {
+    DataAsset = "DATA_ASSET",
+    Root = "ROOT",
+}
+
+/**
  * Configuration to stop lineage propagation based on conditions
  */
 export interface PropagationStopConfig {
@@ -531,6 +572,14 @@ export enum MetadataAttribute {
  * the relationship of a table `belongs to a` database.
  */
 export interface TagLabel {
+    /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
     /**
      * Description for the tag label.
      *
@@ -679,6 +728,14 @@ export interface CoverImage {
  * tier to apply
  */
 export interface TierElement {
+    /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
     /**
      * Description for the tag label.
      */
@@ -933,7 +990,7 @@ export interface Resource {
     filterJsonTree?: string;
     /**
      * Query filter to be passed to ES. E.g.,
-     * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domain.displayName.keyword":"DG
+     * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domains.displayName.keyword":"DG
      * Anim"}}]}}]}}}`. This is the same payload as in the Explore page.
      */
     queryFilter?: string;
@@ -1010,9 +1067,10 @@ export interface AppLimitsConfig {
      */
     actions: { [key: string]: number };
     /**
-     * The start of this limit cycle.
+     * The start of this limit cycle. DEPRECATED: Use central billingCycleStart from
+     * LimitsConfiguration in openmetadata.yaml
      */
-    billingCycleStart: Date;
+    billingCycleStart?: Date;
 }
 
 /**

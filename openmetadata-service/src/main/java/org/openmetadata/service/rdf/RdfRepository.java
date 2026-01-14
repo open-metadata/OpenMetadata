@@ -29,6 +29,8 @@ import org.openmetadata.service.rdf.translator.JsonLdTranslator;
 @Slf4j
 public class RdfRepository {
 
+  private static final String KNOWLEDGE_GRAPH = "https://open-metadata.org/graph/knowledge";
+
   private final RdfConfiguration config;
   private final RdfStorageInterface storageService;
   private final JsonLdTranslator translator;
@@ -42,7 +44,6 @@ public class RdfRepository {
           new JsonLdTranslator(JsonUtils.getObjectMapper(), config.getBaseUri().toString());
       LOG.info("RDF Repository initialized with {} storage", config.getStorageType());
 
-      // Load ontologies on initialization
       loadOntologies();
     } else {
       this.storageService = null;
@@ -90,13 +91,31 @@ public class RdfRepository {
 
     try {
       String entityType = entity.getEntityReference().getType();
-      LOG.info(
+      LOG.debug(
           "Storing entity in RDF - Type: {}, FQN: {}, Name: {}, ID: {}",
           entityType,
           entity.getFullyQualifiedName(),
           entity.getName(),
           entity.getId());
       Model rdfModel = translator.toRdf(entity);
+
+      // Preserve existing relationship triples before updating
+      // This prevents postCreate() from overwriting relationships added by storeRelationships()
+      Model existingModel = storageService.getEntity(entityType, entity.getId());
+      if (existingModel != null && !existingModel.isEmpty()) {
+        String entityUri =
+            config.getBaseUri().toString() + "entity/" + entityType + "/" + entity.getId();
+        // Extract and preserve relationship triples (where entity is subject and object is a URI)
+        Model relationshipTriples = extractRelationshipTriples(existingModel, entityUri);
+        if (!relationshipTriples.isEmpty()) {
+          rdfModel.add(relationshipTriples);
+          LOG.debug(
+              "Preserved {} relationship triples for entity {}",
+              relationshipTriples.size(),
+              entity.getId());
+        }
+      }
+
       storageService.storeEntity(entityType, entity.getId(), rdfModel);
       LOG.debug("Created/Updated entity {} in RDF store", entity.getId());
     } catch (Exception e) {
@@ -109,14 +128,33 @@ public class RdfRepository {
     }
   }
 
+  private Model extractRelationshipTriples(Model model, String entityUri) {
+    Model relationshipTriples = ModelFactory.createDefaultModel();
+    Resource entityResource = model.createResource(entityUri);
+
+    // Find all triples where entity is subject and object is a URI resource (relationships)
+    model
+        .listStatements(entityResource, null, (org.apache.jena.rdf.model.RDFNode) null)
+        .forEachRemaining(
+            stmt -> {
+              if (stmt.getObject().isURIResource()) {
+                String objectUri = stmt.getObject().asResource().getURI();
+                // Only preserve triples that link to other entities (not type/label predicates)
+                if (objectUri.contains("/entity/")) {
+                  relationshipTriples.add(stmt);
+                }
+              }
+            });
+
+    return relationshipTriples;
+  }
+
   public void delete(EntityReference entityReference) {
     if (!isEnabled()) {
       return;
     }
 
     try {
-      // Clear the entity from its graph
-      String graphUri = config.getBaseUri().toString() + "graph/" + entityReference.getType();
       String entityUri =
           config.getBaseUri().toString()
               + "entity/"
@@ -124,13 +162,11 @@ public class RdfRepository {
               + "/"
               + entityReference.getId();
 
-      // Remove entity and all its relationships from all graphs
       String sparqlUpdate =
           String.format(
               "DELETE WHERE { GRAPH <%s> { <%s> ?p ?o } }; "
-                  + "DELETE WHERE { GRAPH ?g { ?s ?p <%s> } }; "
-                  + "DELETE WHERE { GRAPH ?g { <%s> ?p ?o } }",
-              graphUri, entityUri, entityUri, entityUri);
+                  + "DELETE WHERE { GRAPH <%s> { ?s ?p <%s> } }",
+              KNOWLEDGE_GRAPH, entityUri, KNOWLEDGE_GRAPH, entityUri);
 
       storageService.executeSparqlUpdate(sparqlUpdate);
       LOG.debug("Deleted entity {} from RDF store", entityReference.getId());
@@ -145,10 +181,8 @@ public class RdfRepository {
     }
 
     try {
-      // Create a model for the relationship with proper RDF predicates
       Model relationshipModel = createRelationshipModel(relationship);
 
-      // Store the relationship model
       String fromUri =
           config.getBaseUri().toString()
               + "entity/"
@@ -195,7 +229,6 @@ public class RdfRepository {
   private Model createRelationshipModel(EntityRelationship relationship) {
     Model model = ModelFactory.createDefaultModel();
 
-    // Set namespace prefixes
     model.setNsPrefix("om", "https://open-metadata.org/ontology/");
     model.setNsPrefix("prov", "http://www.w3.org/ns/prov#");
     model.setNsPrefix("dct", "http://purl.org/dc/terms/");
@@ -216,18 +249,15 @@ public class RdfRepository {
     Resource fromResource = model.createResource(fromUri);
     Resource toResource = model.createResource(toUri);
 
-    // Map relationship type to RDF predicate based on entityRelationship context
     String relationshipType = relationship.getRelationshipType().value();
     Property predicate = getRelationshipPredicate(relationshipType, model);
 
-    // Add the relationship triple
     fromResource.addProperty(predicate, toResource);
 
     return model;
   }
 
   private Property getRelationshipPredicate(String relationshipType, Model model) {
-    // Map OpenMetadata relationship types to RDF predicates from context
     return switch (relationshipType.toLowerCase()) {
       case "contains" -> model.createProperty("https://open-metadata.org/ontology/", "contains");
       case "uses" -> model.createProperty("http://www.w3.org/ns/prov#", "used");
@@ -266,6 +296,189 @@ public class RdfRepository {
       LOG.debug("Bulk added {} relationships to RDF store", relationships.size());
     } catch (Exception e) {
       LOG.error("Failed to bulk add relationships to RDF", e);
+    }
+  }
+
+  /**
+   * Add a lineage relationship with full details (SQL query, pipeline, column lineage). This stores
+   * the lineage as structured RDF triples instead of a single JSON literal, enabling rich SPARQL
+   * queries like: "Find all tables derived from table X via pipeline Y" or "What columns from
+   * source table feed into column Z"
+   */
+  public void addLineageWithDetails(
+      String fromType,
+      UUID fromId,
+      String toType,
+      UUID toId,
+      org.openmetadata.schema.type.LineageDetails lineageDetails) {
+    if (!isEnabled()) {
+      return;
+    }
+
+    try {
+      Model model = ModelFactory.createDefaultModel();
+
+      model.setNsPrefix("om", "https://open-metadata.org/ontology/");
+      model.setNsPrefix("prov", "http://www.w3.org/ns/prov#");
+      model.setNsPrefix("dct", "http://purl.org/dc/terms/");
+
+      String fromUri = config.getBaseUri().toString() + "entity/" + fromType + "/" + fromId;
+      String toUri = config.getBaseUri().toString() + "entity/" + toType + "/" + toId;
+
+      Resource fromResource = model.createResource(fromUri);
+      Resource toResource = model.createResource(toUri);
+
+      // PROV-O: to wasDerivedFrom from (reverse direction for semantic correctness)
+      Property derivedFrom = model.createProperty("http://www.w3.org/ns/prov#", "wasDerivedFrom");
+      toResource.addProperty(derivedFrom, fromResource);
+
+      // OpenMetadata-specific upstream for compatibility
+      Property upstream = model.createProperty("https://open-metadata.org/ontology/", "UPSTREAM");
+      fromResource.addProperty(upstream, toResource);
+
+      if (lineageDetails != null) {
+        String detailsUri =
+            config.getBaseUri().toString()
+                + "lineageDetails/"
+                + fromId
+                + "/"
+                + toId
+                + "/"
+                + System.currentTimeMillis();
+        Resource detailsResource = model.createResource(detailsUri);
+
+        Property hasLineageDetails =
+            model.createProperty("https://open-metadata.org/ontology/", "hasLineageDetails");
+        fromResource.addProperty(hasLineageDetails, detailsResource);
+
+        detailsResource.addProperty(
+            model.createProperty("http://www.w3.org/1999/02/22-rdf-syntax-ns#", "type"),
+            model.createResource("https://open-metadata.org/ontology/LineageDetails"));
+
+        if (lineageDetails.getSqlQuery() != null && !lineageDetails.getSqlQuery().isEmpty()) {
+          detailsResource.addProperty(
+              model.createProperty("https://open-metadata.org/ontology/", "sqlQuery"),
+              lineageDetails.getSqlQuery());
+        }
+
+        if (lineageDetails.getSource() != null) {
+          detailsResource.addProperty(
+              model.createProperty("https://open-metadata.org/ontology/", "lineageSource"),
+              lineageDetails.getSource().value());
+        }
+
+        if (lineageDetails.getDescription() != null && !lineageDetails.getDescription().isEmpty()) {
+          detailsResource.addProperty(
+              model.createProperty("http://purl.org/dc/terms/", "description"),
+              lineageDetails.getDescription());
+        }
+
+        if (lineageDetails.getPipeline() != null && lineageDetails.getPipeline().getId() != null) {
+          EntityReference pipeline = lineageDetails.getPipeline();
+          String pipelineType = pipeline.getType() != null ? pipeline.getType() : "pipeline";
+          String pipelineUri =
+              config.getBaseUri().toString() + "entity/" + pipelineType + "/" + pipeline.getId();
+          Resource pipelineResource = model.createResource(pipelineUri);
+
+          detailsResource.addProperty(
+              model.createProperty("http://www.w3.org/ns/prov#", "wasGeneratedBy"),
+              pipelineResource);
+        }
+
+        if (lineageDetails.getColumnsLineage() != null
+            && !lineageDetails.getColumnsLineage().isEmpty()) {
+          Property hasColumnLineage =
+              model.createProperty("https://open-metadata.org/ontology/", "hasColumnLineage");
+
+          for (org.openmetadata.schema.type.ColumnLineage colLineage :
+              lineageDetails.getColumnsLineage()) {
+            String colLineageUri = detailsUri + "/columnLineage/" + System.nanoTime();
+            Resource colLineageResource = model.createResource(colLineageUri);
+
+            detailsResource.addProperty(hasColumnLineage, colLineageResource);
+            colLineageResource.addProperty(
+                model.createProperty("http://www.w3.org/1999/02/22-rdf-syntax-ns#", "type"),
+                model.createResource("https://open-metadata.org/ontology/ColumnLineage"));
+
+            if (colLineage.getFromColumns() != null) {
+              Property fromColumnProp =
+                  model.createProperty("https://open-metadata.org/ontology/", "fromColumn");
+              for (String fromCol : colLineage.getFromColumns()) {
+                colLineageResource.addProperty(fromColumnProp, fromCol);
+              }
+            }
+
+            if (colLineage.getToColumn() != null) {
+              colLineageResource.addProperty(
+                  model.createProperty("https://open-metadata.org/ontology/", "toColumn"),
+                  colLineage.getToColumn());
+            }
+
+            if (colLineage.getFunction() != null) {
+              colLineageResource.addProperty(
+                  model.createProperty("https://open-metadata.org/ontology/", "transformFunction"),
+                  colLineage.getFunction());
+            }
+          }
+        }
+
+        if (lineageDetails.getCreatedAt() != null) {
+          detailsResource.addProperty(
+              model.createProperty("http://purl.org/dc/terms/", "created"),
+              model.createTypedLiteral(
+                  lineageDetails.getCreatedAt().toString(),
+                  org.apache.jena.datatypes.xsd.XSDDatatype.XSDlong));
+        }
+        if (lineageDetails.getUpdatedAt() != null) {
+          detailsResource.addProperty(
+              model.createProperty("http://purl.org/dc/terms/", "modified"),
+              model.createTypedLiteral(
+                  lineageDetails.getUpdatedAt().toString(),
+                  org.apache.jena.datatypes.xsd.XSDDatatype.XSDlong));
+        }
+
+        if (lineageDetails.getCreatedBy() != null) {
+          detailsResource.addProperty(
+              model.createProperty("https://open-metadata.org/ontology/", "lineageCreatedBy"),
+              lineageDetails.getCreatedBy());
+        }
+        if (lineageDetails.getUpdatedBy() != null) {
+          detailsResource.addProperty(
+              model.createProperty("https://open-metadata.org/ontology/", "lineageUpdatedBy"),
+              lineageDetails.getUpdatedBy());
+        }
+      }
+
+      // Idempotent delete/insert pattern ensures no duplicate triples
+      java.io.StringWriter writer = new java.io.StringWriter();
+      model.write(writer, "N-TRIPLES");
+      String triples = writer.toString();
+
+      if (!triples.isEmpty()) {
+        String deleteQuery =
+            String.format(
+                "DELETE WHERE { GRAPH <%s> { <%s> <https://open-metadata.org/ontology/UPSTREAM> <%s> . } }; "
+                    + "DELETE WHERE { GRAPH <%s> { <%s> <http://www.w3.org/ns/prov#wasDerivedFrom> <%s> . } }",
+                KNOWLEDGE_GRAPH, fromUri, toUri, KNOWLEDGE_GRAPH, toUri, fromUri);
+
+        storageService.executeSparqlUpdate(deleteQuery);
+
+        StringBuilder insertQuery = new StringBuilder();
+        insertQuery.append("INSERT DATA { GRAPH <").append(KNOWLEDGE_GRAPH).append("> { ");
+        insertQuery.append(triples);
+        insertQuery.append(" } }");
+
+        storageService.executeSparqlUpdate(insertQuery.toString());
+        LOG.debug("Added lineage with details from {}/{} to {}/{}", fromType, fromId, toType, toId);
+      }
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to add lineage with details from {}/{} to {}/{}",
+          fromType,
+          fromId,
+          toType,
+          toId,
+          e);
     }
   }
 
@@ -356,7 +569,39 @@ public class RdfRepository {
       throw new IllegalStateException("RDF not enabled");
     }
 
+    // Check if inference is enabled by default in configuration
+    if (isInferenceEnabledByDefault()) {
+      String defaultLevel = getDefaultInferenceLevel();
+      return executeSparqlQueryWithInference(query, format, defaultLevel);
+    }
+
     return storageService.executeSparqlQuery(query, format);
+  }
+
+  /**
+   * Execute SPARQL query without inference, regardless of configuration. Use this for internal
+   * queries where inference overhead is not needed.
+   */
+  public String executeSparqlQueryDirect(String query, String format) {
+    if (!isEnabled()) {
+      throw new IllegalStateException("RDF not enabled");
+    }
+    return storageService.executeSparqlQuery(query, format);
+  }
+
+  public boolean isInferenceEnabledByDefault() {
+    return config.getInferenceEnabled() != null && config.getInferenceEnabled();
+  }
+
+  public String getDefaultInferenceLevel() {
+    if (config.getDefaultInferenceLevel() != null) {
+      return config.getDefaultInferenceLevel().value();
+    }
+    return "NONE";
+  }
+
+  public RdfConfiguration getConfig() {
+    return config;
   }
 
   public List<Map<String, String>> executeSparqlQueryAsJson(String query) {
@@ -414,7 +659,7 @@ public class RdfRepository {
           };
 
       if (level == org.openmetadata.service.rdf.reasoning.InferenceEngine.ReasoningLevel.NONE) {
-        return executeSparqlQuery(query, format);
+        return executeSparqlQueryDirect(query, format);
       }
 
       // For inference queries, we need to work with the full model

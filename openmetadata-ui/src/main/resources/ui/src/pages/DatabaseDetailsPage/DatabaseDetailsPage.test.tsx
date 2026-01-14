@@ -14,6 +14,7 @@
 import { findByTestId, findByText, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   getDatabaseDetailsByFQN,
   patchDatabaseDetails,
@@ -191,6 +192,7 @@ jest.mock('../../utils/TableUtils', () => ({
   getTierTags: jest.fn().mockImplementation(() => ({})),
   getTagsWithoutTier: jest.fn().mockImplementation(() => []),
   getTableExpandableConfig: jest.fn().mockReturnValue({}),
+  extractColumnsFromData: jest.fn().mockReturnValue([]),
 }));
 
 jest.mock('../../components/common/NextPrevious/NextPrevious', () => {
@@ -229,9 +231,9 @@ jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 
-jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
-  return jest.fn().mockImplementation(({ children }) => children);
-});
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children }) => children)
+);
 
 jest.mock(
   '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
@@ -274,6 +276,26 @@ jest.mock(
       .mockImplementation(() => <>testDatabaseSchemaTable</>),
   })
 );
+
+jest.mock(
+  '../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
+
+jest.mock('../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockImplementation(() => ({
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
+}));
 
 describe('Test DatabaseDetails page', () => {
   it('Component should render', async () => {
@@ -343,5 +365,20 @@ describe('Test DatabaseDetails page', () => {
     expect(entityHeader).toBeInTheDocument();
     expect(descriptionContainer).toBeInTheDocument();
     expect(databaseTable).toBeInTheDocument();
+  });
+
+  it('should pass entity name as pageTitle to PageLayoutV1', async () => {
+    render(<DatabaseDetailsPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    await findByText(document.body, 'DataAssetsHeader');
+
+    expect(PageLayoutV1).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pageTitle: 'bigquery_gcp.ecommerce_db',
+      }),
+      expect.anything()
+    );
   });
 });

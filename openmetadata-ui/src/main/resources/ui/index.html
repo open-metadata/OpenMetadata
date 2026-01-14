@@ -105,7 +105,7 @@
     <link rel="manifest" href="${basePath}manifest.json" />
 
     <script>
-      let images = ['${basePath}images/governce.png', '${basePath}images/data-collbration.png'];
+      let images = ['${basePath}images/governance.png', '${basePath}images/data-collaboration.png'];
 
       images.forEach((image) => {
         let img = new Image();
@@ -114,11 +114,35 @@
       });
     </script>
 
+    <script id="google-tag-manager">
+      let isSandbox = location.host === 'sandbox.open-metadata.org';
+
+      if (isSandbox) {
+        // Google Tag Manager
+        const gtmTagScript = document.createElement('script');
+        gtmTagScript.innerHTML = `
+                    (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+                    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+                    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+                    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+                    })(window,document,'script','dataLayer','GTM-554C968W');
+                `;
+        gtmTagScript.id = 'gtm-init';
+        document.head.appendChild(gtmTagScript);
+      }
+    </script>
+
     <title>OpenMetadata</title>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
+    <img 
+      referrerpolicy="no-referrer-when-downgrade" 
+      src="https://static.scarf.sh/a.png?x-pxid=9744b844-501a-4ca1-ad54-29b13e6b4642" 
+      style="display: none;"
+      alt=""
+    />
     <script type="module" src="/src/index.tsx"></script>
   </body>
 </html>

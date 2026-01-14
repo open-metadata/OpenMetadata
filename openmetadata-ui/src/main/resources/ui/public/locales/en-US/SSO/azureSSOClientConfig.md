@@ -62,7 +62,7 @@ Azure Active Directory (Azure AD) SSO enables users to log in with their Microso
 ### <span data-id="publicKey">Public Key URLs</span>
 
 - **Definition:** List of URLs where Azure AD publishes its public keys for token verification.
-- **Example:** ["https://login.microsoftonline.com/common/discovery/v2.0/keys"]
+- **Example:** ["https://login.microsoftonline.com/YOUR-TENANT-ID/discovery/v2.0/keys"]
 - **Why it matters:** Used to verify JWT token signatures from Azure AD.
 - **Note:** Usually auto-discovered from the discovery URI, rarely needs manual configuration
 
@@ -72,13 +72,18 @@ Azure Active Directory (Azure AD) SSO enables users to log in with their Microso
 - **Example:** ["preferred_username", "email", "sub"]
 - **Why it matters:** Determines which claim from the JWT token identifies the user.
 - **Note:** Common claims: email, preferred_username, upn, sub
+  - Order matters; first matching claim is used
 
 ### <span data-id="jwtPrincipalClaimsMapping">JWT Principal Claims Mapping</span>
 
-- **Definition:** Maps JWT claims to OpenMetadata user attributes.
-- **Example:** ["email:email", "name:displayName", "firstName:given_name"]
+- **Definition:** Maps JWT claims to OpenMetadata user attributes. (Overrides JWT Principal Claims if set)
+- **Example:** ["email:email", "username:preferred_username"]
 - **Why it matters:** Controls how user information from Azure AD maps to OpenMetadata user profiles.
 - **Note:** Format: "openmetadata_field:jwt_claim"
+- **Validation Requirements:**
+  - Both `username` and `email` mappings must be present when this field is used
+  - Only `username` and `email` keys are allowed; no other keys are permitted
+  - If validation fails, errors will be displayed on this specific field
 
 ### <span data-id="tokenValidation">Token Validation Algorithm</span>
 
@@ -195,10 +200,10 @@ These fields are only shown when Client Type is set to **Confidential**.
 
 ### <span data-id="serverUrl">OIDC Server URL</span>
 
-- **Definition:** Base URL for Azure AD authentication server.
-- **Example:** https://login.microsoftonline.com
-- **Why it matters:** Specifies the Azure AD endpoint to use.
-- **Note:** Usually the standard Azure AD endpoint
+- **Definition:** Base URL for Collate server.
+- **Example:** https://yourapp.company.com
+- **Why it matters:** Specifies Collate endpoint
+- **Note:** Usually your collate API server
 
 ### <span data-id="callbackUrl">OIDC Callback URL</span>
 
@@ -238,7 +243,7 @@ These fields are only shown when Client Type is set to **Confidential**.
 ### <span data-id="adminPrincipals">Admin Principals</span>
 
 - **Definition:** List of user principals who will have admin access.
-- **Example:** ["admin@company.com", "superuser@company.com"]
+- **Example:** ["admin", "superuser"]
 - **Why it matters:** These users will have full administrative privileges in OpenMetadata.
 - **Note:** Use email addresses or UPNs that match the JWT principal claims
 

@@ -31,20 +31,24 @@ import static org.openmetadata.csv.EntityCsvTest.getFailedRecord;
 import static org.openmetadata.csv.EntityCsvTest.getSuccessRecord;
 import static org.openmetadata.service.util.EntityUtil.getFqn;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
+import jakarta.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -55,7 +59,6 @@ import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
-import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -63,6 +66,8 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -82,6 +87,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
   public DatabaseResourceTest() {
     super(
         Entity.DATABASE, Database.class, DatabaseList.class, "databases", DatabaseResource.FIELDS);
+    supportsBulkAPI = true;
     supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
   }
 
@@ -411,7 +417,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     assertNotNull(database.getServiceType());
     assertReference(createRequest.getService(), database.getService());
     assertEquals(
-        FullyQualifiedName.build(database.getService().getName(), database.getName()),
+        FullyQualifiedName.add(database.getService().getFullyQualifiedName(), database.getName()),
         database.getFullyQualifiedName());
   }
 
@@ -420,8 +426,27 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
       Database expected, Database updated, Map<String, String> authHeaders) {
     assertReference(expected.getService(), updated.getService());
     assertEquals(
-        FullyQualifiedName.build(updated.getService().getName(), updated.getName()),
+        FullyQualifiedName.add(updated.getService().getFullyQualifiedName(), updated.getName()),
         updated.getFullyQualifiedName());
+  }
+
+  @Override
+  protected EntityReference createContainerWithDotsInName(String name) throws IOException {
+    DatabaseServiceResourceTest serviceTest = new DatabaseServiceResourceTest();
+    CreateDatabaseService createService = serviceTest.createRequest(name);
+    DatabaseService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+    return service.getEntityReference();
+  }
+
+  @Override
+  protected CreateDatabase createRequestUnderContainer(String name, EntityReference container) {
+    return new CreateDatabase().withName(name).withService(container.getFullyQualifiedName());
+  }
+
+  @Override
+  protected void deleteContainerWithDotsInName(EntityReference container) throws IOException {
+    DatabaseServiceResourceTest serviceTest = new DatabaseServiceResourceTest();
+    serviceTest.deleteEntity(container.getId(), true, true, ADMIN_AUTH_HEADERS);
   }
 
   @Override
@@ -440,6 +465,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     }
   }
 
+  @Order(2)
   @Test
   void testBulkServiceFetchingForDatabases(TestInfo test) throws IOException {
     // This test verifies that when databases are fetched in bulk with the service field,
@@ -553,63 +579,6 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
   }
 
   @Test
-  void testDatabaseRdfSoftDeleteAndRestore(TestInfo test) throws IOException {
-    if (!RdfTestUtils.isRdfEnabled()) {
-      LOG.info("RDF not enabled, skipping test");
-      return;
-    }
-
-    // Create database
-    CreateDatabase createDatabase =
-        createRequest(test).withService(getContainer().getName()).withOwners(listOf(USER1_REF));
-    Database database = createEntity(createDatabase, ADMIN_AUTH_HEADERS);
-
-    // Verify database exists
-    RdfTestUtils.verifyEntityInRdf(database, RdfUtils.getRdfType("database"));
-    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), database.getEntityReference());
-    RdfTestUtils.verifyOwnerInRdf(database.getFullyQualifiedName(), USER1_REF);
-
-    // Soft delete the database
-    deleteEntity(database.getId(), ADMIN_AUTH_HEADERS);
-
-    // Verify database still exists in RDF after soft delete
-    RdfTestUtils.verifyEntityInRdf(database, RdfUtils.getRdfType("database"));
-    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), database.getEntityReference());
-    RdfTestUtils.verifyOwnerInRdf(database.getFullyQualifiedName(), USER1_REF);
-
-    // Restore the database
-    Database restored =
-        restoreEntity(new RestoreEntity().withId(database.getId()), OK, ADMIN_AUTH_HEADERS);
-
-    // Verify database still exists after restore
-    RdfTestUtils.verifyEntityInRdf(restored, RdfUtils.getRdfType("database"));
-    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), restored.getEntityReference());
-    RdfTestUtils.verifyOwnerInRdf(restored.getFullyQualifiedName(), USER1_REF);
-  }
-
-  @Test
-  void testDatabaseRdfHardDelete(TestInfo test) throws IOException {
-    if (!RdfTestUtils.isRdfEnabled()) {
-      LOG.info("RDF not enabled, skipping test");
-      return;
-    }
-
-    // Create database
-    CreateDatabase createDatabase = createRequest(test).withService(getContainer().getName());
-    Database database = createEntity(createDatabase, ADMIN_AUTH_HEADERS);
-
-    // Verify database exists
-    RdfTestUtils.verifyEntityInRdf(database, RdfUtils.getRdfType("database"));
-    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), database.getEntityReference());
-
-    // Hard delete the database
-    deleteEntity(database.getId(), true, true, ADMIN_AUTH_HEADERS);
-
-    // Verify database no longer exists in RDF after hard delete
-    RdfTestUtils.verifyEntityNotInRdf(database.getFullyQualifiedName());
-  }
-
-  @Test
   void testFieldFetchersForServiceAndName(TestInfo test) throws IOException {
     DatabaseServiceResourceTest databaseServiceResourceTest = new DatabaseServiceResourceTest();
     String timestamp = String.valueOf(System.currentTimeMillis());
@@ -617,7 +586,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     CreateDatabaseService createDatabaseService =
         new CreateDatabaseService()
             .withName("fieldFetcherTestService_" + timestamp)
-            .withServiceType(DatabaseServiceType.Mysql)
+            .withServiceType(CreateDatabaseService.DatabaseServiceType.Mysql)
             .withConnection(TestUtils.MYSQL_DATABASE_CONNECTION);
     DatabaseService databaseService =
         databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
@@ -713,5 +682,212 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
       databaseServiceResourceTest.deleteEntity(
           databaseService.getId(), true, true, ADMIN_AUTH_HEADERS);
     }
+  }
+
+  @Test
+  void testDatabaseRdfSoftDeleteAndRestore(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create database
+    CreateDatabase createDatabase =
+        createRequest(test).withService(getContainer().getName()).withOwners(listOf(USER1_REF));
+    Database database = createEntity(createDatabase, ADMIN_AUTH_HEADERS);
+
+    // Verify database exists
+    RdfTestUtils.verifyEntityInRdf(database, RdfUtils.getRdfType("database"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), database.getEntityReference());
+    RdfTestUtils.verifyOwnerInRdf(database.getFullyQualifiedName(), USER1_REF);
+
+    // Soft delete the database
+    deleteEntity(database.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify database still exists in RDF after soft delete
+    RdfTestUtils.verifyEntityInRdf(database, RdfUtils.getRdfType("database"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), database.getEntityReference());
+    RdfTestUtils.verifyOwnerInRdf(database.getFullyQualifiedName(), USER1_REF);
+
+    // Restore the database
+    Database restored =
+        restoreEntity(new RestoreEntity().withId(database.getId()), OK, ADMIN_AUTH_HEADERS);
+
+    // Verify database still exists after restore
+    RdfTestUtils.verifyEntityInRdf(restored, RdfUtils.getRdfType("database"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), restored.getEntityReference());
+    RdfTestUtils.verifyOwnerInRdf(restored.getFullyQualifiedName(), USER1_REF);
+  }
+
+  @Test
+  void testDatabaseRdfHardDelete(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create database
+    CreateDatabase createDatabase = createRequest(test).withService(getContainer().getName());
+    Database database = createEntity(createDatabase, ADMIN_AUTH_HEADERS);
+
+    // Verify database exists
+    RdfTestUtils.verifyEntityInRdf(database, RdfUtils.getRdfType("database"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), database.getEntityReference());
+
+    // Hard delete the database
+    deleteEntity(database.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    // Verify database no longer exists in RDF after hard delete
+    RdfTestUtils.verifyEntityNotInRdf(database.getFullyQualifiedName());
+  }
+
+  @Test
+  void testBulk_PreservesUserEditsOnUpdate(TestInfo test) throws IOException {
+    // Critical test: Verify that bulk updates preserve user-made changes
+    // and only update the fields sent in the bulk request (incremental updates)
+
+    // Step 1: Bot creates initial database (using regular create, not bulk)
+    CreateDatabase botCreate =
+        createRequest(test.getDisplayName())
+            .withDescription("Bot initial description")
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL));
+
+    Database entity = createEntity(botCreate, INGESTION_BOT_AUTH_HEADERS);
+    assertEquals("Bot initial description", entity.getDescription());
+    assertEquals(1, entity.getTags().size());
+
+    // Step 2: User edits description and adds tag
+    String originalJson = JsonUtils.pojoToJson(entity);
+    String userDescription = "User-edited description - should be preserved";
+    entity.setDescription(userDescription);
+    entity.setTags(List.of(USER_ADDRESS_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+
+    Database userEditedEntity =
+        patchEntity(entity.getId(), originalJson, entity, ADMIN_AUTH_HEADERS);
+    assertEquals(userDescription, userEditedEntity.getDescription());
+    assertEquals(2, userEditedEntity.getTags().size());
+
+    // Step 3: Bot sends bulk update with new tag and different description
+    // Bot's description should be IGNORED (bot protection)
+    // Bot's tag should be MERGED (added to existing)
+    CreateDatabase botUpdate =
+        createRequest(test.getDisplayName())
+            .withDescription("Bot trying to overwrite - should be ignored")
+            .withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult updateResult =
+        TestUtils.put(
+            bulkTarget,
+            List.of(botUpdate),
+            BulkOperationResult.class,
+            OK,
+            INGESTION_BOT_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, updateResult.getStatus());
+    assertEquals(1, updateResult.getNumberOfRowsPassed());
+
+    // Step 4: Verify user edits were preserved
+    Database verifyEntity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+
+    // Description should still be user's (bot protection)
+    assertEquals(
+        userDescription,
+        verifyEntity.getDescription(),
+        "Bot should NOT be able to overwrite user-edited description");
+
+    // Tags should be merged (original 2 + new 1 from bot)
+    assertEquals(3, verifyEntity.getTags().size(), "Tags should be merged, not replaced");
+
+    List<String> tagFqns =
+        verifyEntity.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
+    assertTrue(tagFqns.contains(USER_ADDRESS_TAG_LABEL.getTagFQN()));
+    assertTrue(tagFqns.contains(PERSONAL_DATA_TAG_LABEL.getTagFQN()));
+    assertTrue(tagFqns.contains(PII_SENSITIVE_TAG_LABEL.getTagFQN()));
+
+    // Cleanup
+    deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testBulk_TagMergeBehavior(TestInfo test) throws IOException {
+    // Test that bulk updates MERGE tags (add new, keep existing)
+    // NOT replace tags completely
+
+    // Step 1: Create database with initial tags
+    CreateDatabase createRequest =
+        createRequest(test.getDisplayName())
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+
+    Database entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+    assertEquals(2, entity.getTags().size());
+
+    // Step 2: Send bulk update with additional tag (not replacing existing)
+    CreateDatabase updateRequest =
+        createRequest(test.getDisplayName()).withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget, List.of(updateRequest), BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    // Step 3: Verify tags were merged (original 2 + new 1 = 3 total)
+    Database updatedEntity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        3, updatedEntity.getTags().size(), "Tags should be merged: 2 original + 1 new = 3 total");
+
+    List<String> tagFqns =
+        updatedEntity.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
+
+    assertTrue(
+        tagFqns.contains(USER_ADDRESS_TAG_LABEL.getTagFQN()),
+        "Original tag USER_ADDRESS should still exist");
+    assertTrue(
+        tagFqns.contains(PERSONAL_DATA_TAG_LABEL.getTagFQN()),
+        "Original tag PERSONAL_DATA should still exist");
+    assertTrue(
+        tagFqns.contains(PII_SENSITIVE_TAG_LABEL.getTagFQN()),
+        "New tag PII_SENSITIVE should be added");
+
+    // Cleanup
+    deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testBulk_AdminCanOverrideDescription(TestInfo test) throws IOException {
+    // Test that while bots cannot overwrite user descriptions,
+    // admins CAN update descriptions via bulk
+
+    // Step 1: User creates database
+    CreateDatabase createRequest =
+        createRequest(test.getDisplayName()).withDescription("User-created description");
+
+    Database entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+    assertEquals("User-created description", entity.getDescription());
+
+    // Step 2: Admin updates description via bulk
+    String adminDescription = "Admin-updated description via bulk";
+    CreateDatabase adminUpdate =
+        createRequest(test.getDisplayName()).withDescription(adminDescription);
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget, List.of(adminUpdate), BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    // Step 3: Verify admin's description was applied
+    Database updatedEntity = getEntity(entity.getId(), "", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        adminDescription,
+        updatedEntity.getDescription(),
+        "Admin should be able to update description via bulk");
+
+    // Cleanup
+    deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
   }
 }

@@ -1,0 +1,86 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/bulkUpdateContainer.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BulkUpdateContainer",
+  "description": "Schema for bulk updating multiple containers with differential updates",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.BulkUpdateContainer",
+  "definitions": {
+    "containerUpdate": {
+      "javaType": "org.openmetadata.schema.api.data.ContainerUpdate",
+      "description": "Partial container update - only include fields that have changed",
+      "type": "object",
+      "properties": {
+        "fqn": {
+          "description": "Fully qualified name of the container to update",
+          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+        },
+        "dataModel": {
+          "description": "Updated data model",
+          "$ref": "../../entity/data/container.json#/definitions/containerDataModel"
+        },
+        "prefix": {
+          "description": "Updated prefix path",
+          "type": "string"
+        },
+        "numberOfObjects": {
+          "description": "Updated number of objects",
+          "type": "number"
+        },
+        "size": {
+          "description": "Updated size in bytes",
+          "type": "number"
+        },
+        "fileFormats": {
+          "description": "Updated file formats",
+          "type": "array",
+          "items": {
+            "$ref": "../../entity/data/container.json#/definitions/fileFormat"
+          }
+        },
+        "sourceUrl": {
+          "description": "Updated source URL",
+          "$ref": "../../type/basic.json#/definitions/sourceUrl"
+        },
+        "description": {
+          "description": "Updated description",
+          "$ref": "../../type/basic.json#/definitions/markdown"
+        },
+        "tags": {
+          "description": "Updated tags",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/tagLabel.json"
+          }
+        },
+        "owner": {
+          "description": "Updated owner",
+          "$ref": "../../type/entityReference.json"
+        },
+        "extension": {
+          "description": "Updated custom properties",
+          "$ref": "../../type/basic.json#/definitions/entityExtension"
+        }
+      },
+      "required": ["fqn"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "updates": {
+      "description": "List of container update requests",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/containerUpdate"
+      },
+      "minItems": 1
+    },
+    "dryRun": {
+      "description": "If true, validate without persisting",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["updates"],
+  "additionalProperties": false
+}

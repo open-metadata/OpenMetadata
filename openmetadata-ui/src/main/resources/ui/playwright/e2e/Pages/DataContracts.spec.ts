@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import {
   DATA_CONTRACT_CONTAIN_SEMANTICS,
   DATA_CONTRACT_DETAILS,
@@ -71,11 +71,9 @@ import {
   assignTag,
   assignTier,
 } from '../../utils/entity';
+import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
-
-const adminUser = new UserClass();
-const user = new UserClass();
 
 // Define entities that support Data Contracts
 const entitiesWithDataContracts = [
@@ -111,16 +109,9 @@ const entitySupportsQuality = (entityType: string): boolean => {
   return entityType === 'Table';
 };
 
-const testPersona = base.extend<{ page: Page }>({
-  page: async ({ browser }, use) => {
-    const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
-    await use(adminPage);
-    await adminPage.close();
-  },
-});
-
 test.describe('Data Contracts', () => {
+  const user = new UserClass();
+
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction, page } = await performAdminLogin(browser);
     await user.create(apiContext);
@@ -440,7 +431,7 @@ test.describe('Data Contracts', () => {
               .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
               .click();
 
-            await clickOutside(page);
+            await page.getByRole('heading', { name: 'Tags' }).click();
 
             await page.click('[data-testid="glossary-terms-selector"] input');
             await page.fill(
@@ -454,7 +445,7 @@ test.describe('Data Contracts', () => {
               )
               .click();
 
-            await clickOutside(page);
+            await page.getByRole('heading', { name: 'Glossary Terms' }).click();
 
             await page.getByTestId('pipeline-name').fill('test-pipeline');
 
@@ -469,6 +460,9 @@ test.describe('Data Contracts', () => {
             const pipelineResponse = page.waitForResponse(
               '/api/v1/services/ingestionPipelines'
             );
+            const deploy = page.waitForResponse(
+              '/api/v1/services/ingestionPipelines/deploy/*'
+            );
 
             const testCaseResponse = page.waitForResponse(
               '/api/v1/dataQuality/testCases'
@@ -476,6 +470,7 @@ test.describe('Data Contracts', () => {
             await page.click('[data-testid="create-btn"]');
             await testCaseResponse;
             await pipelineResponse;
+            await deploy;
 
             await expect(page.getByRole('dialog')).not.toBeVisible();
 
@@ -547,7 +542,7 @@ test.describe('Data Contracts', () => {
           async () => {
             await entity.visitEntityPage(page);
 
-            await page.getByTestId('contract').click();
+            await page.getByRole('tab').getByTestId('contract').click();
 
             await page.getByTestId('manage-contract-actions').click();
 
@@ -594,7 +589,7 @@ test.describe('Data Contracts', () => {
       await test.step('Verify YAML view', async () => {
         await entity.visitEntityPage(page);
 
-        await page.getByTestId('contract').click();
+        await page.getByRole('tab').getByTestId('contract').click();
 
         await page.getByTestId('contract-view-switch-tab-yaml').click();
 
@@ -2171,8 +2166,18 @@ test.describe('Data Contracts', () => {
 });
 
 entitiesWithDataContracts.forEach((EntityClass) => {
+  const adminUser = new UserClass();
   const entity = new EntityClass();
   const entityType = entity.getType();
+
+  const testPersona = base.extend<{ page: Page }>({
+    page: async ({ browser }, use) => {
+      const adminPage = await browser.newPage();
+      await adminUser.login(adminPage);
+      await use(adminPage);
+      await adminPage.close();
+    },
+  });
 
   testPersona.describe(`Data Contracts With Persona ${entityType}`, () => {
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
@@ -2327,9 +2332,11 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               });
 
               // Navigate to persona details
-              await page
-                .getByTestId(`persona-details-card-${persona.data.name}`)
-                .click();
+              await navigateToPersonaWithPagination(
+                page,
+                persona.data.name,
+                true
+              );
               await page.getByRole('tab', { name: 'Users' }).click();
 
               // Add user to persona
@@ -2373,7 +2380,9 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               });
 
               // Verify Contract tab is not visible (should be hidden by persona customization)
-              await expect(page.getByTestId('contract')).toBeVisible();
+              await expect(
+                page.getByRole('tab').getByTestId('contract')
+              ).toBeVisible();
 
               // Verify Contract status badge is not visible in header
               await expect(
@@ -2404,9 +2413,11 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               });
 
               // Navigate to persona details and customize UI
-              await page
-                .getByTestId(`persona-details-card-${persona.data.name}`)
-                .click();
+              await navigateToPersonaWithPagination(
+                page,
+                persona.data.name,
+                true
+              );
               await page.getByRole('tab', { name: 'Customize UI' }).click();
               await page.waitForLoadState('networkidle');
 
@@ -2453,7 +2464,9 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               });
 
               // Verify Contract tab is not visible (should be hidden by persona customization)
-              await expect(page.getByTestId('contract')).not.toBeVisible();
+              await expect(
+                page.getByRole('tab').getByTestId('contract')
+              ).not.toBeVisible();
 
               // Verify Contract status badge is not visible in header
               await expect(

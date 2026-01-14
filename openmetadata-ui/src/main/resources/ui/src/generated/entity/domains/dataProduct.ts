@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -77,10 +77,6 @@ export interface DataProduct {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
-     * Input ports for consuming data into this data product
-     */
-    inputPorts?: DataProductPort[];
-    /**
      * Current lifecycle stage of the data product
      */
     lifecycleStage?: LifecycleStage;
@@ -88,10 +84,6 @@ export interface DataProduct {
      * A unique name of the Data Product
      */
     name: string;
-    /**
-     * Output ports for exposing data from this data product
-     */
-    outputPorts?: DataProductPort[];
     /**
      * Owners of this Data Product.
      */
@@ -140,8 +132,6 @@ export interface DataProduct {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Reference to the data asset exposed through this port
  */
 export interface EntityReference {
     /**
@@ -267,76 +257,6 @@ export enum EntityStatus {
 }
 
 /**
- * Port definition for data product input/output
- */
-export interface DataProductPort {
-    /**
-     * Reference to the data asset exposed through this port
-     */
-    dataAsset?: EntityReference;
-    /**
-     * Description of the port
-     */
-    description?: string;
-    /**
-     * Display name of the port
-     */
-    displayName?: string;
-    /**
-     * Endpoint URL or connection string
-     */
-    endpoint?: string;
-    format?:   PortFormat;
-    /**
-     * Name of the port
-     */
-    name:      string;
-    portType:  PortType;
-    protocol?: PortProtocol;
-}
-
-/**
- * Data format supported by the port
- */
-export enum PortFormat {
-    Avro = "AVRO",
-    CSV = "CSV",
-    Custom = "CUSTOM",
-    Delta = "DELTA",
-    Iceberg = "ICEBERG",
-    JSON = "JSON",
-    Orc = "ORC",
-    Parquet = "PARQUET",
-    Protobuf = "PROTOBUF",
-    XML = "XML",
-}
-
-/**
- * Type of the data product port
- */
-export enum PortType {
-    Input = "INPUT",
-    Output = "OUTPUT",
-}
-
-/**
- * Protocol used by the port for data access
- */
-export enum PortProtocol {
-    AzureBlob = "AZURE_BLOB",
-    Custom = "CUSTOM",
-    File = "FILE",
-    Gcs = "GCS",
-    Graphql = "GRAPHQL",
-    Grpc = "GRPC",
-    JDBC = "JDBC",
-    Kafka = "KAFKA",
-    REST = "REST",
-    S3 = "S3",
-    Webhook = "WEBHOOK",
-}
-
-/**
  * Current lifecycle stage of the data product
  *
  * Lifecycle stage of the data product
@@ -430,6 +350,14 @@ export interface CoverImage {
  * This schema defines the type for labeling an entity with a Tag.
  */
 export interface TagLabel {
+    /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
     /**
      * Description for the tag label.
      */

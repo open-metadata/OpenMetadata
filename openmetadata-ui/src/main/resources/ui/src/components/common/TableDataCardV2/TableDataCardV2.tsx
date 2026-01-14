@@ -170,7 +170,6 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
             />
           </Col>
         </Row>
-
         {showBody && (
           <div className="p-t-sm">
             <TableDataCardBody
@@ -180,15 +179,13 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
             />
           </div>
         )}
-
         {matches && matches.length > 0 ? (
           <div className="p-t-xs" data-testid="matches-stats">
             <span className="text-grey-muted">{`${t('label.matches')}:`}</span>
             {matches.map((data, i) => (
               <span className="m-t-xs" key={i}>
-                {`${data.value} in ${startCase(data.key)}${
-                  i !== matches.length - 1 ? ',' : ''
-                }`}
+                {`${data.value} ${t('label.in-lowercase')} 
+                ${startCase(data.key)}${i !== matches.length - 1 ? ',' : ''}`}
               </span>
             ))}
           </div>

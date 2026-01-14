@@ -7,10 +7,12 @@ CREATE TABLE IF NOT EXISTS test_case_dimension_results_time_series (
   id VARCHAR(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.id'))) STORED NOT NULL,
   testCaseResultId VARCHAR(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.testCaseResultId'))) STORED NOT NULL,
   dimensionKey VARCHAR(512) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.dimensionKey'))) STORED NOT NULL,
+  dimensionName VARCHAR(256) GENERATED ALWAYS AS (SUBSTRING_INDEX(json_unquote(json_extract(json,'$.dimensionKey')), '=', 1)) STORED,
   timestamp BIGINT UNSIGNED GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.timestamp'))) STORED NOT NULL,
   testCaseStatus VARCHAR(36) GENERATED ALWAYS AS (json_unquote(json_extract(json,'$.testCaseStatus'))) STORED,
   UNIQUE KEY test_case_dimension_results_unique_constraint (entityFQNHash, dimensionKey, timestamp),
   INDEX test_case_dimension_results_main (entityFQNHash, timestamp, dimensionKey),
+  INDEX test_case_dimension_results_dimension_name (entityFQNHash, dimensionName, timestamp),
   INDEX test_case_dimension_results_result_id (testCaseResultId),
   INDEX test_case_dimension_results_ts (timestamp)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -134,4 +136,97 @@ ON entity_relationship(toId, toEntity, relation, fromEntity, deleted, fromId);
 CREATE INDEX idx_entity_relationship_bidirectional
 ON entity_relationship(fromId, toId, relation, deleted);
 
+
+-- Create ai_application_entity table
+CREATE TABLE IF NOT EXISTS ai_application_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.impersonatedBy') VIRTUAL,
+    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    PRIMARY KEY (id),
+    UNIQUE KEY unique_name (fqnHash),
+    INDEX name_index (name),
+    INDEX deleted_index (deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AI Application entities';
+
+-- Create llm_model_entity table
+CREATE TABLE IF NOT EXISTS llm_model_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.impersonatedBy') VIRTUAL,
+    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    PRIMARY KEY (id),
+    UNIQUE KEY unique_name (fqnHash),
+    INDEX name_index (name),
+    INDEX deleted_index (deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='LLM Model entities';
+
+-- Create prompt_template_entity table
+CREATE TABLE IF NOT EXISTS prompt_template_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.impersonatedBy') VIRTUAL,
+    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    PRIMARY KEY (id),
+    UNIQUE KEY unique_name (fqnHash),
+    INDEX name_index (name),
+    INDEX deleted_index (deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Prompt Template entities';
+
+-- Create agent_execution_entity table
+CREATE TABLE IF NOT EXISTS agent_execution_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    agentId VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.agentId') STORED NOT NULL,
+    json JSON NOT NULL,
+    timestamp BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.timestamp') NOT NULL,
+    PRIMARY KEY (id),
+    INDEX agent_index (agentId),
+    INDEX timestamp_index (timestamp)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AI Agent Execution logs';
+
+-- Create ai_governance_policy_entity table
+CREATE TABLE IF NOT EXISTS ai_governance_policy_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.impersonatedBy') VIRTUAL,
+    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    PRIMARY KEY (id),
+    UNIQUE KEY unique_name (fqnHash),
+    INDEX name_index (name),
+    INDEX deleted_index (deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AI Governance Policy entities';
+
+-- Create llm_service_entity table
+CREATE TABLE IF NOT EXISTS llm_service_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.id'))) STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.name'))) VIRTUAL NOT NULL,
+    serviceType VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.serviceType'))) VIRTUAL NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.updatedAt'))) VIRTUAL NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.updatedBy'))) VIRTUAL NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.impersonatedBy') VIRTUAL,
+    deleted TINYINT(1) GENERATED ALWAYS AS (json_extract(`json`, '$.deleted')) VIRTUAL,
+    nameHash VARCHAR(256) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY nameHash (nameHash),
+    INDEX name_index (name),
+    INDEX service_type_index (serviceType),
+    INDEX deleted_index (deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='LLM Service entities';
 

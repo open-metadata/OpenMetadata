@@ -21,8 +21,12 @@ public record TableIndex(Table table) implements ColumnIndex, SearchIndex {
           "tableProfile",
           "joins",
           "changeDescription",
-          "votes",
-          "schemaDefinition, tableProfilerConfig, profile, location, tableQueries, tests, dataModel",
+          "tableProfilerConfig",
+          "profile",
+          "location",
+          "queries",
+          "tests",
+          "dataModel",
           "testSuite.changeDescription");
 
   @Override
@@ -76,7 +80,6 @@ public record TableIndex(Table table) implements ColumnIndex, SearchIndex {
     doc.put(
         "upstreamEntityRelationship", SearchIndex.populateUpstreamEntityRelationshipData(table));
     doc.put("databaseSchema", getEntityWithDisplayName(table.getDatabaseSchema()));
-    doc.put("queries", table.getQueries());
     doc.put(
         "changeSummary",
         Optional.ofNullable(table.getChangeDescription())

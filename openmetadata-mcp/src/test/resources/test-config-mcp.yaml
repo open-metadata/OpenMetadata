@@ -19,11 +19,13 @@ server:
   applicationConnectors:
     - type: http
       port: 0
+      uriCompliance: UNSAFE
   adminConnectors:
     - type: http
       port: 0
+  # Virtual Threads enabled for better concurrency with Java 21+
   enableVirtualThreads: true
-  maxQueuedRequests: 1024  
+  # Note: maxQueuedRequests removed in Dropwizard 5.0/Jetty 12
 
 
 # Above configuration for running http is fine for dev and testing.
@@ -161,7 +163,6 @@ authenticationConfiguration:
       entityId: ""
       ssoLoginUrl: ""
       idpX509Certificate: ""
-      authorityUrl: ""
       nameId: ""
     sp:
       entityId: ""
@@ -197,7 +198,7 @@ eventHandlerConfiguration:
     - "org.openmetadata.service.events.ChangeEventHandler"
 
 pipelineServiceClientConfiguration:
-  className: "org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"
+  className: "org.openmetadata.service.pipelineService.MockPipelineServiceClient"
   metadataApiEndpoint: http://localhost:8585/api
   apiEndpoint: http://localhost:8080
   hostIp: ""

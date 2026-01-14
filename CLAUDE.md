@@ -10,7 +10,7 @@ OpenMetadata is a unified metadata platform for data discovery, data observabili
 
 - **Backend**: Java 21 + Dropwizard REST API framework, multi-module Maven project
 - **Frontend**: React + TypeScript + Ant Design, built with Webpack and Yarn
-- **Ingestion**: Python 3.9+ with Pydantic 2.x, 75+ data source connectors
+- **Ingestion**: Python 3.10-3.12 with Pydantic 2.x, 75+ data source connectors
 - **Database**: MySQL (default) or PostgreSQL with Flyway migrations
 - **Search**: Elasticsearch 7.17+ or OpenSearch 2.6+ for metadata discovery
 - **Infrastructure**: Apache Airflow for workflow orchestration
@@ -177,12 +177,18 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 
 ### Comments Policy
 - **Do NOT add unnecessary comments** - write self-documenting code
+- **NEVER add single-line comments that describe what the code obviously does**
 - Only include comments for:
     - Complex business logic that isn't obvious
     - Non-obvious algorithms or workarounds
     - Public API JavaDoc documentation
     - TODO/FIXME with ticket references
-- Avoid obvious comments like `// increment counter` or `// create new user`
+- Bad examples (NEVER do this):
+    - `// Create user` before `createUser()`
+    - `// Get client` before `SdkClients.adminClient()`
+    - `// Verify domain is set` before `assertNotNull(entity.getDomain())`
+    - `// User names are lowercased` when the code `toLowerCase()` makes it obvious
+- If the code needs a comment to be understood, refactor the code to be clearer instead
 
 ### Java Code Requirements
 - **Always mention** running `mvn spotless:apply` when generating/modifying .java files

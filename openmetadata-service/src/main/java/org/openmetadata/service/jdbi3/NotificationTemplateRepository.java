@@ -13,28 +13,51 @@
 
 package org.openmetadata.service.jdbi3;
 
+import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.Invocation;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.openmetadata.schema.alert.type.EmailAlertConfig;
+import org.openmetadata.schema.api.events.NotificationTemplateRenderRequest;
+import org.openmetadata.schema.api.events.NotificationTemplateRenderResponse;
+import org.openmetadata.schema.api.events.NotificationTemplateSendRequest;
 import org.openmetadata.schema.api.events.NotificationTemplateValidationRequest;
 import org.openmetadata.schema.api.events.NotificationTemplateValidationResponse;
+import org.openmetadata.schema.api.events.TemplateRenderResult;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.notifications.HandlebarsNotificationMessageEngine;
+import org.openmetadata.service.notifications.channels.NotificationMessage;
+import org.openmetadata.service.notifications.channels.email.EmailMessage;
 import org.openmetadata.service.notifications.template.NotificationTemplateProcessor;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsNotificationTemplateProcessor;
+import org.openmetadata.service.notifications.template.testing.EntityFixtureLoader;
+import org.openmetadata.service.notifications.template.testing.MockChangeEventFactory;
+import org.openmetadata.service.notifications.template.testing.MockChangeEventRegistry;
 import org.openmetadata.service.resources.events.NotificationTemplateResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.SubscriptionUtil;
+import org.openmetadata.service.util.email.EmailUtil;
 import org.openmetadata.service.util.resourcepath.ResourcePathResolver;
 import org.openmetadata.service.util.resourcepath.providers.NotificationTemplateResourcePathProvider;
 
@@ -45,6 +68,8 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
   static final String UPDATE_FIELDS = "templateBody,templateSubject";
 
   private final NotificationTemplateProcessor templateProcessor;
+  private final MockChangeEventFactory mockChangeEventFactory;
+  private final HandlebarsNotificationMessageEngine messageEngine;
 
   public NotificationTemplateRepository() {
     super(
@@ -57,6 +82,14 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
 
     // Initialize template processor
     this.templateProcessor = new HandlebarsNotificationTemplateProcessor();
+
+    // Initialize mock factory for template testing
+    EntityFixtureLoader fixtureLoader = new EntityFixtureLoader();
+    MockChangeEventRegistry mockRegistry = new MockChangeEventRegistry(fixtureLoader);
+    this.mockChangeEventFactory = new MockChangeEventFactory(mockRegistry);
+
+    // Initialize message engine for template rendering
+    this.messageEngine = new HandlebarsNotificationMessageEngine(this);
   }
 
   @Override
@@ -73,16 +106,14 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
 
     NotificationTemplateValidationResponse response = templateProcessor.validate(request);
 
-    // Check for validation errors
-    List<String> errors = new ArrayList<>();
-    if (response.getTemplateBody() != null && !response.getTemplateBody().getPassed()) {
-      errors.add("Template body: " + response.getTemplateBody().getError());
-    }
-    if (response.getTemplateSubject() != null && !response.getTemplateSubject().getPassed()) {
-      errors.add("Template subject: " + response.getTemplateSubject().getError());
-    }
-
-    if (!errors.isEmpty()) {
+    if (!response.getIsValid()) {
+      List<String> errors = new ArrayList<>();
+      if (response.getSubjectError() != null) {
+        errors.add("Template subject: " + response.getSubjectError());
+      }
+      if (response.getBodyError() != null) {
+        errors.add("Template body: " + response.getBodyError());
+      }
       throw new IllegalArgumentException("Invalid template: " + String.join("; ", errors));
     }
   }
@@ -213,19 +244,13 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
     }
   }
 
-  public void resetToDefault(String fqn) {
+  public void resetToDefault(NotificationTemplate original) {
     try {
-      NotificationTemplate original = getByName(null, fqn, getFields("*"));
-      if (original == null) {
-        throw new IllegalArgumentException("NotificationTemplate not found: " + fqn);
-      }
-
       if (!ProviderType.SYSTEM.equals(original.getProvider())) {
-        throw new IllegalArgumentException(
-            "Cannot reset template: only SYSTEM templates can be reset to default");
+        return;
       }
 
-      NotificationTemplate defaultTemplate = getDefaultTemplateFromSeed(fqn);
+      NotificationTemplate defaultTemplate = getDefaultTemplateFromSeed(original.getName());
       NotificationTemplate updated = JsonUtils.deepCopy(original, NotificationTemplate.class);
       updated
           .withTemplateBody(defaultTemplate.getTemplateBody())
@@ -236,7 +261,7 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
       EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PUT, null);
       entityUpdater.update();
 
-      LOG.info("Reset NotificationTemplate {} to default", fqn);
+      LOG.info("Reset NotificationTemplate {} to default", original.getName());
     } catch (IllegalArgumentException e) {
       LOG.error("Failed to reset template: {}", e.getMessage(), e);
       throw e;
@@ -256,6 +281,134 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
   public NotificationTemplateValidationResponse validate(
       NotificationTemplateValidationRequest request) {
     return templateProcessor.validate(request);
+  }
+
+  /**
+   * Renders a template with mock data using HandlebarsNotificationMessageEngine.
+   * Called by the REST endpoint for rendering preview.
+   *
+   * @param request The render request with template and resource info
+   * @return The render response with validation and rendering results
+   */
+  public NotificationTemplateRenderResponse render(NotificationTemplateRenderRequest request) {
+    NotificationTemplateValidationResponse validationResponse =
+        templateProcessor.validate(
+            new NotificationTemplateValidationRequest()
+                .withTemplateBody(request.getTemplateBody())
+                .withTemplateSubject(request.getTemplateSubject()));
+
+    if (!validationResponse.getIsValid()) {
+      return new NotificationTemplateRenderResponse()
+          .withValidation(validationResponse)
+          .withRender(null);
+    }
+
+    ChangeEvent mockEvent =
+        mockChangeEventFactory.create(request.getResource(), request.getEventType());
+
+    NotificationTemplate testTemplate =
+        new NotificationTemplate()
+            .withId(UUID.randomUUID())
+            .withName("test-template")
+            .withTemplateSubject(request.getTemplateSubject())
+            .withTemplateBody(request.getTemplateBody());
+
+    EventSubscription testSubscription =
+        new EventSubscription()
+            .withId(UUID.randomUUID())
+            .withName("test-subscription")
+            .withDisplayName("Test Notification");
+
+    SubscriptionDestination emailDestination =
+        new SubscriptionDestination().withType(SubscriptionDestination.SubscriptionType.EMAIL);
+
+    TemplateRenderResult renderResult =
+        renderWithMessageEngine(mockEvent, testSubscription, emailDestination, testTemplate);
+
+    return new NotificationTemplateRenderResponse()
+        .withValidation(validationResponse)
+        .withRender(renderResult);
+  }
+
+  private TemplateRenderResult renderWithMessageEngine(
+      ChangeEvent event,
+      EventSubscription subscription,
+      SubscriptionDestination destination,
+      NotificationTemplate template) {
+    try {
+      EmailMessage emailMessage =
+          (EmailMessage)
+              messageEngine.generateMessageWithTemplate(event, subscription, destination, template);
+
+      return new TemplateRenderResult()
+          .withSubject(emailMessage.getSubject())
+          .withBody(emailMessage.getHtmlContent());
+
+    } catch (Exception e) {
+      String errorMessage = "Failed to render template: " + e.getMessage();
+      LOG.error(errorMessage, e);
+      return new TemplateRenderResult().withSubject("").withBody("");
+    }
+  }
+
+  /**
+   * Validates and sends a template to specified destinations.
+   * Called by the REST endpoint for send testing.
+   *
+   * @param request The send request with template, resource, eventType, and destinations
+   * @return The validation response (delivery errors logged server-side only)
+   */
+  public NotificationTemplateValidationResponse send(NotificationTemplateSendRequest request) {
+    NotificationTemplateRenderRequest renderRequest = request.getRenderRequest();
+
+    NotificationTemplateValidationRequest validationRequest =
+        new NotificationTemplateValidationRequest()
+            .withTemplateBody(renderRequest.getTemplateBody())
+            .withTemplateSubject(renderRequest.getTemplateSubject());
+
+    NotificationTemplateValidationResponse validation =
+        templateProcessor.validate(validationRequest);
+
+    if (!validation.getIsValid()) {
+      return validation;
+    }
+
+    validateExternalDestinations(request.getDestinations());
+
+    ChangeEvent mockEvent =
+        mockChangeEventFactory.create(renderRequest.getResource(), renderRequest.getEventType());
+
+    NotificationTemplate testTemplate =
+        new NotificationTemplate()
+            .withId(UUID.randomUUID())
+            .withName("test-template")
+            .withTemplateSubject(renderRequest.getTemplateSubject())
+            .withTemplateBody(renderRequest.getTemplateBody());
+
+    EventSubscription testSubscription =
+        new EventSubscription()
+            .withId(UUID.randomUUID())
+            .withName("test-notification")
+            .withDisplayName("Test Notification Template");
+
+    for (SubscriptionDestination dest : request.getDestinations()) {
+      try {
+        sendToDestination(mockEvent, testSubscription, dest, testTemplate);
+        LOG.info("Successfully sent test notification to {} destination", dest.getType());
+      } catch (Exception e) {
+        LOG.error(
+            "Failed to send test notification to {} destination: {}",
+            dest.getType(),
+            e.getMessage(),
+            e);
+      }
+    }
+
+    return validation;
+  }
+
+  public List<HandlebarsHelperMetadata> getHelperMetadata() {
+    return templateProcessor.getHelperMetadata();
   }
 
   private NotificationTemplate getDefaultTemplateFromSeed(String fqn) throws IOException {
@@ -281,6 +434,62 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
     return EntityUtil.hash(content);
   }
 
+  private void validateExternalDestinations(List<SubscriptionDestination> destinations) {
+    for (SubscriptionDestination dest : destinations) {
+      if (dest.getCategory() != SubscriptionDestination.SubscriptionCategory.EXTERNAL) {
+        throw new IllegalArgumentException(
+            "Only external destinations (Email, Slack, Teams, GChat, Webhook) are supported.");
+      }
+    }
+  }
+
+  private void sendToDestination(
+      ChangeEvent event,
+      EventSubscription subscription,
+      SubscriptionDestination destination,
+      NotificationTemplate template) {
+
+    NotificationMessage message =
+        messageEngine.generateMessageWithTemplate(event, subscription, destination, template);
+
+    switch (destination.getType()) {
+      case EMAIL -> sendEmailNotification((EmailMessage) message, destination);
+      case SLACK, MS_TEAMS, G_CHAT, WEBHOOK -> sendWebhookNotification(message, destination);
+      default -> throw new IllegalArgumentException(
+          "Unsupported destination type: " + destination.getType());
+    }
+  }
+
+  private void sendEmailNotification(
+      EmailMessage emailMessage, SubscriptionDestination destination) {
+    EmailAlertConfig emailConfig =
+        JsonUtils.convertValue(destination.getConfig(), EmailAlertConfig.class);
+    Set<String> receivers = emailConfig.getReceivers();
+
+    for (String receiver : receivers) {
+      EmailUtil.sendNotificationEmail(
+          receiver, emailMessage.getSubject(), emailMessage.getHtmlContent());
+    }
+  }
+
+  private void sendWebhookNotification(
+      NotificationMessage message, SubscriptionDestination destination) {
+    Webhook webhook = JsonUtils.convertValue(destination.getConfig(), Webhook.class);
+    String json = JsonUtils.pojoToJsonIgnoreNull(message);
+
+    try (Client client =
+        SubscriptionUtil.getClient(destination.getTimeout(), destination.getReadTimeout())) {
+      Invocation.Builder target = SubscriptionUtil.getTarget(client, webhook, json);
+
+      try (Response response =
+          target.post(jakarta.ws.rs.client.Entity.entity(json, MediaType.APPLICATION_JSON_TYPE))) {
+        if (response.getStatus() >= 300) {
+          throw new RuntimeException("Webhook failed with status: " + response.getStatus());
+        }
+      }
+    }
+  }
+
   public class NotificationTemplateUpdater extends EntityUpdater {
     public NotificationTemplateUpdater(
         NotificationTemplate original, NotificationTemplate updated, Operation operation) {
@@ -289,6 +498,9 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
 
     @Override
     protected void entitySpecificUpdate(boolean consolidatingChanges) {
+      // Preserve provider type - it's immutable after creation
+      updated.setProvider(original.getProvider());
+
       recordChange("templateBody", original.getTemplateBody(), updated.getTemplateBody());
       recordChange("templateSubject", original.getTemplateSubject(), updated.getTemplateSubject());
 

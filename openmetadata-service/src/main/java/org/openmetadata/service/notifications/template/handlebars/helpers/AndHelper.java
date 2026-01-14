@@ -1,7 +1,10 @@
 package org.openmetadata.service.notifications.template.handlebars.helpers;
 
 import com.github.jknack.handlebars.Handlebars;
+import java.util.List;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 
 /**
  * Helper to check if all values are truthy.
@@ -52,5 +55,18 @@ public class AndHelper implements HandlebarsHelper {
     }
     // Non-null objects are considered truthy
     return true;
+  }
+
+  @Override
+  public HandlebarsHelperMetadata getMetadata() {
+    return new HandlebarsHelperMetadata()
+        .withName("and")
+        .withDescription("Logical AND operation on two values")
+        .withCursorOffset(6)
+        .withUsages(
+            List.of(
+                new HandlebarsHelperUsage()
+                    .withSyntax("{{and }}")
+                    .withExample("{{#if (and hasChanges isPublished)}}Show changes{{/if}}")));
   }
 }

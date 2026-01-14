@@ -188,7 +188,9 @@ class ServiceUtilClassBase {
     DriveServiceType.GoogleDrive,
     DriveServiceType.SharePoint,
     DatabaseServiceType.ServiceNow,
+    DatabaseServiceType.Dremio,
     MetadataServiceType.Collibra,
+    PipelineServiceType.Mulesoft,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -289,7 +291,6 @@ class ServiceUtilClassBase {
     };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public getServiceExtraInfo(_data?: ServicesType): ExtraInfoType | null {
     return null;
   }
@@ -832,8 +833,8 @@ class ServiceUtilClassBase {
     return getDriveConfig(type);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public getInsightsTabWidgets(_: ServiceTypes) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const widgets: Record<string, React.ComponentType<any>> = {
       AgentsStatusWidget,
       PlatformInsightsWidget,
@@ -880,6 +881,7 @@ class ServiceUtilClassBase {
   }
 
   public getAgentsTabWidgets() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const widgets: Record<string, React.ComponentType<any>> = {
       MetadataAgentsWidget,
     };

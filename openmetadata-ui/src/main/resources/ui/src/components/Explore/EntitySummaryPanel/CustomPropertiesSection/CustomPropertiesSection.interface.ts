@@ -34,7 +34,8 @@ export interface EntityTypeDetail {
 
 export interface CustomPropertiesSectionProps {
   entityData?: EntityData;
-  entityDetails: EntityDetailsObjectInterface;
+  entityDetails?: EntityDetailsObjectInterface;
+  viewCustomPropertiesPermission: boolean;
   entityType: EntityType;
   entityTypeDetail?: EntityTypeDetail;
   isEntityDataLoading: boolean;

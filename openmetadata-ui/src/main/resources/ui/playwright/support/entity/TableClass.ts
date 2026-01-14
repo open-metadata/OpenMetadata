@@ -26,6 +26,15 @@ import {
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
+interface TableColumn {
+  name: string;
+  dataType: string;
+  dataLength?: number;
+  dataTypeDisplay: string;
+  description?: string;
+  children?: TableColumn[];
+}
+
 export class TableClass extends EntityClass {
   service: {
     name: string;
@@ -48,12 +57,12 @@ export class TableClass extends EntityClass {
   schema: { name: string; database: string };
   columnsName: string[];
   entityLinkColumnsName: string[];
-  children: unknown[];
+  children: TableColumn[];
   entity: {
     name: string;
     displayName: string;
     description: string;
-    columns: unknown[];
+    columns: TableColumn[];
     tableType: string;
     databaseSchema: string;
   };
@@ -121,6 +130,7 @@ export class TableClass extends EntityClass {
       `address${uuid()}`,
       `mail${uuid()}`,
       `email${uuid()}`,
+      `created_at${uuid()}`,
     ];
 
     this.entityLinkColumnsName = [
@@ -132,6 +142,7 @@ export class TableClass extends EntityClass {
       `${this.columnsName[2]}.${this.columnsName[4]}.${this.columnsName[5]}`,
       `${this.columnsName[2]}.${this.columnsName[4]}.${this.columnsName[6]}`,
       this.columnsName[7],
+      this.columnsName[8],
     ];
 
     this.children = [
@@ -144,8 +155,8 @@ export class TableClass extends EntityClass {
       },
       {
         name: this.columnsName[1],
-        dataType: 'NUMERIC',
-        dataTypeDisplay: 'numeric',
+        dataType: 'INT',
+        dataTypeDisplay: 'int',
         description:
           'The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
       },
@@ -195,6 +206,13 @@ export class TableClass extends EntityClass {
         dataLength: 100,
         dataTypeDisplay: 'varchar',
         description: 'Email address of the staff member.',
+      },
+      {
+        name: this.columnsName[8],
+        dataType: 'TIMESTAMP',
+        dataLength: 100,
+        dataTypeDisplay: 'timestamp',
+        description: 'entity created time',
       },
     ];
 
@@ -256,7 +274,7 @@ export class TableClass extends EntityClass {
       name: string;
       displayName: string;
       description?: string;
-      columns?: any[];
+      columns?: TableColumn[];
       databaseSchema?: string;
     },
     apiContext: APIRequestContext
@@ -301,7 +319,8 @@ export class TableClass extends EntityClass {
     await visitEntityPage({
       page,
       searchTerm: searchTerm ?? this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.service.name}-${this.entity.name}`,
+      dataTestId: `${this.entityResponseData.service.name ?? this.service.name
+        }-${this.entityResponseData.name ?? this.entity.name}`,
     });
   }
 
@@ -391,8 +410,8 @@ export class TableClass extends EntityClass {
     apiContext: APIRequestContext,
     testCaseData?: TestCaseData
   ) {
-    if (isEmpty(this.testSuiteResponseData)) {
-      await this.createTestSuiteAndPipelines(apiContext);
+    if (isEmpty(this.entityResponseData)) {
+      await this.create(apiContext);
     }
 
     const testCase = await apiContext
@@ -409,6 +428,10 @@ export class TableClass extends EntityClass {
         },
       })
       .then((res) => res.json());
+
+    if (isEmpty(this.testSuiteResponseData)) {
+      this.testSuiteResponseData = testCase?.testSuite;
+    }
 
     this.testCasesResponseData.push(testCase);
 

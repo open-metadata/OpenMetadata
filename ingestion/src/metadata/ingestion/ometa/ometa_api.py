@@ -15,7 +15,9 @@ models from the JSON schemas and provides a typed approach to
 working with OpenMetadata entities.
 """
 import traceback
+from collections import OrderedDict
 from collections.abc import Generator
+from itertools import chain
 from typing import (
     Any,
     Dict,
@@ -27,9 +29,16 @@ from typing import (
     Type,
     TypeVar,
     Union,
+    get_args,
+    get_origin,
 )
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import (
+    BaseSettings,
+    EnvSettingsSource,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+)
 
 from metadata.generated.schema.api.createBot import CreateBot
 from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
@@ -40,9 +49,14 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.bulkOperationResult import (
+    BulkOperationResult,
+    Response,
+)
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_pydantic import BaseModel
+from metadata.ingestion.models.topology import get_entity_hierarchy_depth
 from metadata.ingestion.ometa.auth_provider import OpenMetadataAuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.ingestion.ometa.mixins.csv_mixin import CSVMixin
@@ -114,14 +128,134 @@ class EmptyPayloadException(Exception):
     """
 
 
+class CaseInsensitiveEnvSettingsSource(EnvSettingsSource):
+    """
+    Custom environment settings source that handles case-insensitive field names.
+    This allows both exact camelCase (e.g., OPENMETADATA__connection__hostPort)
+    and all uppercase (e.g., OPENMETADATA__CONNECTION_HOSTPORT) to work.
+    """
+
+    @staticmethod
+    def _unwrap_annotation(annotation):
+        """Unwrap Optional and other Union types to get the actual model class."""
+        origin = get_origin(annotation)
+        if origin is Union:
+            args = get_args(annotation)
+            for arg in args:
+                if arg is not type(None) and hasattr(arg, "model_fields"):
+                    return arg
+        return annotation
+
+    def _normalize_env_key_recursive(self, key: str, model_fields: dict) -> str:
+        """
+        Normalize environment variable key to match model field names recursively.
+        Handles case-insensitive matching for deeply nested fields.
+        """
+        if not key or not model_fields:
+            return key
+
+        parts = key.split(self.env_nested_delimiter)
+        if not parts:
+            return key
+
+        first_part = parts[0]
+        first_part_lower = first_part.lower()
+
+        for field_name, field_info in model_fields.items():
+            if field_name.lower() == first_part_lower:
+                if len(parts) == 1:
+                    return field_name
+
+                remaining_key = self.env_nested_delimiter.join(parts[1:])
+
+                field_annotation = self._unwrap_annotation(field_info.annotation)
+                if hasattr(field_annotation, "model_fields"):
+                    normalized_rest = self._normalize_env_key_recursive(
+                        remaining_key, field_annotation.model_fields
+                    )
+                    return f"{field_name}{self.env_nested_delimiter}{normalized_rest}"
+                else:
+                    return f"{field_name}{self.env_nested_delimiter}{remaining_key}"
+
+        return key
+
+    def _build_nested_dict(self, key: str, value: str) -> dict:
+        """Build a nested dictionary from a delimited key."""
+        parts = key.split(self.env_nested_delimiter)
+        if len(parts) == 1:
+            return {parts[0]: value}
+
+        result = {}
+        current = result
+        for part in parts[:-1]:
+            current[part] = {}
+            current = current[part]
+        current[parts[-1]] = value
+        return result
+
+    def _merge_dicts(self, dict1: dict, dict2: dict) -> dict:
+        """Recursively merge two dictionaries."""
+        result = dict1.copy()
+        for key, value in dict2.items():
+            if (
+                key in result
+                and isinstance(result[key], dict)
+                and isinstance(value, dict)
+            ):
+                result[key] = self._merge_dicts(result[key], value)
+            else:
+                result[key] = value
+        return result
+
+    def explode_env_vars(self, field_name: str, field, env_vars: dict) -> dict:
+        """
+        Override to handle case-insensitive nested environment variable names.
+        """
+        prefix = f"{self.env_prefix}{field_name}{self.env_nested_delimiter}"
+        prefix_len = len(prefix)
+
+        result = {}
+        for env_name, env_val in env_vars.items():
+            if env_name.upper().startswith(prefix.upper()):
+                suffix = env_name[prefix_len:]
+
+                field_annotation = self._unwrap_annotation(field.annotation)
+                if hasattr(field_annotation, "model_fields"):
+                    normalized_suffix = self._normalize_env_key_recursive(
+                        suffix, field_annotation.model_fields
+                    )
+                    nested_dict = self._build_nested_dict(normalized_suffix, env_val)
+                    result = self._merge_dicts(result, nested_dict)
+                else:
+                    result[suffix] = env_val
+
+        return result
+
+
 class OpenMetadataSettings(BaseSettings):
     """OpenMetadataConnection settings wrapper"""
 
     model_config = SettingsConfigDict(
-        env_prefix="OPENMETADATA__", env_nested_delimiter="__", case_sensitive=True
+        env_prefix="OPENMETADATA__", env_nested_delimiter="__"
     )
 
     connection: OpenMetadataConnection
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls,
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ):
+        return (
+            init_settings,
+            CaseInsensitiveEnvSettingsSource(settings_cls),
+            dotenv_settings,
+            file_secret_settings,
+        )
 
 
 class OpenMetadata(
@@ -396,6 +530,7 @@ class OpenMetadata(
         fqn: Union[str, FullyQualifiedEntityName],
         fields: Optional[List[str]] = None,
         nullable: bool = True,
+        include: Optional[str] = None,
     ) -> Optional[T]:
         """
         Return entity by name or None
@@ -406,6 +541,7 @@ class OpenMetadata(
             path=f"name/{quote(fqn)}",
             fields=fields,
             nullable=nullable,
+            include=include,
         )
 
     def get_by_id(
@@ -431,6 +567,7 @@ class OpenMetadata(
         path: str,
         fields: Optional[List[str]] = None,
         nullable: bool = True,
+        include: Optional[str] = None,
     ) -> Optional[T]:
         """
         Generic GET operation for an entity
@@ -439,8 +576,11 @@ class OpenMetadata(
         :param fields: List of fields to return
         """
         fields_str = "?fields=" + ",".join(fields) if fields else ""
+        include = f"&include={include}" if include else ""
         try:
-            resp = self.client.get(f"{self.get_suffix(entity)}/{path}{fields_str}")
+            resp = self.client.get(
+                f"{self.get_suffix(entity)}/{path}{fields_str}{include}"
+            )
             if not resp:
                 raise EmptyPayloadException(
                     f"Got an empty response when trying to GET from {self.get_suffix(entity)}/{path}{fields_str}"
@@ -495,6 +635,7 @@ class OpenMetadata(
         limit: int = 100,
         params: Optional[Dict[str, str]] = None,
         skip_on_failure: bool = False,
+        include: Optional[str] = None,
     ) -> EntityList[T]:
         """
         Helps us paginate over the collection
@@ -505,8 +646,10 @@ class OpenMetadata(
         url_after = f"&after={after}" if after else ""
         url_before = f"&before={before}" if before else ""
         url_fields = f"&fields={','.join(fields)}" if fields else ""
+        url_include = f"&include={include}" if include else ""
         resp = self.client.get(
-            path=f"{suffix}{url_limit}{url_after}{url_before}{url_fields}", data=params
+            path=f"{suffix}{url_limit}{url_after}{url_before}{url_fields}{url_include}",
+            data=params,
         )
 
         if self._use_raw_data:
@@ -540,6 +683,7 @@ class OpenMetadata(
         limit: int = 100,
         params: Optional[Dict[str, str]] = None,
         skip_on_failure: bool = False,
+        include: Optional[str] = None,
     ) -> Iterable[T]:
         """
         Utility method that paginates over all EntityLists
@@ -558,6 +702,7 @@ class OpenMetadata(
             limit=limit,
             params=params,
             skip_on_failure=skip_on_failure,
+            include=include,
         )
         yield from entity_list.entities
 
@@ -570,6 +715,7 @@ class OpenMetadata(
                 params=params,
                 after=after,
                 skip_on_failure=skip_on_failure,
+                include=include,
             )
             yield from entity_list.entities
             after = entity_list.after
@@ -629,6 +775,40 @@ class OpenMetadata(
         url += f"&hardDelete={str(hard_delete).lower()}"
         self.client.delete(url)
 
+    def restore(
+        self,
+        entity: Type[T],
+        entity_id: Union[str, basic.Uuid],
+    ) -> Optional[T]:
+        """
+        API call to restore a soft-deleted entity from entity ID
+
+        Args
+            entity (T): entity Type
+            entity_id (basic.Uuid): entity ID
+        Returns
+            Restored entity or None
+        """
+        try:
+            url = f"{self.get_suffix(entity)}/restore"
+            data = {"id": model_str(entity_id)}
+            resp = self.client.put(url, json=data)
+            if not resp:
+                raise EmptyPayloadException(
+                    f"Got an empty response when trying to restore {entity.__name__} with ID {entity_id}"
+                )
+            return entity(**resp)
+        except APIError as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                "Failed to restore %s with ID %s. Error %s - %s",
+                entity.__name__,
+                entity_id,
+                err.status_code,
+                err,
+            )
+            return None
+
     def compute_percentile(self, entity: Union[Type[T], str], date: str) -> None:
         """
         Compute an entity usage percentile
@@ -636,6 +816,143 @@ class OpenMetadata(
         entity_name = get_entity_type(entity)
         resp = self.client.post(f"/usage/compute.percentile/{entity_name}/{date}")
         logger.debug("published compute percentile %s", resp)
+
+    def _group_entities_by_type(
+        self, entities: List[Type[T]]
+    ) -> Dict[Type[T], List[Type[T]]]:
+        """Group entities by type so we can process them in the correct order when
+        creating the entities from bulk API.
+
+        Entities are sorted by their hierarchy depth to ensure parent entities
+        are created before their children (e.g., DatabaseService before Database,
+        Database before DatabaseSchema, etc.).
+
+        Args:
+            entities (List[Type[T]]): List of entities to group by type
+
+        Returns:
+            Dict[Type[T], List[Type[T]]]: Dictionary of entities grouped by type,
+            ordered by hierarchy depth
+        """
+
+        grouped: Dict[Type[T], List[Type[T]]] = {}
+
+        for entity in entities:
+            entity_class = type(entity)
+
+            if entity_class not in grouped:
+                grouped[entity_class] = []
+
+            grouped[entity_class].append(entity)
+
+        sorted_grouped = OrderedDict(
+            sorted(
+                grouped.items(),
+                key=lambda item: get_entity_hierarchy_depth(
+                    self.get_entity_from_create(item[0])
+                ),
+            )
+        )
+
+        return sorted_grouped
+
+    def _execute_bulk_operation(
+        self, entities: List[Type[T]], use_async: bool = False
+    ) -> BulkOperationResult:
+        """Execute a bulk operation for a list of entities.
+
+        Args:
+            entities (List[Type[T]]): List of entities to execute the bulk operation for
+            use_async (bool, optional): Use backend async processing (default: False)
+
+        Returns:
+            BulkOperationResult: Result containing success/failure details
+        """
+        type_ = type(entities[0])
+        data: list[str] = [
+            entity.model_dump(mode="json", exclude_unset=True, exclude_none=True)
+            for entity in entities
+        ]
+        url = f"{self.get_suffix(type_)}/bulk"
+        url += f"?async={str(use_async).lower()}"
+        try:
+            resp = self.client.put(url, json=data)
+        except Exception as exc:
+            logger.debug("Failed to execute bulk operation for %s: %s", type_, exc)
+            logger.debug(traceback.format_exc())
+            return BulkOperationResult(
+                numberOfRowsProcessed=0,
+                numberOfRowsFailed=len(entities),
+                successRequest=[],
+                failedRequest=[
+                    Response(
+                        request=None,
+                        message=str(exc),
+                        status=500,
+                    )
+                ],
+            )
+        return BulkOperationResult(**resp)
+
+    def bulk_create_or_update(
+        self, entities: List[Type[T]], use_async: bool = False
+    ) -> BulkOperationResult:
+        """Bulk create or update (PUT) multiple entities in a single API call.
+
+        Args:
+            entities (List[Type[T]]): List of entities to create or update
+            async (bool, optional): Use backend async processing (default: False)
+
+        Returns:
+            BulkOperationResult: Result containing success/failure details
+        """
+        bulk_ops_results: list[BulkOperationResult] = []
+        if not entities:
+            return BulkOperationResult(
+                numberOfRowsProcessed=0,
+                numberOfRowsFailed=0,
+                successRequest=[],
+                failedRequest=[],
+            )
+
+        type_idx = OrderedDict.fromkeys(map(type, entities))
+        if len(type_idx) > 1:
+            grouped = self._group_entities_by_type(entities)
+            for _, entities in grouped.items():
+                try:
+                    bulk_ops_results.append(
+                        self._execute_bulk_operation(entities, use_async)
+                    )
+                except Exception as exc:
+                    logger.debug("Failed to execute bulk operation: %s", exc)
+                    logger.debug(traceback.format_exc())
+        else:
+            bulk_ops_results.append(self._execute_bulk_operation(entities, use_async))
+
+        failed_rows = sum(result.numberOfRowsFailed.root for result in bulk_ops_results)
+        return BulkOperationResult(
+            status=basic.Status.success if not failed_rows else basic.Status.failure,
+            numberOfRowsProcessed=sum(
+                result.numberOfRowsProcessed.root for result in bulk_ops_results
+            ),
+            numberOfRowsFailed=sum(
+                result.numberOfRowsFailed.root for result in bulk_ops_results
+            ),
+            successRequest=list(
+                chain.from_iterable(
+                    result.successRequest
+                    for result in bulk_ops_results
+                    if result.successRequest is not None
+                )
+            ),
+            failedRequest=list(
+                chain.from_iterable(
+                    result.failedRequest
+                    for result in bulk_ops_results
+                    if result.failedRequest is not None
+                )
+            ),
+        )
 
     def health_check(self) -> bool:
         """

@@ -24,7 +24,10 @@ import { ContractTab } from '../../components/DataContract/ContractTab/ContractT
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
 import { PageType } from '../../generated/system/ui/page';
+import { EntityReference } from '../../generated/type/entityReference';
+import { Field } from '../../generated/type/schema';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import i18n from '../i18next/LocalUtil';
 import { APIEndpointDetailPageTabProps } from './APIEndpointClassBase';
@@ -42,7 +45,7 @@ export const getApiEndpointDetailsPageTabs = ({
   getEntityFeedCount,
   handleFeedCount,
   editCustomAttributePermission,
-  viewAllPermission,
+  viewCustomPropertiesPermission,
   editLineagePermission,
   labelMap,
 }: APIEndpointDetailPageTabProps) => {
@@ -105,7 +108,6 @@ export const getApiEndpointDetailsPageTabs = ({
     {
       label: (
         <TabsLabel
-          isBeta
           id={EntityTabs.CONTRACT}
           name={get(labelMap, EntityTabs.CONTRACT, i18n.t('label.contract'))}
         />
@@ -128,10 +130,27 @@ export const getApiEndpointDetailsPageTabs = ({
         <CustomPropertyTable<EntityType.API_ENDPOINT>
           entityType={EntityType.API_ENDPOINT}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
     },
+  ];
+};
+
+export const extractApiEndpointFields = <
+  T extends Omit<EntityReference, 'type'>
+>(
+  data: T
+): Field[] => {
+  const apiEndpoint = data as Partial<APIEndpoint>;
+
+  return [
+    ...(apiEndpoint.requestSchema?.schemaFields ?? []).map(
+      (field) => ({ ...field, tags: field.tags ?? [] } as Field)
+    ),
+    ...(apiEndpoint.responseSchema?.schemaFields ?? []).map(
+      (field) => ({ ...field, tags: field.tags ?? [] } as Field)
+    ),
   ];
 };
 

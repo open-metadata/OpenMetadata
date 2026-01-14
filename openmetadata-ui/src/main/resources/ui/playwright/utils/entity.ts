@@ -23,6 +23,7 @@ import { ES_RESERVED_CHARACTERS } from '../constant/entity';
 import { SidebarItem } from '../constant/sidebar';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
+import { TableClass } from '../support/entity/TableClass';
 import { TagClass } from '../support/tag/TagClass';
 import {
   clickOutside,
@@ -39,6 +40,7 @@ import {
 } from './dateTime';
 import { searchAndClickOnOption } from './explore';
 import { sidebarClick } from './sidebar';
+import { EntityType } from '../support/entity/EntityDataClass.interface';
 
 export const waitForAllLoadersToDisappear = async (
   page: Page,
@@ -346,14 +348,15 @@ export const addMultiOwner = async (data: {
   );
 
   const isClearButtonVisible = await page
-    .locator("[data-testid='select-owner-tabs']")
+    .getByTestId('select-owner-tabs')
+    .locator('[id^="rc-tabs-"][id$="-panel-users"]')
     .getByTestId('clear-all-button')
     .isVisible();
 
   // If the user is not in the Users tab, switch to it
   if (!isClearButtonVisible) {
     await page
-      .locator("[data-testid='select-owner-tabs']")
+      .getByTestId('select-owner-tabs')
       .getByRole('tab', { name: 'Users' })
       .click();
 
@@ -364,7 +367,11 @@ export const addMultiOwner = async (data: {
   }
 
   if (clearAll && isMultipleOwners) {
-    await page.click('[data-testid="clear-all-button"]');
+    const clearButton = page
+      .locator('[id^="rc-tabs-"][id$="-panel-users"]')
+      .getByTestId('clear-all-button');
+
+    await clearButton.click();
   }
 
   for (const ownerName of owners) {
@@ -401,7 +408,9 @@ export const addMultiOwner = async (data: {
   }
 
   if (isMultipleOwners) {
-    const updateButton = page.getByTestId('selectable-list-update-btn');
+    const updateButton = page
+      .locator('[id^="rc-tabs-"][id$="-panel-users"]')
+      .getByTestId('selectable-list-update-btn');
 
     if (isSelectableInsideForm) {
       await updateButton.click();
@@ -430,22 +439,46 @@ export const addMultiOwner = async (data: {
 export const assignTier = async (
   page: Page,
   tier: string,
-  endpoint: string
+  endpoint: string,
+  initiatorId = 'edit-tier'
 ) => {
-  await page.getByTestId('edit-tier').click();
+  // Wait for the edit button to be visible and clickable
+  const editButton = page.getByTestId(initiatorId);
+  await editButton.waitFor({ state: 'visible' });
+  await editButton.click();
+
+  // Wait for all loaders to disappear
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
-  await page.getByTestId(`radio-btn-${tier}`).click();
+
+  // Wait for the tier selection radio buttons to be visible
+  const tierRadioButton = page.getByTestId(`radio-btn-${tier}`);
+  await tierRadioButton.waitFor({ state: 'visible' });
+
+  // Set up response wait before clicking
+  const patchRequest = page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/v1/${endpoint}`) &&
+      response.request().method() === 'PATCH'
+  );
+
+  await tierRadioButton.click();
 
   // Wait for the update button to be visible and clickable
-  await page.waitForSelector('[data-testid="update-tier-card"]', {
-    state: 'visible',
-  });
-  await page.click(`[data-testid="update-tier-card"]`);
+  const updateButton = page.getByTestId('update-tier-card');
+  await updateButton.waitFor({ state: 'visible' });
+  await updateButton.click();
 
-  await patchRequest;
+  // Wait for the PATCH request to complete and validate status
+  const response = await patchRequest;
+  expect(response.status()).toBe(200);
+
+  // Wait for loaders to finish
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  // Close the tier popover
   await clickOutside(page);
 
+  // Verify the tier was updated
   await expect(page.getByTestId('Tier')).toContainText(tier);
 };
 
@@ -459,7 +492,10 @@ export const removeTier = async (page: Page, endpoint: string) => {
   );
   await page.getByTestId('clear-tier').click();
 
-  await patchRequest;
+  const response = await patchRequest;
+  expect(response.status()).toBe(200);
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await clickOutside(page);
 
   await expect(page.getByTestId('Tier')).toContainText('--');
@@ -471,10 +507,15 @@ export const assignCertification = async (
   endpoint: string
 ) => {
   const certificationResponse = page.waitForResponse(
-    '/api/v1/tags?parent=Certification&limit=50'
+    (response) =>
+      response.url().includes('/api/v1/tags') &&
+      response.url().includes('parent=Certification')
   );
   await page.getByTestId('edit-certification').click();
-  await certificationResponse;
+
+  const tagsResponse = await certificationResponse;
+  expect(tagsResponse.status()).toBe(200);
+
   await page.waitForSelector('.certification-card-popover', {
     state: 'visible',
   });
@@ -491,9 +532,17 @@ export const assignCertification = async (
   await page
     .getByTestId(`radio-btn-${certification.responseData.fullyQualifiedName}`)
     .click();
-  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+  const patchRequest = page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/v1/${endpoint}`) &&
+      response.request().method() === 'PATCH'
+  );
   await page.getByTestId('update-certification').click();
-  await patchRequest;
+
+  const patchResponse = await patchRequest;
+  expect(patchResponse.status()).toBe(200);
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await clickOutside(page);
 
   await expect(page.getByTestId('certification-label')).toContainText(
@@ -507,9 +556,17 @@ export const removeCertification = async (page: Page, endpoint: string) => {
     state: 'visible',
   });
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+  const patchRequest = page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/v1/${endpoint}`) &&
+      response.request().method() === 'PATCH'
+  );
   await page.getByTestId('clear-certification').click();
-  await patchRequest;
+
+  const response = await patchRequest;
+  expect(response.status()).toBe(200);
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await clickOutside(page);
 
   await expect(page.getByTestId('certification-label')).toContainText('--');
@@ -518,9 +575,16 @@ export const removeCertification = async (page: Page, endpoint: string) => {
 export const updateDescription = async (
   page: Page,
   description: string,
-  isModal = false
+  isModal = false,
+  validationContainerTestId = 'asset-description-container'
 ) => {
-  await page.getByTestId('edit-description').click();
+  const editButton = page.locator('[data-testid="edit-description"]');
+  if (await editButton.isVisible()) {
+    await editButton.click();
+  } else {
+    // Fallback for ML Model which uses 'edit-button'
+    await page.getByTestId('edit-button').click();
+  }
   await page.locator(descriptionBox).first().click();
   await page.locator(descriptionBox).first().clear();
   await page.locator(descriptionBox).first().fill(description);
@@ -532,16 +596,18 @@ export const updateDescription = async (
     });
   }
 
-  if (isEmpty(description)) {
-    // Check for either "No description" or handle potential UI duplication issue
-    const container = page.getByTestId('asset-description-container');
-    const text = await container.textContent();
+  if (validationContainerTestId) {
+    if (isEmpty(description)) {
+      // Check for either "No description" or handle potential UI duplication issue
+      const container = page.getByTestId(validationContainerTestId);
+      const text = await container.textContent();
 
-    expect(text).toMatch(/No description|Descriptiondescription/);
-  } else {
-    await expect(
-      page.getByTestId('asset-description-container').getByRole('paragraph')
-    ).toContainText(description);
+      expect(text).toMatch(/No description|Descriptiondescription/);
+    } else {
+      await expect(
+        page.getByTestId(validationContainerTestId).getByRole('paragraph')
+      ).toContainText(description);
+    }
   }
 };
 
@@ -554,14 +620,28 @@ export const updateDescriptionForChildren = async (
 ) => {
   await page
     .locator(`[${rowSelector}="${rowId}"]`)
+    .getByTestId('description')
     .getByTestId('edit-button')
     .click();
 
   await page.waitForSelector('[role="dialog"]', { state: 'visible' });
 
-  await page.locator(descriptionBox).first().click();
-  await page.locator(descriptionBox).first().clear();
-  await page.locator(descriptionBox).first().fill(description);
+  const descriptionInput = page.locator(descriptionBox).first();
+
+  await descriptionInput.waitFor({ state: 'visible' });
+  await expect(descriptionInput).toBeEditable();
+
+  await descriptionInput.click();
+  await descriptionInput.focus();
+  // Needed to add small timeout as this test if unable to clear description field on CI
+  await page.waitForTimeout(500);
+  await descriptionInput.clear();
+
+  // Type new content directly (this replaces the selection)
+  await descriptionInput.fill(description);
+
+  // Verify final state only - skip intermediate empty assertion for rich text editors
+  await expect(descriptionInput).toHaveText(description);
   let updateRequest;
   if (
     entityEndpoint === 'tables' ||
@@ -576,16 +656,18 @@ export const updateDescriptionForChildren = async (
 
   await page.waitForSelector('[role="dialog"]', { state: 'hidden' });
 
-  isEmpty(description)
-    ? await expect(
-        page.locator(`[${rowSelector}="${rowId}"]`).getByTestId('description')
-      ).toContainText('No Description')
-    : await expect(
-        page
-          .locator(`[${rowSelector}="${rowId}"]`)
-          .getByTestId('viewer-container')
-          .getByRole('paragraph')
-      ).toContainText(description);
+  if (isEmpty(description)) {
+    await expect(
+      page.locator(`[${rowSelector}="${rowId}"]`).getByTestId('description')
+    ).toContainText('No Description');
+  } else {
+    await expect(
+      page
+        .locator(`[${rowSelector}="${rowId}"]`)
+        .getByTestId('viewer-container')
+        .getByRole('paragraph')
+    ).toContainText(description);
+  }
 };
 
 export const assignTag = async (
@@ -600,6 +682,7 @@ export const assignTag = async (
     .getByTestId(parentId)
     .getByTestId('tags-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
+    .first()
     .click();
 
   // Wait for the form to be visible and stable
@@ -755,6 +838,7 @@ export const removeTagsFromChildren = async ({
       .locator(`[${rowSelector}="${rowId}"]`)
       .getByTestId('tags-container')
       .getByTestId('edit-button')
+      .first()
       .click();
 
     await page
@@ -846,6 +930,61 @@ export const assignGlossaryTerm = async (
   ).toBeVisible();
 };
 
+export const openColumnDetailPanel = async ({
+  page,
+  rowSelector = 'data-row-key',
+  columnId,
+  columnNameTestId = 'column-name',
+  entityType,
+}: {
+  page: Page;
+  rowSelector?: string;
+  columnId: string;
+  columnNameTestId?: string;
+  entityType?: EntityType;
+}) => {
+  if (entityType === 'MlModel') {
+    const columnName = page
+      .locator(`[${rowSelector}="${columnId}"]`)
+      .getByTestId(columnNameTestId)
+      .first();
+    await columnName.waitFor({ state: 'visible' });
+    await columnName.click();
+  } else {
+    const row = page.locator(`[${rowSelector}="${columnId}"]`).first();
+    await row.waitFor({ state: 'visible' });
+
+    const nameCell = row.getByTestId('column-name-cell');
+
+    await nameCell.waitFor({ state: 'visible' });
+
+    const columnNameElement = nameCell.getByTestId(columnNameTestId);
+
+    if ((await columnNameElement.count()) > 0) {
+      await columnNameElement.click({ force: false });
+    } else {
+      await nameCell.click({ force: false });
+    }
+  }
+  await expect(page.locator('.column-detail-panel')).toBeVisible();
+
+  await page.waitForLoadState('networkidle');
+
+  const panelContainer = page.locator('.column-detail-panel');
+
+  // Wait for the panel content to be loaded
+  await expect(panelContainer.getByTestId('entity-link')).toBeVisible();
+
+  return panelContainer;
+};
+
+export const closeColumnDetailPanel = async (page: Page) => {
+  const panelContainer = page.locator('.column-detail-panel');
+  await panelContainer.getByTestId('close-button').click();
+
+  await expect(page.locator('.column-detail-panel')).not.toBeVisible();
+};
+
 export const assignGlossaryTermToChildren = async ({
   page,
   glossaryTerm,
@@ -865,6 +1004,7 @@ export const assignGlossaryTermToChildren = async ({
     .locator(`[${rowSelector}="${rowId}"]`)
     .getByTestId('glossary-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
+    .first()
     .click();
 
   const searchGlossaryTerm = page.waitForResponse(
@@ -974,6 +1114,7 @@ export const removeGlossaryTermFromChildren = async ({
       .locator(`[${rowSelector}="${rowId}"]`)
       .getByTestId('glossary-container')
       .getByTestId('edit-button')
+      .first()
       .click();
 
     await page
@@ -1353,9 +1494,8 @@ export const updateDisplayNameForEntity = async (
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="rename-button"]');
 
-  const nameInputIsDisabled = await page.locator('#name').isEnabled();
-
-  expect(nameInputIsDisabled).toBe(false);
+  const nameInputIsDisabled = await page.locator('#name').isDisabled();
+  expect(nameInputIsDisabled).toBe(true);
 
   await expect(page.locator('#displayName')).toBeVisible();
 
@@ -1492,9 +1632,11 @@ export const checkForEditActions = async ({
     }
 
     if (elementSelector === '[data-testid="entity-follow-button"]') {
-      deleted
-        ? await expect(page.locator(elementSelector)).not.toBeVisible()
-        : await expect(page.locator(elementSelector)).toBeVisible();
+      if (deleted) {
+        await expect(page.locator(elementSelector)).not.toBeVisible();
+      } else {
+        await expect(page.locator(elementSelector)).toBeVisible();
+      }
 
       continue;
     }
@@ -1531,6 +1673,8 @@ export const checkLineageTabActions = async (page: Page, deleted?: boolean) => {
 
   // Ensure the response has been received and check the status code
   await lineageApi;
+
+  await waitForAllLoadersToDisappear(page);
 
   // Check the presence or absence of the edit-lineage element based on the deleted flag
   if (deleted) {
@@ -1964,20 +2108,56 @@ export const checkExploreSearchFilter = async (
     filterKey === 'tier.tagFQN'
       ? filterValue
       : /["%]/.test(filterValue ?? '')
-      ? encodeURIComponent(escapedValue)
+      ? escapedValue
       : rawFilterValue;
 
-  const querySearchURL = `/api/v1/search/query?*index=dataAsset*query_filter=*should*${filterKey}*${filterValueForSearchURL}*`;
+  // Use a predicate to check the response URL contains the correct filter
+  const queryRes = page.waitForResponse(
+    (response) => {
+      const url = response.url();
+      if (
+        !url.includes('/api/v1/search/query') ||
+        !url.includes('index=dataAsset')
+      ) {
+        return false;
+      }
 
-  const queryRes = page.waitForResponse(querySearchURL);
+      // Check if the URL contains the filterKey in query_filter
+      const urlObj = new URL(url);
+      const queryFilter = urlObj.searchParams.get('query_filter');
+
+      if (!queryFilter) {
+        return false;
+      }
+
+      try {
+        const filterObj = JSON.parse(queryFilter);
+        const filterStr = JSON.stringify(filterObj);
+
+        // Check if the filter contains both the filterKey and filterValue
+        return (
+          filterStr.includes(filterKey) &&
+          filterStr.includes(filterValueForSearchURL)
+        );
+      } catch {
+        // Fallback to simple string match if JSON parse fails
+        return (
+          queryFilter.includes(filterKey) &&
+          queryFilter.includes(filterValueForSearchURL)
+        );
+      }
+    },
+    { timeout: 30_000 }
+  );
+
   await page.click('[data-testid="update-btn"]');
   await queryRes;
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(
     page.getByTestId(
       `table-data-card_${
-        (entity as any)?.entityResponseData?.fullyQualifiedName
+        (entity as TableClass)?.entityResponseData?.fullyQualifiedName
       }`
     )
   ).toBeVisible();

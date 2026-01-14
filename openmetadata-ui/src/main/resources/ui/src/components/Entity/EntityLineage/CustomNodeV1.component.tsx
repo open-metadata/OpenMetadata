@@ -121,8 +121,8 @@ const ExpandCollapseHandles = memo(
 
         {!hasOutgoers &&
           !downstreamExpandPerformed &&
-          getExpandHandle(LineageDirection.Downstream, () =>
-            onExpand(LineageDirection.Downstream)
+          getExpandHandle(LineageDirection.Downstream, (depth = 1) =>
+            onExpand(LineageDirection.Downstream, depth)
           )}
 
         {hasIncomers &&
@@ -134,8 +134,8 @@ const ExpandCollapseHandles = memo(
         {!hasIncomers &&
           !upstreamExpandPerformed &&
           upstreamLineageLength > 0 &&
-          getExpandHandle(LineageDirection.Upstream, () =>
-            onExpand(LineageDirection.Upstream)
+          getExpandHandle(LineageDirection.Upstream, (depth = 1) =>
+            onExpand(LineageDirection.Upstream, depth)
           )}
       </>
     );
@@ -185,16 +185,47 @@ const CustomNodeV1 = (props: NodeProps) => {
     [activeLayer, dataQualityLineage, id]
   );
 
+  const isColumnLayerEnabled = useMemo(
+    () => activeLayer.includes(LineageLayer.ColumnLevelLineage),
+    [activeLayer]
+  );
+
+  const [isChildrenListExpanded, setIsChildrenListExpanded] =
+    useState(isColumnLayerEnabled);
+  const toggleColumnsList = useCallback(() => {
+    setIsChildrenListExpanded((prev) => !prev);
+  }, []);
+
+  const [
+    isOnlyShowColumnsWithLineageFilterActive,
+    setIsOnlyShowColumnsWithLineageFilterActive,
+  ] = useState(false);
+
+  const toggleOnlyShowColumnsWithLineageFilterActive = useCallback(() => {
+    setIsOnlyShowColumnsWithLineageFilterActive((prev) => !prev);
+  }, []);
+
+  useEffect(() => {
+    setIsChildrenListExpanded(isColumnLayerEnabled);
+  }, [isColumnLayerEnabled]);
+
+  useEffect(() => {
+    setIsOnlyShowColumnsWithLineageFilterActive(
+      isColumnLayerEnabled && !isEditMode
+    );
+  }, [isColumnLayerEnabled, isEditMode]);
+
   const containerClass = getNodeClassNames({
     isSelected,
     showDqTracing: showDqTracing ?? false,
     isTraced,
     isBaseNode: isRootNode,
+    isChildrenListExpanded,
   });
 
   const onExpand = useCallback(
-    (direction: LineageDirection) => {
-      loadChildNodesHandler(node, direction);
+    (direction: LineageDirection, depth = 1) => {
+      loadChildNodesHandler(node, direction, depth);
     },
     [loadChildNodesHandler, node]
   );
@@ -213,13 +244,37 @@ const CustomNodeV1 = (props: NodeProps) => {
 
     return (
       <>
-        <LineageNodeLabelV1 node={node} />
+        <LineageNodeLabelV1
+          isChildrenListExpanded={isChildrenListExpanded}
+          isOnlyShowColumnsWithLineageFilterActive={
+            isOnlyShowColumnsWithLineageFilterActive
+          }
+          node={node}
+          toggleColumnsList={toggleColumnsList}
+          toggleOnlyShowColumnsWithLineageFilterActive={
+            toggleOnlyShowColumnsWithLineageFilterActive
+          }
+        />
         {isSelected && isEditMode && !isRootNode && (
           <LineageNodeRemoveButton onRemove={() => removeNodeHandler(props)} />
         )}
       </>
     );
-  }, [node.id, isNewNode, label, isSelected, isEditMode, isRootNode]);
+  }, [
+    node.id,
+    isNewNode,
+    label,
+    isSelected,
+    isEditMode,
+    isRootNode,
+    isChildrenListExpanded,
+    toggleColumnsList,
+    toggleOnlyShowColumnsWithLineageFilterActive,
+    removeNodeHandler,
+    props,
+    isOnlyShowColumnsWithLineageFilterActive,
+    isEditMode,
+  ]);
 
   const expandCollapseProps = useMemo<ExpandCollapseHandlesProps>(
     () => ({
@@ -263,15 +318,27 @@ const CustomNodeV1 = (props: NodeProps) => {
     <div
       className={containerClass}
       data-testid={`lineage-node-${fullyQualifiedName}`}>
-      <NodeHandles
-        expandCollapseHandles={handlesElement}
-        id={id}
-        isConnectable={isConnectable}
-        nodeType={nodeType}
-      />
+      {isRootNode && (
+        <div className="lineage-node-badge-container">
+          <div className="lineage-node-badge" />
+        </div>
+      )}
       <div className="lineage-node-content">
         <div className="label-container bg-white">{nodeLabel}</div>
-        <NodeChildren isConnectable={isConnectable} node={node} />
+        <NodeHandles
+          expandCollapseHandles={handlesElement}
+          id={id}
+          isConnectable={isConnectable}
+          nodeType={nodeType}
+        />
+        <NodeChildren
+          isChildrenListExpanded={isChildrenListExpanded}
+          isConnectable={isConnectable}
+          isOnlyShowColumnsWithLineageFilterActive={
+            isOnlyShowColumnsWithLineageFilterActive
+          }
+          node={node}
+        />
       </div>
     </div>
   );

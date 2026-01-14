@@ -218,7 +218,6 @@ describe('Test UserListPage component', () => {
 
     expect(mockSetFilters).toHaveBeenCalledWith({
       isDeleted: true,
-      user: null,
     });
     expect(deletedSwitch).toHaveAttribute('aria-checked', 'true');
   });
@@ -416,7 +415,7 @@ describe('Test UserListPage component', () => {
       expect(mockTableComponent).toHaveBeenCalledWith(
         expect.objectContaining({
           searchProps: expect.objectContaining({
-            typingInterval: 500,
+            typingInterval: 350,
           }),
         }),
         expect.anything()
@@ -553,7 +552,6 @@ describe('Test UserListPage component', () => {
     await waitFor(() => {
       expect(mockSetFilters).toHaveBeenCalledWith({
         isDeleted: true,
-        user: null,
       });
     });
 

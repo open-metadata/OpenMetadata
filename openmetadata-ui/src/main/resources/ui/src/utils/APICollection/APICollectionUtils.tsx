@@ -34,7 +34,7 @@ export const getApiCollectionDetailsPageTabs = ({
   getEntityFeedCount,
   handleFeedCount,
   editCustomAttributePermission,
-  viewAllPermission,
+  viewCustomPropertiesPermission,
   apiEndpointCount,
   labelMap,
 }: APICollectionDetailPageTabProps) => {
@@ -83,7 +83,6 @@ export const getApiCollectionDetailsPageTabs = ({
     {
       label: (
         <TabsLabel
-          isBeta
           id={EntityTabs.CONTRACT}
           name={get(labelMap, EntityTabs.CONTRACT, i18n.t('label.contract'))}
         />
@@ -107,7 +106,7 @@ export const getApiCollectionDetailsPageTabs = ({
           className=""
           entityType={EntityType.API_COLLECTION}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
           isVersionView={false}
         />
       ),

@@ -1452,6 +1452,84 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
     assertTrue(hasTableNames, "Should find fallback table names with test prefix in DESC");
   }
 
+  @Test
+  void testSearchWithIncludeAggregationsParameter() throws IOException {
+    // Wait for indexing
+    TestUtils.simulateWork(2);
+
+    String query = "*";
+    String index = "table_search_index";
+
+    // Test search WITH aggregations (default behavior)
+    WebTarget targetWithAggs =
+        getResource("search/query")
+            .queryParam("q", query)
+            .queryParam("index", index)
+            .queryParam("from", 0)
+            .queryParam("size", 10)
+            .queryParam("include_aggregations", "true");
+
+    String resultWithAggs = TestUtils.get(targetWithAggs, String.class, ADMIN_AUTH_HEADERS);
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode responseWithAggs = mapper.readTree(resultWithAggs);
+
+    // Verify aggregations are present
+    assertTrue(
+        responseWithAggs.has("aggregations"),
+        "Response should contain aggregations when include_aggregations=true");
+    JsonNode aggregations = responseWithAggs.get("aggregations");
+    assertNotNull(aggregations, "Aggregations should not be null");
+    assertTrue(
+        aggregations.size() > 0, "Aggregations should contain at least one aggregation field");
+
+    // Test search WITHOUT aggregations
+    WebTarget targetWithoutAggs =
+        getResource("search/query")
+            .queryParam("q", query)
+            .queryParam("index", index)
+            .queryParam("from", 0)
+            .queryParam("size", 10)
+            .queryParam("include_aggregations", "false");
+
+    String resultWithoutAggs = TestUtils.get(targetWithoutAggs, String.class, ADMIN_AUTH_HEADERS);
+    JsonNode responseWithoutAggs = mapper.readTree(resultWithoutAggs);
+
+    // Verify aggregations are either absent or empty
+    if (responseWithoutAggs.has("aggregations")) {
+      JsonNode aggsWithout = responseWithoutAggs.get("aggregations");
+      assertEquals(
+          0, aggsWithout.size(), "Aggregations should be empty when include_aggregations=false");
+    }
+
+    // Verify both responses have hits
+    assertTrue(
+        responseWithAggs.has("hits") && responseWithAggs.get("hits").has("hits"),
+        "Response with aggregations should have hits");
+    assertTrue(
+        responseWithoutAggs.has("hits") && responseWithoutAggs.get("hits").has("hits"),
+        "Response without aggregations should have hits");
+
+    // Verify the same number of search results
+    int hitsWithAggs = responseWithAggs.get("hits").get("hits").size();
+    int hitsWithoutAggs = responseWithoutAggs.get("hits").get("hits").size();
+    assertEquals(
+        hitsWithAggs,
+        hitsWithoutAggs,
+        "Both responses should return the same number of search results");
+
+    // Verify response size is smaller without aggregations
+    int sizeWithAggs = resultWithAggs.length();
+    int sizeWithoutAggs = resultWithoutAggs.length();
+    assertTrue(
+        sizeWithoutAggs < sizeWithAggs,
+        "Response without aggregations should be smaller than response with aggregations");
+
+    LOG.info(
+        "Response size comparison: with aggregations={}KB, without aggregations={}KB",
+        sizeWithAggs / 1024,
+        sizeWithoutAggs / 1024);
+  }
+
   private void cleanupTestTables(List<Table> tables) {
     for (Table table : tables) {
       try {
@@ -1664,6 +1742,401 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
 
     } finally {
       tableResourceTest.deleteEntity(testTable.getId(), ADMIN_AUTH_HEADERS);
+    }
+  }
+
+  @Test
+  void testEntityTypeCountsWithQueryFilterWithOuterWrapper() {
+    TestUtils.simulateWork(2);
+    assertDoesNotThrow(
+        () -> {
+          String queryFilter =
+              URLEncoder.encode(
+                  "{\"query\": {\"bool\": {\"must\": [{\"term\": {\"deleted\": false}}]}}}",
+                  StandardCharsets.UTF_8);
+          WebTarget target =
+              getResource("search/entityTypeCounts")
+                  .queryParam("q", "*")
+                  .queryParam("index", "dataAsset")
+                  .queryParam("query_filter", queryFilter);
+
+          String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+          Response response = Response.ok(result).build();
+          assertEquals(
+              200,
+              response.getStatus(),
+              "Entity type counts with query_filter should return successfully");
+          String responseBody = (String) response.getEntity();
+          assertNotNull(responseBody);
+          assertTrue(responseBody.contains("aggregations"), "Response should contain aggregations");
+          LOG.info("Query filter with outer wrapper test passed");
+        });
+  }
+
+  @Test
+  void testEntityTypeCountsWithQueryFilterWithoutOuterWrapper() {
+    TestUtils.simulateWork(2);
+    assertDoesNotThrow(
+        () -> {
+          String queryFilter =
+              URLEncoder.encode(
+                  "{\"bool\": {\"must\": [{\"term\": {\"deleted\": false}}]}}",
+                  StandardCharsets.UTF_8);
+          WebTarget target =
+              getResource("search/entityTypeCounts")
+                  .queryParam("q", "*")
+                  .queryParam("index", "dataAsset")
+                  .queryParam("query_filter", queryFilter);
+
+          String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+          Response response = Response.ok(result).build();
+          assertEquals(
+              200,
+              response.getStatus(),
+              "Entity type counts with query_filter should return successfully");
+          String responseBody = (String) response.getEntity();
+          assertNotNull(responseBody);
+          assertTrue(responseBody.contains("aggregations"), "Response should contain aggregations");
+          LOG.info("Query filter without outer wrapper test passed");
+        });
+  }
+
+  @Test
+  void testEntityTypeCountsWithMalformedQueryFilter() {
+    TestUtils.simulateWork(2);
+    assertDoesNotThrow(
+        () -> {
+          String malformedFilter =
+              URLEncoder.encode("{\"query\": {\"invalid_syntax", StandardCharsets.UTF_8);
+          WebTarget target =
+              getResource("search/entityTypeCounts")
+                  .queryParam("q", "*")
+                  .queryParam("index", "dataAsset")
+                  .queryParam("query_filter", malformedFilter);
+
+          String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+          Response response = Response.ok(result).build();
+          assertEquals(
+              200,
+              response.getStatus(),
+              "Entity type counts should handle malformed query_filter gracefully");
+          String responseBody = (String) response.getEntity();
+          assertNotNull(responseBody);
+          LOG.info("Malformed query filter test passed - handled gracefully");
+        });
+  }
+
+  @Test
+  void testEntityTypeCountsWithSpecificIndexes() throws IOException {
+    TestUtils.simulateWork(3);
+    String[] indexes = {"table", "dashboard", "pipeline", "topic"};
+    for (String index : indexes) {
+      Response response = getEntityTypeCounts("*", index);
+      assertEquals(
+          200,
+          response.getStatus(),
+          "Entity type counts for index " + index + " should return successfully");
+      String responseBody = (String) response.getEntity();
+      assertNotNull(responseBody);
+
+      ObjectMapper objectMapper = new ObjectMapper();
+      JsonNode jsonResponse = objectMapper.readTree(responseBody);
+      assertTrue(
+          jsonResponse.has("aggregations"),
+          "Response for index " + index + " should have aggregations");
+      assertTrue(jsonResponse.has("hits"), "Response for index " + index + " should have hits");
+      LOG.info("Entity type counts for index {} passed", index);
+    }
+  }
+
+  @Test
+  void testEntityTypeCountsAccuracyForDataAsset() throws IOException {
+    TestUtils.simulateWork(3);
+    Response response = getEntityTypeCounts("*", "dataAsset");
+    assertEquals(200, response.getStatus(), "Entity type counts should return successfully");
+    String responseBody = (String) response.getEntity();
+
+    ObjectMapper objectMapper = new ObjectMapper();
+    JsonNode jsonResponse = objectMapper.readTree(responseBody);
+    JsonNode aggregations = jsonResponse.get("aggregations");
+    assertNotNull(aggregations, "Response should have aggregations");
+
+    JsonNode entityTypeAgg =
+        aggregations.has("entityType")
+            ? aggregations.get("entityType")
+            : aggregations.get("sterms#entityType");
+    assertNotNull(entityTypeAgg, "Aggregations should have entityType field");
+
+    JsonNode buckets = entityTypeAgg.get("buckets");
+    assertNotNull(buckets, "EntityType aggregation should have buckets");
+
+    Map<String, Long> entityTypeCounts = new HashMap<>();
+    for (JsonNode bucket : buckets) {
+      String entityType = bucket.get("key").asText();
+      long count = bucket.get("doc_count").asLong();
+      entityTypeCounts.put(entityType, count);
+      LOG.info("Entity type: {} has count: {}", entityType, count);
+    }
+
+    long totalCountFromBuckets =
+        entityTypeCounts.values().stream().mapToLong(Long::longValue).sum();
+    JsonNode hits = jsonResponse.get("hits");
+    assertNotNull(hits, "Response should have hits");
+    JsonNode total = hits.get("total");
+    long totalHits;
+    if (total.isObject()) {
+      totalHits = total.get("value").asLong();
+    } else {
+      totalHits = total.asLong();
+    }
+
+    LOG.info("Total hits from aggregation buckets: {}", totalCountFromBuckets);
+    LOG.info("Total hits from search: {}", totalHits);
+    assertEquals(
+        totalHits, totalCountFromBuckets, "Sum of entity type counts should match total hits");
+  }
+
+  @Test
+  void testEntityTypeCountsWithComplexQueryFilter() {
+    TestUtils.simulateWork(2);
+    assertDoesNotThrow(
+        () -> {
+          String complexFilter =
+              "{"
+                  + "\"query\": {"
+                  + "\"bool\": {"
+                  + "\"must\": ["
+                  + "{\"term\": {\"deleted\": false}},"
+                  + "{\"exists\": {\"field\": \"name\"}}"
+                  + "],"
+                  + "\"must_not\": ["
+                  + "{\"term\": {\"entityType\": \"test\"}}"
+                  + "]"
+                  + "}"
+                  + "}"
+                  + "}";
+          WebTarget target =
+              getResource("search/entityTypeCounts")
+                  .queryParam("q", "*")
+                  .queryParam("index", "dataAsset")
+                  .queryParam(
+                      "query_filter", URLEncoder.encode(complexFilter, StandardCharsets.UTF_8));
+
+          String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+          Response response = Response.ok(result).build();
+          assertEquals(
+              200,
+              response.getStatus(),
+              "Entity type counts with complex query_filter should return successfully");
+          String responseBody = (String) response.getEntity();
+          assertNotNull(responseBody);
+          assertTrue(responseBody.contains("aggregations"), "Response should contain aggregations");
+          LOG.info("Complex query filter test passed");
+        });
+  }
+
+  @Test
+  void testEntityTypeCountsWithDeletedFilter() throws IOException {
+    TestUtils.simulateWork(3);
+    Response responseWithDeleted =
+        getEntityTypeCountsWithParams("*", "dataAsset", true, null, null);
+    assertEquals(
+        200,
+        responseWithDeleted.getStatus(),
+        "Entity type counts with deleted=true should return successfully");
+
+    Response responseWithoutDeleted =
+        getEntityTypeCountsWithParams("*", "dataAsset", false, null, null);
+    assertEquals(
+        200,
+        responseWithoutDeleted.getStatus(),
+        "Entity type counts with deleted=false should return successfully");
+
+    String bodyWithDeleted = (String) responseWithDeleted.getEntity();
+    String bodyWithoutDeleted = (String) responseWithoutDeleted.getEntity();
+    assertNotNull(bodyWithDeleted);
+    assertNotNull(bodyWithoutDeleted);
+    LOG.info("Deleted filter test passed");
+  }
+
+  @Test
+  void testEntityTypeCountsResponseFormat() throws IOException {
+    TestUtils.simulateWork(3);
+    Response response = getEntityTypeCounts("*", "all");
+    assertEquals(200, response.getStatus(), "Entity type counts should return successfully");
+    String responseBody = (String) response.getEntity();
+
+    ObjectMapper objectMapper = new ObjectMapper();
+    JsonNode jsonResponse = objectMapper.readTree(responseBody);
+
+    assertTrue(jsonResponse.has("took"), "Response should have 'took' field");
+    assertTrue(jsonResponse.has("timed_out"), "Response should have 'timed_out' field");
+    assertTrue(jsonResponse.has("_shards"), "Response should have '_shards' field");
+    assertTrue(jsonResponse.has("hits"), "Response should have 'hits' field");
+    assertTrue(jsonResponse.has("aggregations"), "Response should have 'aggregations' field");
+
+    JsonNode shards = jsonResponse.get("_shards");
+    assertTrue(shards.has("total"), "Shards should have 'total' field");
+    assertTrue(shards.has("successful"), "Shards should have 'successful' field");
+    assertTrue(shards.has("skipped"), "Shards should have 'skipped' field");
+    assertTrue(shards.has("failed"), "Shards should have 'failed' field");
+
+    LOG.info("Response format validation passed");
+  }
+
+  @Test
+  void testEntityTypeCountsWithEmptyResults() {
+    TestUtils.simulateWork(2);
+    assertDoesNotThrow(
+        () -> {
+          String nonExistentQuery = "nonexistent_entity_xyz_" + UUID.randomUUID();
+          Response response = getEntityTypeCounts(nonExistentQuery, "dataAsset");
+          assertEquals(
+              200,
+              response.getStatus(),
+              "Entity type counts with no results should return successfully");
+          String responseBody = (String) response.getEntity();
+          assertNotNull(responseBody);
+          assertTrue(responseBody.contains("aggregations"), "Response should contain aggregations");
+
+          ObjectMapper objectMapper = new ObjectMapper();
+          JsonNode jsonResponse = objectMapper.readTree(responseBody);
+          JsonNode hits = jsonResponse.get("hits");
+          JsonNode total = hits.get("total");
+          long totalHits;
+          if (total.isObject()) {
+            totalHits = total.get("value").asLong();
+          } else {
+            totalHits = total.asLong();
+          }
+          assertEquals(0, totalHits, "Should have zero hits for non-existent query");
+          LOG.info("Empty results test passed");
+        });
+  }
+
+  @Test
+  void testGlossaryTermHierarchySearchRelevanceScoring() throws IOException {
+    GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
+    GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
+
+    try {
+      glossaryResourceTest.setup(null);
+      glossaryTermResourceTest.setup(null);
+    } catch (Exception e) {
+      LOG.warn("Some entities already exist - continuing with test execution");
+    }
+
+    String testPrefix = "hierarchy_relevance_test_" + System.currentTimeMillis();
+    List<Glossary> createdGlossaries = new ArrayList<>();
+    List<org.openmetadata.schema.entity.data.GlossaryTerm> createdTerms = new ArrayList<>();
+
+    try {
+      CreateGlossary createGlossary1 =
+          glossaryResourceTest.createRequest(testPrefix + "_glossary_low_score");
+      Glossary glossary1 = glossaryResourceTest.createEntity(createGlossary1, ADMIN_AUTH_HEADERS);
+      createdGlossaries.add(glossary1);
+
+      org.openmetadata.schema.api.data.CreateGlossaryTerm createTerm1 =
+          glossaryTermResourceTest
+              .createRequest(testPrefix + "_term_description_match")
+              .withGlossary(glossary1.getFullyQualifiedName())
+              .withDisplayName("Product Feature")
+              .withDescription("This term describes Venta metrics and related analytics");
+      org.openmetadata.schema.entity.data.GlossaryTerm term1 =
+          glossaryTermResourceTest.createEntity(createTerm1, ADMIN_AUTH_HEADERS);
+      createdTerms.add(term1);
+
+      CreateGlossary createGlossary2 =
+          glossaryResourceTest.createRequest(testPrefix + "_glossary_high_score");
+      Glossary glossary2 = glossaryResourceTest.createEntity(createGlossary2, ADMIN_AUTH_HEADERS);
+      createdGlossaries.add(glossary2);
+
+      org.openmetadata.schema.api.data.CreateGlossaryTerm createTerm2 =
+          glossaryTermResourceTest
+              .createRequest("Venta_Neta_" + testPrefix)
+              .withGlossary(glossary2.getFullyQualifiedName())
+              .withDisplayName("Venta Neta LW")
+              .withDescription("Last week net sales metric");
+      org.openmetadata.schema.entity.data.GlossaryTerm term2 =
+          glossaryTermResourceTest.createEntity(createTerm2, ADMIN_AUTH_HEADERS);
+      createdTerms.add(term2);
+
+      TestUtils.simulateWork(5);
+
+      String searchQuery = "Venta";
+
+      WebTarget target =
+          getResource("search/query")
+              .queryParam("q", searchQuery)
+              .queryParam("index", "glossary_term_search_index")
+              .queryParam("from", 0)
+              .queryParam("size", 25)
+              .queryParam("deleted", false)
+              .queryParam("track_total_hits", true)
+              .queryParam("getHierarchy", true);
+
+      String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+      assertNotNull(result);
+      assertFalse(result.isEmpty());
+
+      ObjectMapper mapper = new ObjectMapper();
+      JsonNode responseArray = mapper.readTree(result);
+      assertTrue(
+          responseArray.isArray(), "Response should be an array of glossaries with hierarchy");
+      assertTrue(responseArray.size() >= 2, "Should return at least 2 glossaries");
+
+      JsonNode firstGlossary = responseArray.get(0);
+      String firstGlossaryFqn = firstGlossary.get("fullyQualifiedName").asText();
+
+      assertEquals(
+          glossary2.getFullyQualifiedName(),
+          firstGlossaryFqn,
+          "Glossary with term having 'Venta' in name should appear first (higher relevance score)");
+
+      LOG.info(
+          "Hierarchy search relevance test passed - glossaries correctly sorted by highest-scoring child term");
+
+    } finally {
+      for (org.openmetadata.schema.entity.data.GlossaryTerm term : createdTerms) {
+        try {
+          glossaryTermResourceTest.deleteEntity(term.getId(), true, true, ADMIN_AUTH_HEADERS);
+        } catch (Exception e) {
+          LOG.warn("Failed to cleanup test glossary term {}: {}", term.getName(), e.getMessage());
+        }
+      }
+      for (Glossary glossary : createdGlossaries) {
+        try {
+          glossaryResourceTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+        } catch (Exception e) {
+          LOG.warn("Failed to cleanup test glossary {}: {}", glossary.getName(), e.getMessage());
+        }
+      }
+    }
+  }
+
+  private Response getEntityTypeCountsWithParams(
+      String query, String index, Boolean deleted, String queryFilter, String postFilter) {
+    WebTarget target = getResource("search/entityTypeCounts").queryParam("q", query);
+
+    if (index != null) {
+      target = target.queryParam("index", index);
+    }
+    if (deleted != null) {
+      target = target.queryParam("deleted", deleted);
+    }
+    if (queryFilter != null) {
+      target = target.queryParam("query_filter", queryFilter);
+    }
+    if (postFilter != null) {
+      target = target.queryParam("post_filter", postFilter);
+    }
+
+    try {
+      String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+      return Response.ok(result).build();
+    } catch (org.apache.http.client.HttpResponseException e) {
+      LOG.error("Error occurred while getting entity type counts: {}", e.getMessage());
+      return Response.status(e.getStatusCode()).entity(e.getMessage()).build();
     }
   }
 }

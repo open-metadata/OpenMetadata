@@ -295,5 +295,10 @@ public final class DataProducts {
     public DataProductDeleter delete() {
       return new DataProductDeleter(client, dataProduct.getId().toString());
     }
+
+    // ==================== Port Operations ====================
+    // Use the fluent API: client.dataProducts().inputPorts(name).add/remove/list()
+    // Use the fluent API: client.dataProducts().outputPorts(name).add/remove/list()
+    // Use the fluent API: client.dataProducts().portsView(name).get()
   }
 }

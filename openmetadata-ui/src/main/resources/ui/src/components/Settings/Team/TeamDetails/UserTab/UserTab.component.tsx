@@ -84,6 +84,7 @@ export const UserTab = ({
     handlePageSizeChange,
     handlePagingChange,
     showPagination,
+    pagingCursor,
   } = usePaging();
 
   const usersList = useMemo(() => {
@@ -163,10 +164,14 @@ export const UserTab = ({
       handlePageChange(currentPage);
       searchUsers(searchText, currentPage);
     } else if (cursorType) {
-      handlePageChange(currentPage);
       getCurrentTeamUsers(currentTeam.name, {
         [cursorType]: paging[cursorType],
       });
+      handlePageChange(
+        currentPage,
+        { cursorType, cursorValue: paging[cursorType] },
+        pageSize
+      );
     }
   };
 
@@ -185,9 +190,16 @@ export const UserTab = ({
   };
 
   useEffect(() => {
-    getCurrentTeamUsers(currentTeam.name);
-    handlePageChange(INITIAL_PAGING_VALUE);
-  }, [currentTeam, pageSize]);
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      getCurrentTeamUsers(currentTeam.name, {
+        [cursorType]: cursorValue,
+      });
+    } else {
+      getCurrentTeamUsers(currentTeam.name);
+    }
+  }, [currentTeam, pageSize, pagingCursor]);
 
   const isTeamDeleted = useMemo(
     () => currentTeam.deleted ?? false,

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Menu } from 'antd';
+import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CustomPropertiesIcon } from '../../../assets/svg/explore-vertical-nav-icons/custom-prop.svg';
@@ -20,9 +21,10 @@ import { ReactComponent as SchemaIcon } from '../../../assets/svg/explore-vertic
 import { ReactComponent as DataQualityIcon } from '../../../assets/svg/ic-data-contract.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import {
-  ENTITY_RIGHT_PANEL_LINEAGE_TABS,
-  ENTITY_RIGHT_PANEL_SCHEMA_TABS,
-} from './EntityRightPanelVerticalNav.constants';
+  hasCustomPropertiesTab,
+  hasLineageTab,
+  hasSchemaTab,
+} from '../../../utils/EntityUtils';
 import {
   EntityRightPanelTab,
   EntityRightPanelVerticalNavProps,
@@ -30,7 +32,14 @@ import {
 import './EntityRightPanelVerticalNav.less';
 
 const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
-  ({ activeTab, entityType, onTabChange }) => {
+  ({
+    activeTab,
+    entityType,
+    onTabChange,
+    verticalNavConatinerclassName,
+    isSideDrawer = false,
+    isColumnDetailPanel = false,
+  }) => {
     const { t } = useTranslation();
 
     const getTabItems = () => {
@@ -44,7 +53,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       ];
 
       // Add schema tab for entities that have schema
-      if (ENTITY_RIGHT_PANEL_SCHEMA_TABS.includes(entityType)) {
+      if (hasSchemaTab(entityType) && !isColumnDetailPanel) {
         items.push({
           key: EntityRightPanelTab.SCHEMA,
           icon: <SchemaIcon height={16} width={16} />,
@@ -53,7 +62,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
         });
       }
       // Add lineage tab for most entities
-      if (ENTITY_RIGHT_PANEL_LINEAGE_TABS.includes(entityType)) {
+      if (hasLineageTab(entityType) && !isColumnDetailPanel) {
         items.push({
           key: EntityRightPanelTab.LINEAGE,
           icon: <PlatformLineageIcon height={16} width={16} />,
@@ -73,7 +82,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       }
 
       // Add custom properties tab
-      if (entityType !== EntityType.KNOWLEDGE_PAGE) {
+      if (hasCustomPropertiesTab(entityType)) {
         items.push({
           key: EntityRightPanelTab.CUSTOM_PROPERTIES,
           icon: <CustomPropertiesIcon height={16} width={16} />,
@@ -86,7 +95,12 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
     };
 
     return (
-      <div className="entity-right-panel-vertical-nav">
+      <div
+        className={classNames(
+          'entity-right-panel-vertical-nav',
+          verticalNavConatinerclassName,
+          { 'drawer-entity-right-panel-vertical-nav': isSideDrawer }
+        )}>
         <Menu
           className="vertical-nav-menu"
           items={getTabItems()}

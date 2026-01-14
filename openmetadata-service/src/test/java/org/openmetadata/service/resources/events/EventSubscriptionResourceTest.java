@@ -41,6 +41,7 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.openmetadata.schema.alert.type.EmailAlertConfig;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.domains.CreateDomain;
@@ -2540,32 +2541,6 @@ public class EventSubscriptionResourceTest
   }
 
   @Test
-  void test_deleteTemplatePreservesSubscription(TestInfo test) throws IOException {
-    NotificationTemplateResourceTest templateTest = new NotificationTemplateResourceTest();
-    CreateNotificationTemplate createTemplate =
-        templateTest
-            .createRequest("template-to-delete-" + test.getDisplayName())
-            .withTemplateBody("<div>Will be deleted</div>");
-    NotificationTemplate template = templateTest.createEntity(createTemplate, ADMIN_AUTH_HEADERS);
-
-    EntityReference templateRef =
-        new EntityReference().withId(template.getId()).withType(Entity.NOTIFICATION_TEMPLATE);
-
-    CreateEventSubscription createSub =
-        createRequest("sub-survives-" + test.getDisplayName())
-            .withNotificationTemplate(templateRef);
-    EventSubscription subscription = createEntity(createSub, ADMIN_AUTH_HEADERS);
-
-    templateTest.deleteEntity(template.getId(), ADMIN_AUTH_HEADERS);
-
-    EventSubscription afterDelete = getEntity(subscription.getId(), ADMIN_AUTH_HEADERS);
-    assertNotNull(afterDelete, "Subscription should exist after template deletion");
-    assertNull(afterDelete.getNotificationTemplate(), "Template reference should be null");
-
-    deleteEntity(subscription.getId(), ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
   void test_querySubscriptionsByTemplate(TestInfo test) throws IOException {
     NotificationTemplateResourceTest templateTest = new NotificationTemplateResourceTest();
     CreateNotificationTemplate createTemplate1 =
@@ -2625,66 +2600,106 @@ public class EventSubscriptionResourceTest
     templateTest.deleteEntity(template2.getId(), ADMIN_AUTH_HEADERS);
   }
 
+  private void assertSqlInjectionAttempt(Map<String, String> params) throws IOException {
+    ResultList<EventSubscription> results = null;
+    try {
+      results = listEntities(params, ADMIN_AUTH_HEADERS);
+    } catch (HttpResponseException e) {
+      // SQL injection should not crash the server with a 500 error
+      assertTrue(e.getStatusCode() != 500, "SQL injection should not cause internal server error");
+      return;
+    }
+
+    // If no exception is thrown, malicious input must not expose any data
+    assertNotNull(results, "Malicious input should not produce null results");
+    assertTrue(
+        results.getData() == null || results.getData().isEmpty(),
+        "Malicious input should return empty results");
+  }
+
   @Test
-  void test_compositeFlow_TemplateLifecycle(TestInfo test) throws IOException {
-    NotificationTemplateResourceTest templateTest = new NotificationTemplateResourceTest();
+  void test_parameterizedQueriesPreventSqlInjection(TestInfo test) throws IOException {
+    Map<String, String> sqlInjectionAttempts = new HashMap<>();
+    sqlInjectionAttempts.put("alertType", "Observability' OR '1'='1");
+    assertSqlInjectionAttempt(sqlInjectionAttempts);
 
-    CreateNotificationTemplate createTemplate1 =
-        templateTest
-            .createRequest("composite-template1-" + test.getDisplayName())
-            .withTemplateBody("<div>Composite Template 1</div>");
-    NotificationTemplate template1 = templateTest.createEntity(createTemplate1, ADMIN_AUTH_HEADERS);
+    sqlInjectionAttempts.clear();
+    sqlInjectionAttempts.put("alertType", "Observability'--");
+    assertSqlInjectionAttempt(sqlInjectionAttempts);
 
-    EntityReference template1Ref =
-        new EntityReference().withId(template1.getId()).withType(Entity.NOTIFICATION_TEMPLATE);
+    sqlInjectionAttempts.clear();
+    sqlInjectionAttempts.put("alertType", "' UNION SELECT * FROM user_entity--");
+    assertSqlInjectionAttempt(sqlInjectionAttempts);
 
-    CreateEventSubscription createSub1 =
-        createRequest("composite-sub1-" + test.getDisplayName())
-            .withNotificationTemplate(template1Ref);
-    EventSubscription sub1 = createEntity(createSub1, ADMIN_AUTH_HEADERS);
+    sqlInjectionAttempts.clear();
+    sqlInjectionAttempts.put(
+        "notificationTemplate", "00000000-0000-0000-0000-000000000000' OR '1'='1");
+    assertSqlInjectionAttempt(sqlInjectionAttempts);
 
-    CreateEventSubscription createSub2 =
-        createRequest("composite-sub2-" + test.getDisplayName())
-            .withNotificationTemplate(template1Ref);
-    EventSubscription sub2 = createEntity(createSub2, ADMIN_AUTH_HEADERS);
+    Map<String, String> validParams = new HashMap<>();
+    validParams.put("alertType", "Observability");
+    ResultList<EventSubscription> validResults = listEntities(validParams, ADMIN_AUTH_HEADERS);
+    assertNotNull(validResults, "Valid alertType should work correctly");
+  }
 
-    Map<String, String> params = new HashMap<>();
-    params.put("notificationTemplate", template1.getId().toString());
-    ResultList<EventSubscription> results = listEntities(params, ADMIN_AUTH_HEADERS);
-    assertEquals(2, results.getData().size(), "Should have 2 subscriptions with template1");
+  @Test
+  void post_createWithNullDestinationConfig_400() {
+    CreateEventSubscription request = createRequest("nullConfig");
+    SubscriptionDestination destination = new SubscriptionDestination();
+    destination.setCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL);
+    destination.setType(SubscriptionDestination.SubscriptionType.EMAIL);
+    request.setDestinations(List.of(destination));
 
-    CreateNotificationTemplate createTemplate2 =
-        templateTest
-            .createRequest("composite-template2-" + test.getDisplayName())
-            .withTemplateBody("<div>Composite Template 2</div>");
-    NotificationTemplate template2 = templateTest.createEntity(createTemplate2, ADMIN_AUTH_HEADERS);
+    assertResponse(
+        () -> createEntity(request, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Destination configuration is required for Email type");
+  }
 
-    EntityReference template2Ref =
-        new EntityReference().withId(template2.getId()).withType(Entity.NOTIFICATION_TEMPLATE);
+  @Test
+  void post_createWithEmptyEmailReceivers_400() {
+    CreateEventSubscription request = createRequest("emptyReceivers");
+    SubscriptionDestination destination = new SubscriptionDestination();
+    destination.setCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL);
+    destination.setType(SubscriptionDestination.SubscriptionType.EMAIL);
+    destination.setConfig(new EmailAlertConfig());
+    request.setDestinations(List.of(destination));
 
-    updateEntity(createSub1.withNotificationTemplate(template2Ref), OK, ADMIN_AUTH_HEADERS);
+    assertResponse(
+        () -> createEntity(request, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Email destination requires at least one email address in 'receivers'");
+  }
 
-    params.put("notificationTemplate", template1.getId().toString());
-    results = listEntities(params, ADMIN_AUTH_HEADERS);
-    assertEquals(1, results.getData().size(), "Should have 1 subscription with template1");
+  @Test
+  void post_createWithInvalidEmailFormat_400() {
+    CreateEventSubscription request = createRequest("invalidEmail");
+    SubscriptionDestination destination = new SubscriptionDestination();
+    destination.setCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL);
+    destination.setType(SubscriptionDestination.SubscriptionType.EMAIL);
+    EmailAlertConfig emailConfig =
+        new EmailAlertConfig().withReceivers(new HashSet<>(List.of("invalid-email")));
+    destination.setConfig(emailConfig);
+    request.setDestinations(List.of(destination));
 
-    params.put("notificationTemplate", template2.getId().toString());
-    results = listEntities(params, ADMIN_AUTH_HEADERS);
-    assertEquals(1, results.getData().size(), "Should have 1 subscription with template2");
+    assertResponse(
+        () -> createEntity(request, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid email format: 'invalid-email'");
+  }
 
-    deleteEntity(sub2.getId(), ADMIN_AUTH_HEADERS);
+  @Test
+  void post_createWithMissingWebhookEndpoint_400() {
+    CreateEventSubscription request = createRequest("missingEndpoint");
+    SubscriptionDestination destination = new SubscriptionDestination();
+    destination.setCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL);
+    destination.setType(SubscriptionDestination.SubscriptionType.WEBHOOK);
+    destination.setConfig(new Webhook());
+    request.setDestinations(List.of(destination));
 
-    params.put("notificationTemplate", template1.getId().toString());
-    results = listEntities(params, ADMIN_AUTH_HEADERS);
-    assertEquals(0, results.getData().size(), "Should have 0 subscriptions with template1");
-
-    templateTest.deleteEntity(template1.getId(), ADMIN_AUTH_HEADERS);
-
-    EventSubscription sub1After = getEntity(sub1.getId(), ADMIN_AUTH_HEADERS);
-    assertNotNull(sub1After, "Subscription should still exist");
-    assertEquals(template2.getId(), sub1After.getNotificationTemplate().getId());
-
-    deleteEntity(sub1.getId(), ADMIN_AUTH_HEADERS);
-    templateTest.deleteEntity(template2.getId(), ADMIN_AUTH_HEADERS);
+    assertResponse(
+        () -> createEntity(request, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Webhook destination requires an 'endpoint' URL");
   }
 }

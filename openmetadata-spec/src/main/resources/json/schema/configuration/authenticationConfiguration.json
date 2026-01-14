@@ -81,10 +81,11 @@
     },
     "jwtPrincipalClaimsMapping": {
       "title": "Jwt Principal Claims Mapping",
-      "description": "Jwt Principal Claim Mapping",
+      "description": "Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or 'email'. Both username and email mappings are required.",
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "pattern": "^(username|email):[a-zA-Z0-9_-]+$"
       }
     },
     "enableSelfSignup": {
@@ -110,6 +111,12 @@
     },
     "forceSecureSessionCookie": {
       "description": "Force secure flag on session cookies even when not using HTTPS directly. Enable this when running behind a proxy/load balancer that handles SSL termination.",
+      "type": "boolean",
+      "default": false
+    },
+    "enableAutoRedirect": {
+      "title": "Enable Auto Redirect",
+      "description": "Enable automatic redirect from the sign-in page to the configured SSO provider.",
       "type": "boolean",
       "default": false
     }

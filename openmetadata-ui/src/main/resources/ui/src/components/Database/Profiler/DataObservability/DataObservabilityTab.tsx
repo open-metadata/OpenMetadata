@@ -14,6 +14,7 @@ import { Button, Stack, Tab, Tabs, useTheme } from '@mui/material';
 import { isEmpty } from 'lodash';
 import Qs from 'qs';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../../../assets/svg/drop-down.svg';
 import { PAGE_HEADERS } from '../../../../constants/PageHeaders.constant';
@@ -33,6 +34,7 @@ import './data-observability-tab.less';
 import TabFilters from './TabFilters/TabFilters';
 
 const DataObservabilityTab = (props: TableProfilerProps) => {
+  const { t } = useTranslation();
   const { isTourOpen } = useTourProvider();
   const navigate = useNavigate();
   const location = useCustomLocation();
@@ -62,6 +64,10 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
   const activeTabComponent = useMemo(() => {
     const tabComponents = profilerClassBase.getProfilerTabs();
     const ActiveComponent = tabComponents[activeTab];
+
+    if (!ActiveComponent) {
+      return null;
+    }
 
     return <ActiveComponent />;
   }, [activeTab]);
@@ -180,8 +186,8 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
                   backgroundColor: `${theme.palette.primary.main} !important`,
                   color: `${theme.palette.primary.contrastText} !important`,
                 },
-                'MuiTabs-root': {
-                  minHeight: 'none',
+                '.MuiButtonBase-root': {
+                  minHeight: 'unset',
                 },
                 '.MuiTabs-indicator': {
                   display: 'none',
@@ -238,7 +244,7 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
                   }),
                 });
               }}>
-              {PAGE_HEADERS.COLUMN_PROFILE.header}
+              {t(PAGE_HEADERS.COLUMN_PROFILE.header)}
             </Button>
           )}
           <TabFilters />

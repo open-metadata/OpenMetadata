@@ -74,6 +74,16 @@ public class HandlebarsNotificationMessageEngine implements NotificationMessageE
     // Resolve the template for this event
     NotificationTemplate template = resolveTemplate(event, subscription);
 
+    return generateMessageWithTemplate(event, subscription, destination, template);
+  }
+
+  @Override
+  public NotificationMessage generateMessageWithTemplate(
+      ChangeEvent event,
+      EventSubscription subscription,
+      SubscriptionDestination destination,
+      NotificationTemplate template) {
+
     // Create deep copy of event to avoid modifying the original
     ChangeEvent eventCopy = JsonUtils.deepCopy(event, ChangeEvent.class);
 

@@ -17,13 +17,23 @@ import { isEmpty, isEqual, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
-import { TestCaseResult } from '../../../../generated/tests/testCase';
-import { getListTestCaseResults } from '../../../../rest/testAPI';
+import {
+  TestCaseDimensionResult,
+  TestCaseResult,
+} from '../../../../generated/tests/testCase';
+import {
+  getListTestCaseResults,
+  getTestCaseDimensionResultsByFqn,
+} from '../../../../rest/testAPI';
 import {
   getCurrentMillis,
+  getEndOfDayInMillis,
   getEpochMillisForPastDays,
+  getStartOfDayInMillis,
 } from '../../../../utils/date-time/DateTimeUtils';
+import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import DatePickerMenu from '../../../common/DatePickerMenu/DatePickerMenu.component';
 import Loader from '../../../common/Loader/Loader';
 import { TestSummaryProps } from '../ProfilerDashboard/profilerDashboard.interface';
@@ -31,20 +41,26 @@ import './test-summary.less';
 import TestSummaryGraph from './TestSummaryGraph';
 
 const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
+  const { dimensionKey } = useRequiredParams<{ dimensionKey?: string }>();
   const defaultRange = useMemo(
     () => ({
       initialRange: {
-        startTs: getEpochMillisForPastDays(
-          PROFILER_FILTER_RANGE.last30days.days
+        startTs: getStartOfDayInMillis(
+          getEpochMillisForPastDays(PROFILER_FILTER_RANGE.last30days.days)
         ),
-        endTs: getCurrentMillis(),
+        endTs: getEndOfDayInMillis(getCurrentMillis()),
       },
       key: 'last30days',
-      title: PROFILER_FILTER_RANGE.last30days.title,
+      title: translateWithNestedKeys(
+        PROFILER_FILTER_RANGE.last30days.title,
+        PROFILER_FILTER_RANGE.last30days.titleData
+      ),
     }),
     []
   );
-  const [results, setResults] = useState<TestCaseResult[]>([]);
+  const [results, setResults] = useState<
+    TestCaseResult[] | TestCaseDimensionResult[]
+  >([]);
   const [dateRangeObject, setDateRangeObject] = useState<DateRangeObject>(
     defaultRange.initialRange
   );
@@ -66,10 +82,16 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     }
     setIsGraphLoading(true);
     try {
-      const { data: chartData } = await getListTestCaseResults(
-        data.fullyQualifiedName ?? '',
-        pick(dateRangeObj, ['startTs', 'endTs'])
-      );
+      const resultsApi = dimensionKey
+        ? getTestCaseDimensionResultsByFqn(data.fullyQualifiedName ?? '', {
+            dimensionalityKey: dimensionKey,
+            ...pick(dateRangeObj, ['startTs', 'endTs']),
+          })
+        : getListTestCaseResults(
+            data.fullyQualifiedName ?? '',
+            pick(dateRangeObj, ['startTs', 'endTs'])
+          );
+      const { data: chartData } = await resultsApi;
 
       setResults(chartData);
     } catch (error) {
@@ -100,7 +122,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     if (dateRangeObject) {
       fetchTestResults(dateRangeObject);
     }
-  }, [dateRangeObject]);
+  }, [dateRangeObject, dimensionKey]);
 
   const handleSelectedTimeRange = useCallback((range: string) => {
     setSelectedTimeRange(range);

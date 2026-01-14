@@ -70,13 +70,18 @@ Okta SSO enables users to log in with their Okta credentials using OAuth 2.0 and
 - **Example:** ["preferred_username", "email", "sub"]
 - **Why it matters:** Determines which claim from the JWT token identifies the user.
 - **Note:** Common Okta claims: email, preferred_username, sub, login
+  - Order matters; first matching claim is used
 
 ### <span data-id="jwtPrincipalClaimsMapping">JWT Principal Claims Mapping</span>
 
-- **Definition:** Maps JWT claims to OpenMetadata user attributes.
-- **Example:** ["email:email", "name:name", "firstName:given_name"]
+- **Definition:** Maps JWT claims to OpenMetadata user attributes. (Overrides JWT Principal Claims if set)
+- **Example:** ["email:email", "username:preferred_username"]
 - **Why it matters:** Controls how user information from Okta maps to OpenMetadata user profiles.
 - **Note:** Format: "openmetadata_field:jwt_claim"
+- **Validation Requirements:**
+  - Both `username` and `email` mappings must be present when this field is used
+  - Only `username` and `email` keys are allowed; no other keys are permitted
+  - If validation fails, errors will be displayed on this specific field
 
 ### <span data-id="tokenValidation">Token Validation Algorithm</span>
 
@@ -196,10 +201,10 @@ These fields are only shown when Client Type is set to **Confidential**.
 
 ### <span data-id="serverUrl">OIDC Server URL</span>
 
-- **Definition:** Base URL for Okta authentication server.
-- **Example:** https://dev-123456.okta.com
-- **Why it matters:** Specifies the Okta endpoint to use.
-- **Note:** Your full Okta domain URL
+- **Definition:** Base URL for Collate server.
+- **Example:** https://yourapp.company.com
+- **Why it matters:** Specifies Collate endpoint
+- **Note:** Usually your collate API server
 
 ### <span data-id="callbackUrl">OIDC Callback URL</span>
 
@@ -239,7 +244,7 @@ These fields are only shown when Client Type is set to **Confidential**.
 ### <span data-id="adminPrincipals">Admin Principals</span>
 
 - **Definition:** List of user principals who will have admin access.
-- **Example:** ["admin@company.com", "superuser@company.com"]
+- **Example:** ["admin", "superuser"]
 - **Why it matters:** These users will have full administrative privileges in OpenMetadata.
 - **Note:** Use email addresses that match the JWT principal claims
 

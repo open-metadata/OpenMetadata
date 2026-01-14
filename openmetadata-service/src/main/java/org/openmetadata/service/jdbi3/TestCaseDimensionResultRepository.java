@@ -36,9 +36,14 @@ public class TestCaseDimensionResultRepository
    * @param startTs Start timestamp (optional)
    * @param endTs End timestamp (optional)
    * @param dimensionalityKey Optional filter by specific dimension key
+   * @param dimensionName Optional filter by dimension name
    */
   public ResultList<TestCaseDimensionResult> listDimensionResults(
-      String testCaseFQN, Long startTs, Long endTs, String dimensionalityKey) {
+      String testCaseFQN,
+      Long startTs,
+      Long endTs,
+      String dimensionalityKey,
+      String dimensionName) {
 
     startTs = Optional.ofNullable(startTs).orElse(Long.MIN_VALUE);
     endTs = Optional.ofNullable(endTs).orElse(Long.MAX_VALUE);
@@ -50,6 +55,13 @@ public class TestCaseDimensionResultRepository
           JsonUtils.readObjects(
               dimensionResultDao.listTestCaseDimensionResultsByKey(
                   testCaseFQN, dimensionalityKey, startTs, endTs),
+              TestCaseDimensionResult.class);
+    } else if (dimensionName != null && !dimensionName.isEmpty()) {
+      // Filter by dimension name
+      results =
+          JsonUtils.readObjects(
+              dimensionResultDao.listTestCaseDimensionResultsByDimensionName(
+                  testCaseFQN, dimensionName, startTs, endTs),
               TestCaseDimensionResult.class);
     } else {
       // Get all dimension results

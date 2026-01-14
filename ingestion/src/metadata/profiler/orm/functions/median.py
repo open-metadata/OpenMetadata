@@ -43,6 +43,13 @@ def _(elements, compiler, **kwargs):
     return MedianFn.default_fn(elements, compiler, **kwargs)
 
 
+@compiles(MedianFn, Dialects.Snowflake)
+def _(elements, compiler, **kwargs):
+    col = compiler.process(elements.clauses.clauses[0])
+    percentile = elements.clauses.clauses[2].value
+    return "approx_percentile(%s, %s)" % (col, percentile)
+
+
 @compiles(MedianFn, Dialects.BigQuery)
 def _(elements, compiler, **kwargs):
     col, _, percentile = [
@@ -305,3 +312,16 @@ def _(elements, compiler, **kwargs):
     col = compiler.process(elements.clauses.clauses[0])
     percentile = elements.clauses.clauses[2].value
     return "percentile_approx(%s, %.2f)" % (col, percentile)
+
+
+@compiles(MedianFn, Dialects.PinotDB)
+def _(elements, compiler, **kw):  # pylint: disable=unused-argument
+    """Median/percentile computation for PinotDB.
+
+    PinotDB uses PERCENTILE(column, percentile_value) syntax instead of
+    the standard SQL PERCENTILE_CONT(...) WITHIN GROUP (ORDER BY ...) syntax.
+    """
+    col = compiler.process(elements.clauses.clauses[0])
+    percentile = elements.clauses.clauses[2].value
+    percentile_int = int(percentile * 100)
+    return "PERCENTILE(%s, %d)" % (col, percentile_int)

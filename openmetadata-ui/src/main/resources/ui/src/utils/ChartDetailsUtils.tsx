@@ -41,7 +41,7 @@ export const getChartDetailPageTabs = ({
   chartDetails,
   editLineagePermission,
   editCustomAttributePermission,
-  viewAllPermission,
+  viewCustomPropertiesPermission,
   handleFeedCount,
   feedCount,
   activeTab,
@@ -110,9 +110,7 @@ export const getChartDetailPageTabs = ({
     {
       label: (
         <TabsLabel
-          isBeta
           id={EntityTabs.CONTRACT}
-          isActive={activeTab === EntityTabs.CONTRACT}
           name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
         />
       ),
@@ -135,7 +133,7 @@ export const getChartDetailPageTabs = ({
         <CustomPropertyTable<EntityType.CHART>
           entityType={EntityType.CHART}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
           isVersionView={false}
         />
       ),

@@ -18,7 +18,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { PAGE_SIZE_LARGE } from '../../../constants/constants';
+import {
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_LARGE,
+} from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
 import {
@@ -26,6 +29,7 @@ import {
   Column,
   ColumnJoins,
 } from '../../../generated/entity/data/table';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
@@ -41,6 +45,7 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
+import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -135,9 +140,13 @@ const TableVersion: React.FC<TableVersionProp> = ({
     [tableFqn, pageSize]
   );
 
-  const handleSearchAction = useCallback((searchValue: string) => {
-    setSearchText(searchValue);
-  }, []);
+  const handleSearchAction = useCallback(
+    (searchValue: string) => {
+      setSearchText(searchValue);
+      handlePageChange(INITIAL_PAGING_VALUE);
+    },
+    [handlePageChange]
+  );
 
   const handleColumnsPageChange = useCallback(
     ({ currentPage }: PagingHandlerParams) => {
@@ -242,6 +251,13 @@ const TableVersion: React.FC<TableVersionProp> = ({
     [changeDescription]
   );
 
+  const viewCustomPropertiesPermission = useMemo(() => {
+    return getPrioritizedViewPermission(
+      entityPermissions,
+      Operation.ViewCustomFields
+    );
+  }, [entityPermissions]);
+
   const tabItems: TabsProps['items'] = useMemo(
     () => [
       {
@@ -318,7 +334,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
             isVersionView
             entityType={EntityType.TABLE}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },
@@ -335,7 +351,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
       addedColumnConstraintDiffs,
       addedTableConstraintDiffs,
       currentVersionData,
-      entityPermissions,
+      viewCustomPropertiesPermission,
     ]
   );
 
@@ -343,9 +359,16 @@ const TableVersion: React.FC<TableVersionProp> = ({
   useEffect(() => {
     if (tableFqn && !isVersionLoading) {
       // Reset to first page when search changes
-      fetchPaginatedColumns(1, searchText || undefined);
+      fetchPaginatedColumns(currentPage, searchText || undefined);
     }
-  }, [isVersionLoading, tableFqn, searchText, fetchPaginatedColumns, pageSize]);
+  }, [
+    isVersionLoading,
+    tableFqn,
+    searchText,
+    fetchPaginatedColumns,
+    pageSize,
+    currentPage,
+  ]);
 
   return (
     <>

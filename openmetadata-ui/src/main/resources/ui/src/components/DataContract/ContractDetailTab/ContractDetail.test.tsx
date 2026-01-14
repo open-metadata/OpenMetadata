@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /*
  *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +25,7 @@ import {
   getContractResultByResultId,
   validateContractById,
 } from '../../../rest/contractAPI';
+import '../../../test/unit/mocks/mui.mock';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ContractDetail } from './ContractDetail';
 
@@ -39,7 +39,7 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew', () => {
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return function MockErrorPlaceHolder({ type, children }: any) {
     return (
       <div data-testid="error-placeholder" data-type={type}>

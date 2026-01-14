@@ -14,6 +14,7 @@ import traceback
 from pathlib import Path
 from typing import Dict
 
+import airflow
 from airflow import DAG, settings
 from airflow.models import DagModel
 from flask import escape
@@ -156,8 +157,14 @@ class DagDeployer:
                 found_dags = dag_bag.process_file(dag_py_file)
                 logger.info("processed dags {}".format(found_dags))
                 dag: DAG = dag_bag.get_dag(self.dag_id, session=session)
-                # Sync to DB
-                dag.sync_to_db(session=session)
+
+                if hasattr(dag, "sync_to_db"):
+                    dag.sync_to_db(session=session)
+                else:
+                    logger.info(
+                        "Airflow version %s does not support dag.sync_to_db; relying on scheduler scan.",
+                        airflow.__version__,
+                    )
                 dag_model = (
                     session.query(DagModel)
                     .filter(DagModel.dag_id == self.dag_id)

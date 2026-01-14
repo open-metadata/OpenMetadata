@@ -25,9 +25,8 @@
           ]
         },
         "om_ngram": {
-          "tokenizer": "ngram",
-          "min_gram": 3,
-          "max_gram": 10,
+          "type": "custom",
+          "tokenizer": "n_gram_tokenizer",
           "filter": [
             "lowercase"
           ]
@@ -58,6 +57,17 @@
           "preserve_original": true,
           "stem_english_possessive": true
         }
+      },
+      "tokenizer": {
+        "n_gram_tokenizer": {
+          "type": "ngram",
+          "min_gram": 3,
+          "max_gram": 10,
+          "token_chars": [
+            "letter",
+            "digit"
+          ]
+        }
       }
     }
   },
@@ -77,6 +87,7 @@
         "fields": {
           "keyword": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "ignore_above": 256
           }
         }

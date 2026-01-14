@@ -42,6 +42,7 @@ export enum GlobalSettingOptions {
   PERSONA = 'persona',
   ROLES = 'roles',
   POLICIES = 'policies',
+  AUDIT_LOGS = 'audit-logs',
   DATABASES = 'databases',
   DATABASE = 'database',
   DATABASE_SCHEMA = 'databaseSchemas',
@@ -91,6 +92,7 @@ export enum GlobalSettingOptions {
   LINEAGE_CONFIG = 'lineageConfig',
   OM_URL_CONFIG = 'om-url-config',
   SEARCH_SETTINGS = 'search-settings',
+  DATA_ASSET_RULES = 'dataAssetRules',
   DOMAINS = 'domains',
   ONLINE_USERS = 'online-users',
   CHARTS = 'charts',
@@ -198,6 +200,10 @@ export const SETTINGS_OPTIONS_PATH = {
     GlobalSettingsMenuCategory.ACCESS,
     `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.POLICIES}`,
   ],
+  [GlobalSettingOptions.AUDIT_LOGS]: [
+    GlobalSettingsMenuCategory.ACCESS,
+    `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.AUDIT_LOGS}`,
+  ],
 
   // Open-metadata
 
@@ -237,6 +243,10 @@ export const SETTINGS_OPTIONS_PATH = {
   [GlobalSettingOptions.SEARCH_SETTINGS]: [
     GlobalSettingsMenuCategory.PREFERENCES,
     `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}`,
+  ],
+  [GlobalSettingOptions.DATA_ASSET_RULES]: [
+    GlobalSettingsMenuCategory.PREFERENCES,
+    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.DATA_ASSET_RULES}`,
   ],
   [GlobalSettingOptions.SSO]: [GlobalSettingsMenuCategory.SSO],
 };

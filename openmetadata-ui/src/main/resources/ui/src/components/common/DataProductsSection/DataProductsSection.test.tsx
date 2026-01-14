@@ -20,6 +20,7 @@ import {
 import { AxiosError } from 'axios';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import DataProductsSection from './DataProductsSection';
 
 // Mock react-router-dom
@@ -203,6 +204,11 @@ jest.mock('../../../rest/mlModelAPI', () => ({
 }));
 jest.mock('../../../rest/chartsAPI', () => ({ patchChartDetails: jest.fn() }));
 
+// Mock useEntityRules hook
+jest.mock('../../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn(),
+}));
+
 const validUUID = '123e4567-e89b-12d3-a456-426614174000';
 
 const defaultDataProducts: EntityReference[] = [
@@ -230,6 +236,16 @@ const defaultProps = {
 describe('DataProductsSection', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Set default entity rules
+    (useEntityRules as jest.Mock).mockReturnValue({
+      entityRules: {
+        canAddMultipleDataProducts: true,
+        maxDataProducts: Infinity,
+        requireDomainForDataProduct: false,
+      },
+      rules: [],
+      isLoading: false,
+    });
   });
 
   describe('Rendering', () => {
@@ -252,7 +268,11 @@ describe('DataProductsSection', () => {
     it('renders no-data state when no data products', () => {
       render(<DataProductsSection {...defaultProps} dataProducts={[]} />);
 
-      expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'label.no-entity-assigned - {"entity":"label.data-product-plural"}'
+        )
+      ).toBeInTheDocument();
     });
   });
 

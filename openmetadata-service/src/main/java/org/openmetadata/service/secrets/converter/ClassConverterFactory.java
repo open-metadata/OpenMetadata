@@ -33,9 +33,11 @@ import org.openmetadata.schema.services.connections.database.CockroachConnection
 import org.openmetadata.schema.services.connections.database.DatabricksConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
 import org.openmetadata.schema.services.connections.database.DeltaLakeConnection;
+import org.openmetadata.schema.services.connections.database.DremioConnection;
 import org.openmetadata.schema.services.connections.database.GreenplumConnection;
 import org.openmetadata.schema.services.connections.database.HiveConnection;
 import org.openmetadata.schema.services.connections.database.IcebergConnection;
+import org.openmetadata.schema.services.connections.database.MssqlConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
@@ -49,8 +51,10 @@ import org.openmetadata.schema.services.connections.database.deltalake.StorageCo
 import org.openmetadata.schema.services.connections.database.iceberg.IcebergFileSystem;
 import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
 import org.openmetadata.schema.services.connections.mlmodel.VertexAIConnection;
+import org.openmetadata.schema.services.connections.pipeline.AirbyteConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.MatillionConnection;
+import org.openmetadata.schema.services.connections.pipeline.MulesoftConnection;
 import org.openmetadata.schema.services.connections.pipeline.NifiConnection;
 import org.openmetadata.schema.services.connections.pipeline.SSISConnection;
 import org.openmetadata.schema.services.connections.pipeline.WherescapeConnection;
@@ -69,11 +73,13 @@ public final class ClassConverterFactory {
   static {
     converterMap =
         Map.ofEntries(
+            Map.entry(AirbyteConnection.class, new AirbyteConnectionClassConverter()),
             Map.entry(AirflowConnection.class, new AirflowConnectionClassConverter()),
             Map.entry(BigQueryConnection.class, new BigQueryConnectionClassConverter()),
             Map.entry(BigTableConnection.class, new BigTableConnectionClassConverter()),
             Map.entry(DatalakeConnection.class, new DatalakeConnectionClassConverter()),
             Map.entry(DeltaLakeConnection.class, new DeltaLakeConnectionClassConverter()),
+            Map.entry(DremioConnection.class, new DremioConnectionClassConverter()),
             Map.entry(DbtGCSConfig.class, new DbtGCSConfigClassConverter()),
             Map.entry(DbtPipeline.class, new DbtPipelineClassConverter()),
             Map.entry(ElasticSearchConnection.class, new ElasticSearchConnectionClassConverter()),
@@ -85,6 +91,7 @@ public final class ClassConverterFactory {
             Map.entry(IcebergConnection.class, new IcebergConnectionClassConverter()),
             Map.entry(IcebergFileSystem.class, new IcebergFileSystemClassConverter()),
             Map.entry(LookerConnection.class, new LookerConnectionClassConverter()),
+            Map.entry(MssqlConnection.class, new MssqlConnectionClassConverter()),
             Map.entry(MysqlConnection.class, new MysqlConnectionClassConverter()),
             Map.entry(RedshiftConnection.class, new RedshiftConnectionClassConverter()),
             Map.entry(GreenplumConnection.class, new GreenplumConnectionClassConverter()),
@@ -95,6 +102,7 @@ public final class ClassConverterFactory {
             Map.entry(SSOAuthMechanism.class, new SSOAuthMechanismClassConverter()),
             Map.entry(TableauConnection.class, new TableauConnectionClassConverter()),
             Map.entry(ThoughtSpotConnection.class, new ThoughtSpotConnectionClassConverter()),
+            Map.entry(MulesoftConnection.class, new MulesoftConnectionClassConverter()),
             Map.entry(SalesforceConnection.class, new SalesforceConnectorClassConverter()),
             Map.entry(
                 TestServiceConnectionRequest.class,

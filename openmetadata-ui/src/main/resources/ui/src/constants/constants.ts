@@ -51,9 +51,11 @@ export const TABLE_CARD_PAGE_SIZE = 9;
 export const PAGE_SIZE_BASE = 15;
 export const PAGE_SIZE_MEDIUM = 25;
 export const PAGE_SIZE_LARGE = 50;
+export const AGGREGATE_PAGE_SIZE_LARGE = 1000;
 export const ES_MAX_PAGE_SIZE = 10000;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
+export const LINEAGE_CHILD_ITEMS_PER_PAGE = 5;
 export const TAG_LIST_SIZE = 3;
 export const ADD_USER_CONTAINER_HEIGHT = 250;
 export const MAX_NAME_LENGTH = 256;
@@ -66,6 +68,13 @@ export const TEST_CASE_FEED_GRAPH_HEIGHT = 250;
 export const ONE_MINUTE_IN_MILLISECOND = 60000;
 export const TWO_MINUTE_IN_MILLISECOND = 120000;
 export const ONE_HOUR_MS = 3600000; // 1 hour in milliseconds
+export const SCROLL_TRIGGER_THRESHOLD = 200;
+export const INITIAL_PAGING_STATE = {
+  offset: 0,
+  limit: PAGE_SIZE_BASE,
+  total: 0,
+};
+
 export const LAST_VERSION_FETCH_TIME_KEY = 'versionFetchTime';
 export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData`;
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData`;
@@ -116,6 +125,7 @@ export const PLACEHOLDER_DASHBOARD_TYPE = ':dashboardType';
 export const LOG_ENTITY_TYPE = ':logEntityType';
 export const LOG_ENTITY_NAME = ':logEntityName';
 export const PLACEHOLDER_ACTION = ':action';
+export const PLACEHOLDER_ROUTE_DIMENSION_KEY = ':dimensionKey';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -128,7 +138,6 @@ export const CHART_WIDGET_DAYS_DURATION = 14;
 export const ROUTES = {
   HOME: '/',
   CALLBACK: '/callback',
-  SAML_CALLBACK: '/saml/callback',
   SILENT_CALLBACK: '/silent-callback',
   NOT_FOUND: '/404',
   FORBIDDEN: '/403',
@@ -248,6 +257,7 @@ export const ROUTES = {
   ADD_POLICY: '/settings/access/policies/add-policy',
   ADD_POLICY_RULE: `/settings/access/policies/${PLACEHOLDER_ROUTE_FQN}/add-rule`,
   EDIT_POLICY_RULE: `/settings/access/policies/${PLACEHOLDER_ROUTE_FQN}/edit-rule/${PLACEHOLDER_RULE_NAME}`,
+  AUDIT_LOGS: '/settings/access/audit-logs',
 
   // test suites
   TEST_SUITES_WITH_FQN: `/test-suites/${PLACEHOLDER_ROUTE_FQN}`,
@@ -266,6 +276,8 @@ export const ROUTES = {
   TEST_CASE_DETAILS_WITH_TAB: `/test-case/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   TEST_CASE_VERSION: `/test-case/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   TEST_CASE_DETAILS_WITH_TAB_VERSION: `/test-case/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}/${PLACEHOLDER_ROUTE_TAB}`,
+  TEST_CASE_DIMENSIONS: `/test-case/${PLACEHOLDER_ROUTE_FQN}/dimensions/${PLACEHOLDER_ROUTE_DIMENSION_KEY}`,
+  TEST_CASE_DIMENSIONS_WITH_TAB: `/test-case/${PLACEHOLDER_ROUTE_FQN}/dimensions/${PLACEHOLDER_ROUTE_DIMENSION_KEY}/${PLACEHOLDER_ROUTE_TAB}`,
 
   // logs viewer
   LOGS: `/${LOG_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/logs`,
@@ -293,8 +305,9 @@ export const ROUTES = {
   EDIT_OBSERVABILITY_ALERTS: `/observability/alerts/edit/${PLACEHOLDER_ROUTE_FQN}`,
 
   // Notification Alerts
-  NOTIFICATION_ALERTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}`,
-  NOTIFICATION_ALERT_DETAILS_WITH_TAB: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/alert/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  NOTIFICATIONS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}`,
+  NOTIFICATION_ALERT_LIST: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ALERTS}`,
+  NOTIFICATION_ALERT_DETAILS_WITH_TAB: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ALERTS}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   EDIT_NOTIFICATION_ALERTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.EDIT_NOTIFICATION}/${PLACEHOLDER_ROUTE_FQN}`,
 
   // Metric Entity
@@ -364,6 +377,7 @@ export const ENTITY_PATH = {
   files: 'file',
   spreadsheets: 'spreadsheet',
   worksheets: 'worksheet',
+  dataProductsTab: 'dataProductsTab',
 };
 
 export const VALIDATION_MESSAGES = {

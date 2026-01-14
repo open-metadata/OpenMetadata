@@ -13,6 +13,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { DataType, Worksheet } from '../../../generated/entity/data/worksheet';
 import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
@@ -24,6 +25,7 @@ import { restoreDriveAsset } from '../../../rest/driveAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import WorksheetDetails from './WorksheetDetails';
 import { WorksheetDetailsProps } from './WorksheetDetails.interface';
 
@@ -92,14 +94,14 @@ jest.mock('../../Lineage/EntityLineageTab/EntityLineageTab', () => ({
   )),
 }));
 
-jest.mock('../../PageLayoutV1/PageLayoutV1', () =>
-  jest.fn(({ children, pageTitle }) => (
+jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
+  return jest.fn(({ children, pageTitle }) => (
     <div data-testid="page-layout">
       <h1>{pageTitle}</h1>
       {children}
     </div>
-  ))
-);
+  ));
+});
 
 jest.mock('../../../hoc/LimitWrapper', () =>
   jest.fn(({ children }) => <div>{children}</div>)
@@ -185,7 +187,7 @@ const mockWorksheetDetails: Worksheet = {
     fieldsAdded: [],
     fieldsUpdated: [],
     fieldsDeleted: [],
-    previousVersion: 1.0,
+    previousVersion: 1,
   },
   service: {
     id: 'service-1',
@@ -632,5 +634,69 @@ describe('WorksheetDetails', () => {
     });
 
     expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+  });
+
+  describe('ViewCustomFields Permission Tests', () => {
+    it('should pass ViewCustomFields permission correctly when true', async () => {
+      const permissionsWithViewCustomFields = {
+        ...ENTITY_PERMISSIONS,
+        ViewCustomFields: true,
+      };
+
+      renderWorksheetDetails({
+        worksheetPermissions: permissionsWithViewCustomFields,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
+        expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      });
+    });
+
+    it('should pass ViewCustomFields permission correctly when false', async () => {
+      const permissionsWithoutViewCustomFields = {
+        ...ENTITY_PERMISSIONS,
+        ViewCustomFields: false,
+      };
+
+      renderWorksheetDetails({
+        worksheetPermissions: permissionsWithoutViewCustomFields,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
+        expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      });
+    });
+
+    it('should handle undefined ViewCustomFields permission', async () => {
+      const permissionsWithUndefinedViewCustomFields = {
+        ...ENTITY_PERMISSIONS,
+        ViewCustomFields: undefined,
+      };
+
+      renderWorksheetDetails({
+        worksheetPermissions:
+          permissionsWithUndefinedViewCustomFields as unknown as OperationPermission,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
+        expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      });
+    });
+  });
+
+  it('should pass entity name as pageTitle to PageLayoutV1', async () => {
+    renderWorksheetDetails();
+
+    await waitFor(() => {
+      expect(PageLayoutV1).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pageTitle: 'Test Worksheet',
+        }),
+        expect.anything()
+      );
+    });
   });
 });

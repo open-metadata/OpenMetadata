@@ -4,7 +4,11 @@ import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.g
 import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_ENTITY_RELATIONSHIP;
 import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_LINEAGE;
 import static org.openmetadata.service.search.SearchClient.DELETE_COLUMN_LINEAGE_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.FIELDS_TO_REMOVE_WHEN_NULL;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchClient.UPDATE_CLASSIFICATION_TAG_FQN_BY_PREFIX_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_COLUMN_LINEAGE_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.UPDATE_DATA_PRODUCT_FQN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_FQN_PREFIX_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_GLOSSARY_TERM_TAG_FQN_BY_PREFIX_SCRIPT;
 
@@ -360,6 +364,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                   .id(docId)
                   .refresh(Refresh.True)
                   .scriptedUpsert(true)
+                  .upsert(params)
                   .script(
                       s ->
                           s.inline(
@@ -374,7 +379,20 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
           "Successfully updated entity in ElasticSearch for index: {}, docId: {}",
           indexName,
           docId);
-    } catch (IOException | ElasticsearchException e) {
+    } catch (ElasticsearchException e) {
+      if (e.status() == 404) {
+        LOG.warn(
+            "Document not found during update for index: {}, docId: {}. The document may not have been indexed yet.",
+            indexName,
+            docId);
+      } else {
+        LOG.error(
+            "Failed to update entity in ElasticSearch for index: {}, docId: {}",
+            indexName,
+            docId,
+            e);
+      }
+    } catch (IOException e) {
       LOG.error(
           "Failed to update entity in ElasticSearch for index: {}, docId: {}", indexName, docId, e);
     }
@@ -888,6 +906,255 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
   }
 
   @Override
+  public void updateClassificationTagByFqnPrefix(
+      String indexName, String oldFqnPrefix, String newFqnPrefix, String prefixFieldCondition) {
+    if (!isClientAvailable) {
+      LOG.error(
+          "Elasticsearch client is not available. Cannot update classification tag by FQN prefix.");
+      return;
+    }
+
+    try {
+      Query prefixQuery =
+          Query.of(q -> q.prefix(p -> p.field(prefixFieldCondition).value(oldFqnPrefix)));
+
+      Map<String, JsonData> params =
+          Map.of(
+              "oldParentFQN", JsonData.of(oldFqnPrefix),
+              "newParentFQN", JsonData.of(newFqnPrefix));
+
+      UpdateByQueryResponse updateResponse =
+          client.updateByQuery(
+              req ->
+                  req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
+                      .query(prefixQuery)
+                      .script(
+                          s ->
+                              s.inline(
+                                  i ->
+                                      i.lang(ScriptLanguage.Painless)
+                                          .source(UPDATE_CLASSIFICATION_TAG_FQN_BY_PREFIX_SCRIPT)
+                                          .params(params)))
+                      .refresh(true));
+
+      LOG.info(
+          "Successfully updated classification tag FQN for index: {}, updated: {}",
+          indexName,
+          updateResponse.updated());
+
+      if (!updateResponse.failures().isEmpty()) {
+        String errorMessage =
+            updateResponse.failures().stream()
+                .map(BulkIndexByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .collect(Collectors.joining(", "));
+        LOG.error("Failed to update classification tag FQN: {}", errorMessage);
+      }
+
+    } catch (Exception e) {
+      LOG.error("Error while updating classification tag FQN: {}", e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void updateDataProductReferences(String oldFqn, String newFqn) {
+    if (!isClientAvailable) {
+      LOG.error("Elasticsearch client is not available. Cannot update data product references.");
+      return;
+    }
+
+    try {
+      // Query for all documents that have this data product in their dataProducts array
+      // Note: dataProducts is not mapped as nested, so we use a simple term query
+      Query termQuery =
+          Query.of(q -> q.term(t -> t.field("dataProducts.fullyQualifiedName").value(oldFqn)));
+
+      Map<String, JsonData> params =
+          Map.of(
+              "oldFqn", JsonData.of(oldFqn),
+              "newFqn", JsonData.of(newFqn));
+
+      UpdateByQueryResponse updateResponse =
+          client.updateByQuery(
+              req ->
+                  req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
+                      .query(termQuery)
+                      .script(
+                          s ->
+                              s.inline(
+                                  i ->
+                                      i.lang(ScriptLanguage.Painless)
+                                          .source(UPDATE_DATA_PRODUCT_FQN_SCRIPT)
+                                          .params(params)))
+                      .refresh(true));
+
+      LOG.info(
+          "Successfully updated data product references from {} to {}, updated: {}",
+          oldFqn,
+          newFqn,
+          updateResponse.updated());
+
+      if (!updateResponse.failures().isEmpty()) {
+        String errorMessage =
+            updateResponse.failures().stream()
+                .map(BulkIndexByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .collect(Collectors.joining(", "));
+        LOG.error("Failed to update data product references: {}", errorMessage);
+      }
+
+    } catch (Exception e) {
+      LOG.error("Error while updating data product references: {}", e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void updateAssetDomainsForDataProduct(
+      String dataProductFqn, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    if (!isClientAvailable) {
+      LOG.error("Elasticsearch client is not available. Cannot update asset domains.");
+      return;
+    }
+
+    try {
+      // Query for all documents that have this data product in their dataProducts array
+      Query termQuery =
+          Query.of(
+              q -> q.term(t -> t.field("dataProducts.fullyQualifiedName").value(dataProductFqn)));
+
+      // Convert new domains to a format suitable for the script
+      List<Map<String, Object>> newDomainsData = new ArrayList<>();
+      for (EntityReference domain : newDomains) {
+        Map<String, Object> domainMap = new HashMap<>();
+        domainMap.put("id", domain.getId().toString());
+        domainMap.put("type", domain.getType());
+        domainMap.put("name", domain.getName());
+        domainMap.put("fullyQualifiedName", domain.getFullyQualifiedName());
+        if (domain.getDisplayName() != null) {
+          domainMap.put("displayName", domain.getDisplayName());
+        }
+        newDomainsData.add(domainMap);
+      }
+
+      Map<String, JsonData> params =
+          Map.of(
+              "oldDomainFqns", JsonData.of(oldDomainFqns),
+              "newDomains", JsonData.of(newDomainsData));
+
+      UpdateByQueryResponse updateResponse =
+          client.updateByQuery(
+              req ->
+                  req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
+                      .query(termQuery)
+                      .script(
+                          s ->
+                              s.inline(
+                                  i ->
+                                      i.lang(ScriptLanguage.Painless)
+                                          .source(SearchClient.UPDATE_ASSET_DOMAIN_SCRIPT)
+                                          .params(params)))
+                      .refresh(true));
+
+      LOG.info(
+          "Successfully updated asset domains for data product {}: removed {}, added {}, updated {} documents",
+          dataProductFqn,
+          oldDomainFqns,
+          newDomains.stream().map(EntityReference::getFullyQualifiedName).toList(),
+          updateResponse.updated());
+
+      if (!updateResponse.failures().isEmpty()) {
+        String errorMessage =
+            updateResponse.failures().stream()
+                .map(BulkIndexByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .collect(Collectors.joining(", "));
+        LOG.error("Failed to update asset domains: {}", errorMessage);
+      }
+
+    } catch (Exception e) {
+      LOG.error("Error while updating asset domains for data product: {}", e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void updateAssetDomainsByIds(
+      List<UUID> assetIds, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    if (!isClientAvailable) {
+      LOG.error("Elasticsearch client is not available. Cannot update asset domains.");
+      return;
+    }
+
+    if (assetIds == null || assetIds.isEmpty()) {
+      LOG.debug("No asset IDs provided for domain update.");
+      return;
+    }
+
+    try {
+      List<String> idValues = assetIds.stream().map(UUID::toString).toList();
+      String indexName = Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS);
+      LOG.info(
+          "Updating asset domains by IDs: index={}, idCount={}, ids={}",
+          indexName,
+          idValues.size(),
+          idValues);
+      Query idsQuery = Query.of(q -> q.ids(i -> i.values(idValues)));
+
+      List<Map<String, Object>> newDomainsData = new ArrayList<>();
+      for (EntityReference domain : newDomains) {
+        Map<String, Object> domainMap = new HashMap<>();
+        domainMap.put("id", domain.getId().toString());
+        domainMap.put("type", domain.getType());
+        domainMap.put("name", domain.getName());
+        domainMap.put("fullyQualifiedName", domain.getFullyQualifiedName());
+        if (domain.getDisplayName() != null) {
+          domainMap.put("displayName", domain.getDisplayName());
+        }
+        newDomainsData.add(domainMap);
+      }
+
+      Map<String, JsonData> params =
+          Map.of(
+              "oldDomainFqns", JsonData.of(oldDomainFqns),
+              "newDomains", JsonData.of(newDomainsData));
+
+      UpdateByQueryResponse updateResponse =
+          client.updateByQuery(
+              req ->
+                  req.index(indexName)
+                      .query(idsQuery)
+                      .script(
+                          s ->
+                              s.inline(
+                                  i ->
+                                      i.lang(ScriptLanguage.Painless)
+                                          .source(SearchClient.UPDATE_ASSET_DOMAIN_SCRIPT)
+                                          .params(params)))
+                      .refresh(true));
+
+      LOG.info(
+          "Updated asset domains by IDs: requested={}, total={}, updated={}, noops={}, removed={}, added={}",
+          assetIds.size(),
+          updateResponse.total(),
+          updateResponse.updated(),
+          updateResponse.noops(),
+          oldDomainFqns,
+          newDomains.stream().map(EntityReference::getFullyQualifiedName).toList());
+
+      if (!updateResponse.failures().isEmpty()) {
+        String errorMessage =
+            updateResponse.failures().stream()
+                .map(BulkIndexByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .collect(Collectors.joining(", "));
+        LOG.error("Failed to update asset domains: {}", errorMessage);
+      }
+
+    } catch (Exception e) {
+      LOG.error("Error while updating asset domains by IDs: {}", e.getMessage(), e);
+    }
+  }
+
+  @Override
   public void reindexEntities(List<EntityReference> entities) throws IOException {
     if (!isClientAvailable) {
       LOG.error("Elasticsearch client is not available. Cannot reindex entities.");
@@ -1034,9 +1301,26 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
   }
 
   private Map<String, JsonData> convertToJsonDataMap(Map<String, Object> map) {
-    return JsonUtils.getMap(map).entrySet().stream()
-        .filter(entry -> entry.getValue() != null)
-        .collect(Collectors.toMap(Map.Entry::getKey, entry -> JsonData.of(entry.getValue())));
+    List<String> fieldsToRemove = new ArrayList<>();
+
+    Map<String, JsonData> result =
+        JsonUtils.getMap(map).entrySet().stream()
+            .filter(
+                entry -> {
+                  if (entry.getValue() == null
+                      && FIELDS_TO_REMOVE_WHEN_NULL.contains(entry.getKey())) {
+                    fieldsToRemove.add(entry.getKey());
+                    return false;
+                  }
+                  return entry.getValue() != null;
+                })
+            .collect(Collectors.toMap(Map.Entry::getKey, entry -> JsonData.of(entry.getValue())));
+
+    if (!fieldsToRemove.isEmpty()) {
+      result.put("fieldsToRemove", JsonData.of(fieldsToRemove));
+    }
+
+    return result;
   }
 
   private JsonData toJsonData(String doc) {
