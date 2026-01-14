@@ -137,7 +137,7 @@ public class McpTestUtils {
     Map<String, Object> arguments = new HashMap<>();
     arguments.put("query", query);
     arguments.put("limit", limit);
-    arguments.put("entity_type", entityType);
+    arguments.put("entityType", entityType);
     arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("search_metadata", arguments);
@@ -148,7 +148,7 @@ public class McpTestUtils {
    */
   public static Map<String, Object> createGetEntityToolCall(String entityType, String fqn) {
     Map<String, Object> arguments = new HashMap<>();
-    arguments.put("entity_type", entityType);
+    arguments.put("entityType", entityType);
     arguments.put("fqn", fqn);
     arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
@@ -202,10 +202,10 @@ public class McpTestUtils {
   public static Map<String, Object> createGetLineageToolCall(
       String entityType, String fqn, int upstreamDepth, int downstreamDepth) {
     Map<String, Object> arguments = new HashMap<>();
-    arguments.put("entity_type", entityType);
+    arguments.put("entityType", entityType);
     arguments.put("fqn", fqn);
-    arguments.put("upstream_depth", upstreamDepth);
-    arguments.put("downstream_depth", downstreamDepth);
+    arguments.put("upstreamDepth", upstreamDepth);
+    arguments.put("downstreamDepth", downstreamDepth);
     arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("get_entity_lineage", arguments);

@@ -21,10 +21,10 @@ public class GetLineageTool implements McpTool {
       if (nullOrEmpty(params)) {
         throw new IllegalArgumentException("Parameters cannot be null or empty");
       }
-      String entityType = (String) params.get("entity_type");
+      String entityType = (String) params.get("entityType");
       String fqn = (String) params.get("fqn");
-      Integer upstreamDepth = (Integer) params.get("upstream_depth");
-      Integer downstreamDepth = (Integer) params.get("downstream_depth");
+      Integer upstreamDepth = (Integer) params.get("upstreamDepth");
+      Integer downstreamDepth = (Integer) params.get("downstreamDepth");
 
       return JsonUtils.getMap(
           new LineageRepository().getByName(entityType, fqn, upstreamDepth, downstreamDepth));
