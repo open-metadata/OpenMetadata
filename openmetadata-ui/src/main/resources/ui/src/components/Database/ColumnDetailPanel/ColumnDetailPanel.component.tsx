@@ -23,9 +23,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-new.svg';
 import { ReactComponent as KeyIcon } from '../../../assets/svg/icon-key.svg';
+import { ENTITY_PATH } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
+import { Type } from '../../../generated/entity/type';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { updateTableColumn } from '../../../rest/tableAPI';
 import { listTestCases } from '../../../rest/testAPI';
 import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQualityUtils';
@@ -146,6 +149,21 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       setIsTestCaseLoading(false);
     }
   }, [column?.fullyQualifiedName]);
+
+  const [entityTypeDetail, setEntityTypeDetail] = useState<Type>();
+
+  const fetchEntityTypeDetail = async () => {
+    try {
+      const res = await getTypeByFQN(ENTITY_PATH.column);
+      setEntityTypeDetail(res);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  useEffect(() => {
+    fetchEntityTypeDetail();
+  }, []);
 
   useEffect(() => {
     if (isOpen && entityType === EntityType.TABLE) {
@@ -504,6 +522,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         <CustomPropertiesSection
           entityData={toEntityData(column)}
           entityType={entityType}
+          entityTypeDetail={entityTypeDetail}
           isEntityDataLoading={false}
           viewCustomPropertiesPermission={
             hasViewPermission?.customProperties ?? false

@@ -59,6 +59,7 @@ export const LINEAGE_CHILD_ITEMS_PER_PAGE = 5;
 export const TAG_LIST_SIZE = 3;
 export const ADD_USER_CONTAINER_HEIGHT = 250;
 export const MAX_NAME_LENGTH = 256;
+export const CUSTOM_PROPERTY_NAME_REGEX = /^[a-zA-Z0-9_]+$/;
 export const INGESTION_PROGRESS_START_VAL = 20;
 export const INGESTION_PROGRESS_END_VAL = 80;
 export const DEPLOYED_PROGRESS_VAL = 100;
@@ -379,7 +380,62 @@ export const ENTITY_PATH = {
   spreadsheets: 'spreadsheet',
   worksheets: 'worksheet',
   dataProductsTab: 'dataProductsTab',
+  column: 'tableColumn',
 };
+
+export const CUSTOM_PROPERTIES_DOCS =
+  'https://docs.open-metadata.org/how-to-guides/admin-guide/custom-properties';
+
+export const SUPPORTED_FORMAT_MAP = {
+  date: ['yyyy-MM-dd', 'dd-MM-yyyy', 'MM-dd-yyyy', 'yyyy/MM/dd', 'dd/MM/yyyy'],
+  dateTime: [
+    'yyyy-MM-dd HH:mm:ss',
+    'dd-MM-yyyy HH:mm:ss',
+    'MM-dd-yyyy HH:mm:ss',
+    'yyyy/MM/dd HH:mm:ss',
+    'dd/MM/yyyy HH:mm:ss',
+  ],
+  time: ['HH:mm:ss', 'HH:mm', 'mm:ss'],
+};
+
+export const ENTITY_REFERENCE_OPTIONS = [
+  {
+    label: i18n.t('label.table'),
+    value: 'table',
+  },
+  {
+    label: i18n.t('label.topic'),
+    value: 'topic',
+  },
+  {
+    label: i18n.t('label.dashboard'),
+    value: 'dashboard',
+  },
+  {
+    label: i18n.t('label.pipeline'),
+    value: 'pipeline',
+  },
+  {
+    label: i18n.t('label.ml-model'),
+    value: 'mlmodel',
+  },
+  {
+    label: i18n.t('label.container'),
+    value: 'container',
+  },
+  {
+    label: i18n.t('label.search-index'),
+    value: 'searchIndex',
+  },
+  {
+    label: i18n.t('label.stored-procedure'),
+    value: 'storedProcedure',
+  },
+  {
+    label: i18n.t('label.glossary-term'),
+    value: 'glossaryTerm',
+  },
+];
 
 export const VALIDATION_MESSAGES = {
   required: i18n.t('message.field-text-is-required', {
