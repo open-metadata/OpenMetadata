@@ -768,6 +768,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private User getOrCreateOidcUser(String userName, String email) {
     try {
       // Fetch user with roles and teams to preserve existing assignments
+      // Entity.getEntityByName throws exception if user not found, caught below for new user
+      // creation
       User user =
           Entity.getEntityByName(
               Entity.USER, userName, "id,roles,teams,isAdmin,email", Include.NON_DELETED);

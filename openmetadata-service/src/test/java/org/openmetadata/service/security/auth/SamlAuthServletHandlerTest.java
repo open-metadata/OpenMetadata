@@ -36,6 +36,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -390,7 +391,7 @@ class SamlAuthServletHandlerTest {
     roleRef.setId(UUID.randomUUID());
     roleRef.setName("DataConsumer");
     mockRoles.add(roleRef);
-    mockUser.setRoles(java.util.List.copyOf(mockRoles));
+    mockUser.setRoles(new ArrayList<>(mockRoles));
 
     Set<org.openmetadata.schema.type.EntityReference> mockTeams = new HashSet<>();
     org.openmetadata.schema.type.EntityReference teamRef =
@@ -398,7 +399,7 @@ class SamlAuthServletHandlerTest {
     teamRef.setId(UUID.randomUUID());
     teamRef.setName("Engineering");
     mockTeams.add(teamRef);
-    mockUser.setTeams(java.util.List.copyOf(mockTeams));
+    mockUser.setTeams(new ArrayList<>(mockTeams));
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       // Mock Entity.getEntityByName to return our user with roles and teams
