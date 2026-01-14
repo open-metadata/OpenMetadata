@@ -465,8 +465,10 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     assertNotNull(fetchedQuery.getDomains());
     assertEquals(1, fetchedQuery.getDomains().size());
     assertEquals(DOMAIN.getId(), fetchedQuery.getDomains().get(0).getId());
-    assertTrue(
-        fetchedQuery.getDomains().get(0).getInherited(), "Domain should be marked as inherited");
+    assertEquals(
+        Boolean.TRUE,
+        fetchedQuery.getDomains().get(0).getInherited(),
+        "Domain should be marked as inherited");
 
     tableResourceTest.deleteEntity(table1.getId(), ADMIN_AUTH_HEADERS);
     deleteEntity(query.getId(), ADMIN_AUTH_HEADERS);
@@ -501,10 +503,14 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     Query fetchedQuery = getEntity(query.getId(), "domains", ADMIN_AUTH_HEADERS);
     assertNotNull(fetchedQuery.getDomains());
     assertEquals(2, fetchedQuery.getDomains().size());
-    assertTrue(
-        fetchedQuery.getDomains().get(0).getInherited(), "Domains should be marked as inherited");
-    assertTrue(
-        fetchedQuery.getDomains().get(1).getInherited(), "Domains should be marked as inherited");
+    assertEquals(
+        Boolean.TRUE,
+        fetchedQuery.getDomains().get(0).getInherited(),
+        "Domains should be marked as inherited");
+    assertEquals(
+        Boolean.TRUE,
+        fetchedQuery.getDomains().get(1).getInherited(),
+        "Domains should be marked as inherited");
 
     tableResourceTest.deleteEntity(table1.getId(), ADMIN_AUTH_HEADERS);
     tableResourceTest.deleteEntity(table2.getId(), ADMIN_AUTH_HEADERS);
@@ -540,8 +546,10 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     assertNotNull(fetchedQuery.getDomains());
     assertEquals(1, fetchedQuery.getDomains().size());
     assertEquals(DOMAIN.getId(), fetchedQuery.getDomains().get(0).getId());
-    assertTrue(
-        fetchedQuery.getDomains().get(0).getInherited(), "Domain should be marked as inherited");
+    assertEquals(
+        Boolean.TRUE,
+        fetchedQuery.getDomains().get(0).getInherited(),
+        "Domain should be marked as inherited");
 
     String origJson = JsonUtils.pojoToJson(query);
     query.setQueryUsedIn(List.of(table2.getEntityReference()));
@@ -551,8 +559,10 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     assertNotNull(updatedQuery.getDomains());
     assertEquals(1, updatedQuery.getDomains().size());
     assertEquals(DOMAIN1.getId(), updatedQuery.getDomains().get(0).getId());
-    assertTrue(
-        updatedQuery.getDomains().get(0).getInherited(), "Domain should be marked as inherited");
+    assertEquals(
+        Boolean.TRUE,
+        updatedQuery.getDomains().get(0).getInherited(),
+        "Domain should be marked as inherited");
 
     tableResourceTest.deleteEntity(table1.getId(), ADMIN_AUTH_HEADERS);
     tableResourceTest.deleteEntity(table2.getId(), ADMIN_AUTH_HEADERS);
@@ -616,8 +626,10 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     assertNotNull(fetchedQuery.getDomains());
     assertEquals(1, fetchedQuery.getDomains().size());
     assertEquals(DOMAIN.getId(), fetchedQuery.getDomains().get(0).getId());
-    assertTrue(
-        fetchedQuery.getDomains().get(0).getInherited(), "Domain should be marked as inherited");
+    assertEquals(
+        Boolean.TRUE,
+        fetchedQuery.getDomains().get(0).getInherited(),
+        "Domain should be marked as inherited");
 
     String origJson = JsonUtils.pojoToJson(query);
     query.setDomains(List.of(DOMAIN1.getEntityReference()));
@@ -630,8 +642,10 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
         DOMAIN.getId(),
         patchedQuery.getDomains().get(0).getId(),
         "Domain should remain DOMAIN (from queryUsedIn), not DOMAIN1 (from manual patch)");
-    assertTrue(
-        patchedQuery.getDomains().get(0).getInherited(), "Domain should be marked as inherited");
+    assertEquals(
+        Boolean.TRUE,
+        patchedQuery.getDomains().get(0).getInherited(),
+        "Domain should be marked as inherited");
 
     tableResourceTest.deleteEntity(table1.getId(), ADMIN_AUTH_HEADERS);
     deleteEntity(query.getId(), ADMIN_AUTH_HEADERS);
