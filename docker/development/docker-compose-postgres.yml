@@ -231,6 +231,7 @@ services:
       OM_SM_CLIENT_ID: ${OM_SM_CLIENT_ID:-""}
       OM_SM_CLIENT_SECRET: ${OM_SM_CLIENT_SECRET:-""}
       OM_SM_TENANT_ID: ${OM_SM_TENANT_ID:-""}
+      OM_SM_EXPIRES_AFTER_DAYS: ${OM_SM_EXPIRES_AFTER_DAYS:-""}
 
       #email configuration:
       OM_EMAIL_ENTITY: ${OM_EMAIL_ENTITY:-"OpenMetadata"}
