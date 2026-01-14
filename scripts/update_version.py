@@ -95,7 +95,7 @@ def update_openapi_version(args):
 
     regex_sub(
         file_path,
-        r'(version = ")\d+\.\d+\.\d+(")',
+        r'(@Info\s*\(\s*title\s*=\s*"OpenMetadata APIs",\s*version\s*=\s*")\d+\.\d+\.\d+(")',
         rf"\g<1>{version}\g<2>",
     )
 
