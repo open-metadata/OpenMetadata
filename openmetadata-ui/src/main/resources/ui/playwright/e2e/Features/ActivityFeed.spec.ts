@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
+import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
@@ -591,5 +592,89 @@ test.describe('Mention notifications in Notification Box', () => {
         expect(adminPage.url()).toContain('/all');
       }
     );
+  });
+});
+
+test.describe('Mentions: Chinese character encoding in activity feed', () => {
+  const database = new DatabaseClass();
+  let schemaFqn: string;
+  const userName = '测试';
+
+  test.beforeAll('Create database, schema, and user with Chinese name', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    await database.create(apiContext);
+    await adminUser.create(apiContext);
+    schemaFqn = database.schemaResponseData.fullyQualifiedName;
+    const user = new UserClass({
+      firstName: userName,
+      lastName: '',
+      email: `测试@example.com`,
+      password: 'User@OMD123',
+    });
+
+    await user.create(apiContext);
+    await afterAction();
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await adminUser.login(page);
+    await redirectToHomePage(page);
+  });
+
+  test('Should allow mentioning a user with Chinese characters in the activity feed', async ({
+    page,
+  }) => {
+    test.slow();
+    const feedPromise = page.waitForResponse((response) => {
+      const url = response.url();
+      return (
+        url.includes('/api/v1/feed') &&
+        url.includes('entityLink=') &&
+        url.includes('type=Conversation') &&
+        response.request().method() === 'GET'
+      );
+    });
+    await page.goto(`/databaseSchema/${schemaFqn}/activity_feed/all`);
+    const feedResponse = await feedPromise;
+    expect(feedResponse.status()).toBe(200);
+    await waitForAllLoadersToDisappear(page);
+
+    await page.getByTestId('comments-input-field').click();
+
+    const editorLocator = page.locator(
+      '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
+    );
+
+    await editorLocator.fill('Hey ');
+
+    await editorLocator.click();
+
+    await page.keyboard.press('@');
+    const userSuggestionsResponse = page.waitForResponse((response) => {
+      const url = response.url();
+
+      return (
+        url.includes('/api/v1/search/query') &&
+        url.includes(encodeURIComponent(userName))
+      );
+    });
+    await editorLocator.pressSequentially(userName);
+    await userSuggestionsResponse;
+
+    await page.locator(`[data-value="@${userName}"]`).first().click();
+
+    await expect(page.locator('[data-testid="send-button"]')).toBeVisible();
+    await expect(
+      page.locator('[data-testid="send-button"]')
+    ).not.toBeDisabled();
+
+    const postMentionResponse = page.waitForResponse('/api/v1/feed/*/posts');
+    await page.locator('[data-testid="send-button"]').click();
+    await postMentionResponse;
+    await expect(page.getByTestId('feed-reply-card')).toBeVisible();
+    await expect(
+      page.getByTestId('feed-reply-card').getByTestId('viewer-container')
+    ).toHaveText(`Hey @${userName}`);
   });
 });
