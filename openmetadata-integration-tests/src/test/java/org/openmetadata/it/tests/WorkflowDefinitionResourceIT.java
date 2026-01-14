@@ -114,7 +114,7 @@ import org.slf4j.LoggerFactory;
  *
  * <p>Migrated from: org.openmetadata.service.resources.governance.WorkflowDefinitionResourceTest
  */
-@Execution(ExecutionMode.CONCURRENT)
+@Execution(ExecutionMode.SAME_THREAD)
 @ExtendWith(TestNamespaceExtension.class)
 public class WorkflowDefinitionResourceIT {
 
