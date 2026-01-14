@@ -51,7 +51,7 @@ public class InMemorySecretsManager extends ExternalSecretsManager {
   }
 
   @Override
-  String getSecret(String secretName) {
+  protected String getSecretInternal(String secretName) {
     String value = secretsMap.getOrDefault(secretName, null);
     if (value == null) {
       throw new SecretsManagerException(
