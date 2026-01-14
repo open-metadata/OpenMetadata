@@ -76,8 +76,12 @@ public class QueryRepository extends EntityRepository<Query> {
   @Override
   public void setInheritedFields(Query entity, EntityUtil.Fields fields) {
     super.setInheritedFields(entity, fields);
-    if (entity.getDomains() == null) {
-      entity.setDomains(Collections.emptyList());
+    if (fields.contains("domains")) {
+      List<EntityReference> computedDomains = computeDomainsFromQueryUsage(entity);
+      if (!nullOrEmpty(computedDomains)) {
+        computedDomains.forEach(domain -> domain.setInherited(true));
+      }
+      entity.setDomains(computedDomains);
     }
   }
 
@@ -233,26 +237,17 @@ public class QueryRepository extends EntityRepository<Query> {
     entity.setUsers(EntityUtil.populateEntityReferences(entity.getUsers()));
     DatabaseService service = Entity.getEntity(entity.getService(), "", Include.ALL);
     entity.setService(service.getEntityReference());
-
-    if (!update && entity.getQueryUsedIn() != null) {
-      List<EntityReference> computedDomains = computeDomainsFromQueryUsage(entity);
-      entity.setDomains(computedDomains);
-    }
-    //    else if (update && entity.getDomains() == null) {
-    //
-    //      entity.setDomains(Collections.emptyList());
-    //    }
   }
 
   @Override
   public void storeEntity(Query queryEntity, boolean update) {
     List<EntityReference> queryUsage = queryEntity.getQueryUsedIn();
     List<EntityReference> queryUsers = queryEntity.getUsers();
-    queryEntity.withQueryUsedIn(null).withUsers(null);
+    List<EntityReference> domains = queryEntity.getDomains();
+    queryEntity.withQueryUsedIn(null).withUsers(null).withDomains(null);
     store(queryEntity, update);
 
-    // Restore relationships
-    queryEntity.withQueryUsedIn(queryUsage).withUsers(queryUsers);
+    queryEntity.withQueryUsedIn(queryUsage).withUsers(queryUsers).withDomains(domains);
   }
 
   @Override
@@ -430,13 +425,12 @@ public class QueryRepository extends EntityRepository<Query> {
 
       List<EntityReference> originalDomains =
           original.getDomains() != null ? original.getDomains() : Collections.emptyList();
+      List<EntityReference> recomputedDomains = computeDomainsFromQueryUsage(updated);
+
       if (!added.isEmpty() || !deleted.isEmpty()) {
-        List<EntityReference> recomputedDomains = computeDomainsFromQueryUsage(updated);
         updateDomains(updated, originalDomains, recomputedDomains);
-        updated.setDomains(recomputedDomains);
-      } else {
-        updated.setDomains(originalDomains);
       }
+      updated.setDomains(recomputedDomains);
 
       // Query is a required field. Cannot be removed.
       if (updated.getQuery() != null) {

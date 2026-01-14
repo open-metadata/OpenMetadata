@@ -1767,7 +1767,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
   @Test
   void patch_entityDomain_200(TestNamespace ns) {
-    if (!supportsDomains || !supportsPatch) return;
+    if (!supportsDomains || !supportsPatch || !supportsPatchDomains) return;
 
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
@@ -1789,7 +1789,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
   @Test
   void patch_entityWithInvalidDomain_4xx(TestNamespace ns) {
-    if (!supportsDomains || !supportsPatch) return;
+    if (!supportsDomains || !supportsPatch || !supportsPatchDomains) return;
 
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);

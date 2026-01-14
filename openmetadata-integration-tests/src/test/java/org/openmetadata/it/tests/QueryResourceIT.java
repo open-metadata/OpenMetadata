@@ -44,10 +44,12 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
   // Query has special name handling (null names allowed, uses checksum)
   // Query doesn't support dataProducts field
   // Query API doesn't expose include parameter for soft delete operations
+  // Query domains are read-only (auto-computed from queryUsedIn)
   {
     supportsNameLengthValidation = false;
     supportsDataProducts = false;
     supportsSoftDelete = false;
+    supportsPatchDomains = false;
   }
 
   // ===================================================================
@@ -1002,5 +1004,241 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
     assertNotNull(adminView.getTags());
     assertTrue(
         adminView.getTags().stream().anyMatch(tag -> tag.getTagFQN().equals("PII.Sensitive")));
+  }
+
+  @Test
+  void test_queryInheritsDomainsFromQueryUsedIn(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = getOrCreateDatabaseService(ns);
+
+    org.openmetadata.schema.entity.domains.Domain domain = testDomain();
+
+    String shortId = ns.shortPrefix();
+    CreateTable tableRequest = new CreateTable();
+    tableRequest.setName("t_domain_" + shortId);
+    tableRequest.setDatabaseSchema(
+        getOrCreateTable(ns).getDatabaseSchema().getFullyQualifiedName());
+    tableRequest.setColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+    tableRequest.setDomains(List.of(domain.getFullyQualifiedName()));
+    Table table = client.tables().create(tableRequest);
+
+    assertNotNull(table.getDomains());
+    assertEquals(1, table.getDomains().size());
+    assertEquals(domain.getId(), table.getDomains().get(0).getId());
+
+    CreateQuery queryRequest =
+        new CreateQuery()
+            .withName(ns.prefix("query_inherit_domain"))
+            .withQuery("SELECT * FROM domain_test")
+            .withQueryUsedIn(List.of(table.getEntityReference()))
+            .withService(service.getFullyQualifiedName())
+            .withDuration(0.0)
+            .withQueryDate(System.currentTimeMillis());
+
+    Query query = createEntity(queryRequest);
+    assertNotNull(query);
+
+    Query fetchedQuery = getEntityWithFields(query.getId().toString(), "domains");
+    assertNotNull(fetchedQuery.getDomains());
+    assertEquals(1, fetchedQuery.getDomains().size());
+    assertEquals(domain.getId(), fetchedQuery.getDomains().get(0).getId());
+  }
+
+  @Test
+  void test_queryInheritsMultipleDomainsFromQueryUsedIn(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = getOrCreateDatabaseService(ns);
+
+    org.openmetadata.schema.entity.domains.Domain domain1 = testDomain();
+
+    org.openmetadata.schema.api.domains.CreateDomain createDomain2 =
+        new org.openmetadata.schema.api.domains.CreateDomain()
+            .withName(ns.prefix("domain2"))
+            .withDomainType(org.openmetadata.schema.api.domains.CreateDomain.DomainType.AGGREGATE)
+            .withDescription("Second test domain");
+    org.openmetadata.schema.entity.domains.Domain domain2 = client.domains().create(createDomain2);
+
+    String shortId = ns.shortPrefix();
+    CreateTable table1Request = new CreateTable();
+    table1Request.setName("t_multi_domain1_" + shortId);
+    table1Request.setDatabaseSchema(
+        getOrCreateTable(ns).getDatabaseSchema().getFullyQualifiedName());
+    table1Request.setColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+    table1Request.setDomains(List.of(domain1.getFullyQualifiedName()));
+    Table table1 = client.tables().create(table1Request);
+
+    CreateTable table2Request = new CreateTable();
+    table2Request.setName("t_multi_domain2_" + shortId);
+    table2Request.setDatabaseSchema(
+        getOrCreateTable(ns).getDatabaseSchema().getFullyQualifiedName());
+    table2Request.setColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+    table2Request.setDomains(List.of(domain2.getFullyQualifiedName()));
+    Table table2 = client.tables().create(table2Request);
+
+    CreateQuery queryRequest =
+        new CreateQuery()
+            .withName(ns.prefix("query_multi_domains"))
+            .withQuery("SELECT * FROM multi_domain_test")
+            .withQueryUsedIn(List.of(table1.getEntityReference(), table2.getEntityReference()))
+            .withService(service.getFullyQualifiedName())
+            .withDuration(0.0)
+            .withQueryDate(System.currentTimeMillis());
+
+    Query query = createEntity(queryRequest);
+    assertNotNull(query);
+
+    Query fetchedQuery = getEntityWithFields(query.getId().toString(), "domains");
+    assertNotNull(fetchedQuery.getDomains());
+    assertEquals(2, fetchedQuery.getDomains().size());
+
+    List<UUID> domainIds = fetchedQuery.getDomains().stream().map(EntityReference::getId).toList();
+    assertTrue(domainIds.contains(domain1.getId()));
+    assertTrue(domainIds.contains(domain2.getId()));
+  }
+
+  @Test
+  void test_queryDomainsUpdatedWhenQueryUsedInChanges(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = getOrCreateDatabaseService(ns);
+
+    org.openmetadata.schema.entity.domains.Domain domain1 = testDomain();
+
+    org.openmetadata.schema.api.domains.CreateDomain createDomain2 =
+        new org.openmetadata.schema.api.domains.CreateDomain()
+            .withName(ns.prefix("domain2_update"))
+            .withDomainType(org.openmetadata.schema.api.domains.CreateDomain.DomainType.AGGREGATE)
+            .withDescription("Second test domain for updates");
+    org.openmetadata.schema.entity.domains.Domain domain2 = client.domains().create(createDomain2);
+
+    String shortId = ns.shortPrefix();
+    CreateTable table1Request = new CreateTable();
+    table1Request.setName("t_update_domain1_" + shortId);
+    table1Request.setDatabaseSchema(
+        getOrCreateTable(ns).getDatabaseSchema().getFullyQualifiedName());
+    table1Request.setColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+    table1Request.setDomains(List.of(domain1.getFullyQualifiedName()));
+    Table table1 = client.tables().create(table1Request);
+
+    CreateTable table2Request = new CreateTable();
+    table2Request.setName("t_update_domain2_" + shortId);
+    table2Request.setDatabaseSchema(
+        getOrCreateTable(ns).getDatabaseSchema().getFullyQualifiedName());
+    table2Request.setColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+    table2Request.setDomains(List.of(domain2.getFullyQualifiedName()));
+    Table table2 = client.tables().create(table2Request);
+
+    CreateQuery queryRequest =
+        new CreateQuery()
+            .withName(ns.prefix("query_domain_update"))
+            .withQuery("SELECT * FROM domain_update_test")
+            .withQueryUsedIn(List.of(table1.getEntityReference()))
+            .withService(service.getFullyQualifiedName())
+            .withDuration(0.0)
+            .withQueryDate(System.currentTimeMillis());
+
+    Query query = createEntity(queryRequest);
+
+    Query fetchedQuery = getEntityWithFields(query.getId().toString(), "domains");
+    assertNotNull(fetchedQuery.getDomains());
+    assertEquals(1, fetchedQuery.getDomains().size());
+    assertEquals(domain1.getId(), fetchedQuery.getDomains().get(0).getId());
+
+    fetchedQuery.setQueryUsedIn(List.of(table2.getEntityReference()));
+    Query updated = patchEntity(fetchedQuery.getId().toString(), fetchedQuery);
+
+    Query updatedQuery = getEntityWithFields(updated.getId().toString(), "domains");
+    assertNotNull(updatedQuery.getDomains());
+    assertEquals(1, updatedQuery.getDomains().size());
+    assertEquals(domain2.getId(), updatedQuery.getDomains().get(0).getId());
+  }
+
+  @Test
+  void test_queryDomainsClearedWhenQueryUsedInEmpty(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = getOrCreateDatabaseService(ns);
+
+    org.openmetadata.schema.entity.domains.Domain domain = testDomain();
+
+    String shortId = ns.shortPrefix();
+    CreateTable tableRequest = new CreateTable();
+    tableRequest.setName("t_clear_domain_" + shortId);
+    tableRequest.setDatabaseSchema(
+        getOrCreateTable(ns).getDatabaseSchema().getFullyQualifiedName());
+    tableRequest.setColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+    tableRequest.setDomains(List.of(domain.getFullyQualifiedName()));
+    Table table = client.tables().create(tableRequest);
+
+    CreateQuery queryRequest =
+        new CreateQuery()
+            .withName(ns.prefix("query_clear_domain"))
+            .withQuery("SELECT * FROM clear_domain_test")
+            .withQueryUsedIn(List.of(table.getEntityReference()))
+            .withService(service.getFullyQualifiedName())
+            .withDuration(0.0)
+            .withQueryDate(System.currentTimeMillis());
+
+    Query query = createEntity(queryRequest);
+
+    Query fetchedQuery = getEntityWithFields(query.getId().toString(), "domains");
+    assertNotNull(fetchedQuery.getDomains());
+    assertEquals(1, fetchedQuery.getDomains().size());
+
+    fetchedQuery.setQueryUsedIn(List.of());
+    Query updated = patchEntity(fetchedQuery.getId().toString(), fetchedQuery);
+
+    Query updatedQuery = getEntityWithFields(updated.getId().toString(), "domains");
+    assertEquals(0, updatedQuery.getDomains().size());
+  }
+
+  @Test
+  void test_manualDomainAssignmentsIgnored(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = getOrCreateDatabaseService(ns);
+
+    org.openmetadata.schema.entity.domains.Domain domain1 = testDomain();
+
+    org.openmetadata.schema.api.domains.CreateDomain createDomain2 =
+        new org.openmetadata.schema.api.domains.CreateDomain()
+            .withName(ns.prefix("domain2_manual"))
+            .withDomainType(org.openmetadata.schema.api.domains.CreateDomain.DomainType.AGGREGATE)
+            .withDescription("Second test domain for manual assignment test");
+    org.openmetadata.schema.entity.domains.Domain domain2 = client.domains().create(createDomain2);
+
+    String shortId = ns.shortPrefix();
+    CreateTable tableRequest = new CreateTable();
+    tableRequest.setName("t_manual_domain_" + shortId);
+    tableRequest.setDatabaseSchema(
+        getOrCreateTable(ns).getDatabaseSchema().getFullyQualifiedName());
+    tableRequest.setColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+    tableRequest.setDomains(List.of(domain1.getFullyQualifiedName()));
+    Table table = client.tables().create(tableRequest);
+
+    CreateQuery queryRequest =
+        new CreateQuery()
+            .withName(ns.prefix("query_manual_domain"))
+            .withQuery("SELECT * FROM manual_domain_test")
+            .withQueryUsedIn(List.of(table.getEntityReference()))
+            .withService(service.getFullyQualifiedName())
+            .withDomains(List.of(domain2.getFullyQualifiedName()))
+            .withDuration(0.0)
+            .withQueryDate(System.currentTimeMillis());
+
+    Query query = createEntity(queryRequest);
+
+    Query fetchedQuery = getEntityWithFields(query.getId().toString(), "domains");
+    assertNotNull(fetchedQuery.getDomains());
+    assertEquals(1, fetchedQuery.getDomains().size());
+    assertEquals(domain1.getId(), fetchedQuery.getDomains().get(0).getId());
+
+    fetchedQuery.setDomains(List.of(domain2.getEntityReference()));
+    Query patched = patchEntity(fetchedQuery.getId().toString(), fetchedQuery);
+
+    Query patchedQuery = getEntityWithFields(patched.getId().toString(), "domains");
+    assertNotNull(patchedQuery.getDomains());
+    assertEquals(1, patchedQuery.getDomains().size());
+    assertEquals(
+        domain1.getId(),
+        patchedQuery.getDomains().get(0).getId(),
+        "Domain should remain domain1 (from queryUsedIn), not domain2 (from manual patch)");
   }
 }
