@@ -652,6 +652,10 @@ export interface TestServiceConnectionRequest {
      */
     userId?: string;
     /**
+     * Optional value of the workflow name responsible for running the test
+     */
+    workflowName?: string;
+    /**
      * Spark Engine Configuration.
      */
     sparkEngine?: SparkEngineConfiguration;
