@@ -111,16 +111,6 @@ export const getTimeZone = (): string => {
 };
 
 /**
- * @returns UTC offset in format like "UTC+5:30" or "UTC-5:00"
- */
-export const getUTCOffset = (): string => {
-  const now = DateTime.now();
-  const offsetFormatted = now.toFormat('ZZ');
-
-  return `UTC${offsetFormatted}`;
-};
-
-/**
  *
  * @param timeStamp
  * @returns
