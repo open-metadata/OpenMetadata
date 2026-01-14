@@ -1144,3 +1144,102 @@ export const performBulkDownload = async (page: Page, fileName: string) => {
   // Wait for the download process to complete and save the downloaded file somewhere.
   await download.saveAs('downloads/' + download.suggestedFilename());
 };
+
+/**
+ * Fill test case details in the grid
+ * All fields are optional to allow testing of required field validations
+ * Supports all test case CSV columns
+ * @param row - Test case row details
+ * @param page - Playwright page object
+ */
+export const fillTestCaseDetails = async (
+  row: {
+    name?: string;
+    displayName?: string;
+    description?: string;
+    testDefinition?: string;
+    entityFQN?: string;
+    testSuite?: string;
+    parameterValues?: string;
+    computePassedFailedRowCount?: string;
+    useDynamicAssertion?: string;
+    inspectionQuery?: string;
+    tags?: string;
+    glossaryTerms?: string;
+  },
+  page: Page
+) => {
+  // Fill name if provided
+  if (row.name !== undefined) {
+    await fillTextInputDetails(page, row.name);
+  }
+  await page.keyboard.press('ArrowRight', { delay: 100 });
+
+  // Fill displayName if provided
+  if (row.displayName !== undefined) {
+    await fillTextInputDetails(page, row.displayName);
+  }
+  await page.keyboard.press('ArrowRight', { delay: 100 });
+
+  // Fill description if provided
+  if (row.description !== undefined) {
+    await fillDescriptionDetails(page, row.description);
+  }
+  await page.keyboard.press('ArrowRight', { delay: 100 });
+
+  // Fill testDefinition if provided
+  if (row.testDefinition !== undefined) {
+    await fillTextInputDetails(page, row.testDefinition);
+  }
+  await page.keyboard.press('ArrowRight', { delay: 100 });
+
+  // Fill entityFQN if provided
+  if (row.entityFQN !== undefined) {
+    await fillTextInputDetails(page, row.entityFQN);
+  }
+  await page.keyboard.press('ArrowRight', { delay: 100 });
+
+  // Fill testSuite if provided
+  if (row.testSuite !== undefined) {
+    await fillTextInputDetails(page, row.testSuite);
+  }
+  await page.keyboard.press('ArrowRight', { delay: 100 });
+
+  // Fill parameterValues if provided
+  if (row.parameterValues !== undefined) {
+    await fillTextInputDetails(page, row.parameterValues);
+  }
+  await page.keyboard.press('ArrowRight', { delay: 100 });
+
+  // Fill computePassedFailedRowCount if provided
+  if (row.computePassedFailedRowCount !== undefined) {
+    await fillTextInputDetails(page, row.computePassedFailedRowCount);
+  }
+  await page.keyboard.press('ArrowRight', { delay: 100 });
+
+  // Fill useDynamicAssertion if provided
+  if (row.useDynamicAssertion !== undefined) {
+    await fillTextInputDetails(page, row.useDynamicAssertion);
+  }
+  await page.keyboard.press('ArrowRight', { delay: 100 });
+
+  // Fill inspectionQuery if provided
+  if (row.inspectionQuery !== undefined) {
+    await fillTextInputDetails(page, row.inspectionQuery);
+  }
+  await page.keyboard.press('ArrowRight', { delay: 100 });
+
+  // Fill tags if provided
+  if (row.tags !== undefined) {
+    await fillTagDetails(page, row.tags);
+  }
+  await page.keyboard.press('ArrowRight', { delay: 100 });
+
+  // Fill glossaryTerms if provided
+  if (row.glossaryTerms !== undefined) {
+    await fillGlossaryTermDetails(page, {
+      name: row.glossaryTerms,
+      parent: '', // Parent will need to be provided if needed
+    });
+  }
+};

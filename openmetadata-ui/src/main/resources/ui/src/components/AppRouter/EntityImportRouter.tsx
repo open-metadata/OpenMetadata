@@ -25,7 +25,7 @@ const EntityImportRouter = () => {
   const navigate = useNavigate();
   const { fqn } = useFqn();
   const { entityType } = useRequiredParams<{ entityType: ResourceEntity }>();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
+  const { getEntityPermissionByFqn, permissions } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState(true);
   const [entityPermission, setEntityPermission] = useState(
     DEFAULT_ENTITY_PERMISSION
@@ -35,14 +35,23 @@ const EntityImportRouter = () => {
     if (!entityType) {
       return;
     }
+    setIsLoading(true);
+
+    if (entityType === ResourceEntity.TEST_CASE) {
+      const { testCase } = permissions;
+      setEntityPermission(testCase);
+      setIsLoading(false);
+
+      return;
+    }
+
     try {
-      setIsLoading(true);
       const entityPermission = await getEntityPermissionByFqn(entityType, fqn);
       setEntityPermission(entityPermission);
     } finally {
       setIsLoading(false);
     }
-  }, [entityType, fqn]);
+  }, [entityType, fqn, permissions, getEntityPermissionByFqn]);
 
   useEffect(() => {
     if (fqn && SUPPORTED_BULK_IMPORT_EDIT_ENTITY.includes(entityType)) {
@@ -50,7 +59,7 @@ const EntityImportRouter = () => {
     } else {
       navigate(ROUTES.NOT_FOUND);
     }
-  }, [fqn, entityType]);
+  }, [fqn, entityType, fetchResourcePermission]);
 
   if (isLoading) {
     return null;

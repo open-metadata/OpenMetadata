@@ -19,6 +19,7 @@ import { ReactComponent as ImportIcon } from '../assets/svg/ic-import.svg';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { ExportData } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { ExportTypes } from '../constants/Export.constants';
+import { usePermissionProvider } from '../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../enums/entity.enum';
 import LimitWrapper from '../hoc/LimitWrapper';
 import { exportTestCasesInCSV } from '../rest/testAPI';
@@ -39,9 +40,14 @@ export const ExtraTestCaseDropdownOptions = (
   sourceEntityType?: EntityType.TABLE | EntityType.TEST_SUITE
 ): ItemType[] => {
   const { ViewAll, EditAll } = permission;
+  const { permissions } = usePermissionProvider();
+  const { testCase: testCasePermission } = permissions;
+
+  const allowEdit = (EditAll || testCasePermission?.EditAll) && !deleted;
+  const allowView = (ViewAll || testCasePermission?.ViewAll) && !deleted;
 
   return [
-    ...(EditAll && !deleted
+    ...(allowEdit
       ? [
           {
             label: (
@@ -70,7 +76,7 @@ export const ExtraTestCaseDropdownOptions = (
           },
         ]
       : []),
-    ...(ViewAll && !deleted
+    ...(allowView
       ? [
           {
             label: (
@@ -94,7 +100,7 @@ export const ExtraTestCaseDropdownOptions = (
           },
         ]
       : []),
-    ...(EditAll && !deleted
+    ...(allowEdit
       ? [
           {
             label: (
