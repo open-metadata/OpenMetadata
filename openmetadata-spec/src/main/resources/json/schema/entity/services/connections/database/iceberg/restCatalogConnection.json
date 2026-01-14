@@ -28,6 +28,11 @@
           "description": "OAuth2 Client Secret",
           "type": "string",
           "format": "password"
+        },
+        "scopes": {
+          "title": "Scopes",
+          "description": "Oauth2 scope to request. If not provided, PyIceberg will use its default scopes ('catalog')",
+          "type": "string"
         }
       },
       "additionalProperties": false

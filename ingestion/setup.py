@@ -64,7 +64,7 @@ VERSIONS = {
     "cassandra": "cassandra-driver>=3.28.0",
     "opensearch": "opensearch-py~=2.4.0",
     "pydoris": "pydoris-custom>=1.0.2,<1.5",
-    "pyiceberg": "pyiceberg==0.5.1",
+    "pyiceberg": "pyiceberg==0.10.0",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "pyathena": "pyathena~=3.0",
     "sqlalchemy-bigquery": "sqlalchemy-bigquery~=1.15.0",
