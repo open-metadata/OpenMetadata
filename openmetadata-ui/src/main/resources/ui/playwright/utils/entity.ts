@@ -620,14 +620,28 @@ export const updateDescriptionForChildren = async (
 ) => {
   await page
     .locator(`[${rowSelector}="${rowId}"]`)
+    .getByTestId('description')
     .getByTestId('edit-button')
     .click();
 
   await page.waitForSelector('[role="dialog"]', { state: 'visible' });
 
-  await page.locator(descriptionBox).first().click();
-  await page.locator(descriptionBox).first().clear();
-  await page.locator(descriptionBox).first().fill(description);
+  const descriptionInput = page.locator(descriptionBox).first();
+
+  await descriptionInput.waitFor({ state: 'visible' });
+  await expect(descriptionInput).toBeEditable();
+
+  await descriptionInput.click();
+  await descriptionInput.focus();
+  // Needed to add small timeout as this test if unable to clear description field on CI
+  await page.waitForTimeout(500);
+  await descriptionInput.clear();
+
+  // Type new content directly (this replaces the selection)
+  await descriptionInput.fill(description);
+
+  // Verify final state only - skip intermediate empty assertion for rich text editors
+  await expect(descriptionInput).toHaveText(description);
   let updateRequest;
   if (
     entityEndpoint === 'tables' ||

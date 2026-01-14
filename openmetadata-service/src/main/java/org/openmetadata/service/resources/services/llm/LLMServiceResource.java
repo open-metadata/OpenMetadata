@@ -66,7 +66,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 public class LLMServiceResource
     extends ServiceEntityResource<LLMService, LLMServiceRepository, LLMConnection> {
   private final LLMServiceMapper mapper = new LLMServiceMapper();
-  public static final String COLLECTION_PATH = "v1/services/llmServices/";
+  public static final String COLLECTION_PATH = "/v1/services/llmServices/";
   public static final String FIELDS = "pipelines,owners,tags,domains,followers";
 
   @Override

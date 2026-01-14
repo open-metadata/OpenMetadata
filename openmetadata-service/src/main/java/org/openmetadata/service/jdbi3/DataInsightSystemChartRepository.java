@@ -31,6 +31,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.datainsight.system.DataInsightSystemChartResource;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.socket.messages.ChartDataStreamMessage;
@@ -42,7 +43,6 @@ import org.slf4j.LoggerFactory;
 public class DataInsightSystemChartRepository extends EntityRepository<DataInsightCustomChart> {
   private static final Logger LOG = LoggerFactory.getLogger(DataInsightSystemChartRepository.class);
 
-  public static final String COLLECTION_PATH = "/v1/analytics/dataInsights/system/charts";
   private static final SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
   public static final String TIMESTAMP_FIELD = "@timestamp";
 
@@ -98,7 +98,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
 
   public DataInsightSystemChartRepository() {
     super(
-        COLLECTION_PATH,
+        DataInsightSystemChartResource.COLLECTION_PATH,
         DATA_INSIGHT_CUSTOM_CHART,
         DataInsightCustomChart.class,
         Entity.getCollectionDAO().dataInsightCustomChartDAO(),
