@@ -941,9 +941,7 @@ test('Edges are not getting hidden when column is selected and column layer is r
   }
 });
 
-test.only('Verify nodes are expanded and collapsed smoothly', async ({
-  page,
-}) => {
+test('Verify nodes are expanded and collapsed smoothly', async ({ page }) => {
   const { apiContext, afterAction } = await getApiContext(page);
   const table1 = new TableClass();
   const table2 = new TableClass();
@@ -1009,8 +1007,6 @@ test.only('Verify nodes are expanded and collapsed smoothly', async ({
 
         await downstreamCollapseHandle.click();
 
-        await page.waitForTimeout(1000);
-
         await expect(page.getByTestId(`lineage-node-${table2Fqn}`)).toHaveCount(
           0
         );
@@ -1037,8 +1033,6 @@ test.only('Verify nodes are expanded and collapsed smoothly', async ({
         await plusIcon.click();
         await downstreamResponse;
 
-        await page.waitForTimeout(1000);
-
         const table2Node = page.getByTestId(`lineage-node-${table2Fqn}`);
         await expect(table2Node).toBeVisible();
 
@@ -1056,8 +1050,6 @@ test.only('Verify nodes are expanded and collapsed smoothly', async ({
         );
         await downstreamCollapseHandle.click();
 
-        await page.waitForTimeout(1000);
-
         await expect(page.getByTestId(`lineage-node-${table2Fqn}`)).toHaveCount(
           0
         );
@@ -1071,8 +1063,6 @@ test.only('Verify nodes are expanded and collapsed smoothly', async ({
 
         await plusIcon.click();
         await downstreamResponse;
-
-        await page.waitForTimeout(1000);
 
         const table2Node = page.getByTestId(`lineage-node-${table2Fqn}`);
         await expect(table2Node).toBeVisible();
@@ -1095,8 +1085,6 @@ test.only('Verify nodes are expanded and collapsed smoothly', async ({
         await plusIcon.click();
         await downstreamResponse;
 
-        await page.waitForTimeout(1000);
-
         const table3Node = page.getByTestId(`lineage-node-${table3Fqn}`);
         await expect(table3Node).toBeVisible();
         await expect(table3Node).toBeInViewport();
@@ -1112,8 +1100,6 @@ test.only('Verify nodes are expanded and collapsed smoothly', async ({
           'downstream-collapse-handle'
         );
         await downstreamCollapseHandle.click();
-
-        await page.waitForTimeout(1000);
 
         await expect(page.getByTestId(`lineage-node-${table3Fqn}`)).toHaveCount(
           0

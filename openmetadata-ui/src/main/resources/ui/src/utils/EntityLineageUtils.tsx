@@ -165,7 +165,7 @@ export const focusToCoordinates = (
   reactFlowInstance?: ReactFlowInstance,
   zoomValue?: number
 ) => {
-  reactFlowInstance?.setCenter(position.x, position.y + NODE_HEIGHT / 2, {
+  reactFlowInstance?.setCenter(position.x, position.y, {
     zoom: zoomValue ?? ZOOM_VALUE,
     duration: ZOOM_TRANSITION_DURATION,
   });

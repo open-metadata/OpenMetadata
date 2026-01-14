@@ -223,8 +223,9 @@ const CustomNodeV1 = (props: NodeProps) => {
   }, [isColumnLayerEnabled, isEditMode]);
 
   useEffect(() => {
+    const newlyLoadedNodeIdsSet = new Set(newlyLoadedNodeIds);
     const newlyLoadedNodes = nodes.filter((node) =>
-      newlyLoadedNodeIds.includes(node.id)
+      newlyLoadedNodeIdsSet.has(node.id)
     );
 
     if (!isNodeExpanded || newlyLoadedNodes.length === 0) {
