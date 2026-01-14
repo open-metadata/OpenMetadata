@@ -1,3 +1,10 @@
+-- Update ApplicationBotRole to include Trigger operation
+UPDATE policy_entity
+SET json = JSON_ARRAY_APPEND(json, '$.rules[0].operations', 'Trigger')
+WHERE name = 'ApplicationBotPolicy'
+  AND JSON_EXTRACT(json, '$.rules[0].operations') IS NOT NULL
+  AND NOT JSON_CONTAINS(JSON_EXTRACT(json, '$.rules[0].operations'), '"Trigger"');
+
 -- Create table for persisted audit log events
 CREATE TABLE IF NOT EXISTS audit_log_event (
   id BIGINT NOT NULL AUTO_INCREMENT,
