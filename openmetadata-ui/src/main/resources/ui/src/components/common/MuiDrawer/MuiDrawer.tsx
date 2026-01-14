@@ -176,12 +176,14 @@ const MuiDrawer: FC<MuiDrawerProps> = ({
             }}>
             <Button
               color="inherit"
+              data-testid="cancel-button"
               disabled={isLoading}
               variant="text"
               onClick={onClose}>
               {cancelBtnLabel || t('label.cancel')}
             </Button>
             <Button
+              data-testid="create-button"
               disabled={isLoading || isFormInvalid}
               startIcon={
                 isLoading ? (

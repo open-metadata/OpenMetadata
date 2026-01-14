@@ -91,7 +91,7 @@ const AddCustomProperty = ({
   const [propertyTypes, setPropertyTypes] = useState<Array<Type>>([]);
   const [activeField, setActiveField] = useState<string>('');
   const [isCreating, setIsCreating] = useState<boolean>(false);
-  const [isFormInvalid, setIsFormInvalid] = useState<boolean>(false);
+  const [isFormInvalid, setIsFormInvalid] = useState<boolean>(true);
 
   const watchedPropertyType = Form.useWatch('propertyType', form);
 
@@ -344,7 +344,6 @@ const AddCustomProperty = ({
       type: FieldTypes.DESCRIPTION,
       props: {
         'data-testid': 'description',
-        initialValue: '',
       },
     }),
     [t]

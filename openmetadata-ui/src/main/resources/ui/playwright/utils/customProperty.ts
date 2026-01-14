@@ -599,34 +599,15 @@ export const addCustomPropertiesForEntity = async ({
   // Add Custom property for selected entity
   await page.click('[data-testid="add-field-button"]');
 
-  // Assert that breadcrumb has correct link for the entity type
-  // The second breadcrumb item should be "Custom Attributes" with the correct entity type in URL
-  const customAttributesBreadcrumb = page.locator(
-    '[data-testid="breadcrumb-link"]:nth-child(2) a'
-  );
+  // Check if Create button is initially disabled
+  await expect(page.locator('[data-testid="create-button"]')).toBeDisabled();
 
-  if (customPropertyData.entityApiType) {
-    // Verify that the Custom Attributes breadcrumb link contains the correct entity type
-    await expect(customAttributesBreadcrumb).toHaveAttribute(
-      'href',
-      `/settings/customProperties/${customPropertyData.entityApiType}`
-    );
-  }
-
-  // Trigger validation
-  await page.click('[data-testid="create-button"]');
-
-  await expect(page.locator('#name_help')).toContainText('Name is required');
-  await expect(page.locator('#propertyType_help')).toContainText(
-    'Property Type is required'
-  );
-  await expect(page.locator('#description_help')).toContainText(
-    'Description is required'
-  );
+  // Click the switch to show service doc panel
+  await page.getByRole('switch').click();
 
   // Validation checks
   await page.fill(
-    '[data-testid="name"]',
+    '[data-testid="name"] input',
     CUSTOM_PROPERTY_INVALID_NAMES.CAPITAL_CASE
   );
 
@@ -635,7 +616,7 @@ export const addCustomPropertiesForEntity = async ({
   );
 
   await page.fill(
-    '[data-testid="name"]',
+    '[data-testid="name"] input',
     CUSTOM_PROPERTY_INVALID_NAMES.WITH_UNDERSCORE
   );
 
@@ -644,7 +625,7 @@ export const addCustomPropertiesForEntity = async ({
   );
 
   await page.fill(
-    '[data-testid="name"]',
+    '[data-testid="name"] input',
     CUSTOM_PROPERTY_INVALID_NAMES.WITH_SPACE
   );
 
@@ -653,7 +634,7 @@ export const addCustomPropertiesForEntity = async ({
   );
 
   await page.fill(
-    '[data-testid="name"]',
+    '[data-testid="name"] input',
     CUSTOM_PROPERTY_INVALID_NAMES.WITH_DOTS
   );
 
@@ -662,25 +643,25 @@ export const addCustomPropertiesForEntity = async ({
   );
 
   // Name in another language
-  await page.fill('[data-testid="name"]', '汝らヴェディア');
+  await page.fill('[data-testid="name"] input', '汝らヴェディア');
 
   await expect(page.locator('#name_help')).not.toBeVisible();
 
   // Correct name
-  await page.fill('[data-testid="name"]', propertyName);
+  await page.fill('[data-testid="name"] input', propertyName);
 
   // displayName
-  await page.fill('[data-testid="display-name"]', propertyName);
+  await page.fill('[data-testid="display-name"] input', propertyName);
 
   // Select custom type
-  await page.locator('[id="root\\/propertyType"]').fill(customType);
+  await page.locator('[data-testid="propertyType"]').click();
   await page.getByTitle(`${customType}`, { exact: true }).click();
 
   // Enum configuration
   if (customType === 'Enum' && enumConfig) {
     for (const val of enumConfig.values) {
       await page.click('#root\\/enumConfig');
-      await page.fill('#root\\/enumConfig', val);
+      await page.keyboard.type(val);
       await page.press('#root\\/enumConfig', 'Enter');
     }
     await clickOutside(page);
@@ -693,7 +674,7 @@ export const addCustomPropertiesForEntity = async ({
   if (customType === 'Table' && tableConfig) {
     for (const val of tableConfig.columns) {
       await page.click('#root\\/columns');
-      await page.fill('#root\\/columns', val);
+      await page.keyboard.type(val);
       await page.press('#root\\/columns', 'Enter');
     }
     await clickOutside(page);
@@ -706,7 +687,7 @@ export const addCustomPropertiesForEntity = async ({
   ) {
     for (const val of entityReferenceConfig) {
       await page.click('#root\\/entityReferenceConfig');
-      await page.fill('#root\\/entityReferenceConfig', val);
+      await page.keyboard.type(val);
       await page.click(`[title="${val}"]`);
     }
   }
@@ -725,11 +706,17 @@ export const addCustomPropertiesForEntity = async ({
   }
 
   // Description
+  await page.locator(`${descriptionBox} p`).click();
+  await page.waitForTimeout(200);
+  await page.keyboard.type(customPropertyData.description, { delay: 50 });
+  await page.waitForTimeout(200);
+  // Click on name field to blur description and trigger validation without closing modal
+  await page.click('[data-testid="name"] input');
 
-  await page.locator(descriptionBox).fill(customPropertyData.description);
-
+  await expect(page.locator('#propertyType_help')).not.toBeVisible();
+  await expect(page.locator('#description_help')).not.toBeVisible();
   const createPropertyPromise = page.waitForResponse(
-    '/api/v1/metadata/types/name/*?fields=customProperties'
+    '/api/v1/metadata/types/*'
   );
 
   await page.click('[data-testid="create-button"]');

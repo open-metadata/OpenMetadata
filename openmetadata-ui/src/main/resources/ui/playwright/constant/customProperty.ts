@@ -32,6 +32,7 @@ export const CustomPropertySupportedEntityList = [
   EntityTypeEndpoint.METRIC,
   EntityTypeEndpoint.Domain,
   EntityTypeEndpoint.Chart,
+  EntityTypeEndpoint.TableColumn,
 ];
 
 export const ENTITY_REFERENCE_PROPERTIES = [
@@ -407,6 +408,26 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'charts',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
+  },
+  entity_tableColumn: {
+    name: 'table-column',
+    description: 'This is Table Column custom property',
+    integerValue: '23',
+    stringValue: 'This is string propery',
+    markdownValue: 'This is markdown value',
+    enumConfig: {
+      values: ['enum1', 'enum2', 'enum3'],
+      multiSelect: false,
+    },
+    dateFormatConfig: 'yyyy-MM-dd',
+    dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
+    timeFormatConfig: 'HH:mm:ss',
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
+    entityObj: {},
+    entityApiType: 'table-column',
     tableConfig: {
       columns: ['pw-column1', 'pw-column2'],
     },
