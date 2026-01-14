@@ -509,6 +509,7 @@ secretsManagerConfiguration:
     clientSecret: ${OM_SM_CLIENT_SECRET:-""}
     tenantId: ${OM_SM_TENANT_ID:-""}
     vaultName: ${OM_SM_VAULT_NAME:-""}
+    expiresAfterDays: ${OM_SM_EXPIRES_AFTER_DAYS:-""} # Number of days after which the secret expires (Azure Key Vault only)
     ## For GCP
     projectId: ${OM_SM_PROJECT_ID:-""}
     ## For Kubernetes
