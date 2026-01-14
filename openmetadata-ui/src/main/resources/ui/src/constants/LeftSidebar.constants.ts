@@ -95,6 +95,13 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         icon: AlertIcon,
         dataTestId: `app-bar-item-${SidebarItem.OBSERVABILITY_ALERT}`,
       },
+      {
+        key: ROUTES.RULES_LIBRARY,
+        title: 'label.rules-library',
+        redirect_url: ROUTES.RULES_LIBRARY,
+        icon: DataQualityIcon,
+        dataTestId: `app-bar-item-rules-library`,
+      },
     ],
   },
   {
