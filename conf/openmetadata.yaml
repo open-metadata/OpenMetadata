@@ -415,6 +415,15 @@ elasticsearch:
   payLoadSize: ${ELASTICSEARCH_PAYLOAD_BYTES_SIZE:-10485760}
   searchIndexMappingLanguage : ${ELASTICSEARCH_INDEX_MAPPING_LANG:-EN}
   searchIndexFactoryClassName : org.openmetadata.service.search.SearchIndexFactory
+  # AWS IAM Authentication Configuration (for AWS OpenSearch or OpenSearch Serverless)
+  aws:
+    useIamAuth: ${OPENSEARCH_USE_IAM_AUTH:-false}  # Enable AWS IAM authentication
+    region: ${AWS_REGION:-us-east-1}  # AWS region (required when useIamAuth is true)
+    serviceName: ${AWS_SERVICE_NAME:-es}  # Service name: "es" for OpenSearch, "aoss" for OpenSearch Serverless
+    # Optional: Explicit AWS credentials (if not provided, uses default credential chain)
+    accessKeyId: ${AWS_ACCESS_KEY_ID:-""}
+    secretAccessKey: ${AWS_SECRET_ACCESS_KEY:-""}
+    sessionToken: ${AWS_SESSION_TOKEN:-""}  # For temporary credentials
   naturalLanguageSearch:
     enabled: false
     embeddingProvider: ${EMBEDDING_PROVIDER:-bedrock}
