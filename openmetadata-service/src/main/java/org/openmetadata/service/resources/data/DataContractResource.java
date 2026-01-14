@@ -89,7 +89,7 @@ import org.openmetadata.service.util.RestUtil;
 @Consumes({MediaType.APPLICATION_JSON, "application/yaml", "text/yaml"})
 @Collection(name = "dataContracts")
 public class DataContractResource extends EntityResource<DataContract, DataContractRepository> {
-  public static final String COLLECTION_PATH = "v1/dataContracts/";
+  public static final String COLLECTION_PATH = "/v1/dataContracts/";
   static final String FIELDS = "owners,reviewers,extension";
 
   @Override
