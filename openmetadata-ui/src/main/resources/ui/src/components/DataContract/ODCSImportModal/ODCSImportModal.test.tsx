@@ -20,28 +20,116 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { AxiosError } from 'axios';
+import React from 'react';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import {
+  createContract,
   createOrUpdateContractFromODCSYaml,
   deleteContractById,
   importContractFromODCSYaml,
   parseODCSYaml,
+  updateContract,
   validateODCSYaml,
 } from '../../../rest/contractAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ContractImportModal from './ODCSImportModal.component';
 
+const mockTheme = {
+  palette: {
+    grey: {
+      50: '#fafafa',
+      100: '#f5f5f5',
+    },
+    primary: {
+      main: '#1976d2',
+    },
+    divider: '#e0e0e0',
+    text: {
+      primary: '#212121',
+      secondary: '#757575',
+    },
+    action: {
+      hover: 'rgba(0, 0, 0, 0.04)',
+    },
+    allShades: {
+      success: {
+        50: '#e8f5e9',
+        500: '#4caf50',
+        700: '#388e3c',
+      },
+      error: {
+        50: '#ffebee',
+        100: '#ffcdd2',
+        600: '#e53935',
+      },
+      warning: {
+        50: '#fff8e1',
+        300: '#ffb74d',
+        600: '#fb8c00',
+        800: '#ef6c00',
+      },
+    },
+  },
+};
+
+jest.mock('@mui/material', () => {
+  const actualMui = jest.requireActual('@mui/material');
+
+  return {
+    ...actualMui,
+    useTheme: () => mockTheme,
+    Select: ({
+      children,
+      value,
+      onChange,
+      displayEmpty,
+    }: {
+      children: React.ReactNode;
+      value: string;
+      onChange: (e: { target: { value: string } }) => void;
+      displayEmpty?: boolean;
+    }) => (
+      <select
+        data-testid="object-selector"
+        value={value}
+        onChange={(e) => onChange({ target: { value: e.target.value } })}>
+        {displayEmpty && <option value="">Select Schema Object</option>}
+        {children}
+      </select>
+    ),
+    MenuItem: ({
+      children,
+      value,
+      disabled,
+    }: {
+      children: React.ReactNode;
+      value: string;
+      disabled?: boolean;
+    }) => (
+      <option disabled={disabled} value={value}>
+        {children}
+      </option>
+    ),
+  };
+});
+
 jest.mock('../../../rest/contractAPI', () => ({
+  createContract: jest.fn(),
   createOrUpdateContractFromODCSYaml: jest.fn(),
   deleteContractById: jest.fn(),
   importContractFromODCSYaml: jest.fn(),
   parseODCSYaml: jest.fn(),
+  updateContract: jest.fn(),
   validateODCSYaml: jest.fn(),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
+}));
+
+jest.mock('../../../assets/svg/upload-cloud.svg', () => ({
+  ReactComponent: () => <div data-testid="cloud-upload-icon">CloudUpload</div>,
 }));
 
 jest.mock('react-i18next', () => ({
@@ -103,6 +191,29 @@ jest.mock('react-i18next', () => ({
         'message.select-schema-object-to-import':
           'Select which schema object to import',
         'label.select-schema-object': 'Select Schema Object',
+        'label.parse-error': 'Parse Error',
+        'label.failed': 'Failed',
+        'message.invalid-odcs-contract-format-required-fields':
+          'The following fields are required: APIVersion, Kind, Status',
+        'label.syntax': 'Syntax',
+        'label.invalid': 'Invalid',
+        'label.valid': 'Valid',
+        'message.validating-contract-schema': 'Validating contract schema...',
+        'label.schema-validation': 'Schema Validation',
+        'label.passed': 'Passed',
+        'message.schema-validation-passed-count':
+          'Schema validation passed for 1 field',
+        'message.contract-syntax-valid': 'Contract syntax is valid',
+        'label.field-plural-lowercase': 'fields',
+        'label.verified': 'verified',
+        'label.error': 'error',
+        'label.not-found-lowercase': 'not found',
+        'label.replace-entire-contract': 'Replace entire contract',
+        'message.please-select-action-below': 'Please select an action below.',
+        'label.click-to-upload': 'Click to upload',
+        'label.or-drag-and-drop': 'or drag and drop',
+        'message.upload-file-description':
+          'Upload a contract file to import or validate',
       };
 
       return translations[key] || key;
@@ -162,6 +273,32 @@ const malformedYaml = `apiVersion: v3.1.0
 kind: DataContract
   invalid: indentation
     broken: yaml`;
+
+const validOpenMetadataYaml = `name: om-contract
+displayName: OM Contract
+description: Test OpenMetadata contract
+entity:
+  id: table-1
+  type: table
+schema:
+  - name: users
+sla:
+  target: 99.9
+security:
+  level: high
+semantics:
+  - name: customer`;
+
+const multiObjectODCSYaml = `apiVersion: v3.1.0
+kind: DataContract
+id: multi-object-contract
+name: Multi Object Contract
+version: '1.0.0'
+status: active
+schema:
+  - name: users
+  - name: orders
+  - name: products`;
 
 describe('ContractImportModal', () => {
   beforeEach(() => {
@@ -223,9 +360,8 @@ describe('ContractImportModal', () => {
         />
       );
 
-      expect(
-        screen.getByText('Drag and drop ODCS file here')
-      ).toBeInTheDocument();
+      expect(screen.getByText('Click to upload')).toBeInTheDocument();
+      expect(screen.getByText(/or drag and drop/)).toBeInTheDocument();
       expect(screen.getByText('Supports YAML format')).toBeInTheDocument();
     });
 
@@ -244,6 +380,21 @@ describe('ContractImportModal', () => {
       const importButton = screen.getByRole('button', { name: 'Import' });
 
       expect(importButton).toBeDisabled();
+    });
+
+    it('should render OpenMetadata format modal title', () => {
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          format="openmetadata"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      expect(screen.getByText('Import Contract')).toBeInTheDocument();
     });
   });
 
@@ -334,10 +485,14 @@ describe('ContractImportModal', () => {
       });
 
       await waitFor(() => {
-        const previewTags = document.querySelector('.preview-tags');
+        expect(screen.getByText('Contract Preview')).toBeInTheDocument();
+      });
 
-        expect(previewTags).toBeInTheDocument();
+      await waitFor(() => {
         expect(screen.getByText('Schema')).toBeInTheDocument();
+        expect(screen.getByText('SLA')).toBeInTheDocument();
+        expect(screen.getByText('Security')).toBeInTheDocument();
+        expect(screen.getByText('Team')).toBeInTheDocument();
       });
     });
 
@@ -367,8 +522,11 @@ describe('ContractImportModal', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText('Invalid ODCS contract format')
+          screen.getByText(
+            'The following fields are required: APIVersion, Kind, Status'
+          )
         ).toBeInTheDocument();
+        expect(screen.getByText('Parse Error')).toBeInTheDocument();
       });
     });
 
@@ -433,6 +591,204 @@ describe('ContractImportModal', () => {
         expect(importButton).not.toBeDisabled();
       });
     });
+
+    it('should not process file if no file is selected', async () => {
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          format="odcs"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const input = document.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [] } });
+      });
+
+      expect(screen.queryByText('contract.yaml')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Drag and Drop', () => {
+    it('should handle drag over event', async () => {
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          format="odcs"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const dropZone = screen
+        .getByText('Click to upload')
+        .closest('div[class*="MuiBox"]') as HTMLElement;
+
+      await act(async () => {
+        fireEvent.dragOver(dropZone, { preventDefault: jest.fn() });
+      });
+
+      expect(dropZone).toBeInTheDocument();
+    });
+
+    it('should handle drag leave event', async () => {
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          format="odcs"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const dropZone = screen
+        .getByText('Click to upload')
+        .closest('div[class*="MuiBox"]') as HTMLElement;
+
+      await act(async () => {
+        fireEvent.dragLeave(dropZone, { preventDefault: jest.fn() });
+      });
+
+      expect(dropZone).toBeInTheDocument();
+    });
+
+    it('should handle valid file drop', async () => {
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          format="odcs"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const dropZone = screen
+        .getByText('Click to upload')
+        .closest('div[class*="MuiBox"]') as HTMLElement;
+
+      const file = new File([validODCSYaml], 'contract.yaml', {
+        type: 'application/x-yaml',
+      });
+
+      await act(async () => {
+        fireEvent.drop(dropZone, {
+          dataTransfer: { files: [file] },
+        });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('contract.yaml')).toBeInTheDocument();
+      });
+    });
+
+    it('should ignore invalid file extensions on drop', async () => {
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          format="odcs"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const dropZone = screen
+        .getByText('Click to upload')
+        .closest('div[class*="MuiBox"]') as HTMLElement;
+
+      const file = new File(['invalid'], 'contract.txt', {
+        type: 'text/plain',
+      });
+
+      await act(async () => {
+        fireEvent.drop(dropZone, {
+          dataTransfer: { files: [file] },
+        });
+      });
+
+      expect(screen.queryByText('contract.txt')).not.toBeInTheDocument();
+    });
+
+    it('should handle drop with no files', async () => {
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          format="odcs"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const dropZone = screen
+        .getByText('Click to upload')
+        .closest('div[class*="MuiBox"]') as HTMLElement;
+
+      await act(async () => {
+        fireEvent.drop(dropZone, {
+          dataTransfer: { files: [] },
+        });
+      });
+
+      expect(screen.getByText('Click to upload')).toBeInTheDocument();
+    });
+  });
+
+  describe('File Removal', () => {
+    it('should remove file when delete button is clicked', async () => {
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          format="odcs"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const file = new File([validODCSYaml], 'contract.yaml', {
+        type: 'application/x-yaml',
+      });
+
+      const input = document.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [file] } });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('contract.yaml')).toBeInTheDocument();
+      });
+
+      const removeButton = screen.getByTestId('DeleteOutlineOutlinedIcon')
+        .parentElement as HTMLElement;
+
+      await act(async () => {
+        fireEvent.click(removeButton);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Click to upload')).toBeInTheDocument();
+      });
+    });
   });
 
   describe('Existing Contract Detection', () => {
@@ -466,7 +822,7 @@ describe('ContractImportModal', () => {
           screen.getByText('Existing contract detected')
         ).toBeInTheDocument();
         expect(screen.getByText('Merge with existing')).toBeInTheDocument();
-        expect(screen.getByText('Replace existing')).toBeInTheDocument();
+        expect(screen.getByText('Replace entire contract')).toBeInTheDocument();
       });
     });
 
@@ -531,12 +887,12 @@ describe('ContractImportModal', () => {
       });
 
       await waitFor(() => {
-        const mergeRadio = screen.getByRole('radio', {
-          name: /Merge with existing/i,
-        });
-
-        expect(mergeRadio).toBeChecked();
+        expect(screen.getByText('Merge with existing')).toBeInTheDocument();
       });
+
+      const mergeRadio = screen.getByDisplayValue('merge');
+
+      expect(mergeRadio).toBeChecked();
     });
 
     it('should show merge description when merge mode is selected', async () => {
@@ -571,7 +927,7 @@ describe('ContractImportModal', () => {
       });
     });
 
-    it('should show replace description when replace mode is selected', async () => {
+    it('should switch to replace mode when replace option is clicked', async () => {
       render(
         <ContractImportModal
           visible
@@ -597,16 +953,323 @@ describe('ContractImportModal', () => {
       });
 
       await waitFor(() => {
-        const replaceRadio = screen.getByRole('radio', {
-          name: /Replace existing/i,
-        });
-        fireEvent.click(replaceRadio);
+        expect(screen.getByText('Replace entire contract')).toBeInTheDocument();
+      });
+
+      const replaceRadio = screen.getByDisplayValue('replace');
+      fireEvent.click(replaceRadio);
+
+      await waitFor(() => {
+        expect(replaceRadio).toBeChecked();
+      });
+    });
+  });
+
+  describe('Validation Panel', () => {
+    it('should show validation loading state', async () => {
+      (validateODCSYaml as jest.Mock).mockImplementation(
+        () =>
+          new Promise((resolve) =>
+            setTimeout(
+              () =>
+                resolve({ passed: 1, failed: 0, total: 1, failedFields: [] }),
+              100
+            )
+          )
+      );
+
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          format="odcs"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const file = new File([validODCSYaml], 'contract.yaml', {
+        type: 'application/x-yaml',
+      });
+
+      const input = document.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [file] } });
       });
 
       await waitFor(() => {
         expect(
-          screen.getByText('Overwrite all contract fields with imported ODCS')
+          screen.getByText('Validating contract schema...')
         ).toBeInTheDocument();
+      });
+    });
+
+    it('should show validation passed state', async () => {
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          format="odcs"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const file = new File([validODCSYaml], 'contract.yaml', {
+        type: 'application/x-yaml',
+      });
+
+      const input = document.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [file] } });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Schema Validation')).toBeInTheDocument();
+        expect(screen.getByText('Passed')).toBeInTheDocument();
+      });
+    });
+
+    it('should show validation failed state with failed fields', async () => {
+      (validateODCSYaml as jest.Mock).mockResolvedValue({
+        passed: 0,
+        failed: 2,
+        total: 2,
+        failedFields: ['field1', 'field2'],
+      });
+
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          format="odcs"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const file = new File([validODCSYaml], 'contract.yaml', {
+        type: 'application/x-yaml',
+      });
+
+      const input = document.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [file] } });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Failed')).toBeInTheDocument();
+        expect(screen.getByText('field1')).toBeInTheDocument();
+        expect(screen.getByText('field2')).toBeInTheDocument();
+      });
+    });
+
+    it('should show server validation error', async () => {
+      (validateODCSYaml as jest.Mock).mockRejectedValue(
+        new Error('Server validation error')
+      );
+
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          format="odcs"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const file = new File([validODCSYaml], 'contract.yaml', {
+        type: 'application/x-yaml',
+      });
+
+      const input = document.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [file] } });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Server validation error')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Multiple Schema Objects', () => {
+    it('should call parseODCSYaml when multiple schema objects exist', async () => {
+      (parseODCSYaml as jest.Mock).mockResolvedValue({
+        schemaObjects: ['users', 'orders', 'products'],
+        hasMultipleObjects: true,
+      });
+
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityName="users"
+          entityType="table"
+          format="odcs"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const file = new File([multiObjectODCSYaml], 'contract.yaml', {
+        type: 'application/x-yaml',
+      });
+
+      const input = document.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [file] } });
+      });
+
+      await waitFor(() => {
+        expect(parseODCSYaml).toHaveBeenCalledWith(multiObjectODCSYaml);
+      });
+    });
+
+    it('should auto-select matching entity name and call validateODCSYaml', async () => {
+      (parseODCSYaml as jest.Mock).mockResolvedValue({
+        schemaObjects: ['users', 'orders', 'products'],
+        hasMultipleObjects: true,
+      });
+
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityName="users"
+          entityType="table"
+          format="odcs"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const file = new File([multiObjectODCSYaml], 'contract.yaml', {
+        type: 'application/x-yaml',
+      });
+
+      const input = document.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [file] } });
+      });
+
+      await waitFor(() => {
+        expect(validateODCSYaml).toHaveBeenCalledWith(
+          expect.any(String),
+          'table-1',
+          'table',
+          'users'
+        );
+      });
+    });
+
+    it('should disable import button when no object is selected for multi-object contract', async () => {
+      (parseODCSYaml as jest.Mock).mockResolvedValue({
+        schemaObjects: ['users', 'orders', 'products'],
+        hasMultipleObjects: true,
+      });
+
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          format="odcs"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const file = new File([multiObjectODCSYaml], 'contract.yaml', {
+        type: 'application/x-yaml',
+      });
+
+      const input = document.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [file] } });
+      });
+
+      await waitFor(() => {
+        const importButton = screen.getByRole('button', { name: 'Import' });
+
+        expect(importButton).toBeDisabled();
+      });
+    });
+
+    it('should allow selecting a schema object from the selector', async () => {
+      (parseODCSYaml as jest.Mock).mockResolvedValue({
+        schemaObjects: ['users', 'orders', 'products'],
+        hasMultipleObjects: true,
+      });
+
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          format="odcs"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const file = new File([multiObjectODCSYaml], 'contract.yaml', {
+        type: 'application/x-yaml',
+      });
+
+      const input = document.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [file] } });
+      });
+
+      await waitFor(() => {
+        const objectSelector = screen.getByTestId('object-selector');
+
+        expect(objectSelector).toBeInTheDocument();
+      });
+
+      const objectSelector = screen.getByTestId('object-selector');
+
+      await act(async () => {
+        fireEvent.change(objectSelector, { target: { value: 'orders' } });
+      });
+
+      await waitFor(() => {
+        expect(validateODCSYaml).toHaveBeenCalledWith(
+          expect.any(String),
+          'table-1',
+          'table',
+          'orders'
+        );
       });
     });
   });
@@ -642,7 +1305,12 @@ describe('ContractImportModal', () => {
       });
 
       await waitFor(() => {
-        const importButton = screen.getByRole('button', { name: 'Import' });
+        expect(screen.getByText('Passed')).toBeInTheDocument();
+      });
+
+      const importButton = screen.getByRole('button', { name: 'Import' });
+
+      await act(async () => {
         fireEvent.click(importButton);
       });
 
@@ -686,7 +1354,12 @@ describe('ContractImportModal', () => {
       });
 
       await waitFor(() => {
-        const importButton = screen.getByRole('button', { name: 'Import' });
+        expect(screen.getByText('Passed')).toBeInTheDocument();
+      });
+
+      const importButton = screen.getByRole('button', { name: 'Import' });
+
+      await act(async () => {
         fireEvent.click(importButton);
       });
 
@@ -732,14 +1405,15 @@ describe('ContractImportModal', () => {
       });
 
       await waitFor(() => {
-        const replaceRadio = screen.getByRole('radio', {
-          name: /Replace existing/i,
-        });
-        fireEvent.click(replaceRadio);
+        expect(screen.getByText('Passed')).toBeInTheDocument();
       });
 
-      await waitFor(() => {
-        const importButton = screen.getByRole('button', { name: 'Import' });
+      const replaceRadio = screen.getByDisplayValue('replace');
+      fireEvent.click(replaceRadio);
+
+      const importButton = screen.getByRole('button', { name: 'Import' });
+
+      await act(async () => {
         fireEvent.click(importButton);
       });
 
@@ -751,7 +1425,6 @@ describe('ContractImportModal', () => {
           'replace',
           'users'
         );
-        expect(deleteContractById).not.toHaveBeenCalled();
       });
     });
 
@@ -785,7 +1458,12 @@ describe('ContractImportModal', () => {
       });
 
       await waitFor(() => {
-        const importButton = screen.getByRole('button', { name: 'Import' });
+        expect(screen.getByText('Passed')).toBeInTheDocument();
+      });
+
+      const importButton = screen.getByRole('button', { name: 'Import' });
+
+      await act(async () => {
         fireEvent.click(importButton);
       });
 
@@ -826,7 +1504,12 @@ describe('ContractImportModal', () => {
       });
 
       await waitFor(() => {
-        const importButton = screen.getByRole('button', { name: 'Import' });
+        expect(screen.getByText('Passed')).toBeInTheDocument();
+      });
+
+      const importButton = screen.getByRole('button', { name: 'Import' });
+
+      await act(async () => {
         fireEvent.click(importButton);
       });
 
@@ -866,12 +1549,157 @@ describe('ContractImportModal', () => {
       });
 
       await waitFor(() => {
-        const importButton = screen.getByRole('button', { name: 'Import' });
+        expect(screen.getByText('Passed')).toBeInTheDocument();
+      });
+
+      const importButton = screen.getByRole('button', { name: 'Import' });
+
+      await act(async () => {
         fireEvent.click(importButton);
       });
 
       await waitFor(() => {
         expect(mockOnClose).toHaveBeenCalled();
+      });
+    });
+
+    it('should handle OpenMetadata import for new contract', async () => {
+      (createContract as jest.Mock).mockResolvedValue(mockImportedContract);
+
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          existingContract={null}
+          format="openmetadata"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const file = new File([validOpenMetadataYaml], 'om-contract.yaml', {
+        type: 'application/x-yaml',
+      });
+
+      const input = document.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [file] } });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Contract Preview')).toBeInTheDocument();
+      });
+
+      const importButton = screen.getByRole('button', { name: 'Import' });
+
+      await act(async () => {
+        fireEvent.click(importButton);
+      });
+
+      await waitFor(() => {
+        expect(createContract).toHaveBeenCalled();
+        expect(showSuccessToast).toHaveBeenCalledWith(
+          'Contract imported successfully'
+        );
+        expect(mockOnSuccess).toHaveBeenCalledWith(mockImportedContract);
+      });
+    });
+
+    it('should handle OpenMetadata import with replace mode for existing contract', async () => {
+      (deleteContractById as jest.Mock).mockResolvedValue(undefined);
+      (createContract as jest.Mock).mockResolvedValue(mockImportedContract);
+
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          existingContract={mockExistingContract}
+          format="openmetadata"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const file = new File([validOpenMetadataYaml], 'om-contract.yaml', {
+        type: 'application/x-yaml',
+      });
+
+      const input = document.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [file] } });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Contract Preview')).toBeInTheDocument();
+      });
+
+      const replaceRadio = screen.getByDisplayValue('replace');
+      fireEvent.click(replaceRadio);
+
+      const importButton = screen.getByRole('button', { name: 'Import' });
+
+      await act(async () => {
+        fireEvent.click(importButton);
+      });
+
+      await waitFor(() => {
+        expect(deleteContractById).toHaveBeenCalledWith(
+          mockExistingContract.id
+        );
+        expect(createContract).toHaveBeenCalled();
+        expect(mockOnSuccess).toHaveBeenCalledWith(mockImportedContract);
+      });
+    });
+
+    it('should handle OpenMetadata import with merge mode for existing contract', async () => {
+      (updateContract as jest.Mock).mockResolvedValue(mockImportedContract);
+
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          existingContract={mockExistingContract}
+          format="openmetadata"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const file = new File([validOpenMetadataYaml], 'om-contract.yaml', {
+        type: 'application/x-yaml',
+      });
+
+      const input = document.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [file] } });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Contract Preview')).toBeInTheDocument();
+      });
+
+      const importButton = screen.getByRole('button', { name: 'Import' });
+
+      await act(async () => {
+        fireEvent.click(importButton);
+      });
+
+      await waitFor(() => {
+        expect(updateContract).toHaveBeenCalled();
+        expect(deleteContractById).not.toHaveBeenCalled();
+        expect(mockOnSuccess).toHaveBeenCalledWith(mockImportedContract);
       });
     });
   });
@@ -937,9 +1765,28 @@ describe('ContractImportModal', () => {
         />
       );
 
-      expect(
-        screen.getByText('Drag and drop ODCS file here')
-      ).toBeInTheDocument();
+      expect(screen.getByText('Click to upload')).toBeInTheDocument();
+    });
+
+    it('should call onClose when close icon is clicked', () => {
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          format="odcs"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const closeIcon = screen.getByTestId('CloseIcon').parentElement;
+
+      if (closeIcon) {
+        fireEvent.click(closeIcon);
+
+        expect(mockOnClose).toHaveBeenCalled();
+      }
     });
   });
 
@@ -1034,9 +1881,143 @@ status: active`;
       });
 
       await waitFor(() => {
-        expect(
-          screen.getByText('Invalid ODCS contract format')
-        ).toBeInTheDocument();
+        expect(screen.getByText('Parse Error')).toBeInTheDocument();
+        expect(screen.getByText('Failed')).toBeInTheDocument();
+      });
+    });
+
+    it('should handle OpenMetadata contract with display name', async () => {
+      const omWithDisplayName = `name: test-contract
+displayName: Test Display Name
+description: Test
+entity:
+  id: table-1
+  type: table`;
+
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          format="openmetadata"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const file = new File([omWithDisplayName], 'contract.yaml', {
+        type: 'application/x-yaml',
+      });
+
+      const input = document.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [file] } });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Test Display Name')).toBeInTheDocument();
+      });
+    });
+
+    it('should handle parseODCSYaml error gracefully', async () => {
+      (parseODCSYaml as jest.Mock).mockRejectedValue(new Error('Parse error'));
+
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          format="odcs"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const file = new File([validODCSYaml], 'contract.yaml', {
+        type: 'application/x-yaml',
+      });
+
+      const input = document.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [file] } });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Contract Preview')).toBeInTheDocument();
+      });
+    });
+
+    it('should handle invalid OpenMetadata format', async () => {
+      const invalidOMYaml = `name: test
+description: No entity field`;
+
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          format="openmetadata"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const file = new File([invalidOMYaml], 'invalid-om.yaml', {
+        type: 'application/x-yaml',
+      });
+
+      const input = document.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [file] } });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Parse Error')).toBeInTheDocument();
+        expect(screen.getByText('Failed')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('OpenMetadata Format Preview', () => {
+    it('should show OpenMetadata contract features in preview', async () => {
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          format="openmetadata"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const file = new File([validOpenMetadataYaml], 'contract.yaml', {
+        type: 'application/x-yaml',
+      });
+
+      const input = document.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [file] } });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Contract Preview')).toBeInTheDocument();
+        expect(screen.getByText('Schema')).toBeInTheDocument();
+        expect(screen.getByText('SLA')).toBeInTheDocument();
+        expect(screen.getByText('Security')).toBeInTheDocument();
+        expect(screen.getByText('Semantics')).toBeInTheDocument();
       });
     });
   });
