@@ -29,6 +29,8 @@ import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.security.Principal;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -173,17 +175,53 @@ public final class SecurityUtil {
     return StringUtils.EMPTY;
   }
 
-  public static String findTeamFromClaims(String jwtTeamClaimMapping, Map<String, ?> claims) {
+  public static List<String> findTeamsFromClaims(
+      String jwtTeamClaimMapping, Map<String, ?> claims) {
     if (nullOrEmpty(jwtTeamClaimMapping) || claims == null) {
-      return null;
+      return new ArrayList<>();
     }
 
     if (claims.containsKey(jwtTeamClaimMapping)) {
-      String teamValue = getClaimOrObject(claims.get(jwtTeamClaimMapping));
-      return nullOrEmpty(teamValue) ? null : teamValue;
+      return getClaimAsList(claims.get(jwtTeamClaimMapping));
     }
 
-    return null;
+    return new ArrayList<>();
+  }
+
+  @SuppressWarnings("unchecked")
+  public static List<String> getClaimAsList(Object obj) {
+    List<String> result = new ArrayList<>();
+    if (obj == null) {
+      return result;
+    }
+
+    if (obj instanceof Claim claim) {
+      List<String> listValue = claim.asList(String.class);
+      if (listValue != null && !listValue.isEmpty()) {
+        result.addAll(listValue);
+      } else {
+        String stringValue = claim.asString();
+        if (!nullOrEmpty(stringValue)) {
+          result.add(stringValue);
+        }
+      }
+    } else if (obj instanceof Collection<?> collection) {
+      for (Object item : collection) {
+        if (item != null) {
+          result.add(item.toString());
+        }
+      }
+    } else if (obj instanceof String s && !nullOrEmpty(s)) {
+      result.add(s);
+    } else if (obj instanceof Object[] array) {
+      for (Object item : array) {
+        if (item != null) {
+          result.add(item.toString());
+        }
+      }
+    }
+
+    return result;
   }
 
   public static String getFirstMatchJwtClaim(

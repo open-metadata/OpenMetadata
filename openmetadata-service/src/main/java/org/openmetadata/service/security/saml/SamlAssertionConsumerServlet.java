@@ -23,6 +23,8 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -85,18 +87,25 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
         email = String.format("%s@%s", username, SamlSettingsHolder.getInstance().getDomain());
       }
 
-      // Extract team/department attribute from SAML response
-      String teamFromClaim = null;
-      String teamClaimMapping = SecurityConfigurationManager.getCurrentAuthConfig().getJwtTeamClaimMapping();
+      // Extract team/department attributes from SAML response (supports multi-valued attributes)
+      List<String> teamsFromClaim = new ArrayList<>();
+      String teamClaimMapping =
+          SecurityConfigurationManager.getCurrentAuthConfig().getJwtTeamClaimMapping();
       if (!nullOrEmpty(teamClaimMapping)) {
         try {
-          List<String> attributeValues = auth.getAttribute(teamClaimMapping);
+          Collection<String> attributeValues = auth.getAttribute(teamClaimMapping);
           if (attributeValues != null && !attributeValues.isEmpty()) {
-            teamFromClaim = attributeValues.get(0);
-            LOG.debug("[SAML ACS] Found team attribute '{}' with value '{}'", teamClaimMapping, teamFromClaim);
+            teamsFromClaim.addAll(attributeValues);
+            LOG.debug(
+                "[SAML ACS] Found team attribute '{}' with values '{}'",
+                teamClaimMapping,
+                teamsFromClaim);
           }
         } catch (Exception e) {
-          LOG.debug("[SAML ACS] Could not extract team attribute '{}': {}", teamClaimMapping, e.getMessage());
+          LOG.debug(
+              "[SAML ACS] Could not extract team attribute '{}': {}",
+              teamClaimMapping,
+              e.getMessage());
         }
       }
 
@@ -132,13 +141,11 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
                     ServiceTokenType.OM_USER);
       }
 
-      // Assign team from claim if provided
-      if (!nullOrEmpty(teamFromClaim)) {
-        UserUtil.assignTeamFromClaim(user, teamFromClaim);
-      }
+      // Assign teams from claim if provided
+      boolean teamsAssigned = UserUtil.assignTeamsFromClaim(user, teamsFromClaim);
 
       // Add or update user after team assignment
-      if (!userExists || !nullOrEmpty(teamFromClaim)) {
+      if (!userExists || teamsAssigned) {
         user = UserUtil.addOrUpdateUser(user);
       }
 
