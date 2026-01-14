@@ -194,6 +194,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
      * @description Creates an inactive announcement and then deletes it
      */
     test(`Inactive Announcement create & delete`, async ({ page }) => {
+      // used slow as test contain page reload which might lead to timeout
+      test.slow(true);
       await entity.inactiveAnnouncement(page);
     });
 

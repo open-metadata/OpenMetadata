@@ -184,11 +184,11 @@ import { PartitionedKeys } from '../pages/TableDetailsPageV1/PartitionedKeys/Par
 import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/ConstraintIcon';
 import TableConstraints from '../pages/TableDetailsPageV1/TableConstraints/TableConstraints';
 import { exportTableDetailsInCSV } from '../rest/tableAPI';
+import { extractApiEndpointFields } from './APIEndpoints/APIEndpointUtils';
 import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from './CommonUtils';
-import { extractApiEndpointFields } from './APIEndpoints/APIEndpointUtils';
 import { extractContainerColumns } from './ContainerDetailUtils';
 import { extractDataModelColumns } from './DashboardDataModelUtils';
 import EntityLink from './EntityLink';
