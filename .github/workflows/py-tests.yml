@@ -114,7 +114,7 @@ jobs:
         id: push-to-sonar
         if: ${{ github.event_name == 'pull_request_target' && matrix.py-version == '3.10' }}
         continue-on-error: true
-        uses: sonarsource/sonarcloud-github-action@v2.3.0
+        uses: SonarSource/sonarqube-scan-action@v7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
@@ -135,7 +135,7 @@ jobs:
         shell: bash
 
       - name: Retry 'Push Results in PR to Sonar'
-        uses: sonarsource/sonarcloud-github-action@master
+        uses: SonarSource/sonarqube-scan-action@v7
         if: ${{ github.event_name == 'pull_request_target' && matrix.py-version == '3.10' && steps.push-to-sonar.outcome != 'success' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
