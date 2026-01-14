@@ -31,6 +31,7 @@ VERSIONS = {
     "great-expectations": "great-expectations~=0.18.0",
     "great-expectations-1xx": "great-expectations~=1.0",
     "grpc-tools": "grpcio-tools>=1.47.2",
+    "ijson": "ijson",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3",
     "pandas": "pandas~=2.0.3",
@@ -67,6 +68,7 @@ VERSIONS = {
     "pyiceberg": "pyiceberg==0.5.1",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "pyathena": "pyathena~=3.0",
+    "s3fs": "s3fs>=2023.12.0,<2024.3.0",
     "sqlalchemy-bigquery": "sqlalchemy-bigquery~=1.15.0",
     "presidio-analyzer": "presidio-analyzer==2.2.358",
     "asammdf": "asammdf~=7.4.5",
@@ -80,6 +82,7 @@ COMMONS = {
         VERSIONS["asammdf"],
         VERSIONS["avro"],
         VERSIONS["boto3"],
+        VERSIONS["ijson"],
         VERSIONS["pandas"],
         VERSIONS["pyarrow"],
         VERSIONS["numpy"],
@@ -242,6 +245,7 @@ plugins: Dict[str, Set[str]] = {
         *COMMONS["datalake"],
     },
     "datalake-s3": {
+        VERSIONS["s3fs"],
         *COMMONS["datalake"],
     },
     "deltalake": {
