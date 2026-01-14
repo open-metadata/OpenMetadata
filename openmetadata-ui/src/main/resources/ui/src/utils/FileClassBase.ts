@@ -60,6 +60,7 @@ class FileClassBase {
   public getFileDetailPageTabsIds(): Tab[] {
     return [
       EntityTabs.OVERVIEW,
+      EntityTabs.SCHEMA,
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.LINEAGE,
       EntityTabs.CONTRACT,

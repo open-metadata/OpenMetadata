@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Column, TableData } from './table';
 /**
  * This schema defines the File entity. A File is a document or resource stored in a Drive
  * Service.
@@ -24,6 +25,10 @@ export interface File {
      * File checksum/hash
      */
     checksum?: string;
+    /**
+     * Column definitions for structured data files (CSV, etc.)
+     */
+    columns?: Column[];
     /**
      * File creation timestamp
      */
@@ -137,6 +142,10 @@ export interface File {
      * Type of drive service
      */
     serviceType?: DriveServiceType;
+    /**
+     * Sample data from the file
+     */
+    sampleData?: TableData;
     /**
      * File size in bytes
      */

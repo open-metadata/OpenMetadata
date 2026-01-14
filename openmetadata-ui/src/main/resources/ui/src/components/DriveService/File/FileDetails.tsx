@@ -329,6 +329,7 @@ function FileDetails({
       activeTab,
       feedCount,
       labelMap: tabLabelMap,
+      fileDetails,
     });
 
     return getDetailsTabWithNewLabel(
