@@ -12,7 +12,6 @@
 """
 Validate factory and logic to read dataframes from local.
 """
-from collections.abc import Iterator
 from pathlib import Path
 from unittest import TestCase
 
@@ -44,7 +43,7 @@ class TestDataFrameReader(TestCase):
         )
 
         self.assertIsNotNone(df_iter)
-        df_list = list(df_iter) if isinstance(df_iter, Iterator) else df_iter
+        df_list = list(df_iter)
         self.assertTrue(len(df_list))
 
         self.assertEqual(df_list[0].shape, (5, 2))
@@ -62,7 +61,7 @@ class TestDataFrameReader(TestCase):
         )
 
         self.assertIsNotNone(df_iter)
-        df_list = list(df_iter) if isinstance(df_iter, Iterator) else df_iter
+        df_list = list(df_iter)
         self.assertTrue(len(df_list))
 
         self.assertEqual(df_list[0].shape, (5, 2))
@@ -82,7 +81,7 @@ class TestDataFrameReader(TestCase):
         )
 
         self.assertIsNotNone(df_iter)
-        df_list = list(df_iter) if isinstance(df_iter, Iterator) else df_iter
+        df_list = list(df_iter)
         self.assertTrue(len(df_list))
 
         self.assertEqual(df_list[0].shape, (5, 2))
@@ -100,7 +99,7 @@ class TestDataFrameReader(TestCase):
         )
 
         self.assertIsNotNone(df_iter)
-        df_list = list(df_iter) if isinstance(df_iter, Iterator) else df_iter
+        df_list = list(df_iter)
         self.assertTrue(len(df_list))
 
         self.assertEqual(df_list[0].shape, (4, 4))
@@ -119,7 +118,7 @@ class TestDataFrameReader(TestCase):
         )
 
         self.assertIsNotNone(df_iter)
-        df_list = list(df_iter) if isinstance(df_iter, Iterator) else df_iter
+        df_list = list(df_iter)
         self.assertTrue(len(df_list))
 
         self.assertEqual(df_list[0].shape, (4, 4))
@@ -138,7 +137,7 @@ class TestDataFrameReader(TestCase):
         )
 
         self.assertIsNotNone(df_iter)
-        df_list = list(df_iter) if isinstance(df_iter, Iterator) else df_iter
+        df_list = list(df_iter)
         self.assertTrue(len(df_list))
 
         self.assertEqual(df_list[0].shape, (4, 8))
