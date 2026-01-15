@@ -174,11 +174,33 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         dashboardDataModel.getColumns(),
         dashboardDataModel.getFullyQualifiedName(),
         fields.contains(FIELD_TAGS));
+    if (fields.contains("columns") && fields.contains("extension")) {
+      if (dashboardDataModel.getColumns() != null) {
+        for (Column column : dashboardDataModel.getColumns()) {
+          column.setExtension(
+              getColumnExtension(dashboardDataModel.getId(), column.getFullyQualifiedName()));
+        }
+      }
+    }
   }
 
   private void setDefaultFields(DashboardDataModel dashboardDataModel) {
     EntityReference service = getContainer(dashboardDataModel.getId());
     dashboardDataModel.withService(service);
+  }
+
+  private Object getColumnExtension(UUID dataModelId, String columnFQN) {
+    try {
+      String extensionKey = FullyQualifiedName.buildHash(columnFQN);
+      String extensionJson =
+          daoCollection.entityExtensionDAO().getExtension(dataModelId, extensionKey);
+      if (extensionJson != null) {
+        return JsonUtils.readValue(extensionJson, Object.class);
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to get extension for column {}: {}", columnFQN, e.getMessage());
+    }
+    return null;
   }
 
   // Individual field fetchers registered in constructor
@@ -319,6 +341,12 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     if (fieldsParam != null && fieldsParam.contains("tags")) {
       populateEntityFieldTags(
           entityType, paginatedColumns, dataModel.getFullyQualifiedName(), true);
+    }
+
+    if (fieldsParam != null && fieldsParam.contains("extension")) {
+      for (Column column : paginatedColumns) {
+        column.setExtension(getColumnExtension(dataModel.getId(), column.getFullyQualifiedName()));
+      }
     }
 
     // Calculate pagination metadata
