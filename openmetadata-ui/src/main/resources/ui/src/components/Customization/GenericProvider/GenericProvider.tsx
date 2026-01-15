@@ -72,6 +72,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   isTabExpanded = false,
   customizedPage,
   muiTags = false,
+  columnFqn,
 }: GenericProviderProps<T>) => {
   const GenericContext = createGenericContext<T>();
   const [threadLink, setThreadLink] = useState<string>('');
@@ -119,8 +120,20 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       : column;
   }, []);
 
+  // Sync selected column from prop (deep link)
+  useEffect(() => {
+    // If we have a direct columnFqn from props, try to find and select it
+    if (columnFqn && extractedColumns.length > 0) {
+      const col = findFieldByFQN(extractedColumns as Column[], columnFqn);
+      if (col) {
+        setSelectedColumn(cleanColumn(col));
+      }
+    }
+  }, [extractedColumns, columnFqn, cleanColumn]);
+
   // Sync selected column when extractedColumns change (e.g., after updates)
   useEffect(() => {
+    // Existing logic for updates
     if (!selectedColumn?.fullyQualifiedName || extractedColumns.length === 0) {
       return;
     }
@@ -188,31 +201,38 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const openColumnDetailPanel = useCallback(
     (column: ColumnOrTask) => {
       const columnFqn = column.fullyQualifiedName;
-      
+
       // If the column is already selected, don't do anything to avoid loops
       if (selectedColumn?.fullyQualifiedName === columnFqn) {
         return;
       }
-      
+
       // Set selected column immediately to avoid flicker
       setSelectedColumn(column);
-      
+
       // Update URL to include column FQN if the column has a fullyQualifiedName
       if (columnFqn && data.fullyQualifiedName) {
         const newPath = getEntityDetailsPath(type, columnFqn, tab);
-        
+
         // Only navigate if the path is different from current path to avoid loops
         if (location.pathname !== newPath) {
           navigate(newPath, { replace: true });
         }
       }
     },
-    [data.fullyQualifiedName, type, tab, navigate, location.pathname, selectedColumn?.fullyQualifiedName]
+    [
+      data.fullyQualifiedName,
+      type,
+      tab,
+      navigate,
+      location.pathname,
+      selectedColumn?.fullyQualifiedName,
+    ]
   );
 
   const closeColumnDetailPanel = useCallback(() => {
     setSelectedColumn(null);
-    
+
     // Update URL to remove column FQN
     if (data.fullyQualifiedName) {
       const newPath = getEntityDetailsPath(type, data.fullyQualifiedName, tab);
@@ -248,8 +268,6 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     },
     [data, type, onUpdate, selectedColumn, cleanColumn]
   );
-
-
 
   // Extract deleted status from entity data
   const deleted = (data as { deleted?: boolean })?.deleted;

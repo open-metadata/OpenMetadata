@@ -47,6 +47,7 @@ jest.mock('../../../hooks/useEntityRules', () => ({
 
 jest.mock('react-router-dom', () => {
   const actual = jest.requireActual('react-router-dom');
+
   return {
     ...actual,
     useParams: jest.fn().mockImplementation(() => ({ tab: EntityTabs.SCHEMA })),

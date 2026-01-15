@@ -44,6 +44,7 @@ import {
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Container } from '../../generated/entity/data/container';
+import { Column } from '../../generated/entity/data/table';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
@@ -79,9 +80,11 @@ import {
   getPrioritizedViewPermission,
 } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
+import { flattenColumns } from '../../utils/TableUtils';
 import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
+import Fqn from '../../utils/Fqn';
 
 const ContainerPage = () => {
   const navigate = useNavigate();
@@ -96,9 +99,12 @@ const ContainerPage = () => {
     type: EntityType.CONTAINER,
   });
 
-  // Local states
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [hasError, setHasError] = useState<boolean>(false);
+  const [resolvedEntityFqn, setResolvedEntityFqn] = useState<string>('');
+  const [activeColumnFqn, setActiveColumnFqn] = useState<string | undefined>(
+    undefined
+  );
 
   const [containerData, setContainerData] = useState<Container>();
   const [containerPermissions, setContainerPermissions] =
@@ -109,6 +115,14 @@ const ContainerPage = () => {
     FEED_COUNT_INITIAL_DATA
   );
   const [childrenCount, setChildrenCount] = useState<number>(0);
+
+  const handleFeedCount = useCallback(
+    (data: FeedCounts) => setFeedCount(data),
+    []
+  );
+
+  const getEntityFeedCount = () =>
+    getFeedCounts(EntityType.CONTAINER, resolvedEntityFqn, handleFeedCount);
 
   const fetchContainerDetail = async (containerFQN: string) => {
     setIsLoading(true);
@@ -137,6 +151,9 @@ const ContainerPage = () => {
       });
       setContainerData(response);
     } catch (error) {
+      if ((error as AxiosError)?.response?.status === ClientErrors.NOT_FOUND) {
+        throw error;
+      }
       showErrorToast(error as AxiosError);
       setHasError(true);
       if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
@@ -147,20 +164,18 @@ const ContainerPage = () => {
     }
   };
 
-  const handleFeedCount = useCallback(
-    (data: FeedCounts) => setFeedCount(data),
-    []
-  );
-
-  const getEntityFeedCount = () =>
-    getFeedCounts(EntityType.CONTAINER, decodedEntityFqn, handleFeedCount);
-
-  const fetchResourcePermission = async (containerFQN: string) => {
+  const fetchResourcePermission = async (
+    containerFQN: string,
+    isFallback = false
+  ) => {
+    setIsLoading(true);
+    setHasError(false);
     try {
       const entityPermission = await getEntityPermissionByFqn(
         ResourceEntity.CONTAINER,
         containerFQN
       );
+
       setContainerPermissions(entityPermission);
 
       const viewBasicPermission = getPrioritizedViewPermission(
@@ -170,30 +185,58 @@ const ContainerPage = () => {
 
       if (viewBasicPermission) {
         await fetchContainerDetail(containerFQN);
-        getEntityFeedCount();
+      } else {
+        setIsLoading(false);
       }
-    } catch {
+
+      setResolvedEntityFqn(containerFQN);
+
+      // If we successfully resolved using fallback, the remainder is the column
+      if (isFallback) {
+         // decodedEntityFqn is the full FQN "A.B.Column", containerFQN is "A.B"
+         setActiveColumnFqn(decodedEntityFqn);
+      } else {
+        setActiveColumnFqn(undefined);
+      }
+    } catch (error) {
+      if (
+        (error as AxiosError)?.response?.status === ClientErrors.NOT_FOUND &&
+        !isFallback
+      ) {
+        const parentParts = Fqn.split(containerFQN).slice(0, -1);
+        if (parentParts.length > 0) {
+          const parentFqn = Fqn.build(...parentParts);
+          await fetchResourcePermission(parentFqn, true);
+
+          return;
+        }
+      }
+
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.asset-lowercase'),
         })
       );
-    } finally {
+      setHasError(true);
       setIsLoading(false);
     }
   };
 
   // Fetch children count to show it in Tab label
   const fetchContainerChildren = useCallback(async () => {
+    // Use resolvedEntityFqn for children
+    if (!resolvedEntityFqn) {
+      return;
+    }
     try {
-      const { paging } = await getContainerChildrenByName(decodedEntityFqn, {
+      const { paging } = await getContainerChildrenByName(resolvedEntityFqn, {
         limit: 0,
       });
       setChildrenCount(paging.total);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
-  }, [decodedEntityFqn]);
+  }, [resolvedEntityFqn]);
 
   const { deleted, version, isUserFollowing } = useMemo(() => {
     return {
@@ -547,11 +590,44 @@ const ContainerPage = () => {
     }
   };
 
-  // Effects
   useEffect(() => {
+    // Optimization: check if we are navigating to a column of the current container
+    if (resolvedEntityFqn && containerData?.dataModel?.columns) {
+      const columns = flattenColumns(
+        containerData.dataModel.columns as Column[]
+      );
+      const matchedColumn = columns.find(
+        (col) => col.fullyQualifiedName === decodedEntityFqn
+      );
+
+      if (matchedColumn) {
+        if (activeColumnFqn !== decodedEntityFqn) {
+          setActiveColumnFqn(decodedEntityFqn);
+        }
+
+        return;
+      }
+    }
+
+    // If we are already on the resolved entity, ensure column is cleared and skip fetch
+    if (resolvedEntityFqn === decodedEntityFqn) {
+      if (activeColumnFqn) {
+        setActiveColumnFqn(undefined);
+      }
+
+      return;
+    }
+
+    // On mount or when URL FQN changes, start permission fetch
     fetchResourcePermission(decodedEntityFqn);
-    fetchContainerChildren();
-  }, [decodedEntityFqn]);
+  }, [decodedEntityFqn, resolvedEntityFqn, containerData, activeColumnFqn]);
+
+  useEffect(() => {
+    if (resolvedEntityFqn) {
+      fetchContainerChildren();
+      getEntityFeedCount();
+    }
+  }, [resolvedEntityFqn]);
 
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);
@@ -633,6 +709,7 @@ const ContainerPage = () => {
           />
         </Col>
         <GenericProvider<Container>
+          columnFqn={activeColumnFqn}
           customizedPage={customizedPage}
           data={containerData}
           isTabExpanded={isTabExpanded}
