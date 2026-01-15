@@ -746,11 +746,13 @@ export const editCreatedProperty = async (
   }
 
   if (type === 'Table') {
-    await expect(
-      page
-        .locator(`[data-row-key="${propertyName}"]`)
-        .getByText('Columns:pw-column1pw-column2')
-    ).toBeVisible();
+    const tableConfig = page.locator(
+      `[data-row-key="${propertyName}"] [data-testid="table-config"]`
+    );
+    await expect(tableConfig).toBeVisible();
+    await expect(tableConfig).toContainText('Columns:');
+    await expect(tableConfig).toContainText('pw-column1');
+    await expect(tableConfig).toContainText('pw-column2');
   }
 
   await editButton.click();
