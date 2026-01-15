@@ -546,10 +546,10 @@ export enum AuthProvider {
  *
  * Regex to only fetch api collections with names matching the pattern.
  *
+ * Regex to only fetch api endpoints with names matching the pattern.
+ *
  * Regex to only include/exclude schemas that matches the pattern. System schemas
  * (information_schema, _statistics_, sys) are excluded by default.
- *
- * Regex to only fetch api endpoints with names matching the pattern.
  *
  * Regex to include/exclude FHIR resource categories
  *
