@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Utils module to define overrided sqlalchamy methods 
+Utils module to define overrided sqlalchamy methods
 """
 # pylint: disable=protected-access,unused-argument
 import re
@@ -83,9 +83,14 @@ def get_all_view_definitions(self, connection, query):
     result = connection.execute(query)
     for view in result:
         if hasattr(view, "view_def") and hasattr(view, "schema"):
-            self.all_view_definitions[
-                (view.view_name, view.schema)
-            ] = f"CREATE OR REPLACE VIEW {view.view_name} AS {view.view_def}"
+            view_definition = view.view_def
+            if not view_definition and hasattr(view, "view_ddl"):
+                view_definition = view.view_ddl
+            else:
+                view_definition = (
+                    f"CREATE OR REPLACE VIEW {view.view_name} AS {view_definition}"
+                )
+            self.all_view_definitions[(view.view_name, view.schema)] = view_definition
         elif hasattr(view, "VIEW_DEF") and hasattr(view, "SCHEMA"):
             self.all_view_definitions[
                 (view.VIEW_NAME, view.SCHEMA)
