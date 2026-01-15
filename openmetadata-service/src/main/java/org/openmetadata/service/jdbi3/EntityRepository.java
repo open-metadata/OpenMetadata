@@ -7086,7 +7086,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     LOG.info(
         "Bulk operation completed: entity={}, total={}, succeeded={}, failed={}, "
-            + "wallClockMs={}, avgEntityMs={}, maxEntityMs={}, throughput={:.1f}/s",
+            + "wallClockMs={}, avgEntityMs={}, maxEntityMs={}, throughput={}/s",
         entityType,
         entities.size(),
         successRequests.size(),
@@ -7094,7 +7094,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         totalDurationMs,
         avgEntityLatencyMs,
         maxEntityLatencyMs,
-        throughput);
+        String.format("%.1f", throughput));
 
     return result;
   }
