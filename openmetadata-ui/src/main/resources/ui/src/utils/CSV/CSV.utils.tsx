@@ -215,10 +215,14 @@ export const getCSVStringFromColumnsAndDataSource = (
           colName.includes('tags') ||
           colName.includes('domains')
         ) {
-          return isEmpty(value) ? '' : `"${value}"`;
+          return `"${value}"`;
+        }
+        // Values with quotes: escape quotes (for name/displayName/FQN or any other column)
+        if (value.includes('"')) {
+          return `"${value.replaceAll(/"/g, '""')}"`;
         }
 
-        return get(row, col.key ?? '', '');
+        return value;
       })
       .join(',');
   });
