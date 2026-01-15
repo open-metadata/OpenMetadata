@@ -108,6 +108,12 @@
       "type": "string",
       "default": "TimescalePolicyTags"
     },
+    "queryStatementSource": {
+      "title": "Query Statement Source",
+      "description": "Fully qualified name of the view or table to use for query logs. If not provided, defaults to pg_stat_statements. Use this to configure a custom view (e.g., my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is restricted.",
+      "type": "string",
+      "default": "pg_stat_statements"
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"

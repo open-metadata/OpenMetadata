@@ -679,3 +679,92 @@ class OMetaDomainTest(TestCase):
         self.metadata.remove_assets_from_data_product(
             data_product.name.root, asset_refs
         )
+
+    def test_add_remove_assets_to_data_product_with_special_chars(self):
+        """
+        Test adding/removing assets to a data product with special characters
+        (slash, hash) in its name. This validates URL encoding works correctly.
+        """
+        # Create domain first
+        domain: Domain = self.metadata.create_or_update(data=self.create_domain)
+        domains_ref = EntityReferenceList(
+            root=[EntityReference(id=domain.id, type="domain")]
+        )
+
+        # Create data product with slash in name
+        dp_name = EntityName("data-product/with/slashes")
+        create_dp_request = CreateDataProductRequest(
+            name=dp_name,
+            description="Data product with special chars",
+            domains=["TestDomain"],
+        )
+        data_product: DataProduct = self.metadata.create_or_update(
+            data=create_dp_request
+        )
+
+        # Make sure dashboard belongs to the domain
+        self.metadata.patch_domain(
+            entity=Dashboard, source=self.dashboard, domains=domains_ref
+        )
+
+        # Add asset to data product with special chars in name
+        asset_ref = EntityReference(id=self.dashboard.id, type="dashboard")
+        self.metadata.add_assets_to_data_product(data_product.name.root, [asset_ref])
+
+        # Verify asset was added using get_data_product_assets
+        assets_response = self.metadata.get_data_product_assets(
+            data_product.name.root, limit=100
+        )
+        self.assertEqual(len(assets_response["data"]), 1)
+        self.assertEqual(assets_response["data"][0]["id"], str(self.dashboard.id.root))
+
+        # Remove asset
+        self.metadata.remove_assets_from_data_product(
+            data_product.name.root, [asset_ref]
+        )
+
+        # Verify asset was removed
+        assets_response = self.metadata.get_data_product_assets(
+            data_product.name.root, limit=100
+        )
+        self.assertEqual(len(assets_response["data"]), 0)
+
+        # Clean up
+        self.metadata.delete(
+            entity=DataProduct, entity_id=data_product.id, hard_delete=True
+        )
+
+    def test_get_domain_assets_with_special_chars_in_name(self):
+        """
+        Test getting assets for a domain with special characters (slash) in its name.
+        This validates URL encoding works correctly in get_domain_assets.
+        """
+        # Create domain with slash in name
+        domain_name = EntityName("domain/with/slashes")
+        create_domain_request = CreateDomainRequest(
+            name=domain_name,
+            domainType=DomainType.Consumer_aligned,
+            description="Domain with special chars",
+        )
+        domain: Domain = self.metadata.create_or_update(data=create_domain_request)
+        domains_ref = EntityReferenceList(
+            root=[EntityReference(id=domain.id, type="domain")]
+        )
+
+        # Add dashboard to domain
+        self.metadata.patch_domain(
+            entity=Dashboard, source=self.dashboard, domains=domains_ref
+        )
+
+        # Get domain assets - this should work with URL encoding
+        assets_response = self.metadata.get_domain_assets(domain.name.root, limit=100)
+        self.assertGreaterEqual(len(assets_response["data"]), 1)
+
+        # Verify our dashboard is in the assets
+        dashboard_ids = [asset["id"] for asset in assets_response["data"]]
+        self.assertIn(str(self.dashboard.id.root), dashboard_ids)
+
+        # Clean up
+        self.metadata.delete(
+            entity=Domain, entity_id=domain.id, recursive=True, hard_delete=True
+        )

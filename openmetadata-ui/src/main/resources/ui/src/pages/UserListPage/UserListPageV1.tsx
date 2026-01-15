@@ -197,18 +197,12 @@ const UserListPageV1 = () => {
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (searchValue) {
         handlePageChange(currentPage);
-        getSearchedUsers(searchValue, currentPage);
       } else if (cursorType && paging[cursorType]) {
         handlePageChange(
           currentPage,
           { cursorType, cursorValue: paging[cursorType] },
           pageSize
         );
-        fetchUsersList({
-          isAdmin: isAdminPage,
-          [cursorType]: paging[cursorType],
-          include: isDeleted ? Include.Deleted : Include.NonDeleted,
-        });
       }
     },
     [
@@ -230,14 +224,16 @@ const UserListPageV1 = () => {
       globalPageSize
     );
     // Clear search value, on Toggle delete
-    setFilters({ isDeleted: value || null, user: null });
+    setFilters({ isDeleted: value || null });
   };
 
   const handleSearch = useCallback(
     (value: string) => {
-      handlePageChange(INITIAL_PAGING_VALUE);
-
       setFilters({ user: isEmpty(value) ? null : value });
+      handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
     },
     [handlePageChange, setFilters]
   );
@@ -249,22 +245,27 @@ const UserListPageV1 = () => {
 
   useEffect(() => {
     if (searchValue) {
-      getSearchedUsers(searchValue, 1);
-    } else {
-      const { cursorType, cursorValue } = pagingCursor ?? {};
+      getSearchedUsers(searchValue, currentPage);
+    }
+  }, [searchValue, currentPage, isDeleted]);
 
-      if (cursorType && cursorValue) {
-        fetchUsersList({
-          isAdmin: isAdminPage,
-          include: isDeleted ? Include.Deleted : Include.NonDeleted,
-          [cursorType]: cursorValue,
-        });
-      } else {
-        fetchUsersList({
-          isAdmin: isAdminPage,
-          include: isDeleted ? Include.Deleted : Include.NonDeleted,
-        });
-      }
+  useEffect(() => {
+    if (searchValue) {
+      return;
+    }
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      fetchUsersList({
+        isAdmin: isAdminPage,
+        include: isDeleted ? Include.Deleted : Include.NonDeleted,
+        [cursorType]: cursorValue,
+      });
+    } else {
+      fetchUsersList({
+        isAdmin: isAdminPage,
+        include: isDeleted ? Include.Deleted : Include.NonDeleted,
+      });
     }
   }, [pageSize, isAdminPage, searchValue, isDeleted, pagingCursor]);
 
