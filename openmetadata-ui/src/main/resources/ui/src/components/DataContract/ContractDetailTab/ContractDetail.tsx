@@ -36,7 +36,6 @@ import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export-box.
 import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-gear.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 import {
-  CONTRACT_DATE_TIME_FORMAT,
   DataContractMode,
   DATA_CONTRACT_ACTION_DROPDOWN_KEY,
 } from '../../../constants/DataContract.constants';
@@ -55,7 +54,7 @@ import {
   downloadContractYamlFile,
   getConstraintStatus,
 } from '../../../utils/DataContract/DataContractUtils';
-import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
+import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getPopupContainer } from '../../../utils/formUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
@@ -351,10 +350,7 @@ const ContractDetail: React.FC<{
                   <Typography.Text
                     className="contract-sub-header-value"
                     data-testid="contract-created-at-value">
-                    {customFormatDateTime(
-                      contract.createdAt,
-                      CONTRACT_DATE_TIME_FORMAT
-                    )}
+                    {formatDateTime(contract.createdAt)}
                   </Typography.Text>
                 </div>
 
