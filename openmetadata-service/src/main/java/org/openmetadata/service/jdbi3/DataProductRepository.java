@@ -1018,4 +1018,18 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
           dataProduct.getFullyQualifiedName());
     }
   }
+
+  public org.openmetadata.schema.entity.data.DataContract getDataProductContract(
+      UUID dataProductId) {
+    try {
+      DataContractRepository contractRepo =
+          (DataContractRepository) Entity.getEntityRepository(Entity.DATA_CONTRACT);
+      EntityReference dataProductRef =
+          new EntityReference().withId(dataProductId).withType(Entity.DATA_PRODUCT);
+      return contractRepo.loadEntityDataContract(dataProductRef);
+    } catch (Exception e) {
+      LOG.debug("No contract found for data product {}: {}", dataProductId, e.getMessage());
+      return null;
+    }
+  }
 }

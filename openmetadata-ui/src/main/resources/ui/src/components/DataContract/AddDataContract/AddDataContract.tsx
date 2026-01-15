@@ -73,13 +73,69 @@ const AddDataContract: React.FC<{
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { data: entityData } = useGenericContext<Table>();
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
-  const [formValues, setFormValues] = useState<DataContract>(
-    contract || ({} as DataContract)
-  );
-
   const entityContractTabs = useMemo(
     () => getDataContractTabByEntity(entityType),
     [entityType]
+  );
+
+  // Filter out inherited fields from the contract for editing
+  // Inherited fields should not be shown in the edit form
+  const filteredContract = useMemo(() => {
+    if (!contract) {
+      return undefined;
+    }
+
+    // Helper to check if a field is inherited (handles generated types not having inherited yet)
+    const isInherited = (
+      field: unknown
+    ): field is { inherited?: boolean; content?: string } => {
+      return (
+        typeof field === 'object' &&
+        field !== null &&
+        'inherited' in field &&
+        (field as { inherited?: boolean }).inherited === true
+      );
+    };
+
+    // Filter semantics to exclude inherited rules
+    const filteredSemantics = contract.semantics?.filter((rule) => {
+      const ruleWithInherited = rule as unknown as { inherited?: boolean };
+
+      return !ruleWithInherited.inherited;
+    });
+
+    // Get termsOfUse content, excluding if inherited
+    let filteredTermsOfUse = contract.termsOfUse;
+    if (isInherited(contract.termsOfUse)) {
+      filteredTermsOfUse = undefined;
+    } else if (
+      typeof contract.termsOfUse === 'object' &&
+      contract.termsOfUse !== null
+    ) {
+      filteredTermsOfUse = (
+        contract.termsOfUse as unknown as { content?: string }
+      ).content;
+    }
+
+    // Check security and SLA for inherited
+    const securityWithInherited = contract.security as unknown as {
+      inherited?: boolean;
+    };
+    const slaWithInherited = contract.sla as unknown as { inherited?: boolean };
+
+    return {
+      ...contract,
+      semantics: filteredSemantics,
+      termsOfUse: filteredTermsOfUse,
+      security: securityWithInherited?.inherited
+        ? undefined
+        : contract.security,
+      sla: slaWithInherited?.inherited ? undefined : contract.sla,
+    };
+  }, [contract]);
+
+  const [formValues, setFormValues] = useState<DataContract>(
+    filteredContract || ({} as DataContract)
   );
 
   const [activeTab, setActiveTab] = useState(
@@ -112,26 +168,30 @@ const AddDataContract: React.FC<{
     return {
       validSemantics,
       validSecurity,
+      // Compare against filteredContract (without inherited fields) to avoid
+      // generating "remove" operations for inherited fields
       isSaveDisabled: isEmpty(
-        compare(contract ?? {}, {
-          ...contract,
+        compare(filteredContract ?? {}, {
+          ...filteredContract,
           ...formValues,
           semantics: validSemantics,
           security: validSecurity,
         })
       ),
     };
-  }, [contract, formValues]);
+  }, [filteredContract, formValues]);
 
   const handleSave = useCallback(async () => {
     setIsSubmitting(true);
 
     try {
       if (contract) {
+        // Use filteredContract for PATCH comparison to avoid generating
+        // "remove" operations for inherited fields (SLA, security, terms, semantics)
         await updateContract(
           contract?.id,
-          compare(contract, {
-            ...contract,
+          compare(filteredContract ?? {}, {
+            ...filteredContract,
             ...formValues,
             semantics: validSemantics,
             security: validSecurity,
@@ -161,6 +221,7 @@ const AddDataContract: React.FC<{
     }
   }, [
     contract,
+    filteredContract,
     formValues,
     entityData.id,
     entityType,
@@ -229,7 +290,7 @@ const AddDataContract: React.FC<{
               isNextVisible: currentTabInfo.hasNext,
               nextLabel: currentTabInfo.nextTabLabel,
             }}
-            initialValues={contract}
+            initialValues={filteredContract}
             onChange={onFormChange}
             onNext={onNext}
           />
@@ -250,7 +311,7 @@ const AddDataContract: React.FC<{
               nextLabel: currentTabInfo.nextTabLabel,
               prevLabel: currentTabInfo.prevTabLabel,
             }}
-            initialValues={contract}
+            initialValues={filteredContract}
             onChange={onFormChange}
             onNext={onNext}
             onPrev={onPrev}
@@ -272,7 +333,7 @@ const AddDataContract: React.FC<{
               nextLabel: currentTabInfo.nextTabLabel,
               prevLabel: currentTabInfo.prevTabLabel,
             }}
-            selectedSchema={contract?.schema ?? []}
+            selectedSchema={filteredContract?.schema ?? []}
             onChange={onFormChange}
             onNext={onNext}
             onPrev={onPrev}
@@ -294,7 +355,7 @@ const AddDataContract: React.FC<{
               nextLabel: currentTabInfo.nextTabLabel,
               prevLabel: currentTabInfo.prevTabLabel,
             }}
-            initialValues={contract}
+            initialValues={filteredContract}
             onChange={onFormChange}
             onNext={onNext}
             onPrev={onPrev}
@@ -316,7 +377,7 @@ const AddDataContract: React.FC<{
               nextLabel: currentTabInfo.nextTabLabel,
               prevLabel: currentTabInfo.prevTabLabel,
             }}
-            initialValues={contract}
+            initialValues={filteredContract}
             onChange={onFormChange}
             onNext={onNext}
             onPrev={onPrev}
@@ -339,7 +400,7 @@ const AddDataContract: React.FC<{
               prevLabel: currentTabInfo.prevTabLabel,
             }}
             selectedQuality={
-              contract?.qualityExpectations?.map(
+              filteredContract?.qualityExpectations?.map(
                 (quality) => quality.id ?? ''
               ) ?? []
             }
@@ -364,7 +425,7 @@ const AddDataContract: React.FC<{
               nextLabel: currentTabInfo.nextTabLabel,
               prevLabel: currentTabInfo.prevTabLabel,
             }}
-            initialValues={contract}
+            initialValues={filteredContract}
             onChange={onFormChange}
             onPrev={onPrev}
           />
@@ -375,7 +436,7 @@ const AddDataContract: React.FC<{
     return tabs.filter((tab) => entityContractTabs.includes(Number(tab.key)));
   }, [
     entityContractTabs,
-    contract,
+    filteredContract,
     onFormChange,
     onNext,
     onPrev,

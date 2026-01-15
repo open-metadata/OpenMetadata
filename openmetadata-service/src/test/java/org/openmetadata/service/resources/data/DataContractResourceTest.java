@@ -65,6 +65,7 @@ import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTopic;
+import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.CreateMessagingService;
@@ -80,6 +81,7 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -113,6 +115,7 @@ import org.openmetadata.service.resources.charts.ChartResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResourceTest;
+import org.openmetadata.service.resources.domains.DataProductResourceTest;
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
@@ -5043,7 +5046,8 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     // Test 1: Create data contract with new properties
     DataContract created = createDataContract(create);
     assertNotNull(created);
-    assertEquals(termsOfUse, created.getTermsOfUse());
+    assertNotNull(created.getTermsOfUse());
+    assertEquals(termsOfUse, created.getTermsOfUse().getContent());
     assertNotNull(created.getSecurity());
     assertEquals("Confidential", created.getSecurity().getDataClassification());
     assertNotNull(created.getSecurity().getPolicies());
@@ -5078,7 +5082,8 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     // Test 2: Read data contract and verify properties are retrieved
     DataContract retrieved = getDataContract(created.getId(), null);
-    assertEquals(termsOfUse, retrieved.getTermsOfUse());
+    assertNotNull(retrieved.getTermsOfUse());
+    assertEquals(termsOfUse, retrieved.getTermsOfUse().getContent());
     assertNotNull(retrieved.getSecurity());
     assertEquals("Confidential", retrieved.getSecurity().getDataClassification());
     assertNotNull(retrieved.getSecurity().getPolicies());
@@ -5121,7 +5126,8 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     create.withTermsOfUse(updatedTermsOfUse).withSecurity(updatedSecurity).withSla(updatedSla);
 
     DataContract updated = updateDataContract(create);
-    assertEquals(updatedTermsOfUse, updated.getTermsOfUse());
+    assertNotNull(updated.getTermsOfUse());
+    assertEquals(updatedTermsOfUse, updated.getTermsOfUse().getContent());
     assertEquals("Public", updated.getSecurity().getDataClassification());
     assertNotNull(updated.getSecurity().getPolicies());
     assertEquals(1, updated.getSecurity().getPolicies().size());
@@ -5143,9 +5149,12 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     // Patch only termsOfUse
     String patchedTermsOfUse = "# Patched Terms\n\nOnly terms updated via patch.";
-    updated.setTermsOfUse(patchedTermsOfUse);
+    updated.setTermsOfUse(
+        new org.openmetadata.schema.entity.data.TermsOfUse()
+            .withContent(patchedTermsOfUse)
+            .withInherited(false));
     DataContract patched = patchDataContract(created.getId(), originalJson, updated);
-    assertEquals(patchedTermsOfUse, patched.getTermsOfUse());
+    assertEquals(patchedTermsOfUse, patched.getTermsOfUse().getContent());
     // Verify other properties remain unchanged
     assertNotNull(patched.getSecurity().getPolicies());
     assertEquals("public-policy", patched.getSecurity().getPolicies().get(0).getAccessPolicy());
@@ -5156,7 +5165,8 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     patched.setSecurity(null);
     patched.setSla(null);
     DataContract patchedWithNulls = patchDataContract(created.getId(), originalJson, patched);
-    assertEquals(patchedTermsOfUse, patchedWithNulls.getTermsOfUse());
+    assertNotNull(patchedWithNulls.getTermsOfUse());
+    assertEquals(patchedTermsOfUse, patchedWithNulls.getTermsOfUse().getContent());
     assertNull(patchedWithNulls.getSecurity());
     assertNull(patchedWithNulls.getSla());
 
@@ -5167,14 +5177,16 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
             .withTermsOfUse("Simple terms");
 
     DataContract partial = createDataContract(partialCreate);
-    assertEquals("Simple terms", partial.getTermsOfUse());
+    assertNotNull(partial.getTermsOfUse());
+    assertEquals("Simple terms", partial.getTermsOfUse().getContent());
     assertNull(partial.getSecurity());
     assertNull(partial.getSla());
 
     // Test 7: Update to add security and sla to partial contract
     partialCreate.withSecurity(security).withSla(sla);
     DataContract partialUpdated = updateDataContract(partialCreate);
-    assertEquals("Simple terms", partialUpdated.getTermsOfUse());
+    assertNotNull(partialUpdated.getTermsOfUse());
+    assertEquals("Simple terms", partialUpdated.getTermsOfUse().getContent());
     assertNotNull(partialUpdated.getSecurity());
     assertNotNull(partialUpdated.getSla());
 
@@ -6124,5 +6136,544 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
         status == Status.OK.getStatusCode() || status == Status.CREATED.getStatusCode(),
         "Expected 200 or 201 but got " + status);
     return response.readEntity(DataContract.class);
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataProductContractInheritance_PassingCase(TestInfo test) throws IOException {
+    // Create a data product
+    DataProductResourceTest dataProductResourceTest = new DataProductResourceTest();
+    CreateDataProduct createDataProduct =
+        dataProductResourceTest.createRequest("test_dp_" + test.getDisplayName());
+    DataProduct dataProduct =
+        dataProductResourceTest.createAndCheckEntity(createDataProduct, ADMIN_AUTH_HEADERS);
+
+    // Create a data contract for the data product with semantics and terms of use
+    SemanticsRule dataProductRule =
+        new SemanticsRule()
+            .withName("DataProductRule")
+            .withRule("{\"!=\":[{\"var\":\"description\"},null]}")
+            .withDescription("Description must not be null")
+            .withEnabled(true);
+
+    CreateDataContract createDpContract =
+        new CreateDataContract()
+            .withName("dp_contract_" + test.getDisplayName())
+            .withEntity(dataProduct.getEntityReference())
+            .withEntityStatus(EntityStatus.APPROVED)
+            .withSemantics(List.of(dataProductRule))
+            .withTermsOfUse("This data must be used only for internal purposes");
+
+    DataContract dpContract = createDataContract(createDpContract);
+    assertNotNull(dpContract);
+    assertEquals(EntityStatus.APPROVED, dpContract.getEntityStatus());
+
+    // Create a table that belongs to this data product
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Set the same domain on the table to satisfy domain validation rule
+    // Also set description so semantic rule passes
+    String originalTableJson = JsonUtils.pojoToJson(table);
+    table.setDescription("Table for testing data product contract inheritance");
+    table.setDomains(List.of(dataProduct.getDomains().get(0)));
+    table.setDataProducts(List.of(dataProduct.getEntityReference()));
+
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    table =
+        tableResourceTest.patchEntity(table.getId(), originalTableJson, table, ADMIN_AUTH_HEADERS);
+
+    // Verify the table inherits the data product's contract
+    DataContract effectiveContract = getEffectiveContractForTable(table);
+    assertNotNull(effectiveContract);
+    assertNotNull(effectiveContract.getSemantics());
+    assertEquals(1, effectiveContract.getSemantics().size());
+    assertEquals("DataProductRule", effectiveContract.getSemantics().get(0).getName());
+    assertTrue(effectiveContract.getSemantics().get(0).getInherited());
+
+    // Create a direct contract for the table to verify merging
+    SemanticsRule tableSpecificRule =
+        new SemanticsRule()
+            .withName("TableSpecificRule")
+            .withRule("{\"!=\":[{\"var\":\"columns\"},null]}")
+            .withDescription("Table must have columns defined")
+            .withEnabled(true);
+
+    CreateDataContract createTableContract =
+        createDataContractRequest(test.getDisplayName() + "_table", table)
+            .withSemantics(List.of(tableSpecificRule))
+            .withEntityStatus(EntityStatus.APPROVED);
+
+    DataContract tableContract = createDataContract(createTableContract);
+
+    // Verify that both rules are applied (merged semantics)
+    effectiveContract = getEffectiveContractForTable(table);
+    assertNotNull(effectiveContract);
+    assertNotNull(effectiveContract.getSemantics());
+    // Both rules should be present: inherited DP rule + table-specific rule
+    assertEquals(2, effectiveContract.getSemantics().size());
+
+    // Verify inherited rule is marked correctly
+    boolean hasInheritedRule =
+        effectiveContract.getSemantics().stream()
+            .anyMatch(
+                rule ->
+                    "DataProductRule".equals(rule.getName())
+                        && Boolean.TRUE.equals(rule.getInherited()));
+    assertTrue(hasInheritedRule);
+
+    // Verify table-specific rule is not marked as inherited
+    boolean hasTableRule =
+        effectiveContract.getSemantics().stream()
+            .anyMatch(
+                rule ->
+                    "TableSpecificRule".equals(rule.getName())
+                        && !Boolean.TRUE.equals(rule.getInherited()));
+    assertTrue(hasTableRule);
+
+    // Validate the contract to ensure both rules are evaluated
+    DataContractResult validationResult = validateDataContract(tableContract.getId());
+    assertNotNull(validationResult);
+    assertEquals(ContractExecutionStatus.Success, validationResult.getContractExecutionStatus());
+    if (validationResult.getSemanticsValidation() != null) {
+      assertEquals(2, validationResult.getSemanticsValidation().getTotal());
+      assertEquals(2, validationResult.getSemanticsValidation().getPassed());
+    }
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataProductContractInheritance_FailingCase(TestInfo test) throws IOException {
+    // Create a data product
+    DataProductResourceTest dataProductResourceTest = new DataProductResourceTest();
+    CreateDataProduct createDataProduct =
+        dataProductResourceTest.createRequest("test_dp_fail_" + test.getDisplayName());
+    DataProduct dataProduct =
+        dataProductResourceTest.createAndCheckEntity(createDataProduct, ADMIN_AUTH_HEADERS);
+
+    // Create a data contract for the data product with a failing semantic rule
+    // Rule checks if entity has an owner (table has no owner, so it will fail)
+    SemanticsRule failingRule =
+        new SemanticsRule()
+            .withName("MustHaveOwner")
+            .withRule("{\"!=\":[{\"var\":\"owner\"},null]}")
+            .withDescription("Entity must have an owner")
+            .withEnabled(true);
+
+    CreateDataContract createDpContract =
+        new CreateDataContract()
+            .withName("dp_contract_fail_" + test.getDisplayName())
+            .withEntity(dataProduct.getEntityReference())
+            .withEntityStatus(EntityStatus.APPROVED)
+            .withSemantics(List.of(failingRule))
+            .withTermsOfUse("This data must have proper ownership");
+
+    DataContract dpContract = createDataContract(createDpContract);
+    assertNotNull(dpContract);
+    assertEquals(EntityStatus.APPROVED, dpContract.getEntityStatus());
+
+    // Create a table without owner that belongs to this data product
+    Table table = createUniqueTable(test.getDisplayName() + "_noowner");
+
+    // Update the table to belong to the data product using PATCH
+    String originalTableJson = JsonUtils.pojoToJson(table);
+    table.setDomains(List.of(dataProduct.getDomains().get(0)));
+    table.setDataProducts(List.of(dataProduct.getEntityReference()));
+
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    table =
+        tableResourceTest.patchEntity(table.getId(), originalTableJson, table, ADMIN_AUTH_HEADERS);
+
+    // Verify table has no owners (will fail the owner requirement rule)
+    assertTrue(table.getOwners() == null || table.getOwners().isEmpty());
+
+    // Verify the table inherits the data product's failing contract rule
+    DataContract effectiveContract = getEffectiveContractForTable(table);
+    assertNotNull(effectiveContract);
+    assertNotNull(effectiveContract.getSemantics());
+    assertEquals(1, effectiveContract.getSemantics().size());
+    assertEquals("MustHaveOwner", effectiveContract.getSemantics().get(0).getName());
+    assertTrue(effectiveContract.getSemantics().get(0).getInherited());
+
+    // Create a direct contract for the table to enable validation
+    CreateDataContract createTableContract =
+        createDataContractRequest(test.getDisplayName() + "_table_fail", table)
+            .withEntityStatus(EntityStatus.APPROVED);
+
+    DataContract tableContract = createDataContract(createTableContract);
+
+    // Validate the contract - it should fail since the table has no owner
+    DataContractResult validationResult = validateDataContract(tableContract.getId());
+    assertNotNull(validationResult);
+    assertEquals(ContractExecutionStatus.Failed, validationResult.getContractExecutionStatus());
+
+    if (validationResult.getSemanticsValidation() != null) {
+      assertEquals(1, validationResult.getSemanticsValidation().getFailed());
+      assertEquals(0, validationResult.getSemanticsValidation().getPassed());
+    }
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataProductContractInheritance_TermsOfUse(TestInfo test) throws IOException {
+    // Create a data product
+    DataProductResourceTest dataProductResourceTest = new DataProductResourceTest();
+    CreateDataProduct createDataProduct =
+        dataProductResourceTest.createRequest("test_dp_terms_" + test.getDisplayName());
+    DataProduct dataProduct =
+        dataProductResourceTest.createAndCheckEntity(createDataProduct, ADMIN_AUTH_HEADERS);
+
+    // Create a data contract for the data product with only terms of use
+    CreateDataContract createDpContract =
+        new CreateDataContract()
+            .withName("dp_contract_terms_" + test.getDisplayName())
+            .withEntity(dataProduct.getEntityReference())
+            .withEntityStatus(EntityStatus.APPROVED)
+            .withTermsOfUse("Data Product Terms: This data is confidential");
+
+    DataContract dpContract = createDataContract(createDpContract);
+    assertNotNull(dpContract);
+
+    // Create a table that belongs to this data product without its own contract
+    Table table = createUniqueTable(test.getDisplayName() + "_terms");
+
+    // Update the table to belong to the data product using PATCH
+    String originalTableJson = JsonUtils.pojoToJson(table);
+    table.setDomains(List.of(dataProduct.getDomains().get(0)));
+    table.setDataProducts(List.of(dataProduct.getEntityReference()));
+
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    table =
+        tableResourceTest.patchEntity(table.getId(), originalTableJson, table, ADMIN_AUTH_HEADERS);
+
+    // Get the effective contract for the table (should inherit from data product)
+    DataContract effectiveContract = getEffectiveContractForTable(table);
+
+    // Verify terms of use is inherited
+    assertNotNull(effectiveContract);
+    assertNotNull(effectiveContract.getTermsOfUse());
+    assertEquals(
+        "Data Product Terms: This data is confidential",
+        effectiveContract.getTermsOfUse().getContent());
+    assertTrue(effectiveContract.getTermsOfUse().getInherited());
+
+    // Create a direct contract for the table with its own terms of use
+    CreateDataContract createTableContract =
+        createDataContractRequest(test.getDisplayName() + "_table_terms", table)
+            .withTermsOfUse("Table Terms: This table has specific usage restrictions")
+            .withEntityStatus(EntityStatus.APPROVED);
+
+    DataContract tableContract = createDataContract(createTableContract);
+
+    // Get the effective contract again
+    effectiveContract = getEffectiveContractForTable(table);
+
+    // Table's own terms should take precedence
+    assertNotNull(effectiveContract.getTermsOfUse());
+    assertEquals(
+        "Table Terms: This table has specific usage restrictions",
+        effectiveContract.getTermsOfUse().getContent());
+    assertFalse(effectiveContract.getTermsOfUse().getInherited());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataProductContract_QualityExpectationsNotInherited(TestInfo test) throws IOException {
+    // Create a data product
+    DataProductResourceTest dataProductResourceTest = new DataProductResourceTest();
+    CreateDataProduct createDataProduct =
+        dataProductResourceTest.createRequest("test_dp_quality_" + test.getDisplayName());
+    DataProduct dataProduct =
+        dataProductResourceTest.createAndCheckEntity(createDataProduct, ADMIN_AUTH_HEADERS);
+
+    // Create a DP contract with only semantics (quality expectations not supported on DPs)
+    SemanticsRule dpRule =
+        new SemanticsRule()
+            .withName("DPSemanticsRule")
+            .withRule("{\"!=\":[{\"var\":\"description\"},null]}")
+            .withDescription("Description must exist")
+            .withEnabled(true);
+
+    CreateDataContract createDpContract =
+        new CreateDataContract()
+            .withName("dp_contract_quality_" + test.getDisplayName())
+            .withEntity(dataProduct.getEntityReference())
+            .withEntityStatus(EntityStatus.APPROVED)
+            .withSemantics(List.of(dpRule));
+
+    DataContract dpContract = createDataContract(createDpContract);
+    assertNotNull(dpContract);
+
+    // Create a table that belongs to this data product
+    Table table = createUniqueTable(test.getDisplayName() + "_quality");
+    table.setDescription("Table description");
+
+    // Update the table to belong to the data product using PATCH
+    String originalTableJson = JsonUtils.pojoToJson(table);
+    table.setDomains(List.of(dataProduct.getDomains().get(0)));
+    table.setDataProducts(List.of(dataProduct.getEntityReference()));
+
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    table =
+        tableResourceTest.patchEntity(table.getId(), originalTableJson, table, ADMIN_AUTH_HEADERS);
+
+    // Get the effective contract - should have inherited semantics but no quality expectations
+    DataContract effectiveContract = getEffectiveContractForTable(table);
+    assertNotNull(effectiveContract);
+    assertNotNull(effectiveContract.getSemantics());
+    assertEquals(1, effectiveContract.getSemantics().size());
+
+    // Quality expectations should NOT be inherited (only semantics are inherited)
+    assertTrue(nullOrEmpty(effectiveContract.getQualityExpectations()));
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testMultipleDataProducts_NoInheritance(TestInfo test) throws IOException {
+    // Create two data products with different contracts
+    DataProductResourceTest dataProductResourceTest = new DataProductResourceTest();
+
+    // First data product with one semantic rule
+    CreateDataProduct createDataProduct1 =
+        dataProductResourceTest.createRequest("test_dp1_" + test.getDisplayName());
+    DataProduct dataProduct1 =
+        dataProductResourceTest.createAndCheckEntity(createDataProduct1, ADMIN_AUTH_HEADERS);
+
+    SemanticsRule dp1Rule =
+        new SemanticsRule()
+            .withName("DP1Rule")
+            .withRule("{\"!=\":[{\"var\":\"description\"},null]}")
+            .withDescription("DP1: Description required")
+            .withEnabled(true);
+
+    CreateDataContract createDp1Contract =
+        new CreateDataContract()
+            .withName("dp1_contract_" + test.getDisplayName())
+            .withEntity(dataProduct1.getEntityReference())
+            .withEntityStatus(EntityStatus.APPROVED)
+            .withSemantics(List.of(dp1Rule))
+            .withTermsOfUse("DP1 Terms");
+
+    DataContract dp1Contract = createDataContract(createDp1Contract);
+    assertNotNull(dp1Contract);
+
+    // Second data product with different semantic rule
+    CreateDataProduct createDataProduct2 =
+        dataProductResourceTest.createRequest("test_dp2_" + test.getDisplayName());
+    DataProduct dataProduct2 =
+        dataProductResourceTest.createAndCheckEntity(createDataProduct2, ADMIN_AUTH_HEADERS);
+
+    SemanticsRule dp2Rule =
+        new SemanticsRule()
+            .withName("DP2Rule")
+            .withRule("{\"!=\":[{\"var\":\"owner\"},null]}")
+            .withDescription("DP2: Owner required")
+            .withEnabled(true);
+
+    CreateDataContract createDp2Contract =
+        new CreateDataContract()
+            .withName("dp2_contract_" + test.getDisplayName())
+            .withEntity(dataProduct2.getEntityReference())
+            .withEntityStatus(EntityStatus.APPROVED)
+            .withSemantics(List.of(dp2Rule))
+            .withTermsOfUse("DP2 Terms");
+
+    DataContract dp2Contract = createDataContract(createDp2Contract);
+    assertNotNull(dp2Contract);
+
+    // Create a table that belongs to BOTH data products
+    Table table = createUniqueTable(test.getDisplayName() + "_multi_dp");
+    table.setDescription("Table belonging to multiple data products");
+
+    String originalTableJson = JsonUtils.pojoToJson(table);
+    table.setDomains(List.of(dataProduct1.getDomains().get(0)));
+    table.setDataProducts(
+        List.of(dataProduct1.getEntityReference(), dataProduct2.getEntityReference()));
+
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    table =
+        tableResourceTest.patchEntity(table.getId(), originalTableJson, table, ADMIN_AUTH_HEADERS);
+
+    // Verify table belongs to both data products
+    assertNotNull(table.getDataProducts());
+    assertEquals(2, table.getDataProducts().size());
+
+    // Get the effective contract - should NOT inherit because of multiple DPs
+    DataContract effectiveContract = getEffectiveContractForTable(table);
+
+    // Since there's no direct contract and multiple DPs, effective contract should be null
+    assertNull(effectiveContract);
+
+    // Now create a direct contract for the table
+    SemanticsRule tableRule =
+        new SemanticsRule()
+            .withName("TableOwnRule")
+            .withRule("{\"!=\":[{\"var\":\"columns\"},null]}")
+            .withDescription("Table must have columns")
+            .withEnabled(true);
+
+    CreateDataContract createTableContract =
+        createDataContractRequest(test.getDisplayName() + "_table_multi", table)
+            .withSemantics(List.of(tableRule))
+            .withEntityStatus(EntityStatus.APPROVED);
+
+    DataContract tableContract = createDataContract(createTableContract);
+    assertNotNull(tableContract);
+
+    // Get effective contract again - should only have the table's own contract, no inheritance
+    effectiveContract = getEffectiveContractForTable(table);
+    assertNotNull(effectiveContract);
+    assertNotNull(effectiveContract.getSemantics());
+
+    // Should only have the table's own rule, not DP1Rule or DP2Rule
+    assertEquals(1, effectiveContract.getSemantics().size());
+    assertEquals("TableOwnRule", effectiveContract.getSemantics().get(0).getName());
+    assertFalse(effectiveContract.getSemantics().get(0).getInherited());
+
+    // Verify no inherited terms of use either
+    assertTrue(
+        effectiveContract.getTermsOfUse() == null
+            || !effectiveContract.getTermsOfUse().getInherited());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataProductContractInheritance_NoDuplicateSemantics(TestInfo test) throws IOException {
+    // Create a data product
+    DataProductResourceTest dataProductResourceTest = new DataProductResourceTest();
+    CreateDataProduct createDataProduct =
+        dataProductResourceTest.createRequest("test_dp_dedup_" + test.getDisplayName());
+    DataProduct dataProduct =
+        dataProductResourceTest.createAndCheckEntity(createDataProduct, ADMIN_AUTH_HEADERS);
+
+    // Create DP contract with a semantic rule
+    SemanticsRule dpRule =
+        new SemanticsRule()
+            .withName("MustHaveDescription")
+            .withRule("{\"!=\":[{\"var\":\"description\"},null]}")
+            .withDescription("DP: Description must exist")
+            .withEnabled(true);
+
+    CreateDataContract createDpContract =
+        new CreateDataContract()
+            .withName("dp_contract_dedup_" + test.getDisplayName())
+            .withEntity(dataProduct.getEntityReference())
+            .withEntityStatus(EntityStatus.APPROVED)
+            .withSemantics(List.of(dpRule));
+
+    DataContract dpContract = createDataContract(createDpContract);
+    assertNotNull(dpContract);
+
+    // Create a table with the SAME semantic rule name
+    Table table = createUniqueTable(test.getDisplayName() + "_dedup");
+    table.setDescription("Table with description");
+
+    String originalTableJson = JsonUtils.pojoToJson(table);
+    table.setDomains(List.of(dataProduct.getDomains().get(0)));
+    table.setDataProducts(List.of(dataProduct.getEntityReference()));
+
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    table =
+        tableResourceTest.patchEntity(table.getId(), originalTableJson, table, ADMIN_AUTH_HEADERS);
+
+    // Create a table contract with the same rule name (different description)
+    SemanticsRule tableRule =
+        new SemanticsRule()
+            .withName("MustHaveDescription") // Same name as DP rule
+            .withRule("{\"!=\":[{\"var\":\"description\"},null]}")
+            .withDescription("Table: My own description rule") // Different description
+            .withEnabled(true);
+
+    CreateDataContract createTableContract =
+        createDataContractRequest(test.getDisplayName() + "_table_dedup", table)
+            .withSemantics(List.of(tableRule))
+            .withEntityStatus(EntityStatus.APPROVED);
+
+    DataContract tableContract = createDataContract(createTableContract);
+    assertNotNull(tableContract);
+
+    // Get effective contract - should NOT have duplicates
+    DataContract effectiveContract = getEffectiveContractForTable(table);
+    assertNotNull(effectiveContract);
+    assertNotNull(effectiveContract.getSemantics());
+
+    // Should only have ONE rule (table's own rule takes precedence)
+    assertEquals(
+        1,
+        effectiveContract.getSemantics().size(),
+        "Should have only 1 semantic rule (no duplicates)");
+    assertEquals("MustHaveDescription", effectiveContract.getSemantics().get(0).getName());
+    // The entity's own rule should NOT be marked as inherited
+    assertFalse(
+        effectiveContract.getSemantics().get(0).getInherited(),
+        "Entity's own rule should not be marked as inherited");
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataProductContractInheritance_SLAInheritance(TestInfo test) throws IOException {
+    // Create a data product
+    DataProductResourceTest dataProductResourceTest = new DataProductResourceTest();
+    CreateDataProduct createDataProduct =
+        dataProductResourceTest.createRequest("test_dp_sla_" + test.getDisplayName());
+    DataProduct dataProduct =
+        dataProductResourceTest.createAndCheckEntity(createDataProduct, ADMIN_AUTH_HEADERS);
+
+    // Create DP contract with SLA
+    org.openmetadata.schema.api.data.ContractSLA sla =
+        new org.openmetadata.schema.api.data.ContractSLA();
+    org.openmetadata.schema.api.data.RefreshFrequency refreshFrequency =
+        new org.openmetadata.schema.api.data.RefreshFrequency()
+            .withInterval(1)
+            .withUnit(org.openmetadata.schema.api.data.RefreshFrequency.Unit.HOUR);
+    sla.setRefreshFrequency(refreshFrequency);
+
+    CreateDataContract createDpContract =
+        new CreateDataContract()
+            .withName("dp_contract_sla_" + test.getDisplayName())
+            .withEntity(dataProduct.getEntityReference())
+            .withEntityStatus(EntityStatus.APPROVED)
+            .withSla(sla);
+
+    DataContract dpContract = createDataContract(createDpContract);
+    assertNotNull(dpContract);
+
+    // Create a table without its own contract
+    Table table = createUniqueTable(test.getDisplayName() + "_sla");
+
+    String originalTableJson = JsonUtils.pojoToJson(table);
+    table.setDomains(List.of(dataProduct.getDomains().get(0)));
+    table.setDataProducts(List.of(dataProduct.getEntityReference()));
+
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    table =
+        tableResourceTest.patchEntity(table.getId(), originalTableJson, table, ADMIN_AUTH_HEADERS);
+
+    // Get effective contract - should inherit SLA from DP
+    DataContract effectiveContract = getEffectiveContractForTable(table);
+    assertNotNull(effectiveContract);
+    assertNotNull(effectiveContract.getSla());
+    assertNotNull(effectiveContract.getSla().getRefreshFrequency());
+    assertEquals(1, effectiveContract.getSla().getRefreshFrequency().getInterval());
+
+    // SLA should be marked as inherited
+    assertTrue(effectiveContract.getSla().getInherited(), "SLA should be marked as inherited");
+  }
+
+  private DataContract getEffectiveContractForTable(Table table) throws HttpResponseException {
+    try {
+      return getDataContractByEntityId(table.getId(), table.getEntityReference().getType(), null);
+    } catch (HttpResponseException e) {
+      // No contract found, which is valid for inheritance test
+      if (e.getStatusCode() == 404) {
+        return null;
+      }
+      throw e;
+    }
+  }
+
+  private DataContractResult validateDataContract(UUID contractId) throws HttpResponseException {
+    WebTarget target = getCollection().path("/" + contractId + "/validate");
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).post(Entity.json(""));
+    return TestUtils.readResponse(response, DataContractResult.class, Status.OK.getStatusCode());
   }
 }

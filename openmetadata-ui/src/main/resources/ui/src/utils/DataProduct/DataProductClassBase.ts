@@ -64,6 +64,7 @@ class DataProductClassBase {
       EntityTabs.DOCUMENTATION,
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.ASSETS,
+      EntityTabs.CONTRACT,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,

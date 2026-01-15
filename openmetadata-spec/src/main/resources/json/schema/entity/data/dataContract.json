@@ -106,6 +106,10 @@
       "type": "object",
       "description": "Security and access policy expectations",
       "properties": {
+        "inherited": {
+          "description": "If the property is inherited from the Data Product",
+          "type": "boolean"
+        },
         "dataClassification": {
           "type": "string",
           "title": "Data Classification",
@@ -125,6 +129,10 @@
       "type": "object",
       "description": "Service Level Agreement expectations (timeliness, availability, etc.)",
       "properties": {
+        "inherited": {
+          "description": "If the property is inherited from the Data Product",
+          "type": "boolean"
+        },
         "refreshFrequency": {
           "type": "object",
           "title": "Refresh Frequency",
@@ -210,6 +218,19 @@
           "description": "Column that represents the refresh time of the data (if applicable)"
         }
       }
+    },
+    "termsOfUse": {
+      "type": "object",
+      "description": "Terms of use for the data contract for both human and AI agents consumption.",
+      "properties": {
+        "content": {
+          "$ref": "../../type/basic.json#/definitions/markdown"
+        },
+        "inherited": {
+          "description": "If the property is inherited from the Data Product",
+          "type": "boolean"
+        }
+      }
     }
   },
   "properties": {
@@ -293,7 +314,7 @@
     },
     "termsOfUse": {
       "description": "Terms of use for the data contract for both human and AI agents consumption.",
-      "$ref": "../../type/basic.json#/definitions/markdown",
+      "$ref": "#/definitions/termsOfUse",
       "default": null
     },
     "security": {
@@ -383,6 +404,11 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "inherited": {
+      "description": "Indicates whether this data contract is inherited from a parent entity.",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": ["id", "name", "entity"],

@@ -49,6 +49,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.DataContract;
@@ -259,12 +260,13 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   @Path("/entity")
   @Operation(
       operationId = "getDataContractByEntityId",
-      summary = "Get a data contract by its related Entity ID",
-      description = "Get a data contract by its related Entity ID.",
+      summary = "Get the effective data contract for an entity",
+      description =
+          "Get the effective data contract for an entity, including inherited contract properties from its data product if applicable.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The data contract",
+            description = "The effective data contract (may include inherited properties)",
             content =
                 @Content(
                     mediaType = "application/json",
@@ -293,9 +295,10 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
         securityContext,
         new OperationContext(entityType, MetadataOperation.VIEW_ALL),
         getResourceContextById(entityId));
-    DataContract dataContract =
-        repository.loadEntityDataContract(
-            new EntityReference().withId(entityId).withType(entityType));
+
+    EntityInterface entity = Entity.getEntity(entityType, entityId, "*", Include.NON_DELETED);
+    DataContract dataContract = repository.getEffectiveDataContract(entity);
+
     if (dataContract == null) {
       throw EntityNotFoundException.byMessage(
           String.format("Data contract for entity %s is not found", entityId));
@@ -851,7 +854,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       operationId = "validateDataContract",
       summary = "Validate a data contract",
       description =
-          "Execute on-demand validation of a data contract including semantic rules and quality tests.",
+          "Execute on-demand validation of a data contract including semantic rules, quality tests, and inherited contract properties from data products.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -875,7 +878,18 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
         new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
-    RestUtil.PutResponse<DataContractResult> result = repository.validateContract(dataContract);
+    // Get the effective contract (with inherited properties from data products) for validation
+    EntityInterface entity =
+        Entity.getEntity(
+            dataContract.getEntity().getType(),
+            dataContract.getEntity().getId(),
+            "*",
+            Include.NON_DELETED);
+    DataContract effectiveContract = repository.getEffectiveDataContract(entity);
+
+    // Use the effective contract for validation to include inherited semantics
+    RestUtil.PutResponse<DataContractResult> result =
+        repository.validateContract(effectiveContract != null ? effectiveContract : dataContract);
     return result.toResponse();
   }
 

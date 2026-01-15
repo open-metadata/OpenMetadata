@@ -46,6 +46,16 @@ UPDATE test_definition
   SET json = jsonb_set(json::jsonb, '{enabled}', 'true'::jsonb, true)::json
   WHERE json ->> 'enabled' IS NULL;
 
+-- Migrate termsOfUse from string to object with content and inherited fields
+-- This converts existing termsOfUse string values to the new object structure: { "content": "...", "inherited": false }
+UPDATE data_contract_entity
+  SET json = jsonb_set(
+    json::jsonb,
+    '{termsOfUse}',
+    jsonb_build_object('content', json ->> 'termsOfUse', 'inherited', false)
+  )::json
+  WHERE jsonb_typeof((json::jsonb) -> 'termsOfUse') = 'string';
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_audit_log_event_change_event_id
 ON audit_log_event (change_event_id);
 

@@ -12,6 +12,7 @@
  */
 import Icon from '@ant-design/icons';
 import { Button, Card, Typography } from 'antd';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
@@ -20,6 +21,12 @@ import { DataContract } from '../../../generated/entity/data/dataContract';
 import { useFqn } from '../../../hooks/useFqn';
 import BlockEditor from '../../BlockEditor/BlockEditor';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+
+// Type for the new termsOfUse structure (object with content and inherited)
+interface TermsOfUseObject {
+  content?: string;
+  inherited?: boolean;
+}
 
 export const ContractTermsOfService: React.FC<{
   initialValues?: DataContract;
@@ -35,8 +42,28 @@ export const ContractTermsOfService: React.FC<{
   const { fqn } = useFqn();
   const { t } = useTranslation();
 
+  // Handle both old string format and new object format for termsOfUse
+  const termsOfUseContent = useMemo(() => {
+    const termsOfUse = initialValues?.termsOfUse;
+    if (!termsOfUse || termsOfUse === '<p></p>') {
+      return undefined;
+    }
+    // Handle new object format
+    if (typeof termsOfUse === 'object') {
+      const content = (termsOfUse as unknown as TermsOfUseObject)?.content;
+
+      return content === '<p></p>' ? undefined : content;
+    }
+
+    // Handle old string format
+    return termsOfUse;
+  }, [initialValues?.termsOfUse]);
+
   const handleContentOnChange = (value: string) => {
-    onChange({ termsOfUse: value });
+    // Always save in the new object format
+    onChange({
+      termsOfUse: { content: value } as unknown as string,
+    });
   };
 
   return (
@@ -59,11 +86,7 @@ export const ContractTermsOfService: React.FC<{
               entityType={EntityType.TABLE}>
               <BlockEditor
                 editable
-                content={
-                  initialValues?.termsOfUse === '<p></p>'
-                    ? undefined
-                    : initialValues?.termsOfUse
-                }
+                content={termsOfUseContent}
                 showInlineAlert={false}
                 onChange={handleContentOnChange}
               />
