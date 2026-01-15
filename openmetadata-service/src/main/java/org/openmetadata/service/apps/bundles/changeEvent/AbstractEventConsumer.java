@@ -21,9 +21,11 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -32,12 +34,15 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FailedEvent;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.notifications.recipients.RecipientResolver;
+import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.util.DIContainer;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
@@ -224,10 +229,30 @@ public abstract class AbstractEventConsumer
     }
 
     Map<ChangeEvent, Set<UUID>> filteredEvents = getFilteredEvents(eventSubscription, events);
+    RecipientResolver resolver = new RecipientResolver();
 
     for (var eventWithReceivers : filteredEvents.entrySet()) {
-      for (UUID receiverId : eventWithReceivers.getValue()) {
-        boolean status = sendAlert(receiverId, eventWithReceivers.getKey());
+      ChangeEvent event = eventWithReceivers.getKey();
+      Set<UUID> destinationIds = eventWithReceivers.getValue();
+
+      Map<SubscriptionType, List<Destination<ChangeEvent>>> destinationsByType =
+          groupDestinationsByType(destinationIds);
+
+      for (var entry : destinationsByType.entrySet()) {
+        List<Destination<ChangeEvent>> destinations = entry.getValue();
+
+        List<SubscriptionDestination> subDestinations =
+            destinations.stream().map(Destination::getSubscriptionDestination).toList();
+
+        Set<Recipient> recipients = resolver.resolveRecipients(event, subDestinations);
+
+        if (recipients.isEmpty()) {
+          continue;
+        }
+
+        Destination<ChangeEvent> publisher = destinations.get(0);
+        boolean status = sendAlertToRecipients(publisher, event, recipients);
+
         if (status) {
           // Collect successful events instead of writing immediately
           // Batch write happens in commit() to reduce connection pool contention
@@ -237,6 +262,26 @@ public abstract class AbstractEventConsumer
           alertMetrics.withFailedEvents(alertMetrics.getFailedEvents() + 1);
         }
       }
+    }
+  }
+
+  private Map<SubscriptionType, List<Destination<ChangeEvent>>> groupDestinationsByType(
+      Set<UUID> destinationIds) {
+    return destinationIds.stream()
+        .map(destinationMap::get)
+        .filter(Objects::nonNull)
+        .filter(Destination::getEnabled)
+        .collect(Collectors.groupingBy(dest -> dest.getSubscriptionDestination().getType()));
+  }
+
+  private boolean sendAlertToRecipients(
+      Destination<ChangeEvent> destination, ChangeEvent event, Set<Recipient> recipients) {
+    try {
+      destination.sendMessage(event, recipients);
+      return true;
+    } catch (EventPublisherException e) {
+      LOG.error("Failed to send alert: {}", e.getMessage());
+      return false;
     }
   }
 

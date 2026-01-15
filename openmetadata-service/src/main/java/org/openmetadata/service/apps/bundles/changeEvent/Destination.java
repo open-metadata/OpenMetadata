@@ -17,6 +17,7 @@ import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AC
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AWAITING_RETRY;
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.FAILED;
 
+import java.util.Set;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.StatusContext;
@@ -25,9 +26,10 @@ import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.entity.events.TestDestinationStatus;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertUtil;
+import org.openmetadata.service.notifications.recipients.context.Recipient;
 
 public interface Destination<T> {
-  void sendMessage(T event) throws EventPublisherException;
+  void sendMessage(T event, Set<Recipient> recipients) throws EventPublisherException;
 
   void sendTestMessage() throws EventPublisherException;
 

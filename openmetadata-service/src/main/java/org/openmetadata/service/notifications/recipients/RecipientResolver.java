@@ -14,12 +14,16 @@
 package org.openmetadata.service.notifications.recipients;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.SubscriptionAction;
+import org.openmetadata.schema.alert.type.EmailAlertConfig;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.downstream.EntityLineageResolver;
@@ -96,17 +100,40 @@ public class RecipientResolver {
   }
 
   /**
-   * Resolve all recipients for an event and subscription destination.
+   * Resolves and deduplicates recipients across multiple destinations of the same type.
+   * Deduplication uses Recipient.equals() (email for EmailRecipient, endpoint for WebhookRecipient).
    *
    * @param event the change event triggering the notification
-   * @param destination the subscription destination configuration
-   * @param action the subscription action with recipient configuration
-   * @return set of resolved recipients with contact information
+   * @param destinations list of subscription destinations to resolve recipients for
+   * @return deduplicated set of resolved recipients
    */
   public Set<Recipient> resolveRecipients(
-      ChangeEvent event, SubscriptionDestination destination, SubscriptionAction action) {
+      ChangeEvent event, List<SubscriptionDestination> destinations) {
 
     Set<Recipient> allRecipients = new HashSet<>();
+
+    for (SubscriptionDestination destination : destinations) {
+      Set<Recipient> recipients = resolveRecipientsForDestination(event, destination);
+      allRecipients.addAll(recipients);
+    }
+
+    return allRecipients;
+  }
+
+  /**
+   * Resolves recipients for a single destination by extracting the action config from the
+   * destination configuration.
+   */
+  private Set<Recipient> resolveRecipientsForDestination(
+      ChangeEvent event, SubscriptionDestination destination) {
+
+    SubscriptionDestination.SubscriptionType type = destination.getType();
+    if (type == SubscriptionDestination.SubscriptionType.ACTIVITY_FEED
+        || type == SubscriptionDestination.SubscriptionType.GOVERNANCE_WORKFLOW_CHANGE_EVENT) {
+      return Set.of();
+    }
+
+    Set<Recipient> recipients = new HashSet<>();
 
     try {
       SubscriptionDestination.SubscriptionCategory category = destination.getCategory();
@@ -118,22 +145,20 @@ public class RecipientResolver {
         return Set.of();
       }
 
+      SubscriptionAction action = extractActionConfig(destination);
       // All entities (including threads) use the same category-based strategy routing
       // Use ChangeEvent method to safely handle deleted entities via payload snapshot
-      allRecipients.addAll(strategy.resolve(event, action, destination));
+      recipients.addAll(strategy.resolve(event, action, destination));
 
       // 2. Add downstream recipients if enabled (only for INTERNAL categories)
       if (Boolean.TRUE.equals(destination.getNotifyDownstream())
           && category != SubscriptionDestination.SubscriptionCategory.EXTERNAL) {
-
         LineageBasedDownstreamHandler downstreamHandler =
             new LineageBasedDownstreamHandler(LINEAGE_RESOLVERS, strategy);
-
         Set<Recipient> downstreamRecipients =
             downstreamHandler.resolveDownstreamRecipients(
                 action, destination, event, destination.getDownstreamDepth());
-
-        allRecipients.addAll(downstreamRecipients);
+        recipients.addAll(downstreamRecipients);
       }
 
     } catch (Exception e) {
@@ -144,6 +169,22 @@ public class RecipientResolver {
           e);
     }
 
-    return allRecipients;
+    return recipients;
+  }
+
+  /**
+   * Extracts the action configuration from the destination config based on destination type.
+   */
+  private SubscriptionAction extractActionConfig(SubscriptionDestination destination) {
+    Object config = destination.getConfig();
+    if (config == null) {
+      return null;
+    }
+
+    return switch (destination.getType()) {
+      case EMAIL -> JsonUtils.convertValue(config, EmailAlertConfig.class);
+      case SLACK, MS_TEAMS, G_CHAT, WEBHOOK -> JsonUtils.convertValue(config, Webhook.class);
+      default -> null;
+    };
   }
 }
