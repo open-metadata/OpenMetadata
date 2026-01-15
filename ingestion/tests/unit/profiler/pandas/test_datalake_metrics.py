@@ -170,10 +170,12 @@ class DatalakeMetricsTest(TestCase):
                 DatalakeSampler,
                 "get_dataframes",
                 return_value=DatalakeColumnWrapper(
-                    dataframes=lambda: iter([
-                        cls.df1,
-                        pd.concat([cls.df2, pd.DataFrame(index=cls.df1.index)]),
-                    ]),
+                    dataframes=lambda: iter(
+                        [
+                            cls.df1,
+                            pd.concat([cls.df2, pd.DataFrame(index=cls.df1.index)]),
+                        ]
+                    ),
                     columns=None,
                     raw_data=None,
                 ),

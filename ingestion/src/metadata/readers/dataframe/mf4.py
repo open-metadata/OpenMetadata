@@ -68,7 +68,9 @@ class MF4DataFrameReader(DataFrameReader):
                 )
 
         logger.debug("No _common_properties found in header.")
-        return DatalakeColumnWrapper(dataframes=lambda: iter([]), raw_data=None, columns=None)
+        return DatalakeColumnWrapper(
+            dataframes=lambda: iter([]), raw_data=None, columns=None
+        )
 
     @singledispatchmethod
     def _read_mf4_dispatch(

@@ -17,7 +17,7 @@ import ast
 import json
 import random
 import traceback
-from typing import Any, Dict, Generator, List, Optional, Union, cast
+from typing import Any, Dict, List, Optional, Union, cast
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
@@ -102,7 +102,7 @@ def fetch_dataframe_generator(
         file_fqn: The fully qualified name of the file
         fetch_raw_data: Whether to fetch the raw data or not
         **kwargs: Additional arguments to pass to the reader
-    
+
     Returns:
         DatalakeColumnWrapper: A wrapper containing the dataframes and raw data
     """
@@ -123,9 +123,7 @@ def fetch_dataframe_generator(
                 separator=file_fqn.separator,
             )
             try:
-                return df_reader.read(
-                    key=key, bucket_name=bucket_name, **kwargs
-                )
+                return df_reader.read(key=key, bucket_name=bucket_name, **kwargs)
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.error(

@@ -14,7 +14,7 @@ Median Metric definition
 """
 # pylint: disable=duplicate-code
 
-from typing import TYPE_CHECKING, List, Optional, cast
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import column
 

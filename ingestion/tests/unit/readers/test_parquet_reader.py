@@ -46,7 +46,11 @@ class TestParquetReader(unittest.TestCase):
 
             result = reader._read(key=tmp_path, bucket_name="")
 
-            dataframes = result.dataframes() if callable(result.dataframes) else result.dataframes
+            dataframes = (
+                result.dataframes()
+                if callable(result.dataframes)
+                else result.dataframes
+            )
             chunks = list(dataframes)
             self.assertTrue(len(chunks) > 0)
             total_rows = sum(len(chunk) for chunk in chunks)
@@ -79,7 +83,9 @@ class TestParquetReader(unittest.TestCase):
 
         result = reader._read(key="test.parquet", bucket_name="")
 
-        dataframes = result.dataframes() if callable(result.dataframes) else result.dataframes
+        dataframes = (
+            result.dataframes() if callable(result.dataframes) else result.dataframes
+        )
         chunks = list(dataframes)
         self.assertTrue(len(chunks) > 0)
 
@@ -110,7 +116,9 @@ class TestParquetReader(unittest.TestCase):
 
         result = reader._read(key="test.parquet", bucket_name="test-bucket")
 
-        dataframes = result.dataframes() if callable(result.dataframes) else result.dataframes
+        dataframes = (
+            result.dataframes() if callable(result.dataframes) else result.dataframes
+        )
         chunks = list(dataframes)
         self.assertTrue(len(chunks) > 0)
 
@@ -142,7 +150,9 @@ class TestParquetReader(unittest.TestCase):
 
         result = reader._read(key="test.parquet", bucket_name="test-bucket")
 
-        dataframes = result.dataframes() if callable(result.dataframes) else result.dataframes
+        dataframes = (
+            result.dataframes() if callable(result.dataframes) else result.dataframes
+        )
         chunks = list(dataframes)
         self.assertTrue(len(chunks) > 0)
 
@@ -167,7 +177,9 @@ class TestParquetReader(unittest.TestCase):
 
         result = reader._read(key="test.parquet", bucket_name="test-bucket")
 
-        dataframes = result.dataframes() if callable(result.dataframes) else result.dataframes
+        dataframes = (
+            result.dataframes() if callable(result.dataframes) else result.dataframes
+        )
         chunks = list(dataframes)
         self.assertTrue(len(chunks) > 0)
 
@@ -193,7 +205,9 @@ class TestParquetReader(unittest.TestCase):
 
         result = reader._read(key="test.parquet", bucket_name="test-bucket")
 
-        dataframes = result.dataframes() if callable(result.dataframes) else result.dataframes
+        dataframes = (
+            result.dataframes() if callable(result.dataframes) else result.dataframes
+        )
         chunks = list(dataframes)
         self.assertTrue(len(chunks) > 0)
 

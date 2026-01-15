@@ -164,7 +164,9 @@ class ParquetDataFrameReader(DataFrameReader):
                     parquet_file = ParquetFile(file)
                     yield from self._read_parquet_in_batches(parquet_file)
 
-                return DatalakeColumnWrapper(dataframes=chunk_generator, raw_data=None, columns=None)
+                return DatalakeColumnWrapper(
+                    dataframes=chunk_generator, raw_data=None, columns=None
+                )
             else:
                 # Use regular reading for smaller files
                 def chunk_generator():
@@ -175,7 +177,9 @@ class ParquetDataFrameReader(DataFrameReader):
                     )
                     yield from dataframe_to_chunks(dataframe_response)
 
-                return DatalakeColumnWrapper(dataframes=chunk_generator, raw_data=None, columns=None)
+                return DatalakeColumnWrapper(
+                    dataframes=chunk_generator, raw_data=None, columns=None
+                )
 
         except Exception as exc:
             # Fallback to regular reading if size check fails
@@ -192,7 +196,9 @@ class ParquetDataFrameReader(DataFrameReader):
                 )
                 yield from dataframe_to_chunks(dataframe_response)
 
-            return DatalakeColumnWrapper(dataframes=chunk_generator, raw_data=None, columns=None)
+            return DatalakeColumnWrapper(
+                dataframes=chunk_generator, raw_data=None, columns=None
+            )
 
     @_read_parquet_dispatch.register
     def _(self, _: S3Config, key: str, bucket_name: str) -> DatalakeColumnWrapper:
@@ -266,7 +272,9 @@ class ParquetDataFrameReader(DataFrameReader):
                     parquet_file = ParquetFile(bucket_uri, filesystem=s3_fs)
                     yield from self._read_parquet_in_batches(parquet_file)
 
-                return DatalakeColumnWrapper(dataframes=chunk_generator, raw_data=None, columns=None)
+                return DatalakeColumnWrapper(
+                    dataframes=chunk_generator, raw_data=None, columns=None
+                )
             else:
                 # Use ParquetDataset for regular reading of smaller files
                 def chunk_generator():
@@ -276,7 +284,9 @@ class ParquetDataFrameReader(DataFrameReader):
                     dataset = ParquetDataset(bucket_uri, filesystem=s3_fs)
                     yield from dataframe_to_chunks(dataset.read_pandas().to_pandas())
 
-                return DatalakeColumnWrapper(dataframes=chunk_generator, raw_data=None, columns=None)
+                return DatalakeColumnWrapper(
+                    dataframes=chunk_generator, raw_data=None, columns=None
+                )
 
         except Exception as exc:
             # Fallback to regular reading if size check fails
@@ -288,7 +298,9 @@ class ParquetDataFrameReader(DataFrameReader):
                 dataset = ParquetDataset(bucket_uri, filesystem=s3_fs)
                 yield from dataframe_to_chunks(dataset.read_pandas().to_pandas())
 
-            return DatalakeColumnWrapper(dataframes=chunk_generator, raw_data=None, columns=None)
+            return DatalakeColumnWrapper(
+                dataframes=chunk_generator, raw_data=None, columns=None
+            )
 
     @_read_parquet_dispatch.register
     def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
@@ -316,6 +328,7 @@ class ParquetDataFrameReader(DataFrameReader):
             file_size = file_info.get("size", 0)
 
             if self._should_use_chunking(file_size):
+
                 def arrow_chunk_generator():
                     logger.info(
                         f"Large parquet file detected ({file_size} bytes > {MAX_FILE_SIZE_FOR_PREVIEW} bytes). "
@@ -325,16 +338,21 @@ class ParquetDataFrameReader(DataFrameReader):
                     parquet_file = ParquetFile(file_path, filesystem=arrow_fs)
                     yield from self._read_parquet_in_batches(parquet_file)
 
-                return DatalakeColumnWrapper(dataframes=arrow_chunk_generator, raw_data=None, columns=None)
+                return DatalakeColumnWrapper(
+                    dataframes=arrow_chunk_generator, raw_data=None, columns=None
+                )
             else:
+
                 def chunk_generator():
-                                    # Use pandas for regular reading of smaller files
+                    # Use pandas for regular reading of smaller files
                     dataframe = pd.read_parquet(
                         account_url, storage_options=storage_options
                     )
                     yield from dataframe_to_chunks(dataframe)
 
-                return DatalakeColumnWrapper(dataframes=chunk_generator, raw_data=None, columns=None)
+                return DatalakeColumnWrapper(
+                    dataframes=chunk_generator, raw_data=None, columns=None
+                )
 
         except Exception as exc:
             logger.warning(
@@ -343,10 +361,14 @@ class ParquetDataFrameReader(DataFrameReader):
             )
 
             def chunk_generator():
-                dataframe = pd.read_parquet(account_url, storage_options=storage_options)
+                dataframe = pd.read_parquet(
+                    account_url, storage_options=storage_options
+                )
                 yield from dataframe_to_chunks(dataframe)
 
-            return DatalakeColumnWrapper(dataframes=chunk_generator, raw_data=None, columns=None)
+            return DatalakeColumnWrapper(
+                dataframes=chunk_generator, raw_data=None, columns=None
+            )
 
     @_read_parquet_dispatch.register
     def _(
@@ -365,6 +387,7 @@ class ParquetDataFrameReader(DataFrameReader):
             file_size = os.path.getsize(key)
 
             if self._should_use_chunking(file_size):
+
                 def arrow_chunk_generator():
                     logger.info(
                         f"Large parquet file detected ({file_size} bytes > {MAX_FILE_SIZE_FOR_PREVIEW} bytes). "
@@ -373,14 +396,19 @@ class ParquetDataFrameReader(DataFrameReader):
                     parquet_file = ParquetFile(key)
                     yield from self._read_parquet_in_batches(parquet_file)
 
-                return DatalakeColumnWrapper(dataframes=arrow_chunk_generator, raw_data=None, columns=None)
+                return DatalakeColumnWrapper(
+                    dataframes=arrow_chunk_generator, raw_data=None, columns=None
+                )
             else:
+
                 def chunk_generator():
                     # Use pandas for regular reading of smaller files
                     dataframe = pd.read_parquet(key)
                     yield from dataframe_to_chunks(dataframe)
 
-                return DatalakeColumnWrapper(dataframes=chunk_generator, raw_data=None, columns=None)
+                return DatalakeColumnWrapper(
+                    dataframes=chunk_generator, raw_data=None, columns=None
+                )
 
         except Exception as exc:
             logger.warning(
@@ -391,8 +419,10 @@ class ParquetDataFrameReader(DataFrameReader):
             def chunk_generator():
                 dataframe = pd.read_parquet(key)
                 yield from dataframe_to_chunks(dataframe)
-            
-            return DatalakeColumnWrapper(dataframes=chunk_generator, raw_data=None, columns=None)
+
+            return DatalakeColumnWrapper(
+                dataframes=chunk_generator, raw_data=None, columns=None
+            )
 
     def _read(self, *, key: str, bucket_name: str, **__) -> DatalakeColumnWrapper:
         return self._read_parquet_dispatch(

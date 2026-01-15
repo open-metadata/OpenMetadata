@@ -153,7 +153,9 @@ class DataFrameReader(ABC):
 
             return DatalakeColumnWrapper(
                 columns=wrapper.columns,
-                dataframes=(lambda chunk=first_chunk: iter([chunk])) if first_chunk is not None else None,
+                dataframes=(lambda chunk=first_chunk: iter([chunk]))
+                if first_chunk is not None
+                else None,
                 raw_data=wrapper.raw_data,
             )
         except Exception as err:

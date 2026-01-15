@@ -12,13 +12,14 @@
 """
 Cardinality Distribution Metric definition
 """
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from sqlalchemy import case, column, desc, func, or_
 from sqlalchemy.orm import DeclarativeMeta, Session
 
 if TYPE_CHECKING:
     from metadata.profiler.processor.runner import PandasRunner
+
 from metadata.profiler.metrics.core import HybridMetric
 from metadata.profiler.metrics.static.count import Count
 from metadata.profiler.metrics.static.distinct_count import DistinctCount

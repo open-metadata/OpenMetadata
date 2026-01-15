@@ -13,7 +13,17 @@
 Validator Mixin for Pandas based tests cases
 """
 
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Mapping, Optional, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Union,
+    cast,
+)
 
 import numpy as np
 import pandas as pd
@@ -41,6 +51,7 @@ from metadata.utils.sqa_like_column import SQALikeColumn
 
 class PandasValidatorMixin:
     """Validator mixin for Pandas based test cases"""
+
     runner: "PandasRunner"
 
     def get_column(
@@ -115,7 +126,9 @@ class PandasValidatorMixin:
         except Exception as exc:
             raise RuntimeError(exc)
 
-    def _compute_row_count(self, runner: "PandasRunner", column: SQALikeColumn, **kwargs):
+    def _compute_row_count(
+        self, runner: "PandasRunner", column: SQALikeColumn, **kwargs
+    ):
         """compute row count
 
         Args:

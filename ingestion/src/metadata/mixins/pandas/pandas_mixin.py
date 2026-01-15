@@ -25,7 +25,10 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.sampler.models import ProfileSampleType
 from metadata.sampler.sampler_interface import SampleConfig
-from metadata.utils.datalake.datalake_utils import DatalakeColumnWrapper, fetch_dataframe_generator
+from metadata.utils.datalake.datalake_utils import (
+    DatalakeColumnWrapper,
+    fetch_dataframe_generator,
+)
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -34,7 +37,9 @@ logger = test_suite_logger()
 class PandasInterfaceMixin:
     """Interface mixin grouping shared methods between test suite and profiler interfaces"""
 
-    def get_partitioned_df(self, partition_details: PartitionProfilerConfig, raw_dataset: Callable) -> Callable:
+    def get_partitioned_df(
+        self, partition_details: PartitionProfilerConfig, raw_dataset: Callable
+    ) -> Callable:
         """Get partitioned dataframe
 
         Args:
@@ -43,6 +48,7 @@ class PandasInterfaceMixin:
         Returns:
             Generator of partitioned dataframes
         """
+
         def yield_df_partitions():
             dfs = raw_dataset
             if (
@@ -51,9 +57,9 @@ class PandasInterfaceMixin:
             ):
                 for df in dfs():
                     yield df[
-                        df[
-                            self.table_partition_config.partitionColumnName
-                        ].isin(self.table_partition_config.partitionValues)
+                        df[self.table_partition_config.partitionColumnName].isin(
+                            self.table_partition_config.partitionValues
+                        )
                     ]
             elif (
                 self.table_partition_config.partitionIntervalType
@@ -61,16 +67,17 @@ class PandasInterfaceMixin:
             ):
                 for df in dfs():
                     yield df[
-                        df[
-                            self.table_partition_config.partitionColumnName
-                        ].between(
+                        df[self.table_partition_config.partitionColumnName].between(
                             self.table_partition_config.partitionIntegerRangeStart,
                             self.table_partition_config.partitionIntegerRangeEnd,
                         )
                     ]
             elif (
                 self.table_partition_config.partitionIntervalType
-                in {PartitionIntervalTypes.INGESTION_TIME, PartitionIntervalTypes.TIME_UNIT}
+                in {
+                    PartitionIntervalTypes.INGESTION_TIME,
+                    PartitionIntervalTypes.TIME_UNIT,
+                }
                 and self.table_partition_config.partitionIntervalUnit
                 and self.table_partition_config.partitionInterval
             ):
@@ -79,8 +86,9 @@ class PandasInterfaceMixin:
                         df[self.table_partition_config.partitionColumnName]
                         >= TableRowInsertedCountToBeBetweenValidator._get_threshold_date(  # pylint: disable=protected-access
                             (
-                                self.table_partition_config.partitionIntervalUnit.value 
-                                if self.table_partition_config.partitionIntervalUnit else "DAY"
+                                self.table_partition_config.partitionIntervalUnit.value
+                                if self.table_partition_config.partitionIntervalUnit
+                                else "DAY"
                             ),
                             self.table_partition_config.partitionInterval or 1,
                         )
@@ -92,11 +100,8 @@ class PandasInterfaceMixin:
                 )
                 yield from dfs()
 
-        self.table_partition_config = cast(
-            PartitionProfilerConfig, partition_details
-        )
+        self.table_partition_config = cast(PartitionProfilerConfig, partition_details)
         return yield_df_partitions
-
 
     def get_sampled_query_dataframe(
         self, sample_query: str | None, raw_dataset: Callable
@@ -109,6 +114,7 @@ class PandasInterfaceMixin:
         Returns:
             Generator of sampled dataframes
         """
+
         def yield_sampled_dfs():
             dfs = raw_dataset
             for df in dfs():
@@ -116,8 +122,9 @@ class PandasInterfaceMixin:
 
         return yield_sampled_dfs
 
-
-    def get_sampled_dataframe(self, raw_dataset: Callable, sample_config: SampleConfig) -> Callable:
+    def get_sampled_dataframe(
+        self, raw_dataset: Callable, sample_config: SampleConfig
+    ) -> Callable:
         """Get sampled dataframe based on profiler config
 
         Returns:
@@ -160,7 +167,9 @@ class PandasInterfaceMixin:
 
         return yield_sampled_dfs
 
-    def get_dataframes(self, service_connection_config, client, table) -> DatalakeColumnWrapper:
+    def get_dataframes(
+        self, service_connection_config, client, table
+    ) -> DatalakeColumnWrapper:
         """
         Return the datalake column wrapper. The object has a dataframes argument which gives access
         to the generator to iterate over the dataframes. The generator will be re create at each call of
@@ -173,7 +182,7 @@ class PandasInterfaceMixin:
         Returns:
             DatalakeColumnWrapper
         """
-        data  = fetch_dataframe_generator(
+        data = fetch_dataframe_generator(
             config_source=service_connection_config.configSource,
             client=client,
             file_fqn=DatalakeTableSchemaWrapper(

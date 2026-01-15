@@ -28,9 +28,9 @@ from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.importer import import_test_case_class
 
 if TYPE_CHECKING:
-    from pandas import DataFrame
-    from metadata.data_quality.interface.pandas.pandas_test_suite_interface import PandasRunner
-
+    from metadata.data_quality.interface.pandas.pandas_test_suite_interface import (
+        PandasRunner,
+    )
 
 
 class TestCaseImporter:

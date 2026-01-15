@@ -12,10 +12,10 @@
 """
 JSON DataFrame reader - streams JSON Lines in batches to avoid OOM
 """
-from collections.abc import Generator
 import gzip
 import json
 import zipfile
+from collections.abc import Generator
 from contextlib import contextmanager
 from functools import singledispatchmethod
 from typing import Any, Iterator, Optional
@@ -168,7 +168,9 @@ class JSONDataFrameReader(DataFrameReader):
                     with self._decompress(f, key) as decompressed:
                         yield from self._stream_json_lines(decompressed)
 
-            return DatalakeColumnWrapper(dataframes=chunk_generator, raw_data=None, columns=None)
+            return DatalakeColumnWrapper(
+                dataframes=chunk_generator, raw_data=None, columns=None
+            )
 
         file_size_mb = self._get_file_size_mb(key, bucket_name)
         if file_size_mb > (MAX_FILE_SIZE_FOR_PREVIEW / (1024 * 1024)):
@@ -182,7 +184,9 @@ class JSONDataFrameReader(DataFrameReader):
                         with self._decompress(f, key) as decompressed:
                             yield from self._stream_json_array(decompressed)
 
-                return DatalakeColumnWrapper(dataframes=ijson_chunk_generator, raw_data=None, columns=None)
+                return DatalakeColumnWrapper(
+                    dataframes=ijson_chunk_generator, raw_data=None, columns=None
+                )
             except Exception as exc:
                 logger.warning(
                     f"ijson streaming failed: {exc}. Loading entire file (may cause OOM)."
@@ -192,7 +196,9 @@ class JSONDataFrameReader(DataFrameReader):
             with self._decompress(f, key) as decompressed:
                 content = decompressed.read()
         dataframes, raw_data = self._read_json_object(content)
-        return DatalakeColumnWrapper(dataframes=dataframes, raw_data=raw_data, columns=None)
+        return DatalakeColumnWrapper(
+            dataframes=dataframes, raw_data=raw_data, columns=None
+        )
 
     @singledispatchmethod
     def _read_json_dispatch(

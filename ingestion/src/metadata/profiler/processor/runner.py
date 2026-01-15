@@ -16,7 +16,7 @@ the session.
 This is useful to centralise the running logic
 and manage behavior such as timeouts.
 """
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, Callable, Generator
+from typing import TYPE_CHECKING, Callable, Dict, Generator, Optional, Union
 
 from sqlalchemy import Table, text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session
@@ -59,7 +59,7 @@ class PandasRunner:
             dataset: The processed dataset (may be partitioned/sampled)
             raw_dataset: The raw dataset (unpartitioned, unsampled)
         """
-        self._dataset = dataset                                                 
+        self._dataset = dataset
         self._raw_dataset = raw_dataset
 
     def __call__(self) -> Generator["DataFrame", None, None]:
@@ -80,6 +80,7 @@ class PandasRunner:
     def raw_dataset(self) -> Generator["DataFrame", None, None]:
         """Get the raw dataset (unpartitioned and unsampled)"""
         return self._raw_dataset()
+
 
 class QueryRunner:
     """

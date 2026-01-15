@@ -14,7 +14,7 @@ Table Column Count Metric definition
 """
 # pylint: disable=duplicate-code
 
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import inspect, literal
 from sqlalchemy.ext.compiler import compiles
@@ -88,7 +88,6 @@ class ColumnCount(StaticMetric):
 
     def df_fn(self, dfs: Optional["PandasRunner"] = None):
         """dataframe function"""
-        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
 
         if dfs is None:
             return None

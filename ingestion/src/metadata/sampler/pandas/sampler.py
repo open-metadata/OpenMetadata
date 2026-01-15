@@ -12,15 +12,9 @@
 Helper module to handle data sampling
 for the profiler
 """
-import math
-import random
 from typing import Callable, List, Optional, cast
 
-from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBetween import (
-    TableRowInsertedCountToBeBetweenValidator,
-)
 from metadata.generated.schema.entity.data.table import (
-    PartitionIntervalTypes,
     PartitionProfilerConfig,
     ProfileSampleType,
     TableData,
@@ -28,7 +22,7 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR
-from metadata.utils.datalake.datalake_utils import DatalakeColumnWrapper, GenericDataFrameColumnParser
+from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
 from metadata.utils.logger import profiler_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
 
@@ -77,7 +71,12 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
             sample_query=self.sample_query, raw_dataset=self.raw_dataset
         )
 
-    def get_col_row(self, df_iterator: Callable, columns: Optional[List[SQALikeColumn]] = None, sample_query: str = None):
+    def get_col_row(
+        self,
+        df_iterator: Callable,
+        columns: Optional[List[SQALikeColumn]] = None,
+        sample_query: str = None,
+    ):
         """
         Fetches columns and rows from the data_frame
         """

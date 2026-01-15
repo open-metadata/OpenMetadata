@@ -13,13 +13,14 @@
 Histogram Metric definition
 """
 import math
-from typing import Any, Dict, List, Optional, Union, cast, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union, cast
 
 from sqlalchemy import and_, case, column, func
 from sqlalchemy.orm import DeclarativeMeta, Session
 
 if TYPE_CHECKING:
     from metadata.profiler.processor.runner import PandasRunner
+
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.composed.iqr import InterQuartileRange
 from metadata.profiler.metrics.core import HybridMetric
@@ -256,7 +257,7 @@ class Histogram(HybridMetric):
         frequencies = np.zeros(num_bins)
 
         if dfs is None:
-            return None    
+            return None
 
         for df in dfs:
             if not frequencies.any():

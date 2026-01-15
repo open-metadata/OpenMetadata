@@ -129,7 +129,9 @@ class TestAvroReader(unittest.TestCase):
         result = reader._read(key="test.avro", bucket_name="test-bucket")
 
         self.assertIsNotNone(result.dataframes)
-        dataframes = result.dataframes() if callable(result.dataframes) else result.dataframes
+        dataframes = (
+            result.dataframes() if callable(result.dataframes) else result.dataframes
+        )
         chunks = list(dataframes)
         self.assertTrue(len(chunks) > 0)
 
@@ -158,7 +160,9 @@ class TestAvroReader(unittest.TestCase):
         result = reader._read(key="test.avro", bucket_name="test-container")
 
         self.assertIsNotNone(result.dataframes)
-        dataframes = result.dataframes() if callable(result.dataframes) else result.dataframes
+        dataframes = (
+            result.dataframes() if callable(result.dataframes) else result.dataframes
+        )
         chunks = list(dataframes)
         self.assertTrue(len(chunks) > 0)
 
@@ -189,7 +193,11 @@ class TestAvroReader(unittest.TestCase):
             self.assertIsNotNone(result.dataframes)
             self.assertIsNotNone(result.columns)
 
-            dataframes = result.dataframes() if callable(result.dataframes) else result.dataframes
+            dataframes = (
+                result.dataframes()
+                if callable(result.dataframes)
+                else result.dataframes
+            )
             chunks = list(dataframes)
             self.assertEqual(len(chunks), 1)
             self.assertEqual(chunks[0].shape[0], 1)

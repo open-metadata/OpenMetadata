@@ -90,8 +90,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         dataset = self.sampler.get_dataset()
         dataset = self._type_casted_dataset(dataset)
         self.dataset = PandasRunner(
-            dataset=dataset,
-            raw_dataset=self.sampler.raw_dataset
+            dataset=dataset, raw_dataset=self.sampler.raw_dataset
         )
         self.status = ProfilerProcessorStatus()
         self.column_names_cache = {}
@@ -144,7 +143,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
         Args:
             df (pd.DataFrame): dataframe to rename columns
-        
+
         Returns:
             pd.DataFrame: dataframe with renamed columns
         """
@@ -168,9 +167,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         """
         complex_col_name = None
         if COMPLEX_COLUMN_SEPARATOR in column_name:
-            complex_col_name = ".".join(
-                column_name.split(COMPLEX_COLUMN_SEPARATOR)[1:]
-            )
+            complex_col_name = ".".join(column_name.split(COMPLEX_COLUMN_SEPARATOR)[1:])
         return complex_col_name or column_name
 
     def _compute_table_metrics(
