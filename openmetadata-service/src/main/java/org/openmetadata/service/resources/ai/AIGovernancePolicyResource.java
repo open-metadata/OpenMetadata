@@ -55,7 +55,7 @@ import org.openmetadata.service.security.Authorizer;
 @Collection(name = "aiGovernancePolicies")
 public class AIGovernancePolicyResource
     extends EntityResource<AIGovernancePolicy, AIGovernancePolicyRepository> {
-  public static final String COLLECTION_PATH = "v1/aiGovernancePolicies/";
+  public static final String COLLECTION_PATH = "/v1/aiGovernancePolicies/";
   private final AIGovernancePolicyMapper mapper = new AIGovernancePolicyMapper();
   static final String FIELDS = "owners,followers,tags,extension,domains";
 

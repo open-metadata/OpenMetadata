@@ -94,7 +94,10 @@ const DisplayName: React.FC<DisplayNameProps> = ({
             data-testid="edit-displayName-button"
             icon={<IconEdit color={DE_ACTIVE_COLOR} {...ICON_DIMENSION} />}
             type="text"
-            onClick={() => setIsDisplayNameEditing(true)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsDisplayNameEditing(true);
+            }}
           />
         </Tooltip>
       ) : null}

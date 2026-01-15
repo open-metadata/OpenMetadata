@@ -15,14 +15,10 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
-  PAGE_SIZE_BASE,
-} from '../../../../constants/constants';
+import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../../constants/Table.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
@@ -62,7 +58,6 @@ function FilesTable({
   setFiles,
   setIsLoading,
   serviceFqn,
-  fetchFiles,
 }: Readonly<FilesTableProps>) {
   const { t } = useTranslation();
   const location = useCustomLocation();
@@ -80,15 +75,11 @@ function FilesTable({
   const searchFiles = useCallback(
     async (searchValue: string, pageNumber = INITIAL_PAGING_VALUE) => {
       setIsLoading(true);
-      paging.handlePageChange(pageNumber, {
-        cursorType: null,
-        cursorValue: undefined,
-      });
       try {
         const response = await searchQuery({
           query: '',
           pageNumber,
-          pageSize: PAGE_SIZE,
+          pageSize: paging.pageSize,
           queryFilter: buildSchemaQueryFilter(
             'service.fullyQualifiedName.keyword',
             serviceFqn,
@@ -114,14 +105,12 @@ function FilesTable({
   const onFileSearch = useCallback(
     (value: string) => {
       setFilters({ file: isEmpty(value) ? undefined : value });
-      if (value) {
-        searchFiles(value);
-      } else {
-        fetchFiles();
-        paging.handlePageChange(INITIAL_PAGING_VALUE);
-      }
+      paging.handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
     },
-    [searchFiles, paging]
+    [paging]
   );
 
   const tableColumn: ColumnsType<ServicePageData> = useMemo(
@@ -160,8 +149,10 @@ function FilesTable({
 
   const handleShowDeletedChange = (checked: boolean) => {
     handleShowDeleted(checked);
-    paging.handlePageChange(INITIAL_PAGING_VALUE);
-    paging.handlePageSizeChange(PAGE_SIZE_BASE);
+    paging.handlePageChange(INITIAL_PAGING_VALUE, {
+      cursorType: null,
+      cursorValue: undefined,
+    });
   };
 
   const searchProps = useMemo(
@@ -175,6 +166,12 @@ function FilesTable({
     }),
     [onFileSearch, searchValue, t]
   );
+
+  useEffect(() => {
+    if (searchValue) {
+      searchFiles(searchValue, paging.currentPage);
+    }
+  }, [searchValue, paging?.currentPage, showDeleted]);
 
   return (
     <Table

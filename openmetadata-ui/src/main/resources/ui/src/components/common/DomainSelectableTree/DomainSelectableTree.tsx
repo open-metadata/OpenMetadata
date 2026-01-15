@@ -70,6 +70,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   isMultiple = false,
   initialDomains,
   showAllDomains = false,
+  isClearable = true,
 }) => {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -408,6 +409,10 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
 
   const onSelect = (selectedKeys: React.Key[]) => {
     if (!isMultiple) {
+      if (selectedKeys.length === 0 && !isClearable) {
+        return;
+      }
+
       const selectedData = [];
       for (const item of selectedKeys) {
         const domain = domainMapper[item as string];

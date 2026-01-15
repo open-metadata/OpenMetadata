@@ -177,7 +177,7 @@ public final class UserUtil {
               .withEntityId(user.getId())
               .withEntityType(Entity.USER)
               .withEntityFullyQualifiedName(user.getFullyQualifiedName())
-              .withUserName("External Authentication Flow")
+              .withUserName(user.getName())
               .withTimestamp(user.getUpdatedAt())
               .withCurrentVersion(user.getVersion())
               .withPreviousVersion(

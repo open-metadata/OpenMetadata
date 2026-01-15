@@ -77,7 +77,7 @@ public class MetadataServiceResource
     extends ServiceEntityResource<MetadataService, MetadataServiceRepository, MetadataConnection> {
   private final MetadataServiceMapper mapper = new MetadataServiceMapper();
   public static final String OPENMETADATA_SERVICE = "OpenMetadata";
-  public static final String COLLECTION_PATH = "v1/services/metadataServices/";
+  public static final String COLLECTION_PATH = "/v1/services/metadataServices/";
   public static final String FIELDS = "pipelines,owners,tags,followers";
 
   @Override
