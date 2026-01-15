@@ -39,17 +39,20 @@ import org.openmetadata.sdk.models.ListResponse;
 /**
  * Integration tests for Domain entity operations.
  *
- * <p>Extends BaseEntityIT to inherit all common entity tests. Adds domain-specific tests for
+ * <p>
+ * Extends BaseEntityIT to inherit all common entity tests. Adds domain-specific
+ * tests for
  * hierarchy, experts, domain types, and parent-child relationships.
  *
- * <p>Migrated from: org.openmetadata.service.resources.domains.DomainResourceTest
+ * <p>
+ * Migrated from: org.openmetadata.service.resources.domains.DomainResourceTest
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
 
   public DomainResourceIT() {
     supportsFollowers = false;
-    supportsTags = false;
+    supportsTags = true;
     supportsDomains = false;
     supportsDataProducts = false;
     supportsSoftDelete = false;
@@ -440,7 +443,8 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
 
   @Test
   void test_renameDomain(TestNamespace ns) {
-    // Use simple name for rename test (avoid regex metacharacters in REGEXP_REPLACE)
+    // Use simple name for rename test (avoid regex metacharacters in
+    // REGEXP_REPLACE)
     String domainName = "domain_" + ns.shortPrefix();
     CreateDomain create =
         new CreateDomain()
@@ -633,7 +637,8 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
    * 1. Domain is renamed
    * 2. Another field (description) is updated within the same session
    *
-   * The consolidation logic would revert to the previous version which has the OLD name/FQN,
+   * The consolidation logic would revert to the previous version which has the
+   * OLD name/FQN,
    * potentially causing subdomain FQNs to become inconsistent.
    *
    * Fix: Skip consolidation when name has changed.
@@ -677,7 +682,8 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
 
   /**
    * Test multiple renames followed by updates within the same session.
-   * This is a more complex scenario that tests the robustness of the consolidation fix.
+   * This is a more complex scenario that tests the robustness of the
+   * consolidation fix.
    */
   @Test
   void test_multipleRenamesWithUpdatesConsolidation(TestNamespace ns) {
@@ -761,5 +767,78 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
         oldDataProductFqn,
         fetchedDataProduct.getFullyQualifiedName(),
         "Data product FQN should NOT change when domain is renamed");
+  }
+
+  @Test
+  void test_renameDomainWithTagsAndGlossaryTerms(TestNamespace ns) {
+    String domainName = "data_domain_" + ns.shortPrefix();
+    CreateDomain createDomain =
+        new CreateDomain()
+            .withName(domainName)
+            .withDomainType(DomainType.AGGREGATE)
+            .withDescription("Domain for testing tags and glossary terms on rename");
+    Domain domain = createEntity(createDomain);
+
+    domain.setTags(List.of(piiSensitiveTagLabel(), personalDataTagLabel()));
+    domain = patchEntity(domain.getId().toString(), domain);
+
+    String subdomainName = "customer_data";
+    CreateDomain createSubdomain =
+        new CreateDomain()
+            .withName(subdomainName)
+            .withDomainType(DomainType.SOURCE_ALIGNED)
+            .withParent(domain.getFullyQualifiedName())
+            .withDescription("Subdomain with tags");
+    Domain subdomain = createEntity(createSubdomain);
+
+    subdomain.setTags(List.of(glossaryTermLabel()));
+    subdomain = patchEntity(subdomain.getId().toString(), subdomain);
+
+    String oldDomainFqn = domain.getFullyQualifiedName();
+    String oldSubdomainFqn = subdomain.getFullyQualifiedName();
+
+    Domain domainWithTags = getEntityWithFields(domain.getId().toString(), "tags");
+    assertEquals(2, domainWithTags.getTags().size(), "Domain should have 2 tags before rename");
+
+    Domain subdomainWithTags = getEntityWithFields(subdomain.getId().toString(), "tags");
+    assertEquals(
+        1, subdomainWithTags.getTags().size(), "Subdomain should have 1 tag before rename");
+
+    String newDomainName = "analytics_domain_" + ns.shortPrefix();
+    domain.setName(newDomainName);
+    Domain renamedDomain = patchEntity(domain.getId().toString(), domain);
+
+    assertEquals(newDomainName, renamedDomain.getName());
+    assertEquals(newDomainName, renamedDomain.getFullyQualifiedName());
+
+    Domain fetchedDomainAfterRename = getEntityWithFields(domain.getId().toString(), "tags");
+    assertNotNull(
+        fetchedDomainAfterRename.getTags(), "Domain tags should not be null after rename");
+    assertEquals(
+        2,
+        fetchedDomainAfterRename.getTags().size(),
+        "Domain should still have 2 tags after rename");
+    assertTrue(
+        fetchedDomainAfterRename.getTags().stream()
+            .anyMatch(tag -> tag.getTagFQN().equals(piiSensitiveTagLabel().getTagFQN())),
+        "Domain should still have PII.Sensitive tag after rename");
+    assertTrue(
+        fetchedDomainAfterRename.getTags().stream()
+            .anyMatch(tag -> tag.getTagFQN().equals(personalDataTagLabel().getTagFQN())),
+        "Domain should still have PersonalData.Personal tag after rename");
+
+    Domain fetchedSubdomainAfterRename = getEntityWithFields(subdomain.getId().toString(), "tags");
+    String expectedSubdomainFqn = newDomainName + "." + subdomainName;
+    assertEquals(expectedSubdomainFqn, fetchedSubdomainAfterRename.getFullyQualifiedName());
+    assertNotNull(
+        fetchedSubdomainAfterRename.getTags(), "Subdomain tags should not be null after rename");
+    assertEquals(
+        1,
+        fetchedSubdomainAfterRename.getTags().size(),
+        "Subdomain should still have 1 tag after rename");
+    assertTrue(
+        fetchedSubdomainAfterRename.getTags().stream()
+            .anyMatch(tag -> tag.getTagFQN().equals(glossaryTermLabel().getTagFQN())),
+        "Subdomain should still have glossary term tag after rename");
   }
 }
