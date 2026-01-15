@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { test as base, expect, Page } from '@playwright/test';
+import { DOMAIN_TAGS } from '../../../constant/config';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
 import { UserClass } from '../../../support/user/UserClass';
@@ -206,7 +207,7 @@ test.afterAll(async ({ browser }) => {
   await afterAction();
 });
 
-test.describe('Test Definition Permissions - View Only User', () => {
+test.describe('Test Definition Permissions - View Only User', { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Rules_Library` }, () => {
   test('should allow viewing test definitions but not create, edit, or delete', async ({
     viewOnlyPage,
   }) => {
@@ -232,7 +233,7 @@ test.describe('Test Definition Permissions - View Only User', () => {
   });
 });
 
-test.describe('Test Definition Permissions - Data Consumer', () => {
+test.describe('Test Definition Permissions - Data Consumer', { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Rules_Library` }, () => {
   test('should allow viewing test definitions but not create, edit, or delete', async ({
     dataConsumerPage,
   }) => {
@@ -258,7 +259,7 @@ test.describe('Test Definition Permissions - Data Consumer', () => {
   });
 });
 
-test.describe('Test Definition Permissions - Data Steward', () => {
+test.describe('Test Definition Permissions - Data Steward', { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Rules_Library` }, () => {
   test('should allow viewing and editing but not creating or deleting test definitions', async ({
     dataStewardPage,
   }) => {
@@ -366,7 +367,7 @@ test.describe('Test Definition Permissions - Data Steward', () => {
   });
 });
 
-test.describe('Test Definition Permissions - API Level Validation', () => {
+test.describe('Test Definition Permissions - API Level Validation', { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Rules_Library` }, () => {
   test('should prevent unauthorized users from creating test definitions via API', async ({
     dataConsumerPage,
   }) => {
