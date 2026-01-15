@@ -57,6 +57,7 @@ import { useGenericContext } from '../../../Customization/GenericProvider/Generi
 import { ColumnFilter } from '../../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../../Database/TableTags/TableTags.component';
+import CopyLinkButton from '../../../common/CopyLinkButton/CopyLinkButton';
 import { ModalWithMarkdownEditor } from '../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 
 function WorksheetColumnsTable() {
@@ -65,6 +66,7 @@ function WorksheetColumnsTable() {
     data: worksheetDetails,
     permissions,
     onUpdate,
+    openColumnDetailPanel,
   } = useGenericContext<Worksheet>();
 
   const [editWorksheetColumnDescription, setEditWorksheetColumnDescription] =
@@ -90,6 +92,10 @@ function WorksheetColumnsTable() {
   }, [permissions, worksheetDetails]);
 
   const schema = pruneEmptyChildren(worksheetDetails?.columns ?? []);
+
+  const handleFieldClick = (field: Column) => {
+    openColumnDetailPanel(field);
+  };
 
   const handleWorksheetColumnTagChange = async (
     selectedTags: EntityTags[],
@@ -143,6 +149,19 @@ function WorksheetColumnsTable() {
         key: TABLE_COLUMNS_KEYS.NAME,
         fixed: 'left',
         width: 300,
+        onCell: (record: Column) => ({
+          onClick: (event: React.MouseEvent) => {
+            const target = event.target as HTMLElement;
+            const isExpandIcon = target.closest('.table-expand-icon') !== null;
+            const isButton = target.closest('button') !== null;
+
+            if (!isExpandIcon && !isButton) {
+              handleFieldClick(record);
+            }
+          },
+          className: 'cursor-pointer',
+          'data-testid': 'column-name-cell',
+        }),
         render: (name: Column['name'], record: Column) => {
           const { displayName } = record;
 
@@ -160,6 +179,12 @@ function WorksheetColumnsTable() {
                   data-testid="column-name">
                   {name}
                 </Typography.Text>
+                {record.fullyQualifiedName && (
+                  <CopyLinkButton
+                    entityType={EntityType.WORKSHEET}
+                    fieldFqn={record.fullyQualifiedName}
+                  />
+                )}
               </div>
               {!isEmpty(displayName) ? (
                 <Typography.Text

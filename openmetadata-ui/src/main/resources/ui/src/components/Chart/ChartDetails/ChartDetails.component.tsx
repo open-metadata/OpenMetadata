@@ -76,7 +76,8 @@ const ChartDetails = ({
     tab: EntityTabs;
   }>();
   const { customizedPage, isLoading } = useCustomPages('Chart' as PageType);
-  const { fqn: decodedChartFQN } = useFqn();
+  const { entityFqn: decodedChartFQN } = useFqn({ type: EntityType.CHART });
+
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );

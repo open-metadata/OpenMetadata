@@ -12,6 +12,7 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -122,8 +123,10 @@ jest.mock(
 );
 
 jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
   useParams: jest.fn().mockImplementation(() => ({ fqn: 'fqn', tab: 'code' })),
   useNavigate: jest.fn().mockImplementation(() => jest.fn()),
+  useLocation: jest.fn().mockImplementation(() => ({ pathname: 'mockPath' })),
 }));
 
 jest.mock('../../components/common/Loader/Loader', () => {
@@ -160,7 +163,11 @@ jest.mock('../../hooks/useEntityRules', () => ({
 
 describe('StoredProcedure component', () => {
   it('StoredProcedurePage should fetch permissions', () => {
-    render(<StoredProcedurePage />);
+    render(
+      <MemoryRouter>
+        <StoredProcedurePage />
+      </MemoryRouter>
+    );
 
     expect(mockEntityPermissionByFqn).toHaveBeenCalledWith(
       'storedProcedure',
@@ -169,7 +176,11 @@ describe('StoredProcedure component', () => {
   });
 
   it('StoredProcedurePage should not fetch details if permission is there', () => {
-    render(<StoredProcedurePage />);
+    render(
+      <MemoryRouter>
+        <StoredProcedurePage />
+      </MemoryRouter>
+    );
 
     expect(getStoredProceduresByFqn).not.toHaveBeenCalled();
   });
@@ -182,7 +193,11 @@ describe('StoredProcedure component', () => {
     }));
 
     await act(async () => {
-      render(<StoredProcedurePage />);
+      render(
+      <MemoryRouter>
+        <StoredProcedurePage />
+      </MemoryRouter>
+    );
     });
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
@@ -201,7 +216,11 @@ describe('StoredProcedure component', () => {
     }));
 
     await act(async () => {
-      render(<StoredProcedurePage />);
+      render(
+      <MemoryRouter>
+        <StoredProcedurePage />
+      </MemoryRouter>
+    );
     });
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
@@ -218,7 +237,11 @@ describe('StoredProcedure component', () => {
     }));
 
     await act(async () => {
-      render(<StoredProcedurePage />);
+      render(
+      <MemoryRouter>
+        <StoredProcedurePage />
+      </MemoryRouter>
+    );
     });
 
     expect(await screen.findByText('testErrorPlaceHolder')).toBeInTheDocument();
@@ -232,7 +255,11 @@ describe('StoredProcedure component', () => {
     }));
 
     await act(async () => {
-      render(<StoredProcedurePage />);
+      render(
+      <MemoryRouter>
+        <StoredProcedurePage />
+      </MemoryRouter>
+    );
     });
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
@@ -259,7 +286,11 @@ describe('StoredProcedure component', () => {
     }));
 
     await act(async () => {
-      render(<StoredProcedurePage />);
+      render(
+      <MemoryRouter>
+        <StoredProcedurePage />
+      </MemoryRouter>
+    );
     });
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
@@ -288,7 +319,11 @@ describe('StoredProcedure component', () => {
     }));
 
     await act(async () => {
-      render(<StoredProcedurePage />);
+      render(
+      <MemoryRouter>
+        <StoredProcedurePage />
+      </MemoryRouter>
+    );
     });
 
     expect(PageLayoutV1).toHaveBeenCalledWith(
