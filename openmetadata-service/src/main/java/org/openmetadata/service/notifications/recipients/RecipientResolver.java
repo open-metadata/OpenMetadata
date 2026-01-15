@@ -127,12 +127,6 @@ public class RecipientResolver {
   private Set<Recipient> resolveRecipientsForDestination(
       ChangeEvent event, SubscriptionDestination destination) {
 
-    SubscriptionDestination.SubscriptionType type = destination.getType();
-    if (type == SubscriptionDestination.SubscriptionType.ACTIVITY_FEED
-        || type == SubscriptionDestination.SubscriptionType.GOVERNANCE_WORKFLOW_CHANGE_EVENT) {
-      return Set.of();
-    }
-
     Set<Recipient> recipients = new HashSet<>();
 
     try {

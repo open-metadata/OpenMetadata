@@ -33,6 +33,18 @@ public interface Destination<T> {
 
   void sendTestMessage() throws EventPublisherException;
 
+  /**
+   * Indicates whether this destination requires resolved recipients to send notifications.
+   * Most destinations (Email, Slack, Teams, etc.) require recipients.
+   * Some destinations (ActivityFeed, GovernanceWorkflow) handle their own delivery mechanism
+   * and don't use recipient resolution.
+   *
+   * @return true if recipients must be resolved before sending, false otherwise
+   */
+  default boolean requiresRecipients() {
+    return true;
+  }
+
   SubscriptionDestination getSubscriptionDestination();
 
   EventSubscription getEventSubscriptionForDestination();

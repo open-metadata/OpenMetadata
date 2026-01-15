@@ -94,6 +94,11 @@ public class ActivityFeedPublisher implements Destination<ChangeEvent> {
     return subscriptionDestination.getEnabled();
   }
 
+  @Override
+  public boolean requiresRecipients() {
+    return false;
+  }
+
   public void close() {
     LOG.info("Closing Activity Feed Publisher");
   }

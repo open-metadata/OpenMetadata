@@ -240,17 +240,19 @@ public abstract class AbstractEventConsumer
 
       for (var entry : destinationsByType.entrySet()) {
         List<Destination<ChangeEvent>> destinations = entry.getValue();
+        Destination<ChangeEvent> publisher = destinations.get(0);
 
-        List<SubscriptionDestination> subDestinations =
-            destinations.stream().map(Destination::getSubscriptionDestination).toList();
+        Set<Recipient> recipients = Set.of();
+        if (publisher.requiresRecipients()) {
+          List<SubscriptionDestination> subDestinations =
+              destinations.stream().map(Destination::getSubscriptionDestination).toList();
+          recipients = resolver.resolveRecipients(event, subDestinations);
 
-        Set<Recipient> recipients = resolver.resolveRecipients(event, subDestinations);
-
-        if (recipients.isEmpty()) {
-          continue;
+          if (recipients.isEmpty()) {
+            continue;
+          }
         }
 
-        Destination<ChangeEvent> publisher = destinations.get(0);
         boolean status = sendAlertToRecipients(publisher, event, recipients);
 
         if (status) {
