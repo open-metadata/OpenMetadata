@@ -24,8 +24,8 @@ import {
   TaskStatus,
 } from '../generated/entity/data/pipeline';
 import { formatDateTime, formatDuration } from './date-time/DateTimeUtils';
+import { t } from './i18next/LocalUtil';
 import { getStatusBadgeIcon } from './PipelineDetailsUtils';
-
 interface StatusIndicatorInterface {
   status: StatusType;
 }
@@ -212,13 +212,21 @@ export const getTreeData = (
                       <div>{status.timestamp}</div>
                       <div>{status.executionStatus}</div>
                       {status.startTime && (
-                        <div>Start: {formatDateTime(status.startTime)}</div>
+                        <div>
+                          {t('label.start-entity', { entity: t('label.time') })}
+                          :{formatDateTime(status.startTime)}
+                        </div>
                       )}
                       {status.endTime && (
-                        <div>End: {formatDateTime(status.endTime)}</div>
+                        <div>
+                          {t('label.end-entity', { entity: t('label.time') })}:
+                          {formatDateTime(status.endTime)}
+                        </div>
                       )}
                       {status.duration && status.duration !== '--' && (
-                        <div>Duration: {status.duration}</div>
+                        <div>
+                          {t('label.duration')}: {status.duration}
+                        </div>
                       )}
                     </Space>
                   }>
