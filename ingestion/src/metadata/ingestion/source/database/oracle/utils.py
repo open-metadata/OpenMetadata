@@ -25,7 +25,6 @@ from metadata.ingestion.source.database.oracle.queries import (
     ORACLE_ALL_CONSTRAINTS,
     ORACLE_ALL_TABLE_COMMENTS,
     ORACLE_ALL_VIEW_DEFINITIONS,
-    ORACLE_VIEW_DEFINITIONS_BY_SCHEMA,
     ORACLE_GET_COLUMNS,
     ORACLE_GET_TABLE_NAMES,
     ORACLE_IDENTITY_TYPE,
@@ -65,56 +64,32 @@ def get_view_definition(
     dblink="",
     **kw,
 ):
-    view_name = view_name.lower()
-    schema = schema.lower() if schema else None
-
-    if (
-        not hasattr(self, "all_view_definitions")
-        or self.current_db != connection.engine.url.database
-    ):
-        self.all_view_definitions = {}
-        self.current_db = connection.engine.url.database
-
-    key = (view_name, schema)
-    if key in self.all_view_definitions:
-        return self.all_view_definitions[key]
-
-    if schema:
-        self.get_all_view_definitions(
-            connection, ORACLE_VIEW_DEFINITIONS_BY_SCHEMA, schema
-        )
-    else:
-        self.get_all_view_definitions(connection, ORACLE_ALL_VIEW_DEFINITIONS)
-
-    return self.all_view_definitions.get(key, "")
+    return get_view_definition_wrapper(
+        self,
+        connection,
+        table_name=view_name.lower(),
+        schema=schema.lower() if schema else None,
+        query=ORACLE_ALL_VIEW_DEFINITIONS,
+    )
 
 
 @reflection.cache
-def get_all_view_definitions(self, connection, query, schema=None):
+def get_all_view_definitions(self, connection, query):
     """
     Method to fetch view definition of all available views
     """
-    if (
-        not hasattr(self, "all_view_definitions")
-        or self.current_db != connection.engine.url.database
-    ):
-        self.all_view_definitions = {}
-        self.current_db = connection.engine.url.database
-
-    if schema:
-        result = connection.execute(sql.text(query), {"owner": schema})
-    else:
-        result = connection.execute(query)
-
+    self.all_view_definitions = {}
+    self.current_db: str = connection.engine.url.database  # type: ignore
+    result = connection.execute(query)
     for view in result:
         if hasattr(view, "view_def") and hasattr(view, "schema"):
-            self.all_view_definitions[(view.view_name, view.schema)] = str(
-                view.view_def
-            )
+            self.all_view_definitions[
+                (view.view_name, view.schema)
+            ] = f"CREATE OR REPLACE VIEW {view.view_name} AS {view.view_def}"
         elif hasattr(view, "VIEW_DEF") and hasattr(view, "SCHEMA"):
-            self.all_view_definitions[(view.VIEW_NAME, view.SCHEMA)] = str(
-                view.VIEW_DEF
-            )
+            self.all_view_definitions[
+                (view.VIEW_NAME, view.SCHEMA)
+            ] = f"CREATE OR REPLACE VIEW {view.VIEW_NAME} AS {view.VIEW_DEF}"
 
 
 def _get_col_type(
