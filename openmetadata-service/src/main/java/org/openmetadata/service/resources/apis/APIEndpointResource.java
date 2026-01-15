@@ -69,7 +69,7 @@ import org.openmetadata.service.security.Authorizer;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "apiEndpoints")
 public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpointRepository> {
-  public static final String COLLECTION_PATH = "v1/apiEndpoints/";
+  public static final String COLLECTION_PATH = "/v1/apiEndpoints/";
   private final APIEndpointMapper mapper = new APIEndpointMapper();
 
   static final String FIELDS = "owners,followers,tags,extension,domains,dataProducts,sourceHash";
