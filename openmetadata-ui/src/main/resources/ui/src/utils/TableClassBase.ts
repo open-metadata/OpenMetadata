@@ -54,6 +54,8 @@ export interface TableDetailPageTabProps {
   fetchTableDetails: () => Promise<void>;
   handleFeedCount: (data: FeedCounts) => void;
   labelMap?: Record<EntityTabs, string>;
+  columnFqn?: string;
+  columnPart?: string;
 }
 
 type TableWidgetKeys =
