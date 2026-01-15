@@ -171,7 +171,10 @@ class ModeSource(DashboardServiceSource):
                     )
                     continue
 
-                lineage_parser = LineageParser(query.get("raw_query"))
+                lineage_parser = LineageParser(
+                    query.get("raw_query"),
+                    parser_type=self.get_query_parser_type(),
+                )
                 query_hash = lineage_parser.query_hash
                 for table in lineage_parser.source_tables:
                     database_schema_name, table = fqn.split(str(table))[-2:]

@@ -49,8 +49,8 @@ import { SearchIndex } from '../enums/search.enum';
 import { Domain } from '../generated/entity/domains/domain';
 import { Operation } from '../generated/entity/policies/policy';
 import { EntityReference } from '../generated/entity/type';
-import { useDomainStore } from '../hooks/useDomainStore';
 import { PageType } from '../generated/system/ui/page';
+import { useDomainStore } from '../hooks/useDomainStore';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import {
   QueryFieldInterface,
@@ -104,8 +104,8 @@ export const withDomainFilter = (
       const mustArray = Array.isArray(filter.query?.bool?.must)
         ? filter.query.bool.must
         : filter.query?.bool?.must
-          ? [filter.query.bool.must]
-          : [];
+        ? [filter.query.bool.must]
+        : [];
 
       filter.query.bool = {
         ...filter.query?.bool,
@@ -239,37 +239,72 @@ export const getQueryFilterToExcludeDomainTerms = (
   };
 };
 
-export const getQueryFilterForDomain = (domainFqn: string) => ({
-  query: {
-    bool: {
-      must: [
-        {
-          bool: {
-            should: [
-              {
-                term: {
-                  'domains.fullyQualifiedName': domainFqn,
-                },
-              },
-              {
-                prefix: {
-                  'domains.fullyQualifiedName': `${domainFqn}.`,
-                },
-              },
-            ],
+/**
+ * Returns an Elasticsearch query filter for fetching assets belonging to a domain,
+ * excluding DataProduct entities. Use this for general domain asset listings.
+ * @param domainFqn - The fully qualified name of the domain
+ */
+export const getQueryFilterForDomain = (domainFqn: string) => {
+  if (!domainFqn) {
+    return { query: { match_none: {} } };
+  }
+
+  return {
+    query: {
+      bool: {
+        should: [
+          {
+            term: {
+              'domains.fullyQualifiedName': domainFqn,
+            },
           },
-        },
-      ],
-      must_not: [
-        {
-          term: {
-            entityType: 'dataProduct',
+          {
+            prefix: {
+              'domains.fullyQualifiedName': `${domainFqn}.`,
+            },
           },
-        },
-      ],
+        ],
+        must_not: [
+          {
+            term: {
+              entityType: 'dataProduct',
+            },
+          },
+        ],
+      },
     },
-  },
-});
+  };
+};
+
+/**
+ * Returns an Elasticsearch query filter for fetching DataProduct entities within a domain.
+ * Unlike getQueryFilterForDomain, this does not exclude any entity types.
+ * @param domainFqn - The fully qualified name of the domain
+ */
+export const getQueryFilterForDataProducts = (domainFqn: string) => {
+  if (!domainFqn) {
+    return { query: { match_none: {} } };
+  }
+
+  return {
+    query: {
+      bool: {
+        should: [
+          {
+            term: {
+              'domains.fullyQualifiedName': domainFqn,
+            },
+          },
+          {
+            prefix: {
+              'domains.fullyQualifiedName': `${domainFqn}.`,
+            },
+          },
+        ],
+      },
+    },
+  };
+};
 
 // Domain type description which will be shown in tooltip
 export const domainTypeTooltipDataRender = () => (

@@ -119,8 +119,10 @@ public class IngestionPipelineLogStreamingResourceIT {
     OpenMetadataClient client = SdkClients.adminClient();
     String path = BASE_PATH + "/logs/" + pipelineFQN + "/" + runId;
 
+    Map<String, Object> logBatch = Map.of("logs", logContent);
+
     try {
-      client.getHttpClient().execute(HttpMethod.POST, path, logContent, String.class);
+      client.getHttpClient().execute(HttpMethod.POST, path, logBatch, String.class);
     } catch (OpenMetadataException e) {
       int statusCode = e.getStatusCode();
       assertTrue(
