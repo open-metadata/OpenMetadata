@@ -72,4 +72,4 @@ SET json = jsonb_set(
         ) AS combined
     )
 )
-WHERE json ->> 'fullyQualifiedName' = 'tableRowInsertedCountToBeBetween';
+WHERE json ->> 'name' = 'tableRowInsertedCountToBeBetween';
