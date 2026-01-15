@@ -1839,6 +1839,9 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       await page.getByTestId('save-button').click();
       await patchRes;
 
+      await page.reload();
+      await waitForAllLoadersToDisappear(page);
+
       currentDomainName = newDomainName;
 
       // Verify domain name changed
@@ -2490,6 +2493,9 @@ test.describe('Domain Rename Comprehensive Tests', () => {
         await expect(page.getByTestId('entity-header-name')).toContainText(
           newDomainName
         );
+
+        page.reload();
+        await waitForAllLoadersToDisappear(page);
 
         // Verify assets are still associated after each rename
         await page.getByTestId('assets').click();
