@@ -1248,3 +1248,21 @@ export const navigateToSubDomain = async (
     page.waitForResponse('/api/v1/domains/name/*'),
   ]);
 };
+
+/**
+ * Renames a domain or subdomain via the UI.
+ * Opens the manage menu, clicks rename, fills the new name and saves.
+ */
+export const renameDomain = async (page: Page, newName: string) => {
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('rename-button-title').click();
+
+  await expect(page.getByRole('dialog')).toBeVisible();
+
+  await page.locator('#name').clear();
+  await page.locator('#name').fill(newName);
+
+  const patchRes = page.waitForResponse('/api/v1/domains/*');
+  await page.getByTestId('save-button').click();
+  await patchRes;
+};

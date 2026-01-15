@@ -58,6 +58,7 @@ import {
   fillDomainForm,
   navigateToSubDomain,
   removeAssetsFromDataProduct,
+  renameDomain,
   selectDataProduct,
   selectDataProductFromTab,
   selectDomain,
@@ -1585,17 +1586,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
 
       // Perform rename
       const newDomainName = `renamed-domain-${uuid()}`;
-      await page.getByTestId('manage-button').click();
-      await page.getByTestId('rename-button-title').click();
-
-      await expect(page.getByRole('dialog')).toBeVisible();
-
-      await page.locator('#name').clear();
-      await page.locator('#name').fill(newDomainName);
-
-      const patchRes = page.waitForResponse('/api/v1/domains/*');
-      await page.getByTestId('save-button').click();
-      await patchRes;
+      await renameDomain(page, newDomainName);
 
       currentDomainName = newDomainName;
 
@@ -1675,17 +1666,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
 
       // Perform rename on root domain
       const newDomainName = `renamed-nested-domain-${uuid()}`;
-      await page.getByTestId('manage-button').click();
-      await page.getByTestId('rename-button-title').click();
-
-      await expect(page.getByRole('dialog')).toBeVisible();
-
-      await page.locator('#name').clear();
-      await page.locator('#name').fill(newDomainName);
-
-      const patchRes = page.waitForResponse('/api/v1/domains/*');
-      await page.getByTestId('save-button').click();
-      await patchRes;
+      await renameDomain(page, newDomainName);
 
       currentDomainName = newDomainName;
 
@@ -1827,17 +1808,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
 
       // Perform rename
       const newDomainName = `renamed-dp-domain-${uuid()}`;
-      await page.getByTestId('manage-button').click();
-      await page.getByTestId('rename-button-title').click();
-
-      await expect(page.getByRole('dialog')).toBeVisible();
-
-      await page.locator('#name').clear();
-      await page.locator('#name').fill(newDomainName);
-
-      const patchRes = page.waitForResponse('/api/v1/domains/*');
-      await page.getByTestId('save-button').click();
-      await patchRes;
+      await renameDomain(page, newDomainName);
 
       await page.reload();
       await waitForAllLoadersToDisappear(page);
@@ -1930,17 +1901,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
 
       // Perform rename
       const newDomainName = `renamed-tags-domain-${uuid()}`;
-      await page.getByTestId('manage-button').click();
-      await page.getByTestId('rename-button-title').click();
-
-      await expect(page.getByRole('dialog')).toBeVisible();
-
-      await page.locator('#name').clear();
-      await page.locator('#name').fill(newDomainName);
-
-      const patchRes = page.waitForResponse('/api/v1/domains/*');
-      await page.getByTestId('save-button').click();
-      await patchRes;
+      await renameDomain(page, newDomainName);
 
       currentDomainName = newDomainName;
 
@@ -2002,17 +1963,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
 
       // Perform rename
       const newDomainName = `renamed-assets-domain-${uuid()}`;
-      await page.getByTestId('manage-button').click();
-      await page.getByTestId('rename-button-title').click();
-
-      await expect(page.getByRole('dialog')).toBeVisible();
-
-      await page.locator('#name').clear();
-      await page.locator('#name').fill(newDomainName);
-
-      const patchRes = page.waitForResponse('/api/v1/domains/*');
-      await page.getByTestId('save-button').click();
-      await patchRes;
+      await renameDomain(page, newDomainName);
 
       currentDomainName = newDomainName;
 
@@ -2101,17 +2052,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
 
       // Perform rename
       const newDomainName = `renamed-owners-domain-${uuid()}`;
-      await page.getByTestId('manage-button').click();
-      await page.getByTestId('rename-button-title').click();
-
-      await expect(page.getByRole('dialog')).toBeVisible();
-
-      await page.locator('#name').clear();
-      await page.locator('#name').fill(newDomainName);
-
-      const patchRes = page.waitForResponse('/api/v1/domains/*');
-      await page.getByTestId('save-button').click();
-      await patchRes;
+      await renameDomain(page, newDomainName);
 
       currentDomainName = newDomainName;
 
@@ -2209,17 +2150,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
 
       // Perform rename on subDomain1
       const newSubDomainName = `renamed-subdomain-${uuid()}`;
-      await page.getByTestId('manage-button').click();
-      await page.getByTestId('rename-button-title').click();
-
-      await expect(page.getByRole('dialog')).toBeVisible();
-
-      await page.locator('#name').clear();
-      await page.locator('#name').fill(newSubDomainName);
-
-      const patchRes = page.waitForResponse('/api/v1/domains/*');
-      await page.getByTestId('save-button').click();
-      await patchRes;
+      await renameDomain(page, newSubDomainName);
 
       // Verify subdomain name changed
       await expect(page.getByTestId('entity-header-name')).toContainText(
@@ -2355,17 +2286,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
 
       // Perform rename
       const newDomainName = `renamed-comprehensive-${uuid()}`;
-      await page.getByTestId('manage-button').click();
-      await page.getByTestId('rename-button-title').click();
-
-      await expect(page.getByRole('dialog')).toBeVisible();
-
-      await page.locator('#name').clear();
-      await page.locator('#name').fill(newDomainName);
-
-      const patchRes = page.waitForResponse('/api/v1/domains/*');
-      await page.getByTestId('save-button').click();
-      await patchRes;
+      await renameDomain(page, newDomainName);
 
       currentDomainName = newDomainName;
 
@@ -2475,17 +2396,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
         await page.getByTestId('documentation').click();
 
         const newDomainName = `renamed-multi-${i}-${uuid()}`;
-        await page.getByTestId('manage-button').click();
-        await page.getByTestId('rename-button-title').click();
-
-        await expect(page.getByRole('dialog')).toBeVisible();
-
-        await page.locator('#name').clear();
-        await page.locator('#name').fill(newDomainName);
-
-        const patchRes = page.waitForResponse('/api/v1/domains/*');
-        await page.getByTestId('save-button').click();
-        await patchRes;
+        await renameDomain(page, newDomainName);
 
         currentDomainName = newDomainName;
 
