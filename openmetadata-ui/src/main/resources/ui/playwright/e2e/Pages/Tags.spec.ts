@@ -992,11 +992,25 @@ test('Tag Page Activity Feed', async ({ page }) => {
         });
 
       // Verify that activity feed is visible
-      const activityFeed = page
-        .getByTestId('activity-feed')
-        .or(page.locator('[data-testid="activity-feed-container"]'))
-        .or(page.locator('[data-testid="feed-container"]'));
-      await expect(activityFeed.first()).toBeVisible({ timeout: 5000 });
+      const activityFeed = page.locator('#feedData');
+      await expect(activityFeed).toBeVisible({ timeout: 5000 });
+
+      // Refresh the page to ensure activity feed entries are properly loaded
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      // Switch back to the "Activity Feed" tab after refresh
+      const activityTabAfterRefresh = page.getByTestId('activity_feed');
+      if (
+        await activityTabAfterRefresh
+          .isVisible({ timeout: 3000 })
+          .catch(() => false)
+      ) {
+        await activityTabAfterRefresh.click();
+        await page.waitForLoadState('networkidle');
+        await waitForAllLoadersToDisappear(page);
+      }
 
       // Verify that all performed actions are listed in the feed
       // 1. Verify description update entry
