@@ -33,6 +33,12 @@ jest.mock('../../../../utils/executionUtils', () => ({
 
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   formatDateTime: jest.fn().mockImplementation((timestamp) => timestamp),
+  getCurrentMillis: jest.fn().mockImplementation(() => 1715404800000),
+  getEpochMillisForPastDays: jest
+    .fn()
+    .mockImplementation((days) => 1715404800000 - days * 24 * 60 * 60 * 1000),
+  getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
 }));
 
 const mockProps = {
