@@ -76,7 +76,7 @@ export const convertGlossaryTermsToTreeOptionsWithNames = (
         ? convertGlossaryTermsToTreeOptionsWithNames(
             option.children as ModifiedGlossaryTerm[],
             level + 1,
-            parentMutuallyExclusive || option.mutuallyExclusive === true
+            option.mutuallyExclusive === true
           )
         : [],
       disabled: false,
