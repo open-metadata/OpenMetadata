@@ -12,10 +12,10 @@
       "mandatory": true
     },
     {
-      "name": "GetDictionaries",
-      "description": "List all the data dictionaries available to the user in the BurstIQ LifeGraph platform.",
-      "errorMessage": "Failed to fetch dictionaries. Please validate that the user has sufficient privileges to read metadata from BurstIQ LifeGraph.",
-      "mandatory": true
+      "name": "GetEdges",
+      "description": "List all the Edges available to the user in the BurstIQ LifeGraph platform.",
+      "errorMessage": "Failed to fetch Edges. Please validate that the user has sufficient privileges to read metadata from BurstIQ LifeGraph.",
+      "mandatory": false
     }
   ]
 }

@@ -35,6 +35,7 @@ import {
   AZURESQL,
   BIGQUERY,
   BIGTABLE,
+  BURSTIQ,
   CASSANDRA,
   CLICKHOUSE,
   COCKROACH,
@@ -185,7 +186,6 @@ class ServiceUtilClassBase {
     SecurityServiceType.Ranger,
     DatabaseServiceType.Epic,
     PipelineServiceType.Snowplow,
-    DatabaseServiceType.BurstIQ,
     DriveServiceType.GoogleDrive,
     DriveServiceType.SharePoint,
     DatabaseServiceType.ServiceNow,
@@ -515,6 +515,9 @@ class ServiceUtilClassBase {
 
       case this.DatabaseServiceTypeSmallCase.Synapse:
         return SYNAPSE;
+
+      case this.DatabaseServiceTypeSmallCase.BurstIQ:
+        return BURSTIQ;
 
       case this.MessagingServiceTypeSmallCase.CustomMessaging:
         return TOPIC_DEFAULT;
