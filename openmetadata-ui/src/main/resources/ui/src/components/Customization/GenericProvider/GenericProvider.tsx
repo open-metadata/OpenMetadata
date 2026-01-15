@@ -258,7 +258,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       });
 
       // Call onUpdate with the updated entity (onUpdate will handle API calls)
-      await onUpdate(updatedEntity);
+      await onUpdate(updatedEntity as unknown as T);
 
       // Update selected column if it matches the updated one
       if (updatedColumn && selectedColumn?.fullyQualifiedName === fqn) {
