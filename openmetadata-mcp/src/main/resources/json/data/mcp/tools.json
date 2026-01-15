@@ -29,9 +29,24 @@
             "description": "Number of results to return. Default is 10, we can iteratively page through results by increasing 'from'. Maximum allowed is 50.",
             "default": 10
           },
+          "includeDeleted": {
+            "type": "boolean",
+            "description": "Include deleted entities in search results. Default is false.",
+            "default": false
+          },
           "fields": {
             "type": "string",
             "description": "Comma-separated additional fields to include. Default returns: name, displayName, fullyQualifiedName, description, entityType, service, database, databaseSchema, serviceType, href, tags, owners, tier, tableType, columnNames.\n\nAdditional fields by entity type:\n- Table entities: columns, schemaDefinition, queries, upstreamLineage, entityRelationship\n- Topic entities: messageSchema, partitions, replicationFactor  \n- Dashboard entities: charts, dataModels, project\n- Pipeline entities: tasks, pipelineUrl, scheduleInterval\n- All entities: createdAt, updatedAt, changeDescription, extension, domain, dataProducts, lifeCycle, sourceHash\n\nExample: 'columns,queries' for table column details and sample queries."
+          },
+          "includeAggregations": {
+            "type": "boolean",
+            "description": "Whether to include aggregation data (facets) in the response. Defaults to false to optimize LLM context size. Set to true only when you need aggregation statistics like counts by service type, owner, tags, etc. Aggregations can significantly increase response size.",
+            "default": false
+          },
+          "maxAggregationBuckets": {
+            "type": "integer",
+            "description": "Maximum number of aggregation buckets to return per field when includeAggregations is true. Limits response size to prevent context overflow. Default is 10, maximum allowed is 50.",
+            "default": 10
           }
         },
         "required": ["queryFilter"],
@@ -77,12 +92,12 @@
     },
     {
       "name": "get_entity_details",
-      "description": "Get detailed information about a specific entity",
+      "description": "Get detailed information about a specific entity. Response is optimized for LLM context by excluding verbose metadata fields.",
       "parameters": {
         "description": "Fqn is the fully qualified name of the entity. Entity type could be table, topic etc.",
         "type": "object",
         "properties": {
-          "entity_type": {
+          "entityType": {
             "type": "string",
             "description": "Type of entity"
           },
@@ -92,7 +107,7 @@
           }
         },
         "required": [
-          "entity_type",
+          "entityType",
           "fqn"
         ]
       }
@@ -208,7 +223,7 @@
         "description": "Fqn is the fully qualified name of the entity. Entity type could be table, topic etc.",
         "type": "object",
         "properties": {
-          "entity_type": {
+          "entityType": {
             "type": "string",
             "description": "Type of entity"
           },
@@ -216,20 +231,20 @@
             "type": "string",
             "description": "Fully qualified name of the entity"
           },
-          "upstream_depth": {
+          "upstreamDepth": {
             "type": "integer",
-            "description": "Depth for reaching upstream entities. Default is 5."
+            "description": "Number of upstream hops to traverse. Default is 3, maximum is 10 to prevent excessive response size.",
+            "default": 3
           },
-          "downstream_depth": {
+          "downstreamDepth": {
             "type": "integer",
-            "description": "Depth for reaching downstream entities. Default is 5."
+            "description": "Number of downstream hops to traverse. Default is 3, maximum is 10 to prevent excessive response size.",
+            "default": 3
           }
         },
         "required": [
-          "entity_type",
-          "fqn",
-          "upstream_depth",
-          "downstream_depth"
+          "entityType",
+          "fqn"
         ]
       }
     }

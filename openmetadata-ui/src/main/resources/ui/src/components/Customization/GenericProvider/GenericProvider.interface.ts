@@ -30,6 +30,7 @@ export interface GenericProviderProps<T extends Omit<EntityReference, 'type'>> {
   isTabExpanded?: boolean;
   customizedPage?: Page | null;
   muiTags?: boolean;
+  columnFqn?: string;
 }
 
 export interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
