@@ -1641,6 +1641,7 @@
     "star": "星號",
     "star-open-metadata": "為 OpenMetadata 加上星號",
     "star-us-on-github": "在 GitHub 上為我們加上星號",
+    "start-date": "開始日期",
     "start-date-time-zone": "開始日期：({{timeZone}})",
     "start-elasticsearch-docker": "啟動 Elasticsearch Docker",
     "start-entity": "開始 {{entity}}",

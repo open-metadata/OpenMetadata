@@ -1641,6 +1641,7 @@
     "star": "Звезда",
     "star-open-metadata": "Оценить OpenMetadata",
     "star-us-on-github": "Оценить на Github",
+    "start-date": "Дата начала",
     "start-date-time-zone": "Дата начала: ({{timeZone}})",
     "start-elasticsearch-docker": "Запустить Elasticsearch Docker",
     "start-entity": "Оценить объект «{{entity}}»",

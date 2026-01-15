@@ -1641,6 +1641,7 @@
     "star": "Ster",
     "star-open-metadata": "Geef OpenMetadata een ster",
     "star-us-on-github": "Geef ons een ster op GitHub",
+    "start-date": "Startdatum",
     "start-date-time-zone": "Startdatum: ({{timeZone}})",
     "start-elasticsearch-docker": "Start Elasticsearch Docker",
     "start-entity": "Start {{entity}}",
