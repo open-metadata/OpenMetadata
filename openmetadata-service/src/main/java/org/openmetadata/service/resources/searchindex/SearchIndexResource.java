@@ -76,7 +76,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
 @Collection(name = "searchIndexes")
 public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndexRepository> {
   private final SearchIndexMapper mapper = new SearchIndexMapper();
-  public static final String COLLECTION_PATH = "v1/searchIndexes/";
+  public static final String COLLECTION_PATH = "/v1/searchIndexes/";
   static final String FIELDS = "owners,followers,tags,extension,domains,dataProducts,sourceHash";
 
   @Override
