@@ -11,12 +11,19 @@
  *  limitations under the License.
  */
 
-import { Box, Checkbox, CircularProgress, Typography } from '@mui/material';
+import {
+  Box,
+  Checkbox,
+  CircularProgress,
+  Radio,
+  Typography,
+} from '@mui/material';
 import React, { FC, memo } from 'react';
 import { TreeNode } from '../../../atoms/asyncTreeSelect/types';
 
 export interface TreeNodeLabelProps {
   node: TreeNode;
+  parentNode?: TreeNode;
   depth: number;
   isSelected: boolean;
   isLoading: boolean;
@@ -24,12 +31,13 @@ export interface TreeNodeLabelProps {
   showIcon: boolean;
   multiple: boolean;
   disabled: boolean;
-  onNodeClick: (node: TreeNode) => void;
+  onNodeClick: (node: TreeNode, parentNode?: TreeNode) => void;
   onMouseDown: (e: React.MouseEvent) => void;
 }
 
 const TreeNodeLabel: FC<TreeNodeLabelProps> = ({
   node,
+  parentNode,
   depth,
   isSelected,
   isLoading,
@@ -55,24 +63,42 @@ const TreeNodeLabel: FC<TreeNodeLabelProps> = ({
       onClick={(e) => {
         e.stopPropagation();
         if (node.allowSelection !== false && !disabled) {
-          onNodeClick(node);
+          onNodeClick(node, parentNode);
         }
       }}
       onMouseDown={onMouseDown}>
       {showCheckbox && multiple && node.allowSelection !== false && (
-        <Checkbox
-          checked={isSelected}
-          disabled={disabled || node.disabled}
-          sx={{ p: 0.5, mr: 1.5 }}
-          onChange={(e) => {
-            e.stopPropagation();
-            onNodeClick(node);
-          }}
-          onMouseDown={(e) => {
-            e.preventDefault();
-            onMouseDown(e);
-          }}
-        />
+        <>
+          {node.isParentMutuallyExclusive ? (
+            <Radio
+              checked={isSelected}
+              disabled={disabled || node.disabled}
+              sx={{ p: 0.5, mr: 1.5 }}
+              onChange={(e) => {
+                e.stopPropagation();
+                onNodeClick(node, parentNode);
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onMouseDown(e);
+              }}
+            />
+          ) : (
+            <Checkbox
+              checked={isSelected}
+              disabled={disabled || node.disabled}
+              sx={{ p: 0.5, mr: 1.5 }}
+              onChange={(e) => {
+                e.stopPropagation();
+                onNodeClick(node, parentNode);
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onMouseDown(e);
+              }}
+            />
+          )}
+        </>
       )}
       {node.icon && showIcon && (
         <Box sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>

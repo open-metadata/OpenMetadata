@@ -26,6 +26,7 @@ export interface TreeNode<T = unknown> {
   allowSelection?: boolean;
   lazyLoad?: boolean;
   hasChildren?: boolean;
+  isParentMutuallyExclusive?: boolean;
 }
 
 export interface TreeDataFetcherParams {
@@ -82,7 +83,7 @@ export interface TreeSelectionState<T = unknown> {
   selectedNodes: Map<string, TreeNode<T>>;
   selectedData: TreeNode<T>[];
   isNodeSelected: (nodeId: string) => boolean;
-  toggleNodeSelection: (node: TreeNode<T>) => void;
+  toggleNodeSelection: (node: TreeNode<T>, parentNode?: TreeNode<T>) => void;
   clearSelection: () => void;
   selectAll: () => void;
   getSelectedNodes: () => TreeNode<T>[];

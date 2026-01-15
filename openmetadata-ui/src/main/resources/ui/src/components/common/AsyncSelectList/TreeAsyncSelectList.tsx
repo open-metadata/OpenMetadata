@@ -29,6 +29,7 @@ import {
   FC,
   Key,
   ReactElement,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -79,6 +80,18 @@ interface TreeAsyncSelectListProps
   dropdownContainerRef?: React.RefObject<HTMLDivElement>;
 }
 
+interface ExtendedTreeNode {
+  id: string;
+  value: string;
+  name: string;
+  title: React.ReactNode;
+  checkable: boolean;
+  isLeaf: boolean;
+  selectable: boolean;
+  isParentMutuallyExclusive?: boolean;
+  children?: ExtendedTreeNode[];
+}
+
 const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   onChange,
   initialOptions,
@@ -116,6 +129,42 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
     setOpen(visible);
   };
 
+  const findNodeAndParent = useCallback(
+    (
+      nodes: ExtendedTreeNode[],
+      targetValue: string,
+      parent: ExtendedTreeNode | null = null
+    ): { node: ExtendedTreeNode | null; parent: ExtendedTreeNode | null } => {
+      for (const node of nodes) {
+        if (node.value === targetValue) {
+          return { node, parent };
+        }
+        if (node.children) {
+          const result = findNodeAndParent(node.children, targetValue, node);
+          if (result.node) {
+            return result;
+          }
+        }
+      }
+
+      return { node: null, parent: null };
+    },
+    []
+  );
+
+  const getSiblingValues = useCallback(
+    (parent: ExtendedTreeNode | null, currentValue: string): string[] => {
+      if (!parent?.children) {
+        return [];
+      }
+
+      return parent.children
+        .filter((child) => child.value !== currentValue)
+        .map((child) => child.value);
+    },
+    []
+  );
+
   const fetchGlossaryListInternal = async () => {
     setIsLoading(true);
 
@@ -134,6 +183,16 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
   useEffect(() => {
     fetchGlossaryListInternal();
   }, []);
+
+  const treeData = useMemo(() => {
+    return convertGlossaryTermsToTreeOptions(
+      isNull(searchOptions)
+        ? (glossaries as ModifiedGlossaryTerm[])
+        : (searchOptions as unknown as ModifiedGlossaryTerm[]),
+      0,
+      isParentSelectable
+    );
+  }, [glossaries, searchOptions, isParentSelectable]);
 
   const dropdownRender = (menu: React.ReactElement) => (
     <KeyDownStopPropagationWrapper>
@@ -240,15 +299,38 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
         }[]
   ) => {
     if (isMultiSelect) {
-      // Handle multi-select mode (existing behavior)
-      const selectedValues = (
-        values as {
-          disabled: boolean;
-          halfChecked: boolean;
-          label: React.ReactNode;
-          value: string;
-        }[]
-      ).map(({ value }) => {
+      // Handle multi-select mode
+      const rawValues = values as {
+        disabled: boolean;
+        halfChecked: boolean;
+        label: React.ReactNode;
+        value: string;
+      }[];
+
+      // Determine newly selected values
+      const previousValueSet = new Set(
+        selectedTagsRef.current.map((tag) => tag.value)
+      );
+      const newlySelected = rawValues.filter(
+        (v) => !previousValueSet.has(v.value)
+      );
+
+      // Filter out siblings of mutually exclusive selections
+      let filteredRawValues = [...rawValues];
+      for (const newVal of newlySelected) {
+        const { node, parent } = findNodeAndParent(
+          treeData as ExtendedTreeNode[],
+          newVal.value
+        );
+        if (node?.isParentMutuallyExclusive) {
+          const siblingValues = new Set(getSiblingValues(parent, newVal.value));
+          filteredRawValues = filteredRawValues.filter(
+            (v) => !siblingValues.has(v.value)
+          );
+        }
+      }
+
+      const selectedValues = filteredRawValues.map(({ value }) => {
         const lastSelectedMap = new Map(
           selectedTagsRef.current.map((tag) => [tag.value, tag])
         );
@@ -362,16 +444,6 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       expandableKeys.current = glossaries.map((glossary) => glossary.id);
     }
   }, [glossaries]);
-
-  const treeData = useMemo(() => {
-    return convertGlossaryTermsToTreeOptions(
-      isNull(searchOptions)
-        ? (glossaries as ModifiedGlossaryTerm[])
-        : (searchOptions as unknown as ModifiedGlossaryTerm[]),
-      0,
-      isParentSelectable
-    );
-  }, [glossaries, searchOptions, expandableKeys.current, isParentSelectable]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     switch (e.key) {

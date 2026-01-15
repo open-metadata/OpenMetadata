@@ -230,9 +230,9 @@ const MUIAsyncTreeSelect: FC<MUIAsyncTreeSelectProps> = ({
 
   // Handle node selection needs to be defined before keyboard navigation
   const handleNodeClick = useCallback(
-    (node: TreeNode) => {
+    (node: TreeNode, parentNode?: TreeNode) => {
       if (!disabled && node.allowSelection !== false) {
-        toggleNodeSelection(node);
+        toggleNodeSelection(node, parentNode);
         maintainFocus();
         // In single-select mode, clear search after selection to show all nodes again
         if (!multiple) {
@@ -423,7 +423,7 @@ const MUIAsyncTreeSelect: FC<MUIAsyncTreeSelectProps> = ({
 
   // Render tree nodes recursively
   const renderTreeNodes = useCallback(
-    (nodes: TreeNode[], depth = 0): JSX.Element[] => {
+    (nodes: TreeNode[], depth = 0, parentNode?: TreeNode): JSX.Element[] => {
       return nodes
         .filter((node) => isNodeVisible(node.id))
         .map((node) => {
@@ -441,8 +441,11 @@ const MUIAsyncTreeSelect: FC<MUIAsyncTreeSelectProps> = ({
               key={node.id}
               multiple={multiple}
               node={node}
+              parentNode={parentNode}
               renderChildren={() =>
-                node.children ? renderTreeNodes(node.children, depth + 1) : null
+                node.children
+                  ? renderTreeNodes(node.children, depth + 1, node)
+                  : null
               }
               showCheckbox={showCheckbox}
               showIcon={showIcon}

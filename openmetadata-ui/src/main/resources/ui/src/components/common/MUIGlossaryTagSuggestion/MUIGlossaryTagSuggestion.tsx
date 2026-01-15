@@ -26,9 +26,13 @@ import {
 import { getEntityName } from '../../../utils/EntityUtils';
 import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { ModifiedGlossaryTerm } from '../../Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import { TreeDataResponse, TreeNode } from '../atoms/asyncTreeSelect/types';
 import MUIAsyncTreeSelect from '../MUIAsyncTreeSelect/MUIAsyncTreeSelect';
+import {
+  convertGlossaryTermsToTreeOptionsWithNames,
+  convertToTreeNodes,
+} from './GlossaryTagSuggestionUtils';
+import { useGlossaryMutualExclusivity } from './useGlossaryMutualExclusivity';
 
 export interface MUIGlossaryTagSuggestionProps {
   value?: TagLabel[];
@@ -49,79 +53,7 @@ const MUIGlossaryTagSuggestion: FC<MUIGlossaryTagSuggestionProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  // Convert tree options to TreeNode format - shared across search and expansion
-  const convertToTreeNodes = useCallback(
-    (
-      options: Array<{
-        id: string;
-        value: string;
-        title: string;
-        children?: any[];
-        disabled?: boolean;
-        selectable?: boolean;
-        lazyLoad?: boolean;
-        data?: any;
-      }>
-    ): TreeNode[] => {
-      return options.map((option) => ({
-        id: option.id,
-        label: option.title,
-        value: option.value,
-        children: option.children ? convertToTreeNodes(option.children) : [],
-        isLeaf: !option.children || option.children.length === 0,
-        allowSelection: option.selectable !== false,
-        lazyLoad: option.lazyLoad !== false,
-        data: option.data
-          ? ({
-              tagFQN: option.data.fullyQualifiedName || '',
-              name: getEntityName(option.data),
-              displayName: option.data.displayName,
-              source: TagSource.Glossary,
-            } as TagLabel)
-          : undefined,
-      }));
-    },
-    []
-  );
-
-  // Custom function to convert glossary terms to tree options with names as IDs
-  const convertGlossaryTermsToTreeOptionsWithNames = useCallback(
-    (
-      options: ModifiedGlossaryTerm[] = [],
-      level = 0
-    ): Array<{
-      id: string;
-      value: string;
-      title: string;
-      children: any[];
-      disabled: boolean;
-      selectable: boolean;
-      data: any;
-    }> => {
-      return options.map((option) => {
-        const hasChildren =
-          'children' in option && option.children && option.children.length > 0;
-        const isGlossaryTerm = level !== 0;
-
-        return {
-          id: option.name || option.fullyQualifiedName || option.id, // Use name first, fallback to FQN, then ID
-          value: option.fullyQualifiedName || option.name || option.id,
-          title: getEntityName(option),
-          children: hasChildren
-            ? convertGlossaryTermsToTreeOptionsWithNames(
-                option.children as ModifiedGlossaryTerm[],
-                level + 1
-              )
-            : [],
-          disabled: false,
-          selectable: isGlossaryTerm, // Only terms are selectable, not the top-level glossary
-          lazyLoad: false, // Terms have pre-loaded children from API, no lazy loading needed
-          data: option,
-        };
-      });
-    },
-    []
-  );
+  const { getExclusivity, setExclusivity } = useGlossaryMutualExclusivity();
 
   const fetchData = useCallback(
     async ({
@@ -154,7 +86,8 @@ const MUIGlossaryTagSuggestion: FC<MUIGlossaryTagSuggestionProps> = ({
                 const childrenOptions =
                   convertGlossaryTermsToTreeOptionsWithNames(
                     glossary.children,
-                    1 // Start at level 1 since these are terms under a glossary
+                    1, // Start at level 1 since these are terms under a glossary
+                    glossary.mutuallyExclusive === true
                   );
 
                 // Create the glossary parent node
@@ -199,7 +132,9 @@ const MUIGlossaryTagSuggestion: FC<MUIGlossaryTagSuggestionProps> = ({
             // Convert only the children to tree options, starting at level 1 (since they are terms)
             const treeOptions = convertGlossaryTermsToTreeOptionsWithNames(
               children,
-              1
+              1,
+              getExclusivity(glossaryName) ??
+                glossaryRoot.mutuallyExclusive === true
             );
 
             return { nodes: convertToTreeNodes(treeOptions), hasMore: false };
@@ -210,34 +145,38 @@ const MUIGlossaryTagSuggestion: FC<MUIGlossaryTagSuggestionProps> = ({
 
         // Otherwise, fetch top-level glossaries only
         const { data: glossaries } = await getGlossariesList({
-          fields: 'name,displayName,fullyQualifiedName',
+          fields: 'name,displayName,fullyQualifiedName,mutuallyExclusive',
           limit: PAGE_SIZE_LARGE,
         });
 
-        const treeNodes = glossaries.map((glossary: Glossary) => ({
-          id: glossary.name, // Use the encoded name for queryGlossaryTerms
-          label: getEntityName(glossary),
-          value: glossary.fullyQualifiedName || glossary.name,
-          children: [
-            {
-              id: `${glossary.name}-loading`,
-              label: 'Loading...',
-              value: `${glossary.name}-loading`,
-              children: [],
-              isLeaf: true,
-              allowSelection: false,
-              data: undefined,
-            },
-          ], // Add placeholder child to show expand icon
-          isLeaf: false, // Glossaries can have children
-          allowSelection: false, // Don't allow selection of glossary itself
-          data: {
-            tagFQN: glossary.fullyQualifiedName || '',
-            name: getEntityName(glossary),
-            displayName: glossary.displayName,
-            source: TagSource.Glossary,
-          } as TagLabel,
-        }));
+        const treeNodes = glossaries.map((glossary: Glossary) => {
+          setExclusivity(glossary.name, glossary.mutuallyExclusive ?? false);
+
+          return {
+            id: glossary.name, // Use the encoded name for queryGlossaryTerms
+            label: getEntityName(glossary),
+            value: glossary.fullyQualifiedName || glossary.name,
+            children: [
+              {
+                id: `${glossary.name}-loading`,
+                label: 'Loading...',
+                value: `${glossary.name}-loading`,
+                children: [],
+                isLeaf: true,
+                allowSelection: false,
+                data: undefined,
+              },
+            ], // Add placeholder child to show expand icon
+            isLeaf: false, // Glossaries can have children
+            allowSelection: false, // Don't allow selection of glossary itself
+            data: {
+              tagFQN: glossary.fullyQualifiedName || '',
+              name: getEntityName(glossary),
+              displayName: glossary.displayName,
+              source: TagSource.Glossary,
+            } as TagLabel,
+          };
+        });
 
         return { nodes: treeNodes, hasMore: false };
       } catch (error) {
@@ -246,7 +185,7 @@ const MUIGlossaryTagSuggestion: FC<MUIGlossaryTagSuggestionProps> = ({
         return { nodes: [], hasMore: false };
       }
     },
-    []
+    [getExclusivity, setExclusivity]
   );
 
   const handleChange = useCallback(
