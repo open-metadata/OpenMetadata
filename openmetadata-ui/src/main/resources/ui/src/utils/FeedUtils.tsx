@@ -271,7 +271,7 @@ export const userMentionItemWithAvatar = (
           />
         ) : (
           <div
-            className="flex-center flex-shrink align-middle mention-avatar"
+            className="flex-center shrink align-middle mention-avatar"
             data-testid="avatar"
             style={{ backgroundColor: color }}>
             <span>{character}</span>
@@ -397,8 +397,7 @@ export const deletePost = async (
   if (isThread) {
     try {
       const data = await deleteThread(threadId);
-      callback &&
-        callback((prev) => prev.filter((thread) => thread.id !== data.id));
+      callback?.((prev) => prev.filter((thread) => thread.id !== data.id));
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -526,12 +525,12 @@ export const prepareFeedLink = (
 
   const entityLink = entityUtilClassBase.getEntityLink(entityType, entityFQN);
 
-  if (!withoutFeedEntities.includes(entityType as EntityType)) {
+  if (withoutFeedEntities.includes(entityType as EntityType)) {
+    return entityLink;
+  } else {
     const activityFeedLink = `${entityLink}/${TabSpecificField.ACTIVITY_FEED}`;
 
     return subTab ? `${activityFeedLink}/${subTab}` : activityFeedLink;
-  } else {
-    return entityLink;
   }
 };
 
@@ -591,7 +590,7 @@ export const entityDisplayName = (entityType: string, entityFQN: string) => {
 
   // Remove quotes if the name is wrapped in quotes
   if (displayName) {
-    displayName = displayName.replace(/(?:^"+)|(?:"+$)/g, '');
+    displayName = displayName.replaceAll(/(?:^"+)|(?:"+$)/g, '');
   }
 
   return displayName;
