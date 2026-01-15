@@ -154,7 +154,6 @@ const SchemaTable = () => {
 
   useFqnDeepLink({
     data: table.columns || [],
-    tableFqn,
     columnPart,
     fqn,
     setExpandedRowKeys: setExpandedRowKeys,

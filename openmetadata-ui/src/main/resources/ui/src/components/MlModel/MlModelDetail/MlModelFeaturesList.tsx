@@ -43,7 +43,6 @@ const MlModelFeaturesList = () => {
 
   // Extract base FQN and column part from URL
   const {
-    entityFqn: mlModelFqn,
     columnFqn: columnPart,
     fqn,
   } = useFqn({
@@ -60,7 +59,6 @@ const MlModelFeaturesList = () => {
   // Use deep link hook to handle URL-based column selection
   useFqnDeepLink({
     data: mlFeatures || [],
-    tableFqn: mlModelFqn,
     columnPart,
     fqn,
     setExpandedRowKeys: setExpandedRowKeys,

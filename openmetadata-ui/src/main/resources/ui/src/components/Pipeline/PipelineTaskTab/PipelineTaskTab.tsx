@@ -84,7 +84,6 @@ export const PipelineTaskTab = () => {
 
   useFqnDeepLink({
     data: pipelineDetails.tasks ?? [],
-    tableFqn: pipelineFQN,
     columnPart,
     fqn,
     setExpandedRowKeys,

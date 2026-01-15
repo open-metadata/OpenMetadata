@@ -39,7 +39,6 @@ describe('useFqnDeepLink', () => {
     renderHook(() =>
       useFqnDeepLink({
         data: mockData,
-        tableFqn,
         columnPart: '',
         setExpandedRowKeys: mockSetExpandedRowKeys,
         openColumnDetailPanel: mockOpenColumnDetailPanel,
@@ -59,7 +58,6 @@ describe('useFqnDeepLink', () => {
     renderHook(() =>
       useFqnDeepLink({
         data: mockData,
-        tableFqn,
         columnPart,
         fqn,
         setExpandedRowKeys: mockSetExpandedRowKeys,

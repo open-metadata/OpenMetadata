@@ -220,7 +220,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
   useFqnDeepLink({
     data: topicDetails?.messageSchema?.schemaFields ?? [],
-    tableFqn: topicFqn,
     columnPart,
     fqn,
     setExpandedRowKeys: setExpandedRowKeys,

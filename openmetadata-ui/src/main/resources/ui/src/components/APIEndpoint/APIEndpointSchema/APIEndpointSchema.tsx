@@ -97,7 +97,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
   } = useGenericContext<APIEndpoint>();
 
   const {
-    entityFqn: apiEndpointFqn,
     columnFqn: columnPart,
     fqn,
   } = useFqn({
@@ -222,7 +221,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
 
   useFqnDeepLink({
     data: activeSchemaFields,
-    tableFqn: apiEndpointFqn,
     columnPart,
     fqn,
     setExpandedRowKeys: setExpandedRowKeys,

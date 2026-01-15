@@ -91,7 +91,6 @@ const ModelTab = () => {
   const { fullyQualifiedName: entityFqn, deleted: isReadOnly } = dataModel;
 
   const {
-    entityFqn: modelFqn,
     columnFqn: columnPart,
     fqn,
   } = useFqn({
@@ -100,7 +99,6 @@ const ModelTab = () => {
 
   useFqnDeepLink({
     data: paginatedColumns,
-    tableFqn: modelFqn,
     columnPart,
     fqn,
     setExpandedRowKeys: setExpandedRowKeys,

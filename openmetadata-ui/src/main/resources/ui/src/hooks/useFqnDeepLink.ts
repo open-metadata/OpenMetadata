@@ -15,7 +15,6 @@ import { findFieldByFQN, getParentKeysToExpand } from '../utils/TableUtils';
 
 interface UseFqnDeepLinkProps<T> {
   data: T[];
-  tableFqn: string;
   columnPart?: string;
   setExpandedRowKeys: (keys: (prev: string[]) => string[]) => void;
   openColumnDetailPanel: (field: T) => void;
@@ -23,9 +22,10 @@ interface UseFqnDeepLinkProps<T> {
   fqn?: string;
 }
 
-export const useFqnDeepLink = <T extends { fullyQualifiedName?: string; children?: T[] }>({
+export const useFqnDeepLink = <
+  T extends { fullyQualifiedName?: string; children?: T[] }
+>({
   data,
-  tableFqn,
   columnPart,
   fqn,
   setExpandedRowKeys,
@@ -46,9 +46,18 @@ export const useFqnDeepLink = <T extends { fullyQualifiedName?: string; children
 
     const matchedField = findFieldByFQN(data, fullColumnFqn);
     if (matchedField) {
-      if (selectedColumn?.fullyQualifiedName !== matchedField.fullyQualifiedName) {
+      if (
+        selectedColumn?.fullyQualifiedName !== matchedField.fullyQualifiedName
+      ) {
         openColumnDetailPanel(matchedField);
       }
     }
-  }, [columnPart, tableFqn, data, openColumnDetailPanel, selectedColumn, setExpandedRowKeys]);
+  }, [
+    columnPart,
+    fqn,
+    data,
+    openColumnDetailPanel,
+    selectedColumn,
+    setExpandedRowKeys,
+  ]);
 };

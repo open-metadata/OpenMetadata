@@ -88,7 +88,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   const schema = pruneEmptyChildren(dataModel?.columns ?? []);
 
   const {
-    entityFqn: containerFqn,
     columnFqn: columnPart,
     fqn,
   } = useFqn({
@@ -96,7 +95,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   });
   useFqnDeepLink({
     data: dataModel?.columns || [],
-    tableFqn: containerFqn,
     columnPart,
     fqn,
     setExpandedRowKeys: setExpandedRowKeys,

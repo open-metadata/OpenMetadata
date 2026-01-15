@@ -107,7 +107,6 @@ const SearchIndexFieldsTable = ({
 
   // Extract base FQN and column part from URL
   const {
-    entityFqn: searchIndexFqn,
     columnFqn: columnPart,
     fqn,
   } = useFqn({
@@ -115,7 +114,6 @@ const SearchIndexFieldsTable = ({
   });
   useFqnDeepLink({
     data: searchIndexFields,
-    tableFqn: searchIndexFqn,
     columnPart,
     fqn,
     setExpandedRowKeys: setExpandedRowKeys,
