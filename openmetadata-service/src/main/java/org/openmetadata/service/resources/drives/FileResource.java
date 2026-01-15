@@ -72,7 +72,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "files")
 public class FileResource extends EntityResource<File, FileRepository> {
-  public static final String COLLECTION_PATH = "v1/drives/files/";
+  public static final String COLLECTION_PATH = "/v1/drives/files/";
   static final String FIELDS =
       "owners,directory,usageSummary,tags,fileExtension,extension,domains,sourceHash,lifeCycle,votes,followers,columns,sampleData";
   private final FileMapper mapper = new FileMapper();

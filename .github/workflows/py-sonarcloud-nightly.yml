@@ -1,0 +1,83 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: SonarCloud Ingestion Nightly
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sonarcloud-ingestion-nightly
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.10"
+  BRANCH_NAME: "main"
+  PROJECT_BASE_DIR: "ingestion"
+
+jobs:
+  ingestion-sonarcloud-analysis:
+    timeout-minutes: 180
+    runs-on: ubuntu-latest
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: false
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BRANCH_NAME }}
+          fetch-depth: 0
+
+      - name: Setup Openmetadata Test Environment
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          args: "-m no-ui"
+          ingestion_dependency: "mysql,elasticsearch,sample-data"
+
+      - name: Run Python Tests & Record Coverage
+        run: |
+          source env/bin/activate
+          make coverage
+          rm pom.xml
+
+      - name: Clean Up
+        run: |
+          cd ./docker/development
+          docker compose down --remove-orphans
+          sudo rm -rf ${PWD}/docker-volume
+
+      - name: Push Results To Sonar
+        id: push-to-sonar
+        continue-on-error: true
+        uses: SonarSource/sonarqube-scan-action@v7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
+        with:
+          projectBaseDir: ${{ env.PROJECT_BASE_DIR }}/
+          args: >
+            -Dproject.settings=${{ env.PROJECT_BASE_DIR }}/sonar-project.properties
+            -Dsonar.branch.name=${{ env.BRANCH_NAME }}
