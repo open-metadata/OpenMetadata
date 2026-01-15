@@ -100,7 +100,7 @@
     <postgres.connector.version>42.7.7</postgres.connector.version>
     <jsonschema2pojo.version>1.2.2</jsonschema2pojo.version>
     <lombok.version>1.18.36</lombok.version>
-    <tomcat-jdbc.version>11.0.5</tomcat-jdbc.version>
+    <tomcat-jdbc.version>11.0.11</tomcat-jdbc.version>
     <hikaricp.version>7.0.2</hikaricp.version>
     <elasticsearch.version>7.17.25</elasticsearch.version>
     <opensearch.version>2.6.0</opensearch.version>
