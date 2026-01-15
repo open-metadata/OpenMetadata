@@ -609,6 +609,7 @@ const ContractDetail: React.FC<{
             <Menu
               anchorEl={addContractMenuAnchor}
               aria-labelledby="add-contract-button"
+              data-testid="add-contract-menu"
               id="add-contract-menu"
               open={Boolean(addContractMenuAnchor)}
               onClose={handleAddContractMenuClose}>

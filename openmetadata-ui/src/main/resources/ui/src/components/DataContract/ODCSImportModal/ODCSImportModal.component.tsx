@@ -500,6 +500,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
 
       return (
         <Box
+          data-testid="contract-preview-card"
           sx={{
             border: `1px solid ${theme.palette.divider}`,
             borderRadius: '8px',
@@ -699,6 +700,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
     if (parseError) {
       return (
         <Box
+          data-testid="parse-error-panel"
           sx={{
             borderRadius: '8px',
             height: '100%',
@@ -805,6 +807,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
     if (serverValidationError) {
       return (
         <Box
+          data-testid="server-validation-error-panel"
           sx={{
             backgroundColor: theme.palette.grey[50],
             borderRadius: '8px',
@@ -887,6 +890,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
     if (serverValidation?.failed !== undefined && serverValidation.failed > 0) {
       return (
         <Box
+          data-testid="server-validation-failed-error-panel"
           sx={{
             backgroundColor: theme.palette.grey[50],
             borderRadius: '8px',
@@ -922,7 +926,9 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
             />
           </Box>
           <Box sx={{ flex: 1, minHeight: '200px' }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <Box
+              data-testid="failed-fields-list"
+              sx={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {serverValidation.failedFields?.map((field, index) => (
                 <Box
                   key={index}
@@ -935,7 +941,11 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                       backgroundColor: theme.palette.allShades.error[600],
                     }}
                   />
-                  <Typography sx={{ fontSize: '14px' }}>{field}</Typography>
+                  <Typography
+                    data-testid={`failed-field-${index}`}
+                    sx={{ fontSize: '14px' }}>
+                    {field}
+                  </Typography>
                 </Box>
               ))}
             </Box>
@@ -983,6 +993,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
 
     return (
       <Box
+        data-testid="validation-success-panel"
         sx={{
           backgroundColor: theme.palette.grey[50],
           borderRadius: '8px',
@@ -1095,6 +1106,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
           marginTop: '16px',
         }}>
         <Box
+          data-testid="existing-contract-warning"
           sx={{
             display: 'flex',
             alignItems: 'flex-start',
@@ -1241,6 +1253,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         <Box className="object-selector-header">
           <Typography
             component="span"
+            data-testid="multi-object-contract-detected"
             sx={{ fontSize: '14px', fontWeight: 600 }}>
             {t('message.multi-object-contract-detected')}
           </Typography>
@@ -1250,13 +1263,18 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
             <Select
               displayEmpty
               fullWidth
+              data-testid="schema-object-select"
               value={selectedObjectName}
               onChange={handleObjectSelectChange}>
               <MenuItem disabled value="">
                 {t('label.select-schema-object')}
               </MenuItem>
               {schemaObjects.map((obj) => (
-                <MenuItem key={obj} sx={{ px: '12px' }} value={obj}>
+                <MenuItem
+                  data-testid={`schema-object-option-${obj}`}
+                  key={obj}
+                  sx={{ px: '12px' }}
+                  value={obj}>
                   {obj}
                 </MenuItem>
               ))}
@@ -1282,6 +1300,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
 
   return (
     <Dialog
+      data-testid="import-contract-modal"
       open={visible}
       slotProps={{
         paper: {
@@ -1295,6 +1314,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
       }}
       onClose={isLoading ? undefined : handleReset}>
       <DialogTitle
+        data-testid="import-contract-modal-title"
         sx={{
           '&.MuiDialogTitle-root': {
             display: 'flex',
@@ -1357,6 +1377,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                 onDrop={handleDrop}>
                 <input
                   accept=".yaml,.yml"
+                  data-testid="file-upload-input"
                   id="file-upload-input"
                   style={{ display: 'none' }}
                   type="file"
@@ -1401,7 +1422,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
               </Box>
             ) : (
               <>
-                <Box className="file-info-card">
+                <Box className="file-info-card" data-testid="file-info-card">
                   <Box className="file-info">
                     <DescriptionOutlinedIcon className="file-icon" />
 
@@ -1441,6 +1462,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
 
       <DialogActions sx={{ px: '20px', py: '16px', gap: '12px' }}>
         <Button
+          data-testid="cancel-button"
           disabled={isLoading}
           sx={{
             fontSize: '14px',
@@ -1454,6 +1476,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
           {t('label.cancel')}
         </Button>
         <Button
+          data-testid="import-button"
           disabled={isImportDisabled || isLoading}
           sx={{
             fontSize: '14px',

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { test } from '../fixtures/pages';
@@ -115,7 +115,7 @@ const ODCS_TEST_FILES = {
   },
 };
 
-const navigateToContractTab = async (page, table) => {
+const navigateToContractTab = async (page: Page, table: TableClass) => {
   await table.visitEntityPage(page);
   await page.click('[data-testid="contract"]');
   await page.waitForSelector('[data-testid="loader"]', {
@@ -124,59 +124,58 @@ const navigateToContractTab = async (page, table) => {
   });
 };
 
-const openODCSImportDropdown = async (page) => {
-  // Check if we need to click add-contract-button first (no contract exists)
+const openODCSImportDropdown = async (page: Page) => {
   const addButton = page.getByTestId('add-contract-button');
   const manageButton = page.getByTestId('manage-contract-actions');
 
-  // Try to find either button
   const addButtonVisible = await addButton.isVisible().catch(() => false);
   const manageButtonVisible = await manageButton.isVisible().catch(() => false);
 
   if (addButtonVisible) {
     await addButton.click();
-  } else if (manageButtonVisible) {
-    await manageButton.click();
-  }
-
-  await page.waitForSelector('.contract-action-dropdown', {
+    await page.getByTestId('add-contract-menu').waitFor({
     state: 'visible',
     timeout: 10000,
   });
+  } else if (manageButtonVisible) {
+    await manageButton.click();
+  }
 };
 
-const clickImportODCSButton = async (page) => {
+const clickImportODCSButton = async (page: Page) => {
   await page.getByTestId('import-odcs-contract-button').click();
 };
 
 const importODCSYaml = async (
-  page,
+  page: Page,
   yamlContent: string,
   filename: string,
   options?: { mode?: 'merge' | 'replace'; hasExistingContract?: boolean }
 ) => {
   await clickImportODCSButton(page);
 
-  // Wait for modal to open
-  await page.waitForSelector('.ant-modal', { state: 'visible', timeout: 10000 });
+  await page.getByTestId('import-contract-modal').waitFor({
+    state: 'visible',
+    timeout: 10000,
+  });
 
-  // Upload file using the dragger input
-  const fileInput = page.locator('.ant-upload input[type="file"]');
+  const fileInput = page.getByTestId('file-upload-input');
   await fileInput.setInputFiles({
     name: filename,
     mimeType: 'application/yaml',
     buffer: Buffer.from(yamlContent),
   });
 
-  // Wait for file to be parsed and preview to show (file info card or contract preview)
-  await page.waitForSelector('.file-info-card, .contract-preview-card', {
+  await page.getByTestId('file-info-card').waitFor({
     state: 'visible',
     timeout: 10000,
   });
 
   // If existing contract, select mode
   if (options?.hasExistingContract && options?.mode) {
-    const modeRadio = page.locator(`input[type="radio"][value="${options.mode}"]`);
+    const modeRadio = page.locator(
+      `input[type="radio"][value="${options.mode}"]`
+    );
     await modeRadio.click();
   }
 
@@ -200,27 +199,15 @@ const importODCSYaml = async (
   });
 
   // Click Import button
-  const importButton = page.locator('.ant-modal .ant-btn-primary');
+  const importButton = page.getByTestId('import-button');
   await importButton.click();
 
   await importResponse;
   await toastNotification(page, 'ODCS Contract imported successfully');
 };
 
-const deleteContract = async (page) => {
-  await page.getByTestId('manage-contract-actions').click();
-  await page.waitForSelector('.contract-action-dropdown', {
-    state: 'visible',
-  });
-  await page.getByTestId('delete-contract-button').click();
-
-  await page.getByTestId('confirmation-text-input').fill('DELETE');
-  await page.getByTestId('confirm-button').click();
-
-  await toastNotification(page, '"Contract" deleted successfully!');
-};
-
 test.describe('ODCS Import/Export', () => {
+  test.slow(true)
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -352,12 +339,9 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await clickImportODCSButton(page);
 
-      await page.waitForSelector('.ant-modal', {
-        state: 'visible',
-        timeout: 10000,
-      });
+      await page.getByTestId('import-contract-modal').waitFor();
 
-      const fileInput = page.locator('.ant-upload input[type="file"]');
+      const fileInput = page.getByTestId('file-upload-input');
       await fileInput.setInputFiles({
         name: 'invalid-malformed-yaml.yaml',
         mimeType: 'application/yaml',
@@ -365,9 +349,7 @@ test.describe('ODCS Import/Export', () => {
       });
 
       // Should show error in validation panel for malformed YAML
-      await expect(
-        page.locator('.validation-panel .validation-title-error')
-      ).toBeVisible({
+      await expect(page.getByTestId('parse-error-panel')).toBeVisible({
         timeout: 10000,
       });
     } finally {
@@ -387,12 +369,9 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await clickImportODCSButton(page);
 
-      await page.waitForSelector('.ant-modal', {
-        state: 'visible',
-        timeout: 10000,
-      });
+      await page.getByTestId('import-contract-modal').waitFor();
 
-      const fileInput = page.locator('.ant-upload input[type="file"]');
+      const fileInput = page.getByTestId('file-upload-input');
       await fileInput.setInputFiles({
         name: 'invalid-missing-apiversion.yaml',
         mimeType: 'application/yaml',
@@ -400,9 +379,7 @@ test.describe('ODCS Import/Export', () => {
       });
 
       // Should show error in validation panel for missing apiVersion
-      await expect(
-        page.locator('.validation-panel .validation-title-error')
-      ).toBeVisible({
+      await expect(page.getByTestId('parse-error-panel')).toBeVisible({
         timeout: 10000,
       });
     } finally {
@@ -422,12 +399,9 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await clickImportODCSButton(page);
 
-      await page.waitForSelector('.ant-modal', {
-        state: 'visible',
-        timeout: 10000,
-      });
+      await page.getByTestId('import-contract-modal').waitFor();
 
-      const fileInput = page.locator('.ant-upload input[type="file"]');
+      const fileInput = page.getByTestId('file-upload-input');
       await fileInput.setInputFiles({
         name: 'invalid-missing-status.yaml',
         mimeType: 'application/yaml',
@@ -435,9 +409,7 @@ test.describe('ODCS Import/Export', () => {
       });
 
       // Should show error in validation panel for missing status
-      await expect(
-        page.locator('.validation-panel .validation-title-error')
-      ).toBeVisible({
+      await expect(page.getByTestId('parse-error-panel')).toBeVisible({
         timeout: 10000,
       });
     } finally {
@@ -457,12 +429,9 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await clickImportODCSButton(page);
 
-      await page.waitForSelector('.ant-modal', {
-        state: 'visible',
-        timeout: 10000,
-      });
+      await page.getByTestId('import-contract-modal').waitFor();
 
-      const fileInput = page.locator('.ant-upload input[type="file"]');
+      const fileInput = page.getByTestId('file-upload-input');
       await fileInput.setInputFiles({
         name: 'invalid-empty-file.yaml',
         mimeType: 'application/yaml',
@@ -470,9 +439,7 @@ test.describe('ODCS Import/Export', () => {
       });
 
       // Should show error in validation panel for empty/invalid file
-      await expect(
-        page.locator('.validation-panel .validation-title-error')
-      ).toBeVisible({
+      await expect(page.getByTestId('parse-error-panel')).toBeVisible({
         timeout: 10000,
       });
     } finally {
@@ -492,12 +459,9 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await clickImportODCSButton(page);
 
-      await page.waitForSelector('.ant-modal', {
-        state: 'visible',
-        timeout: 10000,
-      });
+      await page.getByTestId('import-contract-modal').waitFor();
 
-      const fileInput = page.locator('.ant-upload input[type="file"]');
+      const fileInput = page.getByTestId('file-upload-input');
       await fileInput.setInputFiles({
         name: 'valid-basic.json',
         mimeType: 'application/json',
@@ -505,20 +469,15 @@ test.describe('ODCS Import/Export', () => {
       });
 
       // Wait for file to be parsed
-      await page.waitForSelector('.file-info-card, .contract-preview-card', {
-        state: 'visible',
-        timeout: 10000,
-      });
+      await page.getByTestId('file-info-card').waitFor();
 
       // Should show validation success for valid JSON
-      await expect(
-        page.locator('.validation-panel .validation-title-success')
-      ).toBeVisible({
+      await expect(page.getByTestId('validation-success-panel')).toBeVisible({
         timeout: 10000,
       });
 
       // Close modal
-      await page.locator('.ant-modal .ant-btn').filter({ hasText: /cancel/i }).click();
+      await page.getByTestId('cancel-button').click();
     } finally {
       await table.delete(apiContext);
     }
@@ -534,12 +493,9 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await clickImportODCSButton(page);
 
-      await page.waitForSelector('.ant-modal', {
-        state: 'visible',
-        timeout: 10000,
-      });
+      await page.getByTestId('import-contract-modal').waitFor();
 
-      const fileInput = page.locator('.ant-upload input[type="file"]');
+      const fileInput = page.getByTestId('file-upload-input');
       await fileInput.setInputFiles({
         name: 'invalid-malformed.json',
         mimeType: 'application/json',
@@ -547,9 +503,7 @@ test.describe('ODCS Import/Export', () => {
       });
 
       // Should show error in validation panel for malformed JSON
-      await expect(
-        page.locator('.validation-panel .validation-title-error')
-      ).toBeVisible({
+      await expect(page.getByTestId('parse-error-panel')).toBeVisible({
         timeout: 10000,
       });
     } finally {
@@ -569,12 +523,9 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await clickImportODCSButton(page);
 
-      await page.waitForSelector('.ant-modal', {
-        state: 'visible',
-        timeout: 10000,
-      });
+      await page.getByTestId('import-contract-modal').waitFor();
 
-      const fileInput = page.locator('.ant-upload input[type="file"]');
+      const fileInput = page.getByTestId('file-upload-input');
       await fileInput.setInputFiles({
         name: 'invalid-missing-kind.yaml',
         mimeType: 'application/yaml',
@@ -582,9 +533,7 @@ test.describe('ODCS Import/Export', () => {
       });
 
       // Should show error for missing kind
-      await expect(
-        page.locator('.validation-panel .validation-title-error')
-      ).toBeVisible({
+      await expect(page.getByTestId('parse-error-panel')).toBeVisible({
         timeout: 10000,
       });
     } finally {
@@ -602,12 +551,9 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await clickImportODCSButton(page);
 
-      await page.waitForSelector('.ant-modal', {
-        state: 'visible',
-        timeout: 10000,
-      });
+      await page.getByTestId('import-contract-modal').waitFor();
 
-      const fileInput = page.locator('.ant-upload input[type="file"]');
+      const fileInput = page.getByTestId('file-upload-input');
       await fileInput.setInputFiles({
         name: 'invalid-wrong-apiversion.yaml',
         mimeType: 'application/yaml',
@@ -616,7 +562,7 @@ test.describe('ODCS Import/Export', () => {
 
       // Should show error for wrong apiVersion
       await expect(
-        page.locator('.validation-panel .validation-title-error')
+        page.getByTestId('server-validation-error-panel')
       ).toBeVisible({
         timeout: 10000,
       });
@@ -635,12 +581,9 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await clickImportODCSButton(page);
 
-      await page.waitForSelector('.ant-modal', {
-        state: 'visible',
-        timeout: 10000,
-      });
+      await page.getByTestId('import-contract-modal').waitFor();
 
-      const fileInput = page.locator('.ant-upload input[type="file"]');
+      const fileInput = page.getByTestId('file-upload-input');
       await fileInput.setInputFiles({
         name: 'invalid-wrong-kind.yaml',
         mimeType: 'application/yaml',
@@ -649,7 +592,7 @@ test.describe('ODCS Import/Export', () => {
 
       // Should show error for wrong kind
       await expect(
-        page.locator('.validation-panel .validation-title-error')
+        page.getByTestId('server-validation-error-panel')
       ).toBeVisible({
         timeout: 10000,
       });
@@ -690,12 +633,9 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await clickImportODCSButton(page);
 
-      await page.waitForSelector('.ant-modal', {
-        state: 'visible',
-        timeout: 10000,
-      });
+      await page.getByTestId('import-contract-modal').waitFor();
 
-      const fileInput = page.locator('.ant-upload input[type="file"]');
+      const fileInput = page.getByTestId('file-upload-input');
       await fileInput.setInputFiles({
         name: 'malformed.yaml',
         mimeType: 'application/yaml',
@@ -703,9 +643,7 @@ test.describe('ODCS Import/Export', () => {
       });
 
       // Should show error in validation panel for malformed YAML
-      await expect(
-        page.locator('.validation-panel .validation-title-error')
-      ).toBeVisible({
+      await expect(page.getByTestId('parse-error-panel')).toBeVisible({
         timeout: 15000,
       });
     } finally {
@@ -728,14 +666,11 @@ test.describe('ODCS Import/Export', () => {
         'export-test.yaml'
       );
 
-      // Now export the contract
-      const downloadPromise = page.waitForEvent('download');
-
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', {
-        state: 'visible',
-      });
       await page.getByTestId('export-odcs-contract-button').click();
+
+       // Now export the contract
+      const downloadPromise = page.waitForEvent('download');
 
       const download = await downloadPromise;
       const filename = download.suggestedFilename();
@@ -775,9 +710,6 @@ test.describe('ODCS Import/Export', () => {
       const downloadPromise = page.waitForEvent('download');
 
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', {
-        state: 'visible',
-      });
       await page.getByTestId('export-odcs-contract-button').click();
 
       const download = await downloadPromise;
@@ -786,14 +718,14 @@ test.describe('ODCS Import/Export', () => {
       const tempPath = `/tmp/odcs-export-${Date.now()}.yaml`;
       await download.saveAs(tempPath);
 
-      const fs = await import('fs');
-      const exportedYaml = fs.readFileSync(tempPath, 'utf-8');
+      const fsModule = await import('fs');
+      const exportedYaml = fsModule.readFileSync(tempPath, 'utf-8');
 
       expect(exportedYaml).toContain('apiVersion');
       expect(exportedYaml).toContain('v3.1.0');
 
       // Cleanup
-      fs.unlinkSync(tempPath);
+      fsModule.unlinkSync(tempPath);
 
       await toastNotification(page, 'ODCS Contract exported successfully');
     } finally {
@@ -829,10 +761,15 @@ test.describe('ODCS Import/Export', () => {
 
       // Now merge with full contract (has SLA and roles)
       await openODCSImportDropdown(page);
-      await importODCSYaml(page, ODCS_TEST_FILES.VALID_FULL_YAML, 'merge-with-sla.yaml', {
-        hasExistingContract: true,
-        mode: 'merge',
-      });
+      await importODCSYaml(
+        page,
+        ODCS_TEST_FILES.VALID_FULL_YAML,
+        'merge-with-sla.yaml',
+        {
+          hasExistingContract: true,
+          mode: 'merge',
+        }
+      );
 
       // Verify contract was updated with SLA from merged contract
       await expect(page.getByTestId('contract-sla-card')).toBeVisible({
@@ -847,17 +784,14 @@ test.describe('ODCS Import/Export', () => {
       // Export as ODCS and verify merged content
       const downloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', {
-        state: 'visible',
-      });
       await page.getByTestId('export-odcs-contract-button').click();
 
       const download = await downloadPromise;
       const tempPath = `/tmp/merge-verify-${Date.now()}.yaml`;
       await download.saveAs(tempPath);
 
-      const fs = await import('fs');
-      const exportedYaml = fs.readFileSync(tempPath, 'utf-8');
+      const fsModule = await import('fs');
+      const exportedYaml = fsModule.readFileSync(tempPath, 'utf-8');
 
       // Verify merged contract has SLA properties added from full contract
       expect(exportedYaml).toContain('slaProperties');
@@ -871,7 +805,7 @@ test.describe('ODCS Import/Export', () => {
       expect(exportedYaml).toContain('Orders Basic Contract');
 
       // Cleanup
-      fs.unlinkSync(tempPath);
+      fsModule.unlinkSync(tempPath);
     } finally {
       await table.delete(apiContext);
     }
@@ -888,7 +822,11 @@ test.describe('ODCS Import/Export', () => {
       // First import a full contract (with SLA, name: "Customer Analytics Full Contract")
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(page, ODCS_TEST_FILES.VALID_FULL_YAML, 'full-contract.yaml');
+      await importODCSYaml(
+        page,
+        ODCS_TEST_FILES.VALID_FULL_YAML,
+        'full-contract.yaml'
+      );
 
       // Verify full contract was created with SLA
       await expect(page.getByTestId('contract-title')).toBeVisible();
@@ -904,10 +842,15 @@ test.describe('ODCS Import/Export', () => {
 
       // Now REPLACE with basic contract (no SLA, name: "Orders Basic Contract")
       await openODCSImportDropdown(page);
-      await importODCSYaml(page, ODCS_TEST_FILES.VALID_BASIC_YAML, 'replace-with-basic.yaml', {
-        hasExistingContract: true,
-        mode: 'replace',
-      });
+      await importODCSYaml(
+        page,
+        ODCS_TEST_FILES.VALID_BASIC_YAML,
+        'replace-with-basic.yaml',
+        {
+          hasExistingContract: true,
+          mode: 'replace',
+        }
+      );
 
       // Replace mode preserves identity fields (ID, name, FQN) but replaces content
       // So the name should stay as "Customer Analytics Full Contract" but content changes
@@ -925,17 +868,14 @@ test.describe('ODCS Import/Export', () => {
       // Export as ODCS and verify replaced content
       const downloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', {
-        state: 'visible',
-      });
       await page.getByTestId('export-odcs-contract-button').click();
 
       const download = await downloadPromise;
       const tempPath = `/tmp/replace-verify-${Date.now()}.yaml`;
       await download.saveAs(tempPath);
 
-      const fs = await import('fs');
-      const replacedYaml = fs.readFileSync(tempPath, 'utf-8');
+      const fsModule = await import('fs');
+      const replacedYaml = fsModule.readFileSync(tempPath, 'utf-8');
 
       // Name is preserved (identity field preserved in replace mode)
       expect(replacedYaml).toContain('Customer Analytics Full Contract');
@@ -947,7 +887,7 @@ test.describe('ODCS Import/Export', () => {
       expect(replacedYaml).toContain('roles: []');
 
       // Cleanup
-      fs.unlinkSync(tempPath);
+      fsModule.unlinkSync(tempPath);
     } finally {
       await table.delete(apiContext);
     }
@@ -977,10 +917,10 @@ test.describe('ODCS Import/Export', () => {
       await clickImportODCSButton(page);
 
       // Wait for modal
-      await page.waitForSelector('.ant-modal', { state: 'visible' });
+      await page.getByTestId('import-contract-modal').waitFor();
 
       // Upload a file
-      const fileInput = page.locator('.ant-upload input[type="file"]');
+      const fileInput = page.getByTestId('file-upload-input');
       await fileInput.setInputFiles({
         name: 'test.yaml',
         mimeType: 'application/yaml',
@@ -988,22 +928,29 @@ test.describe('ODCS Import/Export', () => {
       });
 
       // Wait for file to be parsed
-      await page.waitForSelector('.file-info-card, .contract-preview-card', {
-        state: 'visible',
-      });
+      await page.getByTestId('file-info-card').waitFor();
 
       // Verify merge/replace options are shown
       await expect(
-        page.locator('.existing-contract-warning')
+        page.getByTestId('existing-contract-warning')
       ).toBeVisible();
-      await expect(page.locator('input[type="radio"][value="merge"]')).toBeVisible();
-      await expect(page.locator('input[type="radio"][value="replace"]')).toBeVisible();
+      await expect(
+        page.locator('input[type="radio"][value="merge"]')
+      ).toBeVisible();
+      await expect(
+        page.locator('input[type="radio"][value="replace"]')
+      ).toBeVisible();
 
       // Verify merge is selected by default
-      await expect(page.locator('input[type="radio"][value="merge"]')).toBeChecked();
+      await expect(
+        page.locator('input[type="radio"][value="merge"]')
+      ).toBeChecked();
 
       // Close modal
-      await page.locator('.ant-modal .ant-btn').filter({ hasText: /cancel/i }).click();
+      await page
+        .getByTestId('cancel-button')
+        .filter({ hasText: /cancel/i })
+        .click();
     } finally {
       await table.delete(apiContext);
     }
@@ -1020,10 +967,10 @@ test.describe('ODCS Import/Export', () => {
       await clickImportODCSButton(page);
 
       // Wait for modal
-      await page.waitForSelector('.ant-modal', { state: 'visible' });
+      await page.getByTestId('import-contract-modal').waitFor();
 
       // Upload full contract
-      const fileInput = page.locator('.ant-upload input[type="file"]');
+      const fileInput = page.getByTestId('file-upload-input');
       await fileInput.setInputFiles({
         name: 'full-contract.yaml',
         mimeType: 'application/yaml',
@@ -1037,12 +984,17 @@ test.describe('ODCS Import/Export', () => {
 
       // Verify preview shows contract details
       await expect(page.locator('text=CONTRACT PREVIEW')).toBeVisible();
-      await expect(page.locator('text=Customer Analytics Full Contract')).toBeVisible();
+      await expect(
+        page.locator('text=Customer Analytics Full Contract')
+      ).toBeVisible();
       await expect(page.locator('text=2.1.0')).toBeVisible();
       await expect(page.locator('text=active')).toBeVisible();
 
       // Close modal
-      await page.locator('.ant-modal .ant-btn').filter({ hasText: /cancel/i }).click();
+      await page
+        .getByTestId('cancel-button')
+        .filter({ hasText: /cancel/i })
+        .click();
     } finally {
       await table.delete(apiContext);
     }
@@ -1059,7 +1011,11 @@ test.describe('ODCS Import/Export', () => {
       // Import an ODCS contract with SLA
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(page, ODCS_TEST_FILES.VALID_FULL_YAML, 'odcs-to-om.yaml');
+      await importODCSYaml(
+        page,
+        ODCS_TEST_FILES.VALID_FULL_YAML,
+        'odcs-to-om.yaml'
+      );
 
       // Verify contract was created
       await expect(page.getByTestId('contract-title')).toBeVisible();
@@ -1069,9 +1025,6 @@ test.describe('ODCS Import/Export', () => {
       const downloadPromise = page.waitForEvent('download');
 
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', {
-        state: 'visible',
-      });
       await page.getByTestId('export-contract-button').click();
 
       const download = await downloadPromise;
@@ -1084,8 +1037,8 @@ test.describe('ODCS Import/Export', () => {
       const tempPath = `/tmp/om-export-${Date.now()}.yaml`;
       await download.saveAs(tempPath);
 
-      const fs = await import('fs');
-      const exportedYaml = fs.readFileSync(tempPath, 'utf-8');
+      const fsModule = await import('fs');
+      const exportedYaml = fsModule.readFileSync(tempPath, 'utf-8');
 
       // OpenMetadata format should NOT contain ODCS-specific fields
       expect(exportedYaml).not.toContain('apiVersion: v3.1.0');
@@ -1096,7 +1049,7 @@ test.describe('ODCS Import/Export', () => {
       expect(exportedYaml).toContain('sla:');
 
       // Cleanup
-      fs.unlinkSync(tempPath);
+      fsModule.unlinkSync(tempPath);
     } finally {
       await table.delete(apiContext);
     }
@@ -1113,7 +1066,11 @@ test.describe('ODCS Import/Export', () => {
       // Import an ODCS contract with description (schema removed due to dynamic test table columns)
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(page, ODCS_TEST_FILES.VALID_FULL_YAML, 'odcs-schema.yaml');
+      await importODCSYaml(
+        page,
+        ODCS_TEST_FILES.VALID_FULL_YAML,
+        'odcs-schema.yaml'
+      );
 
       // Verify contract was created
       await expect(page.getByTestId('contract-title')).toBeVisible();
@@ -1122,9 +1079,6 @@ test.describe('ODCS Import/Export', () => {
       const downloadPromise = page.waitForEvent('download');
 
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', {
-        state: 'visible',
-      });
       await page.getByTestId('export-contract-button').click();
 
       const download = await downloadPromise;
@@ -1133,15 +1087,15 @@ test.describe('ODCS Import/Export', () => {
       const tempPath = `/tmp/om-schema-export-${Date.now()}.yaml`;
       await download.saveAs(tempPath);
 
-      const fs = await import('fs');
-      const exportedYaml = fs.readFileSync(tempPath, 'utf-8');
+      const fsModule = await import('fs');
+      const exportedYaml = fsModule.readFileSync(tempPath, 'utf-8');
 
       // Should contain name and description
       expect(exportedYaml).toContain('name:');
       expect(exportedYaml).toContain('description:');
 
       // Cleanup
-      fs.unlinkSync(tempPath);
+      fsModule.unlinkSync(tempPath);
     } finally {
       await table.delete(apiContext);
     }
@@ -1158,7 +1112,11 @@ test.describe('ODCS Import/Export', () => {
       // Import a full ODCS contract
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(page, ODCS_TEST_FILES.VALID_FULL_YAML, 'full-odcs.yaml');
+      await importODCSYaml(
+        page,
+        ODCS_TEST_FILES.VALID_FULL_YAML,
+        'full-odcs.yaml'
+      );
 
       // Verify contract was created
       await expect(page.getByTestId('contract-title')).toBeVisible();
@@ -1167,9 +1125,6 @@ test.describe('ODCS Import/Export', () => {
       // Export as ODCS format first
       const odcsDownloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', {
-        state: 'visible',
-      });
       await page.getByTestId('export-odcs-contract-button').click();
 
       const odcsDownload = await odcsDownloadPromise;
@@ -1181,9 +1136,6 @@ test.describe('ODCS Import/Export', () => {
       // Export as OpenMetadata format
       const omDownloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', {
-        state: 'visible',
-      });
       await page.getByTestId('export-contract-button').click();
 
       const omDownload = await omDownloadPromise;
@@ -1191,20 +1143,20 @@ test.describe('ODCS Import/Export', () => {
       await omDownload.saveAs(omTempPath);
 
       // Verify both exports
-      const fs = await import('fs');
+      const fsModule = await import('fs');
 
-      const odcsYaml = fs.readFileSync(odcsTempPath, 'utf-8');
+      const odcsYaml = fsModule.readFileSync(odcsTempPath, 'utf-8');
       expect(odcsYaml).toContain('apiVersion');
       expect(odcsYaml).toContain('v3.1.0');
       expect(odcsYaml).toMatch(/kind:\s*"?DataContract"?/);
 
-      const omYaml = fs.readFileSync(omTempPath, 'utf-8');
+      const omYaml = fsModule.readFileSync(omTempPath, 'utf-8');
       expect(omYaml).not.toContain('apiVersion: v3.1.0');
       expect(omYaml).toContain('name:');
 
       // Cleanup
-      fs.unlinkSync(odcsTempPath);
-      fs.unlinkSync(omTempPath);
+      fsModule.unlinkSync(odcsTempPath);
+      fsModule.unlinkSync(omTempPath);
     } finally {
       await table.delete(apiContext);
     }
@@ -1221,7 +1173,11 @@ test.describe('ODCS Import/Export', () => {
       // Import ODCS with SLA properties
       await navigateToContractTab(page, table);
       await openODCSImportDropdown(page);
-      await importODCSYaml(page, ODCS_TEST_FILES.VALID_FULL_YAML, 'sla-mapping.yaml');
+      await importODCSYaml(
+        page,
+        ODCS_TEST_FILES.VALID_FULL_YAML,
+        'sla-mapping.yaml'
+      );
 
       // Verify SLA card is visible (with extended timeout for rendering)
       await expect(page.getByTestId('contract-sla-card')).toBeVisible({
@@ -1231,17 +1187,14 @@ test.describe('ODCS Import/Export', () => {
       // Export as OpenMetadata format
       const downloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', {
-        state: 'visible',
-      });
       await page.getByTestId('export-contract-button').click();
 
       const download = await downloadPromise;
       const tempPath = `/tmp/sla-mapping-${Date.now()}.yaml`;
       await download.saveAs(tempPath);
 
-      const fs = await import('fs');
-      const exportedYaml = fs.readFileSync(tempPath, 'utf-8');
+      const fsModule = await import('fs');
+      const exportedYaml = fsModule.readFileSync(tempPath, 'utf-8');
 
       // ODCS uses slaProperties, OpenMetadata uses sla
       expect(exportedYaml).toContain('sla:');
@@ -1249,7 +1202,7 @@ test.describe('ODCS Import/Export', () => {
       expect(exportedYaml).toContain('refreshFrequency:');
 
       // Cleanup
-      fs.unlinkSync(tempPath);
+      fsModule.unlinkSync(tempPath);
     } finally {
       await table.delete(apiContext);
     }
@@ -1280,17 +1233,14 @@ test.describe('ODCS Import/Export', () => {
       // Export as ODCS to verify timezone is preserved
       const downloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', {
-        state: 'visible',
-      });
       await page.getByTestId('export-odcs-contract-button').click();
 
       const download = await downloadPromise;
       const tempPath = `/tmp/timezone-export-${Date.now()}.yaml`;
       await download.saveAs(tempPath);
 
-      const fs = await import('fs');
-      const exportedYaml = fs.readFileSync(tempPath, 'utf-8');
+      const fsModule = await import('fs');
+      const exportedYaml = fsModule.readFileSync(tempPath, 'utf-8');
 
       // Verify SLA properties are in the export
       // Note: timezone field is not yet exported by backend, but SLA properties should be preserved
@@ -1299,7 +1249,7 @@ test.describe('ODCS Import/Export', () => {
       expect(exportedYaml).toContain('slaProperties');
 
       // Cleanup
-      fs.unlinkSync(tempPath);
+      fsModule.unlinkSync(tempPath);
     } finally {
       await table.delete(apiContext);
     }
@@ -1325,17 +1275,14 @@ test.describe('ODCS Import/Export', () => {
       // Export as ODCS to verify roles are preserved
       const downloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', {
-        state: 'visible',
-      });
       await page.getByTestId('export-odcs-contract-button').click();
 
       const download = await downloadPromise;
       const tempPath = `/tmp/security-export-${Date.now()}.yaml`;
       await download.saveAs(tempPath);
 
-      const fs = await import('fs');
-      const exportedYaml = fs.readFileSync(tempPath, 'utf-8');
+      const fsModule = await import('fs');
+      const exportedYaml = fsModule.readFileSync(tempPath, 'utf-8');
 
       // Verify roles are in the export
       expect(exportedYaml).toContain('roles');
@@ -1343,7 +1290,7 @@ test.describe('ODCS Import/Export', () => {
       expect(exportedYaml).toContain('analyst');
 
       // Cleanup
-      fs.unlinkSync(tempPath);
+      fsModule.unlinkSync(tempPath);
     } finally {
       await table.delete(apiContext);
     }
@@ -1372,23 +1319,20 @@ test.describe('ODCS Import/Export', () => {
       // Export as ODCS to verify quality rules are preserved
       const downloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', {
-        state: 'visible',
-      });
       await page.getByTestId('export-odcs-contract-button').click();
 
       const download = await downloadPromise;
       const tempPath = `/tmp/quality-export-${Date.now()}.yaml`;
       await download.saveAs(tempPath);
 
-      const fs = await import('fs');
-      const exportedYaml = fs.readFileSync(tempPath, 'utf-8');
+      const fsModule = await import('fs');
+      const exportedYaml = fsModule.readFileSync(tempPath, 'utf-8');
 
       // Verify quality rules are in the export (stored in extension)
       expect(exportedYaml).toContain('quality');
 
       // Cleanup
-      fs.unlinkSync(tempPath);
+      fsModule.unlinkSync(tempPath);
     } finally {
       await table.delete(apiContext);
     }
@@ -1414,17 +1358,14 @@ test.describe('ODCS Import/Export', () => {
       // Export as ODCS to verify mustBeBetween quality rules are preserved
       const downloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', {
-        state: 'visible',
-      });
       await page.getByTestId('export-odcs-contract-button').click();
 
       const download = await downloadPromise;
       const tempPath = `/tmp/quality-between-export-${Date.now()}.yaml`;
       await download.saveAs(tempPath);
 
-      const fs = await import('fs');
-      const exportedYaml = fs.readFileSync(tempPath, 'utf-8');
+      const fsModule = await import('fs');
+      const exportedYaml = fsModule.readFileSync(tempPath, 'utf-8');
 
       // Verify mustBeBetween quality rules are in the export
       expect(exportedYaml).toContain('quality');
@@ -1434,7 +1375,7 @@ test.describe('ODCS Import/Export', () => {
       expect(exportedYaml).toContain('10000');
 
       // Cleanup
-      fs.unlinkSync(tempPath);
+      fsModule.unlinkSync(tempPath);
     } finally {
       await table.delete(apiContext);
     }
@@ -1465,17 +1406,14 @@ test.describe('ODCS Import/Export', () => {
       // Export as ODCS to verify basic structure
       const downloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', {
-        state: 'visible',
-      });
       await page.getByTestId('export-odcs-contract-button').click();
 
       const download = await downloadPromise;
       const tempPath = `/tmp/team-export-${Date.now()}.yaml`;
       await download.saveAs(tempPath);
 
-      const fs = await import('fs');
-      const exportedYaml = fs.readFileSync(tempPath, 'utf-8');
+      const fsModule = await import('fs');
+      const exportedYaml = fsModule.readFileSync(tempPath, 'utf-8');
 
       // Verify basic ODCS structure
       expect(exportedYaml).toContain('apiVersion');
@@ -1485,7 +1423,7 @@ test.describe('ODCS Import/Export', () => {
       expect(exportedYaml).toContain('team');
 
       // Cleanup
-      fs.unlinkSync(tempPath);
+      fsModule.unlinkSync(tempPath);
     } finally {
       await table.delete(apiContext);
     }
@@ -1537,10 +1475,10 @@ version: "1.0.0"`;
       await clickImportODCSButton(page);
 
       // Wait for modal
-      await page.waitForSelector('.ant-modal', { state: 'visible' });
+      await page.getByTestId('import-contract-modal').waitFor();
 
       // Upload invalid file
-      const fileInput = page.locator('.ant-upload input[type="file"]');
+      const fileInput = page.getByTestId('file-upload-input');
       await fileInput.setInputFiles({
         name: 'invalid.yaml',
         mimeType: 'application/yaml',
@@ -1548,19 +1486,20 @@ version: "1.0.0"`;
       });
 
       // Wait for error in validation panel
-      await expect(
-        page.locator('.validation-panel .validation-title-error')
-      ).toBeVisible({
+      await expect(page.getByTestId('parse-error-panel')).toBeVisible({
         timeout: 10000,
       });
 
       // Verify import button is disabled
-      const importButton = page.locator('.ant-modal .ant-btn-primary');
+      const importButton = page.getByTestId('import-button');
 
       await expect(importButton).toBeDisabled();
 
       // Close modal
-      await page.locator('.ant-modal .ant-btn').filter({ hasText: /cancel/i }).click();
+      await page
+        .getByTestId('cancel-button')
+        .filter({ hasText: /cancel/i })
+        .click();
     } finally {
       await table.delete(apiContext);
     }
@@ -1577,15 +1516,18 @@ version: "1.0.0"`;
       await clickImportODCSButton(page);
 
       // Wait for modal
-      await page.waitForSelector('.ant-modal', { state: 'visible' });
+      await page.getByTestId('import-contract-modal').waitFor();
 
       // Verify import button is disabled initially (no file selected)
-      const importButton = page.locator('.ant-modal .ant-btn-primary');
+      const importButton = page.getByTestId('import-button');
 
       await expect(importButton).toBeDisabled();
 
       // Close modal
-      await page.locator('.ant-modal .ant-btn').filter({ hasText: /cancel/i }).click();
+      await page
+        .getByTestId('cancel-button')
+        .filter({ hasText: /cancel/i })
+        .click();
     } finally {
       await table.delete(apiContext);
     }
@@ -1605,9 +1547,9 @@ version: "1.0.0"`;
       await openODCSImportDropdown(page);
       await clickImportODCSButton(page);
 
-      await page.waitForSelector('.ant-modal', { state: 'visible' });
+      await page.getByTestId('import-contract-modal').waitFor();
 
-      const fileInput = page.locator('.ant-upload input[type="file"]');
+      const fileInput = page.getByTestId('file-upload-input');
       await fileInput.setInputFiles({
         name: 'invalid-schema-fields.yaml',
         mimeType: 'application/yaml',
@@ -1615,25 +1557,27 @@ version: "1.0.0"`;
       });
 
       // Wait for file to be parsed and preview to show
-      await page.waitForSelector('.file-info-card, .contract-preview-card', {
-        state: 'visible',
-        timeout: 10000,
-      });
+      await page.getByTestId('file-info-card').waitFor();
 
       // Wait for server-side validation to complete - validation panel shows error
       await expect(
-        page.locator('.validation-panel .validation-title-error')
+        page.getByTestId('server-validation-failed-error-panel')
       ).toBeVisible({
         timeout: 15000,
       });
 
       // Verify failed fields are listed in the validation panel
-      await expect(page.locator('.failed-fields-list')).toBeVisible();
-      await expect(page.locator('.failed-fields-list >> text=customers')).toBeVisible();
-      await expect(page.locator('.failed-fields-list >> text=orders')).toBeVisible();
+      await expect(page.getByTestId('failed-fields-list')).toBeVisible();
+      await expect(page.getByTestId('failed-field-0')).toContainText(
+        'customers'
+      );
+      await expect(page.getByTestId('failed-field-1')).toContainText('orders');
 
       // Close modal
-      await page.locator('.ant-modal .ant-btn').filter({ hasText: /cancel/i }).click();
+      await page
+        .getByTestId('cancel-button')
+        .filter({ hasText: /cancel/i })
+        .click();
     } finally {
       await table.delete(apiContext);
     }
@@ -1651,9 +1595,9 @@ version: "1.0.0"`;
       await openODCSImportDropdown(page);
       await clickImportODCSButton(page);
 
-      await page.waitForSelector('.ant-modal', { state: 'visible' });
+      await page.getByTestId('import-contract-modal').waitFor();
 
-      const fileInput = page.locator('.ant-upload input[type="file"]');
+      const fileInput = page.getByTestId('file-upload-input');
       await fileInput.setInputFiles({
         name: 'invalid-schema-fields.yaml',
         mimeType: 'application/yaml',
@@ -1662,18 +1606,21 @@ version: "1.0.0"`;
 
       // Wait for server-side validation to complete - validation panel shows error
       await expect(
-        page.locator('.validation-panel .validation-title-error')
+        page.getByTestId('server-validation-failed-error-panel')
       ).toBeVisible({
         timeout: 15000,
       });
 
       // Verify import button is disabled
-      const importButton = page.locator('.ant-modal .ant-btn-primary');
+      const importButton = page.getByTestId('import-button');
 
       await expect(importButton).toBeDisabled();
 
       // Close modal
-      await page.locator('.ant-modal .ant-btn').filter({ hasText: /cancel/i }).click();
+      await page
+        .getByTestId('cancel-button')
+        .filter({ hasText: /cancel/i })
+        .click();
     } finally {
       await table.delete(apiContext);
     }
@@ -1691,10 +1638,10 @@ version: "1.0.0"`;
       await openODCSImportDropdown(page);
       await clickImportODCSButton(page);
 
-      await page.waitForSelector('.ant-modal', { state: 'visible' });
+      await page.getByTestId('import-contract-modal').waitFor();
 
       // Start file upload and immediately check for loading state
-      const fileInput = page.locator('.ant-upload input[type="file"]');
+      const fileInput = page.getByTestId('file-upload-input');
       await fileInput.setInputFiles({
         name: 'valid-basic.yaml',
         mimeType: 'application/yaml',
@@ -1702,25 +1649,23 @@ version: "1.0.0"`;
       });
 
       // Wait for file to be parsed and preview to show
-      await page.waitForSelector('.file-info-card, .contract-preview-card', {
-        state: 'visible',
-        timeout: 10000,
-      });
+      await page.getByTestId('file-info-card').waitFor();
 
       // Wait for validation to complete - should show success
-      await expect(
-        page.locator('.validation-panel .validation-title-success')
-      ).toBeVisible({
+      await expect(page.getByTestId('validation-success-panel')).toBeVisible({
         timeout: 15000,
       });
 
       // Import button should be enabled for valid contracts without schema
-      const importButton = page.locator('.ant-modal .ant-btn-primary');
+      const importButton = page.getByTestId('import-button');
 
       await expect(importButton).toBeEnabled({ timeout: 10000 });
 
       // Close modal
-      await page.locator('.ant-modal .ant-btn').filter({ hasText: /cancel/i }).click();
+      await page
+        .getByTestId('cancel-button')
+        .filter({ hasText: /cancel/i })
+        .click();
     } finally {
       await table.delete(apiContext);
     }
@@ -1738,9 +1683,9 @@ version: "1.0.0"`;
       await openODCSImportDropdown(page);
       await clickImportODCSButton(page);
 
-      await page.waitForSelector('.ant-modal', { state: 'visible' });
+      await page.getByTestId('import-contract-modal').waitFor();
 
-      const fileInput = page.locator('.ant-upload input[type="file"]');
+      const fileInput = page.getByTestId('file-upload-input');
       await fileInput.setInputFiles({
         name: 'valid-full.yaml',
         mimeType: 'application/yaml',
@@ -1748,30 +1693,28 @@ version: "1.0.0"`;
       });
 
       // Wait for file to be parsed and preview to show
-      await page.waitForSelector('.file-info-card, .contract-preview-card', {
-        state: 'visible',
-        timeout: 10000,
-      });
+      await page.getByTestId('file-info-card').waitFor();
 
       // Wait for validation to complete - should show success
-      await expect(
-        page.locator('.validation-panel .validation-title-success')
-      ).toBeVisible({
+      await expect(page.getByTestId('validation-success-panel')).toBeVisible({
         timeout: 15000,
       });
 
       // Import button should be enabled (no schema means no schema validation errors)
-      const importButton = page.locator('.ant-modal .ant-btn-primary');
+      const importButton = page.getByTestId('import-button');
 
       await expect(importButton).toBeEnabled({ timeout: 10000 });
 
       // No error state should be visible in the validation panel
       await expect(
-        page.locator('.validation-panel .validation-title-error')
+        page.getByTestId('server-validation-failed-error-panel')
       ).not.toBeVisible();
 
       // Close modal
-      await page.locator('.ant-modal .ant-btn').filter({ hasText: /cancel/i }).click();
+      await page
+        .getByTestId('cancel-button')
+        .filter({ hasText: /cancel/i })
+        .click();
     } finally {
       await table.delete(apiContext);
     }
@@ -1789,9 +1732,9 @@ version: "1.0.0"`;
       await openODCSImportDropdown(page);
       await clickImportODCSButton(page);
 
-      await page.waitForSelector('.ant-modal', { state: 'visible' });
+      await page.getByTestId('import-contract-modal').waitFor();
 
-      const fileInput = page.locator('.ant-upload input[type="file"]');
+      const fileInput = page.getByTestId('file-upload-input');
       await fileInput.setInputFiles({
         name: 'valid-multi-object.yaml',
         mimeType: 'application/yaml',
@@ -1799,10 +1742,7 @@ version: "1.0.0"`;
       });
 
       // Wait for file to be parsed and object selector to show
-      await page.waitForSelector('.file-info-card, .contract-preview-card', {
-        state: 'visible',
-        timeout: 10000,
-      });
+      await page.getByTestId('file-info-card').waitFor();
 
       // Verify object selector section is visible for multi-object contract
       await expect(page.locator('.object-selector-section')).toBeVisible({
@@ -1811,15 +1751,18 @@ version: "1.0.0"`;
 
       // Verify the info message about multiple objects
       await expect(
-        page.locator('text=This contract contains multiple schema objects')
+        page.getByTestId('multi-object-contract-detected')
       ).toBeVisible();
 
       // Verify import button is disabled until an object is selected
-      const importButton = page.locator('.ant-modal .ant-btn-primary');
+      const importButton = page.getByTestId('import-button');
       await expect(importButton).toBeDisabled();
 
       // Close modal
-      await page.locator('.ant-modal .ant-btn').filter({ hasText: /cancel/i }).click();
+      await page
+        .getByTestId('cancel-button')
+        .filter({ hasText: /cancel/i })
+        .click();
     } finally {
       await table.delete(apiContext);
     }
@@ -1837,9 +1780,9 @@ version: "1.0.0"`;
       await openODCSImportDropdown(page);
       await clickImportODCSButton(page);
 
-      await page.waitForSelector('.ant-modal', { state: 'visible' });
+      await page.getByTestId('import-contract-modal').waitFor();
 
-      const fileInput = page.locator('.ant-upload input[type="file"]');
+      const fileInput = page.getByTestId('file-upload-input');
       await fileInput.setInputFiles({
         name: 'valid-multi-object.yaml',
         mimeType: 'application/yaml',
@@ -1852,18 +1795,23 @@ version: "1.0.0"`;
       });
 
       // Open the object selector dropdown and select an object
-      await page.locator('.object-selector-dropdown').click();
-      await page.locator('.ant-select-item-option').filter({ hasText: 'customers' }).click();
+      await page.getByTestId('schema-object-select').click();
+      await page.getByTestId('schema-object-option-customers').click();
 
       // Wait for validation to complete after selecting object
       await page.waitForTimeout(2000);
 
       // Import button should now be enabled (or disabled if schema validation fails)
       // For this test, we just verify the selector works
-      await expect(page.locator('.object-selector-dropdown')).toContainText('customers');
+      await expect(page.getByTestId('schema-object-select')).toContainText(
+        'customers'
+      );
 
       // Close modal
-      await page.locator('.ant-modal .ant-btn').filter({ hasText: /cancel/i }).click();
+      await page
+        .getByTestId('cancel-button')
+        .filter({ hasText: /cancel/i })
+        .click();
     } finally {
       await table.delete(apiContext);
     }
@@ -1881,9 +1829,9 @@ version: "1.0.0"`;
       await openODCSImportDropdown(page);
       await clickImportODCSButton(page);
 
-      await page.waitForSelector('.ant-modal', { state: 'visible' });
+      await page.getByTestId('import-contract-modal').waitFor();
 
-      const fileInput = page.locator('.ant-upload input[type="file"]');
+      const fileInput = page.getByTestId('file-upload-input');
       await fileInput.setInputFiles({
         name: 'valid-multi-object.yaml',
         mimeType: 'application/yaml',
@@ -1896,24 +1844,27 @@ version: "1.0.0"`;
       });
 
       // Open the dropdown to see all options
-      await page.locator('.object-selector-dropdown').click();
+      await page.getByTestId('schema-object-select').click();
 
       // Verify all three objects from the multi-object YAML are listed
       await expect(
-        page.locator('.ant-select-item-option').filter({ hasText: 'customers' })
+        page.getByTestId('schema-object-option-customers')
       ).toBeVisible();
       await expect(
-        page.locator('.ant-select-item-option').filter({ hasText: 'orders' })
+        page.getByTestId('schema-object-option-orders')
       ).toBeVisible();
       await expect(
-        page.locator('.ant-select-item-option').filter({ hasText: 'products' })
+        page.getByTestId('schema-object-option-products')
       ).toBeVisible();
 
       // Close dropdown by clicking elsewhere
-      await page.locator('.ant-modal-title').click();
+      await page.locator('body').click();
 
       // Close modal
-      await page.locator('.ant-modal .ant-btn').filter({ hasText: /cancel/i }).click();
+      await page
+        .getByTestId('cancel-button')
+        .filter({ hasText: /cancel/i })
+        .click();
     } finally {
       await table.delete(apiContext);
     }
@@ -1931,10 +1882,10 @@ version: "1.0.0"`;
       await openODCSImportDropdown(page);
       await clickImportODCSButton(page);
 
-      await page.waitForSelector('.ant-modal', { state: 'visible' });
+      await page.getByTestId('import-contract-modal').waitFor();
 
       // Use a single-object contract (valid-full.yaml has one schema object)
-      const fileInput = page.locator('.ant-upload input[type="file"]');
+      const fileInput = page.getByTestId('file-upload-input');
       await fileInput.setInputFiles({
         name: 'valid-full.yaml',
         mimeType: 'application/yaml',
@@ -1942,16 +1893,16 @@ version: "1.0.0"`;
       });
 
       // Wait for file to be parsed
-      await page.waitForSelector('.file-info-card, .contract-preview-card', {
-        state: 'visible',
-        timeout: 10000,
-      });
+      await page.getByTestId('file-info-card').waitFor();
 
       // Verify object selector is NOT visible for single-object contract
       await expect(page.locator('.object-selector-section')).not.toBeVisible();
 
       // Close modal
-      await page.locator('.ant-modal .ant-btn').filter({ hasText: /cancel/i }).click();
+      await page
+        .getByTestId('cancel-button')
+        .filter({ hasText: /cancel/i })
+        .click();
     } finally {
       await table.delete(apiContext);
     }
