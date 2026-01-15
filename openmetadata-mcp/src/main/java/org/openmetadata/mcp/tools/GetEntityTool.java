@@ -19,7 +19,7 @@ public class GetEntityTool implements McpTool {
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params)
       throws IOException {
-    String entityType = (String) params.get("entity_type");
+    String entityType = (String) params.get("entityType");
     String fqn = (String) params.get("fqn");
     authorizer.authorize(
         securityContext,
