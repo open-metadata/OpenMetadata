@@ -17,6 +17,7 @@ import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { fullUuid, uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
+import { Table } from '../../../src/generated/entity/data/table';
 import {
   EntityTypeEndpoint,
   ResponseDataType,
@@ -72,8 +73,7 @@ export class TableClass extends EntityClass {
     {} as ResponseDataWithServiceType;
   schemaResponseData: ResponseDataWithServiceType =
     {} as ResponseDataWithServiceType;
-  entityResponseData: ResponseDataWithServiceType =
-    {} as ResponseDataWithServiceType;
+  entityResponseData: Table = {} as Table;
   testSuiteResponseData: ResponseDataType = {} as ResponseDataType;
   testSuitePipelineResponseData: ResponseDataType[] = [];
   testCasesResponseData: ResponseDataType[] = [];
@@ -304,7 +304,7 @@ export class TableClass extends EntityClass {
   }
 
   set(entityData: {
-    entity: ResponseDataWithServiceType;
+    entity: Table;
     service: ResponseDataType;
     database: ResponseDataWithServiceType;
     schema: ResponseDataWithServiceType;
@@ -318,8 +318,8 @@ export class TableClass extends EntityClass {
   async visitEntityPage(page: Page, searchTerm?: string) {
     await visitEntityPage({
       page,
-      searchTerm: searchTerm ?? this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.entityResponseData.service.name ?? this.service.name
+      searchTerm: searchTerm ?? this.entityResponseData.fullyQualifiedName ?? '',
+      dataTestId: `${this.entityResponseData.service?.name ?? this.service.name
         }-${this.entityResponseData.name ?? this.entity.name}`,
     });
   }

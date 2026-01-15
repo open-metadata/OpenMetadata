@@ -25,6 +25,7 @@ import { Pipeline } from '../generated/entity/data/pipeline';
 import { SearchIndex } from '../generated/entity/data/searchIndex';
 import { Column, Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
+import { Worksheet } from '../generated/entity/data/worksheet';
 import { TagLabel } from '../generated/type/tagLabel';
 import {
   ColumnFieldUpdate,
@@ -305,6 +306,36 @@ export const updateDataModelColumn = (
 };
 
 /**
+ * Update Worksheet column
+ * Returns the updated worksheet and column (local data modification only)
+ */
+export const updateWorksheetColumn = (
+  worksheet: Worksheet,
+  fqn: string,
+  update: ColumnFieldUpdate
+): { updatedWorksheet: Worksheet; updatedColumn: Column | undefined } => {
+  const columns = cloneDeep(worksheet.columns ?? []);
+
+  if (update.description !== undefined) {
+    updateFieldDescription(fqn, update.description, columns);
+  }
+
+  if (update.tags !== undefined) {
+    const normalizedTags = normalizeTags(update.tags);
+    updateFieldTags(fqn, toEntityTags(normalizedTags), columns);
+  }
+
+  const updatedWorksheet: Worksheet = {
+    ...worksheet,
+    columns: pruneEmptyChildren(columns),
+  };
+
+  const updatedColumn = findFieldByFQN<Column>(columns, fqn);
+
+  return { updatedWorksheet, updatedColumn };
+};
+
+/**
  * Update APIEndpoint schema field
  */
 export const updateApiEndpointField = (
@@ -374,7 +405,8 @@ export type ColumnUpdateEntityType =
   | EntityType.MLMODEL
   | EntityType.PIPELINE
   | EntityType.DASHBOARD_DATA_MODEL
-  | EntityType.API_ENDPOINT;
+  | EntityType.API_ENDPOINT
+  | EntityType.WORKSHEET;
 
 /**
  * Check if entity type supports column updates
@@ -391,6 +423,7 @@ export const supportsColumnUpdates = (
     EntityType.PIPELINE,
     EntityType.DASHBOARD_DATA_MODEL,
     EntityType.API_ENDPOINT,
+    EntityType.WORKSHEET,
   ].includes(entityType);
 };
 
@@ -514,6 +547,20 @@ export const handleColumnFieldUpdate = <T extends EntityDataMapValue>({
 
       return {
         updatedEntity: updatedApiEndpoint as T,
+        updatedColumn,
+      };
+    }
+
+    case EntityType.WORKSHEET: {
+      const worksheet = entityData as EntityDataMap[EntityType.WORKSHEET];
+      const { updatedWorksheet, updatedColumn } = updateWorksheetColumn(
+        worksheet,
+        fqn,
+        update
+      );
+
+      return {
+        updatedEntity: updatedWorksheet as unknown as T,
         updatedColumn,
       };
     }
