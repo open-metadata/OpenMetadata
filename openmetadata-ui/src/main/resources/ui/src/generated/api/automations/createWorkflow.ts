@@ -263,6 +263,8 @@ export interface RequestConnection {
  *
  * Doris Database Connection Config
  *
+ * StarRocks Database Connection Config
+ *
  * UnityCatalog Connection Config
  *
  * SAS Connection Config
@@ -570,6 +572,8 @@ export interface ConfigObject {
      *
      * Host and port of the Doris service.
      *
+     * Host and port of the StarRocks service.
+     *
      * Host and port of the Teradata service.
      *
      * Host and Port of the SAP ERP instance.
@@ -650,6 +654,9 @@ export interface ConfigObject {
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
+     *
+     * Regex to only include/exclude schemas that matches the pattern. System schemas
+     * (information_schema, _statistics_, sys) are excluded by default.
      *
      * Regex to include/exclude FHIR resource categories
      *
@@ -821,6 +828,8 @@ export interface ConfigObject {
      *
      * Password to connect to Doris.
      *
+     * Password to connect to StarRocks.
+     *
      * Password to connect to SAS Viya
      *
      * Password to connect to Teradata.
@@ -922,6 +931,9 @@ export interface ConfigObject {
      *
      * Username to connect to Doris. This user should have privileges to read all the metadata
      * in Doris.
+     *
+     * Username to connect to StarRocks. This user should have privileges to read all the
+     * metadata in StarRocks.
      *
      * Username to connect to SAS Viya.
      *
@@ -2128,6 +2140,9 @@ export interface UsernamePasswordAuthentication {
  * Regex to only include/exclude schemas that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern. System schemas
+ * (information_schema, _statistics_, sys) are excluded by default.
  *
  * Regex to include/exclude FHIR resource categories
  *
@@ -4575,6 +4590,7 @@ export enum ConfigType {
     Spline = "Spline",
     Ssas = "SSAS",
     Ssis = "SSIS",
+    StarRocks = "StarRocks",
     Stitch = "Stitch",
     Superset = "Superset",
     Synapse = "Synapse",
