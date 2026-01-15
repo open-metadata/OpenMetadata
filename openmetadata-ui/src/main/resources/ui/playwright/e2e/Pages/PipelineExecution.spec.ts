@@ -50,12 +50,6 @@ test.describe('Pipeline Execution Tab', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup pipeline', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await pipeline.delete(apiContext);
-    await afterAction();
-  });
-
   test('Execution tab should display start time, end time, and duration columns', async ({
     page,
   }) => {
