@@ -10,14 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page, test as base, expect } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
+import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
+import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { REACTION_EMOJIS, reactOnFeed } from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage } from '../../utils/common';
+import { redirectToHomePage, uuid } from '../../utils/common';
 import {
   navigateToCustomizeLandingPage,
   setUserDefaultPersona,
@@ -498,6 +500,7 @@ test.describe('Mention notifications in Notification Box', () => {
       await user1Page.keyboard.press('@');
       const userSuggestionsResponse = user1Page.waitForResponse((response) => {
         const url = response.url();
+
         return (
           url.includes('/api/v1/search/query') &&
           url.includes(adminUser.responseData.displayName)
@@ -589,6 +592,229 @@ test.describe('Mention notifications in Notification Box', () => {
         expect(adminPage.url()).toContain('activity_feed');
         expect(adminPage.url()).toContain('/all');
       }
+    );
+  });
+});
+
+test.describe('Mentions: Chinese character encoding in activity feed', () => {
+  const database = new DatabaseClass();
+  const endpointName = `测试Endpoint-${uuid()}`;
+  const apiEndpoint = new ApiEndpointClass(undefined, endpointName);
+  let schemaFqn: string;
+  const userName = `测试-${uuid()}`;
+
+  test.beforeAll(
+    'Create database, schema, and user with Chinese name',
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      await database.create(apiContext);
+      await apiEndpoint.create(apiContext);
+      await adminUser.create(apiContext);
+      schemaFqn = database.schemaResponseData.fullyQualifiedName;
+      const user = new UserClass({
+        firstName: userName,
+        lastName: '',
+        email: `${userName}@example.com`,
+        password: 'User@OMD123',
+      });
+
+      await user.create(apiContext);
+      await afterAction();
+    }
+  );
+
+  test.beforeEach(async ({ page }) => {
+    await adminUser.login(page);
+    await redirectToHomePage(page);
+  });
+
+  test('Should allow mentioning a user with Chinese characters in the activity feed', async ({
+    page,
+  }) => {
+    test.slow();
+
+    const feedPromise = page.waitForResponse((response) => {
+      const url = response.url();
+
+      return (
+        url.includes('/api/v1/feed') &&
+        url.includes('entityLink=') &&
+        url.includes('type=Conversation') &&
+        response.request().method() === 'GET'
+      );
+    });
+    await page.goto(`/databaseSchema/${schemaFqn}/activity_feed/all`);
+    const feedResponse = await feedPromise;
+
+    expect(feedResponse.status()).toBe(200);
+
+    await waitForAllLoadersToDisappear(page);
+
+    await page.getByTestId('comments-input-field').click();
+
+    const editorLocator = page.locator(
+      '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
+    );
+
+    await editorLocator.fill('Hey ');
+
+    await editorLocator.click();
+
+    await page.keyboard.press('@');
+    const userSuggestionsResponse = page.waitForResponse((response) => {
+      const url = response.url();
+
+      return (
+        url.includes('/api/v1/search/query') &&
+        url.includes(encodeURIComponent(userName))
+      );
+    });
+    await editorLocator.pressSequentially(userName);
+    await userSuggestionsResponse;
+
+    await page.locator(`[data-value="@${userName}"]`).first().click();
+
+    await expect(page.locator('[data-testid="send-button"]')).toBeVisible();
+    await expect(
+      page.locator('[data-testid="send-button"]')
+    ).not.toBeDisabled();
+
+    const postMentionResponse = page.waitForResponse('/api/v1/feed/*/posts');
+    await page.locator('[data-testid="send-button"]').click();
+    await postMentionResponse;
+    const replyCard = page
+      .getByTestId('feed-reply-card')
+      .filter({ hasText: `Hey @${userName}` });
+
+    await expect(replyCard).toBeVisible();
+    await expect(replyCard.getByTestId('viewer-container')).toHaveText(
+      `Hey @${userName}`
+    );
+
+    const userMentionLink = replyCard.getByRole('link', {
+      name: `@${userName}`,
+    });
+
+    await expect(userMentionLink).toBeVisible();
+    await expect(userMentionLink).toHaveAttribute(
+      'href',
+      new RegExp(`/users/${userName}$`)
+    );
+
+    const [newPage] = await Promise.all([
+      page.context().waitForEvent('page'),
+      userMentionLink.click(),
+    ]);
+
+    await newPage.waitForResponse((response) =>
+      response
+        .url()
+        .includes(`/api/v1/users/name/${encodeURIComponent(userName)}`)
+    );
+
+    await waitForAllLoadersToDisappear(newPage);
+
+    expect(newPage.getByTestId('user-display-name')).toHaveText(userName);
+  });
+
+  test('Should encode the chinese character while mentioning api endpoint', async ({
+    page,
+  }) => {
+    test.slow();
+
+    const feedPromise = page.waitForResponse((response) => {
+      const url = response.url();
+
+      return (
+        url.includes('/api/v1/feed') &&
+        url.includes('entityLink=') &&
+        url.includes('type=Conversation') &&
+        response.request().method() === 'GET'
+      );
+    });
+
+    await page.goto(`/databaseSchema/${schemaFqn}/activity_feed/all`);
+    const feedResponse = await feedPromise;
+
+    expect(feedResponse.status()).toBe(200);
+
+    await waitForAllLoadersToDisappear(page);
+
+    await page.getByTestId('comments-input-field').click();
+
+    const editorLocator = page.locator(
+      '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
+    );
+
+    await editorLocator.fill('Check ');
+
+    await editorLocator.click();
+
+    await page.keyboard.press('#');
+    const endpointSuggestionsResponse = page.waitForResponse((response) => {
+      const url = response.url();
+
+      return (
+        url.includes('/api/v1/search/query') &&
+        url.includes(encodeURIComponent(endpointName))
+      );
+    });
+
+    await editorLocator.pressSequentially(endpointName);
+    await endpointSuggestionsResponse;
+
+    await page
+      .locator(`[data-value="#apiEndpoint/${endpointName}"]`)
+      .first()
+      .click();
+
+    await expect(page.locator('[data-testid="send-button"]')).toBeVisible();
+    await expect(
+      page.locator('[data-testid="send-button"]')
+    ).not.toBeDisabled();
+
+    const postMentionResponse = page.waitForResponse('/api/v1/feed/*/posts');
+    await page.locator('[data-testid="send-button"]').click();
+    await postMentionResponse;
+
+    const endpointFqn = apiEndpoint.entityResponseData.fullyQualifiedName;
+
+    const replyCard = page
+      .getByTestId('feed-reply-card')
+      .filter({ hasText: `Check #${endpointFqn}` });
+
+    await expect(replyCard).toBeVisible();
+
+    await expect(replyCard.getByTestId('viewer-container')).toHaveText(
+      `Check #${endpointFqn}`
+    );
+
+    const endpointMentionLink = replyCard.getByRole('link', {
+      name: endpointFqn,
+    });
+
+    await expect(endpointMentionLink).toBeVisible();
+    await expect(endpointMentionLink).toHaveAttribute(
+      'href',
+      new RegExp(`/apiEndpoint/${endpointFqn}$`)
+    );
+
+    const [newPage] = await Promise.all([
+      page.context().waitForEvent('page'),
+      endpointMentionLink.click(),
+    ]);
+
+    await newPage.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/apiEndpoints/name/') &&
+        response.request().method() === 'GET'
+    );
+
+    await waitForAllLoadersToDisappear(newPage);
+
+    await expect(newPage.getByTestId('entity-header-display-name')).toHaveText(
+      endpointName
     );
   });
 });
