@@ -48,7 +48,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           # ref: ${{ env.BRANCH_NAME }}
-          ref: fix-sonar-branch
+          ref: fix-sonar-coverage
           fetch-depth: 0
 
       - name: Setup Openmetadata Test Environment
