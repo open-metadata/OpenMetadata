@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { expect, Page, Response } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { test } from '../fixtures/pages';
@@ -181,7 +181,7 @@ const importODCSYaml = async (
 
   // Determine which API endpoint will be called based on mode
   // ODCS imports use: POST (new) or PUT (merge/replace) to /dataContracts/odcs/yaml
-  const importResponse = page.waitForResponse((response) => {
+  const importResponse = page.waitForResponse((response: Response) => {
     const url = response.url();
     const method = response.request().method();
 
