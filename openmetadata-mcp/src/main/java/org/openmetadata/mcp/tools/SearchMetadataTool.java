@@ -6,6 +6,7 @@ import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectCont
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.annotations.VisibleForTesting;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -144,9 +145,15 @@ public class SearchMetadataTool implements McpTool {
     if (params.containsKey("maxAggregationBuckets")) {
       Object maxBucketsObj = params.get("maxAggregationBuckets");
       if (maxBucketsObj instanceof Number number) {
-        maxAggregationBuckets = Math.min(number.intValue(), MAX_ALLOWED_AGGREGATION_BUCKETS);
+        maxAggregationBuckets =
+            Math.min(Math.max(number.intValue(), 1), MAX_ALLOWED_AGGREGATION_BUCKETS);
       } else if (maxBucketsObj instanceof String string) {
-        maxAggregationBuckets = Math.min(Integer.parseInt(string), MAX_ALLOWED_AGGREGATION_BUCKETS);
+        try {
+          maxAggregationBuckets =
+              Math.min(Math.max(Integer.parseInt(string), 1), MAX_ALLOWED_AGGREGATION_BUCKETS);
+        } catch (NumberFormatException e) {
+          maxAggregationBuckets = DEFAULT_MAX_AGGREGATION_BUCKETS;
+        }
       }
     }
 
@@ -242,7 +249,8 @@ public class SearchMetadataTool implements McpTool {
         "SearchMetadataTool does not support limits enforcement.");
   }
 
-  public static Map<String, Object> buildEnhancedSearchResponse(
+  @VisibleForTesting
+  static Map<String, Object> buildEnhancedSearchResponse(
       Map<String, Object> searchResponse,
       String query,
       int requestedLimit,
