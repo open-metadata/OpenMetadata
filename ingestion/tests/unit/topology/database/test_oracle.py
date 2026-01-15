@@ -254,10 +254,10 @@ class OracleUnitTest(TestCase):
             view_ddl = None
 
         class MockViewRowWithViewDdl:
-            view_name = "test_view_with_ddl"
-            schema = "test_schema"
-            view_def = None
-            view_ddl = "CREATE OR REPLACE FORCE VIEW test_schema.test_view_with_ddl AS SELECT * FROM complex_table"
+            VIEW_NAME = "test_view_with_ddl"
+            SCHEMA = "test_schema"
+            VIEW_DEF = None
+            VIEW_DDL = "CREATE OR REPLACE FORCE VIEW test_schema.test_view_with_ddl AS SELECT * FROM complex_table"
 
         mock_result = [MockViewRowWithViewDef(), MockViewRowWithViewDdl()]
         mock_connection.execute.return_value = mock_result
