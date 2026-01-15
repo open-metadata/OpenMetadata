@@ -1694,6 +1694,13 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   }
 
   @SuppressWarnings("unchecked")
+  private ResultList<Map<String, Object>> getInputPorts(
+      UUID id, String fields, int limit, int offset) {
+    return (ResultList<Map<String, Object>>)
+        SdkClients.adminClient().dataProducts().inputPorts(id).list(fields, limit, offset);
+  }
+
+  @SuppressWarnings("unchecked")
   private ResultList<Map<String, Object>> getInputPortsByName(String name, int limit, int offset) {
     return (ResultList<Map<String, Object>>)
         SdkClients.adminClient().dataProducts().inputPorts(name).list(limit, offset);
@@ -1703,6 +1710,13 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   private ResultList<Map<String, Object>> getOutputPorts(UUID id, int limit, int offset) {
     return (ResultList<Map<String, Object>>)
         SdkClients.adminClient().dataProducts().outputPorts(id).list(limit, offset);
+  }
+
+  @SuppressWarnings("unchecked")
+  private ResultList<Map<String, Object>> getOutputPorts(
+      UUID id, String fields, int limit, int offset) {
+    return (ResultList<Map<String, Object>>)
+        SdkClients.adminClient().dataProducts().outputPorts(id).list(fields, limit, offset);
   }
 
   @SuppressWarnings("unchecked")
@@ -1721,6 +1735,14 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         .dataProducts()
         .portsView(id)
         .get(inputLimit, inputOffset, outputLimit, outputOffset);
+  }
+
+  private DataProductPortsView getPortsView(
+      UUID id, String fields, int inputLimit, int inputOffset, int outputLimit, int outputOffset) {
+    return SdkClients.adminClient()
+        .dataProducts()
+        .portsView(id)
+        .get(fields, inputLimit, inputOffset, outputLimit, outputOffset);
   }
 
   private DataProductPortsView getPortsViewByName(
@@ -2052,5 +2074,64 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     assertEquals(
         portsViewById.getOutputPorts().getPaging().getTotal(),
         portsViewByName.getOutputPorts().getPaging().getTotal());
+  }
+
+  @Test
+  void test_portsWithFieldsParameter(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_ports_fields"))
+            .withDescription("Data product for ports fields test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table1 = createTestTable(ns, "ports_fields_input", domain);
+    Table table2 = createTestTable(ns, "ports_fields_output", domain);
+
+    bulkAddInputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table1.getEntityReference())));
+    bulkAddOutputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table2.getEntityReference())));
+
+    // Test without fields parameter - should not include owners/tags
+    ResultList<Map<String, Object>> inputPortsNoFields = getInputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(1, inputPortsNoFields.getPaging().getTotal());
+    Map<String, Object> portNoFields = inputPortsNoFields.getData().get(0);
+    assertNotNull(portNoFields.get("id"));
+    assertNotNull(portNoFields.get("name"));
+
+    // Test with fields=owners - should include owners
+    ResultList<Map<String, Object>> inputPortsWithOwners =
+        getInputPorts(dataProduct.getId(), "owners", 10, 0);
+    assertEquals(1, inputPortsWithOwners.getPaging().getTotal());
+    Map<String, Object> portWithOwners = inputPortsWithOwners.getData().get(0);
+    assertNotNull(portWithOwners.get("id"));
+
+    // Test with fields=owners,tags - should include both
+    ResultList<Map<String, Object>> inputPortsWithMultipleFields =
+        getInputPorts(dataProduct.getId(), "owners,tags", 10, 0);
+    assertEquals(1, inputPortsWithMultipleFields.getPaging().getTotal());
+
+    // Test output ports with fields
+    ResultList<Map<String, Object>> outputPortsWithFields =
+        getOutputPorts(dataProduct.getId(), "owners,tags", 10, 0);
+    assertEquals(1, outputPortsWithFields.getPaging().getTotal());
+
+    // Test portsView with fields
+    DataProductPortsView portsViewWithFields =
+        getPortsView(dataProduct.getId(), "owners,tags", 10, 0, 10, 0);
+    assertNotNull(portsViewWithFields.getInputPorts());
+    assertEquals(1, portsViewWithFields.getInputPorts().getPaging().getTotal());
+    assertNotNull(portsViewWithFields.getOutputPorts());
+    assertEquals(1, portsViewWithFields.getOutputPorts().getPaging().getTotal());
+
+    // Test portsView without fields
+    DataProductPortsView portsViewNoFields = getPortsView(dataProduct.getId(), 10, 0, 10, 0);
+    assertNotNull(portsViewNoFields.getInputPorts());
+    assertEquals(1, portsViewNoFields.getInputPorts().getPaging().getTotal());
   }
 }
