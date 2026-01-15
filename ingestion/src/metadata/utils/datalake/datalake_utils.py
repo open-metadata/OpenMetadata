@@ -83,10 +83,6 @@ def fetch_dataframe(
         # Here we need to blow things up. Without the dataframe we cannot move forward
         raise err
 
-    if fetch_raw_data:
-        return None
-    return None
-
 
 def fetch_dataframe_generator(
     config_source,
@@ -138,8 +134,6 @@ def fetch_dataframe_generator(
         )
         # Here we need to blow things up. Without the dataframe we cannot move forward
         raise err
-
-    return None
 
 
 def fetch_dataframe_first_chunk(

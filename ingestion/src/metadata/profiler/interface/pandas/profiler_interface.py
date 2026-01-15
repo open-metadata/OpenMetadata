@@ -46,7 +46,6 @@ from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.metric_filter import MetricFilter
 from metadata.profiler.processor.runner import PandasRunner
 from metadata.sampler.pandas.sampler import DatalakeSampler
-from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR
 from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -156,19 +155,6 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         if self.column_names_cache:
             df.rename(columns=self.column_names_cache, inplace=True)
         return df
-
-    def _get_column_name(self, column_name: str) -> str:
-        """Get the column name from the cache or compute it
-
-        Args:
-            column_name (str): original column name
-        Returns:
-            str: computed column name
-        """
-        complex_col_name = None
-        if COMPLEX_COLUMN_SEPARATOR in column_name:
-            complex_col_name = ".".join(column_name.split(COMPLEX_COLUMN_SEPARATOR)[1:])
-        return complex_col_name or column_name
 
     def _compute_table_metrics(
         self,

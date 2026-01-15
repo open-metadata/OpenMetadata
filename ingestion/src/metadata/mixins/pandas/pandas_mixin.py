@@ -25,6 +25,7 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.sampler.models import ProfileSampleType
 from metadata.sampler.sampler_interface import SampleConfig
+from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR
 from metadata.utils.datalake.datalake_utils import (
     DatalakeColumnWrapper,
     fetch_dataframe_generator,
@@ -36,6 +37,19 @@ logger = test_suite_logger()
 
 class PandasInterfaceMixin:
     """Interface mixin grouping shared methods between test suite and profiler interfaces"""
+
+    def _get_column_name(self, column_name: str) -> str:
+        """Get the column name from the cache or compute it
+
+        Args:
+            column_name (str): original column name
+        Returns:
+            str: computed column name
+        """
+        complex_col_name = None
+        if COMPLEX_COLUMN_SEPARATOR in column_name:
+            complex_col_name = ".".join(column_name.split(COMPLEX_COLUMN_SEPARATOR)[1:])
+        return complex_col_name or column_name
 
     def get_partitioned_df(
         self, partition_details: PartitionProfilerConfig, raw_dataset: Callable
@@ -151,7 +165,10 @@ class PandasInterfaceMixin:
                     rows = sample_config.profileSample or 0
                     streamed_rows = 0
                     for df in dfs():
-                        yield df.sample(n=rows)
+                        n = len(df)
+                        if streamed_rows + n > rows:
+                            df = df.head(rows - streamed_rows)
+                        yield df
                         streamed_rows += len(df)
                         if streamed_rows >= rows:
                             break

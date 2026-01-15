@@ -21,7 +21,6 @@ from metadata.generated.schema.entity.data.table import (
 )
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.sampler.sampler_interface import SamplerInterface
-from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR
 from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
 from metadata.utils.logger import profiler_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -135,23 +134,14 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         """Get SQALikeColumns for datalake to be passed for metric computation"""
         sqalike_columns = []
         if self.raw_dataset:
-            for column_name in next(self.raw_dataset()).columns:
-                complex_col_name = None
-                if COMPLEX_COLUMN_SEPARATOR in column_name:
-                    complex_col_name = ".".join(
-                        column_name.split(COMPLEX_COLUMN_SEPARATOR)[1:]
-                    )
-                    if complex_col_name:
-                        for df in self.raw_dataset():
-                            df.rename(
-                                columns={column_name: complex_col_name}, inplace=True
-                            )
-                column_name = complex_col_name or column_name
+            first_chunk = next(self.raw_dataset())
+            for column_name in first_chunk.columns:
+                column_name = self._get_column_name(column_name)
                 sqalike_columns.append(
                     SQALikeColumn(
                         column_name,
                         GenericDataFrameColumnParser.fetch_col_types(
-                            next(self.raw_dataset()), column_name
+                            first_chunk, column_name
                         ),
                     )
                 )

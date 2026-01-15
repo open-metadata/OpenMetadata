@@ -12,6 +12,7 @@
 """
 Avro DataFrame reader - streams records in batches to avoid OOM
 """
+import traceback
 from functools import singledispatchmethod
 from typing import Iterator, List, Optional
 
@@ -35,6 +36,9 @@ from metadata.readers.file.adls import return_azure_storage_options
 from metadata.readers.file.s3 import return_s3_storage_options
 from metadata.readers.models import ConfigSource
 from metadata.utils.constants import CHUNKSIZE
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 PD_AVRO_FIELD_MAP = {
     DataTypeTopic.BOOLEAN.value: "bool",
@@ -92,8 +96,9 @@ class AvroDataFrameReader(DataFrameReader):
                     writer_schema = json.dumps(reader.writer_schema)
 
                 return parse_avro_schema(schema=writer_schema, cls=Column)
-        except Exception:
-            pass
+        except Exception as warn:
+            logger.warning(f"Error reading Avro schema: {warn}")
+            logger.debug(traceback.format_exc())
         return None
 
     @singledispatchmethod
