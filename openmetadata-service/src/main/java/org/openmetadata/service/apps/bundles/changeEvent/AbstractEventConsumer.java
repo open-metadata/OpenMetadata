@@ -244,11 +244,24 @@ public abstract class AbstractEventConsumer
   public void commit(JobExecutionContext jobExecutionContext) {
     long currentTime = System.currentTimeMillis();
 
-    // Batch write all successful events in ONE DB call instead of N calls
-    // This reduces connection pool contention significantly
+    // Batch write all successful events in ONE DB call instead of N calls.
+    // This reduces connection pool contention significantly.
+    // Important: We catch exceptions here to ensure offset is always updated.
+    // If batch record fails but events were already sent to destinations,
+    // we must still advance the offset to prevent duplicate HTTP calls on retry.
     if (!successfulEvents.isEmpty()) {
-      batchRecordSuccessfulEvents(eventSubscription.getId(), currentTime);
-      successfulEvents.clear();
+      try {
+        batchRecordSuccessfulEvents(eventSubscription.getId(), currentTime);
+      } catch (Exception e) {
+        LOG.error(
+            "Batch recording failed for {} events in subscription {}. "
+                + "Events were delivered but success records lost. Continuing with offset update.",
+            successfulEvents.size(),
+            eventSubscription.getId(),
+            e);
+      } finally {
+        successfulEvents.clear();
+      }
     }
 
     EventSubscriptionOffset eventSubscriptionOffset =
@@ -305,19 +318,9 @@ public abstract class AbstractEventConsumer
       timestamps.add(timestamp);
     }
 
-    try {
-      Entity.getCollectionDAO()
-          .eventSubscriptionDAO()
-          .batchUpsertSuccessfulChangeEvents(changeEventIds, subscriptionIds, jsonList, timestamps);
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to batch record {} successful events for subscription {}. "
-              + "Events were sent to destinations but recording failed.",
-          successfulEvents.size(),
-          subscriptionId,
-          e);
-      throw e;
-    }
+    Entity.getCollectionDAO()
+        .eventSubscriptionDAO()
+        .batchUpsertSuccessfulChangeEvents(changeEventIds, subscriptionIds, jsonList, timestamps);
   }
 
   @Override
