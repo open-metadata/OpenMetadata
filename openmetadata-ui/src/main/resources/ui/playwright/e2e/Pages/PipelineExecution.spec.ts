@@ -12,7 +12,7 @@
  */
 import { expect, test } from '@playwright/test';
 import { PipelineClass } from '../../support/entity/PipelineClass';
-import { getApiContext } from '../../utils/common';
+import { createNewPage, redirectToHomePage } from '../../utils/common';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -20,16 +20,38 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 const pipeline = new PipelineClass();
 
 test.describe('Pipeline Execution Tab', () => {
-  test.slow(true);
-
-  test.beforeAll('Setup pipeline', async ({ browser }) => {
-    const { apiContext, afterAction } = await getApiContext(browser);
+  test.beforeAll('Setup pipeline with executions', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
     await pipeline.create(apiContext);
+
+    const fqn = pipeline.entityResponseData?.fullyQualifiedName;
+    const now = Date.now();
+
+    const executions = [
+      {
+        executionId: 'exec_001',
+        timestamp: now - 3000000,
+        executionStatus: 'Successful',
+        taskStatus: pipeline.children.map((task) => ({
+          name: task.name,
+          executionStatus: 'Successful',
+          startTime: now - 3600000,
+          endTime: now - 3000000,
+        })),
+      }
+    ];
+
+    for (const execution of executions) {
+      await apiContext.put(`/api/v1/pipelines/${fqn}/status`, {
+        data: execution,
+      });
+    }
+
     await afterAction();
   });
 
   test.afterAll('Cleanup pipeline', async ({ browser }) => {
-    const { apiContext, afterAction } = await getApiContext(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
     await pipeline.delete(apiContext);
     await afterAction();
   });
@@ -38,10 +60,8 @@ test.describe('Pipeline Execution Tab', () => {
     page,
   }) => {
     await test.step('Navigate to pipeline entity page', async () => {
+      await redirectToHomePage(page);
       await pipeline.visitEntityPage(page);
-      await expect(page.getByTestId('entity-header-display-name')).toHaveText(
-        pipeline.entity.displayName,
-      );
     });
 
     await test.step('Navigate to Executions tab', async () => {
@@ -50,42 +70,26 @@ test.describe('Pipeline Execution Tab', () => {
     });
 
     await test.step('Verify ListView displays timing columns', async () => {
-      // Wait for the list view table to be visible
       await expect(page.getByTestId('list-view-table')).toBeVisible();
 
-      // Verify column headers are present
       await expect(page.getByText('Start Time')).toBeVisible();
       await expect(page.getByText('End Time')).toBeVisible();
       await expect(page.getByText('Duration')).toBeVisible();
     });
 
-    await test.step('Switch to Tree View and verify tooltip shows timing info', async () => {
-      // Switch to tree view
-      await page
-        .getByTestId('radio-switch')
-        .getByText('Tree View', { exact: true })
-        .click();
+    await test.step('Verify execution data rows are present', async () => {
+      const tableRows = page.locator(
+        '[data-testid="list-view-table"] tbody tr'
+      );
+      await expect(tableRows).toHaveCount(2);
+    });
 
-      // Wait for tree view to load
-      await page.waitForTimeout(1000);
+    await test.step('Verify duration is 10 minutes for both tasks', async () => {
+      const snowflakeTaskDuration = page.getByTestId('duration-snowflake_task');
+      const prestoTaskDuration = page.getByTestId('duration-presto_task');
 
-      // Check if there are any execution nodes with status icons
-      const statusIcons = page.locator('.execution-node-container svg').first();
-      if ((await statusIcons.count()) > 0) {
-        // Hover over the first status icon to show tooltip
-        await statusIcons.hover();
-
-        // Wait for tooltip to appear and verify it contains timing information
-        await page.waitForTimeout(500);
-
-        // The tooltip should contain Start, End, and Duration text if data is available
-        const tooltipContent = page.locator('.ant-tooltip-inner');
-        if (await tooltipContent.isVisible()) {
-          const text = await tooltipContent.textContent();
-          // Tooltip should contain execution status at minimum
-          expect(text).toBeTruthy();
-        }
-      }
+      await expect(snowflakeTaskDuration).toHaveText('10.00 minutes');
+      await expect(prestoTaskDuration).toHaveText('10.00 minutes');
     });
   });
 });

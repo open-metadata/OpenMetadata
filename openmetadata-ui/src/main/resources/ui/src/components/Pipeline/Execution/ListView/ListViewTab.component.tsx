@@ -93,6 +93,9 @@ const ListView = ({
         title: t('label.duration'),
         dataIndex: 'duration',
         key: 'duration',
+        render: (duration: string, record: { name: string }) => (
+          <span data-testid={`duration-${record.name}`}>{duration}</span>
+        ),
       },
     ],
     []
