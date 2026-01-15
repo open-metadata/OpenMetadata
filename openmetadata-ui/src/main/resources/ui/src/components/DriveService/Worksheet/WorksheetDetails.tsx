@@ -34,7 +34,6 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
-import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
@@ -90,12 +89,13 @@ function WorksheetDetails({
   versionHandler,
   onWorksheetUpdate,
   onUpdateVote,
+  activeColumnFqn,
 }: Readonly<WorksheetDetailsProps>) {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.SCHEMA } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedWorksheetFQN } = useFqn();
+
   const navigate = useNavigate();
   const { customizedPage, isLoading } = useCustomPages(PageType.Worksheet);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
@@ -176,7 +176,7 @@ function WorksheetDetails({
       navigate(
         getEntityDetailsPath(
           EntityType.WORKSHEET,
-          decodedWorksheetFQN,
+          worksheetDetails.fullyQualifiedName ?? '',
           activeKey
         ),
         { replace: true }
@@ -246,7 +246,11 @@ function WorksheetDetails({
   }, []);
 
   const getEntityFeedCount = () =>
-    getFeedCounts(EntityType.WORKSHEET, decodedWorksheetFQN, handleFeedCount);
+    getFeedCounts(
+      EntityType.WORKSHEET,
+      worksheetDetails.fullyQualifiedName ?? '',
+      handleFeedCount
+    );
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
@@ -300,8 +304,10 @@ function WorksheetDetails({
   );
 
   useEffect(() => {
-    getEntityFeedCount();
-  }, [worksheetPermissions, decodedWorksheetFQN]);
+    if (worksheetDetails.fullyQualifiedName) {
+      getEntityFeedCount();
+    }
+  }, [worksheetPermissions, worksheetDetails.fullyQualifiedName]);
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
@@ -352,7 +358,6 @@ function WorksheetDetails({
     worksheetTags,
     entityName,
     worksheetDetails,
-    decodedWorksheetFQN,
     fetchWorksheet,
     deleted,
     handleFeedCount,
@@ -420,7 +425,8 @@ function WorksheetDetails({
             onVersionClick={versionHandler}
           />
         </Col>
-        <GenericProvider<Worksheet>
+      <GenericProvider<Worksheet>
+          columnFqn={activeColumnFqn}
           customizedPage={customizedPage}
           data={worksheetDetails}
           isTabExpanded={isTabExpanded}
