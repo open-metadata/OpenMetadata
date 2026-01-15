@@ -422,21 +422,24 @@ export const TestCases = () => {
     return ExtraTestCaseDropdownOptions(
       WILD_CARD_CHAR,
       {
-        ViewAll: getPrioritizedViewPermission(
-          testCasePermission,
-          Operation.ViewAll
-        ),
-        EditAll: checkPermission(
-          Operation.EditAll,
-          ResourceEntity.TEST_CASE,
-          permissions
-        ),
+        ViewAll:
+          checkPermission(
+            Operation.ViewAll,
+            ResourceEntity.TEST_CASE,
+            permissions
+          ) ?? false,
+        EditAll:
+          checkPermission(
+            Operation.EditAll,
+            ResourceEntity.TEST_CASE,
+            permissions
+          ) ?? false,
       },
       false,
       navigate,
       showModal
     );
-  }, [testCasePermission, permissions, navigate, showModal]);
+  }, [permissions, navigate, showModal]);
 
   const dqTableHeader = useMemo(() => {
     return (

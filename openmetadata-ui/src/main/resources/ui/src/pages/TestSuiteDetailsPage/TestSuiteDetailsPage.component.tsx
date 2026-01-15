@@ -74,8 +74,8 @@ import {
 } from '../../rest/testAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
+  checkPermission,
   DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
 } from '../../utils/PermissionsUtils';
 import {
   getDataQualityPagePath,
@@ -88,7 +88,8 @@ import './test-suite-details-page.styles.less';
 const TestSuiteDetailsPage = () => {
   const { t } = useTranslation();
   const { entityRules } = useEntityRules(EntityType.TEST_SUITE);
-  const { getEntityPermissionByFqn } = usePermissionProvider();
+  const { getEntityPermissionByFqn, permissions: globalPermissions } =
+    usePermissionProvider();
   const { fqn: testSuiteFQN } = useFqn();
   const navigate = useNavigate();
   const { showModal } = useEntityExportModalProvider();
@@ -145,29 +146,31 @@ const TestSuiteDetailsPage = () => {
     };
   }, [testSuitePermissions]);
 
-  const canExportTestCases = useMemo(
-    () => getPrioritizedViewPermission(testSuitePermissions, Operation.ViewAll),
-    [testSuitePermissions]
-  );
-
-  const canImportTestCases = useMemo(
-    () => testSuitePermissions?.EditAll ?? false,
-    [testSuitePermissions]
-  );
-
   const extraDropdownContent = useMemo(() => {
+    const bulkImportExportTestCasePermission = {
+      ViewAll:
+        checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.TEST_CASE,
+          globalPermissions
+        ) ?? false,
+      EditAll:
+        checkPermission(
+          Operation.EditAll,
+          ResourceEntity.TEST_CASE,
+          globalPermissions
+        ) ?? false,
+    };
+
     return ExtraTestCaseDropdownOptions(
       testSuite?.fullyQualifiedName ?? '',
-      {
-        ViewAll: canExportTestCases,
-        EditAll: canImportTestCases,
-      },
+      bulkImportExportTestCasePermission,
       testSuite?.deleted ?? false,
       navigate,
       showModal,
       EntityType.TEST_SUITE
     );
-  }, [canExportTestCases, canImportTestCases, testSuite, navigate, showModal]);
+  }, [globalPermissions, testSuite, navigate, showModal]);
 
   const incidentUrlState = useMemo(() => {
     return [

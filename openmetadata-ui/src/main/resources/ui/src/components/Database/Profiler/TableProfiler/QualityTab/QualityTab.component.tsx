@@ -30,6 +30,8 @@ import {
 } from '../../../../../constants/profiler.constant';
 import { INITIAL_TEST_SUMMARY } from '../../../../../constants/TestSuite.constant';
 import { useLimitStore } from '../../../../../context/LimitsProvider/useLimitsStore';
+import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
 import { TestCaseType } from '../../../../../enums/TestSuite.enum';
@@ -43,7 +45,10 @@ import {
   getBreadcrumbForTable,
   getEntityName,
 } from '../../../../../utils/EntityUtils';
-import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
+import {
+  checkPermission,
+  getPrioritizedEditPermission,
+} from '../../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
 import { ExtraTestCaseDropdownOptions } from '../../../../../utils/TestCaseUtils';
 import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -71,6 +76,7 @@ export const QualityTab = () => {
   } = useTableProfiler();
   const { getResourceLimit } = useLimitStore();
   const theme = useTheme();
+  const { permissions: globalPermissions } = usePermissionProvider();
 
   const {
     currentPage,
@@ -237,23 +243,33 @@ export const QualityTab = () => {
     }
   };
 
-  const extraDropdownContent: ItemType[] = useMemo(
-    () =>
-      table?.fullyQualifiedName
-        ? (ExtraTestCaseDropdownOptions(
-            table.fullyQualifiedName,
-            {
-              ViewAll: permissions?.ViewAll ?? false,
-              EditAll: permissions?.EditAll ?? false,
-            },
-            table?.deleted ?? false,
-            navigate,
-            showModal,
-            EntityType.TABLE
-          ) as ItemType[])
-        : [],
-    [permissions, table, navigate, showModal]
-  );
+  const extraDropdownContent: ItemType[] = useMemo(() => {
+    const bulkImportExportTestCasePermission = {
+      ViewAll:
+        checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.TEST_CASE,
+          globalPermissions
+        ) ?? false,
+      EditAll:
+        checkPermission(
+          Operation.EditAll,
+          ResourceEntity.TEST_CASE,
+          globalPermissions
+        ) ?? false,
+    };
+
+    return table?.fullyQualifiedName
+      ? (ExtraTestCaseDropdownOptions(
+          table.fullyQualifiedName,
+          bulkImportExportTestCasePermission,
+          table?.deleted ?? false,
+          navigate,
+          showModal,
+          EntityType.TABLE
+        ) as ItemType[])
+      : [];
+  }, [globalPermissions, table, navigate, showModal]);
 
   const handleTestCaseTypeChange = (value: TestCaseType) => {
     if (value !== selectedTestType) {
