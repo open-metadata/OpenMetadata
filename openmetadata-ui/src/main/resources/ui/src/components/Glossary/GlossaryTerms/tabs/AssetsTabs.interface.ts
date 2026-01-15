@@ -24,6 +24,7 @@ export enum AssetsOfEntity {
   ACCESS_TOKEN = 'ACCESS_TOKEN',
   LINEAGE = 'LINEAGE',
   TAG = 'TAG',
+  COLUMN = 'COLUMN',
 }
 
 export interface AssetsTabsProps {

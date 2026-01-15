@@ -11,81 +11,11 @@
  *  limitations under the License.
  */
 import { AxiosResponse } from 'axios';
+import { BulkColumnUpdatePreview } from '../generated/api/data/bulkColumnUpdatePreview';
+import { BulkColumnUpdateRequest } from '../generated/api/data/bulkColumnUpdateRequest';
 import { ColumnGridResponse } from '../generated/api/data/columnGridResponse';
-import { TagLabel } from '../generated/type/tagLabel';
+import { GroupedColumnsResponse } from '../generated/api/data/groupedColumnsResponse';
 import APIClient from './index';
-
-export interface GroupedColumnsResponse {
-  columnName: string;
-  occurrences: ColumnOccurrence[];
-}
-
-export interface ColumnOccurrence {
-  columnFQN: string;
-  entityType: string;
-  entityFQN: string;
-  entityDisplayName?: string;
-  serviceName: string;
-  databaseName?: string;
-  schemaName?: string;
-  displayName?: string;
-  description?: string;
-  tags?: TagLabel[];
-}
-
-export interface BulkColumnUpdateRequest {
-  columnName?: string;
-  entityTypes?: string[];
-  serviceName?: string;
-  databaseName?: string;
-  schemaName?: string;
-  domainId?: string;
-  displayName?: string;
-  description?: string;
-  tags?: TagLabel[];
-  columnUpdates?: ColumnUpdate[];
-  dryRun?: boolean;
-}
-
-export interface ColumnUpdate {
-  columnFQN: string;
-  entityType: string;
-  displayName?: string;
-  description?: string;
-  tags?: TagLabel[];
-}
-
-export interface BulkColumnUpdatePreview {
-  totalColumns: number;
-  columnPreviews: ColumnUpdatePreview[];
-}
-
-export interface ColumnUpdatePreview {
-  columnFQN: string;
-  entityType: string;
-  entityFQN: string;
-  entityDisplayName?: string;
-  serviceName: string;
-  databaseName?: string;
-  schemaName?: string;
-  currentValues: ColumnMetadata;
-  newValues: ColumnMetadata;
-  hasChanges: boolean;
-}
-
-export interface ColumnMetadata {
-  displayName?: string;
-  description?: string;
-  tags?: TagLabel[];
-}
-
-export interface BulkOperationResult {
-  status: 'SUCCESS' | 'FAILURE' | 'PARTIAL_SUCCESS' | 'ABORTED';
-  numberOfRowsProcessed: number;
-  numberOfRowsPassed: number;
-  numberOfRowsFailed: number;
-  importResultsCsv?: string;
-}
 
 export interface CsvImportResult {
   status: 'SUCCESS' | 'FAILURE' | 'PARTIAL_SUCCESS' | 'ABORTED';
@@ -291,6 +221,8 @@ export interface ColumnGridParams {
   databaseName?: string;
   schemaName?: string;
   columnNamePattern?: string;
+  dataType?: string;
+  metadataStatus?: string[];
 }
 
 export const getColumnGrid = async (

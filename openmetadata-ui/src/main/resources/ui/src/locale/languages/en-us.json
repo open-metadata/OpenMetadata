@@ -2791,6 +2791,7 @@
     "account-verify-success": "Email verified successfully",
     "add-entity-error": "Error while adding {{entity}}!",
     "auth-provider-not-supported-renewing": "Auth Provider {{provider}} not supported for renewing tokens.",
+    "bulk-update-initiated": "Bulk update initiated for {{count}} {{entity}}.",
     "can-not-renew-token-authentication-not-present": "Cannot renew id token. Authentication Provider is not present.",
     "column-fetch-error": "Error while fetching column test case!",
     "connection-tested-successfully": "Connection tested successfully",

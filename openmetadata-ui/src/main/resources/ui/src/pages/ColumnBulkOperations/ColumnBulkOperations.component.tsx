@@ -10,33 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Box } from '@mui/material';
 import { useTranslation } from 'react-i18next';
+import { useBreadcrumbs } from '../../components/common/atoms/navigation/useBreadcrumbs';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import './ColumnBulkOperations.less';
 import ColumnGrid from './ColumnGrid/ColumnGrid.component';
 
-const { Title, Paragraph } = Typography;
-
 const ColumnBulkOperations = () => {
   const { t } = useTranslation();
 
+  const { breadcrumbs } = useBreadcrumbs({
+    items: [
+      {
+        name: t('label.column-bulk-operations'),
+        url: '/column-bulk-operations',
+      },
+    ],
+  });
+
   return (
     <PageLayoutV1 pageTitle={t('label.column-bulk-operations')}>
-      <div className="column-bulk-operations-container">
-        <div className="column-bulk-operations-header">
-          <div>
-            <Title className="m-b-xs" level={3}>
-              {t('label.column-bulk-operations')}
-            </Title>
-            <Paragraph className="text-grey-muted m-b-0">
-              {t('message.column-bulk-operations-description')}
-            </Paragraph>
-          </div>
-        </div>
-
+      <Box className="column-bulk-operations-container">
+        {breadcrumbs}
         <ColumnGrid />
-      </div>
+      </Box>
     </PageLayoutV1>
   );
 };

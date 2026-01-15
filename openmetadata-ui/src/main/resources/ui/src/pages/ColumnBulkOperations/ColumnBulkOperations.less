@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+@import (reference) '../../styles/variables.less';
+
 .column-bulk-operations-container {
   padding: 20px 24px;
 }
@@ -23,7 +25,7 @@
       font-size: 20px;
       font-weight: 500;
       line-height: 28px;
-      color: #1f2937;
+      color: @text-color;
       margin-bottom: 8px;
     }
   }
@@ -31,7 +33,7 @@
   .ant-typography-paragraph {
     font-size: 14px;
     line-height: 20px;
-    color: #6b7280;
+    color: @de-active-color;
     margin-bottom: 0;
   }
 }
@@ -53,49 +55,49 @@
 
   .occurrence-count {
     font-weight: 600;
-    color: #7147e8;
+    color: @purple-2;
   }
 }
 
 .column-preview-diff {
   .diff-added {
-    background-color: #f0fdf4;
-    color: #166534;
+    background-color: @green-9;
+    color: @green-10;
     padding: 2px 4px;
     border-radius: 4px;
   }
 
   .diff-removed {
-    background-color: #fef2f2;
-    color: #991b1b;
+    background-color: @red-9;
+    color: @red-10;
     text-decoration: line-through;
     padding: 2px 4px;
     border-radius: 4px;
   }
 
   .diff-unchanged {
-    color: #37352f;
+    color: @text-color;
   }
 }
 
 .csv-upload-area {
   margin-top: 16px;
   padding: 40px;
-  border: 2px dashed #dce1e7;
+  border: 2px dashed @grey-20;
   border-radius: 8px;
   text-align: center;
-  background-color: #ffffff;
+  background-color: @white;
   cursor: pointer;
   transition: all 0.3s;
 
   &:hover {
-    border-color: #7147e8;
-    background-color: #f5f2ff;
+    border-color: @purple-2;
+    background-color: @purple-6;
   }
 
   .upload-icon {
     font-size: 48px;
-    color: #7147e8;
+    color: @purple-2;
     margin-bottom: 16px;
   }
 }
@@ -107,7 +109,7 @@
   }
 
   .preview-summary {
-    background-color: #f5f2ff;
+    background-color: @purple-6;
     padding: 16px;
     border-radius: 8px;
     margin-bottom: 16px;
@@ -120,20 +122,20 @@
 
       .stat-value {
         font-weight: 600;
-        font-size: 20px;
-        color: #7147e8;
+        font-size: 18px;
+        color: @purple-2;
       }
     }
   }
 
   .preview-item {
-    border: 1px solid #dce1e7;
+    border: 1px solid @grey-20;
     border-radius: 8px;
     padding: 16px;
     margin-bottom: 12px;
 
     &.has-changes {
-      border-left: 4px solid #7147e8;
+      border-left: 4px solid @purple-2;
     }
 
     &.no-changes {
@@ -152,7 +154,7 @@
       }
 
       .column-path {
-        color: #6b7280;
+        color: @de-active-color;
         font-size: 12px;
       }
     }
@@ -165,14 +167,14 @@
       .change-section {
         .section-label {
           font-size: 12px;
-          color: #6b7280;
+          color: @de-active-color;
           margin-bottom: 4px;
         }
 
         .section-value {
           font-size: 13px;
           padding: 8px;
-          background-color: #f9fafb;
+          background-color: @grey-16;
           border-radius: 4px;
           min-height: 36px;
         }

@@ -58,170 +58,180 @@
   }
 }
 
-// Filter Bar - matching Figma design
-.filter-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+// Filter Bar - MUI Components (no border, attached to table)
+.column-grid-quick-filters-container {
   padding: 16px 20px;
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  gap: 24px;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  margin-bottom: 0;
+  overflow-x: auto;
 
-  .filter-left {
-    display: flex;
-    align-items: center;
-    gap: 24px;
-    flex-wrap: wrap;
+  .MuiStack-root {
+    min-width: fit-content;
+  }
 
-    .search-input {
-      width: 220px;
-      height: 40px;
+  // MUI TextField for search
+  .search-input {
+    .MuiOutlinedInput-root {
       border-radius: 8px;
       border: 1px solid #e5e7eb;
-      padding: 8px 12px;
+      height: 40px;
+      font-size: 14px;
 
-      .ant-input {
-        font-size: 14px;
-      }
-
-      .search-icon {
-        color: #9ca3af;
-        font-size: 16px;
-      }
-
-      &:hover,
-      &:focus-within {
+      &:hover {
         border-color: #3b82f6;
       }
-    }
 
-    .filter-dropdown {
-      min-width: auto;
-
-      .ant-select-selector {
-        border: none !important;
-        background: transparent !important;
-        padding: 4px 8px !important;
-        height: 36px !important;
-        box-shadow: none !important;
-
-        .ant-select-selection-placeholder {
-          color: #1f2937;
-          font-weight: 500;
-          font-size: 14px;
-        }
-
-        .ant-select-selection-item {
-          color: #1f2937;
-          font-weight: 500;
-          font-size: 14px;
-        }
+      &.Mui-focused {
+        border-color: #3b82f6;
       }
 
-      .ant-select-arrow {
-        color: #1f2937;
-        font-size: 10px;
-        right: 4px;
+      .MuiOutlinedInput-notchedOutline {
+        border: none;
+      }
+    }
+  }
+
+  // MUI Select dropdowns - borderless, no hover effects
+  .filter-dropdown {
+    .MuiOutlinedInput-root {
+      border: none;
+      background: transparent;
+      padding: 4px 8px;
+      min-height: auto;
+      height: auto;
+      box-shadow: none;
+
+      .MuiOutlinedInput-notchedOutline {
+        border: none;
+        display: none;
       }
 
       &:hover {
-        .ant-select-selector {
-          background: #f9fafb !important;
-          border-radius: 6px;
+        background: transparent;
+        border: none;
+
+        .MuiOutlinedInput-notchedOutline {
+          border: none;
+          display: none;
         }
       }
 
-      // Show count for selected filters
-      &.ant-select-multiple {
-        .ant-select-selection-overflow {
+      &.Mui-focused {
+        background: transparent;
+        border: none;
+
+        .MuiOutlinedInput-notchedOutline {
+          border: none;
           display: none;
         }
+      }
+    }
 
-        .ant-select-selection-placeholder {
-          position: relative;
-          display: flex;
-          align-items: center;
-        }
+    .MuiInputLabel-root {
+      display: none;
+    }
 
-        // Show selection count badge
-        &.ant-select-open,
-        &:not(.ant-select-customize-input) {
-          .ant-select-selector::after {
-            display: none;
-          }
+    .MuiSelect-select {
+      color: #535862;
+      font-weight: 500;
+      font-size: 14px;
+      padding: 4px 20px 4px 0;
+      line-height: 1.5;
+      display: flex;
+      align-items: center;
+      border: none;
+    }
+
+    .MuiSelect-icon {
+      color: #535862;
+      font-size: 12px;
+      right: 4px;
+      width: 12px;
+      height: 12px;
+    }
+
+    fieldset {
+      border: none;
+      display: none;
+    }
+
+    // Active state when items are selected
+    &.Mui-focused,
+    &:has(.MuiSelect-select[value]:not([value=''])) {
+      .MuiSelect-select {
+        color: #1f2937;
+      }
+    }
+  }
+
+  .view-selected-label {
+    font-size: 14px;
+    color: #374151;
+    font-weight: 500;
+  }
+
+  .MuiSwitch-root {
+    .MuiSwitch-switchBase {
+      &.Mui-checked {
+        color: #3b82f6;
+
+        + .MuiSwitch-track {
+          background-color: #3b82f6;
         }
       }
     }
   }
 
-  .filter-right {
-    display: flex;
-    align-items: center;
-    gap: 16px;
+  .edit-button {
+    color: #6b7280;
+    font-weight: 500;
+    font-size: 14px;
+    text-transform: none;
 
-    .view-selected-label {
-      font-size: 14px;
+    &:hover {
       color: #374151;
-      font-weight: 500;
+      background: #f3f4f6;
     }
+  }
 
-    .ant-switch {
-      margin-right: 4px;
+  .edit-button-primary {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    border-radius: 6px;
+    font-weight: 500;
+    height: 36px;
+    text-transform: none;
 
-      &.ant-switch-checked {
-        background: #3b82f6;
-      }
+    &:hover {
+      background: #2563eb;
+      border-color: #2563eb;
     }
+  }
 
-    .edit-button {
-      color: #6b7280;
-      font-weight: 500;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
+  .cancel-button {
+    color: #ef4444;
+    font-weight: 500;
+    text-transform: none;
 
-      &:hover {
-        color: #374151;
-        background: #f3f4f6;
-      }
-    }
-
-    .edit-button-primary {
-      background: #3b82f6;
-      border-color: #3b82f6;
-      border-radius: 6px;
-      font-weight: 500;
-      height: 36px;
-
-      &:hover {
-        background: #2563eb;
-        border-color: #2563eb;
-      }
-    }
-
-    .cancel-button {
-      color: #ef4444;
-      font-weight: 500;
-      padding: 4px 8px;
-
-      &:hover {
-        color: #dc2626;
-      }
+    &:hover {
+      color: #dc2626;
+      background: transparent;
     }
   }
 }
 
-// Grid Wrapper - full width
+// Grid Wrapper - full width, attached to filter bar
 .column-grid-wrapper {
   position: relative;
   flex: 1;
   overflow: hidden;
   width: 100%;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
   background: #ffffff;
 
   .rdg {
@@ -263,29 +273,43 @@
     background-color: inherit;
   }
 
-  // Ensure frozen columns have proper background and z-index
+  // Ensure frozen columns have proper background and z-index to stay fixed
   .rdg-cell-frozen {
     background-color: #ffffff;
-    z-index: 1;
+    z-index: 3;
+    position: sticky;
+    left: 0;
   }
 
+  // Header row - reduced height and proper z-index
   .rdg-header-row {
     font-weight: 500;
     background-color: #fafafa;
     border-bottom: 1px solid #e5e7eb;
+    height: 40px;
+    min-height: 40px;
+    position: sticky;
+    top: 0;
+    z-index: 2;
 
     .rdg-cell {
       background-color: #fafafa;
-      padding: 12px 16px;
+      padding: 8px 12px;
       align-items: center;
       color: #6b7280;
       font-size: 14px;
       font-weight: 500;
       border-bottom: 1px solid #e5e7eb;
-    }
+      height: 40px;
+      line-height: 1.5;
 
-    .rdg-cell-frozen {
-      background-color: #fafafa;
+      // Frozen header cells need even higher z-index to stay above everything
+      &.rdg-cell-frozen {
+        background-color: #fafafa;
+        z-index: 4;
+        position: sticky;
+        left: 0;
+      }
     }
   }
 
@@ -297,6 +321,7 @@
 
       .rdg-cell-frozen {
         background-color: #fafafa;
+        z-index: 3;
       }
     }
 
@@ -459,9 +484,7 @@
 }
 
 // Checkbox styling - no indent for child rows, checkboxes stay aligned
-.child-checkbox {
-  // Keep checkbox aligned with parent rows
-}
+// (Styling handled inline or via parent classes)
 
 // Loading indicator
 .column-grid-loading {

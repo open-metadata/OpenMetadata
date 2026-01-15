@@ -11,103 +11,89 @@
  *  limitations under the License.
  */
 
+import { DownOutlined, EditOutlined, RightOutlined } from '@ant-design/icons';
 import {
-  DownOutlined,
-  EditOutlined,
-  RightOutlined,
-  SearchOutlined,
-} from '@ant-design/icons';
+  Box,
+  Button as MUIButton,
+  Paper,
+  Stack,
+  Switch,
+  TableContainer,
+  Typography,
+  useTheme,
+} from '@mui/material';
+import { Tag01 as TagIcon } from '@untitledui/icons';
 import {
   Button,
-  Checkbox,
   Drawer,
   Form,
   Input,
-  Select,
-  Spin,
-  Switch,
   Tag,
-  Typography,
+  Typography as AntTypography,
 } from 'antd';
-import { debounce } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import DataGrid, { Column, RenderCellProps } from 'react-data-grid';
-import 'react-data-grid/lib/styles.css';
+import { isEmpty } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import { ReactComponent as OccurrencesIcon } from '../../../assets/svg/ic-occurences.svg';
+import { ReactComponent as PendingChangesIcon } from '../../../assets/svg/ic-pending-changes.svg';
+import { ReactComponent as UniqueColumnsIcon } from '../../../assets/svg/ic-unique-column.svg';
 import AsyncSelectList from '../../../components/common/AsyncSelectList/AsyncSelectList';
 import { SelectOption } from '../../../components/common/AsyncSelectList/AsyncSelectList.interface';
 import TreeAsyncSelectList from '../../../components/common/AsyncSelectList/TreeAsyncSelectList';
+import { useFilterSelection } from '../../../components/common/atoms/filters/useFilterSelection';
+import { useSearch } from '../../../components/common/atoms/navigation/useSearch';
+import { usePaginationControls } from '../../../components/common/atoms/pagination/usePaginationControls';
+import {
+  CellRenderer,
+  ColumnConfig,
+} from '../../../components/common/atoms/shared/types';
+import { useDataTable } from '../../../components/common/atoms/table/useDataTable';
+import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../components/common/RichTextEditor/RichTextEditor.interface';
+import SearchDropdown from '../../../components/SearchDropdown/SearchDropdown';
+import { SearchDropdownOption } from '../../../components/SearchDropdown/SearchDropdown.interface';
+import { EntityFields } from '../../../enums/AdvancedSearch.enum';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import {
+  BulkColumnUpdateRequest,
+  ColumnUpdate,
+} from '../../../generated/api/data/bulkColumnUpdateRequest';
 import {
   ColumnChild,
   ColumnGridItem,
   ColumnOccurrenceRef,
 } from '../../../generated/api/data/columnGridResponse';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
-import {
-  BulkColumnUpdateRequest,
-  bulkUpdateColumnsAsync,
-  ColumnUpdate,
-  getColumnGrid,
-} from '../../../rest/columnAPI';
+import { bulkUpdateColumnsAsync } from '../../../rest/columnAPI';
+import { getTableFQNFromColumnFQN } from '../../../utils/CommonUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import {
-  ColumnGridFilters,
-  ColumnGridProps,
-  ColumnGridRowData,
-  ColumnGridState,
-} from './ColumnGrid.interface';
+import { ColumnGridProps, ColumnGridRowData } from './ColumnGrid.interface';
 import './ColumnGrid.less';
+import { ColumnGridTableRow } from './components/ColumnGridTableRow';
 import {
-  OccurrencesIcon,
-  PendingChangesIcon,
-  TagIcon,
-  UniqueColumnsIcon,
-} from './ColumnGridIcons';
+  ASSET_TYPE_OPTIONS,
+  DATA_TYPE_OPTIONS,
+  METADATA_STATUS_OPTIONS,
+} from './constants/ColumnGrid.constants';
+import { useColumnGridFilters } from './hooks/useColumnGridFilters';
+import { useColumnGridListingData } from './hooks/useColumnGridListingData';
+// Removed React Data Grid - using MUI Table instead
 
-const { Text } = Typography;
-
-const PAGE_SIZE = 25; // Reduced from 100 to minimize OpenSearch load
+const { Text } = AntTypography;
 
 const ColumnGrid: React.FC<ColumnGridProps> = ({
   filters: externalFilters,
 }) => {
   const { t } = useTranslation();
-  const [serverFilters, setServerFilters] = useState<ColumnGridFilters>(
-    externalFilters || {}
-  );
-  const [gridState, setGridState] = useState<ColumnGridState>({
-    rows: [],
-    loading: false,
-    hasMore: false,
-    totalUniqueColumns: 0,
-    totalOccurrences: 0,
-    selectedRows: new Set(),
-    columnFilters: {},
-    quickFilter: '',
-    viewSelectedOnly: false,
-  });
-
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const [expandedStructRows, setExpandedStructRows] = useState<Set<string>>(
-    new Set()
-  );
+  const theme = useTheme();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [isUpdating, setIsUpdating] = useState(false);
-  const [renderVersion, setRenderVersion] = useState(0);
-  const [allRows, setAllRows] = useState<ColumnGridRowData[]>([]);
-  const [gridItems, setGridItems] = useState<ColumnGridItem[]>([]);
+  const [viewSelectedOnly, setViewSelectedOnly] = useState(false);
   const [editDrawer, setEditDrawer] = useState<{
     open: boolean;
     rowId: string | null;
@@ -116,35 +102,100 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     rowId: null,
   });
   const editorRef = React.useRef<EditorContentRef>(null);
-  const gridWrapperRef = React.useRef<HTMLDivElement>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const [containerWidth, setContainerWidth] = useState(1200);
 
-  // Track container width for responsive columns
-  useLayoutEffect(() => {
-    const gridWrapper = gridWrapperRef.current;
-    if (!gridWrapper) {
-      return;
+  // Get current filter values from URL
+  const currentDataType = useMemo(() => {
+    const dataTypeParam = searchParams.get('dataType');
+
+    if (!dataTypeParam) {
+      return [];
     }
 
-    const updateWidth = () => {
-      const width = gridWrapper.clientWidth;
-      if (width > 0) {
-        setContainerWidth(width);
+    return [{ key: dataTypeParam, label: dataTypeParam }];
+  }, [searchParams]);
+
+  const currentMetadataStatus = useMemo(() => {
+    const statusParam = searchParams.get('metadataStatus');
+
+    if (!statusParam) {
+      return [];
+    }
+
+    return statusParam
+      .split(',')
+      .filter(Boolean)
+      .map((status) => {
+        const option = METADATA_STATUS_OPTIONS.find(
+          (opt) => opt.key === status
+        );
+
+        return option || { key: status, label: status };
+      });
+  }, [searchParams]);
+
+  const currentAssetType = useMemo(() => {
+    const assetTypeParam = searchParams.get(EntityFields.ENTITY_TYPE);
+
+    if (!assetTypeParam) {
+      return [];
+    }
+
+    return assetTypeParam
+      .split(',')
+      .filter(Boolean)
+      .map((type) => {
+        const option = ASSET_TYPE_OPTIONS.find((opt) => opt.key === type);
+
+        return option || { key: type, label: type };
+      });
+  }, [searchParams]);
+
+  // Handle data type filter change
+  const handleDataTypeChange = useCallback(
+    (values: SearchDropdownOption[]) => {
+      const newParams = new URLSearchParams(searchParams);
+      if (values.length > 0) {
+        // For dataType, we only allow single selection
+        newParams.set('dataType', values[0].key);
+      } else {
+        newParams.delete('dataType');
       }
-    };
+      newParams.delete('page'); // Reset to page 1
+      setSearchParams(newParams);
+    },
+    [searchParams, setSearchParams]
+  );
 
-    // Initial measurement
-    updateWidth();
+  // Handle metadata status filter change
+  const handleMetadataStatusChange = useCallback(
+    (values: SearchDropdownOption[]) => {
+      const newParams = new URLSearchParams(searchParams);
+      if (values.length > 0) {
+        const statusValues = values.map((v) => v.key).join(',');
+        newParams.set('metadataStatus', statusValues);
+      } else {
+        newParams.delete('metadataStatus');
+      }
+      newParams.delete('page'); // Reset to page 1
+      setSearchParams(newParams);
+    },
+    [searchParams, setSearchParams]
+  );
 
-    // Use ResizeObserver to track size changes
-    const resizeObserver = new ResizeObserver(updateWidth);
-    resizeObserver.observe(gridWrapper);
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, []);
+  const handleAssetTypeChange = useCallback(
+    (values: SearchDropdownOption[]) => {
+      const newParams = new URLSearchParams(searchParams);
+      if (values.length > 0) {
+        const assetTypeValues = values.map((v) => v.key).join(',');
+        newParams.set(EntityFields.ENTITY_TYPE, assetTypeValues);
+      } else {
+        newParams.delete(EntityFields.ENTITY_TYPE);
+      }
+      newParams.delete('page'); // Reset to page 1
+      setSearchParams(newParams);
+    },
+    [searchParams, setSearchParams]
+  );
 
   // Helper function to build path from occurrence
   const buildPath = (occurrence: ColumnOccurrenceRef): string => {
@@ -217,7 +268,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   const createStructChildRows = (
     children: ColumnChild[],
     parentRowId: string,
-    nestingLevel: number
+    nestingLevel: number,
+    expandedStructRows: Set<string>
   ): ColumnGridRowData[] => {
     const rows: ColumnGridRowData[] = [];
     for (const child of children) {
@@ -246,7 +298,12 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       // Recursively add nested children if expanded
       if (isStructExpanded && hasChildren && child.children) {
         rows.push(
-          ...createStructChildRows(child.children, childId, nestingLevel + 1)
+          ...createStructChildRows(
+            child.children,
+            childId,
+            nestingLevel + 1,
+            expandedStructRows
+          )
         );
       }
     }
@@ -254,63 +311,15 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     return rows;
   };
 
-  const handleQuickFilterChange = useCallback((value: string) => {
-    setGridState((prev) => ({
-      ...prev,
-      quickFilter: value,
-    }));
-  }, []);
+  // Helper functions for transform
 
-  const filteredRows = useMemo(() => {
-    let filtered = allRows;
-
-    // If viewing selected only, filter to selected rows and their children
-    if (gridState.viewSelectedOnly) {
-      filtered = filtered.filter((row) => {
-        if (row.parentId) {
-          return gridState.selectedRows.has(row.parentId);
-        }
-
-        return gridState.selectedRows.has(row.id);
-      });
-    }
-
-    if (gridState.quickFilter) {
-      const searchLower = gridState.quickFilter.toLowerCase();
-      filtered = filtered.filter(
-        (row) =>
-          row.columnName?.toLowerCase().includes(searchLower) ||
-          row.displayName?.toLowerCase().includes(searchLower) ||
-          row.description?.toLowerCase().includes(searchLower) ||
-          row.dataType?.toLowerCase().includes(searchLower)
-      );
-    }
-
-    // Sort alphabetically by column name, keeping parent-child relationships intact
-    const parentRows = filtered.filter((row) => !row.parentId);
-    const childRows = filtered.filter((row) => row.parentId);
-
-    parentRows.sort((a, b) => a.columnName.localeCompare(b.columnName));
-
-    const sorted: ColumnGridRowData[] = [];
-    for (const parent of parentRows) {
-      sorted.push(parent);
-      const children = childRows.filter(
-        (child) => child.parentId === parent.id
-      );
-      sorted.push(...children);
-    }
-
-    return sorted;
-  }, [
-    allRows,
-    gridState.quickFilter,
-    gridState.viewSelectedOnly,
-    gridState.selectedRows,
-  ]);
-
+  // Transform function that will be used by the hook
   const transformGridItemsToRows = useCallback(
-    (items: ColumnGridItem[]): ColumnGridRowData[] => {
+    (
+      items: ColumnGridItem[],
+      expandedRows: Set<string>,
+      expandedStructRows: Set<string>
+    ): ColumnGridRowData[] => {
       const rows: ColumnGridRowData[] = [];
 
       for (const item of items) {
@@ -372,7 +381,12 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
               // Add STRUCT children if expanded
               if (isStructExpanded && hasStructChildren && group.children) {
                 rows.push(
-                  ...createStructChildRows(group.children, childRowId, 1)
+                  ...createStructChildRows(
+                    group.children,
+                    childRowId,
+                    1,
+                    expandedStructRows
+                  )
                 );
               }
             }
@@ -408,7 +422,12 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           // Add STRUCT children if expanded (for the parent row before occurrence rows)
           if (isStructExpanded && hasStructChildren && group?.children) {
             rows.push(
-              ...createStructChildRows(group.children, item.columnName, 1)
+              ...createStructChildRows(
+                group.children,
+                item.columnName,
+                1,
+                expandedStructRows
+              )
             );
           }
 
@@ -464,7 +483,12 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           // Add STRUCT children if expanded
           if (isStructExpanded && hasStructChildren && group?.children) {
             rows.push(
-              ...createStructChildRows(group.children, item.columnName, 1)
+              ...createStructChildRows(
+                group.children,
+                item.columnName,
+                1,
+                expandedStructRows
+              )
             );
           }
         }
@@ -472,285 +496,27 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
       return rows;
     },
-    [expandedRows, expandedStructRows]
-  );
-
-  const loadMoreData = useCallback(
-    async (cursor?: string) => {
-      // Cancel any pending request
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-      abortControllerRef.current = new AbortController();
-
-      setGridState((prev) => ({ ...prev, loading: true, error: undefined }));
-
-      try {
-        const response = await getColumnGrid({
-          size: PAGE_SIZE,
-          cursor,
-          ...serverFilters,
-        });
-
-        // Check if request was aborted
-        if (abortControllerRef.current?.signal.aborted) {
-          return;
-        }
-
-        setGridItems((prev) =>
-          cursor ? [...prev, ...response.columns] : response.columns
-        );
-
-        setGridState((prev) => ({
-          ...prev,
-          cursor: response.cursor,
-          hasMore: !!response.cursor,
-          totalUniqueColumns: response.totalUniqueColumns,
-          totalOccurrences: response.totalOccurrences,
-          loading: false,
-        }));
-      } catch (error) {
-        // Ignore abort errors
-        if (error instanceof Error && error.name === 'AbortError') {
-          return;
-        }
-        const message = t('server.entity-fetch-error', {
-          entity: t('label.column-plural'),
-        });
-        showErrorToast(message);
-        setGridState((prev) => ({
-          ...prev,
-          loading: false,
-          error: message,
-        }));
-      }
-    },
-    [serverFilters, t]
-  );
-
-  // Debounced server filter update to prevent rapid API calls
-  const debouncedSetServerFilters = useMemo(
-    () =>
-      debounce((newFilters: ColumnGridFilters) => {
-        setServerFilters(newFilters);
-      }, 300),
     []
   );
 
-  useEffect(() => {
-    setGridItems([]);
-    setGridState((prev) => ({
-      ...prev,
-      cursor: undefined,
-      hasMore: false,
-    }));
-    loadMoreData();
-
-    // Cleanup on unmount
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, [serverFilters, loadMoreData]);
-
-  useEffect(() => {
-    const transformedRows = transformGridItemsToRows(gridItems);
-
-    setAllRows((prevRows) => {
-      const editedRowsMap = new Map(
-        prevRows
-          .filter(
-            (r) =>
-              r.editedDisplayName !== undefined ||
-              r.editedDescription !== undefined ||
-              r.editedTags !== undefined
-          )
-          .map((r) => [
-            r.id,
-            {
-              editedDisplayName: r.editedDisplayName,
-              editedDescription: r.editedDescription,
-              editedTags: r.editedTags,
-            },
-          ])
-      );
-
-      return transformedRows.map((row) => {
-        const edits = editedRowsMap.get(row.id);
-        if (edits) {
-          return { ...row, ...edits };
-        }
-
-        return row;
-      });
-    });
-  }, [gridItems, expandedRows, expandedStructRows, transformGridItemsToRows]);
-
-  useEffect(() => {
-    const gridWrapper = gridWrapperRef.current;
-    if (!gridWrapper) {
-      return;
-    }
-
-    const setupScrollListener = () => {
-      // React-data-grid uses the .rdg element itself as the scroll container
-      const rdgElement = gridWrapper.querySelector('.rdg') as HTMLElement;
-      if (!rdgElement) {
-        return null;
-      }
-
-      const handleScrollEvent = () => {
-        const { scrollTop, scrollHeight, clientHeight } = rdgElement;
-        const scrollThreshold = scrollHeight - clientHeight - 150;
-
-        if (
-          scrollTop >= scrollThreshold &&
-          !gridState.loading &&
-          gridState.hasMore &&
-          gridState.cursor
-        ) {
-          loadMoreData(gridState.cursor);
-        }
-      };
-
-      rdgElement.addEventListener('scroll', handleScrollEvent);
-
-      return () => {
-        rdgElement.removeEventListener('scroll', handleScrollEvent);
-      };
-    };
-
-    // Try to set up immediately
-    let cleanup = setupScrollListener();
-
-    // If element not found, wait a bit and try again
-    if (!cleanup) {
-      const timeoutId = setTimeout(() => {
-        cleanup = setupScrollListener();
-      }, 100);
-
-      return () => {
-        clearTimeout(timeoutId);
-        cleanup?.();
-      };
-    }
-
-    return cleanup;
-  }, [
-    gridState.loading,
-    gridState.hasMore,
-    gridState.cursor,
-    loadMoreData,
-    filteredRows.length,
-  ]);
-
-  const toggleRowExpansion = useCallback((rowId: string) => {
-    setExpandedRows((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(rowId)) {
-        newSet.delete(rowId);
-      } else {
-        newSet.add(rowId);
-      }
-
-      return newSet;
-    });
-  }, []);
-
-  const toggleStructExpansion = useCallback((rowId: string) => {
-    setExpandedStructRows((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(rowId)) {
-        newSet.delete(rowId);
-      } else {
-        newSet.add(rowId);
-      }
-
-      return newSet;
-    });
-  }, []);
-
-  const toggleRowSelection = useCallback((rowId: string) => {
-    setGridState((prev) => {
-      const newSelected = new Set(prev.selectedRows);
-      if (newSelected.has(rowId)) {
-        newSelected.delete(rowId);
-      } else {
-        newSelected.add(rowId);
-      }
-
-      return { ...prev, selectedRows: newSelected };
-    });
-  }, []);
-
-  const toggleSelectAll = useCallback(() => {
-    setGridState((prev) => {
-      const selectableRows = filteredRows.filter((r) => !r.parentId);
-      const allSelected = selectableRows.every((r) =>
-        prev.selectedRows.has(r.id)
-      );
-
-      if (allSelected) {
-        return { ...prev, selectedRows: new Set() };
-      } else {
-        const newSelected = new Set(selectableRows.map((r) => r.id));
-
-        return { ...prev, selectedRows: newSelected };
-      }
-    });
-  }, [filteredRows]);
-
-  const clearSelection = useCallback(() => {
-    setGridState((prev) => ({
-      ...prev,
-      selectedRows: new Set(),
-      viewSelectedOnly: false,
-    }));
-  }, []);
-
-  const toggleViewSelectedOnly = useCallback((checked: boolean) => {
-    setGridState((prev) => ({
-      ...prev,
-      viewSelectedOnly: checked,
-    }));
-  }, []);
-
-  const updateRowField = useCallback(
-    (
-      rowId: string,
-      field: 'displayName' | 'description' | 'tags',
-      value: string | TagLabel[]
-    ) => {
-      const fieldName = `edited${field.charAt(0).toUpperCase()}${field.slice(
-        1
-      )}`;
-
-      setAllRows((prev) => {
-        const updated = prev.map((row) =>
-          row.id === rowId
-            ? {
-                ...row,
-                [fieldName]: value,
-              }
-            : row
-        );
-
-        return updated;
-      });
-
-      setGridState((prev) => {
-        const newSelectedRows = new Set(prev.selectedRows);
-        newSelectedRows.add(rowId);
-
-        return { ...prev, selectedRows: newSelectedRows };
-      });
-
-      setRenderVersion((v) => v + 1);
-    },
+  // Define columns inline (similar to DomainListPage pattern)
+  const columns: ColumnConfig<ColumnGridRowData>[] = useMemo(
+    () => [
+      { key: 'columnName', labelKey: 'label.column-name', render: 'custom' },
+      { key: 'path', labelKey: 'label.path', render: 'custom' },
+      { key: 'description', labelKey: 'label.description', render: 'custom' },
+      { key: 'dataType', labelKey: 'label.data-type', render: 'text' },
+      { key: 'tags', labelKey: 'label.tag-plural', render: 'custom' },
+      {
+        key: 'glossaryTerms',
+        labelKey: 'label.glossary-term-plural',
+        render: 'custom',
+      },
+    ],
     []
   );
 
+  // Get column link function - defined before use
   const getColumnLink = useCallback((row: ColumnGridRowData) => {
     let occurrence = null;
 
@@ -764,7 +530,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       occurrence = row.gridItem.groups[0].occurrences[0];
     }
 
-    if (!occurrence) {
+    if (!occurrence || !occurrence.columnFQN) {
       return null;
     }
 
@@ -803,182 +569,58 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         tab = EntityTabs.SCHEMA;
     }
 
+    // Extract table FQN from column FQN
+    const tableFQN = getTableFQNFromColumnFQN(occurrence.columnFQN);
+
+    // Extract column name from column FQN (last part after table)
     const columnName = occurrence.columnFQN.split('.').pop() || '';
 
-    return getEntityDetailsPath(
+    // Build path with column name as hash fragment
+    const basePath = getEntityDetailsPath(
       entityType,
-      occurrence.entityFQN,
-      tab,
-      columnName
+      tableFQN || occurrence.entityFQN,
+      tab
+    );
+
+    // Add column name as hash fragment for schema tab navigation
+    return columnName
+      ? `${basePath}#${encodeURIComponent(columnName)}`
+      : basePath;
+  }, []);
+
+  // Define render functions with correct CellRenderer signature
+  const renderPathCellAdapter = useCallback((entity: ColumnGridRowData) => {
+    if (!entity.path) {
+      return <Text type="secondary">-</Text>;
+    }
+
+    return (
+      <Box className="path-cell">
+        <Text className="path-text">{entity.path}</Text>
+        {entity.additionalPathsCount && entity.additionalPathsCount > 0 && (
+          <Text className="path-more" type="secondary">
+            +{entity.additionalPathsCount} more
+          </Text>
+        )}
+      </Box>
     );
   }, []);
 
-  const renderColumnNameCell = useCallback(
-    (props: RenderCellProps<ColumnGridRowData>) => {
-      const { row } = props;
-      const link = getColumnLink(row);
-      const hasStructChildren = row.children && row.children.length > 0;
-      const isStructType =
-        row.dataType?.toUpperCase() === 'STRUCT' ||
-        row.dataType?.toUpperCase() === 'MAP' ||
-        row.dataType?.toUpperCase() === 'UNION' ||
-        hasStructChildren;
-
-      // STRUCT child rows - show with proper indentation
-      if (row.isStructChild) {
-        const nestingLevel = row.nestingLevel || 1;
-        const indentStyle = { paddingLeft: `${nestingLevel * 20}px` };
-        const structExpandButton =
-          row.children && row.children.length > 0 ? (
-            <Button
-              className="expand-button"
-              icon={row.isExpanded ? <DownOutlined /> : <RightOutlined />}
-              size="small"
-              type="text"
-              onClick={() => toggleStructExpansion(row.id)}
-            />
-          ) : null;
-
-        return (
-          <div
-            className="column-name-cell struct-child-row"
-            style={indentStyle}>
-            {structExpandButton}
-            <Text type="secondary">{row.columnName}</Text>
-          </div>
-        );
-      }
-
-      if (row.isGroup && row.occurrenceCount > 1) {
-        const expandButton = (
-          <Button
-            className="expand-button"
-            icon={row.isExpanded ? <DownOutlined /> : <RightOutlined />}
-            size="small"
-            type="text"
-            onClick={() => toggleRowExpansion(row.id)}
-          />
-        );
-
-        const nameWithCount = `${row.columnName} (${row.occurrenceCount})`;
-
-        // Also show STRUCT expansion button if applicable
-        const structButton = isStructType ? (
-          <Button
-            className="expand-button struct-expand"
-            icon={
-              expandedStructRows.has(row.id) ? (
-                <DownOutlined />
-              ) : (
-                <RightOutlined />
-              )
-            }
-            size="small"
-            title="Expand nested fields"
-            type="text"
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleStructExpansion(row.id);
-            }}
-          />
-        ) : null;
-
-        return (
-          <div className="column-name-cell">
-            {expandButton}
-            {link ? (
-              <Link className="column-link" to={link}>
-                {nameWithCount}
-              </Link>
-            ) : (
-              <Text strong>{nameWithCount}</Text>
-            )}
-            {structButton}
-          </div>
-        );
-      }
-
-      // Child row or single occurrence
-      const indent = row.parentId ? 'child-row' : '';
-
-      // Show STRUCT expansion button for single occurrence STRUCT columns
-      const structExpandButton =
-        isStructType && !row.parentId ? (
-          <Button
-            className="expand-button"
-            icon={row.isExpanded ? <DownOutlined /> : <RightOutlined />}
-            size="small"
-            title="Expand nested fields"
-            type="text"
-            onClick={() => toggleStructExpansion(row.id)}
-          />
-        ) : null;
-
-      const content = (
-        <span className={indent}>
-          {link ? (
-            <Link className="column-link" to={link}>
-              {row.columnName}
-            </Link>
-          ) : (
-            row.columnName
-          )}
-        </span>
-      );
-
-      return (
-        <div className="column-name-cell">
-          {structExpandButton}
-          {content}
-        </div>
-      );
-    },
-    [
-      getColumnLink,
-      toggleRowExpansion,
-      toggleStructExpansion,
-      expandedStructRows,
-    ]
-  );
-
-  const renderPathCell = useCallback(
-    (props: RenderCellProps<ColumnGridRowData>) => {
-      const { row } = props;
-
-      if (!row.path) {
-        return <Text type="secondary">-</Text>;
-      }
-
-      return (
-        <div className="path-cell">
-          <Text className="path-text">{row.path}</Text>
-          {row.additionalPathsCount && row.additionalPathsCount > 0 && (
-            <Text className="path-more" type="secondary">
-              +{row.additionalPathsCount} more
-            </Text>
-          )}
-        </div>
-      );
-    },
-    []
-  );
-
-  const renderDescriptionCell = useCallback(
-    (props: RenderCellProps<ColumnGridRowData>) => {
-      const { row } = props;
-      const description = row.editedDescription ?? row.description ?? '';
-      const hasEdit = row.editedDescription !== undefined;
+  const renderDescriptionCellAdapter = useCallback(
+    (entity: ColumnGridRowData) => {
+      const description = entity.editedDescription ?? entity.description ?? '';
+      const hasEdit = entity.editedDescription !== undefined;
 
       // Show coverage status for parent rows
       if (
-        row.hasCoverage &&
-        row.coverageCount !== undefined &&
-        row.totalCount !== undefined
+        entity.hasCoverage &&
+        entity.coverageCount !== undefined &&
+        entity.totalCount !== undefined
       ) {
-        const isFull = row.coverageCount === row.totalCount;
+        const isFull = entity.coverageCount === entity.totalCount;
         const coverageText = isFull
-          ? `Full Coverage (${row.coverageCount}/${row.totalCount})`
-          : `Partial Coverage (${row.coverageCount}/${row.totalCount})`;
+          ? `Full Coverage (${entity.coverageCount}/${entity.totalCount})`
+          : `Partial Coverage (${entity.coverageCount}/${entity.totalCount})`;
 
         return (
           <Text className={isFull ? 'coverage-full' : 'coverage-partial'}>
@@ -991,56 +633,53 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       const displayValue = description.replace(/<[^>]*>/g, '').slice(0, 100);
 
       return (
-        <div className={`description-cell ${hasEdit ? 'has-edit' : ''}`}>
+        <Box className={`description-cell ${hasEdit ? 'has-edit' : ''}`}>
           <Text ellipsis>{displayValue || '-'}</Text>
-        </div>
+        </Box>
       );
     },
     []
   );
 
-  const renderTagsCell = useCallback(
-    (props: RenderCellProps<ColumnGridRowData>) => {
-      const { row } = props;
-      const currentTags = row.editedTags ?? row.tags ?? [];
-      const classificationTags = currentTags.filter(
-        (tag) => tag.source !== TagSource.Glossary
-      );
+  const renderTagsCellAdapter = useCallback((entity: ColumnGridRowData) => {
+    const currentTags = entity.editedTags ?? entity.tags ?? [];
+    const classificationTags = currentTags.filter(
+      (tag: TagLabel) => tag.source !== TagSource.Glossary
+    );
 
-      if (classificationTags.length === 0) {
-        return <Text type="secondary">-</Text>;
-      }
+    if (classificationTags.length === 0) {
+      return <Text type="secondary">-</Text>;
+    }
 
-      const visibleTags = classificationTags.slice(0, 2);
-      const remainingCount = classificationTags.length - 2;
+    const visibleTags = classificationTags.slice(0, 2);
+    const remainingCount = classificationTags.length - 2;
 
-      return (
-        <div className="tags-cell">
-          {visibleTags.map((tag: TagLabel, index: number) => (
-            <Tag
-              className={`grid-tag ${
-                index === 0 ? 'grid-tag-primary' : 'grid-tag-secondary'
-              }`}
-              key={tag.tagFQN}>
-              {index === 0 && <TagIcon className="tag-icon" />}
-              {tag.name || tag.tagFQN.split('.').pop()}
-            </Tag>
-          ))}
-          {remainingCount > 0 && (
-            <span className="grid-tag-count">+{remainingCount}</span>
-          )}
-        </div>
-      );
-    },
-    []
-  );
+    return (
+      <Box className="tags-cell">
+        {visibleTags.map((tag: TagLabel, index: number) => (
+          <Tag
+            className={`grid-tag ${
+              index === 0 ? 'grid-tag-primary' : 'grid-tag-secondary'
+            }`}
+            key={tag.tagFQN}>
+            {index === 0 && (
+              <TagIcon className="tag-icon" height={12} width={12} />
+            )}
+            {tag.name || tag.tagFQN.split('.').pop()}
+          </Tag>
+        ))}
+        {remainingCount > 0 && (
+          <span className="grid-tag-count">+{remainingCount}</span>
+        )}
+      </Box>
+    );
+  }, []);
 
-  const renderGlossaryTermsCell = useCallback(
-    (props: RenderCellProps<ColumnGridRowData>) => {
-      const { row } = props;
-      const currentTags = row.editedTags ?? row.tags ?? [];
+  const renderGlossaryTermsCellAdapter = useCallback(
+    (entity: ColumnGridRowData) => {
+      const currentTags = entity.editedTags ?? entity.tags ?? [];
       const glossaryTerms = currentTags.filter(
-        (tag) => tag.source === TagSource.Glossary
+        (tag: TagLabel) => tag.source === TagSource.Glossary
       );
 
       if (glossaryTerms.length === 0) {
@@ -1051,7 +690,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       const remainingCount = glossaryTerms.length - 1;
 
       return (
-        <div className="tags-cell">
+        <Box className="tags-cell">
           {visibleTerms.map((tag: TagLabel) => (
             <Tag className="glossary-tag" key={tag.tagFQN}>
               {tag.name || tag.tagFQN.split('.').pop()}
@@ -1060,49 +699,257 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           {remainingCount > 0 && (
             <span className="grid-tag-count">+{remainingCount}</span>
           )}
-        </div>
+        </Box>
       );
     },
     []
   );
 
-  const renderCheckboxCell = useCallback(
-    (props: RenderCellProps<ColumnGridRowData>) => {
-      const { row } = props;
-      // Show checkbox for both parent and child rows
-      const isSelected = row.parentId
-        ? gridState.selectedRows.has(row.parentId) ||
-          gridState.selectedRows.has(row.id)
-        : gridState.selectedRows.has(row.id);
-
-      return (
-        <Checkbox
-          checked={isSelected}
-          className={row.parentId ? 'child-checkbox' : ''}
-          onChange={() => toggleRowSelection(row.parentId || row.id)}
-        />
-      );
-    },
-    [gridState.selectedRows, toggleRowSelection]
+  // Define initial renderers (columnName will be set up after listing data)
+  const initialRenderers: CellRenderer<ColumnGridRowData> = useMemo(
+    () => ({
+      columnName: () => null, // Will be set up after listing data
+      path: renderPathCellAdapter,
+      description: renderDescriptionCellAdapter,
+      tags: renderTagsCellAdapter,
+      glossaryTerms: renderGlossaryTermsCellAdapter,
+    }),
+    [
+      renderPathCellAdapter,
+      renderDescriptionCellAdapter,
+      renderTagsCellAdapter,
+      renderGlossaryTermsCellAdapter,
+    ]
   );
 
-  const renderCheckboxHeader = useCallback(() => {
-    const selectableRows = filteredRows.filter((r) => !r.parentId);
-    const allSelected =
-      selectableRows.length > 0 &&
-      selectableRows.every((r) => gridState.selectedRows.has(r.id));
-    const someSelected =
-      selectableRows.some((r) => gridState.selectedRows.has(r.id)) &&
-      !allSelected;
+  // Set up listing data hook
+  const columnGridListing = useColumnGridListingData({
+    externalFilters,
+    transformGridItemsToRows,
+    columns,
+    renderers: initialRenderers,
+  });
 
-    return (
-      <Checkbox
-        checked={allSelected}
-        indeterminate={someSelected}
-        onChange={toggleSelectAll}
-      />
-    );
-  }, [filteredRows, gridState.selectedRows, toggleSelectAll]);
+  // Update render functions to use listing data state (with correct CellRenderer signature)
+  const renderColumnNameCellFinal = useCallback(
+    (entity: ColumnGridRowData) => {
+      const link = getColumnLink(entity);
+      const hasStructChildren = entity.children && entity.children.length > 0;
+      const isStructType =
+        entity.dataType?.toUpperCase() === 'STRUCT' ||
+        entity.dataType?.toUpperCase() === 'MAP' ||
+        entity.dataType?.toUpperCase() === 'UNION' ||
+        hasStructChildren;
+
+      // STRUCT child rows - show with proper indentation
+      if (entity.isStructChild) {
+        const nestingLevel = entity.nestingLevel || 1;
+        const indentStyle = { paddingLeft: `${nestingLevel * 20}px` };
+        const structExpandButton =
+          entity.children && entity.children.length > 0 ? (
+            <Button
+              className="expand-button"
+              icon={entity.isExpanded ? <DownOutlined /> : <RightOutlined />}
+              size="small"
+              type="text"
+              onClick={() => {
+                columnGridListing.setExpandedStructRows((prev: Set<string>) => {
+                  const newSet = new Set(prev);
+                  if (newSet.has(entity.id)) {
+                    newSet.delete(entity.id);
+                  } else {
+                    newSet.add(entity.id);
+                  }
+
+                  return newSet;
+                });
+              }}
+            />
+          ) : null;
+
+        return (
+          <Box className="column-name-cell struct-child-row" sx={indentStyle}>
+            {structExpandButton}
+            <Text type="secondary">{entity.columnName}</Text>
+          </Box>
+        );
+      }
+
+      if (entity.isGroup && entity.occurrenceCount > 1) {
+        const expandButton = (
+          <Button
+            className="expand-button"
+            icon={entity.isExpanded ? <DownOutlined /> : <RightOutlined />}
+            size="small"
+            type="text"
+            onClick={() => {
+              columnGridListing.setExpandedRows((prev: Set<string>) => {
+                const newSet = new Set(prev);
+                if (newSet.has(entity.id)) {
+                  newSet.delete(entity.id);
+                } else {
+                  newSet.add(entity.id);
+                }
+
+                return newSet;
+              });
+            }}
+          />
+        );
+
+        const nameWithCount = `${entity.columnName} (${entity.occurrenceCount})`;
+
+        // Also show STRUCT expansion button if applicable
+        const structButton = isStructType ? (
+          <Button
+            className="expand-button struct-expand"
+            icon={
+              columnGridListing.expandedStructRows.has(entity.id) ? (
+                <DownOutlined />
+              ) : (
+                <RightOutlined />
+              )
+            }
+            size="small"
+            title="Expand nested fields"
+            type="text"
+            onClick={(e) => {
+              e.stopPropagation();
+              columnGridListing.setExpandedStructRows((prev: Set<string>) => {
+                const newSet = new Set(prev);
+                if (newSet.has(entity.id)) {
+                  newSet.delete(entity.id);
+                } else {
+                  newSet.add(entity.id);
+                }
+
+                return newSet;
+              });
+            }}
+          />
+        ) : null;
+
+        return (
+          <Box className="column-name-cell">
+            {expandButton}
+            {link ? (
+              <Link className="column-link" to={link}>
+                {nameWithCount}
+              </Link>
+            ) : (
+              <Text strong>{nameWithCount}</Text>
+            )}
+            {structButton}
+          </Box>
+        );
+      }
+
+      // Child row or single occurrence
+      const indent = entity.parentId ? 'child-row' : '';
+
+      // Show STRUCT expansion button for single occurrence STRUCT columns
+      const structExpandButton =
+        isStructType && !entity.parentId ? (
+          <Button
+            className="expand-button"
+            icon={entity.isExpanded ? <DownOutlined /> : <RightOutlined />}
+            size="small"
+            title="Expand nested fields"
+            type="text"
+            onClick={() => {
+              columnGridListing.setExpandedStructRows((prev: Set<string>) => {
+                const newSet = new Set(prev);
+                if (newSet.has(entity.id)) {
+                  newSet.delete(entity.id);
+                } else {
+                  newSet.add(entity.id);
+                }
+
+                return newSet;
+              });
+            }}
+          />
+        ) : null;
+
+      const content = (
+        <span className={indent}>
+          {link ? (
+            <Link className="column-link" to={link}>
+              {entity.columnName}
+            </Link>
+          ) : (
+            entity.columnName
+          )}
+        </span>
+      );
+
+      return (
+        <Box className="column-name-cell">
+          {structExpandButton}
+          {content}
+        </Box>
+      );
+    },
+    [
+      getColumnLink,
+      columnGridListing.expandedStructRows,
+      columnGridListing.setExpandedRows,
+      columnGridListing.setExpandedStructRows,
+    ]
+  );
+
+  // Update renderers with final functions
+  const finalRenderers: CellRenderer<ColumnGridRowData> = useMemo(
+    () => ({
+      columnName: renderColumnNameCellFinal,
+      path: renderPathCellAdapter,
+      description: renderDescriptionCellAdapter,
+      tags: renderTagsCellAdapter,
+      glossaryTerms: renderGlossaryTermsCellAdapter,
+    }),
+    [
+      renderColumnNameCellFinal,
+      renderPathCellAdapter,
+      renderDescriptionCellAdapter,
+      renderTagsCellAdapter,
+      renderGlossaryTermsCellAdapter,
+    ]
+  );
+
+  // Selection and expansion handled by listing data hook
+
+  const updateRowField = useCallback(
+    (
+      rowId: string,
+      field: 'displayName' | 'description' | 'tags',
+      value: string | TagLabel[]
+    ) => {
+      const fieldName = `edited${field.charAt(0).toUpperCase()}${field.slice(
+        1
+      )}`;
+
+      columnGridListing.setAllRows((prev: ColumnGridRowData[]) => {
+        const updated = prev.map((row: ColumnGridRowData) =>
+          row.id === rowId
+            ? {
+                ...row,
+                [fieldName]: value,
+              }
+            : row
+        );
+
+        return updated;
+      });
+
+      // Ensure row is selected
+      if (!columnGridListing.isSelected(rowId)) {
+        columnGridListing.handleSelect(rowId, true);
+      }
+    },
+    [columnGridListing]
+  );
+
+  // Checkbox rendering now handled directly in TableRow - no separate renderers needed
 
   const openEditDrawer = useCallback(() => {
     setEditDrawer({
@@ -1118,134 +965,13 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     });
   }, []);
 
-  const columns: readonly Column<ColumnGridRowData>[] = useMemo(() => {
-    // Fixed widths for checkbox and minimum column widths
-    const checkboxWidth = 50;
-    const minColumnName = 150;
-    const minPath = 180;
-    const minDescription = 150;
-    const minDataType = 100;
-    const minTags = 140;
-    const minGlossary = 140;
-
-    // Total minimum width
-    const totalMinWidth =
-      checkboxWidth +
-      minColumnName +
-      minPath +
-      minDescription +
-      minDataType +
-      minTags +
-      minGlossary;
-
-    // Available width for distribution (subtract some padding)
-    const availableWidth = Math.max(containerWidth - 20, totalMinWidth);
-
-    // Calculate proportional widths based on ratios
-    const flexibleWidth = availableWidth - checkboxWidth;
-    const columnNameWidth = Math.max(
-      minColumnName,
-      Math.floor(flexibleWidth * 0.15)
-    );
-    const pathWidth = Math.max(minPath, Math.floor(flexibleWidth * 0.2));
-    const descriptionWidth = Math.max(
-      minDescription,
-      Math.floor(flexibleWidth * 0.2)
-    );
-    const dataTypeWidth = Math.max(
-      minDataType,
-      Math.floor(flexibleWidth * 0.1)
-    );
-    const tagsWidth = Math.max(minTags, Math.floor(flexibleWidth * 0.17));
-    const glossaryWidth = Math.max(
-      minGlossary,
-      flexibleWidth -
-        columnNameWidth -
-        pathWidth -
-        descriptionWidth -
-        dataTypeWidth -
-        tagsWidth
-    );
-
-    return [
-      {
-        key: 'select',
-        name: '',
-        width: checkboxWidth,
-        minWidth: checkboxWidth,
-        maxWidth: checkboxWidth,
-        frozen: true,
-        renderCell: renderCheckboxCell,
-        renderHeaderCell: renderCheckboxHeader,
-      },
-      {
-        key: 'columnName',
-        name: t('label.column-name'),
-        width: columnNameWidth,
-        minWidth: minColumnName,
-        resizable: true,
-        renderCell: renderColumnNameCell,
-      },
-      {
-        key: 'path',
-        name: t('label.path'),
-        width: pathWidth,
-        minWidth: minPath,
-        resizable: true,
-        renderCell: renderPathCell,
-      },
-      {
-        key: 'description',
-        name: t('label.description'),
-        width: descriptionWidth,
-        minWidth: minDescription,
-        resizable: true,
-        renderCell: renderDescriptionCell,
-      },
-      {
-        key: 'dataType',
-        name: t('label.data-type'),
-        width: dataTypeWidth,
-        minWidth: minDataType,
-        resizable: true,
-        renderCell: (props) => props.row.dataType || '-',
-      },
-      {
-        key: 'tags',
-        name: t('label.tag-plural'),
-        width: tagsWidth,
-        minWidth: minTags,
-        resizable: true,
-        renderCell: renderTagsCell,
-      },
-      {
-        key: 'glossaryTerms',
-        name: t('label.glossary-term-plural'),
-        width: glossaryWidth,
-        minWidth: minGlossary,
-        resizable: true,
-        renderCell: renderGlossaryTermsCell,
-      },
-    ];
-  }, [
-    t,
-    containerWidth,
-    renderCheckboxCell,
-    renderCheckboxHeader,
-    renderColumnNameCell,
-    renderPathCell,
-    renderDescriptionCell,
-    renderTagsCell,
-    renderGlossaryTermsCell,
-  ]);
-
   const handleBulkUpdate = useCallback(async () => {
-    const selectedRowsData = allRows.filter((r) =>
-      gridState.selectedRows.has(r.id)
+    const selectedRowsData = columnGridListing.allRows.filter(
+      (r: ColumnGridRowData) => columnGridListing.isSelected(r.id)
     );
 
     const updatesCount = selectedRowsData.filter(
-      (r) =>
+      (r: ColumnGridRowData) =>
         r.editedDisplayName !== undefined ||
         r.editedDescription !== undefined ||
         r.editedTags !== undefined
@@ -1339,15 +1065,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         columnUpdates: cleanedUpdates,
       };
 
-      // Log the request for debugging
-      // eslint-disable-next-line no-console
-      console.log('Bulk update request:', JSON.stringify(request, null, 2));
-
-      const response = await bulkUpdateColumnsAsync(request);
-
-      // Log the response for debugging
-      // eslint-disable-next-line no-console
-      console.log('Bulk update response:', response);
+      await bulkUpdateColumnsAsync(request);
 
       showSuccessToast(
         t('message.bulk-update-initiated', {
@@ -1358,16 +1076,12 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
       setIsUpdating(false);
       closeEditDrawer();
-      setGridState((prev) => ({
-        ...prev,
-        selectedRows: new Set(),
-        viewSelectedOnly: false,
-      }));
+      columnGridListing.clearSelection();
 
       // Clear edited state and refresh data from server after a delay
       // to allow the async backend operation to complete
-      setAllRows((prev) =>
-        prev.map((r) => ({
+      columnGridListing.setAllRows((prev: ColumnGridRowData[]) =>
+        prev.map((r: ColumnGridRowData) => ({
           ...r,
           editedDisplayName: undefined,
           editedDescription: undefined,
@@ -1377,208 +1091,356 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
       // Refresh grid data from server after backend processes updates
       setTimeout(() => {
-        setGridItems([]);
-        setExpandedRows(new Set());
-        loadMoreData();
+        columnGridListing.setGridItems([]);
+        columnGridListing.setExpandedRows(new Set());
+        columnGridListing.refetch();
       }, 2000);
     } catch (error) {
       showErrorToast(t('server.entity-updating-error'));
       setIsUpdating(false);
     }
-  }, [allRows, gridState.selectedRows, t, loadMoreData]);
+  }, [
+    columnGridListing.allRows,
+    columnGridListing.selectedEntities,
+    t,
+    columnGridListing.refetch,
+  ]);
+
+  // Set up filters
+  const { quickFilters, defaultFilters } = useColumnGridFilters({
+    aggregations: columnGridListing.aggregations || undefined,
+    parsedFilters: columnGridListing.parsedFilters,
+    onFilterChange: columnGridListing.handleFilterChange,
+  });
+
+  // Set up filter selection display
+  const { filterSelectionDisplay } = useFilterSelection({
+    urlState: columnGridListing.urlState,
+    filterConfigs: defaultFilters,
+    parsedFilters: columnGridListing.parsedFilters,
+    onFilterChange: columnGridListing.handleFilterChange,
+  });
+
+  // Set up search
+  const { search } = useSearch({
+    searchPlaceholder: t('label.search-columns'),
+    onSearchChange: columnGridListing.handleSearchChange,
+    initialSearchQuery: columnGridListing.urlState.searchQuery,
+  });
+
+  // Set up data table with custom row component
+  const CustomTableRow = useCallback(
+    (props: Record<string, unknown>) => {
+      const { entity, isSelected, onSelect, onEntityClick } = props as {
+        entity: ColumnGridRowData;
+        isSelected: boolean;
+        onSelect: (id: string, checked: boolean) => void;
+        onEntityClick: (entity: ColumnGridRowData) => void;
+      };
+
+      return (
+        <ColumnGridTableRow
+          entity={entity}
+          isSelected={isSelected}
+          renderColumnNameCell={renderColumnNameCellFinal}
+          renderDescriptionCell={renderDescriptionCellAdapter}
+          renderGlossaryTermsCell={renderGlossaryTermsCellAdapter}
+          renderPathCell={renderPathCellAdapter}
+          renderTagsCell={renderTagsCellAdapter}
+          onEntityClick={onEntityClick}
+          onSelect={onSelect}
+        />
+      );
+    },
+    [
+      renderColumnNameCellFinal,
+      renderPathCellAdapter,
+      renderDescriptionCellAdapter,
+      renderTagsCellAdapter,
+      renderGlossaryTermsCellAdapter,
+    ]
+  );
+
+  // Filter entities to show only selected ones when viewSelectedOnly is true
+  const filteredEntities = useMemo(() => {
+    if (viewSelectedOnly) {
+      const selectedIds = new Set(columnGridListing.selectedEntities);
+
+      return columnGridListing.entities.filter((entity) =>
+        selectedIds.has(entity.id)
+      );
+    }
+
+    return columnGridListing.entities;
+  }, [
+    viewSelectedOnly,
+    columnGridListing.entities,
+    columnGridListing.selectedEntities,
+  ]);
+
+  const { dataTable } = useDataTable({
+    listing: {
+      ...columnGridListing,
+      entities: filteredEntities,
+      columns,
+      renderers: finalRenderers,
+    },
+    enableSelection: true,
+    entityLabelKey: 'label.column',
+    customTableRow: CustomTableRow,
+  });
+
+  // Set up pagination with prev/next only mode
+  const { paginationControls } = usePaginationControls({
+    currentPage: columnGridListing.currentPage,
+    totalPages: columnGridListing.totalPages,
+    totalEntities: columnGridListing.totalEntities,
+    pageSize: columnGridListing.pageSize,
+    onPageChange: columnGridListing.handlePageChange,
+    prevNextOnly: true, // Only show prev/next buttons, no page numbers or page size selector
+  });
 
   const editedCount = useMemo(() => {
-    return allRows.filter(
-      (r) =>
+    return columnGridListing.allRows.filter(
+      (r: ColumnGridRowData) =>
         r.editedDisplayName !== undefined ||
         r.editedDescription !== undefined ||
         r.editedTags !== undefined
     ).length;
-  }, [allRows]);
+  }, [columnGridListing.allRows]);
 
-  const selectedCount = gridState.selectedRows.size;
+  const selectedCount = columnGridListing.selectedEntities.length;
   const hasSelection = selectedCount > 0;
+
+  // Automatically turn off "View Selected" when selection is cleared
+  useEffect(() => {
+    if (!hasSelection && viewSelectedOnly) {
+      setViewSelectedOnly(false);
+    }
+  }, [hasSelection, viewSelectedOnly]);
+
+  // Content similar to DomainListPage
+  const content = useMemo(() => {
+    // Show no data placeholder when no data and not loading
+    if (!columnGridListing.loading && isEmpty(filteredEntities)) {
+      return (
+        <ErrorPlaceHolder
+          className="border-none"
+          heading={t('message.no-data-message', {
+            entity: t('label.column-lowercase-plural'),
+          })}
+          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}
+        />
+      );
+    }
+
+    return (
+      <>
+        {dataTable}
+        {paginationControls}
+      </>
+    );
+  }, [
+    columnGridListing.loading,
+    filteredEntities,
+    dataTable,
+    paginationControls,
+    t,
+  ]);
 
   return (
     <div className="column-grid-container">
       {/* Summary Stats Cards */}
-      <div className="stats-row">
-        <div className="stat-card">
+      <Stack className="stats-row" direction="row" spacing={2}>
+        <Paper className="stat-card" elevation={0}>
           <UniqueColumnsIcon className="stat-icon" />
-          <div className="stat-content">
-            <div className="stat-value">
-              {gridState.totalUniqueColumns.toLocaleString()}
-            </div>
-            <div className="stat-label">{t('label.total-unique-columns')}</div>
-          </div>
-        </div>
-        <div className="stat-card">
+          <Box className="stat-content">
+            <Typography
+              color={theme.palette.grey[900]}
+              fontSize="18px"
+              fontWeight={600}>
+              {columnGridListing.totalUniqueColumns.toLocaleString()}
+            </Typography>
+            <Typography
+              color={theme.palette.grey[700]}
+              fontSize="14px"
+              fontWeight={400}>
+              {t('label.total-unique-columns')}
+            </Typography>
+          </Box>
+        </Paper>
+        <Paper className="stat-card" elevation={0}>
           <OccurrencesIcon className="stat-icon" />
-          <div className="stat-content">
-            <div className="stat-value">
-              {gridState.totalOccurrences.toLocaleString()}
-            </div>
-            <div className="stat-label">{t('label.total-occurrences')}</div>
-          </div>
-        </div>
-        <div className="stat-card">
+          <Box className="stat-content">
+            <Typography
+              color={theme.palette.grey[900]}
+              fontSize="18px"
+              fontWeight={600}>
+              {columnGridListing.totalOccurrences.toLocaleString()}
+            </Typography>
+            <Typography
+              color={theme.palette.grey[700]}
+              fontSize="14px"
+              fontWeight={400}>
+              {t('label.total-occurrences')}
+            </Typography>
+          </Box>
+        </Paper>
+        <Paper className="stat-card" elevation={0}>
           <PendingChangesIcon className="stat-icon" />
-          <div className="stat-content">
-            <div className="stat-value">
+          <Box className="stat-content">
+            <Typography
+              color={theme.palette.grey[900]}
+              fontSize="18px"
+              fontWeight={600}>
               {editedCount > 0
                 ? `${editedCount}/${selectedCount || editedCount}`
                 : '0'}
-            </div>
-            <div className="stat-label">{t('label.pending-changes')}</div>
-          </div>
-        </div>
-      </div>
+            </Typography>
+            <Typography
+              color={theme.palette.grey[700]}
+              fontSize="14px"
+              fontWeight={400}>
+              {t('label.pending-changes')}
+            </Typography>
+          </Box>
+        </Paper>
+      </Stack>
 
-      {/* Filter Bar */}
-      <div className="filter-bar">
-        <div className="filter-left">
-          <Input
-            allowClear
-            className="search-input"
-            placeholder={t('label.search-columns')}
-            prefix={<SearchOutlined className="search-icon" />}
-            value={gridState.quickFilter}
-            onChange={(e) => handleQuickFilterChange(e.target.value)}
-          />
-          <Select
-            allowClear
-            className="filter-dropdown"
-            dropdownMatchSelectWidth={false}
-            mode="multiple"
-            placeholder={t('label.asset-type')}
-            suffixIcon={<DownOutlined />}
-            value={serverFilters.entityTypes}
-            onChange={(value) =>
-              debouncedSetServerFilters({
-                ...serverFilters,
-                entityTypes: value,
-              })
-            }>
-            <Select.Option value="table">{t('label.table')}</Select.Option>
-            <Select.Option value="dashboardDataModel">
-              {t('label.dashboard-data-model')}
-            </Select.Option>
-            <Select.Option value="topic">{t('label.topic')}</Select.Option>
-            <Select.Option value="container">
-              {t('label.container')}
-            </Select.Option>
-            <Select.Option value="searchIndex">
-              {t('label.search-index')}
-            </Select.Option>
-          </Select>
-          <Select
-            allowClear
-            showSearch
-            className="filter-dropdown"
-            dropdownMatchSelectWidth={false}
-            placeholder={t('label.service')}
-            suffixIcon={<DownOutlined />}
-            value={serverFilters.serviceName}
-            onChange={(value) =>
-              debouncedSetServerFilters({
-                ...serverFilters,
-                serviceName: value,
-              })
-            }
-          />
-          <Select
-            allowClear
-            className="filter-dropdown"
-            dropdownMatchSelectWidth={false}
-            placeholder={t('label.data-type')}
-            suffixIcon={<DownOutlined />}>
-            <Select.Option value="VARCHAR">VARCHAR</Select.Option>
-            <Select.Option value="INT">INT</Select.Option>
-            <Select.Option value="BOOLEAN">BOOLEAN</Select.Option>
-            <Select.Option value="TIMESTAMP">TIMESTAMP</Select.Option>
-          </Select>
-          <Select
-            allowClear
-            className="filter-dropdown"
-            dropdownMatchSelectWidth={false}
-            placeholder={t('label.metadata-status')}
-            suffixIcon={<DownOutlined />}>
-            <Select.Option value="complete">
-              {t('label.complete')}
-            </Select.Option>
-            <Select.Option value="partial">{t('label.partial')}</Select.Option>
-            <Select.Option value="missing">{t('label.missing')}</Select.Option>
-          </Select>
-        </div>
-        <div className="filter-right">
-          {hasSelection ? (
-            <>
-              <span className="view-selected-label">
-                {t('label.view-selected')} ({selectedCount})
-              </span>
-              <Switch
-                checked={gridState.viewSelectedOnly}
-                size="small"
-                onChange={toggleViewSelectedOnly}
-              />
-              <Button
-                className="edit-button-primary"
-                icon={<EditOutlined />}
-                loading={isUpdating}
-                type="primary"
-                onClick={openEditDrawer}>
-                {t('label.edit')}
-              </Button>
-              <Button
-                className="cancel-button"
-                type="link"
-                onClick={clearSelection}>
-                {t('label.cancel')}
-              </Button>
-            </>
-          ) : (
-            <Button
-              className="edit-button"
-              icon={<EditOutlined />}
-              type="text"
-              onClick={openEditDrawer}>
-              {t('label.edit')}
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Grid Table */}
-      <div className="column-grid-wrapper" ref={gridWrapperRef}>
-        {gridState.loading && filteredRows.length === 0 ? (
-          <div className="loading-container">
-            <Spin size="large" tip={t('label.loading')} />
-          </div>
-        ) : (
-          <>
-            <DataGrid
-              className="column-grid rdg-light fill-grid"
-              columns={columns}
-              key={renderVersion}
-              rowHeight={72}
-              rowKeyGetter={(row) => row.id}
-              rows={filteredRows}
-              style={{ height: 'calc(100vh - 300px)', minHeight: '400px' }}
+      {/* Table Container - Same structure as DomainListPage */}
+      <TableContainer component={Paper} sx={{ mb: 5 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+            px: 6,
+            py: 4,
+            borderBottom: `1px solid`,
+            borderColor: theme.palette.allShades?.gray?.[200],
+          }}>
+          <Box sx={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+            {search}
+            <SearchDropdown
+              hideCounts
+              highlight
+              independent
+              label={t('label.asset-type')}
+              options={ASSET_TYPE_OPTIONS}
+              searchKey={EntityFields.ENTITY_TYPE}
+              selectedKeys={currentAssetType}
+              showSelectedCounts={false}
+              triggerButtonSize="middle"
+              onChange={handleAssetTypeChange}
+              onGetInitialOptions={() => {}}
+              onSearch={() => {}}
             />
-            {gridState.loading && filteredRows.length > 0 && (
-              <div className="column-grid-loading">
-                <Spin size="small" tip={t('label.loading-more')} />
-              </div>
+            {quickFilters}
+            <SearchDropdown
+              hideCounts
+              highlight
+              independent
+              label={t('label.data-type')}
+              options={DATA_TYPE_OPTIONS}
+              searchKey="dataType"
+              selectedKeys={currentDataType}
+              showSelectedCounts={false}
+              triggerButtonSize="middle"
+              onChange={handleDataTypeChange}
+              onGetInitialOptions={() => {}}
+              onSearch={() => {}}
+            />
+            <SearchDropdown
+              hideCounts
+              highlight
+              independent
+              label={t('label.metadata-status')}
+              options={METADATA_STATUS_OPTIONS}
+              searchKey="metadataStatus"
+              selectedKeys={currentMetadataStatus}
+              showSelectedCounts={false}
+              triggerButtonSize="middle"
+              onChange={handleMetadataStatusChange}
+              onGetInitialOptions={() => {}}
+              onSearch={() => {}}
+            />
+            <Box ml="auto" />
+            {/* View Selected Toggle */}
+            {hasSelection && (
+              <>
+                <Typography
+                  className="view-selected-label"
+                  color={theme.palette.grey[900]}
+                  fontSize="14px"
+                  fontWeight={400}
+                  lineHeight="19px">
+                  {t('label.view-selected')} ({selectedCount})
+                </Typography>
+                <Switch
+                  checked={viewSelectedOnly}
+                  size="small"
+                  onChange={(event) => {
+                    setViewSelectedOnly(event.target.checked);
+                  }}
+                />
+              </>
             )}
-          </>
-        )}
-      </div>
-
-      {gridState.error && (
-        <div className="column-grid-error">
-          <Text type="danger">{gridState.error}</Text>
-        </div>
-      )}
+            {/* Action Buttons */}
+            <Stack direction="row" spacing={1}>
+              {hasSelection ? (
+                <>
+                  <MUIButton
+                    className="edit-button-primary"
+                    disabled={isUpdating}
+                    startIcon={<EditOutlined />}
+                    sx={{
+                      borderRadius: '8px',
+                      border: `1px solid ${theme.palette.primary.main}`,
+                      backgroundColor: theme.palette.primary.main,
+                      boxShadow: '0 1px 2px 0 rgba(10, 13, 18, 0.05)',
+                      '&:disabled': {
+                        backgroundColor:
+                          theme.palette.action.disabledBackground,
+                        borderColor: theme.palette.action.disabledBackground,
+                      },
+                    }}
+                    variant="contained"
+                    onClick={openEditDrawer}>
+                    {t('label.edit')}
+                  </MUIButton>
+                  <MUIButton
+                    className="cancel-button"
+                    sx={{
+                      color: theme.palette.error.main,
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      lineHeight: '19px',
+                    }}
+                    variant="text"
+                    onClick={() => {
+                      columnGridListing.clearSelection();
+                      setViewSelectedOnly(false);
+                    }}>
+                    {t('label.cancel')}
+                  </MUIButton>
+                </>
+              ) : (
+                <MUIButton
+                  disabled
+                  className="edit-button"
+                  startIcon={<EditOutlined />}
+                  sx={{ color: theme.palette.grey[500] }}
+                  variant="text"
+                  onClick={openEditDrawer}>
+                  {t('label.edit')}
+                </MUIButton>
+              )}
+            </Stack>
+          </Box>
+          {filterSelectionDisplay}
+        </Box>
+        {content}
+      </TableContainer>
 
       {/* Edit Drawer */}
       <Drawer
@@ -1587,7 +1449,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           <Button icon={<span>×</span>} type="text" onClick={closeEditDrawer} />
         }
         footer={
-          <div className="drawer-footer">
+          <Box className="drawer-footer">
             <Button onClick={closeEditDrawer}>{t('label.cancel')}</Button>
             <Button
               loading={isUpdating}
@@ -1595,7 +1457,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
               onClick={handleBulkUpdate}>
               {t('label.update')}
             </Button>
-          </div>
+          </Box>
         }
         open={editDrawer.open}
         placement="right"
@@ -1605,8 +1467,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         width="33vw"
         onClose={closeEditDrawer}>
         {(() => {
-          const selectedRows = allRows.filter((r) =>
-            gridState.selectedRows.has(r.id)
+          const selectedRows = columnGridListing.allRows.filter((r) =>
+            columnGridListing.isSelected(r.id)
           );
           const firstRow = selectedRows[0];
           if (!firstRow && selectedCount === 0) {
@@ -1618,9 +1480,9 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           }
 
           return (
-            <div className="drawer-content">
+            <Box className="drawer-content">
               {/* Column Name */}
-              <div className="form-field">
+              <Box className="form-field">
                 <label className="field-label">{t('label.column-name')}</label>
                 <Input
                   disabled
@@ -1631,23 +1493,25 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                       : `${selectedCount} columns selected`
                   }
                 />
-              </div>
+              </Box>
 
               {/* Display Name */}
-              <div className="form-field">
+              <Box className="form-field">
                 <label className="field-label">{t('label.display-name')}</label>
                 <Input
-                  placeholder={t('label.enter-display-name')}
+                  placeholder={t('label.display-name')}
                   onChange={(e) => {
-                    gridState.selectedRows.forEach((rowId) => {
-                      updateRowField(rowId, 'displayName', e.target.value);
-                    });
+                    columnGridListing.selectedEntities.forEach(
+                      (rowId: string) => {
+                        updateRowField(rowId, 'displayName', e.target.value);
+                      }
+                    );
                   }}
                 />
-              </div>
+              </Box>
 
               {/* Description */}
-              <div className="form-field">
+              <Box className="form-field">
                 <label className="field-label">{t('label.description')}</label>
                 <RichTextEditor
                   initialValue=""
@@ -1656,15 +1520,17 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                   })}
                   ref={editorRef}
                   onTextChange={(value) => {
-                    gridState.selectedRows.forEach((rowId) => {
-                      updateRowField(rowId, 'description', value);
-                    });
+                    columnGridListing.selectedEntities.forEach(
+                      (rowId: string) => {
+                        updateRowField(rowId, 'description', value);
+                      }
+                    );
                   }}
                 />
-              </div>
+              </Box>
 
               {/* Tags */}
-              <div className="form-field">
+              <Box className="form-field">
                 <label className="field-label">{t('label.tag-plural')}</label>
                 <Form>
                   <AsyncSelectList
@@ -1682,26 +1548,32 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                       const newTags = options
                         .filter((option: SelectOption) => option.data)
                         .map((option: SelectOption) => option.data as TagLabel);
-                      gridState.selectedRows.forEach((rowId) => {
-                        const row = allRows.find((r) => r.id === rowId);
-                        if (row) {
-                          const currentTags = row.editedTags ?? row.tags ?? [];
-                          const glossaryTerms = currentTags.filter(
-                            (t) => t.source === TagSource.Glossary
+                      columnGridListing.selectedEntities.forEach(
+                        (rowId: string) => {
+                          const row = columnGridListing.allRows.find(
+                            (r: ColumnGridRowData) => r.id === rowId
                           );
-                          updateRowField(rowId, 'tags', [
-                            ...newTags,
-                            ...glossaryTerms,
-                          ]);
+                          if (row) {
+                            const currentTags =
+                              row.editedTags ?? row.tags ?? [];
+                            const glossaryTerms = currentTags.filter(
+                              (tag: TagLabel) =>
+                                tag.source === TagSource.Glossary
+                            );
+                            updateRowField(rowId, 'tags', [
+                              ...newTags,
+                              ...glossaryTerms,
+                            ]);
+                          }
                         }
-                      });
+                      );
                     }}
                   />
                 </Form>
-              </div>
+              </Box>
 
               {/* Glossary Terms */}
-              <div className="form-field">
+              <Box className="form-field">
                 <label className="field-label">
                   {t('label.glossary-term-plural')}
                 </label>
@@ -1719,24 +1591,30 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                       const newTerms = options
                         .filter((option: SelectOption) => option.data)
                         .map((option: SelectOption) => option.data as TagLabel);
-                      gridState.selectedRows.forEach((rowId) => {
-                        const row = allRows.find((r) => r.id === rowId);
-                        if (row) {
-                          const currentTags = row.editedTags ?? row.tags ?? [];
-                          const classificationTags = currentTags.filter(
-                            (t) => t.source !== TagSource.Glossary
+                      columnGridListing.selectedEntities.forEach(
+                        (rowId: string) => {
+                          const row = columnGridListing.allRows.find(
+                            (r: ColumnGridRowData) => r.id === rowId
                           );
-                          updateRowField(rowId, 'tags', [
-                            ...classificationTags,
-                            ...newTerms,
-                          ]);
+                          if (row) {
+                            const currentTags =
+                              row.editedTags ?? row.tags ?? [];
+                            const classificationTags = currentTags.filter(
+                              (tag: TagLabel) =>
+                                tag.source !== TagSource.Glossary
+                            );
+                            updateRowField(rowId, 'tags', [
+                              ...classificationTags,
+                              ...newTerms,
+                            ]);
+                          }
                         }
-                      });
+                      );
                     }}
                   />
                 </Form>
-              </div>
-            </div>
+              </Box>
+            </Box>
           );
         })()}
       </Drawer>

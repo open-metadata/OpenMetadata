@@ -170,6 +170,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         redirect_url: ROUTES.COLUMN_BULK_OPERATIONS,
         icon: ColumnBulkIcon,
         dataTestId: `app-bar-item-${SidebarItem.COLUMN_BULK_OPERATIONS}`,
+        isBeta: true,
       },
     ],
   },
