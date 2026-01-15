@@ -685,6 +685,8 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     params.setAdditionalProperty("ingestionImage", "openmetadata/ingestion:latest");
     params.setAdditionalProperty("serviceAccountName", "default");
     params.setAdditionalProperty("imagePullPolicy", "IfNotPresent");
+    // Use native Jobs/CronJobs by default instead of OMJob operator
+    params.setAdditionalProperty("useOMJobOperator", "false");
     pipelineConfig.setParameters(params);
 
     // Create the pipeline service client with K8s config
@@ -702,6 +704,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       LOG.info("Updated IngestionPipelineRepository with K8s pipeline client");
     } catch (Exception e) {
       LOG.warn("Could not update IngestionPipelineRepository: {}", e.getMessage());
+      throw new RuntimeException("Failed to configure K8s pipeline client", e);
     }
 
     LOG.info("K8s pipeline service client configured and ready");

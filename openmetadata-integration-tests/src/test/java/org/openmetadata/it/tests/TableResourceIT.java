@@ -3974,6 +3974,160 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   }
 
   // ===================================================================
+  // FOREIGN KEY VERSIONING TESTS
+  // ===================================================================
+
+  /**
+   * Test that re-updating a table with the same foreign key constraint does not create a new
+   * version. This verifies the fix for the bug where foreign key constraints caused spurious version
+   * updates during re-ingestion because the referredColumns list was not being sorted before
+   * comparison.
+   */
+  @Test
+  void put_foreignKeyConstraintNoSpuriousVersionUpdate(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    // Create a "referenced" table (the table that will be referenced by a foreign key)
+    Column refCol = new Column();
+    refCol.setName("id");
+    refCol.setDataType(ColumnDataType.INT);
+
+    CreateTable refTableRequest = new CreateTable();
+    refTableRequest.setName(ns.prefix("ref_table_fk_version"));
+    refTableRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    refTableRequest.setColumns(List.of(refCol));
+
+    Table refTable = client.tables().create(refTableRequest);
+    assertNotNull(refTable);
+    String refColFqn = refTable.getColumns().get(0).getFullyQualifiedName();
+
+    // Create the "source" table with a foreign key constraint
+    Column srcCol1 = new Column();
+    srcCol1.setName("src_id");
+    srcCol1.setDataType(ColumnDataType.INT);
+
+    Column srcCol2 = new Column();
+    srcCol2.setName("ref_id");
+    srcCol2.setDataType(ColumnDataType.INT);
+
+    TableConstraint foreignKeyConstraint =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(List.of("ref_id"))
+            .withReferredColumns(List.of(refColFqn));
+
+    CreateTable srcTableRequest = new CreateTable();
+    srcTableRequest.setName(ns.prefix("src_table_fk_version"));
+    srcTableRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    srcTableRequest.setColumns(List.of(srcCol1, srcCol2));
+    srcTableRequest.setTableConstraints(List.of(foreignKeyConstraint));
+
+    Table srcTable = client.tables().create(srcTableRequest);
+    assertNotNull(srcTable);
+    assertEquals(1, srcTable.getTableConstraints().size());
+
+    Double versionAfterCreate = srcTable.getVersion();
+
+    // Now "re-ingest" the same table with the same foreign key constraint
+    // This simulates what happens when ingestion runs multiple times without any actual changes
+    Table srcTableToUpdate =
+        client.tables().getByName(srcTable.getFullyQualifiedName(), "tableConstraints,columns");
+
+    // Set the same constraint again (as if re-ingested)
+    srcTableToUpdate.setTableConstraints(List.of(foreignKeyConstraint));
+
+    Table updatedTable = client.tables().update(srcTable.getId().toString(), srcTableToUpdate);
+
+    // Version should NOT have changed since nothing changed
+    assertEquals(
+        versionAfterCreate,
+        updatedTable.getVersion(),
+        "Version should not change when re-updating with the same foreign key constraint");
+  }
+
+  /**
+   * Test that foreign key constraint comparison is order-independent for referredColumns. This
+   * verifies that even if referredColumns come in a different order during re-ingestion, the version
+   * should not change if the same columns are referenced.
+   */
+  @Test
+  void put_foreignKeyConstraintWithMultipleReferredColumnsOrderIndependent(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    // Create a "referenced" table with multiple columns (composite key scenario)
+    Column refCol1 = new Column();
+    refCol1.setName("id1");
+    refCol1.setDataType(ColumnDataType.INT);
+
+    Column refCol2 = new Column();
+    refCol2.setName("id2");
+    refCol2.setDataType(ColumnDataType.INT);
+
+    CreateTable refTableRequest = new CreateTable();
+    refTableRequest.setName(ns.prefix("ref_table_multi_fk"));
+    refTableRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    refTableRequest.setColumns(List.of(refCol1, refCol2));
+
+    Table refTable = client.tables().create(refTableRequest);
+    assertNotNull(refTable);
+    String refCol1Fqn = refTable.getColumns().get(0).getFullyQualifiedName();
+    String refCol2Fqn = refTable.getColumns().get(1).getFullyQualifiedName();
+
+    // Create the "source" table with a foreign key referencing both columns
+    Column srcCol1 = new Column();
+    srcCol1.setName("fk_col1");
+    srcCol1.setDataType(ColumnDataType.INT);
+
+    Column srcCol2 = new Column();
+    srcCol2.setName("fk_col2");
+    srcCol2.setDataType(ColumnDataType.INT);
+
+    // Initial foreign key with referredColumns in order [refCol1Fqn, refCol2Fqn]
+    TableConstraint foreignKeyConstraint =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(List.of("fk_col1", "fk_col2"))
+            .withReferredColumns(List.of(refCol1Fqn, refCol2Fqn));
+
+    CreateTable srcTableRequest = new CreateTable();
+    srcTableRequest.setName(ns.prefix("src_table_multi_fk"));
+    srcTableRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    srcTableRequest.setColumns(List.of(srcCol1, srcCol2));
+    srcTableRequest.setTableConstraints(List.of(foreignKeyConstraint));
+
+    Table srcTable = client.tables().create(srcTableRequest);
+    assertNotNull(srcTable);
+    assertEquals(1, srcTable.getTableConstraints().size());
+
+    Double versionAfterCreate = srcTable.getVersion();
+
+    // Now "re-ingest" with referredColumns in REVERSE order [refCol2Fqn, refCol1Fqn]
+    // This simulates what can happen when ingestion reads columns in a different order
+    Table srcTableToUpdate =
+        client.tables().getByName(srcTable.getFullyQualifiedName(), "tableConstraints,columns");
+
+    TableConstraint foreignKeyConstraintReversed =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(List.of("fk_col2", "fk_col1")) // Also reversed columns
+            .withReferredColumns(List.of(refCol2Fqn, refCol1Fqn)); // Reversed order
+
+    srcTableToUpdate.setTableConstraints(List.of(foreignKeyConstraintReversed));
+
+    Table updatedTable = client.tables().update(srcTable.getId().toString(), srcTableToUpdate);
+
+    // Version should NOT have changed since it's the same constraint with different ordering
+    assertEquals(
+        versionAfterCreate,
+        updatedTable.getVersion(),
+        "Version should not change when referredColumns order changes but content is the same");
+  }
+
+  // ===================================================================
   // PHASE 3: List Operations Support
   // ===================================================================
 

@@ -141,6 +141,7 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
+import org.openmetadata.schema.service.configuration.teamsApp.TeamsAppConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.TestCase;
@@ -6285,12 +6286,14 @@ public interface CollectionDAO {
       String testPlatform = filter.getQueryParam("testPlatform");
       String supportedDataType = filter.getQueryParam("supportedDataType");
       String supportedService = filter.getQueryParam("supportedService");
+      String enabled = filter.getQueryParam("enabled");
       String condition = filter.getCondition();
 
       if (entityType == null
           && testPlatform == null
           && supportedDataType == null
-          && supportedService == null) {
+          && supportedService == null
+          && enabled == null) {
         return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
       }
 
@@ -6330,6 +6333,12 @@ public interface CollectionDAO {
                 + "OR json->>'supportedServices' LIKE :supportedServiceLike) ");
       }
 
+      if (enabled != null) {
+        String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
+        mysqlCondition.append("AND enabled=" + enabledValue + " ");
+        psqlCondition.append("AND enabled=" + enabledValue + " ");
+      }
+
       return listBefore(
           getTableName(),
           filter.getQueryParams(),
@@ -6346,12 +6355,14 @@ public interface CollectionDAO {
       String testPlatform = filter.getQueryParam("testPlatform");
       String supportedDataType = filter.getQueryParam("supportedDataType");
       String supportedService = filter.getQueryParam("supportedService");
+      String enabled = filter.getQueryParam("enabled");
       String condition = filter.getCondition();
 
       if (entityType == null
           && testPlatform == null
           && supportedDataType == null
-          && supportedService == null) {
+          && supportedService == null
+          && enabled == null) {
         return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
       }
 
@@ -6391,6 +6402,12 @@ public interface CollectionDAO {
                 + "OR json->>'supportedServices' LIKE :supportedServiceLike) ");
       }
 
+      if (enabled != null) {
+        String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
+        mysqlCondition.append("AND enabled=" + enabledValue + " ");
+        psqlCondition.append("AND enabled=" + enabledValue + " ");
+      }
+
       return listAfter(
           getTableName(),
           filter.getQueryParams(),
@@ -6407,12 +6424,14 @@ public interface CollectionDAO {
       String testPlatform = filter.getQueryParam("testPlatform");
       String supportedDataType = filter.getQueryParam("supportedDataType");
       String supportedService = filter.getQueryParam("supportedService");
+      String enabled = filter.getQueryParam("enabled");
       String condition = filter.getCondition();
 
       if (entityType == null
           && testPlatform == null
           && supportedDataType == null
-          && supportedService == null) {
+          && supportedService == null
+          && enabled == null) {
         return EntityDAO.super.listCount(filter);
       }
 
@@ -6451,6 +6470,13 @@ public interface CollectionDAO {
                 + "OR json->>'supportedServices' IS NULL "
                 + "OR json->>'supportedServices' LIKE :supportedServiceLike) ");
       }
+
+      if (enabled != null) {
+        String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
+        mysqlCondition.append("AND enabled=").append(enabledValue).append(" ");
+        psqlCondition.append("AND enabled=").append(enabledValue).append(" ");
+      }
+
       return listCount(
           getTableName(),
           filter.getQueryParams(),
@@ -6803,53 +6829,101 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT "
-                + "  DATE(FROM_UNIXTIME(eets.timestamp / 1000)) as date_key, "
-                + "  MIN(eets.timestamp) as first_timestamp, "
-                + "  MAX(JSON_EXTRACT(eets.json, '$.endTime') - eets.timestamp) as max_runtime, "
-                + "  MIN(JSON_EXTRACT(eets.json, '$.endTime') - eets.timestamp) as min_runtime, "
-                + "  AVG(JSON_EXTRACT(eets.json, '$.endTime') - eets.timestamp) as avg_runtime, "
-                + "  COUNT(DISTINCT pe.fqnHash) as total_pipelines "
-                + "FROM entity_extension_time_series eets "
-                + "INNER JOIN pipeline_entity pe ON eets.entityFQNHash = pe.fqnHash "
-                + "WHERE eets.extension = 'pipeline.pipelineStatus' "
-                + "  AND pe.deleted = 0 "
-                + "  AND eets.timestamp >= :startTs "
-                + "  AND eets.timestamp <= :endTs "
-                + "  AND JSON_EXTRACT(eets.json, '$.endTime') IS NOT NULL "
-                + "  <pipelineFqnFilter> "
-                + "  <serviceTypeFilter> "
-                + "  <serviceFilter> "
-                + "  <mysqlStatusFilter> "
-                + "  <domainFilter> "
-                + "  <ownerFilter> "
-                + "  <tierFilter> "
+            "WITH runtime_calc AS ( "
+                + "  SELECT "
+                + "    eets.*, "
+                + "    pe.fqnHash, "
+                + "    CASE "
+                + "      WHEN JSON_LENGTH(JSON_EXTRACT(eets.json, '$.taskStatus')) > 0 "
+                + "        AND JSON_EXTRACT(eets.json, '$.taskStatus[0].endTime') IS NOT NULL THEN "
+                + "        ( "
+                + "          SELECT MAX(CAST(JSON_EXTRACT(task.value, '$.endTime') AS UNSIGNED)) "
+                + "          FROM JSON_TABLE(eets.json, '$.taskStatus[*]' COLUMNS(value JSON PATH '$')) AS task "
+                + "          WHERE JSON_EXTRACT(task.value, '$.endTime') IS NOT NULL "
+                + "        ) - ( "
+                + "          SELECT MIN(CAST(JSON_EXTRACT(task.value, '$.startTime') AS UNSIGNED)) "
+                + "          FROM JSON_TABLE(eets.json, '$.taskStatus[*]' COLUMNS(value JSON PATH '$')) AS task "
+                + "          WHERE JSON_EXTRACT(task.value, '$.startTime') IS NOT NULL "
+                + "        ) "
+                + "      WHEN JSON_EXTRACT(eets.json, '$.endTime') IS NOT NULL THEN "
+                + "        JSON_EXTRACT(eets.json, '$.endTime') - eets.timestamp "
+                + "      ELSE NULL "
+                + "    END AS runtime "
+                + "  FROM entity_extension_time_series eets "
+                + "  INNER JOIN pipeline_entity pe ON eets.entityFQNHash = pe.fqnHash "
+                + "  WHERE eets.extension = 'pipeline.pipelineStatus' "
+                + "    AND pe.deleted = 0 "
+                + "    AND eets.timestamp >= :startTs "
+                + "    AND eets.timestamp <= :endTs "
+                + "    <pipelineFqnFilter> "
+                + "    <serviceTypeFilter> "
+                + "    <serviceFilter> "
+                + "    <mysqlStatusFilter> "
+                + "    <domainFilter> "
+                + "    <ownerFilter> "
+                + "    <tierFilter> "
+                + ") "
+                + "SELECT "
+                + "  DATE(FROM_UNIXTIME(timestamp / 1000)) as date_key, "
+                + "  MIN(timestamp) as first_timestamp, "
+                + "  MAX(runtime) as max_runtime, "
+                + "  MIN(runtime) as min_runtime, "
+                + "  AVG(runtime) as avg_runtime, "
+                + "  COUNT(DISTINCT fqnHash) as total_pipelines "
+                + "FROM runtime_calc "
+                + "WHERE runtime IS NOT NULL "
                 + "GROUP BY date_key "
                 + "ORDER BY date_key ASC",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT "
-                + "  DATE(TO_TIMESTAMP(eets.timestamp / 1000)) as date_key, "
-                + "  MIN(eets.timestamp) as first_timestamp, "
-                + "  MAX((eets.json->>'endTime')::bigint - eets.timestamp) as max_runtime, "
-                + "  MIN((eets.json->>'endTime')::bigint - eets.timestamp) as min_runtime, "
-                + "  AVG((eets.json->>'endTime')::bigint - eets.timestamp) as avg_runtime, "
-                + "  COUNT(DISTINCT pe.fqnHash) as total_pipelines "
-                + "FROM entity_extension_time_series eets "
-                + "INNER JOIN pipeline_entity pe ON eets.entityFQNHash = pe.fqnHash "
-                + "WHERE eets.extension = 'pipeline.pipelineStatus' "
-                + "  AND pe.deleted = false "
-                + "  AND eets.timestamp >= :startTs "
-                + "  AND eets.timestamp <= :endTs "
-                + "  AND eets.json->>'endTime' IS NOT NULL "
-                + "  <pipelineFqnFilter> "
-                + "  <serviceTypeFilter> "
-                + "  <serviceFilter> "
-                + "  <postgresStatusFilter> "
-                + "  <domainFilter> "
-                + "  <ownerFilter> "
-                + "  <tierFilter> "
+            "WITH runtime_calc AS ( "
+                + "  SELECT "
+                + "    eets.timestamp, "
+                + "    eets.json, "
+                + "    pe.fqnHash, "
+                + "    CASE "
+                + "      WHEN jsonb_array_length(COALESCE(eets.json->'taskStatus', '[]'::jsonb)) > 0 "
+                + "        AND EXISTS ( "
+                + "          SELECT 1 FROM jsonb_array_elements(eets.json->'taskStatus') AS task "
+                + "          WHERE task->>'endTime' IS NOT NULL "
+                + "        ) THEN "
+                + "        ( "
+                + "          SELECT MAX((task->>'endTime')::bigint) "
+                + "          FROM jsonb_array_elements(eets.json->'taskStatus') AS task "
+                + "          WHERE task->>'endTime' IS NOT NULL "
+                + "        ) - ( "
+                + "          SELECT MIN((task->>'startTime')::bigint) "
+                + "          FROM jsonb_array_elements(eets.json->'taskStatus') AS task "
+                + "          WHERE task->>'startTime' IS NOT NULL "
+                + "        ) "
+                + "      WHEN eets.json->>'endTime' IS NOT NULL THEN "
+                + "        (eets.json->>'endTime')::bigint - eets.timestamp "
+                + "      ELSE NULL "
+                + "    END AS runtime "
+                + "  FROM entity_extension_time_series eets "
+                + "  INNER JOIN pipeline_entity pe ON eets.entityFQNHash = pe.fqnHash "
+                + "  WHERE eets.extension = 'pipeline.pipelineStatus' "
+                + "    AND pe.deleted = false "
+                + "    AND eets.timestamp >= :startTs "
+                + "    AND eets.timestamp <= :endTs "
+                + "    <pipelineFqnFilter> "
+                + "    <serviceTypeFilter> "
+                + "    <serviceFilter> "
+                + "    <postgresStatusFilter> "
+                + "    <domainFilter> "
+                + "    <ownerFilter> "
+                + "    <tierFilter> "
+                + ") "
+                + "SELECT "
+                + "  DATE(TO_TIMESTAMP(timestamp / 1000)) as date_key, "
+                + "  MIN(timestamp) as first_timestamp, "
+                + "  MAX(runtime) as max_runtime, "
+                + "  MIN(runtime) as min_runtime, "
+                + "  AVG(runtime) as avg_runtime, "
+                + "  COUNT(DISTINCT fqnHash) as total_pipelines "
+                + "FROM runtime_calc "
+                + "WHERE runtime IS NOT NULL "
                 + "GROUP BY date_key "
                 + "ORDER BY date_key ASC",
         connectionType = POSTGRES)
@@ -7791,6 +7865,7 @@ public interface CollectionDAO {
             case ENTITY_RULES_SETTINGS -> JsonUtils.readValue(json, EntityRulesSettings.class);
             case SCIM_CONFIGURATION -> JsonUtils.readValue(json, ScimConfiguration.class);
             case OPEN_LINEAGE_SETTINGS -> JsonUtils.readValue(json, OpenLineageSettings.class);
+            case TEAMS_APP_CONFIGURATION -> JsonUtils.readValue(json, TeamsAppConfiguration.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);
