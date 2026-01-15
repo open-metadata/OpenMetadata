@@ -58,7 +58,7 @@ import org.openmetadata.service.security.Authorizer;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "aiApplications")
 public class AIApplicationResource extends EntityResource<AIApplication, AIApplicationRepository> {
-  public static final String COLLECTION_PATH = "v1/aiApplications/";
+  public static final String COLLECTION_PATH = "/v1/aiApplications/";
   private final AIApplicationMapper mapper = new AIApplicationMapper();
   static final String FIELDS = "owners,followers,tags,extension,domains";
 

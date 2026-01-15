@@ -25,6 +25,8 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 
+TRINO_QUERY_BATCH_SIZE = 1000
+
 
 class TrinoQueryParserSource(QueryParserSource, ABC):
     """
@@ -46,16 +48,25 @@ class TrinoQueryParserSource(QueryParserSource, ABC):
             )
         return cls(config, metadata)
 
-    def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
+    def get_sql_statement(
+        self,
+        start_time: datetime,
+        end_time: datetime,
+        offset: int = 0,
+        limit: int = None,
+    ) -> str:
         """
         returns sql statement to fetch query logs.
 
         Override if we have specific parameters
         """
+        if limit is None:
+            limit = self.source_config.resultLimit
         return self.sql_stmt.format(
             start_time=start_time,
             end_time=end_time,
             filters=self.get_filters(),
-            result_limit=self.source_config.resultLimit,
+            result_limit=limit,
             query_history_table=self.service_connection.queryHistoryTable,
+            offset=offset,
         )

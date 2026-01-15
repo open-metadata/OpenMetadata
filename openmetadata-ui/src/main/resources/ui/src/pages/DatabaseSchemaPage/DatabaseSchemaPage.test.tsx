@@ -247,6 +247,7 @@ jest.mock(
   '../../components/Customization/GenericProvider/GenericProvider',
   () => {
     const React = require('react');
+
     return {
       GenericProvider: jest
         .fn()
