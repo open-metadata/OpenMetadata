@@ -31,6 +31,10 @@ export interface UpdateColumn {
      */
     displayName?: string;
     /**
+     * Entity extension data with custom attributes added to the column.
+     */
+    extension?: any;
+    /**
      * Set to true to remove the existing column constraint. Only applicable to table columns,
      * ignored for dashboard data model columns. If both 'constraint' and 'removeConstraint' are
      * provided, 'removeConstraint' takes precedence.
@@ -62,6 +66,14 @@ export enum Constraint {
  * This schema defines the type for labeling an entity with a Tag.
  */
 export interface TagLabel {
+    /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
     /**
      * Description for the tag label.
      */

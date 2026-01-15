@@ -15,7 +15,7 @@ package org.openmetadata.service;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.dropwizard.core.Configuration;
-import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
+import io.dropwizard.core.server.DefaultServerFactory;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.util.Map;
@@ -42,6 +42,7 @@ import org.openmetadata.service.config.ObjectStorageConfiguration;
 import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
+import org.openmetadata.service.swagger.SwaggerBundleConfiguration;
 
 @Getter
 @Setter
@@ -162,6 +163,13 @@ public class OpenMetadataApplicationConfig extends Configuration {
       cacheConfig = new org.openmetadata.service.cache.CacheConfig();
     }
     return cacheConfig;
+  }
+
+  public String getApiRootPath() {
+    if (!(getServerFactory() instanceof DefaultServerFactory serverFactory)) {
+      return "";
+    }
+    return serverFactory.getJerseyRootPath().map(path -> path.replaceFirst("\\*$", "")).orElse("");
   }
 
   @Override

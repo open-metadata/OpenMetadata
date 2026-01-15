@@ -62,7 +62,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 @Collection(name = "queries")
 public class QueryResource extends EntityResource<Query, QueryRepository> {
   private final QueryMapper mapper = new QueryMapper();
-  public static final String COLLECTION_PATH = "v1/queries/";
+  public static final String COLLECTION_PATH = "/v1/queries/";
   static final String FIELDS = "owners,followers,users,votes,tags,queryUsedIn";
 
   public QueryResource(Authorizer authorizer, Limits limits) {

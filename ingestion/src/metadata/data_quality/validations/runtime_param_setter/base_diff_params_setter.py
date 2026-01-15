@@ -187,13 +187,10 @@ class BaseTableParameter:
             source_url["driver"] = source_url["driver"].split("+")[0]
             return source_url
 
-        # Use SQLAlchemy's make_url instead of urlparse to properly handle
-        # special characters in credentials (e.g., ']' in passwords)
         url = make_url(source_url)
         # remove the driver name from the url because table-diff doesn't support it
         drivername = url.drivername.split("+")[0]
-        _, database, schema, _ = fqn.split(table_fqn)  # pylint: disable=unused-variable
-        # path needs to include the database AND schema in some of the connectors
+        _, database, schema, _ = fqn.split(table_fqn)
         if hasattr(db_service.connection.config, "supportsDatabase"):
             if drivername in {Dialects.UnityCatalog, Dialects.Databricks}:
                 url = url.set(drivername=drivername, query={"catalog": database})
@@ -201,6 +198,8 @@ class BaseTableParameter:
                 url = url.set(drivername=drivername, database=database)
         if drivername in {Dialects.MSSQL, Dialects.Snowflake, Dialects.Trino}:
             url = url.set(drivername=drivername, database=f"{database}/{schema}")
+        elif drivername in {Dialects.MySQL, Dialects.MariaDB}:
+            url = url.set(drivername=drivername, database=f"{schema}")
         else:
             url = url.set(drivername=drivername)
         return str(url)

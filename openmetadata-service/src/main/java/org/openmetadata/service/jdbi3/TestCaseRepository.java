@@ -94,6 +94,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.resources.dqtests.TestCaseResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -110,7 +111,6 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String TEST_SUITE_FIELD = "testSuite";
   private static final String INCIDENTS_FIELD = "incidentId";
-  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
   private static final String UPDATE_FIELDS =
       "owners,entityLink,testSuite,testSuites,testDefinition,dimensionColumns";
   private static final String PATCH_FIELDS =
@@ -120,7 +120,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   public TestCaseRepository() {
     super(
-        COLLECTION_PATH,
+        TestCaseResource.COLLECTION_PATH,
         TEST_CASE,
         TestCase.class,
         Entity.getCollectionDAO().testCaseDAO(),
@@ -481,6 +481,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     TestDefinition testDefinition =
         Entity.getEntity(test.getTestDefinition(), "", Include.NON_DELETED);
     test.setTestDefinition(testDefinition.getEntityReference());
+
+    // Validate that the test definition is enabled (only for new test cases, not updates)
+    if (!update && Boolean.FALSE.equals(testDefinition.getEnabled())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Test definition '%s' is disabled and cannot be used to create test cases",
+              testDefinition.getName()));
+    }
 
     validateTestParameters(
         test.getParameterValues(),

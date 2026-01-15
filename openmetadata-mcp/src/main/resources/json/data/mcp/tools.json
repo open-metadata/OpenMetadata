@@ -29,6 +29,11 @@
             "description": "Number of results to return. Default is 10, we can iteratively page through results by increasing 'from'. Maximum allowed is 50.",
             "default": 10
           },
+          "includeDeleted": {
+            "type": "boolean",
+            "description": "Include deleted entities in search results. Default is false.",
+            "default": false
+          },
           "fields": {
             "type": "string",
             "description": "Comma-separated additional fields to include. Default returns: name, displayName, fullyQualifiedName, description, entityType, service, database, databaseSchema, serviceType, href, tags, owners, tier, tableType, columnNames.\n\nAdditional fields by entity type:\n- Table entities: columns, schemaDefinition, queries, upstreamLineage, entityRelationship\n- Topic entities: messageSchema, partitions, replicationFactor  \n- Dashboard entities: charts, dataModels, project\n- Pipeline entities: tasks, pipelineUrl, scheduleInterval\n- All entities: createdAt, updatedAt, changeDescription, extension, domain, dataProducts, lifeCycle, sourceHash\n\nExample: 'columns,queries' for table column details and sample queries."
@@ -82,7 +87,7 @@
         "description": "Fqn is the fully qualified name of the entity. Entity type could be table, topic etc.",
         "type": "object",
         "properties": {
-          "entity_type": {
+          "entityType": {
             "type": "string",
             "description": "Type of entity"
           },
@@ -92,7 +97,7 @@
           }
         },
         "required": [
-          "entity_type",
+          "entityType",
           "fqn"
         ]
       }
@@ -185,7 +190,7 @@
             "type": "string",
             "description": "Entity Type to patch."
           },
-          "entityFqn": {
+          "fqn": {
             "type": "string",
             "description": "Fully Qualified Name of the Entity to be patched."
           },
@@ -196,7 +201,7 @@
         },
         "required": [
           "entityType",
-          "entityFqn",
+          "fqn",
           "patch"
         ]
       }
@@ -208,7 +213,7 @@
         "description": "Fqn is the fully qualified name of the entity. Entity type could be table, topic etc.",
         "type": "object",
         "properties": {
-          "entity_type": {
+          "entityType": {
             "type": "string",
             "description": "Type of entity"
           },
@@ -216,20 +221,20 @@
             "type": "string",
             "description": "Fully qualified name of the entity"
           },
-          "upstream_depth": {
+          "upstreamDepth": {
             "type": "integer",
             "description": "Depth for reaching upstream entities. Default is 5."
           },
-          "downstream_depth": {
+          "downstreamDepth": {
             "type": "integer",
             "description": "Depth for reaching downstream entities. Default is 5."
           }
         },
         "required": [
-          "entity_type",
+          "entityType",
           "fqn",
-          "upstream_depth",
-          "downstream_depth"
+          "upstreamDepth",
+          "downstreamDepth"
         ]
       }
     }

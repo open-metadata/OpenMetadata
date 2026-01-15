@@ -26,14 +26,7 @@ import { useForm } from 'antd/lib/form/Form';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import {
-  debounce,
-  entries,
-  isEmpty,
-  isUndefined,
-  startCase,
-  uniq,
-} from 'lodash';
+import { debounce, entries, isEmpty, isUndefined, uniq } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -49,6 +42,7 @@ import {
   DEFAULT_SORT_ORDER,
   TEST_CASE_DIMENSIONS_OPTION,
   TEST_CASE_FILTERS,
+  TEST_CASE_FILTERS_LABELS,
   TEST_CASE_PLATFORM_OPTION,
   TEST_CASE_STATUS_OPTION,
   TEST_CASE_TYPE_OPTION,
@@ -462,7 +456,7 @@ export const TestCases = () => {
   const filterMenu: ItemType[] = useMemo(() => {
     return entries(TEST_CASE_FILTERS).map(([name, filter]) => ({
       key: filter,
-      label: startCase(name),
+      label: TEST_CASE_FILTERS_LABELS[name],
       value: filter,
     }));
   }, []);
