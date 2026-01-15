@@ -17,7 +17,7 @@ import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { cloneDeep, isEmpty, toString } from 'lodash';
+import { cloneDeep, isEmpty, toLower, toString } from 'lodash';
 import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -36,8 +36,13 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { DataContract } from '../../../generated/entity/data/dataContract';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import {
   ChangeDescription,
@@ -46,11 +51,13 @@ import {
 import { Thread } from '../../../generated/entity/feed/thread';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
+import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
 import { Style } from '../../../generated/type/tagLabel';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
+import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import {
@@ -62,6 +69,7 @@ import {
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
+import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBase';
 import { getDomainContainerStyles } from '../../../utils/DomainPageStyles';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
@@ -143,6 +151,7 @@ const DataProductsDetailsPage = ({
   const [isAnnouncementDrawerOpen, setIsAnnouncementDrawerOpen] =
     useState<boolean>(false);
   const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
+  const [dataContract, setDataContract] = useState<DataContract>();
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -182,6 +191,19 @@ const DataProductsDetailsPage = ({
         vertical: 'top',
         horizontal: 'center',
       });
+    }
+  };
+
+  const fetchDataProductContract = async () => {
+    try {
+      const contract = await getContractByEntityId(
+        dataProduct.id,
+        EntityType.DATA_PRODUCT,
+        [TabSpecificField.OWNERS]
+      );
+      setDataContract(contract);
+    } catch {
+      setDataContract(undefined);
     }
   };
 
@@ -436,7 +458,7 @@ const DataProductsDetailsPage = ({
             { replace: true }
           );
         }
-      } catch(error) {
+      } catch (error) {
         // Error is already handled by the parent component
       } finally {
         setIsNameEditing(false);
@@ -564,6 +586,7 @@ const DataProductsDetailsPage = ({
     fetchDataProductAssets();
     getEntityFeedCount();
     fetchActiveAnnouncement();
+    fetchDataProductContract();
   }, [dataProductFqn]);
 
   const toggleTabExpanded = () => {
@@ -579,6 +602,38 @@ const DataProductsDetailsPage = ({
       ),
     [tabs[0], activeTab]
   );
+
+  const dataContractLatestResultButton = useMemo(() => {
+    if (
+      dataContract?.latestResult?.status &&
+      [
+        ContractExecutionStatus.Aborted,
+        ContractExecutionStatus.Failed,
+        ContractExecutionStatus.Running,
+      ].includes(dataContract.latestResult.status)
+    ) {
+      const icon = getDataContractStatusIcon(dataContract.latestResult.status);
+
+      return (
+        <Button
+          className={classNames(
+            'data-contract-latest-result-button',
+            toLower(dataContract.latestResult.status)
+          )}
+          data-testid="data-contract-latest-result-btn"
+          icon={icon ? <Icon component={icon} /> : null}
+          onClick={() => {
+            handleTabChange(EntityTabs.CONTRACT);
+          }}>
+          {t(`label.entity-${toLower(dataContract.latestResult.status)}`, {
+            entity: t('label.contract'),
+          })}
+        </Button>
+      );
+    }
+
+    return null;
+  }, [dataContract]);
 
   const statusBadge = useMemo(() => {
     const shouldShowStatus = entityUtilClassBase.shouldShowEntityStatus(
@@ -666,6 +721,8 @@ const DataProductsDetailsPage = ({
               )}
 
               <ButtonGroup className="spaced" size="small">
+                {dataContractLatestResultButton}
+
                 {dataProduct?.version && (
                   <Tooltip
                     title={t(
