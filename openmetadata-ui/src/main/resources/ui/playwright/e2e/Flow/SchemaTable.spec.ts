@@ -11,17 +11,25 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { test } from '../fixtures/pages';
-
 import { get } from 'lodash';
+import { test } from '../fixtures/pages';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import {
   addOwner,
+  testCopyLinkButton,
   updateDisplayNameForEntityChildren,
+  validateCopiedLinkFormat,
 } from '../../utils/entity';
+
+// Grant clipboard permissions for copy link tests
+test.use({
+  contextOptions: {
+    permissions: ['clipboard-read', 'clipboard-write'],
+  },
+});
 
 const table = new TableClass();
 
@@ -174,4 +182,127 @@ test('Schema Table Pagination should work Properly', async ({ page }) => {
   await tableResponse3;
 
   await expect(page.getByTestId('page-indicator')).toContainText('1');
+});
+
+test('Copy column link button should copy the column URL to clipboard', async ({
+  page,
+}) => {
+  // Navigate directly to the table page instead of searching
+  await redirectToHomePage(page);
+  await table.visitEntityPage(page);
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await testCopyLinkButton({
+    page,
+    buttonTestId: 'copy-column-link-button',
+    containerTestId: 'entity-table',
+    expectedUrlPath: '/table/',
+    entityFqn: table.entityResponseData?.['fullyQualifiedName'] ?? '',
+  });
+});
+
+test('Copy column link should have valid URL format', async ({ page }) => {
+  await redirectToHomePage(page);
+  await table.visitEntityPage(page);
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await expect(page.getByTestId('entity-table')).toBeVisible();
+
+  const copyButton = page.getByTestId('copy-column-link-button').first();
+  await expect(copyButton).toBeVisible();
+  await copyButton.click();
+
+  const clipboardText = await page.evaluate(async () => {
+    try {
+      return await navigator.clipboard.readText();
+    } catch (error) {
+      return `CLIPBOARD_ERROR: ${error}`;
+    }
+  });
+
+  const validationResult = validateCopiedLinkFormat({
+    clipboardText,
+    expectedEntityType: 'table',
+    entityFqn: table.entityResponseData?.['fullyQualifiedName'] ?? '',
+  });
+
+  expect(validationResult.isValid).toBe(true);
+  expect(validationResult.protocol).toMatch(/^https?:$/);
+  expect(validationResult.pathname).toContain('table');
+
+  // Visit the copied link to verify it opens the side panel
+  await page.goto(clipboardText);
+
+  // Verify side panel is open
+  const sidePanel = page.locator('.column-detail-panel');
+  await expect(sidePanel).toBeVisible();
+  // Verify the correct column is showing in the panel
+  const columnName = table.entityResponseData.columns?.[0]?.name;
+  if (columnName) {
+    await expect(sidePanel).toContainText(columnName);
+  }
+
+  // Close side panel
+  await page.getByTestId('close-button').click();
+  await expect(sidePanel).not.toBeVisible();
+
+  // Verify URL does not contain the column part
+  await expect(page).toHaveURL(new RegExp(`/table/${table.entityResponseData?.['fullyQualifiedName']}$`));
+});
+
+test('Copy nested column link should include full hierarchical path', async ({ page }) => {
+  await redirectToHomePage(page);
+  await table.visitEntityPage(page);
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await expect(page.getByTestId('entity-table')).toBeVisible();
+
+  const expandButtons = page.locator('[data-testid="expand-icon"]');
+  const expandButtonCount = await expandButtons.count();
+
+  if (expandButtonCount > 0) {
+    await expandButtons.first().click();
+
+    const nestedCopyButtons = page.getByTestId('copy-column-link-button');
+    const nestedButtonCount = await nestedCopyButtons.count();
+
+    if (nestedButtonCount > 1) {
+      const nestedCopyButton = nestedCopyButtons.nth(1);
+      await expect(nestedCopyButton).toBeVisible();
+      await nestedCopyButton.click();
+
+      const clipboardText = await page.evaluate(async () => {
+        try {
+          return await navigator.clipboard.readText();
+        } catch (error) {
+          return `CLIPBOARD_ERROR: ${error}`;
+        }
+      });
+
+      expect(clipboardText).toContain('/table/');
+      expect(clipboardText).toContain(
+        table.entityResponseData?.['fullyQualifiedName'] ?? ''
+      );
+
+      // Visit the copied link to verify it opens the side panel
+      await page.goto(clipboardText);
+
+      // Verify side panel is open
+      const sidePanel = page.locator('.column-detail-panel');
+      await expect(sidePanel).toBeVisible();
+
+      // Verify the correct column is showing in the panel
+      const nestedColumnName = table.entityResponseData.columns?.[0]?.children?.[0]?.name;
+      if (nestedColumnName) {
+        await expect(sidePanel).toContainText(nestedColumnName);
+      }
+
+      // Close side panel
+      await page.getByTestId('close-button').click();
+      await expect(sidePanel).not.toBeVisible();
+
+      // Verify URL does not contain the column part
+      await expect(page).toHaveURL(new RegExp(`/table/${table.entityResponseData?.['fullyQualifiedName']}$`));
+    }
+  }
 });

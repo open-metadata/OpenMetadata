@@ -22,19 +22,27 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import DirectoryDetails from './DirectoryDetails';
 import { DirectoryDetailsProps } from './DirectoryDetails.interface';
+import { FeedCounts } from '../../../interface/feed.interface';
 
 jest.mock('../../../hooks/useApplicationStore');
 jest.mock('../../../hooks/useCustomPages');
 jest.mock('../../../hooks/useFqn');
 jest.mock('../../../utils/useRequiredParams');
 jest.mock('../../../rest/driveAPI');
-jest.mock('../../../utils/CommonUtils');
+const mockGetFeedCounts = jest.fn();
+
+
+jest.mock('../../../utils/CommonUtils', () => ({
+  ...jest.requireActual('../../../utils/CommonUtils'),
+  getEntityMissingError: jest.fn(),
+  getFeedCounts: (...args: [EntityType, string, (data: FeedCounts) => void]) =>
+    mockGetFeedCounts(...args),
+}));
 jest.mock('../../../utils/RouterUtils');
 jest.mock('../../../utils/ToastUtils');
 jest.mock('../../../utils/DirectoryClassBase', () => ({
@@ -120,7 +128,6 @@ const mockUseCustomPages = useCustomPages as jest.Mock;
 const mockUseFqn = useFqn as jest.Mock;
 const mockUseRequiredParams = useRequiredParams as jest.Mock;
 const mockRestoreDriveAsset = restoreDriveAsset as jest.Mock;
-const mockGetFeedCounts = getFeedCounts as jest.Mock;
 const mockGetEntityDetailsPath = getEntityDetailsPath as jest.Mock;
 
 const mockDirectoryDetails: Directory = {
@@ -231,6 +238,8 @@ describe('DirectoryDetails', () => {
 
     mockUseFqn.mockReturnValue({
       fqn: 'test-service.test-directory',
+      entityFqn: 'test-service.test-directory',
+      columnPart: undefined,
     });
 
     mockUseRequiredParams.mockReturnValue({

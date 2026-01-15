@@ -6,6 +6,7 @@ import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectCont
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.annotations.VisibleForTesting;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -25,6 +26,11 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public class SearchMetadataTool implements McpTool {
+
+  private static final int DEFAULT_MAX_AGGREGATION_BUCKETS = 10;
+  private static final int MAX_ALLOWED_AGGREGATION_BUCKETS = 50;
+  private static final int DESCRIPTION_MAX_LENGTH = 500;
+  private static final int DESCRIPTION_TRUNCATE_LENGTH = 450;
 
   private static final List<String> ESSENTIAL_FIELDS_ONLY =
       List.of(
@@ -123,6 +129,34 @@ public class SearchMetadataTool implements McpTool {
       }
     }
 
+    // Parse includeAggregations - defaults to false to keep LLM context size manageable
+    boolean includeAggregations = false;
+    if (params.containsKey("includeAggregations")) {
+      Object aggObj = params.get("includeAggregations");
+      if (aggObj instanceof Boolean booleanValue) {
+        includeAggregations = booleanValue;
+      } else if (aggObj instanceof String) {
+        includeAggregations = "true".equals(aggObj);
+      }
+    }
+
+    // Parse maxAggregationBuckets - limit aggregation size to prevent context overflow
+    int maxAggregationBuckets = DEFAULT_MAX_AGGREGATION_BUCKETS;
+    if (params.containsKey("maxAggregationBuckets")) {
+      Object maxBucketsObj = params.get("maxAggregationBuckets");
+      if (maxBucketsObj instanceof Number number) {
+        maxAggregationBuckets =
+            Math.min(Math.max(number.intValue(), 1), MAX_ALLOWED_AGGREGATION_BUCKETS);
+      } else if (maxBucketsObj instanceof String string) {
+        try {
+          maxAggregationBuckets =
+              Math.min(Math.max(Integer.parseInt(string), 1), MAX_ALLOWED_AGGREGATION_BUCKETS);
+        } catch (NumberFormatException e) {
+          maxAggregationBuckets = DEFAULT_MAX_AGGREGATION_BUCKETS;
+        }
+      }
+    }
+
     List<String> requestedFields = new ArrayList<>();
     if (params.containsKey("fields")) {
       String fieldsParam = (String) params.get("fields");
@@ -148,8 +182,6 @@ public class SearchMetadataTool implements McpTool {
         queryFilter = JsonUtils.pojoToJson(queryNode);
       }
       LOG.debug("Applied query filter to query: {}", queryFilter);
-    } else {
-
     }
 
     LOG.info(
@@ -203,7 +235,8 @@ public class SearchMetadataTool implements McpTool {
       searchResponse = JsonUtils.convertValue(response.getEntity(), Map.class);
     }
 
-    return buildEnhancedSearchResponse(searchResponse, query, size, requestedFields);
+    return buildEnhancedSearchResponse(
+        searchResponse, query, size, requestedFields, includeAggregations, maxAggregationBuckets);
   }
 
   @Override
@@ -216,11 +249,14 @@ public class SearchMetadataTool implements McpTool {
         "SearchMetadataTool does not support limits enforcement.");
   }
 
-  public static Map<String, Object> buildEnhancedSearchResponse(
+  @VisibleForTesting
+  static Map<String, Object> buildEnhancedSearchResponse(
       Map<String, Object> searchResponse,
       String query,
       int requestedLimit,
-      List<String> requestedFields) {
+      List<String> requestedFields,
+      boolean includeAggregations,
+      int maxAggregationBuckets) {
     if (searchResponse == null) {
       return createEmptyResponse();
     }
@@ -262,9 +298,23 @@ public class SearchMetadataTool implements McpTool {
     result.put("returnedCount", cleanedResults.size());
     result.put("query", query);
 
-    // Add aggregations if present in search response
-    if (searchResponse.containsKey("aggregations")) {
-      result.put("aggregations", searchResponse.get("aggregations"));
+    // Handle aggregations based on includeAggregations flag
+    if (includeAggregations && searchResponse.containsKey("aggregations")) {
+      Map<String, Object> rawAggregations = safeGetMap(searchResponse.get("aggregations"));
+      if (rawAggregations != null && !rawAggregations.isEmpty()) {
+        Map<String, Object> truncatedAggregations =
+            truncateAggregations(rawAggregations, maxAggregationBuckets);
+        result.put("aggregations", truncatedAggregations.get("aggregations"));
+        if (truncatedAggregations.containsKey("aggregationsTruncated")) {
+          result.put("aggregationsTruncated", true);
+          result.put(
+              "aggregationsMessage",
+              String.format(
+                  "Aggregation buckets truncated to %d per field to optimize LLM context. "
+                      + "Set maxAggregationBuckets parameter for more (max %d).",
+                  maxAggregationBuckets, MAX_ALLOWED_AGGREGATION_BUCKETS));
+        }
+      }
     }
 
     if (totalResults > requestedLimit) {
@@ -297,11 +347,11 @@ public class SearchMetadataTool implements McpTool {
       }
     }
 
-    // Cleanup Description in case of huge description
+    // Truncate long descriptions to optimize LLM context usage
     if (result.containsKey("description")) {
-      String description = (String) result.get("description");
-      if (description.length() > 3000) {
-        result.put("description", description.substring(0, 300) + "...");
+      Object descObj = result.get("description");
+      if (descObj instanceof String description && description.length() > DESCRIPTION_MAX_LENGTH) {
+        result.put("description", description.substring(0, DESCRIPTION_TRUNCATE_LENGTH) + "...");
       }
     }
     return result;
@@ -320,6 +370,64 @@ public class SearchMetadataTool implements McpTool {
   public static Map<String, Object> cleanSearchResponseObject(Map<String, Object> object) {
     DETAILED_EXCLUDE_KEYS.forEach(object::remove);
     return object;
+  }
+
+  /**
+   * Truncates aggregation buckets to prevent excessive response size that could overwhelm LLM
+   * context windows. Based on industry best practices, LLM performance degrades when context
+   * utilization exceeds 85%, so keeping responses concise is critical.
+   *
+   * @param aggregations Raw aggregations from search response
+   * @param maxBuckets Maximum number of buckets to keep per aggregation field
+   * @return Map containing truncated aggregations and a flag if any were truncated
+   */
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> truncateAggregations(
+      Map<String, Object> aggregations, int maxBuckets) {
+    Map<String, Object> result = new HashMap<>();
+    Map<String, Object> truncatedAggs = new HashMap<>();
+    boolean anyTruncated = false;
+
+    for (Map.Entry<String, Object> entry : aggregations.entrySet()) {
+      String aggName = entry.getKey();
+      Object aggValue = entry.getValue();
+
+      if (aggValue instanceof Map) {
+        Map<String, Object> aggMap = (Map<String, Object>) aggValue;
+
+        // Check if this aggregation has buckets
+        if (aggMap.containsKey("buckets")) {
+          Object bucketsObj = aggMap.get("buckets");
+          if (bucketsObj instanceof List) {
+            List<Object> buckets = (List<Object>) bucketsObj;
+            if (buckets.size() > maxBuckets) {
+              // Truncate buckets
+              Map<String, Object> truncatedAgg = new HashMap<>(aggMap);
+              truncatedAgg.put("buckets", buckets.subList(0, maxBuckets));
+              truncatedAgg.put("_originalBucketCount", buckets.size());
+              truncatedAgg.put("_truncated", true);
+              truncatedAggs.put(aggName, truncatedAgg);
+              anyTruncated = true;
+            } else {
+              truncatedAggs.put(aggName, aggMap);
+            }
+          } else {
+            truncatedAggs.put(aggName, aggMap);
+          }
+        } else {
+          // Not a bucket aggregation (e.g., value_count, sum, etc.)
+          truncatedAggs.put(aggName, aggMap);
+        }
+      } else {
+        truncatedAggs.put(aggName, aggValue);
+      }
+    }
+
+    result.put("aggregations", truncatedAggs);
+    if (anyTruncated) {
+      result.put("aggregationsTruncated", true);
+    }
+    return result;
   }
 
   @SuppressWarnings("unchecked")
