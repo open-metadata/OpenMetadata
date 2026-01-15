@@ -121,7 +121,6 @@ jobs:
         with:
           projectBaseDir: ingestion/
           args: >
-            -Dproject.settings=ingestion/sonar-project.properties
             -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
             -Dsonar.pullrequest.branch=${{ github.head_ref }}
             -Dsonar.pullrequest.github.repository=OpenMetadata
@@ -143,7 +142,6 @@ jobs:
         with:
           projectBaseDir: ingestion/
           args: >
-            -Dproject.settings=ingestion/sonar-project.properties
             -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
             -Dsonar.pullrequest.branch=${{ github.head_ref }}
             -Dsonar.pullrequest.github.repository=OpenMetadata

@@ -47,8 +47,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          # ref: ${{ env.BRANCH_NAME }}
-          ref: fix-sonar-coverage
+          ref: ${{ env.BRANCH_NAME }}
           fetch-depth: 0
 
       - name: Setup Openmetadata Test Environment
@@ -73,6 +72,22 @@ jobs:
       - name: Push Results To Sonar
         id: push-to-sonar
         continue-on-error: true
+        uses: SonarSource/sonarqube-scan-action@v7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
+        with:
+          projectBaseDir: ${{ env.PROJECT_BASE_DIR }}/
+          args: >
+            -Dsonar.branch.name=${{ env.BRANCH_NAME }}
+
+      - name: Wait to retry 'Push Results to Sonar'
+        if: ${{ steps.push-to-sonar.outcome != 'success' }}
+        run: sleep 20s
+        shell: bash
+
+      - name: Retry 'Push Results to Sonar'
+        if: ${{ steps.push-to-sonar.outcome != 'success' }}
         uses: SonarSource/sonarqube-scan-action@v7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
