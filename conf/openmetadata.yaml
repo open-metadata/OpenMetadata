@@ -29,6 +29,10 @@ server:
       bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_PORT:-8585}
 
+      # Jetty 12 URI Compliance - UNSAFE allows all special characters in entity names
+      # Required for backward compatibility with entity names containing /, ", etc.
+      uriCompliance: UNSAFE
+
       # Jetty Acceptor and Selector threads for high concurrency
       acceptorThreads: ${SERVER_ACCEPTOR_THREADS:-2}  # 1-2 per CPU core
       selectorThreads: ${SERVER_SELECTOR_THREADS:-8}  # 2-4 per CPU core
@@ -64,11 +68,18 @@ server:
   gzip:
     enabled: false
 
+  # Thread pool configuration
+  # With virtual threads enabled (Java 21+), these settings become less critical
+  # as blocking operations are handled efficiently by the JVM
   maxThreads: ${SERVER_MAX_THREADS:-150}
   minThreads: ${SERVER_MIN_THREADS:-100}
   idleThreadTimeout: ${SERVER_IDLE_THREAD_TIMEOUT:-1 minute}
+
+  # Virtual Threads (Project Loom) - Recommended for Java 21+
+  # Jetty 12 uses AdaptiveExecutionStrategy to route blocking tasks to virtual threads
+  # while keeping non-blocking I/O on platform threads for optimal cache locality
   enableVirtualThreads: ${SERVER_ENABLE_VIRTUAL_THREAD:-false}
-  maxQueuedRequests: ${SERVER_REQUEST_QUEUE:-1024}
+  # Note: maxQueuedRequests removed in Dropwizard 5.0/Jetty 12
 
   # Request/Response logging (disable in production for performance)
   requestLog:
@@ -322,7 +333,6 @@ authenticationConfiguration:
       entityId: ${SAML_IDP_ENTITY_ID:-""}
       ssoLoginUrl: ${SAML_IDP_SSO_LOGIN_URL:-""}
       idpX509Certificate: ${SAML_IDP_CERTIFICATE:-""}
-      authorityUrl: ${SAML_AUTHORITY_URL:-"http://localhost:8585/api/v1/saml/login"}
       nameId: ${SAML_IDP_NAME_ID:-"urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress"}
     sp:
       entityId: ${SAML_SP_ENTITY_ID:-"http://localhost:8585/api/v1/saml/metadata"}
@@ -387,6 +397,8 @@ jwtTokenConfiguration:
 
 elasticsearch:
   searchType: ${SEARCH_TYPE:- "elasticsearch"}
+  # Single host or comma-separated list for multiple hosts
+  # Examples: "localhost" or "es-node1:9200,es-node2:9200,es-node3:9200"
   host: ${ELASTICSEARCH_HOST:-localhost}
   port: ${ELASTICSEARCH_PORT:-9200}
   scheme: ${ELASTICSEARCH_SCHEME:-http}
@@ -405,18 +417,29 @@ elasticsearch:
   payLoadSize: ${ELASTICSEARCH_PAYLOAD_BYTES_SIZE:-10485760}
   searchIndexMappingLanguage : ${ELASTICSEARCH_INDEX_MAPPING_LANG:-EN}
   searchIndexFactoryClassName : org.openmetadata.service.search.SearchIndexFactory
+  # AWS IAM Authentication for OpenSearch (only applicable when searchType is "opensearch")
+  # Uses standard AWS environment variables: https://docs.aws.amazon.com/cli/v1/userguide/cli-configure-envvars.html
+  # IAM auth is automatically enabled when AWS_DEFAULT_REGION is set
+  # Credentials: Use AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY or rely on AWS SDK default credential provider chain
+  aws:
+    region: ${AWS_DEFAULT_REGION:-""}
+    accessKeyId: ${AWS_ACCESS_KEY_ID:-""}
+    secretAccessKey: ${AWS_SECRET_ACCESS_KEY:-""}
+    sessionToken: ${AWS_SESSION_TOKEN:-""}
+    serviceName: ${SEARCH_AWS_SERVICE_NAME:-"es"}  # Use "es" for OpenSearch, "aoss" for OpenSearch Serverless
   naturalLanguageSearch:
     enabled: false
     embeddingProvider: ${EMBEDDING_PROVIDER:-bedrock}
     providerClass: ${NATURAL_LANGUAGE_SEARCH_PROVIDER_CLASS:-org.openmetadata.service.search.nlq.NoOpNLQService}
     bedrock:
-      region: ${AWS_BEDROCK_REGION:-""}
+      awsConfig:
+        region: ${AWS_BEDROCK_REGION:-""}
+        accessKeyId: ${AWS_BEDROCK_ACCESS_KEY:-""}
+        secretAccessKey: ${AWS_BEDROCK_SECRET_KEY:-""}
+        sessionToken: ${AWS_BEDROCK_SESSION_TOKEN:-""}
       modelId: ${AWS_BEDROCK_MODEL_ID:-""}
       embeddingModelId: ${AWS_BEDROCK_EMBED_MODEL_ID:-""}
       embeddingDimension: ${AWS_BEDROCK_EMBEDDING_DIMENSION:-""}
-      accessKey: ${AWS_BEDROCK_ACCESS_KEY:-""}
-      secretKey: ${AWS_BEDROCK_SECRET_KEY:-""}
-      useIamRole: ${AWS_BEDROCK_USE_IAM:-"false"}
 
 eventMonitoringConfiguration:
   eventMonitor: ${EVENT_MONITOR:-prometheus}  # Possible values are "prometheus", "cloudwatch"
@@ -472,12 +495,41 @@ pipelineServiceClientConfiguration:
 
   # Default required parameters for Airflow as Pipeline Service Client
   parameters:
+    ## Airflow parameters
     username: ${AIRFLOW_USERNAME:-admin}
     password: ${AIRFLOW_PASSWORD:-admin}
     timeout: ${AIRFLOW_TIMEOUT:-10}
     # If we need to use SSL to reach Airflow
     truststorePath: ${AIRFLOW_TRUST_STORE_PATH:-""}
     truststorePassword: ${AIRFLOW_TRUST_STORE_PASSWORD:-""}
+    ## Kubernetes client parameters
+    namespace: ${K8S_NAMESPACE:-"openmetadata-pipelines"}
+    ingestionImage: ${K8S_INGESTION_IMAGE:-"docker.getcollate.io/openmetadata/ingestion-base:latest"}
+    imagePullPolicy: ${K8S_IMAGE_PULL_POLICY:-"IfNotPresent"}
+    imagePullSecrets: ${K8S_IMAGE_PULL_SECRETS:-""}
+    serviceAccountName: ${K8S_SERVICE_ACCOUNT_NAME:-"openmetadata-ingestion"}
+    # Resources configuration
+    resources:
+      limits:
+        cpu: ${K8S_LIMITS_CPU:-"2"}
+        memory: ${K8S_LIMITS_MEMORY:-"4Gi"}
+      requests:
+        cpu: ${K8S_REQUESTS_CPU:-"500m"}
+        memory: ${K8S_REQUESTS_MEMORY:-"1Gi"}
+    ttlSecondsAfterFinished: ${K8S_TTL_SECONDS_AFTER_FINISHED:-604800}
+    activeDeadlineSeconds: ${K8S_ACTIVE_DEADLINE_SECONDS:-604800}
+    backoffLimit: ${K8S_BACKOFF_LIMIT:-3}
+    successfulJobsHistoryLimit: ${K8S_SUCCESSFUL_JOBS_HISTORY_LIMIT:-3}
+    failedJobsHistoryLimit: ${K8S_FAILED_JOBS_HISTORY_LIMIT:-1}
+    nodeSelector: ${K8S_NODE_SELECTOR:-""}
+    runAsUser: ${K8S_RUN_AS_USER:-1000}
+    runAsGroup: ${K8S_RUN_AS_GROUP:-1000}
+    fsGroup: ${K8S_FS_GROUP:-1000}
+    runAsNonRoot: ${K8S_RUN_AS_NON_ROOT:-"true"}
+    extraEnvVars: ${K8S_EXTRA_ENV_VARS:-[]}
+    podAnnotations: ${K8S_POD_ANNOTATIONS:-""}
+    useOMJobOperator: ${USE_OMJOB_OPERATOR:-"true"}
+
 
 # no_encryption_at_rest is the default value, and it does what it says. Please read the manual on how
 # to secure your instance of OpenMetadata with TLS and encryption at rest.

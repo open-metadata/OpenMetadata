@@ -138,7 +138,6 @@ export const CHART_WIDGET_DAYS_DURATION = 14;
 export const ROUTES = {
   HOME: '/',
   CALLBACK: '/callback',
-  SAML_CALLBACK: '/saml/callback',
   SILENT_CALLBACK: '/silent-callback',
   NOT_FOUND: '/404',
   FORBIDDEN: '/403',
@@ -304,6 +303,7 @@ export const ROUTES = {
   OBSERVABILITY_ALERT_DETAILS_WITH_TAB: `/observability/alert/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ADD_OBSERVABILITY_ALERTS: '/observability/alerts/add',
   EDIT_OBSERVABILITY_ALERTS: `/observability/alerts/edit/${PLACEHOLDER_ROUTE_FQN}`,
+  RULES_LIBRARY: '/rules-library',
 
   // Notification Alerts
   NOTIFICATIONS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}`,

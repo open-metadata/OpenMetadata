@@ -50,12 +50,17 @@ import { performAdminLogin } from '../../utils/admin';
 import {
   assignDataProduct,
   assignDomain,
+  clickOutside,
   descriptionBoxReadOnly,
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
 import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
-import { addMultiOwner, assignGlossaryTerm } from '../../utils/entity';
+import {
+  addMultiOwner,
+  assignGlossaryTerm,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import {
   createDatabaseRowDetails,
   createDatabaseSchemaRowDetails,
@@ -697,6 +702,87 @@ test.describe(
 
       await table.delete(apiContext);
       await afterAction();
+    });
+  }
+);
+
+test.describe(
+  `GlossaryTerm Domain Entity Rules Disabled`,
+  {
+    tag: '@dataAssetRules',
+  },
+  () => {
+    // Verify glossary term allows multiple domains when entity rules are disabled
+    test('should allow multiple domain selection for glossary term when entity rules are disabled', async ({
+      page,
+      browser,
+    }) => {
+      test.slow(true);
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      const testDomain1 = new Domain();
+      const testDomain2 = new Domain();
+      const testGlossary = new Glossary();
+      const testGlossaryTerm = new GlossaryTerm(testGlossary);
+
+      try {
+        await testDomain1.create(apiContext);
+        await testDomain2.create(apiContext);
+        await testGlossary.create(apiContext);
+        await testGlossaryTerm.create(apiContext);
+
+        // Navigate to glossary term page with full page load
+        await page.goto(
+          `/glossary/${encodeURIComponent(testGlossaryTerm.responseData.fullyQualifiedName)}`
+        );
+
+        // Wait for page to be fully loaded
+        await page.waitForLoadState('domcontentloaded');
+        await waitForAllLoadersToDisappear(page);
+
+        // Open domain selector to verify multi-select mode (checkboxes visible)
+        await page.getByTestId('add-domain').click();
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        // Verify checkboxes ARE visible (multi-select mode)
+        await expect(
+          page.locator('.domain-selectable-tree .ant-tree-checkbox').first()
+        ).toBeVisible();
+
+        // Close the selector by clicking outside
+        await clickOutside(page);
+
+        // Wait for domain selector to be fully closed
+        await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
+          state: 'detached',
+        });
+
+        // Assign first domain (multi-select mode)
+        await assignDomain(page, testDomain1.responseData);
+
+        // Assign second domain (should ADD to first, not replace)
+        await assignDomain(page, testDomain2.responseData, false);
+
+        // Verify both domains are visible (multi-select mode allows multiple)
+        // Use filter to find specific domain links
+        await expect(
+          page
+            .getByTestId('domain-link')
+            .filter({ hasText: testDomain1.data.displayName })
+        ).toBeVisible();
+        await expect(
+          page
+            .getByTestId('domain-link')
+            .filter({ hasText: testDomain2.data.displayName })
+        ).toBeVisible();
+      } finally {
+        await testGlossaryTerm.delete(apiContext);
+        await testGlossary.delete(apiContext);
+        await testDomain1.delete(apiContext);
+        await testDomain2.delete(apiContext);
+        await afterAction();
+      }
     });
   }
 );

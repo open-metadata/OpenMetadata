@@ -414,10 +414,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.ml-model'),
-      })}>
+    <PageLayoutV1 pageTitle={mlModelName}>
       <Row gutter={[0, 12]}>
         <Col span={24}>
           <DataAssetsHeader

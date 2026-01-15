@@ -99,7 +99,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
   private Table createTable(TestNamespace ns) {
     // Use short names to avoid FQN length limit (256 chars)
-    String shortId = ns.shortPrefix();
+    String shortId = ns.uniqueShortId();
 
     // Create service with short name using fluent API
     org.openmetadata.schema.services.connections.database.PostgresConnection conn =
@@ -1476,7 +1476,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
   private Table createTableWithName(TestNamespace ns, String nameSuffix) {
     OpenMetadataClient client = SdkClients.adminClient();
-    String shortId = ns.shortPrefix();
+    String shortId = ns.uniqueShortId();
 
     // Create service using existing pattern
     org.openmetadata.schema.services.connections.database.PostgresConnection conn =
