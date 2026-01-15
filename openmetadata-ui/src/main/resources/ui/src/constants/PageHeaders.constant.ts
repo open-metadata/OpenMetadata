@@ -116,7 +116,7 @@ export const PAGE_HEADERS = {
     subHeaderParams: { entity: 'label.table-plural' },
   },
   COLUMN_CUSTOM_ATTRIBUTES: {
-    header: 'label.column-profile',
+    header: 'label.column-plural',
     subHeader: 'message.define-custom-property-for-column',
   },
   TOPICS_CUSTOM_ATTRIBUTES: {
