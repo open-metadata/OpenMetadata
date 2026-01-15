@@ -937,10 +937,11 @@ test('Tag Page Activity Feed', async ({ page }) => {
       );
       await page.getByTestId('data-classification-add-button').click();
       await initialFetchResponse;
-      await expect(page.getByRole('dialog')).toBeVisible();
+
+      await expect(page.getByTestId('search-bar-container')).toBeVisible();
 
       await page
-        .getByTestId('asset-selection-modal')
+        .getByTestId('search-bar-container')
         .getByTestId('searchbar')
         .fill(assetName);
 
