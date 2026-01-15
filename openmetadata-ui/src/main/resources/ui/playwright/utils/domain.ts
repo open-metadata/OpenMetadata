@@ -1265,4 +1265,7 @@ export const renameDomain = async (page: Page, newName: string) => {
   const patchRes = page.waitForResponse('/api/v1/domains/*');
   await page.getByTestId('save-button').click();
   await patchRes;
+
+  await page.reload();
+  await waitForAllLoadersToDisappear(page);
 };
