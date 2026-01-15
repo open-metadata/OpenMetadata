@@ -151,6 +151,9 @@ public interface SearchClient
               if (currentFqn.equals(params.oldDomainFqns[j])) {
                 // Update all fields from the new domain object
                 def newDomain = params.newDomains[j];
+                if (newDomain.containsKey('id')) {
+                  ctx._source.domains[i].id = newDomain.id;
+                }
                 ctx._source.domains[i].fullyQualifiedName = newDomain.fullyQualifiedName;
                 if (newDomain.containsKey('name')) {
                   ctx._source.domains[i].name = newDomain.name;
