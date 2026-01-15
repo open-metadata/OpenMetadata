@@ -96,6 +96,7 @@ class OpenMetadataValidationAction1xx(ValidationAction):
     # This will be initialized in the run method
     ometa_conn: Optional[OpenMetadata] = None
 
+    # pylint: disable=signature-differs
     def run(
         self,
         checkpoint_result: CheckpointResult,
