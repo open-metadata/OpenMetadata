@@ -39,7 +39,7 @@ const EntityImportRouter = () => {
 
     if (entityType === ResourceEntity.TEST_CASE) {
       const { testCase } = permissions;
-      setEntityPermission(testCase);
+      setEntityPermission(testCase ?? DEFAULT_ENTITY_PERMISSION);
       setIsLoading(false);
 
       return;

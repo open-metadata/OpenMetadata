@@ -66,7 +66,7 @@ test.describe(
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await table.create(apiContext);
-      await table.createTestCase(apiContext)
+      await table.createTestCase(apiContext);
       await afterAction();
     });
 

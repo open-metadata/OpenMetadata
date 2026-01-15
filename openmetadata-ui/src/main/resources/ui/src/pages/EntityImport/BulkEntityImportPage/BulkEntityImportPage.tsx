@@ -126,6 +126,10 @@ const BulkEntityImportPage = () => {
   const [entity, setEntity] = useState<DataAssetsHeaderProps['dataAsset']>();
   const [sourceEntityType, setSourceEntityType] = useState<EntityType>();
 
+  const effectiveSourceEntityType = useMemo(() => {
+    return sourceEntityType ?? sourceEntityTypeFromURL;
+  }, [sourceEntityType, sourceEntityTypeFromURL]);
+
   const filterColumns = useMemo(
     () =>
       columns?.filter(
@@ -414,26 +418,19 @@ const BulkEntityImportPage = () => {
           if (entityType === EntityType.TEST_CASE) {
             if (fqn === WILD_CARD_CHAR) {
               navigate(getDataQualityPagePath(DataQualityPageTabs.TEST_CASES));
+            } else if (effectiveSourceEntityType === EntityType.TABLE) {
+              navigate(
+                getEntityDetailsPath(
+                  EntityType.TABLE,
+                  fqn,
+                  EntityTabs.PROFILER,
+                  ProfilerTabPath.DATA_QUALITY
+                )
+              );
+            } else if (effectiveSourceEntityType === EntityType.TEST_SUITE) {
+              navigate(getTestSuitePath(fqn));
             } else {
-              const redirectSourceType =
-                sourceEntityType ?? sourceEntityTypeFromURL;
-
-              if (redirectSourceType === EntityType.TABLE) {
-                navigate(
-                  getEntityDetailsPath(
-                    EntityType.TABLE,
-                    fqn,
-                    EntityTabs.PROFILER,
-                    ProfilerTabPath.DATA_QUALITY
-                  )
-                );
-              } else if (redirectSourceType === EntityType.TEST_SUITE) {
-                navigate(getTestSuitePath(fqn));
-              } else {
-                navigate(
-                  getDataQualityPagePath(DataQualityPageTabs.TEST_CASES)
-                );
-              }
+              navigate(getDataQualityPagePath(DataQualityPageTabs.TEST_CASES));
             }
           } else {
             navigate(entityUtilClassBase.getEntityLink(entityType, fqn));
@@ -477,8 +474,7 @@ const BulkEntityImportPage = () => {
       importedEntityType,
       handleResetImportJob,
       handleActiveStepChange,
-      sourceEntityType,
-      sourceEntityTypeFromURL,
+      effectiveSourceEntityType,
     ]
   );
 
@@ -665,7 +661,7 @@ const BulkEntityImportPage = () => {
             isValidating={isValidating}
             pushToUndoStack={pushToUndoStack}
             setGridContainer={setGridContainer}
-            sourceEntityType={sourceEntityType ?? sourceEntityTypeFromURL}
+            sourceEntityType={effectiveSourceEntityType}
             validateCSVData={validateCSVData}
             validationData={validationData}
             onCSVReadComplete={onCSVReadComplete}

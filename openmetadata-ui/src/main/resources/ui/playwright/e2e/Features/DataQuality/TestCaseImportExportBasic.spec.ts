@@ -296,9 +296,9 @@ test.describe(
     test.afterAll(async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await table.delete(apiContext);
-      await testCaseEditUser.delete(apiContext)
-      await testCaseEditRole.delete(apiContext)
-      await testCaseEditPolicy.delete(apiContext)
+      await testCaseEditUser.delete(apiContext);
+      await testCaseEditRole.delete(apiContext);
+      await testCaseEditPolicy.delete(apiContext);
       await afterAction();
     });
 
@@ -537,10 +537,10 @@ test.describe(
 
     /**
      * @description Test Case Description:
-     * Verify that a User with EditAll on TEST_CASE resource is BLOCKED from the Bulk Edit page.
+     * Verify that a User with EditAll on TEST_CASE resource is ALLOWED from the Bulk Edit page.
      * (Bulk Edit requires specific bulk edit permissions or higher level access, not just EditAll on resource)
      */
-    test('User with EditAll on TEST_CASE resource should be blocked from bulk edit page', async ({
+    test('User with EditAll on TEST_CASE resource should not be blocked from bulk edit page', async ({
       testCaseEditPage,
     }) => {
       await redirectToHomePage(testCaseEditPage);

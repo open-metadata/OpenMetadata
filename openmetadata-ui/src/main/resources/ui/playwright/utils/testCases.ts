@@ -316,16 +316,21 @@ export const cancelBulkEditAndVerifyRedirect = async (
 
   expect(page.url()).toContain(expectedUrl);
 };
+
 /**
  * Cleanup downloaded CSV file
  * @param tableName - Table name to find CSV file
  */
 export const cleanupDownloadedCSV = (tableName: string): void => {
-  const exportedFile = fs.readdirSync('downloads').find((f: string) =>
+  const downloadsDir = 'downloads';
+  if (!fs.existsSync(downloadsDir)) {
+    return;
+  }
+  const exportedFile = fs.readdirSync(downloadsDir).find((f: string) =>
     f.includes(tableName) && f.endsWith('.csv')
   );
   if (exportedFile) {
-    const filePath = path.join('downloads', exportedFile);
+    const filePath = path.join(downloadsDir, exportedFile);
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
     }
