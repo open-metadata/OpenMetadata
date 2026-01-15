@@ -80,6 +80,8 @@ const AddDataContract: React.FC<{
 
   // Filter out inherited fields from the contract for editing
   // Inherited fields should not be shown in the edit form
+  // IMPORTANT: We must completely REMOVE inherited fields from the object (not set to undefined)
+  // so that fast-json-patch generates /add operations instead of /replace when adding new values
   const filteredContract = useMemo(() => {
     if (!contract) {
       return undefined;
@@ -105,7 +107,7 @@ const AddDataContract: React.FC<{
     });
 
     // Get termsOfUse content, excluding if inherited
-    let filteredTermsOfUse = contract.termsOfUse;
+    let filteredTermsOfUse: string | undefined;
     if (isInherited(contract.termsOfUse)) {
       filteredTermsOfUse = undefined;
     } else if (
@@ -115,6 +117,8 @@ const AddDataContract: React.FC<{
       filteredTermsOfUse = (
         contract.termsOfUse as unknown as { content?: string }
       ).content;
+    } else if (typeof contract.termsOfUse === 'string') {
+      filteredTermsOfUse = contract.termsOfUse;
     }
 
     // Check security and SLA for inherited
@@ -123,15 +127,43 @@ const AddDataContract: React.FC<{
     };
     const slaWithInherited = contract.sla as unknown as { inherited?: boolean };
 
-    return {
-      ...contract,
-      semantics: filteredSemantics,
-      termsOfUse: filteredTermsOfUse,
-      security: securityWithInherited?.inherited
-        ? undefined
-        : contract.security,
-      sla: slaWithInherited?.inherited ? undefined : contract.sla,
+    // Start with base contract fields, excluding potentially inherited fields
+    // We destructure to exclude sla, security, termsOfUse, semantics, then add them back only if not inherited
+    const {
+      sla: _sla,
+      security: _security,
+      termsOfUse: _termsOfUse,
+      semantics: _semantics,
+      ...baseContract
+    } = contract;
+
+    // Build result object, only adding fields that are not inherited
+    // This ensures fast-json-patch generates /add operations instead of /replace
+    const result: Partial<DataContract> = {
+      ...baseContract,
     };
+
+    // Only add semantics if there are non-inherited rules
+    if (filteredSemantics && filteredSemantics.length > 0) {
+      result.semantics = filteredSemantics;
+    }
+
+    // Only add termsOfUse if not inherited
+    if (filteredTermsOfUse !== undefined) {
+      result.termsOfUse = filteredTermsOfUse;
+    }
+
+    // Only add security if not inherited
+    if (!securityWithInherited?.inherited && contract.security) {
+      result.security = contract.security;
+    }
+
+    // Only add SLA if not inherited
+    if (!slaWithInherited?.inherited && contract.sla) {
+      result.sla = contract.sla;
+    }
+
+    return result as DataContract;
   }, [contract]);
 
   const [formValues, setFormValues] = useState<DataContract>(
