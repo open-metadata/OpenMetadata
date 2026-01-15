@@ -628,6 +628,7 @@ class EntityUtilClassBase {
 
       case EntityType.API_ENDPOINT:
       case EntityType.DATABASE_SCHEMA:
+      case EntityType.CONTAINER:
         // Service.ApiCollection.Endpoint
         if (fqnParts.length > 3) {
           entityFqn = Fqn.build(...fqnParts.slice(0, 3));
