@@ -424,12 +424,19 @@ class OMetaTableTest(TestCase):
             patched_table.certification.tagLabel.tagFQN.root == "Certification.Bronze"
         )
         assert patched_table.certification.tagLabel.name == "Bronze"
-        assert patched_table.certification.appliedDate == 1704153600000
-        assert patched_table.certification.expiryDate == 1735689600000
+        # The server sets appliedDate to current time, not the provided value
+        # Allow 60 seconds tolerance for test execution time
+        current_time_ms = int(datetime.now().timestamp() * 1000)
+        assert (
+            abs(patched_table.certification.appliedDate.root - current_time_ms) < 60000
+        )
+        # expiryDate is calculated by the server based on certification settings
+        assert patched_table.certification.expiryDate is not None
 
         # Retrieve the table again and verify certification persists
+        # Note: certification is not a default field, so we need to request it explicitly
         retrieved_table = self.metadata.get_by_name(
-            entity=Table, fqn=self.entity.fullyQualifiedName
+            entity=Table, fqn=self.entity.fullyQualifiedName, fields=["certification"]
         )
         assert retrieved_table.certification is not None
         assert (
