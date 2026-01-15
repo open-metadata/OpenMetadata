@@ -302,10 +302,6 @@ public abstract class AbstractEventConsumer
   }
 
   private void batchRecordSuccessfulEvents(UUID subscriptionId, long timestamp) {
-    if (successfulEvents.isEmpty()) {
-      return;
-    }
-
     List<String> changeEventIds = new ArrayList<>();
     List<String> subscriptionIds = new ArrayList<>();
     List<String> jsonList = new ArrayList<>();
