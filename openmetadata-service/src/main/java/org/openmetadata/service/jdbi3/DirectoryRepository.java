@@ -282,6 +282,11 @@ public class DirectoryRepository extends EntityRepository<Directory> {
   }
 
   @Override
+  public boolean supportsBulkImportVersioning() {
+    return false;
+  }
+
+  @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
     Directory directory = getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS);
     return new DirectoryCsv(directory, user, recursive).exportCsv(List.of(directory));

@@ -407,6 +407,13 @@ public class UserRepository extends EntityRepository<User> {
     return userCsv.importCsv(csv, dryRun);
   }
 
+  @Override
+  public boolean supportsBulkImportVersioning() {
+    // User bulk imports don't version a parent entity - they import users TO a team
+    // The 'name' parameter in importFromCsv is the team name, not a user entity name
+    return false;
+  }
+
   public boolean isTeamJoinable(String teamId) {
     Team team =
         daoCollection.teamDAO().findEntityById(UUID.fromString(teamId), Include.NON_DELETED);

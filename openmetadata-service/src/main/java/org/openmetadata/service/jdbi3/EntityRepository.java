@@ -3876,6 +3876,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
+   * Indicates whether this repository's bulk CSV import should create version history.
+   * Most repositories import entities into a parent entity (e.g., Glossary, Team, Table)
+   * and should version that parent. Some repositories (e.g., User) import entities without
+   * a versionable parent entity and should return false.
+   *
+   * @return true if bulk import should create version history (default), false otherwise
+   */
+  public boolean supportsBulkImportVersioning() {
+    return true; // Default: most repositories version the parent entity during bulk import
+  }
+
+  /**
    * Override this method to support downloading CSV functionality
    */
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {

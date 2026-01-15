@@ -780,15 +780,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
             WebsocketNotificationHandler.sendCsvImportStartedNotification(jobId, securityContext);
             CsvImportResult result =
                 importCsvInternal(uriInfo, securityContext, name, csv, dryRun, recursive);
-            if (result.getStatus() != ApiStatus.ABORTED
-                && result.getNumberOfRowsProcessed() > 1
-                && !dryRun) {
-              repository.createChangeEventForBulkOperation(
-                  repository.getByName(
-                      uriInfo, name, new Fields(allowedFields, ""), Include.NON_DELETED, false),
-                  result,
-                  securityContext.getUserPrincipal().getName());
-            }
             WebsocketNotificationHandler.sendCsvImportCompleteNotification(
                 jobId, securityContext, result);
           } catch (Exception e) {
@@ -827,7 +818,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     // Create version history for bulk import (same logic as async import)
     if (result.getStatus() != ApiStatus.ABORTED
         && result.getNumberOfRowsProcessed() > 1
-        && !dryRun) {
+        && !dryRun
+        && repository.supportsBulkImportVersioning()) {
+      // Only repositories that support versioning (indicated by flag) will execute this
       repository.createChangeEventForBulkOperation(
           repository.getByName(
               uriInfo, name, new Fields(allowedFields, ""), Include.NON_DELETED, false),
