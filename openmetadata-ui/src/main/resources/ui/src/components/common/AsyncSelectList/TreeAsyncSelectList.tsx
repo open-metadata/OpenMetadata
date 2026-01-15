@@ -167,7 +167,8 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
         ? (glossaries as ModifiedGlossaryTerm[])
         : (searchOptions as unknown as ModifiedGlossaryTerm[]),
       0,
-      isParentSelectable
+      isParentSelectable,
+      false
     );
   }, [glossaries, searchOptions, isParentSelectable]);
 

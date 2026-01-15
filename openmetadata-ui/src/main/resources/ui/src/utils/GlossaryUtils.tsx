@@ -258,14 +258,14 @@ export const convertGlossaryTermsToTreeOptions = (
       checkable: allowParentSelection || isGlossaryTerm,
       isLeaf: isGlossaryTerm ? !hasChildren : false,
       selectable: allowParentSelection || isGlossaryTerm,
-      isParentMutuallyExclusive: parentMutuallyExclusive && isGlossaryTerm,
+      isParentMutuallyExclusive: parentMutuallyExclusive,
       children:
         hasChildren &&
         convertGlossaryTermsToTreeOptions(
           option.children as ModifiedGlossaryTerm[],
           level + 1,
           allowParentSelection,
-          parentMutuallyExclusive || option.mutuallyExclusive === true
+          option.mutuallyExclusive === true
         ),
     };
   });
