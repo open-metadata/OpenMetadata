@@ -1259,6 +1259,7 @@ test.describe('User Profile Persona Interactions', () => {
 base.describe(
   'Users Performance around application with multiple team inheriting roles and policy',
   () => {
+    base.slow(true);
     const policy = new PolicyClass();
     const policy2 = new PolicyClass();
     const policy3 = new PolicyClass();
@@ -1273,7 +1274,6 @@ base.describe(
     const user = new UserClass();
 
     base.beforeAll('Setup pre-requests', async ({ browser }) => {
-      base.slow(true);
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
