@@ -22,33 +22,46 @@ import {
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { FC, useCallback, useMemo, useState } from 'react';
+import { useFqn } from '../../../hooks/useFqn';
 import { useTranslation } from 'react-i18next';
-import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
+import {
+  HIGHLIGHTED_ROW_SELECTOR,
+  TABLE_SCROLL_VALUE,
+} from '../../../constants/Table.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_CONTAINER_DATA_MODEL_VISIBLE_COLUMNS,
   TABLE_COLUMNS_KEYS,
 } from '../../../constants/TableKeys.constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { Column, TagLabel } from '../../../generated/entity/data/container';
+import {
+  Column,
+  Container,
+  TagLabel,
+} from '../../../generated/entity/data/container';
 import { TagSource } from '../../../generated/type/tagLabel';
 import {
   updateContainerColumnDescription,
   updateContainerColumnTags,
 } from '../../../utils/ContainerDetailUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
+import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   getAllTags,
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import {
+  getHighlightedRowClassName,
   getTableExpandableConfig,
   pruneEmptyChildren,
 } from '../../../utils/TableUtils';
+import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../common/Table/Table';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
@@ -65,11 +78,39 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   entityFqn,
 }) => {
   const { t } = useTranslation();
+  const { openColumnDetailPanel, selectedColumn } =
+    useGenericContext<Container>();
 
   const [editContainerColumnDescription, setEditContainerColumnDescription] =
     useState<Column>();
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
   const schema = pruneEmptyChildren(dataModel?.columns ?? []);
+
+  const {
+    columnFqn: columnPart,
+    fqn,
+  } = useFqn({
+    type: EntityType.CONTAINER,
+  });
+  useFqnDeepLink({
+    data: dataModel?.columns || [],
+    columnPart,
+    fqn,
+    setExpandedRowKeys: setExpandedRowKeys,
+    openColumnDetailPanel,
+    selectedColumn: selectedColumn as Column | null,
+  });
+
+  useScrollToElement(
+    HIGHLIGHTED_ROW_SELECTOR,
+    Boolean(fqn && schema.length > 0)
+  );
+
+  const getRowClassName = useCallback(
+    (record: Column) => getHighlightedRowClassName(record, fqn),
+    [fqn]
+  );
 
   const handleFieldTagsChange = useCallback(
     async (selectedTags: EntityTags[], editColumnTag: Column) => {
@@ -103,6 +144,19 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     setEditContainerColumnDescription(undefined);
   };
 
+  const handleColumnClick = useCallback(
+    (column: Column, event: React.MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const isExpandIcon = target.closest('.table-expand-icon') !== null;
+      const isButton = target.closest('button') !== null;
+
+      if (!isExpandIcon && !isButton) {
+        openColumnDetailPanel(column);
+      }
+    },
+    [openColumnDetailPanel]
+  );
+
   const tagFilter = useMemo(() => {
     const tags = getAllTags(schema);
 
@@ -120,10 +174,25 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         key: TABLE_COLUMNS_KEYS.NAME,
         fixed: 'left',
         width: 300,
+        className: 'cursor-pointer',
+        onCell: (record: Column) => ({
+          onClick: (event: React.MouseEvent) =>
+            handleColumnClick(record, event),
+          'data-testid': 'column-name-cell',
+        }),
         render: (_, record: Column) => (
-          <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
-            <Typography.Text>{getEntityName(record)}</Typography.Text>
-          </Tooltip>
+          <div className="d-inline-flex items-center gap-2 hover-icon-group w-max-90">
+            <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
+              <Typography.Text>{getEntityName(record)}</Typography.Text>
+            </Tooltip>
+            {record.fullyQualifiedName && (
+              <CopyLinkButton
+                entityType={EntityType.CONTAINER}
+                fieldFqn={record.fullyQualifiedName}
+                testId="copy-column-link-button"
+              />
+            )}
+          </div>
         ),
       },
       {
@@ -228,6 +297,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       editContainerColumnDescription,
       getEntityName,
       handleFieldTagsChange,
+      handleColumnClick,
     ]
   );
 
@@ -246,8 +316,11 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         expandable={{
           ...getTableExpandableConfig<Column>(),
           rowExpandable: (record) => !isEmpty(record.children),
+          expandedRowKeys,
+          onExpandedRowsChange: (keys) => setExpandedRowKeys(keys as string[]),
         }}
         pagination={false}
+        rowClassName={getRowClassName}
         rowKey="name"
         scroll={TABLE_SCROLL_VALUE}
         size="small"

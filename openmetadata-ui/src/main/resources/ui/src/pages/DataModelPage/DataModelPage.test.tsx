@@ -101,7 +101,7 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
 }));
 
 jest.mock('../../hooks/useFqn', () => ({
-  useFqn: jest.fn().mockImplementation(() => ({ fqn: 'testFqn' })),
+  useFqn: jest.fn().mockImplementation(() => ({ fqn: 'testFqn', entityFqn: 'testFqn' })),
 }));
 
 jest.mock('../../rest/dataModelsAPI', () => ({

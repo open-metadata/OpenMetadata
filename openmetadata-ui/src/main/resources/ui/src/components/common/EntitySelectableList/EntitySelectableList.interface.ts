@@ -37,4 +37,5 @@ export interface EntitySelectableListProps<T> {
   popoverProps?: Partial<PopoverProps>;
   listHeight?: number;
   config: EntitySelectableListConfig<T>;
+  multiSelect?: boolean;
 }
