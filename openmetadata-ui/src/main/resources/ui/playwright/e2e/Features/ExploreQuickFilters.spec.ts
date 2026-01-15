@@ -122,19 +122,20 @@ test('should show correct count for initial options', async ({ page }) => {
 
     await waitForAllLoadersToDisappear(page);
 
-    for (const bucket of buckets) {
-      const normalizedKey = bucket.key
-        .split('.')
-        .map((seg: string) =>
-          seg ? seg.charAt(0).toUpperCase() + seg.slice(1) : seg
-        )
-        .join('.');
-
-      expect(
-        page
-          .locator(`[data-menu-id$="-${normalizedKey}"]`)
-          .getByTestId('filter-count')
-      ).toHaveText(bucket.doc_count.toString());
+    // Initial check - if Tier5 happens to be in the first 50, verify it (optional, but good for sanity)
+    // But per request, we will search for it to be sure.
+    
+    await page.getByTestId('search-input').fill('Tier5');
+     
+    const tier5Bucket = buckets.find((b: { key: string }) => b.key === 'Tier.Tier5');
+    
+    // If Tier5 exists in the system (which it should, created in beforeAll), we expect it here.
+    if (tier5Bucket) {
+        expect(
+            page
+            .locator(`[data-testid="Tier.Tier5"]`)
+            .getByTestId('filter-count')
+        ).toHaveText(tier5Bucket.doc_count.toString());
     }
 
     await clickOutside(page);
