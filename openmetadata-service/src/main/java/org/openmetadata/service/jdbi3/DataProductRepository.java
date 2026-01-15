@@ -383,29 +383,29 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   public ResultList<EntityInterface> getPaginatedInputPorts(
-      UUID dataProductId, int limit, int offset) {
-    return getPaginatedPorts(dataProductId, Relationship.INPUT_PORT, limit, offset);
+      UUID dataProductId, String fields, int limit, int offset) {
+    return getPaginatedPorts(dataProductId, Relationship.INPUT_PORT, fields, limit, offset);
   }
 
   public ResultList<EntityInterface> getPaginatedInputPortsByName(
-      String dataProductName, int limit, int offset) {
+      String dataProductName, String fields, int limit, int offset) {
     DataProduct dataProduct = getByName(null, dataProductName, getFields("id"));
-    return getPaginatedInputPorts(dataProduct.getId(), limit, offset);
+    return getPaginatedInputPorts(dataProduct.getId(), fields, limit, offset);
   }
 
   public ResultList<EntityInterface> getPaginatedOutputPorts(
-      UUID dataProductId, int limit, int offset) {
-    return getPaginatedPorts(dataProductId, Relationship.OUTPUT_PORT, limit, offset);
+      UUID dataProductId, String fields, int limit, int offset) {
+    return getPaginatedPorts(dataProductId, Relationship.OUTPUT_PORT, fields, limit, offset);
   }
 
   public ResultList<EntityInterface> getPaginatedOutputPortsByName(
-      String dataProductName, int limit, int offset) {
+      String dataProductName, String fields, int limit, int offset) {
     DataProduct dataProduct = getByName(null, dataProductName, getFields("id"));
-    return getPaginatedOutputPorts(dataProduct.getId(), limit, offset);
+    return getPaginatedOutputPorts(dataProduct.getId(), fields, limit, offset);
   }
 
   private ResultList<EntityInterface> getPaginatedPorts(
-      UUID dataProductId, Relationship relationship, int limit, int offset) {
+      UUID dataProductId, Relationship relationship, String fields, int limit, int offset) {
     List<CollectionDAO.EntityRelationshipRecord> relationshipRecords =
         daoCollection
             .relationshipDAO()
@@ -429,9 +429,12 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     }
 
     // Bulk fetch entities by type and collect in order
+    // Use empty string if fields is null to avoid NPE
+    String fieldsToFetch = fields != null ? fields : "";
     Map<UUID, EntityInterface> entitiesById = new HashMap<>();
     for (Map.Entry<String, List<EntityReference>> entry : refsByType.entrySet()) {
-      List<EntityInterface> entitiesOfType = Entity.getEntities(entry.getValue(), "", NON_DELETED);
+      List<EntityInterface> entitiesOfType =
+          Entity.getEntities(entry.getValue(), fieldsToFetch, NON_DELETED);
       for (int i = 0; i < entitiesOfType.size(); i++) {
         entitiesById.put(entry.getValue().get(i).getId(), entitiesOfType.get(i));
       }
@@ -450,24 +453,39 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   public DataProductPortsView getPortsView(
-      UUID dataProductId, int inputLimit, int inputOffset, int outputLimit, int outputOffset) {
+      UUID dataProductId,
+      String fields,
+      int inputLimit,
+      int inputOffset,
+      int outputLimit,
+      int outputOffset) {
     DataProduct dataProduct = get(null, dataProductId, getFields("id,fullyQualifiedName"));
-    return buildPortsView(dataProduct, inputLimit, inputOffset, outputLimit, outputOffset);
+    return buildPortsView(dataProduct, fields, inputLimit, inputOffset, outputLimit, outputOffset);
   }
 
   public DataProductPortsView getPortsViewByName(
-      String dataProductName, int inputLimit, int inputOffset, int outputLimit, int outputOffset) {
+      String dataProductName,
+      String fields,
+      int inputLimit,
+      int inputOffset,
+      int outputLimit,
+      int outputOffset) {
     DataProduct dataProduct = getByName(null, dataProductName, getFields("id,fullyQualifiedName"));
-    return buildPortsView(dataProduct, inputLimit, inputOffset, outputLimit, outputOffset);
+    return buildPortsView(dataProduct, fields, inputLimit, inputOffset, outputLimit, outputOffset);
   }
 
   @SuppressWarnings("unchecked")
   private DataProductPortsView buildPortsView(
-      DataProduct dataProduct, int inputLimit, int inputOffset, int outputLimit, int outputOffset) {
+      DataProduct dataProduct,
+      String fields,
+      int inputLimit,
+      int inputOffset,
+      int outputLimit,
+      int outputOffset) {
     ResultList<EntityInterface> inputPorts =
-        getPaginatedInputPorts(dataProduct.getId(), inputLimit, inputOffset);
+        getPaginatedInputPorts(dataProduct.getId(), fields, inputLimit, inputOffset);
     ResultList<EntityInterface> outputPorts =
-        getPaginatedOutputPorts(dataProduct.getId(), outputLimit, outputOffset);
+        getPaginatedOutputPorts(dataProduct.getId(), fields, outputLimit, outputOffset);
 
     return new DataProductPortsView()
         .withEntity(dataProduct.getEntityReference())
