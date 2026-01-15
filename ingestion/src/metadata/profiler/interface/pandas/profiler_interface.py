@@ -17,7 +17,7 @@ supporting sqlalchemy abstraction layer
 import traceback
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Union
 
 from sqlalchemy import Column
 
@@ -44,6 +44,7 @@ from metadata.profiler.interface.profiler_interface import (
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.metric_filter import MetricFilter
+from metadata.profiler.processor.runner import PandasRunner
 from metadata.sampler.pandas.sampler import DatalakeSampler
 from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR
 from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
@@ -86,45 +87,96 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         )
 
         self.client = self.sampler.client
-        self.dataset = self.sampler.get_dataset()
-        self.status = ProfilerProcessorStatus()
-        self.complex_df()
-
-    def complex_df(self):
-        """Assign DataTypes to dataframe columns as per the parsed column type"""
-        coltype_mapping_df = []
-        data_formats = (
-            GenericDataFrameColumnParser._data_formats  # pylint: disable=protected-access
+        dataset = self.sampler.get_dataset()
+        dataset = self._type_casted_dataset(dataset)
+        self.dataset = PandasRunner(
+            dataset=dataset,
+            raw_dataset=self.sampler.raw_dataset
         )
-        for index, df in enumerate(self.dataset):
-            if index == 0:
-                for col in self.table.columns:
-                    coltype = next(
-                        (
-                            key
-                            for key, value in data_formats.items()
-                            if col.dataType == value
-                        ),
-                        None,
-                    )
-                    if coltype and col.dataType not in {DataType.JSON, DataType.ARRAY}:
-                        coltype_mapping_df.append(coltype)
-                    else:
-                        coltype_mapping_df.append("object")
+        self.status = ProfilerProcessorStatus()
+        self.column_names_cache = {}
 
-            try:
-                self.dataset[index] = df.astype(
-                    dict(zip(df.keys(), coltype_mapping_df))
-                )
-            except (TypeError, ValueError) as err:
-                self.dataset[index] = df
-                logger.warning(f"NaN/NoneType found in the Dataframe: {err}")
-                break
+    def _get_column_type_mapping(self) -> List[str]:
+        """Compute column type mapping
+
+        Returns:
+            List[str]: list of column types
+        """
+        coltype_mapping = []
+        data_formats = GenericDataFrameColumnParser._data_formats
+
+        for col in self.table.columns:
+            coltype = next(
+                (key for key, value in data_formats.items() if col.dataType == value),
+                None,
+            )
+            if coltype and col.dataType not in {DataType.JSON, DataType.ARRAY}:
+                coltype_mapping.append(coltype)
+            else:
+                coltype_mapping.append("object")
+
+        return coltype_mapping
+
+    def _type_casted_dataset(self, original_dataset: Callable) -> Callable:
+        """Type cast dataset columns as per the parsed column types
+
+        Args:
+            original_dataset (Callable): original dataset
+
+        Returns:
+            Callable: type casted dataset
+        """
+        coltype_mapping = self._get_column_type_mapping()
+
+        def yield_type_casted_dfs():
+            for df in original_dataset():
+                try:
+                    df = self._rename_complex_columns(df)
+                    yield df.astype(dict(zip(df.keys(), coltype_mapping)))
+                except (TypeError, ValueError) as err:
+                    logger.warning(f"NaN/NoneType found in the Dataframe: {err}")
+                    yield df
+
+        return yield_type_casted_dfs
+
+    def _rename_complex_columns(self, df):
+        """Rename complex columns to match the column names in the table entity
+
+        Args:
+            df (pd.DataFrame): dataframe to rename columns
+        
+        Returns:
+            pd.DataFrame: dataframe with renamed columns
+        """
+        if not self.column_names_cache:
+            for column_name in df.columns:
+                new_name = self._get_column_name(column_name)
+                if new_name != column_name:
+                    self.column_names_cache[column_name] = new_name
+
+        if self.column_names_cache:
+            df.rename(columns=self.column_names_cache, inplace=True)
+        return df
+
+    def _get_column_name(self, column_name: str) -> str:
+        """Get the column name from the cache or compute it
+
+        Args:
+            column_name (str): original column name
+        Returns:
+            str: computed column name
+        """
+        complex_col_name = None
+        if COMPLEX_COLUMN_SEPARATOR in column_name:
+            complex_col_name = ".".join(
+                column_name.split(COMPLEX_COLUMN_SEPARATOR)[1:]
+            )
+        return complex_col_name or column_name
 
     def _compute_table_metrics(
         self,
         metrics: List[Metrics],
-        runner: List,
+        runner: "PandasRunner",
         *args,
         **kwargs,
     ):
@@ -137,13 +189,10 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         Returns:
             dictionnary of results
         """
-        import pandas as pd  # pylint: disable=import-outside-toplevel
-
         try:
             row_dict = {}
-            df_list = [df.where(pd.notnull(df), None) for df in self.dataset]
             for metric in metrics:
-                row_dict[metric.name()] = metric().df_fn(df_list)
+                row_dict[metric.name()] = metric().df_fn(runner)
             return row_dict
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -153,7 +202,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
     def _compute_static_metrics(
         self,
         metrics: List[Metrics],
-        runner: List,
+        runner: "PandasRunner",
         column,
         *args,
         **kwargs,
@@ -186,7 +235,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
     def _compute_query_metrics(
         self,
         metric: Metrics,
-        runner: List,
+        runner: "PandasRunner",
         column,
         *args,
         **kwargs,
@@ -209,7 +258,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
     def _compute_window_metrics(
         self,
         metrics: List[Metrics],
-        runner: List,
+        runner: "PandasRunner",
         column,
         *args,
         **kwargs,
@@ -232,7 +281,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
     def _compute_system_metrics(
         self,
         metrics: Metrics,
-        runner: List,
+        runner: "PandasRunner",
         *args,
         **kwargs,
     ):
@@ -243,7 +292,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         return None  # to be implemented
 
     def _compute_custom_metrics(
-        self, metrics: List[CustomMetric], runner, *args, **kwargs
+        self, metrics: List[CustomMetric], runner: "PandasRunner", *args, **kwargs
     ):
         """Compute custom metrics. For pandas source we expect expression
         to be a boolean value. We'll return the length of the dataframe
@@ -261,7 +310,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             try:
                 row = sum(
                     len(df.query(metric.expression).index)
-                    for df in runner
+                    for df in runner()
                     if len(df.query(metric.expression).index)
                 )
                 custom_metrics.append(
@@ -284,7 +333,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         logger.debug(f"Running profiler for {metric_func.table.name.root}")
         try:
             row = None
-            if self.dataset:
+            if self.dataset is not None:
                 row = self._get_metric_fn[metric_func.metric_type.value](
                     metric_func.metrics,
                     self.dataset,
@@ -388,24 +437,17 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
     def get_columns(self) -> List[Optional[SQALikeColumn]]:
         """Get SQALikeColumns for datalake to be passed for metric computation"""
         sqalike_columns = []
-        if self.dataset:
-            for column_name in self.dataset[0].columns:
-                complex_col_name = None
-                if COMPLEX_COLUMN_SEPARATOR in column_name:
-                    complex_col_name = ".".join(
-                        column_name.split(COMPLEX_COLUMN_SEPARATOR)[1:]
-                    )
-                    if complex_col_name:
-                        for df in self.dataset:
-                            df.rename(
-                                columns={column_name: complex_col_name}, inplace=True
-                            )
-                column_name = complex_col_name or column_name
+        if self.dataset is not None:
+            first_df = next(self.dataset(), None)
+            if first_df is None:
+                return []
+
+            for column_name in first_df.columns:
                 sqalike_columns.append(
                     SQALikeColumn(
                         column_name,
                         GenericDataFrameColumnParser.fetch_col_types(
-                            self.dataset[0], column_name
+                            first_df, self._get_column_name(column_name)
                         ),
                     )
                 )

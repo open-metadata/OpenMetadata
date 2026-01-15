@@ -16,7 +16,7 @@ the session.
 This is useful to centralise the running logic
 and manage behavior such as timeouts.
 """
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, Callable, Generator
 
 from sqlalchemy import Table, text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 logger = query_runner_logger()
 
 
-class PandasRunner(list):
+class PandasRunner:
     """
     Runner for pandas-based data quality tests.
 
@@ -50,8 +50,8 @@ class PandasRunner(list):
 
     def __init__(
         self,
-        dataset: List["DataFrame"],
-        raw_dataset: List["DataFrame"],
+        dataset: Callable[[], Generator["DataFrame", None, None]],
+        raw_dataset: Callable[[], Generator["DataFrame", None, None]],
     ):
         """Initialize the PandasRunner.
 
@@ -59,22 +59,27 @@ class PandasRunner(list):
             dataset: The processed dataset (may be partitioned/sampled)
             raw_dataset: The raw dataset (unpartitioned, unsampled)
         """
-        super().__init__(dataset)
+        self._dataset = dataset                                                 
         self._raw_dataset = raw_dataset
 
+    def __call__(self) -> Generator["DataFrame", None, None]:
+        return self._dataset()
+
+    def __iter__(self):
+        return iter(self._dataset())
+
     @property
-    def dataset(self) -> List["DataFrame"]:
+    def dataset(self) -> Generator["DataFrame", None, None]:
         """Get the processed dataset (may be partitioned/sampled).
 
         Returns the runner itself as a list for API consistency with QueryRunner.
         """
-        return list(self)
+        return self._dataset()
 
     @property
-    def raw_dataset(self) -> List["DataFrame"]:
+    def raw_dataset(self) -> Generator["DataFrame", None, None]:
         """Get the raw dataset (unpartitioned and unsampled)"""
-        return self._raw_dataset
-
+        return self._raw_dataset()
 
 class QueryRunner:
     """

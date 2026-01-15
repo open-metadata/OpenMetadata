@@ -12,12 +12,13 @@
 """
 JSON DataFrame reader - streams JSON Lines in batches to avoid OOM
 """
+from collections.abc import Generator
 import gzip
 import json
 import zipfile
 from contextlib import contextmanager
 from functools import singledispatchmethod
-from typing import Iterator, Optional
+from typing import Any, Iterator, Optional
 
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
@@ -115,7 +116,7 @@ class JSONDataFrameReader(DataFrameReader):
     @staticmethod
     def _read_json_object(
         content: bytes,
-    ) -> tuple[Iterator["DataFrame"], Optional[str]]:
+    ) -> tuple[Generator["DataFrame", Any, None], Optional[str]]:
         """Load entire JSON object/array. Non-streaming fallback for small files."""
         from pandas import DataFrame
 
@@ -132,7 +133,7 @@ class JSONDataFrameReader(DataFrameReader):
             for i in range(0, len(data), CHUNKSIZE):
                 yield DataFrame.from_records(data[i : i + CHUNKSIZE])
 
-        return chunk_generator(), raw_data
+        return chunk_generator, raw_data
 
     @staticmethod
     def _is_json_lines(file_obj) -> bool:
@@ -167,7 +168,7 @@ class JSONDataFrameReader(DataFrameReader):
                     with self._decompress(f, key) as decompressed:
                         yield from self._stream_json_lines(decompressed)
 
-            return DatalakeColumnWrapper(dataframes=chunk_generator())
+            return DatalakeColumnWrapper(dataframes=chunk_generator, raw_data=None, columns=None)
 
         file_size_mb = self._get_file_size_mb(key, bucket_name)
         if file_size_mb > (MAX_FILE_SIZE_FOR_PREVIEW / (1024 * 1024)):
@@ -176,12 +177,12 @@ class JSONDataFrameReader(DataFrameReader):
             )
             try:
 
-                def chunk_generator():
+                def ijson_chunk_generator():
                     with file_obj_getter() as f:
                         with self._decompress(f, key) as decompressed:
                             yield from self._stream_json_array(decompressed)
 
-                return DatalakeColumnWrapper(dataframes=chunk_generator())
+                return DatalakeColumnWrapper(dataframes=ijson_chunk_generator, raw_data=None, columns=None)
             except Exception as exc:
                 logger.warning(
                     f"ijson streaming failed: {exc}. Loading entire file (may cause OOM)."
@@ -191,7 +192,7 @@ class JSONDataFrameReader(DataFrameReader):
             with self._decompress(f, key) as decompressed:
                 content = decompressed.read()
         dataframes, raw_data = self._read_json_object(content)
-        return DatalakeColumnWrapper(dataframes=dataframes, raw_data=raw_data)
+        return DatalakeColumnWrapper(dataframes=dataframes, raw_data=raw_data, columns=None)
 
     @singledispatchmethod
     def _read_json_dispatch(

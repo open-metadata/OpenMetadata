@@ -147,7 +147,7 @@ class DSVDataFrameReader(DataFrameReader):
                     )[0]
                     yield chunks
 
-        return DatalakeColumnWrapper(dataframes=chunk_generator())
+        return DatalakeColumnWrapper(dataframes=chunk_generator, columns=None, raw_data=None)
 
     @singledispatchmethod
     def _read_dsv_dispatch(

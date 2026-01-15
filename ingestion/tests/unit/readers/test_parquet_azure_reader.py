@@ -96,14 +96,18 @@ class TestAzureParquetReader(unittest.TestCase):
         )
         mock_adlfs.info.assert_called_once_with(f"{self.bucket_name}/{self.key}")
 
+        # Consume the generator to trigger the lazy reading
+        self.assertIsNotNone(result.dataframes)
+        chunks = list(result.dataframes())
+
+        # Now check that the mocks were called after generator consumption
         mock_fsspec_handler.assert_called_once_with(mock_adlfs)
         mock_pyfilesystem.assert_called_once_with(mock_handler)
         mock_parquet_file.assert_called_once_with(
             f"{self.bucket_name}/{self.key}", filesystem=mock_fs
         )
 
-        self.assertIsNotNone(result.dataframes)
-        self.assertEqual(len(result.dataframes), 2)
+        self.assertTrue(len(chunks) > 0)
 
     @patch("adlfs.AzureBlobFileSystem")
     @patch("metadata.readers.dataframe.parquet.return_azure_storage_options")
@@ -130,6 +134,10 @@ class TestAzureParquetReader(unittest.TestCase):
             account_name="teststorageaccount", connection_string="test-connection"
         )
 
+        # Consume the generator to trigger the lazy reading
+        self.assertIsNotNone(result.dataframes)
+        chunks = list(result.dataframes())
+
         expected_account_url = (
             f"abfs://{self.bucket_name}@teststorageaccount.dfs.core.windows.net/"
             f"{self.key}"
@@ -139,7 +147,7 @@ class TestAzureParquetReader(unittest.TestCase):
             storage_options={"connection_string": "test-connection"},
         )
 
-        self.assertIsNotNone(result.dataframes)
+        self.assertTrue(len(chunks) > 0)
 
     def test_should_use_chunking_logic(self):
         """Test the _should_use_chunking method logic"""

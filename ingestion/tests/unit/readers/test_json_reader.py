@@ -54,7 +54,8 @@ class TestJSONReader(unittest.TestCase):
 
             result = reader._read(key=tmp_path, bucket_name="")
 
-            chunks = list(result.dataframes)
+            dataframes = result.dataframes()
+            chunks = list(dataframes)
             self.assertTrue(len(chunks) > 0)
             total_rows = sum(len(chunk) for chunk in chunks)
             self.assertEqual(total_rows, 2)
@@ -76,7 +77,8 @@ class TestJSONReader(unittest.TestCase):
 
             result = reader._read(key=tmp_path, bucket_name="")
 
-            chunks = list(result.dataframes)
+            dataframes = result.dataframes()
+            chunks = list(dataframes)
             total_rows = sum(len(chunk) for chunk in chunks)
             self.assertEqual(total_rows, 2)
         finally:
@@ -97,7 +99,8 @@ class TestJSONReader(unittest.TestCase):
 
             result = reader._read(key=tmp_path, bucket_name="")
 
-            chunks = list(result.dataframes)
+            dataframes = result.dataframes()
+            chunks = list(dataframes)
             self.assertEqual(len(chunks), 1)
             self.assertEqual(chunks[0].shape[0], 1)
         finally:
@@ -119,7 +122,8 @@ class TestJSONReader(unittest.TestCase):
 
             result = reader._read(key=tmp_path, bucket_name="")
 
-            chunks = list(result.dataframes)
+            dataframes = result.dataframes()
+            chunks = list(dataframes)
             self.assertTrue(len(chunks) > 0)
         finally:
             import os
@@ -141,7 +145,8 @@ class TestJSONReader(unittest.TestCase):
 
             result = reader._read(key=tmp_path, bucket_name="")
 
-            chunks = list(result.dataframes)
+            dataframes = result.dataframes()
+            chunks = list(dataframes)
             self.assertTrue(len(chunks) > 0)
         finally:
             import os

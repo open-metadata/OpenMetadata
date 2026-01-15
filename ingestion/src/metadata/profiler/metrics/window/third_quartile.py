@@ -14,9 +14,12 @@ Median Metric definition
 """
 # pylint: disable=duplicate-code
 
-from typing import List, cast
+from typing import TYPE_CHECKING, List, Optional, cast
 
 from sqlalchemy import column
+
+if TYPE_CHECKING:
+    from metadata.profiler.processor.runner import PandasRunner
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import StaticMetric, _label
@@ -72,12 +75,12 @@ class ThirdQuartile(StaticMetric, PercentilMixin):
         )
         return None
 
-    def df_fn(self, dfs=None):
+    def df_fn(self, dfs: Optional["PandasRunner"] = None):
         """Dataframe function"""
+        if dfs is None:
+            return None
         # pylint: disable=import-outside-toplevel
         import pandas as pd
-
-        df = cast(List[pd.DataFrame], dfs)
 
         if is_quantifiable(self.col.type):
             # we can't compute the median unless we have

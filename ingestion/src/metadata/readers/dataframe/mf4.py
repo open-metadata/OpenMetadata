@@ -64,11 +64,11 @@ class MF4DataFrameReader(DataFrameReader):
                     yield schema_df
 
                 return DatalakeColumnWrapper(
-                    dataframes=chunk_generator(), raw_data=common_props
+                    dataframes=chunk_generator, raw_data=common_props, columns=None
                 )
 
         logger.debug("No _common_properties found in header.")
-        return DatalakeColumnWrapper(dataframes=iter([]))
+        return DatalakeColumnWrapper(dataframes=lambda: iter([]), raw_data=None, columns=None)
 
     @singledispatchmethod
     def _read_mf4_dispatch(

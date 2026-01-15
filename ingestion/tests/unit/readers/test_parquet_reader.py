@@ -46,7 +46,8 @@ class TestParquetReader(unittest.TestCase):
 
             result = reader._read(key=tmp_path, bucket_name="")
 
-            chunks = list(result.dataframes)
+            dataframes = result.dataframes() if callable(result.dataframes) else result.dataframes
+            chunks = list(dataframes)
             self.assertTrue(len(chunks) > 0)
             total_rows = sum(len(chunk) for chunk in chunks)
             self.assertEqual(total_rows, 3)
@@ -78,7 +79,8 @@ class TestParquetReader(unittest.TestCase):
 
         result = reader._read(key="test.parquet", bucket_name="")
 
-        chunks = list(result.dataframes)
+        dataframes = result.dataframes() if callable(result.dataframes) else result.dataframes
+        chunks = list(dataframes)
         self.assertTrue(len(chunks) > 0)
 
     @patch("pyarrow.fs.S3FileSystem")
@@ -108,7 +110,8 @@ class TestParquetReader(unittest.TestCase):
 
         result = reader._read(key="test.parquet", bucket_name="test-bucket")
 
-        chunks = list(result.dataframes)
+        dataframes = result.dataframes() if callable(result.dataframes) else result.dataframes
+        chunks = list(dataframes)
         self.assertTrue(len(chunks) > 0)
 
     @patch("pyarrow.fs.S3FileSystem")
@@ -139,7 +142,8 @@ class TestParquetReader(unittest.TestCase):
 
         result = reader._read(key="test.parquet", bucket_name="test-bucket")
 
-        chunks = list(result.dataframes)
+        dataframes = result.dataframes() if callable(result.dataframes) else result.dataframes
+        chunks = list(dataframes)
         self.assertTrue(len(chunks) > 0)
 
     @patch("gcsfs.GCSFileSystem")
@@ -163,7 +167,8 @@ class TestParquetReader(unittest.TestCase):
 
         result = reader._read(key="test.parquet", bucket_name="test-bucket")
 
-        chunks = list(result.dataframes)
+        dataframes = result.dataframes() if callable(result.dataframes) else result.dataframes
+        chunks = list(dataframes)
         self.assertTrue(len(chunks) > 0)
 
     @patch("gcsfs.GCSFileSystem")
@@ -188,7 +193,8 @@ class TestParquetReader(unittest.TestCase):
 
         result = reader._read(key="test.parquet", bucket_name="test-bucket")
 
-        chunks = list(result.dataframes)
+        dataframes = result.dataframes() if callable(result.dataframes) else result.dataframes
+        chunks = list(dataframes)
         self.assertTrue(len(chunks) > 0)
 
     def test_should_use_chunking_logic(self):

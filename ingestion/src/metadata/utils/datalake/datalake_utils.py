@@ -17,7 +17,7 @@ import ast
 import json
 import random
 import traceback
-from typing import Any, Dict, List, Optional, Union, cast
+from typing import Any, Dict, Generator, List, Optional, Union, cast
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
@@ -63,9 +63,12 @@ def fetch_dataframe(
                 df_wrapper: DatalakeColumnWrapper = df_reader.read(
                     key=key, bucket_name=bucket_name, **kwargs
                 )
+                dataframes = df_wrapper.dataframes
+                if callable(dataframes):
+                    dataframes = dataframes()
                 if fetch_raw_data:
-                    return df_wrapper.dataframes, df_wrapper.raw_data
-                return df_wrapper.dataframes
+                    return df_wrapper.raw_data
+                return dataframes
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.error(
@@ -81,7 +84,63 @@ def fetch_dataframe(
         raise err
 
     if fetch_raw_data:
-        return None, None
+        return None
+    return None
+
+
+def fetch_dataframe_generator(
+    config_source,
+    client,
+    file_fqn: DatalakeTableSchemaWrapper,
+    **kwargs,
+) -> Optional[DatalakeColumnWrapper]:
+    """Return the datafgrame generator
+
+    Args:
+        config_source: The configuration source for the datalake
+        client: The client to use for fetching the data
+        file_fqn: The fully qualified name of the file
+        fetch_raw_data: Whether to fetch the raw data or not
+        **kwargs: Additional arguments to pass to the reader
+    
+    Returns:
+        DatalakeColumnWrapper: A wrapper containing the dataframes and raw data
+    """
+    # dispatch to handle fetching of data from multiple file formats (csv, tsv, json, avro and parquet)
+    key: str = file_fqn.key
+    bucket_name: str = file_fqn.bucket_name
+    try:
+        file_extension: Optional[SupportedTypes] = file_fqn.file_extension or next(
+            supported_type or None
+            for supported_type in SupportedTypes
+            if key.endswith(supported_type.value)
+        )
+        if file_extension and not key.endswith("/"):
+            df_reader = get_df_reader(
+                type_=file_extension,
+                config_source=config_source,
+                client=client,
+                separator=file_fqn.separator,
+            )
+            try:
+                return df_reader.read(
+                    key=key, bucket_name=bucket_name, **kwargs
+                )
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.error(
+                    f"Error fetching file [{bucket_name}/{key}] using "
+                    f"[{config_source.__class__.__name__}] due to: [{err}]"
+                )
+                raise err
+    except Exception as err:
+        logger.debug(traceback.format_exc())
+        logger.error(
+            f"Error fetching file [{bucket_name}/{key}] using [{config_source.__class__.__name__}] due to: [{err}]"
+        )
+        # Here we need to blow things up. Without the dataframe we cannot move forward
+        raise err
+
     return None
 
 
@@ -115,9 +174,13 @@ def fetch_dataframe_first_chunk(
                 df_wrapper: DatalakeColumnWrapper = df_reader.read_first_chunk(
                     key=key, bucket_name=bucket_name, **kwargs
                 )
+                dataframes = df_wrapper.dataframes
+                # Handle callable (generator function) - call it to get the iterator
+                if callable(dataframes):
+                    dataframes = dataframes()
                 if fetch_raw_data:
-                    return df_wrapper.dataframes, df_wrapper.raw_data
-                return df_wrapper.dataframes
+                    return dataframes, df_wrapper.raw_data
+                return dataframes
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.error(

@@ -114,12 +114,14 @@ class AvroDataFrameReader(DataFrameReader):
         with s3.open(file_path, "rb") as f:
             columns = self._get_avro_columns(f)
 
-        response = self.client.get_object(Bucket=bucket_name, Key=key)
-        file_stream = response["Body"]
+        def chunk_generator():
+            response = self.client.get_object(Bucket=bucket_name, Key=key)
+            file_stream = response["Body"]
+            yield from self._stream_avro_records(file_stream)
 
         return DatalakeColumnWrapper(
             columns=columns,
-            dataframes=self._stream_avro_records(file_stream),
+            dataframes=chunk_generator,
         )
 
     @_read_avro_dispatch.register
@@ -137,7 +139,7 @@ class AvroDataFrameReader(DataFrameReader):
             with gcs.open(file_path, "rb") as f:
                 yield from self._stream_avro_records(f)
 
-        return DatalakeColumnWrapper(columns=columns, dataframes=chunk_generator())
+        return DatalakeColumnWrapper(columns=columns, dataframes=chunk_generator)
 
     @_read_avro_dispatch.register
     def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
@@ -158,7 +160,7 @@ class AvroDataFrameReader(DataFrameReader):
             with adlfs_fs.open(file_path, "rb") as f:
                 yield from self._stream_avro_records(f)
 
-        return DatalakeColumnWrapper(columns=columns, dataframes=chunk_generator())
+        return DatalakeColumnWrapper(columns=columns, dataframes=chunk_generator)
 
     @_read_avro_dispatch.register
     def _(
@@ -175,7 +177,7 @@ class AvroDataFrameReader(DataFrameReader):
             with open(key, "rb") as f:
                 yield from self._stream_avro_records(f)
 
-        return DatalakeColumnWrapper(columns=columns, dataframes=chunk_generator())
+        return DatalakeColumnWrapper(columns=columns, dataframes=chunk_generator)
 
     def _read(self, *, key: str, bucket_name: str, **__) -> DatalakeColumnWrapper:
         return self._read_avro_dispatch(

@@ -48,9 +48,7 @@ class TableCustomSQLQueryValidator(
         Returns:
             Optional[int]: Total number of rows across all dataframes
         """
-        runner: List["DataFrame"] = self.runner  # type: ignore
-
-        if not runner:
+        if not self.runner:
             return None
 
         total_rows = 0
@@ -62,7 +60,7 @@ class TableCustomSQLQueryValidator(
             ),
             None,
         )
-        for dataframe in runner:
+        for dataframe in self.runner:
             if dataframe is not None:
                 if partition_expression:
                     try:

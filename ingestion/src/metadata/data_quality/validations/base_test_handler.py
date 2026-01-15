@@ -47,6 +47,8 @@ from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
 
+from metadata.profiler.processor.runner import PandasRunner
+
 if TYPE_CHECKING:
     from pandas import DataFrame
     from sqlalchemy import Column
@@ -105,7 +107,7 @@ class BaseTestValidator(ABC):
 
     def __init__(
         self,
-        runner: Union[QueryRunner, List["DataFrame"]],
+        runner: Union[QueryRunner, PandasRunner],
         test_case: TestCase,
         execution_date: Timestamp,
     ) -> None:

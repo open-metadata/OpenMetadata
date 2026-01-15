@@ -106,7 +106,8 @@ class TestAvroReader(unittest.TestCase):
         result = reader._read(key="test.avro", bucket_name="test-bucket")
 
         self.assertIsNotNone(result.dataframes)
-        chunks = list(result.dataframes)
+        dataframes = result.dataframes()
+        chunks = list(dataframes)
         self.assertTrue(len(chunks) > 0)
 
     @patch("gcsfs.GCSFileSystem")
@@ -128,7 +129,8 @@ class TestAvroReader(unittest.TestCase):
         result = reader._read(key="test.avro", bucket_name="test-bucket")
 
         self.assertIsNotNone(result.dataframes)
-        chunks = list(result.dataframes)
+        dataframes = result.dataframes() if callable(result.dataframes) else result.dataframes
+        chunks = list(dataframes)
         self.assertTrue(len(chunks) > 0)
 
     @patch("adlfs.AzureBlobFileSystem")
@@ -156,7 +158,8 @@ class TestAvroReader(unittest.TestCase):
         result = reader._read(key="test.avro", bucket_name="test-container")
 
         self.assertIsNotNone(result.dataframes)
-        chunks = list(result.dataframes)
+        dataframes = result.dataframes() if callable(result.dataframes) else result.dataframes
+        chunks = list(dataframes)
         self.assertTrue(len(chunks) > 0)
 
     def test_local_avro_reading(self):
@@ -186,7 +189,8 @@ class TestAvroReader(unittest.TestCase):
             self.assertIsNotNone(result.dataframes)
             self.assertIsNotNone(result.columns)
 
-            chunks = list(result.dataframes)
+            dataframes = result.dataframes() if callable(result.dataframes) else result.dataframes
+            chunks = list(dataframes)
             self.assertEqual(len(chunks), 1)
             self.assertEqual(chunks[0].shape[0], 1)
         finally:

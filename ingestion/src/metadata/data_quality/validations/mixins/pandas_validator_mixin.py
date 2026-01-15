@@ -13,10 +13,13 @@
 Validator Mixin for Pandas based tests cases
 """
 
-from typing import Any, Callable, Dict, List, Mapping, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Mapping, Optional, Union, cast
 
 import numpy as np
 import pandas as pd
+
+if TYPE_CHECKING:
+    from metadata.profiler.processor.runner import PandasRunner
 
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_NULL_LABEL,
@@ -38,6 +41,7 @@ from metadata.utils.sqa_like_column import SQALikeColumn
 
 class PandasValidatorMixin:
     """Validator mixin for Pandas based test cases"""
+    runner: "PandasRunner"
 
     def get_column(
         self: HasValidatorContext, column_name: Optional[str] = None
@@ -65,11 +69,20 @@ class PandasValidatorMixin:
             )
 
     @staticmethod
-    def get_column_from_list(entity_link: str, dfs) -> SQALikeColumn:
-        # we'll use the first dataframe chunk to get the column name.
-        column = dfs[0][get_decoded_column(entity_link)]
+    def get_column_from_list(entity_link: str, dfs: "PandasRunner") -> SQALikeColumn:
+        """Get a SQALikeColumn object from a list of dataframes
+
+        Args:
+            entity_link (str): The entity link representing the column
+            dfs (List[pd.DataFrame]): List of pandas DataFrames
+
+        Returns:
+            SQALikeColumn: The corresponding SQALikeColumn object
+        """
+        first_df = next(dfs())
+        column = first_df[get_decoded_column(entity_link)]
         _type = GenericDataFrameColumnParser.fetch_col_types(
-            dfs[0], get_decoded_column(entity_link)
+            first_df, get_decoded_column(entity_link)
         )
         sqa_like_column = SQALikeColumn(
             name=column.name,
@@ -79,7 +92,7 @@ class PandasValidatorMixin:
 
     def run_dataframe_results(
         self,
-        runner,
+        runner: "PandasRunner",
         metric: Metrics,
         column: Optional[SQALikeColumn] = None,
         **kwargs,
@@ -87,7 +100,7 @@ class PandasValidatorMixin:
         """Run the test case on a dataframe
 
         Args:
-            runner (DataFrame): a dataframe
+            runner: a PandasRunner instance
             metric (Metrics): a metric
             column (SQALikeColumn): a column
         """
@@ -102,12 +115,12 @@ class PandasValidatorMixin:
         except Exception as exc:
             raise RuntimeError(exc)
 
-    def _compute_row_count(self, runner, column: SQALikeColumn, **kwargs):
+    def _compute_row_count(self, runner: "PandasRunner", column: SQALikeColumn, **kwargs):
         """compute row count
 
         Args:
-            runner (List[DataFrame]): runner to run the test case against)
-            column (SQALikeColumn): column to compute row count for
+            runner: a PandasRunner instance
+            column: column to compute row count for
         """
         return self.run_dataframe_results(runner, Metrics.ROW_COUNT, column, **kwargs)
 
@@ -164,18 +177,14 @@ def aggregate_others_pandas(
         2       FR           700         1000         0.250
         3   Others           110          400         0.007
     """
-    # Sort by impact score descending
     df_sorted = df.sort_values(by=impact_column, ascending=False)
 
-    # Get top N dimensions
     top_dimensions = df_sorted.head(top_n)[dimension_column].tolist()
 
-    # Create a new column for grouping
     df["dimension_group"] = np.where(
         df[dimension_column].isin(top_dimensions), df[dimension_column], others_label
     )
 
-    # Aggregate by dimension_group
     numeric_cols = df.select_dtypes(include=[np.number]).columns
     agg_dict = {col: "sum" for col in numeric_cols if col != impact_column}
 
@@ -207,17 +216,14 @@ def aggregate_others_pandas(
 
                 df_aggregated.loc[others_mask, impact_column] = impact_score
 
-    # For non-Others rows, take the max impact score from original
     for dim in top_dimensions:
         dim_mask = df_aggregated["dimension_group"] == dim
         if dim_mask.any():
             original_score = df[df[dimension_column] == dim][impact_column].max()
             df_aggregated.loc[dim_mask, impact_column] = original_score
 
-    # Sort by impact score again
     df_aggregated = df_aggregated.sort_values(by=impact_column, ascending=False)
 
-    # Rename dimension_group back to original column name
     df_aggregated.rename(columns={"dimension_group": dimension_column}, inplace=True)
 
     return df_aggregated
@@ -285,18 +291,15 @@ def aggregate_others_statistical_pandas(
     final_metric_calculators = final_metric_calculators or {}
     violation_metrics = violation_metrics or []
 
-    # Sort by impact score descending
     df_sorted = df.sort_values(by=impact_column, ascending=False)
     top_dimensions = df_sorted.head(top_n)[dimension_column].tolist()
 
-    # Create dimension grouping
     df["dimension_group"] = np.where(
         df[dimension_column].isin(top_dimensions),
         df[dimension_column],
         others_label,
     )
 
-    # Aggregate by dimension_group
     df_aggregated = df.groupby("dimension_group", as_index=False).agg(agg_functions)
 
     # For top dimensions, preserve their original metric values
@@ -374,13 +377,10 @@ def aggregate_others_statistical_pandas(
             original_score = df[df[dimension_column] == dim][impact_column].max()
             df_aggregated.loc[dim_mask, impact_column] = original_score
 
-    # Sort by impact score again
     df_aggregated = df_aggregated.sort_values(by=impact_column, ascending=False)
 
-    # Rename dimension_group back to original column name
     df_aggregated.rename(columns={"dimension_group": dimension_column}, inplace=True)
 
-    # Clean up excluded columns
     for col in exclude_from_final:
         if col in df_aggregated.columns:
             df_aggregated = df_aggregated.drop(columns=[col])

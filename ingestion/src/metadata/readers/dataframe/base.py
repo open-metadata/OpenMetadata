@@ -141,6 +141,8 @@ class DataFrameReader(ABC):
             dataframes_gen = wrapper.dataframes
 
             if dataframes_gen is not None:
+                if callable(dataframes_gen):
+                    dataframes_gen = dataframes_gen()
                 try:
                     first_chunk = next(dataframes_gen)
                 except StopIteration:
@@ -151,7 +153,7 @@ class DataFrameReader(ABC):
 
             return DatalakeColumnWrapper(
                 columns=wrapper.columns,
-                dataframes=iter([first_chunk]) if first_chunk is not None else None,
+                dataframes=(lambda chunk=first_chunk: iter([chunk])) if first_chunk is not None else None,
                 raw_data=wrapper.raw_data,
             )
         except Exception as err:
