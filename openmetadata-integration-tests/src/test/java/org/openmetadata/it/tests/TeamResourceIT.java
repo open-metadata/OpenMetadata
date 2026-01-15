@@ -1015,10 +1015,10 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
               || result.contains("participates in a loop"),
           "Dry run should detect circular dependency. Result: " + result);
     } catch (Exception e) {
-      if (!e.getMessage().contains("Circular reference detected")
-          && !e.getMessage().contains("participates in a loop")) {
-        throw e;
-      }
+      assertTrue(
+          e.getMessage().contains("Circular reference detected")
+              || e.getMessage().contains("participates in a loop"),
+          "Expected circular dependency error but got: " + e.getMessage());
     }
   }
 
@@ -1049,10 +1049,10 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
               || result.contains("participates in a loop"),
           "True run should detect circular dependency. Result: " + result);
     } catch (Exception e) {
-      if (!e.getMessage().contains("Circular reference detected")
-          && !e.getMessage().contains("participates in a loop")) {
-        throw e;
-      }
+      assertTrue(
+          e.getMessage().contains("Circular reference detected")
+              || e.getMessage().contains("participates in a loop"),
+          "Expected circular dependency error but got: " + e.getMessage());
     }
   }
 }
