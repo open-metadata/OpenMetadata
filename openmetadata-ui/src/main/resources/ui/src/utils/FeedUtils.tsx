@@ -344,7 +344,18 @@ export const getFrontEndFormat = (message: string) => {
     (m) => getEntityLinkDetail(m) ?? []
   );
   entityLinkList.forEach((m, i) => {
-    const markdownLink = entityLinkDetails[i][3];
+    let markdownLink = entityLinkDetails[i]?.[3];
+    const entityType = entityLinkDetails[i]?.[1];
+    const entityFqn = entityLinkDetails[i]?.[2];
+    const linkText = entityLinkDetails[i]?.[4];
+    const entityUrl = entityLinkDetails[i]?.[5];
+
+    if (entityType && entityFqn && entityUrl) {
+      const decodedUrl = getDecodedFqn(entityUrl);
+
+      markdownLink = `[${linkText}](${decodedUrl})`;
+    }
+
     updatedMessage = updatedMessage.replaceAll(m, markdownLink);
   });
 
