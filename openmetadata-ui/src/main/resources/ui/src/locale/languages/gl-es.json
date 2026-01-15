@@ -2062,7 +2062,7 @@
     "auto-pilot-no-agents-message": "Non hai agentes AutoPilot presentes.",
     "availability-time-contract-description": "Momento do día en que se espera que os datos estean dispoñibles",
     "bot-email-confirmation": "{{email}} para o bot {{botName}}",
-    "bulk-edit-entity-help": "Edit multiple {{entity}} at once using CSV",
+    "bulk-edit-entity-help": "Editar múltiples {{entity}} á vez usando CSV",
     "can-not-add-widget": "Non se pode engadir o widget a esta sección debido a restricións de tamaño.",
     "can-you-add-a-description": "Podes engadir unha descrición?",
     "checkout-service-connectors-doc": "Hai moitos conectores dispoñibles aquí para indexar datos dos teus servizos. Consulta os nosos conectores.",
