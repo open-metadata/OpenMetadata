@@ -709,4 +709,57 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
       assertEquals(newName, fetched.getName());
     }
   }
+
+  @Test
+  void test_renameDomainWithSamePrefixDataProduct(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String domainName = "analytics_" + ns.shortPrefix();
+    CreateDomain createDomain =
+        new CreateDomain()
+            .withName(domainName)
+            .withDomainType(DomainType.AGGREGATE)
+            .withDescription("Domain for testing rename with same prefix data product");
+    Domain domain = createEntity(createDomain);
+
+    String subdomainName = "marketing";
+    CreateDomain createSubdomain =
+        new CreateDomain()
+            .withName(subdomainName)
+            .withDomainType(DomainType.SOURCE_ALIGNED)
+            .withParent(domain.getFullyQualifiedName())
+            .withDescription("Subdomain under analytics");
+    Domain subdomain = createEntity(createSubdomain);
+
+    String dataProductName = "analytics_product_" + ns.shortPrefix();
+    org.openmetadata.schema.api.domains.CreateDataProduct createDp =
+        new org.openmetadata.schema.api.domains.CreateDataProduct()
+            .withName(dataProductName)
+            .withDescription("Data product with same prefix as domain")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    org.openmetadata.schema.entity.domains.DataProduct dataProduct =
+        client.dataProducts().create(createDp);
+
+    String oldDomainFqn = domain.getFullyQualifiedName();
+    String oldSubdomainFqn = subdomain.getFullyQualifiedName();
+    String oldDataProductFqn = dataProduct.getFullyQualifiedName();
+
+    String newDomainName = "insights_" + ns.shortPrefix();
+    domain.setName(newDomainName);
+    Domain renamedDomain = patchEntity(domain.getId().toString(), domain);
+
+    assertEquals(newDomainName, renamedDomain.getName());
+    assertEquals(newDomainName, renamedDomain.getFullyQualifiedName());
+
+    Domain fetchedSubdomain = getEntity(subdomain.getId().toString());
+    String expectedSubdomainFqn = newDomainName + "." + subdomainName;
+    assertEquals(expectedSubdomainFqn, fetchedSubdomain.getFullyQualifiedName());
+
+    org.openmetadata.schema.entity.domains.DataProduct fetchedDataProduct =
+        client.dataProducts().get(dataProduct.getId().toString());
+    assertEquals(
+        oldDataProductFqn,
+        fetchedDataProduct.getFullyQualifiedName(),
+        "Data product FQN should NOT change when domain is renamed");
+  }
 }

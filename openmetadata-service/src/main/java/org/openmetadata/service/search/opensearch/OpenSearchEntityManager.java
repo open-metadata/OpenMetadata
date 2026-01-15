@@ -1167,6 +1167,10 @@ public class OpenSearchEntityManager implements EntityManagementClient {
           newFqn);
 
       Query prefixQuery = Query.of(q -> q.prefix(p -> p.field("fullyQualifiedName").value(oldFqn)));
+      Query entityTypeQuery =
+          Query.of(q -> q.term(t -> t.field("entityType.keyword").value(FieldValue.of("domain"))));
+      Query combinedQuery = Query.of(q -> q.bool(b -> b.must(prefixQuery, entityTypeQuery)));
+
       Map<String, JsonData> params =
           Map.of(
               "oldFqn", JsonData.of(oldFqn),
@@ -1176,7 +1180,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
           client.updateByQuery(
               req ->
                   req.index(domainIndexName)
-                      .query(prefixQuery)
+                      .query(combinedQuery)
                       .script(
                           s ->
                               s.inline(
