@@ -78,7 +78,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 public class APIServiceResource
     extends ServiceEntityResource<ApiService, APIServiceRepository, ApiConnection> {
   private final APIServiceMapper mapper = new APIServiceMapper();
-  public static final String COLLECTION_PATH = "v1/services/apiServices/";
+  public static final String COLLECTION_PATH = "/v1/services/apiServices/";
   public static final String FIELDS = "pipelines,owners,tags,domains,followers";
 
   @Override

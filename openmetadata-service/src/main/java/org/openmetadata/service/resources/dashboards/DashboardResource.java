@@ -73,7 +73,7 @@ import org.openmetadata.service.security.Authorizer;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "dashboards")
 public class DashboardResource extends EntityResource<Dashboard, DashboardRepository> {
-  public static final String COLLECTION_PATH = "v1/dashboards/";
+  public static final String COLLECTION_PATH = "/v1/dashboards/";
   protected static final String FIELDS =
       "owners,charts,followers,tags,usageSummary,extension,dataModels,domains,dataProducts,sourceHash";
   private final DashboardMapper mapper = new DashboardMapper();
