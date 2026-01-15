@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
+import { render, screen } from '@testing-library/react';
+import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
+  getBulkEditButton,
   getBulkEditCSVExportEntityApi,
   getBulkEntityNavigationPath,
   isBulkEditRoute,
@@ -76,6 +79,26 @@ describe('EntityBulkEditUtils', () => {
 
       expect(isBulkEditRoute(pathname)).toBe(false);
     });
+
+    it('should return true for bulk edit route with wildcard', () => {
+      const pathname = `/table/${WILD_CARD_CHAR}/${ROUTES.BULK_EDIT_ENTITY}`;
+
+      expect(isBulkEditRoute(pathname)).toBe(true);
+    });
+
+    it('should return false for empty pathname', () => {
+      expect(isBulkEditRoute('')).toBe(false);
+    });
+
+    it('should return false for root path', () => {
+      expect(isBulkEditRoute('/')).toBe(false);
+    });
+
+    it('should handle pathname with query parameters', () => {
+      const pathname = `/table/sample_data/${ROUTES.BULK_EDIT_ENTITY}?tab=schema`;
+
+      expect(isBulkEditRoute(pathname)).toBe(true);
+    });
   });
 
   describe('getBulkEditCSVExportEntityApi', () => {
@@ -127,6 +150,74 @@ describe('EntityBulkEditUtils', () => {
       );
 
       expect(result).toBeDefined();
+    });
+
+    it('should return exportTableDetailsInCSV for DASHBOARD entity type', () => {
+      const result = getBulkEditCSVExportEntityApi(EntityType.DASHBOARD);
+
+      expect(result).toBeDefined();
+    });
+
+    it('should return exportTableDetailsInCSV for TOPIC entity type', () => {
+      const result = getBulkEditCSVExportEntityApi(EntityType.TOPIC);
+
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('getBulkEditButton', () => {
+    const mockOnClickHandler = jest.fn();
+
+    beforeEach(() => {
+      mockOnClickHandler.mockClear();
+    });
+
+    it('should render button when hasPermission is true', () => {
+      const result = getBulkEditButton(true, mockOnClickHandler);
+
+      render(<div>{result}</div>);
+
+      const button = screen.getByTestId('bulk-edit-table');
+
+      expect(button).toBeInTheDocument();
+      expect(button).toHaveClass('text-primary');
+      expect(button).toHaveClass('p-0');
+      expect(button).toHaveClass('remove-button-background-hover');
+    });
+
+    it('should return null when hasPermission is false', () => {
+      const result = getBulkEditButton(false, mockOnClickHandler);
+
+      expect(result).toBeNull();
+    });
+
+    it('should call onClickHandler when button is clicked', () => {
+      const result = getBulkEditButton(true, mockOnClickHandler);
+
+      render(<div>{result}</div>);
+
+      const button = screen.getByTestId('bulk-edit-table');
+      button.click();
+
+      expect(mockOnClickHandler).toHaveBeenCalledTimes(1);
+    });
+
+    it('should have correct button type', () => {
+      const result = getBulkEditButton(true, mockOnClickHandler);
+
+      render(<div>{result}</div>);
+
+      const button = screen.getByTestId('bulk-edit-table');
+
+      expect(button).toHaveAttribute('type', 'button');
+    });
+
+    it('should display edit label', () => {
+      const result = getBulkEditButton(true, mockOnClickHandler);
+
+      render(<div>{result}</div>);
+
+      expect(screen.getByText('label.edit')).toBeInTheDocument();
     });
   });
 
@@ -201,6 +292,57 @@ describe('EntityBulkEditUtils', () => {
       );
 
       expect(result).toBe('/database/sample.database.fqn');
+    });
+
+    it('should return entity link for DATABASE_SCHEMA entity type', () => {
+      const result = getBulkEntityNavigationPath(
+        EntityType.DATABASE_SCHEMA,
+        'sample.schema.fqn'
+      );
+
+      expect(result).toBe('/databaseSchema/sample.schema.fqn');
+    });
+
+    it('should return entity link for GLOSSARY_TERM entity type', () => {
+      const result = getBulkEntityNavigationPath(
+        EntityType.GLOSSARY_TERM,
+        'sample.term.fqn'
+      );
+
+      expect(result).toBe('/glossaryTerm/sample.term.fqn');
+    });
+
+    it('should handle wildcard FQN for non-TEST_CASE entities', () => {
+      const result = getBulkEntityNavigationPath(
+        EntityType.TABLE,
+        WILD_CARD_CHAR
+      );
+
+      expect(result).toBe(`/table/${WILD_CARD_CHAR}`);
+    });
+
+    it('should ignore sourceEntityType for non-TEST_CASE entities', () => {
+      const fqn = 'sample_data.ecommerce_db.shopify.dim_address';
+      const result = getBulkEntityNavigationPath(
+        EntityType.TABLE,
+        fqn,
+        EntityType.DATABASE
+      );
+
+      expect(result).toBe(`/table/${fqn}`);
+    });
+
+    it('should handle FQN with special characters', () => {
+      const fqn = 'sample_data.db-name.schema.table@123';
+      const result = getBulkEntityNavigationPath(EntityType.TABLE, fqn);
+
+      expect(result).toBe(`/table/${fqn}`);
+    });
+
+    it('should handle empty FQN', () => {
+      const result = getBulkEntityNavigationPath(EntityType.TABLE, '');
+
+      expect(result).toBe('/table/');
     });
   });
 });
