@@ -68,6 +68,7 @@ def timestamp_to_datetime(ts: Timestamp, timezone_str: str = "UTC") -> datetime:
     return datetime.fromtimestamp(ts.root / 1000, tz=timezone(timezone_str))
 
 
+# pylint: disable=too-many-arguments
 def get_beginning_of_day_timestamp_mill(
     days=0,
     seconds=0,
@@ -108,6 +109,7 @@ def get_beginning_of_day_timestamp_mill(
     return datetime_to_ts(tz.localize(datetime_value))
 
 
+# pylint: disable=too-many-arguments
 def get_end_of_day_timestamp_mill(
     days=0,
     seconds=0,
