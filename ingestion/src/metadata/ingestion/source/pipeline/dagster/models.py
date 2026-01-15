@@ -13,9 +13,12 @@
 Tableau Source Model module
 """
 
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
+
+if TYPE_CHECKING:
+    from metadata.generated.schema.entity.data.table import Table
 
 # Models for get_task_runs
 
@@ -99,3 +102,76 @@ class GraphOrError(BaseModel):
 
 class GraphOrErrorModel(BaseModel):
     graphOrError: GraphOrError
+
+
+class AssetKey(BaseModel):
+    path: List[str]
+
+    def to_string(self) -> str:
+        """Convert asset key path to dot-separated string"""
+        return ".".join(self.path)
+
+
+class DagsterAssetReference(BaseModel):
+    assetKey: AssetKey
+
+
+class AssetDependency(BaseModel):
+    asset: Optional[DagsterAssetReference] = None
+
+
+class MetadataEntry(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    typename: str = Field(alias="__typename")
+    label: str
+    text: Optional[str] = None
+    path: Optional[str] = None
+    jsonString: Optional[str] = None
+
+
+class AssetMaterialization(BaseModel):
+    runId: str
+    timestamp: Optional[float] = None
+    metadataEntries: Optional[List[MetadataEntry]] = None
+
+
+class JobReference(BaseModel):
+    name: str
+    id: str
+
+
+class DagsterAssetNode(BaseModel):
+    id: str
+    assetKey: AssetKey
+    description: Optional[str] = None
+    computeKind: Optional[str] = None
+    opNames: Optional[List[str]] = None
+    dependencies: Optional[List[AssetDependency]] = None
+    assetMaterializations: Optional[List[AssetMaterialization]] = None
+    jobs: Optional[List[JobReference]] = None
+
+
+class AssetRepository(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    typename: str = Field(alias="__typename")
+    id: Optional[str] = None
+    name: Optional[str] = None
+    assetNodes: Optional[List[DagsterAssetNode]] = None
+
+
+class AssetsQueryResponse(BaseModel):
+    repositoryOrError: AssetRepository
+
+
+class TableResolutionResult(BaseModel):
+    """Result of resolving a Dagster asset to an OpenMetadata table"""
+
+    table_fqn: Optional[str] = None
+    table_entity: Optional["Table"] = None
+
+    @property
+    def is_resolved(self) -> bool:
+        """Check if the asset was successfully resolved to a table"""
+        return self.table_entity is not None
