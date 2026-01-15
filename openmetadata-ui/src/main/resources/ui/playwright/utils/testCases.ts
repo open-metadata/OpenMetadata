@@ -232,8 +232,7 @@ export const verifyPageAccess = async (
     expect(page.url()).toContain(url);
 
     // Verify page loaded successfully (no 404 error)
-    const has404Error = await page.getByText('Page Not FoundThe page you').isVisible().catch(() => false);
-    expect(has404Error).toBeFalsy();
+    await expect(page.getByText('Page Not FoundThe page you')).not.toBeVisible()
   } else {
     // Verify user is blocked - should be redirected to 404
     await page.getByText('Page Not FoundThe page you').waitFor({ state: 'visible' });

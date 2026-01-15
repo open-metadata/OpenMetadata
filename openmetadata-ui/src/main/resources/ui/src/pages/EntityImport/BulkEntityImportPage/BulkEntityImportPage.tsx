@@ -46,7 +46,10 @@ import {
   getEntityColumnsAndDataSourceFromCSV,
 } from '../../../utils/CSV/CSV.utils';
 import csvUtilsClassBase from '../../../utils/CSV/CSVUtilsClassBase';
-import { isBulkEditRoute } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
+import {
+  getBulkEntityNavigationPath,
+  isBulkEditRoute,
+} from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
   getBulkEntityBreadcrumbList,
   getImportedEntityType,
@@ -415,26 +418,13 @@ const BulkEntityImportPage = () => {
             })
           );
 
-          if (entityType === EntityType.TEST_CASE) {
-            if (fqn === WILD_CARD_CHAR) {
-              navigate(getDataQualityPagePath(DataQualityPageTabs.TEST_CASES));
-            } else if (effectiveSourceEntityType === EntityType.TABLE) {
-              navigate(
-                getEntityDetailsPath(
-                  EntityType.TABLE,
-                  fqn,
-                  EntityTabs.PROFILER,
-                  ProfilerTabPath.DATA_QUALITY
-                )
-              );
-            } else if (effectiveSourceEntityType === EntityType.TEST_SUITE) {
-              navigate(getTestSuitePath(fqn));
-            } else {
-              navigate(getDataQualityPagePath(DataQualityPageTabs.TEST_CASES));
-            }
-          } else {
-            navigate(entityUtilClassBase.getEntityLink(entityType, fqn));
-          }
+          navigate(
+            getBulkEntityNavigationPath(
+              entityType,
+              fqn,
+              effectiveSourceEntityType
+            )
+          );
 
           handleResetImportJob();
           setIsValidating(false);

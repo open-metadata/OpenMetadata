@@ -1165,81 +1165,81 @@ export const fillTestCaseDetails = async (
     useDynamicAssertion?: string;
     inspectionQuery?: string;
     tags?: string;
-    glossaryTerms?: string;
+    glossary?: {
+      name: string;
+      parent: string;
+    };
   },
   page: Page
 ) => {
   // Fill name if provided
-  if (row.name !== undefined) {
+  if (row.name) {
     await fillTextInputDetails(page, row.name);
   }
   await page.keyboard.press('ArrowRight', { delay: 100 });
 
   // Fill displayName if provided
-  if (row.displayName !== undefined) {
+  if (row.displayName) {
     await fillTextInputDetails(page, row.displayName);
   }
   await page.keyboard.press('ArrowRight', { delay: 100 });
 
   // Fill description if provided
-  if (row.description !== undefined) {
+  if (row.description) {
     await fillDescriptionDetails(page, row.description);
   }
   await page.keyboard.press('ArrowRight', { delay: 100 });
 
   // Fill testDefinition if provided
-  if (row.testDefinition !== undefined) {
+  if (row.testDefinition) {
     await fillTextInputDetails(page, row.testDefinition);
   }
   await page.keyboard.press('ArrowRight', { delay: 100 });
 
   // Fill entityFQN if provided
-  if (row.entityFQN !== undefined) {
+  if (row.entityFQN) {
     await fillTextInputDetails(page, row.entityFQN);
   }
   await page.keyboard.press('ArrowRight', { delay: 100 });
 
   // Fill testSuite if provided
-  if (row.testSuite !== undefined) {
+  if (row.testSuite) {
     await fillTextInputDetails(page, row.testSuite);
   }
   await page.keyboard.press('ArrowRight', { delay: 100 });
 
   // Fill parameterValues if provided
-  if (row.parameterValues !== undefined) {
+  if (row.parameterValues) {
     await fillTextInputDetails(page, row.parameterValues);
   }
   await page.keyboard.press('ArrowRight', { delay: 100 });
 
   // Fill computePassedFailedRowCount if provided
-  if (row.computePassedFailedRowCount !== undefined) {
+  if (row.computePassedFailedRowCount) {
     await fillTextInputDetails(page, row.computePassedFailedRowCount);
   }
   await page.keyboard.press('ArrowRight', { delay: 100 });
 
   // Fill useDynamicAssertion if provided
-  if (row.useDynamicAssertion !== undefined) {
+  if (row.useDynamicAssertion) {
     await fillTextInputDetails(page, row.useDynamicAssertion);
   }
   await page.keyboard.press('ArrowRight', { delay: 100 });
 
   // Fill inspectionQuery if provided
-  if (row.inspectionQuery !== undefined) {
+  if (row.inspectionQuery) {
     await fillTextInputDetails(page, row.inspectionQuery);
   }
   await page.keyboard.press('ArrowRight', { delay: 100 });
 
   // Fill tags if provided
-  if (row.tags !== undefined) {
+  if (row.tags) {
     await fillTagDetails(page, row.tags);
   }
   await page.keyboard.press('ArrowRight', { delay: 100 });
 
   // Fill glossaryTerms if provided
-  if (row.glossaryTerms !== undefined) {
-    await fillGlossaryTermDetails(page, {
-      name: row.glossaryTerms,
-      parent: '', // Parent will need to be provided if needed
-    });
+  if (row.glossary) {
+    await fillGlossaryTermDetails(page, row.glossary);
   }
 };
