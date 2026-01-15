@@ -52,11 +52,11 @@ public class ServicesStatusJobHandler {
       EventMonitorConfiguration eventMonitorConfiguration, String clusterName) {
     if (instance != null) return instance;
 
-      try {
-        instance = new ServicesStatusJobHandler(eventMonitorConfiguration, clusterName);
-      } catch (Exception ex) {
-        throw new RuntimeException("Failed to initialize the Services Status Handler", ex);
-      }
+    try {
+      instance = new ServicesStatusJobHandler(eventMonitorConfiguration, clusterName);
+    } catch (Exception ex) {
+      throw new RuntimeException("Failed to initialize the Services Status Handler", ex);
+    }
     return instance;
   }
 
