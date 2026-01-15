@@ -52,6 +52,7 @@ import {
   ColumnFieldUpdate,
   ColumnOrTask,
 } from '../../Database/ColumnDetailPanel/ColumnDetailPanel.interface';
+import { EntityDataMapValue } from '../../../utils/ColumnUpdateUtils.interface';
 import {
   GenericContextType,
   GenericProviderProps,
@@ -251,7 +252,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     async (fqn: string, update: ColumnFieldUpdate) => {
       const { updatedEntity, updatedColumn } = handleColumnFieldUpdateUtil({
         entityType: type,
-        entityData: data,
+        entityData: data as unknown as EntityDataMapValue,
         fqn,
         update,
       });

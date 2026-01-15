@@ -1571,20 +1571,24 @@ export const getParentKeysToExpand = <
     if (item.fullyQualifiedName === targetFqn) {
       return parentKeys;
     }
-    
+
     // Check if we should explore children
-    const shouldExploreChildren = 
+    const shouldExploreChildren =
       item.children?.length &&
-      (item.fullyQualifiedName 
+      (item.fullyQualifiedName
         ? targetFqn.startsWith(item.fullyQualifiedName + '.')
         : true); // If no FQN, always check children
-    
+
     if (shouldExploreChildren) {
       const newParentKeys = [
         ...parentKeys,
         item.fullyQualifiedName ?? item.name ?? '',
       ];
-      const result = getParentKeysToExpand(item.children!, targetFqn, newParentKeys);
+      const result = getParentKeysToExpand(
+        item.children!,
+        targetFqn,
+        newParentKeys
+      );
       if (result.length > 0) {
         return result;
       }
@@ -1804,12 +1808,16 @@ export const extractColumnsFromData = <T extends Omit<EntityReference, 'type'>>(
       return extractContainerColumns(data);
     case EntityType.SEARCH_INDEX:
       return extractSearchIndexFields(data);
+    case EntityType.WORKSHEET:
+      return extractTableColumns(data);
     default:
       return [];
   }
 };
 
-export const getHighlightedRowClassName = <T extends { fullyQualifiedName?: string }>(
+export const getHighlightedRowClassName = <
+  T extends { fullyQualifiedName?: string }
+>(
   record: T,
   highlightedFqn?: string
 ): string => {
