@@ -75,7 +75,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 public class MlModelServiceResource
     extends ServiceEntityResource<MlModelService, MlModelServiceRepository, MlModelConnection> {
   private final MlModelServiceMapper mapper = new MlModelServiceMapper();
-  public static final String COLLECTION_PATH = "v1/services/mlmodelServices/";
+  public static final String COLLECTION_PATH = "/v1/services/mlmodelServices/";
   public static final String FIELDS = "pipelines,owners,tags,domains,followers";
 
   @Override

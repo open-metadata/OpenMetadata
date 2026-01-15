@@ -104,7 +104,7 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryTermRepository> {
   private final GlossaryTermMapper mapper = new GlossaryTermMapper();
   private final GlossaryMapper glossaryMapper = new GlossaryMapper();
-  public static final String COLLECTION_PATH = "v1/glossaryTerms/";
+  public static final String COLLECTION_PATH = "/v1/glossaryTerms/";
   static final String FIELDS =
       "children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount";
 

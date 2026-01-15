@@ -72,7 +72,7 @@ import org.openmetadata.service.security.Authorizer;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "mlmodels")
 public class MlModelResource extends EntityResource<MlModel, MlModelRepository> {
-  public static final String COLLECTION_PATH = "v1/mlmodels/";
+  public static final String COLLECTION_PATH = "/v1/mlmodels/";
   private final MlModelMapper mapper = new MlModelMapper();
   static final String FIELDS =
       "owners,dashboard,followers,tags,usageSummary,extension,domains,sourceHash";
