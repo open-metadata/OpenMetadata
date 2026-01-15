@@ -69,9 +69,23 @@ jest.mock('../../../rest/testAPI', () => {
       ),
     updateTestCaseById: jest
       .fn()
-      .mockImplementation(() => Promise.resolve(MOCK_TEST_CASE[0])),
   };
 });
+
+jest.mock('../../../rest/tableAPI', () => ({
+  getTableDetailsByFQN: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      id: 'tableId',
+      columns: [
+        {
+          name: 'last_name',
+          columnDataType: 'VARCHAR',
+        },
+      ],
+      name: 'dim_address',
+    })
+  ),
+}));
 
 describe('EditTestCaseModal Component', () => {
   it('component should render', async () => {

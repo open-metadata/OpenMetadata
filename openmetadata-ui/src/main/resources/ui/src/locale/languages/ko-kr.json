@@ -1665,6 +1665,7 @@
     "star": "별표",
     "star-open-metadata": "OpenMetadata에 별표 주기",
     "star-us-on-github": "GitHub에서 별표 주기",
+    "start-date": "시작 날짜",
     "start-date-time-zone": "시작 날짜: ({{timeZone}})",
     "start-elasticsearch-docker": "Elasticsearch Docker 시작",
     "start-entity": "{{entity}} 시작",
