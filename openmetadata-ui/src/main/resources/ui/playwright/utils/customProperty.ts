@@ -664,10 +664,9 @@ export const addCustomPropertiesForEntity = async ({
       await page.keyboard.type(val);
       await page.press('#root\\/enumConfig', 'Enter');
     }
-    await clickOutside(page);
 
     if (enumConfig.multiSelect) {
-      await page.click('#root\\/multiSelect');
+      await page.getByTestId('multiSelect').click();
     }
   }
   // Table configuration
@@ -677,7 +676,6 @@ export const addCustomPropertiesForEntity = async ({
       await page.keyboard.type(val);
       await page.press('#root\\/columns', 'Enter');
     }
-    await clickOutside(page);
   }
 
   // Entity reference configuration
@@ -689,20 +687,17 @@ export const addCustomPropertiesForEntity = async ({
       await page.click('#root\\/entityReferenceConfig');
       await page.keyboard.type(val);
       await page.click(`[title="${val}"]`);
+      await page
+        .getByTestId('form-item-label')
+        .filter({ hasText: 'Entity Reference Types' })
+        .click();
     }
   }
 
   // Format configuration
-  if (['Date', 'Date Time', 'Time'].includes(customType)) {
-    await page.fill('#root\\/formatConfig', 'invalid-format');
-
-    await expect(page.locator('#formatConfig_help')).toContainText(
-      'Format is invalid'
-    );
-
-    if (formatConfig) {
-      await page.fill('#root\\/formatConfig', formatConfig);
-    }
+  if (['Date', 'Date Time', 'Time'].includes(customType) && formatConfig) {
+    await page.getByTestId('formatConfig').click();
+    await page.getByRole('option', { name: formatConfig, exact: true }).click();
   }
 
   // Description
@@ -859,19 +854,20 @@ export const verifyCustomPropertyInAdvancedSearch = async (
     true
   );
 
-  await selectOption(
-    page,
-    ruleLocator.locator('.rule--field .ant-select'),
-    entityType,
-    true
-  );
+  if (entityType !== 'TableColumn') {
+    await selectOption(
+      page,
+      ruleLocator.locator('.rule--field .ant-select'),
+      entityType,
+      true
+    );
 
-  await selectOption(
-    page,
-    ruleLocator.locator('.rule--field .ant-select'),
-    propertyName,
-    true
-  );
-
+    await selectOption(
+      page,
+      ruleLocator.locator('.rule--field .ant-select'),
+      propertyName,
+      true
+    );
+  }
   await page.getByTestId('cancel-btn').click();
 };

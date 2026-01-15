@@ -413,7 +413,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     },
   },
   entity_tableColumn: {
-    name: 'table-column',
+    name: 'tableColumn',
     description: 'This is Table Column custom property',
     integerValue: '23',
     stringValue: 'This is string propery',
@@ -427,7 +427,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     timeFormatConfig: 'HH:mm:ss',
     entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
-    entityApiType: 'table-column',
+    entityApiType: 'column',
     tableConfig: {
       columns: ['pw-column1', 'pw-column2'],
     },

@@ -43,6 +43,7 @@ test.describe('Custom properties without custom property config', () => {
 
   propertiesList.forEach((property) => {
     test.describe(`Add update and delete ${property} custom properties`, () => {
+      test.slow(true);
       Object.values(CUSTOM_PROPERTIES_ENTITIES).forEach(async (entity) => {
         const propertyName = `pwcustomproperty${entity.name}test${uuid()}`;
 

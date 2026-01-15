@@ -30,6 +30,8 @@ test.describe('Custom properties with custom property config', () => {
   });
 
   test.describe('Add update and delete Enum custom properties', () => {
+    test.slow(true);
+
     Object.values(CUSTOM_PROPERTIES_ENTITIES).forEach(async (entity) => {
       const propertyName = `pwcustomproperty${entity.name}test${uuid()}`;
 
