@@ -23,7 +23,7 @@ export const useGlossaryMutualExclusivity = () => {
   );
 
   const getExclusivity = useCallback((key: string) => {
-    return glossaryMutuallyExclusiveMap.current.get(key) ?? false;
+    return glossaryMutuallyExclusiveMap.current.get(key);
   }, []);
 
   return {

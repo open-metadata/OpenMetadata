@@ -129,29 +129,6 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
     setOpen(visible);
   };
 
-  const findNodeAndParent = useCallback(
-    (
-      nodes: ExtendedTreeNode[],
-      targetValue: string,
-      parent: ExtendedTreeNode | null = null
-    ): { node: ExtendedTreeNode | null; parent: ExtendedTreeNode | null } => {
-      for (const node of nodes) {
-        if (node.value === targetValue) {
-          return { node, parent };
-        }
-        if (node.children) {
-          const result = findNodeAndParent(node.children, targetValue, node);
-          if (result.node) {
-            return result;
-          }
-        }
-      }
-
-      return { node: null, parent: null };
-    },
-    []
-  );
-
   const getSiblingValues = useCallback(
     (parent: ExtendedTreeNode | null, currentValue: string): string[] => {
       if (!parent?.children) {
@@ -193,6 +170,29 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       isParentSelectable
     );
   }, [glossaries, searchOptions, isParentSelectable]);
+
+  const nodeParentMap = useMemo(() => {
+    const map = new Map<
+      string,
+      { node: ExtendedTreeNode; parent: ExtendedTreeNode | null }
+    >();
+
+    const traverse = (
+      nodes: ExtendedTreeNode[],
+      parent: ExtendedTreeNode | null = null
+    ) => {
+      for (const node of nodes) {
+        map.set(node.value, { node, parent });
+        if (node.children) {
+          traverse(node.children, node);
+        }
+      }
+    };
+
+    traverse(treeData as ExtendedTreeNode[]);
+
+    return map;
+  }, [treeData]);
 
   const dropdownRender = (menu: React.ReactElement) => (
     <KeyDownStopPropagationWrapper>
@@ -318,10 +318,10 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
       // Filter out siblings of mutually exclusive selections
       let filteredRawValues = [...rawValues];
       for (const newVal of newlySelected) {
-        const { node, parent } = findNodeAndParent(
-          treeData as ExtendedTreeNode[],
-          newVal.value
-        );
+        const { node, parent } = nodeParentMap.get(newVal.value) || {
+          node: null,
+          parent: null,
+        };
         if (node?.isParentMutuallyExclusive) {
           const siblingValues = new Set(getSiblingValues(parent, newVal.value));
           filteredRawValues = filteredRawValues.filter(

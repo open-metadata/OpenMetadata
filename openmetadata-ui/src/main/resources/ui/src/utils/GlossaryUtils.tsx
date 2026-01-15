@@ -265,7 +265,7 @@ export const convertGlossaryTermsToTreeOptions = (
           option.children as ModifiedGlossaryTerm[],
           level + 1,
           allowParentSelection,
-          option.mutuallyExclusive === true
+          parentMutuallyExclusive || option.mutuallyExclusive === true
         ),
     };
   });
