@@ -88,13 +88,14 @@ Azure Active Directory (Azure AD) SSO enables users to log in with their Microso
 ### <span data-id="jwtTeamClaimMapping">JWT Team Claim Mapping</span>
 
 - **Definition:** Azure AD claim or attribute containing team/department information for automatic team assignment.
-- **Example:** "department" or "jobTitle" or "companyName"
+- **Example:** "department" or "jobTitle" or "companyName" or "groups"
 - **Why it matters:** Automatically assigns users to existing OpenMetadata teams based on their Azure AD attributes during login.
 - **How it works:**
-  - Extracts the value from the specified Azure AD claim (e.g., if set to "department", reads user's department from Azure AD)
-  - Matches the extracted value against existing team names in OpenMetadata
-  - If a team with matching name exists, user is automatically assigned to that team
-  - If team doesn't exist, a warning is logged but authentication continues
+  - Extracts the value(s) from the specified Azure AD claim (e.g., if set to "department", reads user's department from Azure AD)
+  - For array claims (like "groups"), processes all values in the array
+  - Matches the extracted value(s) against existing team names in OpenMetadata
+  - Assigns the user to all matching teams that are of type "Group"
+  - If a team doesn't exist or is not of type "Group", a warning is logged but authentication continues
 - **Azure AD Configuration:**
   - Common attributes: "department", "jobTitle", "companyName", "officeLocation"
   - To use custom attributes, ensure they're included in the token:
@@ -104,9 +105,10 @@ Azure Active Directory (Azure AD) SSO enables users to log in with their Microso
   - For group-based teams, use "groups" claim (requires group membership configuration)
 - **Note:** 
   - The team must already exist in OpenMetadata for assignment to work
+  - Only teams of type "Group" can be auto-assigned (not "Organization" or "BusinessUnit" teams)
   - Team names are case-sensitive and must match exactly
   - Azure AD's "department" attribute is the most common use case (e.g., "Engineering", "Sales", "Marketing")
-  - Multiple team assignments from a single claim are not currently supported
+  - Multiple team assignments are supported for array claims (e.g., "groups")
 
 ### <span data-id="tokenValidation">Token Validation Algorithm</span>
 

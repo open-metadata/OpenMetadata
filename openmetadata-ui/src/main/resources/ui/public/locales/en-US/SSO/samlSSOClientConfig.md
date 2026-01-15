@@ -240,16 +240,18 @@ SAML (Security Assertion Markup Language) SSO enables users to log in using SAML
 - **Example:** "department" (for Azure AD department attribute) or "groups" (for group membership)
 - **Why it matters:** Automatically assigns users to existing OpenMetadata teams based on their SAML/JWT attributes during login.
 - **How it works:**
-  - For SAML: Extracts the value from the specified SAML attribute (e.g., if set to "department", reads the "department" attribute from SAML assertion)
-  - For JWT/OIDC: Extracts the value from the specified JWT claim (e.g., if set to "department", reads the "department" claim from JWT token)
-  - Matches the extracted value against existing team names in OpenMetadata
-  - If a team with matching name exists, user is automatically assigned to that team
-  - If team doesn't exist, a warning is logged but authentication continues
+  - For SAML: Extracts the value(s) from the specified SAML attribute (e.g., if set to "department", reads the "department" attribute from SAML assertion)
+  - For JWT/OIDC: Extracts the value(s) from the specified JWT claim (e.g., if set to "department", reads the "department" claim from JWT token)
+  - For array attributes/claims (like "groups"), processes all values in the array
+  - Matches the extracted value(s) against existing team names in OpenMetadata
+  - Assigns the user to all matching teams that are of type "Group"
+  - If a team doesn't exist or is not of type "Group", a warning is logged but authentication continues
 - **Note:** 
   - The team must already exist in OpenMetadata for assignment to work
+  - Only teams of type "Group" can be auto-assigned (not "Organization" or "BusinessUnit" teams)
   - Team names are case-sensitive and must match exactly
   - This is useful for Azure AD "department" attribute or similar organizational attributes
-  - Multiple team assignments from a single claim are not currently supported (only the first value is used)
+  - Multiple team assignments are supported for array attributes/claims (e.g., "groups")
 
 ## <span data-id="tokenValidationAlgorithm">Token Validation Algorithm</span>
 
