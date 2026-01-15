@@ -29,6 +29,7 @@ import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.elasticsearch.core.search.Hit;
 import es.co.elastic.clients.json.JsonData;
 import es.co.elastic.clients.json.JsonpMapper;
+import io.micrometer.core.instrument.Timer;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonReader;
@@ -149,7 +150,15 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
                                     b.must(
                                         m -> m.term(t -> t.field("sourceUrl").value(sourceUrl))))));
 
-    SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+    Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+    SearchResponse<JsonData> response;
+    try {
+      response = client.search(searchRequest, JsonData.class);
+    } finally {
+      if (searchTimerSample != null) {
+        RequestLatencyContext.endSearchOperation(searchTimerSample);
+      }
+    }
     String responseJson = serializeSearchResponse(response);
     return Response.status(OK).entity(responseJson).build();
   }
@@ -176,7 +185,15 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
                                         .filter(
                                             f -> f.term(t -> t.field("deleted").value(deleted))))));
 
-    SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+    Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+    SearchResponse<JsonData> response;
+    try {
+      response = client.search(searchRequest, JsonData.class);
+    } finally {
+      if (searchTimerSample != null) {
+        RequestLatencyContext.endSearchOperation(searchTimerSample);
+      }
+    }
     String responseJson = serializeSearchResponse(response);
     return Response.status(OK).entity(responseJson).build();
   }
@@ -248,7 +265,15 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
     try {
       SearchRequest searchRequest = requestBuilder.build(index);
-      SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+      SearchResponse<JsonData> response;
+      try {
+        response = client.search(searchRequest, JsonData.class);
+      } finally {
+        if (searchTimerSample != null) {
+          RequestLatencyContext.endSearchOperation(searchTimerSample);
+        }
+      }
 
       List<Map<String, Object>> results = new ArrayList<>();
       if (response.hits().hits() != null) {
@@ -356,7 +381,15 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
     try {
       SearchRequest searchRequest = requestBuilder.build(index);
-      SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+      SearchResponse<JsonData> response;
+      try {
+        response = client.search(searchRequest, JsonData.class);
+      } finally {
+        if (searchTimerSample != null) {
+          RequestLatencyContext.endSearchOperation(searchTimerSample);
+        }
+      }
 
       List<Map<String, Object>> results = new ArrayList<>();
       Object[] lastHitSortValues = null;
@@ -449,11 +482,13 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         addAggregationsToNLQQuery(requestBuilder, request.getIndex());
 
         SearchRequest searchRequest = requestBuilder.build(request.getIndex());
-        SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
-
-        // End search operation timing
-        if (searchTimerSample != null) {
-          RequestLatencyContext.endSearchOperation(searchTimerSample);
+        SearchResponse<JsonData> response;
+        try {
+          response = client.search(searchRequest, JsonData.class);
+        } finally {
+          if (searchTimerSample != null) {
+            RequestLatencyContext.endSearchOperation(searchTimerSample);
+          }
         }
 
         // Cache successful queries
@@ -542,7 +577,15 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
       // Build and execute search request
       SearchRequest searchRequest = requestBuilder.build(request.getIndex());
-      SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+      SearchResponse<JsonData> response;
+      try {
+        response = client.search(searchRequest, JsonData.class);
+      } finally {
+        if (searchTimerSample != null) {
+          RequestLatencyContext.endSearchOperation(searchTimerSample);
+        }
+      }
 
       String responseJson = serializeSearchResponse(response);
       LOG.debug("Direct query search completed successfully");
@@ -734,7 +777,16 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
     Query boolQuery = Query.of(q -> q.bool(b -> b.must(mustQueries).filter(filterQueries)));
 
-    return client.search(s -> s.index(indexName).query(boolQuery).size(1000), JsonData.class);
+    Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+    SearchResponse<JsonData> response;
+    try {
+      response = client.search(s -> s.index(indexName).query(boolQuery).size(1000), JsonData.class);
+    } finally {
+      if (searchTimerSample != null) {
+        RequestLatencyContext.endSearchOperation(searchTimerSample);
+      }
+    }
+    return response;
   }
 
   private void applySearchFilter(String filter, ElasticSearchRequestBuilder requestBuilder)
@@ -1038,15 +1090,16 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     LOG.debug("Executing search on index: {}, query: {}", request.getIndex(), request.getQuery());
 
     try {
-      io.micrometer.core.instrument.Timer.Sample searchTimerSample =
-          org.openmetadata.service.monitoring.RequestLatencyContext.startSearchOperation();
+      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
 
       SearchRequest searchRequest = requestBuilder.build(request.getIndex());
-      SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
-
-      if (searchTimerSample != null) {
-        org.openmetadata.service.monitoring.RequestLatencyContext.endSearchOperation(
-            searchTimerSample);
+      SearchResponse<JsonData> searchResponse;
+      try {
+        searchResponse = client.search(searchRequest, JsonData.class);
+      } finally {
+        if (searchTimerSample != null) {
+          RequestLatencyContext.endSearchOperation(searchTimerSample);
+        }
       }
 
       if (!Boolean.TRUE.equals(request.getIsHierarchy())) {
@@ -1134,7 +1187,15 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
     // Execute search to get aggregations for parent terms
     SearchRequest searchRequest = requestBuilder.build(request.getIndex());
-    SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+    Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+    SearchResponse<JsonData> searchResponse;
+    try {
+      searchResponse = client.search(searchRequest, JsonData.class);
+    } finally {
+      if (searchTimerSample != null) {
+        RequestLatencyContext.endSearchOperation(searchTimerSample);
+      }
+    }
 
     if (searchResponse.aggregations() != null
         && searchResponse.aggregations().containsKey("fqnParts_agg")) {
@@ -1336,7 +1397,15 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       addAggregationsToNLQQuery(requestBuilder, request.getIndex());
 
       SearchRequest searchRequest = requestBuilder.build(request.getIndex());
-      SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+      SearchResponse<JsonData> searchResponse;
+      try {
+        searchResponse = client.search(searchRequest, JsonData.class);
+      } finally {
+        if (searchTimerSample != null) {
+          RequestLatencyContext.endSearchOperation(searchTimerSample);
+        }
+      }
 
       return Response.status(Response.Status.OK)
           .entity(serializeSearchResponse(searchResponse))
@@ -1371,7 +1440,15 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
                     .query(query)
                     .size(1000));
 
-    SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+    Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+    SearchResponse<JsonData> searchResponse;
+    try {
+      searchResponse = client.search(searchRequest, JsonData.class);
+    } finally {
+      if (searchTimerSample != null) {
+        RequestLatencyContext.endSearchOperation(searchTimerSample);
+      }
+    }
 
     for (Hit<JsonData> hit : searchResponse.hits().hits()) {
       if (hit.source() != null) {
@@ -1418,7 +1495,15 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
                     .query(query)
                     .size(1000));
 
-    SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+    Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+    SearchResponse<JsonData> searchResponse;
+    try {
+      searchResponse = client.search(searchRequest, JsonData.class);
+    } finally {
+      if (searchTimerSample != null) {
+        RequestLatencyContext.endSearchOperation(searchTimerSample);
+      }
+    }
 
     for (Hit<JsonData> hit : searchResponse.hits().hits()) {
       if (hit.source() != null) {
@@ -1521,7 +1606,15 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
                     .query(finalMainQuery)
                     .size(1000));
 
-    SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+    Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+    SearchResponse<JsonData> searchResponse;
+    try {
+      searchResponse = client.search(searchRequest, JsonData.class);
+    } finally {
+      if (searchTimerSample != null) {
+        RequestLatencyContext.endSearchOperation(searchTimerSample);
+      }
+    }
 
     for (Hit<JsonData> hit : searchResponse.hits().hits()) {
       if (hit.source() == null) {

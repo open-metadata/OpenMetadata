@@ -37,6 +37,7 @@ import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.config.BulkOperationConfiguration;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.config.ObjectStorageConfiguration;
 import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
@@ -162,6 +163,24 @@ public class OpenMetadataApplicationConfig extends Configuration {
       cacheConfig = new org.openmetadata.service.cache.CacheConfig();
     }
     return cacheConfig;
+  }
+
+  @JsonProperty("bulkOperation")
+  @Valid
+  private BulkOperationConfiguration bulkOperationConfiguration;
+
+  public BulkOperationConfiguration getBulkOperationConfiguration() {
+    if (bulkOperationConfiguration == null) {
+      bulkOperationConfiguration = new BulkOperationConfiguration();
+    }
+    return bulkOperationConfiguration;
+  }
+  
+  public String getApiRootPath() {
+    if (!(getServerFactory() instanceof DefaultServerFactory serverFactory)) {
+      return "";
+    }
+    return serverFactory.getJerseyRootPath().map(path -> path.replaceFirst("\\*$", "")).orElse("");
   }
 
   @Override
