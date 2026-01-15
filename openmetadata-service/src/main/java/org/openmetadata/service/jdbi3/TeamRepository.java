@@ -1381,12 +1381,8 @@ public class TeamRepository extends EntityRepository<Team> {
       Team dbTeam = findByNameOrNull(currentParentName, Include.NON_DELETED);
       if (dbTeam != null) {
         for (EntityReference parent : listOrEmpty(dbTeam.getParents())) {
-          if (parent.getName().equals(originalTeamName)) {
-            throw new IllegalArgumentException(
-                String.format(
-                    "Circular reference detected: Team '%s' -> ... -> '%s' -> '%s'",
-                    originalTeamName, dbTeam.getName(), originalTeamName));
-          }
+          checkCircularReferenceInDryRun(
+              originalTeamName, parent.getName(), dryRunMap, new HashSet<>(visited));
         }
       }
     }
