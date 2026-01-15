@@ -1569,6 +1569,10 @@ export interface SemanticsRule {
      */
     ignoredEntities?: string[];
     /**
+     * Whether this rule was inherited from a Data Product.
+     */
+    inherited?: boolean;
+    /**
      * JSON Tree to represents rule in UI.
      */
     jsonTree?: string;
