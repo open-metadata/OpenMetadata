@@ -960,3 +960,84 @@ class RESTTest(TestCase):
         assert result.dataType == DataTypeTopic.ARRAY
         # When no items key exists, children is None
         assert result.children is None
+
+    @patch("metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection")
+    def test_endpoint_filter_pattern(self, test_connection):
+        """test endpoint filter pattern"""
+        test_connection.return_value = False
+
+        # Setup mock JSON response with paths
+        mock_json_with_paths = {
+            "paths": {
+                "/store/order": {
+                    "post": {
+                        "tags": ["store"],
+                        "summary": "Place an order",
+                        "operationId": "placeOrder",
+                    }
+                },
+                "/store/inventory": {
+                    "get": {
+                        "tags": ["store"],
+                        "summary": "Get inventory",
+                        "operationId": "getInventory",
+                    }
+                },
+                "/store/order/{orderId}": {
+                    "get": {
+                        "tags": ["store"],
+                        "summary": "Get order by ID",
+                        "operationId": "getOrderById",
+                    }
+                },
+            },
+            "tags": [{"name": "store", "description": "Access to Petstore orders"}],
+        }
+
+        # Test with include pattern - only endpoints matching the pattern
+        include_config = deepcopy(mock_rest_config)
+        include_config["source"]["sourceConfig"]["config"][
+            "apiEndpointFilterPattern"
+        ] = {"includes": [".*order.*"]}
+        rest_source_include = RestSource.create(
+            include_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+        rest_source_include.json_response = mock_json_with_paths
+        rest_source_include.context.get().__dict__[
+            "api_service"
+        ] = MOCK_API_SERVICE.fullyQualifiedName.root
+
+        endpoints_include = list(
+            rest_source_include.yield_api_endpoint(MOCK_SINGLE_COLLECTION)
+        )
+        # Should include /store/order and /store/order/{orderId} but not /store/inventory
+        assert len(endpoints_include) == 2
+        endpoint_names = [e.right.displayName for e in endpoints_include if e.right]
+        assert "/store/order" in endpoint_names
+        assert "/store/order/{orderId}" in endpoint_names
+        assert "/store/inventory" not in endpoint_names
+
+        # Test with exclude pattern
+        exclude_config = deepcopy(mock_rest_config)
+        exclude_config["source"]["sourceConfig"]["config"][
+            "apiEndpointFilterPattern"
+        ] = {"excludes": [".*inventory.*"]}
+        rest_source_exclude = RestSource.create(
+            exclude_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+        rest_source_exclude.json_response = mock_json_with_paths
+        rest_source_exclude.context.get().__dict__[
+            "api_service"
+        ] = MOCK_API_SERVICE.fullyQualifiedName.root
+
+        endpoints_exclude = list(
+            rest_source_exclude.yield_api_endpoint(MOCK_SINGLE_COLLECTION)
+        )
+        # Should exclude /store/inventory
+        assert len(endpoints_exclude) == 2
+        endpoint_names_exclude = [
+            e.right.displayName for e in endpoints_exclude if e.right
+        ]
+        assert "/store/inventory" not in endpoint_names_exclude
