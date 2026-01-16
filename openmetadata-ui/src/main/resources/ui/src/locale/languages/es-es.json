@@ -1666,6 +1666,7 @@
     "star": "Estrella",
     "star-open-metadata": "Dar una Estrella a OpenMetadata",
     "star-us-on-github": "Danos una Estrella en GitHub",
+    "start-date": "Fecha de Inicio",
     "start-date-time-zone": "Fecha de Inicio: ({{timeZone}})",
     "start-elasticsearch-docker": "Iniciar Elasticsearch Docker",
     "start-entity": "Iniciar {{entity}}",

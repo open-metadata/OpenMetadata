@@ -1666,6 +1666,7 @@
     "star": "تمييز",
     "star-open-metadata": "تمييز OpenMetadata بنجمة",
     "star-us-on-github": "ميّزنا بنجمة على GitHub",
+    "start-date": "تاريخ البدء",
     "start-date-time-zone": "تاريخ البدء: ({{timeZone}})",
     "start-elasticsearch-docker": "بدء Docker لـ Elasticsearch",
     "start-entity": "بدء {{entity}}",
