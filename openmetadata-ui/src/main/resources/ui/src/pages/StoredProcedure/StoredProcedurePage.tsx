@@ -86,7 +86,9 @@ const StoredProcedurePage = () => {
   const { tab: activeTab = EntityTabs.CODE } =
     useRequiredParams<{ tab: EntityTabs }>();
 
-  const { fqn: decodedStoredProcedureFQN } = useFqn();
+  const { entityFqn: decodedStoredProcedureFQN } = useFqn({
+    type: EntityType.STORED_PROCEDURE,
+  });
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [storedProcedure, setStoredProcedure] = useState<StoredProcedure>();
