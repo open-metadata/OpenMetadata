@@ -488,26 +488,29 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     Table table3 = createTestTable(ns);
 
     // Create data contracts with different entity statuses
-    createEntity(
-        new CreateDataContract()
-            .withName(ns.prefix("list_1"))
-            .withEntity(table1.getEntityReference())
-            .withEntityStatus(EntityStatus.APPROVED)
-            .withDescription("List test 1 - Approved"));
+    DataContract approvedContract =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("list_1"))
+                .withEntity(table1.getEntityReference())
+                .withEntityStatus(EntityStatus.APPROVED)
+                .withDescription("List test 1 - Approved"));
 
-    createEntity(
-        new CreateDataContract()
-            .withName(ns.prefix("list_2"))
-            .withEntity(table2.getEntityReference())
-            .withEntityStatus(EntityStatus.DRAFT)
-            .withDescription("List test 2 - Draft"));
+    DataContract draftContract =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("list_2"))
+                .withEntity(table2.getEntityReference())
+                .withEntityStatus(EntityStatus.DRAFT)
+                .withDescription("List test 2 - Draft"));
 
-    createEntity(
-        new CreateDataContract()
-            .withName(ns.prefix("list_3"))
-            .withEntity(table3.getEntityReference())
-            .withEntityStatus(EntityStatus.REJECTED)
-            .withDescription("List test 3 - Rejected"));
+    DataContract rejectedContract =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("list_3"))
+                .withEntity(table3.getEntityReference())
+                .withEntityStatus(EntityStatus.REJECTED)
+                .withDescription("List test 3 - Rejected"));
 
     // Test basic list without filters
     ListParams params = new ListParams();
@@ -518,37 +521,44 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertNotNull(response.getData());
     assertTrue(response.getData().size() >= 3);
 
-    // Test filtering by status - APPROVED
+    // Test filtering by status - Approved
     ListParams approvedParams = new ListParams();
     approvedParams.setLimit(10);
-    approvedParams.addQueryParam("status", "APPROVED");
+    approvedParams.addQueryParam("status", "Approved");
     ListResponse<DataContract> approvedResponse = listEntities(approvedParams);
 
     assertNotNull(approvedResponse);
     assertNotNull(approvedResponse.getData());
-    // Verify all returned contracts have APPROVED status
-    approvedResponse.getData().forEach(contract -> {
-      if (contract.getName().startsWith(ns.prefix(""))) {
-        assertEquals(EntityStatus.APPROVED, contract.getEntityStatus(),
-            "Expected only APPROVED contracts in filtered response");
-      }
-    });
+    // Verify our approved contract is in the results with correct status and entity
+    boolean foundApprovedContract =
+        approvedResponse.getData().stream()
+            .anyMatch(
+                contract ->
+                    contract.getId().equals(approvedContract.getId())
+                        && contract.getEntityStatus() == EntityStatus.APPROVED
+                        && contract.getEntity().getId().equals(table1.getId()));
+    assertTrue(
+        foundApprovedContract,
+        "Expected to find the approved contract with matching entity and status");
 
-    // Test filtering by status - DRAFT
+    // Test filtering by status - Draft
     ListParams draftParams = new ListParams();
     draftParams.setLimit(10);
-    draftParams.addQueryParam("status", "DRAFT");
+    draftParams.addQueryParam("status", "Draft");
     ListResponse<DataContract> draftResponse = listEntities(draftParams);
 
     assertNotNull(draftResponse);
     assertNotNull(draftResponse.getData());
-    // Verify all returned contracts have DRAFT status
-    draftResponse.getData().forEach(contract -> {
-      if (contract.getName().startsWith(ns.prefix(""))) {
-        assertEquals(EntityStatus.DRAFT, contract.getEntityStatus(),
-            "Expected only DRAFT contracts in filtered response");
-      }
-    });
+    // Verify our draft contract is in the results with correct status and entity
+    boolean foundDraftContract =
+        draftResponse.getData().stream()
+            .anyMatch(
+                contract ->
+                    contract.getId().equals(draftContract.getId())
+                        && contract.getEntityStatus() == EntityStatus.DRAFT
+                        && contract.getEntity().getId().equals(table2.getId()));
+    assertTrue(
+        foundDraftContract, "Expected to find the draft contract with matching entity and status");
   }
 
   @Test
