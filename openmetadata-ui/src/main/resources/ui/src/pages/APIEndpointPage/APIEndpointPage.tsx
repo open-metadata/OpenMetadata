@@ -57,7 +57,10 @@ const APIEndpointPage = () => {
   const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const { fqn: apiEndpointFqn } = useFqn();
+  const { entityFqn: apiEndpointFqn } = useFqn({
+    type: EntityType.API_ENDPOINT,
+  });
+
   const [apiEndpointDetails, setApiEndpointDetails] = useState<APIEndpoint>(
     {} as APIEndpoint
   );
