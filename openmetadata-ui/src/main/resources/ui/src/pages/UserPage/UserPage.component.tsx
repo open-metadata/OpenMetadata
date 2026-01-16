@@ -201,10 +201,6 @@ const UserPage = () => {
     return errorPlaceholder;
   }
 
-  if (userData?.name !== username) {
-    return <Loader />;
-  }
-
   return (
     <PageLayoutV1 pageTitle={t('label.user')}>
       <Users
