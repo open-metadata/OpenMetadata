@@ -13,15 +13,14 @@
 
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink;
 
-import static org.openmetadata.service.governance.workflows.Workflow.BATCH_SINK_PROCESSED_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
+import com.google.common.collect.Lists;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -42,16 +41,24 @@ import org.openmetadata.service.resources.feeds.MessageParser;
  * Flowable delegate that executes sink operations within a workflow.
  *
  * <p>This delegate supports two modes:
+ *
  * <ul>
- *   <li><b>Single entity mode:</b> Processes one entity at a time (event-based workflows)</li>
- *   <li><b>Batch mode:</b> Processes all entities in the batch at once (periodic batch workflows)</li>
+ *   <li><b>Single entity mode:</b> Processes one entity at a time (event-based workflows)
+ *   <li><b>Batch mode:</b> Processes all entities in the batch at once (periodic batch workflows
+ *       with batchMode=true in sink config)
  * </ul>
  *
- * <p>In batch mode, this delegate will process all entities on the first invocation and skip
- * subsequent invocations within the same batch loop.
+ * <p>When batchMode is enabled in the sink config, the trigger automatically configures single
+ * execution mode (cardinality=1), ensuring only one workflow instance processes the entire batch.
  */
 @Slf4j
 public class SinkTaskDelegate implements JavaDelegate {
+
+  /**
+   * Maximum number of entities to fetch in memory at once during batch processing. This prevents
+   * OOM issues when processing very large entity lists.
+   */
+  private static final int MAX_ENTITIES_PER_FETCH_BATCH = 100;
 
   private Expression sinkTypeExpr;
   private Expression sinkConfigExpr;
@@ -60,7 +67,6 @@ public class SinkTaskDelegate implements JavaDelegate {
   private Expression hierarchyConfigExpr;
   private Expression entityFilterExpr;
   private Expression batchModeExpr;
-  private Expression timeoutSecondsExpr;
   private Expression inputNamespaceMapExpr;
 
   @Override
@@ -92,22 +98,6 @@ public class SinkTaskDelegate implements JavaDelegate {
         if (entityListObj instanceof List) {
           entityList = (List<String>) entityListObj;
         }
-      }
-
-      // Check if batch sink has already been processed in this batch loop
-      Boolean batchProcessed =
-          (Boolean)
-              varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, BATCH_SINK_PROCESSED_VARIABLE);
-      if (batchMode && entityList != null && Boolean.TRUE.equals(batchProcessed)) {
-        LOG.info(
-            "[{}] Batch sink already processed, skipping this iteration",
-            getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()));
-        varHandler.setNodeVariable(RESULT_VARIABLE, "success");
-        varHandler.setNodeVariable("syncedCount", 0);
-        varHandler.setNodeVariable("failedCount", 0);
-        varHandler.setNodeVariable("syncResult", "{}");
-        varHandler.setFailure(false);
-        return;
       }
 
       // Get the sink provider from registry
@@ -142,8 +132,8 @@ public class SinkTaskDelegate implements JavaDelegate {
           && entityList != null
           && !entityList.isEmpty()
           && sinkProvider.supportsBatch()) {
-        // Batch mode: process all entities at once
-        result = executeBatchMode(context, sinkProvider, entityList, varHandler);
+        // Batch mode: process all entities at once (single workflow instance)
+        result = executeBatchMode(context, sinkProvider, entityList);
       } else {
         // Single entity mode: process one entity
         result = executeSingleEntityMode(context, sinkProvider, inputNamespaceMap, varHandler);
@@ -183,75 +173,103 @@ public class SinkTaskDelegate implements JavaDelegate {
   }
 
   /**
-   * Execute sink in batch mode - process all entities from the entity list at once.
+   * Execute sink in batch mode - process entities in sub-batches to prevent OOM.
+   *
+   * <p>Entities are fetched and processed in chunks of {@link #MAX_ENTITIES_PER_FETCH_BATCH} to
+   * avoid loading all entities into memory at once when dealing with very large entity lists.
    */
   private SinkResult executeBatchMode(
-      SinkContext context,
-      SinkProvider sinkProvider,
-      List<String> entityLinks,
-      WorkflowVariableHandler varHandler) {
+      SinkContext context, SinkProvider sinkProvider, List<String> entityLinks) {
 
     LOG.info(
-        "[{}] Executing batch sink for {} entities", context.getWorkflowName(), entityLinks.size());
+        "[{}] Executing batch sink for {} entities (batch size: {})",
+        context.getWorkflowName(),
+        entityLinks.size(),
+        MAX_ENTITIES_PER_FETCH_BATCH);
 
-    // Fetch all entities with full metadata (fields=*)
-    List<EntityInterface> entities = new ArrayList<>();
-    List<SinkResult.SinkError> fetchErrors = new ArrayList<>();
+    // Accumulator for aggregating results across sub-batches
+    record BatchAccumulator(
+        int syncedCount,
+        int failedCount,
+        List<String> syncedEntities,
+        List<SinkResult.SinkError> errors,
+        boolean success) {
 
-    for (String entityLinkStr : entityLinks) {
-      try {
-        MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
-        EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
-        entities.add(entity);
-      } catch (Exception e) {
-        LOG.error("Failed to fetch entity: {}", entityLinkStr, e);
-        fetchErrors.add(
-            SinkResult.SinkError.builder()
-                .entityFqn(entityLinkStr)
-                .errorMessage("Failed to fetch entity: " + e.getMessage())
-                .cause(e)
-                .build());
+      static BatchAccumulator empty() {
+        return new BatchAccumulator(0, 0, new ArrayList<>(), new ArrayList<>(), true);
+      }
+
+      BatchAccumulator merge(SinkResult result, List<SinkResult.SinkError> fetchErrors) {
+        List<String> mergedSynced = new ArrayList<>(syncedEntities);
+        List<SinkResult.SinkError> mergedErrors = new ArrayList<>(errors);
+
+        if (result.getSyncedEntities() != null) mergedSynced.addAll(result.getSyncedEntities());
+        if (result.getErrors() != null) mergedErrors.addAll(result.getErrors());
+        mergedErrors.addAll(fetchErrors);
+
+        return new BatchAccumulator(
+            syncedCount + result.getSyncedCount(),
+            failedCount + result.getFailedCount() + fetchErrors.size(),
+            mergedSynced,
+            mergedErrors,
+            success && result.isSuccess() && fetchErrors.isEmpty());
       }
     }
 
-    if (entities.isEmpty()) {
-      return SinkResult.builder()
-          .success(fetchErrors.isEmpty())
-          .syncedCount(0)
-          .failedCount(fetchErrors.size())
-          .errors(fetchErrors)
-          .build();
-    }
+    // Process entities in sub-batches using Guava's partition
+    BatchAccumulator result =
+        Lists.partition(entityLinks, MAX_ENTITIES_PER_FETCH_BATCH).stream()
+            .reduce(
+                BatchAccumulator.empty(),
+                (acc, subBatch) -> {
+                  LOG.debug(
+                      "[{}] Processing sub-batch of {} entities",
+                      context.getWorkflowName(),
+                      subBatch.size());
 
-    // Execute batch write
-    SinkResult result = sinkProvider.writeBatch(context, entities);
+                  // Fetch entities for this sub-batch
+                  List<SinkResult.SinkError> fetchErrors = new ArrayList<>();
+                  List<EntityInterface> entities = new ArrayList<>();
+                  for (String entityLinkStr : subBatch) {
+                    try {
+                      var entityLink = MessageParser.EntityLink.parse(entityLinkStr);
+                      entities.add(Entity.getEntity(entityLink, "*", Include.ALL));
+                    } catch (Exception e) {
+                      LOG.error("Failed to fetch entity: {}", entityLinkStr, e);
+                      fetchErrors.add(
+                          SinkResult.SinkError.builder()
+                              .entityFqn(entityLinkStr)
+                              .errorMessage("Failed to fetch entity: " + e.getMessage())
+                              .cause(e)
+                              .build());
+                    }
+                  }
 
-    // Merge any fetch errors with write errors
-    if (!fetchErrors.isEmpty()) {
-      List<SinkResult.SinkError> allErrors = new ArrayList<>(fetchErrors);
-      if (result.getErrors() != null) {
-        allErrors.addAll(result.getErrors());
-      }
-      result =
-          SinkResult.builder()
-              .success(result.isSuccess() && fetchErrors.isEmpty())
-              .syncedCount(result.getSyncedCount())
-              .failedCount(result.getFailedCount() + fetchErrors.size())
-              .syncedEntities(result.getSyncedEntities())
-              .errors(allErrors)
-              .metadata(result.getMetadata())
-              .build();
-    }
+                  if (entities.isEmpty()) {
+                    return acc.merge(
+                        SinkResult.builder()
+                            .success(fetchErrors.isEmpty())
+                            .syncedCount(0)
+                            .failedCount(0)
+                            .build(),
+                        fetchErrors);
+                  }
 
-    // Mark batch as processed to skip subsequent iterations in the multi-instance loop
-    varHandler.setGlobalVariable(BATCH_SINK_PROCESSED_VARIABLE, true);
+                  // Execute batch write for this sub-batch
+                  return acc.merge(sinkProvider.writeBatch(context, entities), fetchErrors);
+                },
+                (a, b) -> a); // Sequential stream, combiner not used
 
-    return result;
+    return SinkResult.builder()
+        .success(result.success())
+        .syncedCount(result.syncedCount())
+        .failedCount(result.failedCount())
+        .syncedEntities(result.syncedEntities())
+        .errors(result.errors().isEmpty() ? null : result.errors())
+        .build();
   }
 
-  /**
-   * Execute sink in single entity mode - process one entity at a time.
-   */
+  /** Execute sink in single entity mode - process one entity at a time. */
   private SinkResult executeSingleEntityMode(
       SinkContext context,
       SinkProvider sinkProvider,

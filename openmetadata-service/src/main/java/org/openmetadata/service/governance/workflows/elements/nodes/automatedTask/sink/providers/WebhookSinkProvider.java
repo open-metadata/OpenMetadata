@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.sinkConfig.Authentication;
@@ -42,6 +43,9 @@ import org.openmetadata.service.governance.workflows.elements.nodes.automatedTas
 @Slf4j
 public class WebhookSinkProvider implements SinkProvider {
 
+  private static final int DEFAULT_MAX_RETRIES = 3;
+  private static final int DEFAULT_RETRY_DELAY_SECONDS = 2;
+
   private final WebhookSinkConfig config;
   private final Client client;
 
@@ -59,38 +63,39 @@ public class WebhookSinkProvider implements SinkProvider {
   public SinkResult write(SinkContext context, EntityInterface entity) {
     try {
       String payload = serializeEntity(entity, context.getOutputFormat());
+      return executeWithRetry(
+          () -> {
+            try (Response response = sendRequest(payload)) {
+              int statusCode = response.getStatus();
+              boolean success = statusCode >= 200 && statusCode < 300;
 
-      Response response = sendRequest(payload);
-
-      boolean success = response.getStatus() >= 200 && response.getStatus() < 300;
-
-      if (success) {
-        return SinkResult.builder()
-            .success(true)
-            .syncedCount(1)
-            .failedCount(0)
-            .syncedEntities(List.of(entity.getFullyQualifiedName()))
-            .metadata(Map.of("statusCode", response.getStatus()))
-            .build();
-      } else {
-        return SinkResult.builder()
-            .success(false)
-            .syncedCount(0)
-            .failedCount(1)
-            .errors(
-                List.of(
-                    SinkResult.SinkError.builder()
-                        .entityFqn(entity.getFullyQualifiedName())
-                        .errorMessage(
-                            "HTTP "
-                                + response.getStatus()
-                                + ": "
-                                + response.readEntity(String.class))
-                        .errorCode(String.valueOf(response.getStatus()))
-                        .build()))
-            .metadata(Map.of("statusCode", response.getStatus()))
-            .build();
-      }
+              if (success) {
+                return SinkResult.builder()
+                    .success(true)
+                    .syncedCount(1)
+                    .failedCount(0)
+                    .syncedEntities(List.of(entity.getFullyQualifiedName()))
+                    .metadata(Map.of("statusCode", statusCode))
+                    .build();
+              } else {
+                String responseBody = response.readEntity(String.class);
+                return SinkResult.builder()
+                    .success(false)
+                    .syncedCount(0)
+                    .failedCount(1)
+                    .errors(
+                        List.of(
+                            SinkResult.SinkError.builder()
+                                .entityFqn(entity.getFullyQualifiedName())
+                                .errorMessage("HTTP " + statusCode + ": " + responseBody)
+                                .errorCode(String.valueOf(statusCode))
+                                .build()))
+                    .metadata(Map.of("statusCode", statusCode))
+                    .build();
+              }
+            }
+          },
+          entity.getFullyQualifiedName());
 
     } catch (Exception e) {
       LOG.error("Failed to send entity to webhook: {}", entity.getFullyQualifiedName(), e);
@@ -106,17 +111,33 @@ public class WebhookSinkProvider implements SinkProvider {
     for (EntityInterface entity : entities) {
       try {
         String payload = serializeEntity(entity, context.getOutputFormat());
-        Response response = sendRequest(payload);
+        SinkResult result =
+            executeWithRetry(
+                () -> {
+                  try (Response response = sendRequest(payload)) {
+                    int statusCode = response.getStatus();
+                    if (statusCode >= 200 && statusCode < 300) {
+                      return SinkResult.builder().success(true).syncedCount(1).build();
+                    } else {
+                      return SinkResult.builder()
+                          .success(false)
+                          .errors(
+                              List.of(
+                                  SinkResult.SinkError.builder()
+                                      .entityFqn(entity.getFullyQualifiedName())
+                                      .errorMessage("HTTP " + statusCode)
+                                      .errorCode(String.valueOf(statusCode))
+                                      .build()))
+                          .build();
+                    }
+                  }
+                },
+                entity.getFullyQualifiedName());
 
-        if (response.getStatus() >= 200 && response.getStatus() < 300) {
+        if (result.isSuccess()) {
           synced.add(entity.getFullyQualifiedName());
-        } else {
-          errors.add(
-              SinkResult.SinkError.builder()
-                  .entityFqn(entity.getFullyQualifiedName())
-                  .errorMessage("HTTP " + response.getStatus())
-                  .errorCode(String.valueOf(response.getStatus()))
-                  .build());
+        } else if (result.getErrors() != null) {
+          errors.addAll(result.getErrors());
         }
       } catch (Exception e) {
         errors.add(
@@ -133,7 +154,7 @@ public class WebhookSinkProvider implements SinkProvider {
         .syncedCount(synced.size())
         .failedCount(errors.size())
         .syncedEntities(synced)
-        .errors(errors)
+        .errors(errors.isEmpty() ? null : errors)
         .build();
   }
 
@@ -148,6 +169,88 @@ public class WebhookSinkProvider implements SinkProvider {
     if (webhookConfig.getEndpoint() == null || webhookConfig.getEndpoint().toString().isEmpty()) {
       throw new IllegalArgumentException("Webhook endpoint is required");
     }
+
+    // Validate authentication configuration
+    Authentication auth = webhookConfig.getAuthentication();
+    if (auth != null && auth.getType() != null) {
+      switch (auth.getType()) {
+        case BASIC -> {
+          if (auth.getUsername() == null || auth.getPassword() == null) {
+            throw new IllegalArgumentException("Basic auth requires both username and password");
+          }
+        }
+        case BEARER -> {
+          if (auth.getToken() == null) {
+            throw new IllegalArgumentException("Bearer auth requires a token");
+          }
+        }
+        case API_KEY -> {
+          if (auth.getApiKey() == null) {
+            throw new IllegalArgumentException("API key auth requires an apiKey");
+          }
+        }
+        default -> {
+          // NONE - no validation needed
+        }
+      }
+    }
+  }
+
+  /**
+   * Execute an operation with retry and exponential backoff.
+   *
+   * @param operation The operation to execute
+   * @param entityFqn Entity FQN for logging
+   * @return The result of the operation
+   */
+  private SinkResult executeWithRetry(
+      java.util.function.Supplier<SinkResult> operation, String entityFqn) {
+    int maxRetries =
+        Optional.ofNullable(config.getRetryConfig())
+            .map(r -> r.getMaxRetries())
+            .orElse(DEFAULT_MAX_RETRIES);
+    int baseDelaySeconds =
+        Optional.ofNullable(config.getRetryConfig())
+            .map(r -> r.getRetryDelaySeconds())
+            .orElse(DEFAULT_RETRY_DELAY_SECONDS);
+    int maxDelaySeconds = baseDelaySeconds * 8; // Cap at 8x base delay
+
+    Exception lastException = null;
+    for (int attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        SinkResult result = operation.get();
+        if (result.isSuccess() || attempt == maxRetries) {
+          return result;
+        }
+        // Non-success result, retry if attempts remain
+        LOG.warn(
+            "Webhook request failed for {}, attempt {}/{}", entityFqn, attempt + 1, maxRetries + 1);
+      } catch (Exception e) {
+        lastException = e;
+        if (attempt == maxRetries) {
+          throw new RuntimeException("Max retries exceeded for " + entityFqn, e);
+        }
+        LOG.warn(
+            "Webhook request error for {}, attempt {}/{}: {}",
+            entityFqn,
+            attempt + 1,
+            maxRetries + 1,
+            e.getMessage());
+      }
+
+      // Exponential backoff: delay * 2^attempt, capped at maxDelay
+      int delaySeconds = Math.min(baseDelaySeconds * (1 << attempt), maxDelaySeconds);
+      try {
+        LOG.debug("Retrying in {} seconds...", delaySeconds);
+        Thread.sleep(delaySeconds * 1000L);
+      } catch (InterruptedException ie) {
+        Thread.currentThread().interrupt();
+        throw new RuntimeException("Interrupted during retry backoff", ie);
+      }
+    }
+
+    // Should not reach here, but handle gracefully
+    throw new RuntimeException("Unexpected retry loop exit", lastException);
   }
 
   @Override

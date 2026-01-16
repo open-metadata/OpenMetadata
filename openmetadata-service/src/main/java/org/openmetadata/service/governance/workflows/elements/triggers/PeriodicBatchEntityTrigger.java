@@ -44,6 +44,7 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
   private final List<Process> processes = new ArrayList<>();
 
   @Getter private final String triggerWorkflowId;
+  private final boolean singleExecutionMode;
   public static String HAS_FINISHED_VARIABLE = "hasFinished";
   public static String CARDINALITY_VARIABLE = "numberOfEntities";
   public static String COLLECTION_VARIABLE = "entityList";
@@ -51,9 +52,17 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
   public PeriodicBatchEntityTrigger(
       String mainWorkflowName,
       String triggerWorkflowId,
-      PeriodicBatchEntityTriggerDefinition triggerDefinition) {
+      PeriodicBatchEntityTriggerDefinition triggerDefinition,
+      boolean singleExecutionMode) {
     this.triggerWorkflowId = triggerWorkflowId;
+    this.singleExecutionMode = singleExecutionMode;
     List<String> entityTypes = getEntityTypesFromConfig(triggerDefinition.getConfig());
+
+    if (singleExecutionMode) {
+      LOG.info(
+          "Workflow {} configured for single execution mode (batch sink detected)",
+          mainWorkflowName);
+    }
 
     for (String entityType : entityTypes) {
       String processId = String.format("%s-%s", triggerWorkflowId, entityType);
@@ -118,9 +127,14 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
 
   private CallActivity getWorkflowTriggerCallActivity(
       String triggerWorkflowId, String mainWorkflowName) {
+    // In single execution mode (batch sink detected), use cardinality = 1 to create
+    // only ONE workflow instance that processes all entities in a single batch.
+    // Otherwise, use numberOfEntities to create N parallel instances (one per entity).
+    String cardinality = singleExecutionMode ? "1" : String.format("${%s}", CARDINALITY_VARIABLE);
+
     MultiInstanceLoopCharacteristics multiInstance =
         new MultiInstanceLoopCharacteristicsBuilder()
-            .loopCardinality(String.format("${%s}", CARDINALITY_VARIABLE))
+            .loopCardinality(cardinality)
             .inputDataItem(COLLECTION_VARIABLE)
             .elementVariable(RELATED_ENTITY_VARIABLE)
             .build();
