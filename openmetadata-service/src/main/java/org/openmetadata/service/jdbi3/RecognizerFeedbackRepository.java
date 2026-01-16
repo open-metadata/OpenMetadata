@@ -10,12 +10,15 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Recognizer;
 import org.openmetadata.schema.type.RecognizerException;
 import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.type.Resolution;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -48,7 +51,40 @@ public class RecognizerFeedbackRepository {
     String json = JsonUtils.pojoToJson(feedback);
     daoCollection.recognizerFeedbackDAO().insert(json);
 
+    publishChangeEvent(feedback);
+
     return feedback;
+  }
+
+  private void publishChangeEvent(RecognizerFeedback feedback) {
+    try {
+      MessageParser.EntityLink entityLink =
+          MessageParser.EntityLink.parse(feedback.getEntityLink());
+
+      String userName =
+          feedback.getCreatedBy() != null ? feedback.getCreatedBy().getName() : "unknown";
+
+      ChangeEvent changeEvent =
+          new ChangeEvent()
+              .withId(UUID.randomUUID())
+              .withEventType(EventType.ENTITY_CREATED)
+              .withEntityType(Entity.RECOGNIZER_FEEDBACK)
+              .withEntityId(feedback.getId())
+              .withEntityFullyQualifiedName(feedback.getId().toString())
+              .withUserName(userName)
+              .withTimestamp(feedback.getCreatedAt())
+              .withCurrentVersion(1.0)
+              .withPreviousVersion(0.0);
+
+      Entity.getChangeEventRepository().insert(changeEvent);
+
+      LOG.debug(
+          "Published ChangeEvent for RecognizerFeedback {} on entity {}",
+          feedback.getId(),
+          entityLink.getLinkString());
+    } catch (Exception e) {
+      LOG.error("Failed to publish ChangeEvent for RecognizerFeedback {}", feedback.getId(), e);
+    }
   }
 
   public RecognizerFeedback processFeedback(RecognizerFeedback feedback, String updatedBy) {
@@ -57,7 +93,17 @@ public class RecognizerFeedbackRepository {
 
     validateTagIsAutoApplied(feedback.getEntityLink(), feedback.getTagFQN());
 
-    RecognizerFeedback stored = create(feedback);
+    feedback.setStatus(RecognizerFeedback.Status.PENDING);
+    feedback.setCreatedBy(getUserReference(updatedBy));
+
+    return create(feedback);
+  }
+
+  public RecognizerFeedback applyFeedback(RecognizerFeedback feedback, String reviewedBy) {
+    if (feedback.getStatus() != RecognizerFeedback.Status.PENDING) {
+      throw new IllegalStateException(
+          String.format("Cannot apply feedback in status %s", feedback.getStatus()));
+    }
 
     Tag tag =
         tagRepository.getByName(null, feedback.getTagFQN(), tagRepository.getFields("recognizers"));
@@ -71,15 +117,33 @@ public class RecognizerFeedbackRepository {
         }
       }
 
-      tagRepository.patch(null, tag.getId(), updatedBy, JsonUtils.getJsonPatch(originalTag, tag));
+      tagRepository.patch(
+          null,
+          tag.getId(),
+          reviewedBy,
+          JsonUtils.getJsonPatch(originalTag, tag),
+          reviewedBy != null ? ChangeSource.MANUAL : ChangeSource.AUTOMATED);
     }
 
-    removeTagFromEntity(feedback.getEntityLink(), feedback.getTagFQN(), updatedBy);
+    removeTagFromEntity(feedback.getEntityLink(), feedback.getTagFQN(), reviewedBy);
 
-    stored.setStatus(RecognizerFeedback.Status.APPLIED);
-    stored.setResolution(createResolution(feedback));
+    feedback.setStatus(RecognizerFeedback.Status.APPLIED);
+    feedback.setResolution(createAppliedResolution(reviewedBy));
 
-    return update(stored);
+    return update(feedback);
+  }
+
+  public RecognizerFeedback rejectFeedback(
+      RecognizerFeedback feedback, String reviewedBy, String comment) {
+    if (feedback.getStatus() != RecognizerFeedback.Status.PENDING) {
+      throw new IllegalStateException(
+          String.format("Cannot reject feedback in status %s", feedback.getStatus()));
+    }
+
+    feedback.setStatus(RecognizerFeedback.Status.REJECTED);
+    feedback.setResolution(createRejectedResolution(reviewedBy, comment));
+
+    return update(feedback);
   }
 
   public RecognizerFeedback update(RecognizerFeedback feedback) {
@@ -107,10 +171,15 @@ public class RecognizerFeedbackRepository {
             .anyMatch(e -> e.getEntityLink().equals(feedback.getEntityLink()));
 
     if (!exists) {
+      String userReason = feedback.getUserReason().toString();
+      if (feedback.getUserComments() != null) {
+        userReason += ": " + feedback.getUserComments();
+      }
+
       RecognizerException exception =
           new RecognizerException()
               .withEntityLink(feedback.getEntityLink())
-              .withReason(feedback.getUserReason() + ": " + feedback.getUserComments())
+              .withReason(userReason)
               .withAddedBy(feedback.getCreatedBy())
               .withAddedAt(System.currentTimeMillis())
               .withFeedbackId(feedback.getId());
@@ -345,15 +414,25 @@ public class RecognizerFeedbackRepository {
     }
   }
 
-  /**
-   * Create resolution information
-   */
-  private Resolution createResolution(RecognizerFeedback feedback) {
+  private Resolution createAppliedResolution(String reviewedBy) {
     return new Resolution()
         .withAction(Resolution.Action.ADDED_TO_EXCEPTION_LIST)
-        .withResolvedBy(feedback.getCreatedBy()) // Auto-resolved
+        .withResolvedBy(getUserReference(reviewedBy))
         .withResolvedAt(System.currentTimeMillis())
-        .withResolutionNotes("Automatically added entity to recognizer exception list");
+        .withResolutionNotes("Feedback accepted and applied");
+  }
+
+  private Resolution createRejectedResolution(String reviewedBy, String comment) {
+    return new Resolution()
+        .withAction(Resolution.Action.NO_ACTION_NEEDED)
+        .withResolvedBy(getUserReference(reviewedBy))
+        .withResolvedAt(System.currentTimeMillis())
+        .withResolutionNotes(comment != null ? comment : "Feedback rejected by reviewer");
+  }
+
+  private org.openmetadata.schema.type.EntityReference getUserReference(String userName) {
+    return Entity.getEntityReferenceByName(
+        Entity.USER, userName, org.openmetadata.schema.type.Include.NON_DELETED);
   }
 
   /**
