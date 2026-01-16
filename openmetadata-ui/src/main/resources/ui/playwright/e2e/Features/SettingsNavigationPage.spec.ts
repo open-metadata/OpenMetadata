@@ -244,8 +244,16 @@ test.describe('Settings Navigation Page Tests', () => {
     await page.waitForLoadState('networkidle');
 
     // Verify reset worked - save button disabled and state reverted
-    expect(await domainSwitch.isChecked()).toBeTruthy();
-    await expect(page.getByTestId('save-button')).toBeEnabled();
+    await expect(domainSwitch).toBeChecked();
+    await expect(page.getByTestId('save-button')).toBeDisabled();
+
+    // Verify no navigation blocker when navigating away
+    await page
+      .getByTestId('left-sidebar')
+      .getByTestId('app-bar-item-settings')
+      .click();
+    await expect(page).toHaveURL(/.*settings.*/);
+    await expect(page.getByTestId('unsaved-changes-modal-title')).not.toBeVisible();
   });
 
   test('should support drag and drop reordering of navigation items', async ({
@@ -275,12 +283,13 @@ test.describe('Settings Navigation Page Tests', () => {
       await page.mouse.down();
       await page.mouse.move(
         secondItemBox.x + secondItemBox.width / 2,
-        secondItemBox.y + secondItemBox.height / 2 + 10
+        secondItemBox.y + secondItemBox.height,
+        { steps: 20 }
       );
       await page.mouse.up();
 
       // Adding wait so that drop action can complete
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(1000);
 
       await expect(page.getByTestId('save-button')).toBeEnabled();
 
@@ -317,6 +326,7 @@ test.describe('Settings Navigation Page Tests', () => {
     await saveResponse;
 
     await redirectToHomePage(page);
+    await page.reload();
 
     await expect(page.getByTestId('app-bar-item-explore')).not.toBeVisible();
     await expect(page.getByTestId('app-bar-item-insights')).not.toBeVisible();
