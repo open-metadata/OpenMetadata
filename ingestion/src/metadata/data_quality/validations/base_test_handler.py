@@ -147,10 +147,7 @@ class BaseTestValidator(ABC):
             )
             logger.debug(f"Dimension columns: {self.test_case.dimensionColumns}")
 
-            # Validate dimension columns exist in the target table
             if not self.are_dimension_columns_valid():
-                # Don't abort the main test, just skip dimensional validation
-                # The main test result is still valid
                 return test_result
 
             try:
