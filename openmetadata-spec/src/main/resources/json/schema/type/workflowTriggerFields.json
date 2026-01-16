@@ -8,7 +8,7 @@
   "enum": [
     "name",
     "displayName",
-    "fullyQualifiedName", 
+    "fullyQualifiedName",
     "description",
     "owners",
     "reviewers",

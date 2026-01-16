@@ -34,7 +34,7 @@ public class FeedService extends EntityServiceBase<Thread> {
     }
     if (taskStatus != null) {
       queryParams.put("taskStatus", taskStatus.toString());
-      queryParams.put("type", "Task"); // Assuming listTasks implies type=Task
+      queryParams.put("type", "Task");
     }
     if (limit != null) {
       queryParams.put("limit", limit.toString());

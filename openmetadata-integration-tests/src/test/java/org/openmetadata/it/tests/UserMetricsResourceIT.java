@@ -46,8 +46,6 @@ import org.openmetadata.sdk.services.teams.UserService;
 @Slf4j
 @Execution(ExecutionMode.CONCURRENT)
 public class UserMetricsResourceIT {
-  private static final org.slf4j.Logger log =
-      org.slf4j.LoggerFactory.getLogger(UserMetricsResourceIT.class);
 
   private final ObjectMapper objectMapper = JsonUtils.getObjectMapper();
 
