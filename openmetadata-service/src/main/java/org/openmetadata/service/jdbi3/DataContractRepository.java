@@ -1187,7 +1187,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   private DataContract mergeContracts(
       DataContract entityContract, DataContract dataProductContract) {
     DataContract merged = JsonUtils.deepCopy(entityContract, DataContract.class);
-    
+
     // Inherit terms of use if not defined in entity
     if (merged.getTermsOfUse() == null && dataProductContract.getTermsOfUse() != null) {
       merged.setTermsOfUse(
