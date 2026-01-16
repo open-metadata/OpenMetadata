@@ -59,17 +59,19 @@ export const useUserProfile = ({
   }, [user, profilePic]);
 
   const fetchProfileIfRequired = useCallback(async () => {
-    if (isTeam || userProfilePics[name]) {
+    const lowerCasedName = name.toLowerCase();
+
+    if (isTeam || userProfilePics[lowerCasedName]) {
       isTeam && setProfilePic(IconTeams);
 
       return;
     }
 
-    if (userProfilePicsLoading.includes(name)) {
+    if (userProfilePicsLoading.includes(lowerCasedName)) {
       return;
     }
 
-    userProfilePicsLoading = [...userProfilePicsLoading, name];
+    userProfilePicsLoading = [...userProfilePicsLoading, lowerCasedName];
 
     try {
       let user = await getUserByName(name, {
@@ -82,7 +84,9 @@ export const useUserProfile = ({
         user,
       });
 
-      userProfilePicsLoading = userProfilePicsLoading.filter((p) => p !== name);
+      userProfilePicsLoading = userProfilePicsLoading.filter(
+        (p) => p !== lowerCasedName
+      );
     } catch (error) {
       if ((error as AxiosError)?.response?.status === ClientErrors.NOT_FOUND) {
         // If user not found, add empty user to prevent further requests and infinite loading
