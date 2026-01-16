@@ -6803,12 +6803,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return leanResult;
   }
 
-  private static final ExecutorService BULK_PROCESSING_EXECUTOR =
-      Executors.newVirtualThreadPerTaskExecutor();
-
-  private static final ExecutorService BOUNDED_BULK_EXECUTOR =
-      Executors.newFixedThreadPool(20, Thread.ofVirtual().factory());
-
   private static final ConcurrentHashMap<String, CompletableFuture<BulkOperationResult>> BULK_JOBS =
       new ConcurrentHashMap<>();
 
