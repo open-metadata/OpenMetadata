@@ -176,7 +176,7 @@ public class OpenMetadataApplicationConfig extends Configuration {
     }
     return bulkOperationConfiguration;
   }
-  
+
   public String getApiRootPath() {
     if (!(getServerFactory() instanceof DefaultServerFactory serverFactory)) {
       return "";
