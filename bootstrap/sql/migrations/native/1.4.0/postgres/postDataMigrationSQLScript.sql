@@ -370,7 +370,7 @@ SET json = jsonb_set(
             'name', 'rangeType',
             'dataType', 'STRING',
             'required', true,
-            'description', 'One of \'HOUR\', \'DAY\', \'MONTH\', \'YEAR\' to specify the range type for checking new rows inserted.',
+            'description', 'One of ''HOUR'', ''DAY'', ''MONTH'', ''YEAR'' to specify the range type for checking new rows inserted.',
             'displayName', 'Range Type',
             'optionValues', '[]'::jsonb 
         ),
@@ -378,7 +378,7 @@ SET json = jsonb_set(
             'name', 'rangeInterval',
             'dataType', 'INT',
             'required', true,
-            'description', 'Interval Range. E.g. if rangeInterval=1 and rangeType=DAY, we\'ll check the numbers of rows inserted where columnName=-1 DAY',
+            'description', 'Interval Range. E.g. if rangeInterval=1 and rangeType=DAY, we''ll check the numbers of rows inserted where columnName=-1 DAY',
             'displayName', 'Interval',
             'optionValues', '[]'::jsonb
         )
