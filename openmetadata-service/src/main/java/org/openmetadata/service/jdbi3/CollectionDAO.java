@@ -30,6 +30,7 @@ import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -140,6 +141,7 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
+import org.openmetadata.schema.service.configuration.teamsApp.TeamsAppConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.TestCase;
@@ -3211,6 +3213,14 @@ public interface CollectionDAO {
           getTableName(), filter.getQueryParams(), condition, limit, afterName, afterId);
     }
 
+    @SqlQuery("SELECT json FROM domain_entity WHERE fqnHash LIKE :concatFqnhash ")
+    List<String> getNestedDomains(
+        @BindConcat(
+                value = "concatFqnhash",
+                parts = {":fqnhash", ".%"},
+                hash = true)
+            String fqnhash);
+
     @SqlQuery("SELECT COUNT(*) FROM domain_entity WHERE fqnHash LIKE :concatFqnhash ")
     int countNestedDomains(
         @BindConcat(
@@ -3352,6 +3362,28 @@ public interface CollectionDAO {
         @Bind("event_subscription_id") String eventSubscriptionId,
         @Bind("json") String json,
         @Bind("timestamp") long timestamp);
+
+    // Batch insert for successful events - reduces connection pool contention
+    // from N connections to 1 when processing multiple events
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO successful_sent_change_events (change_event_id, event_subscription_id, json, timestamp) "
+                + "VALUES (:change_event_id, :event_subscription_id, :json, :timestamp) "
+                + "ON DUPLICATE KEY UPDATE json = VALUES(json), timestamp = VALUES(timestamp)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO successful_sent_change_events (change_event_id, event_subscription_id, json, timestamp) "
+                + "VALUES (:change_event_id, :event_subscription_id, CAST(:json AS jsonb), :timestamp) "
+                + "ON CONFLICT (change_event_id, event_subscription_id) "
+                + "DO UPDATE SET json = EXCLUDED.json, timestamp = EXCLUDED.timestamp",
+        connectionType = POSTGRES)
+    void batchUpsertSuccessfulChangeEvents(
+        @Bind("change_event_id") List<String> changeEventIds,
+        @Bind("event_subscription_id") List<String> eventSubscriptionIds,
+        @Bind("json") List<String> jsonList,
+        @Bind("timestamp") List<Long> timestamps);
 
     @SqlQuery(
         "SELECT COUNT(*) FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId")
@@ -4566,11 +4598,11 @@ public interface CollectionDAO {
   interface TagUsageDAO {
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT IGNORE INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason)",
+            "INSERT IGNORE INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason) ON CONFLICT (source, tagFQNHash, targetFQNHash) DO NOTHING",
+            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy) ON CONFLICT (source, tagFQNHash, targetFQNHash) DO NOTHING",
         connectionType = POSTGRES)
     void applyTag(
         @Bind("source") int source,
@@ -4579,7 +4611,8 @@ public interface CollectionDAO {
         @BindFQN("targetFQNHash") String targetFQNHash,
         @Bind("labelType") int labelType,
         @Bind("state") int state,
-        @Bind("reason") String reason);
+        @Bind("reason") String reason,
+        @Bind("appliedBy") String appliedBy);
 
     default List<TagLabel> getTags(String targetFQN) {
       List<TagLabel> tags = getTagsInternal(targetFQN);
@@ -4611,11 +4644,11 @@ public interface CollectionDAO {
     }
 
     @SqlQuery(
-        "SELECT source, tagFQN,  labelType, state, reason FROM tag_usage WHERE targetFQNHash = :targetFQNHash ORDER BY tagFQN")
+        "SELECT source, tagFQN,  labelType, state, reason, appliedAt, appliedBy FROM tag_usage WHERE targetFQNHash = :targetFQNHash ORDER BY tagFQN")
     List<TagLabel> getTagsInternal(@BindFQN("targetFQNHash") String targetFQNHash);
 
     @SqlQuery(
-        "SELECT targetFQNHash, source, tagFQN, labelType, state, reason "
+        "SELECT targetFQNHash, source, tagFQN, labelType, state, reason, appliedAt, appliedBy "
             + "FROM tag_usage "
             + "WHERE targetFQNHash IN (<targetFQNHashes>) "
             + "ORDER BY targetFQNHash, tagFQN")
@@ -4641,7 +4674,9 @@ public interface CollectionDAO {
                 .withSource(TagLabel.TagSource.values()[usage.getSource()])
                 .withTagFQN(usage.getTagFQN())
                 .withLabelType(TagLabel.LabelType.DERIVED)
-                .withState(TagLabel.State.values()[usage.getState()]);
+                .withState(TagLabel.State.values()[usage.getState()])
+                .withReason(usage.getReason())
+                .withAppliedAt(usage.toTagLabel().getAppliedAt());
         if (usage.getReason() != null) {
           tagLabel.withReason(usage.getReason());
         }
@@ -4653,7 +4688,7 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, tu.reason, "
+            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, tu.reason, tu.appliedAt, tu.appliedBy, "
                 + "CASE "
                 + "  WHEN tu.source = 1 THEN gterm.json "
                 + "  WHEN tu.source = 0 THEN ta.json "
@@ -4665,7 +4700,7 @@ public interface CollectionDAO {
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, tu.reason, "
+            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, tu.reason, tu.appliedAt, tu.appliedBy, "
                 + "CASE "
                 + "  WHEN tu.source = 1 THEN gterm.json "
                 + "  WHEN tu.source = 0 THEN ta.json "
@@ -4868,6 +4903,12 @@ public interface CollectionDAO {
         @Bind("newFQN") String newFQN,
         @BindFQN("newFQNHash") String newFQNHash);
 
+    @SqlUpdate(
+        "UPDATE tag_usage SET targetFQNHash = :newTargetFQNHash WHERE targetFQNHash = :oldTargetFQNHash")
+    void updateTargetFQNHash(
+        @BindFQN("oldTargetFQNHash") String oldTargetFQNHash,
+        @BindFQN("newTargetFQNHash") String newTargetFQNHash);
+
     @SqlUpdate("<update>")
     void updateTagPrefixInternal(@Define("update") String update);
 
@@ -4892,7 +4933,9 @@ public interface CollectionDAO {
             .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
             .withState(TagLabel.State.values()[r.getInt("state")])
             .withTagFQN(r.getString("tagFQN"))
-            .withReason(r.getString("reason"));
+            .withReason(r.getString("reason"))
+            .withAppliedAt(r.getTimestamp("appliedAt"))
+            .withAppliedBy(r.getString("appliedBy"));
       }
     }
 
@@ -4914,7 +4957,9 @@ public interface CollectionDAO {
                 .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
                 .withState(TagLabel.State.values()[r.getInt("state")])
                 .withTagFQN(r.getString("tagFQN"))
-                .withReason(r.getString("reason"));
+                .withReason(r.getString("reason"))
+                .withAppliedAt(r.getTimestamp("appliedAt"))
+                .withAppliedBy(r.getString("appliedBy"));
         TagLabel.TagSource source = TagLabel.TagSource.values()[r.getInt("source")];
         if (source == TagLabel.TagSource.CLASSIFICATION) {
           Tag tag = JsonUtils.readValue(r.getString("json"), Tag.class);
@@ -4945,6 +4990,8 @@ public interface CollectionDAO {
         tag.setLabelType(rs.getInt("labelType"));
         tag.setState(rs.getInt("state"));
         tag.setReason(rs.getString("reason"));
+        tag.setAppliedAt(rs.getTimestamp("appliedAt"));
+        tag.setAppliedBy(rs.getString("appliedBy"));
         return tag;
       }
     }
@@ -4958,6 +5005,8 @@ public interface CollectionDAO {
       private int labelType;
       private int state;
       private String reason;
+      private Date appliedAt;
+      private String appliedBy;
 
       // Getters and Setters
 
@@ -4968,6 +5017,8 @@ public interface CollectionDAO {
         tagLabel.setLabelType(TagLabel.LabelType.values()[this.labelType]);
         tagLabel.setState(TagLabel.State.values()[this.state]);
         tagLabel.setReason(this.reason);
+        tagLabel.setAppliedAt(this.appliedAt);
+        tagLabel.setAppliedBy(this.appliedBy);
         return tagLabel;
       }
     }
@@ -5032,6 +5083,7 @@ public interface CollectionDAO {
       List<Integer> labelTypes = new ArrayList<>();
       List<Integer> states = new ArrayList<>();
       List<String> reasons = new ArrayList<>();
+      List<String> appliedBys = new ArrayList<>();
 
       for (TagLabel tagLabel : tagLabels) {
         sources.add(tagLabel.getSource().ordinal());
@@ -5041,23 +5093,24 @@ public interface CollectionDAO {
         labelTypes.add(tagLabel.getLabelType().ordinal());
         states.add(tagLabel.getState().ordinal());
         reasons.add(tagLabel.getReason());
+        appliedBys.add(tagLabel.getAppliedBy());
       }
 
       applyTagsBatchInternal(
-          sources, tagFQNs, tagFQNHashes, targetFQNHashes, labelTypes, states, reasons);
+          sources, tagFQNs, tagFQNHashes, targetFQNHashes, labelTypes, states, reasons, appliedBys);
     }
 
     @Transaction
     @ConnectionAwareSqlBatch(
         value =
-            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason) "
-                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason) "
+            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy) "
+                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy) "
                 + "ON DUPLICATE KEY UPDATE labelType = VALUES(labelType), state = VALUES(state), reason = VALUES(reason)",
         connectionType = MYSQL)
     @ConnectionAwareSqlBatch(
         value =
-            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason) "
-                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason) "
+            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy) "
+                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy) "
                 + "ON CONFLICT (source, tagFQNHash, targetFQNHash) DO NOTHING",
         connectionType = POSTGRES)
     void applyTagsBatchInternal(
@@ -5067,7 +5120,8 @@ public interface CollectionDAO {
         @Bind("targetFQNHash") List<String> targetFQNHashes,
         @Bind("labelType") List<Integer> labelTypes,
         @Bind("state") List<Integer> states,
-        @Bind("reason") List<String> reasons);
+        @Bind("reason") List<String> reasons,
+        @Bind("appliedBy") List<String> appliedBys);
 
     /**
      * Delete multiple tags in batch to improve performance
@@ -5109,7 +5163,7 @@ public interface CollectionDAO {
     long getTotalTagUsageCount();
 
     @SqlQuery(
-        "SELECT source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason FROM tag_usage ORDER BY source, tagFQNHash LIMIT :limit OFFSET :offset")
+        "SELECT source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedAt, appliedBy FROM tag_usage ORDER BY source, tagFQNHash LIMIT :limit OFFSET :offset")
     @RegisterRowMapper(TagUsageObjectMapper.class)
     List<TagUsageObject> getAllTagUsagesPaginated(
         @Bind("offset") long offset, @Bind("limit") int limit);
@@ -5132,6 +5186,8 @@ public interface CollectionDAO {
     private int labelType;
     private int state;
     private String reason;
+    private Date appliedAt;
+    private String appliedBy;
   }
 
   class TagUsageObjectMapper implements RowMapper<TagUsageObject> {
@@ -5145,6 +5201,8 @@ public interface CollectionDAO {
           .labelType(r.getInt("labelType"))
           .state(r.getInt("state"))
           .reason(r.getString("reason"))
+          .appliedAt(r.getTimestamp("appliedAt"))
+          .appliedBy(r.getString("appliedBy"))
           .build();
     }
   }
@@ -6250,12 +6308,14 @@ public interface CollectionDAO {
       String testPlatform = filter.getQueryParam("testPlatform");
       String supportedDataType = filter.getQueryParam("supportedDataType");
       String supportedService = filter.getQueryParam("supportedService");
+      String enabled = filter.getQueryParam("enabled");
       String condition = filter.getCondition();
 
       if (entityType == null
           && testPlatform == null
           && supportedDataType == null
-          && supportedService == null) {
+          && supportedService == null
+          && enabled == null) {
         return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
       }
 
@@ -6295,6 +6355,12 @@ public interface CollectionDAO {
                 + "OR json->>'supportedServices' LIKE :supportedServiceLike) ");
       }
 
+      if (enabled != null) {
+        String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
+        mysqlCondition.append("AND enabled=" + enabledValue + " ");
+        psqlCondition.append("AND enabled=" + enabledValue + " ");
+      }
+
       return listBefore(
           getTableName(),
           filter.getQueryParams(),
@@ -6311,12 +6377,14 @@ public interface CollectionDAO {
       String testPlatform = filter.getQueryParam("testPlatform");
       String supportedDataType = filter.getQueryParam("supportedDataType");
       String supportedService = filter.getQueryParam("supportedService");
+      String enabled = filter.getQueryParam("enabled");
       String condition = filter.getCondition();
 
       if (entityType == null
           && testPlatform == null
           && supportedDataType == null
-          && supportedService == null) {
+          && supportedService == null
+          && enabled == null) {
         return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
       }
 
@@ -6356,6 +6424,12 @@ public interface CollectionDAO {
                 + "OR json->>'supportedServices' LIKE :supportedServiceLike) ");
       }
 
+      if (enabled != null) {
+        String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
+        mysqlCondition.append("AND enabled=" + enabledValue + " ");
+        psqlCondition.append("AND enabled=" + enabledValue + " ");
+      }
+
       return listAfter(
           getTableName(),
           filter.getQueryParams(),
@@ -6372,12 +6446,14 @@ public interface CollectionDAO {
       String testPlatform = filter.getQueryParam("testPlatform");
       String supportedDataType = filter.getQueryParam("supportedDataType");
       String supportedService = filter.getQueryParam("supportedService");
+      String enabled = filter.getQueryParam("enabled");
       String condition = filter.getCondition();
 
       if (entityType == null
           && testPlatform == null
           && supportedDataType == null
-          && supportedService == null) {
+          && supportedService == null
+          && enabled == null) {
         return EntityDAO.super.listCount(filter);
       }
 
@@ -6416,6 +6492,13 @@ public interface CollectionDAO {
                 + "OR json->>'supportedServices' IS NULL "
                 + "OR json->>'supportedServices' LIKE :supportedServiceLike) ");
       }
+
+      if (enabled != null) {
+        String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
+        mysqlCondition.append("AND enabled=").append(enabledValue).append(" ");
+        psqlCondition.append("AND enabled=").append(enabledValue).append(" ");
+      }
+
       return listCount(
           getTableName(),
           filter.getQueryParams(),
@@ -6768,53 +6851,101 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT "
-                + "  DATE(FROM_UNIXTIME(eets.timestamp / 1000)) as date_key, "
-                + "  MIN(eets.timestamp) as first_timestamp, "
-                + "  MAX(JSON_EXTRACT(eets.json, '$.endTime') - eets.timestamp) as max_runtime, "
-                + "  MIN(JSON_EXTRACT(eets.json, '$.endTime') - eets.timestamp) as min_runtime, "
-                + "  AVG(JSON_EXTRACT(eets.json, '$.endTime') - eets.timestamp) as avg_runtime, "
-                + "  COUNT(DISTINCT pe.fqnHash) as total_pipelines "
-                + "FROM entity_extension_time_series eets "
-                + "INNER JOIN pipeline_entity pe ON eets.entityFQNHash = pe.fqnHash "
-                + "WHERE eets.extension = 'pipeline.pipelineStatus' "
-                + "  AND pe.deleted = 0 "
-                + "  AND eets.timestamp >= :startTs "
-                + "  AND eets.timestamp <= :endTs "
-                + "  AND JSON_EXTRACT(eets.json, '$.endTime') IS NOT NULL "
-                + "  <pipelineFqnFilter> "
-                + "  <serviceTypeFilter> "
-                + "  <serviceFilter> "
-                + "  <mysqlStatusFilter> "
-                + "  <domainFilter> "
-                + "  <ownerFilter> "
-                + "  <tierFilter> "
+            "WITH runtime_calc AS ( "
+                + "  SELECT "
+                + "    eets.*, "
+                + "    pe.fqnHash, "
+                + "    CASE "
+                + "      WHEN JSON_LENGTH(JSON_EXTRACT(eets.json, '$.taskStatus')) > 0 "
+                + "        AND JSON_EXTRACT(eets.json, '$.taskStatus[0].endTime') IS NOT NULL THEN "
+                + "        ( "
+                + "          SELECT MAX(CAST(JSON_EXTRACT(task.value, '$.endTime') AS UNSIGNED)) "
+                + "          FROM JSON_TABLE(eets.json, '$.taskStatus[*]' COLUMNS(value JSON PATH '$')) AS task "
+                + "          WHERE JSON_EXTRACT(task.value, '$.endTime') IS NOT NULL "
+                + "        ) - ( "
+                + "          SELECT MIN(CAST(JSON_EXTRACT(task.value, '$.startTime') AS UNSIGNED)) "
+                + "          FROM JSON_TABLE(eets.json, '$.taskStatus[*]' COLUMNS(value JSON PATH '$')) AS task "
+                + "          WHERE JSON_EXTRACT(task.value, '$.startTime') IS NOT NULL "
+                + "        ) "
+                + "      WHEN JSON_EXTRACT(eets.json, '$.endTime') IS NOT NULL THEN "
+                + "        JSON_EXTRACT(eets.json, '$.endTime') - eets.timestamp "
+                + "      ELSE NULL "
+                + "    END AS runtime "
+                + "  FROM entity_extension_time_series eets "
+                + "  INNER JOIN pipeline_entity pe ON eets.entityFQNHash = pe.fqnHash "
+                + "  WHERE eets.extension = 'pipeline.pipelineStatus' "
+                + "    AND pe.deleted = 0 "
+                + "    AND eets.timestamp >= :startTs "
+                + "    AND eets.timestamp <= :endTs "
+                + "    <pipelineFqnFilter> "
+                + "    <serviceTypeFilter> "
+                + "    <serviceFilter> "
+                + "    <mysqlStatusFilter> "
+                + "    <domainFilter> "
+                + "    <ownerFilter> "
+                + "    <tierFilter> "
+                + ") "
+                + "SELECT "
+                + "  DATE(FROM_UNIXTIME(timestamp / 1000)) as date_key, "
+                + "  MIN(timestamp) as first_timestamp, "
+                + "  MAX(runtime) as max_runtime, "
+                + "  MIN(runtime) as min_runtime, "
+                + "  AVG(runtime) as avg_runtime, "
+                + "  COUNT(DISTINCT fqnHash) as total_pipelines "
+                + "FROM runtime_calc "
+                + "WHERE runtime IS NOT NULL "
                 + "GROUP BY date_key "
                 + "ORDER BY date_key ASC",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT "
-                + "  DATE(TO_TIMESTAMP(eets.timestamp / 1000)) as date_key, "
-                + "  MIN(eets.timestamp) as first_timestamp, "
-                + "  MAX((eets.json->>'endTime')::bigint - eets.timestamp) as max_runtime, "
-                + "  MIN((eets.json->>'endTime')::bigint - eets.timestamp) as min_runtime, "
-                + "  AVG((eets.json->>'endTime')::bigint - eets.timestamp) as avg_runtime, "
-                + "  COUNT(DISTINCT pe.fqnHash) as total_pipelines "
-                + "FROM entity_extension_time_series eets "
-                + "INNER JOIN pipeline_entity pe ON eets.entityFQNHash = pe.fqnHash "
-                + "WHERE eets.extension = 'pipeline.pipelineStatus' "
-                + "  AND pe.deleted = false "
-                + "  AND eets.timestamp >= :startTs "
-                + "  AND eets.timestamp <= :endTs "
-                + "  AND eets.json->>'endTime' IS NOT NULL "
-                + "  <pipelineFqnFilter> "
-                + "  <serviceTypeFilter> "
-                + "  <serviceFilter> "
-                + "  <postgresStatusFilter> "
-                + "  <domainFilter> "
-                + "  <ownerFilter> "
-                + "  <tierFilter> "
+            "WITH runtime_calc AS ( "
+                + "  SELECT "
+                + "    eets.timestamp, "
+                + "    eets.json, "
+                + "    pe.fqnHash, "
+                + "    CASE "
+                + "      WHEN jsonb_array_length(COALESCE(eets.json->'taskStatus', '[]'::jsonb)) > 0 "
+                + "        AND EXISTS ( "
+                + "          SELECT 1 FROM jsonb_array_elements(eets.json->'taskStatus') AS task "
+                + "          WHERE task->>'endTime' IS NOT NULL "
+                + "        ) THEN "
+                + "        ( "
+                + "          SELECT MAX((task->>'endTime')::bigint) "
+                + "          FROM jsonb_array_elements(eets.json->'taskStatus') AS task "
+                + "          WHERE task->>'endTime' IS NOT NULL "
+                + "        ) - ( "
+                + "          SELECT MIN((task->>'startTime')::bigint) "
+                + "          FROM jsonb_array_elements(eets.json->'taskStatus') AS task "
+                + "          WHERE task->>'startTime' IS NOT NULL "
+                + "        ) "
+                + "      WHEN eets.json->>'endTime' IS NOT NULL THEN "
+                + "        (eets.json->>'endTime')::bigint - eets.timestamp "
+                + "      ELSE NULL "
+                + "    END AS runtime "
+                + "  FROM entity_extension_time_series eets "
+                + "  INNER JOIN pipeline_entity pe ON eets.entityFQNHash = pe.fqnHash "
+                + "  WHERE eets.extension = 'pipeline.pipelineStatus' "
+                + "    AND pe.deleted = false "
+                + "    AND eets.timestamp >= :startTs "
+                + "    AND eets.timestamp <= :endTs "
+                + "    <pipelineFqnFilter> "
+                + "    <serviceTypeFilter> "
+                + "    <serviceFilter> "
+                + "    <postgresStatusFilter> "
+                + "    <domainFilter> "
+                + "    <ownerFilter> "
+                + "    <tierFilter> "
+                + ") "
+                + "SELECT "
+                + "  DATE(TO_TIMESTAMP(timestamp / 1000)) as date_key, "
+                + "  MIN(timestamp) as first_timestamp, "
+                + "  MAX(runtime) as max_runtime, "
+                + "  MIN(runtime) as min_runtime, "
+                + "  AVG(runtime) as avg_runtime, "
+                + "  COUNT(DISTINCT fqnHash) as total_pipelines "
+                + "FROM runtime_calc "
+                + "WHERE runtime IS NOT NULL "
                 + "GROUP BY date_key "
                 + "ORDER BY date_key ASC",
         connectionType = POSTGRES)
@@ -7756,6 +7887,7 @@ public interface CollectionDAO {
             case ENTITY_RULES_SETTINGS -> JsonUtils.readValue(json, EntityRulesSettings.class);
             case SCIM_CONFIGURATION -> JsonUtils.readValue(json, ScimConfiguration.class);
             case OPEN_LINEAGE_SETTINGS -> JsonUtils.readValue(json, OpenLineageSettings.class);
+            case TEAMS_APP_CONFIGURATION -> JsonUtils.readValue(json, TeamsAppConfiguration.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);
@@ -8852,6 +8984,7 @@ public interface CollectionDAO {
         @Bind("eventType") String eventType,
         @Bind("startTs") Long startTs,
         @Bind("endTs") Long endTs,
+        @Bind("searchPattern") String searchPattern,
         @Bind("afterEventTs") Long afterEventTs,
         @Bind("afterId") Long afterId,
         @Bind("limit") int limit);
@@ -8867,7 +9000,8 @@ public interface CollectionDAO {
         @Bind("entityFQNHASH") String entityFqnHash,
         @Bind("eventType") String eventType,
         @Bind("startTs") Long startTs,
-        @Bind("endTs") Long endTs);
+        @Bind("endTs") Long endTs,
+        @Bind("searchPattern") String searchPattern);
 
     @ConnectionAwareSqlUpdate(
         value =

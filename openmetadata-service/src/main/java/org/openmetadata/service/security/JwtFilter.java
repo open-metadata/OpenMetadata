@@ -78,6 +78,7 @@ public class JwtFilter implements ContainerRequestFilter {
   public static final String IMPERSONATED_USER_CLAIM = "impersonatedUser";
   @Getter private List<String> jwtPrincipalClaims;
   @Getter private Map<String, String> jwtPrincipalClaimsMapping;
+  @Getter private String jwtTeamClaimMapping;
   private JwkProvider jwkProvider;
   private String principalDomain;
   private Set<String> allowedDomains;
@@ -119,6 +120,7 @@ public class JwtFilter implements ContainerRequestFilter {
             .map(s -> s.split(":"))
             .collect(Collectors.toMap(s -> s[0], s -> s[1]));
     validatePrincipalClaimsMapping(jwtPrincipalClaimsMapping);
+    this.jwtTeamClaimMapping = authenticationConfiguration.getJwtTeamClaimMapping();
 
     ImmutableList.Builder<URL> publicKeyUrlsBuilder = ImmutableList.builder();
     for (String publicKeyUrlStr : authenticationConfiguration.getPublicKeyUrls()) {

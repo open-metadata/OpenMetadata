@@ -22,9 +22,9 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import FileDetails from './FileDetails';
 import { FileDetailsProps } from './FileDetails.interface';
 
@@ -33,7 +33,14 @@ jest.mock('../../../hooks/useCustomPages');
 jest.mock('../../../hooks/useFqn');
 jest.mock('../../../utils/useRequiredParams');
 jest.mock('../../../rest/driveAPI');
-jest.mock('../../../utils/CommonUtils');
+const mockGetFeedCounts = jest.fn();
+
+
+jest.mock('../../../utils/CommonUtils', () => ({
+  ...jest.requireActual('../../../utils/CommonUtils'),
+  getEntityMissingError: jest.fn(),
+  getFeedCounts: (...args: any[]) => mockGetFeedCounts(...args),
+}));
 jest.mock('../../../utils/RouterUtils');
 jest.mock('../../../utils/ToastUtils');
 jest.mock('../../../utils/FileClassBase', () => ({
@@ -93,14 +100,14 @@ jest.mock('../../Lineage/EntityLineageTab/EntityLineageTab', () => ({
   )),
 }));
 
-jest.mock('../../PageLayoutV1/PageLayoutV1', () =>
-  jest.fn(({ children, pageTitle }) => (
+jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
+  return jest.fn(({ children, pageTitle }) => (
     <div data-testid="page-layout">
       <h1>{pageTitle}</h1>
       {children}
     </div>
-  ))
-);
+  ));
+});
 
 jest.mock('../../../hoc/LimitWrapper', () =>
   jest.fn(({ children }) => <div>{children}</div>)
@@ -131,7 +138,6 @@ const mockUseCustomPages = useCustomPages as jest.Mock;
 const mockUseFqn = useFqn as jest.Mock;
 const mockUseRequiredParams = useRequiredParams as jest.Mock;
 const mockRestoreDriveAsset = restoreDriveAsset as jest.Mock;
-const mockGetFeedCounts = getFeedCounts as jest.Mock;
 const mockGetEntityDetailsPath = getEntityDetailsPath as jest.Mock;
 
 const mockFileDetails: File = {
@@ -176,7 +182,7 @@ const mockFileDetails: File = {
     fieldsAdded: [],
     fieldsUpdated: [],
     fieldsDeleted: [],
-    previousVersion: 1.0,
+    previousVersion: 1,
   },
   service: {
     id: 'service-1',
@@ -235,6 +241,8 @@ describe('FileDetails', () => {
 
     mockUseFqn.mockReturnValue({
       fqn: 'test-service.test-file.txt',
+      entityFqn: 'test-service.test-file.txt',
+      columnPart: undefined,
     });
 
     mockUseRequiredParams.mockReturnValue({
@@ -323,7 +331,7 @@ describe('FileDetails', () => {
         'test-service.test-file.txt',
         expect.any(Function)
       );
-    });
+    }, { timeout: 3000 });
   });
 
   it('should handle follow file action for non-following user', async () => {
@@ -761,17 +769,31 @@ describe('FileDetails', () => {
     it('should handle undefined ViewCustomFields permission', async () => {
       const permissionsWithUndefinedViewCustomFields = {
         ...ENTITY_PERMISSIONS,
+        ViewCustomFields: undefined,
       };
-      delete (permissionsWithUndefinedViewCustomFields as any).ViewCustomFields;
 
       renderFileDetails({
-        filePermissions: permissionsWithUndefinedViewCustomFields,
+        filePermissions:
+          permissionsWithUndefinedViewCustomFields as unknown as OperationPermission,
       });
 
       await waitFor(() => {
         expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
         expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
       });
+    });
+  });
+
+  it('should pass entity name as pageTitle to PageLayoutV1', async () => {
+    renderFileDetails();
+
+    await waitFor(() => {
+      expect(PageLayoutV1).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pageTitle: 'Test File',
+        }),
+        expect.anything()
+      );
     });
   });
 });

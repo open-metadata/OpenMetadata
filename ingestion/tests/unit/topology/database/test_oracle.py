@@ -44,6 +44,11 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.oracle.metadata import OracleSource
 from metadata.ingestion.source.database.oracle.models import OracleStoredObject
+from metadata.ingestion.source.database.oracle.queries import (
+    ORACLE_GET_STORED_PACKAGES,
+    ORACLE_GET_STORED_PROCEDURES,
+    TEST_ORACLE_GET_STORED_PACKAGES,
+)
 
 mock_oracle_config = {
     "source": {
@@ -211,3 +216,73 @@ class OracleUnitTest(TestCase):
             either.right
             for either in self.oracle.yield_stored_procedure(MOCK_STORED_PACKAGE)
         ]
+
+    def test_stored_procedure_queries_have_order_by(self):
+        """
+        Test that stored procedure queries have ORDER BY clause to ensure
+        lines are returned in correct order from the database.
+
+        This is critical because the process_result method concatenates text
+        as rows are received without reordering. Without ORDER BY, Oracle can
+        return rows in any physical order, causing scrambled code.
+        """
+        assert "ORDER BY OWNER, NAME, LINE" in ORACLE_GET_STORED_PROCEDURES
+        assert "ORDER BY OWNER, NAME, LINE" in ORACLE_GET_STORED_PACKAGES
+        assert "ORDER BY OWNER, NAME, LINE" in TEST_ORACLE_GET_STORED_PACKAGES
+
+    def test_get_view_definition_with_view_def_and_view_ddl(self):
+        """
+        Test that view definitions are correctly retrieved for both cases:
+        1. When view_def is present (regular view with text column)
+        2. When view_ddl is present (view definition from DBMS_METADATA.GET_DDL)
+        """
+        from unittest.mock import MagicMock
+
+        from sqlalchemy.dialects.oracle.base import OracleDialect
+
+        from metadata.ingestion.source.database.oracle.utils import (
+            get_all_view_definitions,
+        )
+
+        mock_connection = MagicMock()
+        mock_dialect = OracleDialect()
+
+        class MockViewRowWithViewDef:
+            view_name = "test_view_with_def"
+            schema = "test_schema"
+            view_def = "SELECT * FROM test_table WHERE id > 0"
+            view_ddl = None
+
+        class MockViewRowWithViewDdl:
+            VIEW_NAME = "test_view_with_ddl"
+            SCHEMA = "test_schema"
+            VIEW_DEF = None
+            VIEW_DDL = "CREATE OR REPLACE FORCE VIEW test_schema.test_view_with_ddl AS SELECT * FROM complex_table"
+
+        mock_result = [MockViewRowWithViewDef(), MockViewRowWithViewDdl()]
+        mock_connection.execute.return_value = mock_result
+        mock_connection.engine.url.database = "test_database"
+
+        get_all_view_definitions(mock_dialect, mock_connection, "dummy_query")
+
+        assert hasattr(mock_dialect, "all_view_definitions")
+        assert (
+            "test_view_with_def",
+            "test_schema",
+        ) in mock_dialect.all_view_definitions
+        assert (
+            "test_view_with_ddl",
+            "test_schema",
+        ) in mock_dialect.all_view_definitions
+
+        expected_view_def_definition = "CREATE OR REPLACE VIEW test_view_with_def AS SELECT * FROM test_table WHERE id > 0"
+        expected_view_ddl_definition = "CREATE OR REPLACE FORCE VIEW test_schema.test_view_with_ddl AS SELECT * FROM complex_table"
+
+        assert (
+            mock_dialect.all_view_definitions[("test_view_with_def", "test_schema")]
+            == expected_view_def_definition
+        )
+        assert (
+            mock_dialect.all_view_definitions[("test_view_with_ddl", "test_schema")]
+            == expected_view_ddl_definition
+        )

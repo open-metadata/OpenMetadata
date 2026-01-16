@@ -30,12 +30,15 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreMetric } from '../../../rest/metricsAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import {
+  getFeedCounts,
+} from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import metricDetailsClassBase from '../../../utils/MetricEntityUtils/MetricDetailsClassBase';
 import {
   getPrioritizedEditPermission,
@@ -74,8 +77,11 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.OVERVIEW } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedMetricFqn } = useFqn();
+
   const navigate = useNavigate();
+  
+  const { entityFqn: decodedMetricFqn } = useFqn({ type: EntityType.METRIC });
+  
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -100,11 +106,21 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     isFollowing ? await onUnFollowMetric() : await onFollowMetric();
 
   const handleUpdateDisplayName = async (data: EntityName) => {
+    const { name, displayName } = data;
     const updatedData = {
       ...metricDetails,
-      displayName: data.displayName,
+      displayName: displayName?.trim(),
+      name: name?.trim(),
     };
     await onMetricUpdate(updatedData, 'displayName');
+
+    // If name changed, navigate to the new URL
+    if (name && name.trim() !== metricDetails.name) {
+      navigate(
+        getEntityDetailsPath(EntityType.METRIC, name.trim(), activeTab),
+        { replace: true }
+      );
+    }
   };
 
   const onCertificationUpdate = useCallback(
@@ -270,10 +286,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.metric'),
-      })}>
+    <PageLayoutV1 pageTitle={getEntityName(metricDetails)}>
       <Row gutter={[0, 12]}>
         <Col span={24}>
           <DataAssetsHeader

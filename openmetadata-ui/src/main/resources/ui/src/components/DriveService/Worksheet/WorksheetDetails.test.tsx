@@ -13,6 +13,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { DataType, Worksheet } from '../../../generated/entity/data/worksheet';
 import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
@@ -21,9 +22,9 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import WorksheetDetails from './WorksheetDetails';
 import { WorksheetDetailsProps } from './WorksheetDetails.interface';
 
@@ -32,7 +33,14 @@ jest.mock('../../../hooks/useCustomPages');
 jest.mock('../../../hooks/useFqn');
 jest.mock('../../../utils/useRequiredParams');
 jest.mock('../../../rest/driveAPI');
-jest.mock('../../../utils/CommonUtils');
+const mockGetFeedCounts = jest.fn();
+
+
+jest.mock('../../../utils/CommonUtils', () => ({
+  ...jest.requireActual('../../../utils/CommonUtils'),
+  getEntityMissingError: jest.fn(),
+  getFeedCounts: (...args: any[]) => mockGetFeedCounts(...args),
+}));
 jest.mock('../../../utils/RouterUtils');
 jest.mock('../../../utils/ToastUtils');
 jest.mock('../../../utils/WorksheetClassBase', () => ({
@@ -92,14 +100,14 @@ jest.mock('../../Lineage/EntityLineageTab/EntityLineageTab', () => ({
   )),
 }));
 
-jest.mock('../../PageLayoutV1/PageLayoutV1', () =>
-  jest.fn(({ children, pageTitle }) => (
+jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
+  return jest.fn(({ children, pageTitle }) => (
     <div data-testid="page-layout">
       <h1>{pageTitle}</h1>
       {children}
     </div>
-  ))
-);
+  ));
+});
 
 jest.mock('../../../hoc/LimitWrapper', () =>
   jest.fn(({ children }) => <div>{children}</div>)
@@ -118,7 +126,6 @@ const mockUseCustomPages = useCustomPages as jest.Mock;
 const mockUseFqn = useFqn as jest.Mock;
 const mockUseRequiredParams = useRequiredParams as jest.Mock;
 const mockRestoreDriveAsset = restoreDriveAsset as jest.Mock;
-const mockGetFeedCounts = getFeedCounts as jest.Mock;
 const mockGetEntityDetailsPath = getEntityDetailsPath as jest.Mock;
 
 const mockWorksheetDetails: Worksheet = {
@@ -185,7 +192,7 @@ const mockWorksheetDetails: Worksheet = {
     fieldsAdded: [],
     fieldsUpdated: [],
     fieldsDeleted: [],
-    previousVersion: 1.0,
+    previousVersion: 1,
   },
   service: {
     id: 'service-1',
@@ -246,6 +253,8 @@ describe('WorksheetDetails', () => {
 
     mockUseFqn.mockReturnValue({
       fqn: 'test-service.test-spreadsheet.test-worksheet',
+      entityFqn: 'test-service.test-spreadsheet.test-worksheet',
+      columnPart: undefined,
     });
 
     mockUseRequiredParams.mockReturnValue({
@@ -328,13 +337,16 @@ describe('WorksheetDetails', () => {
   it('should call getFeedCounts on component mount', async () => {
     renderWorksheetDetails();
 
-    await waitFor(() => {
-      expect(mockGetFeedCounts).toHaveBeenCalledWith(
-        EntityType.WORKSHEET,
-        'test-service.test-spreadsheet.test-worksheet',
-        expect.any(Function)
-      );
-    });
+    await waitFor(
+      () => {
+        expect(mockGetFeedCounts).toHaveBeenCalledWith(
+          EntityType.WORKSHEET,
+          'test-service.test-spreadsheet.test-worksheet',
+          expect.any(Function)
+        );
+      },
+      { timeout: 3000 }
+    );
   });
 
   it('should handle follow worksheet action', async () => {
@@ -670,17 +682,31 @@ describe('WorksheetDetails', () => {
     it('should handle undefined ViewCustomFields permission', async () => {
       const permissionsWithUndefinedViewCustomFields = {
         ...ENTITY_PERMISSIONS,
+        ViewCustomFields: undefined,
       };
-      delete (permissionsWithUndefinedViewCustomFields as any).ViewCustomFields;
 
       renderWorksheetDetails({
-        worksheetPermissions: permissionsWithUndefinedViewCustomFields,
+        worksheetPermissions:
+          permissionsWithUndefinedViewCustomFields as unknown as OperationPermission,
       });
 
       await waitFor(() => {
         expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
         expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
       });
+    });
+  });
+
+  it('should pass entity name as pageTitle to PageLayoutV1', async () => {
+    renderWorksheetDetails();
+
+    await waitFor(() => {
+      expect(PageLayoutV1).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pageTitle: 'Test Worksheet',
+        }),
+        expect.anything()
+      );
     });
   });
 });

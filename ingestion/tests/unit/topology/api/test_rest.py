@@ -243,6 +243,48 @@ MOCK_SCHEMA_RESPONSE_WITH_OBJECT_REF_CIRCULAR = {
     }
 }
 
+# Mock data for testing process_schema_fields with descriptions
+MOCK_SCHEMA_RESPONSE_WITH_DESCRIPTIONS = {
+    "components": {
+        "schemas": {
+            "FlightAirportInformation": {
+                "type": "object",
+                "properties": {
+                    "departureAirport": {
+                        "title": "Departureairport",
+                        "description": "Departure airport information",
+                        "$ref": "#/components/schemas/AirportInformation",
+                    },
+                    "arrivalAirport": {
+                        "title": "Arrivalairport",
+                        "description": "Arrival airport information",
+                        "$ref": "#/components/schemas/AirportInformation",
+                    },
+                },
+                "title": "FlightAirportInformation",
+                "description": "Airport information for a flight, including departure and arrival airport details.",
+            },
+            "AirportInformation": {
+                "type": "object",
+                "properties": {
+                    "gate": {
+                        "type": "string",
+                        "title": "Gate",
+                        "description": "Flight gate",
+                    },
+                    "parking": {
+                        "type": "string",
+                        "title": "Parking",
+                        "description": "Flight parking",
+                    },
+                },
+                "title": "AirportInformation",
+                "description": "Represents airport information for a flight.",
+            },
+        }
+    }
+}
+
 # Mock data for testing Swagger 2.0 and query/path parameter support
 MOCK_SWAGGER_2_REQUEST_BODY = {
     "parameters": [
@@ -571,6 +613,49 @@ class RESTTest(TestCase):
         )
         # Should be None due to circular reference prevention
         assert user_field_in_profile.children is None
+
+    def test_process_schema_fields_with_descriptions(self):
+        """Test processing schema fields extracts descriptions from OpenAPI schemas"""
+        self.rest_source.json_response = MOCK_SCHEMA_RESPONSE_WITH_DESCRIPTIONS
+
+        result = self.rest_source.process_schema_fields(
+            "#/components/schemas/FlightAirportInformation"
+        )
+
+        assert result is not None
+        assert len(result) == 2
+
+        # Check departure airport field has description
+        departure_field = next(
+            field for field in result if field.name.root == "departureAirport"
+        )
+        assert departure_field.description is not None
+        assert departure_field.description.root == "Departure airport information"
+        assert departure_field.dataType == DataTypeTopic.UNKNOWN
+        assert departure_field.children is not None
+        assert len(departure_field.children) == 2
+
+        # Check arrival airport field has description
+        arrival_field = next(
+            field for field in result if field.name.root == "arrivalAirport"
+        )
+        assert arrival_field.description is not None
+        assert arrival_field.description.root == "Arrival airport information"
+
+        # Check nested fields in AirportInformation have descriptions
+        gate_field = next(
+            child for child in departure_field.children if child.name.root == "gate"
+        )
+        assert gate_field.description is not None
+        assert gate_field.description.root == "Flight gate"
+        assert gate_field.dataType == DataTypeTopic.STRING
+
+        parking_field = next(
+            child for child in departure_field.children if child.name.root == "parking"
+        )
+        assert parking_field.description is not None
+        assert parking_field.description.root == "Flight parking"
+        assert parking_field.dataType == DataTypeTopic.STRING
 
     def test_convert_parameter_to_field_swagger_2(self):
         """Test converting Swagger 2.0 parameter to FieldModel"""
@@ -960,3 +1045,84 @@ class RESTTest(TestCase):
         assert result.dataType == DataTypeTopic.ARRAY
         # When no items key exists, children is None
         assert result.children is None
+
+    @patch("metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection")
+    def test_endpoint_filter_pattern(self, test_connection):
+        """test endpoint filter pattern"""
+        test_connection.return_value = False
+
+        # Setup mock JSON response with paths
+        mock_json_with_paths = {
+            "paths": {
+                "/store/order": {
+                    "post": {
+                        "tags": ["store"],
+                        "summary": "Place an order",
+                        "operationId": "placeOrder",
+                    }
+                },
+                "/store/inventory": {
+                    "get": {
+                        "tags": ["store"],
+                        "summary": "Get inventory",
+                        "operationId": "getInventory",
+                    }
+                },
+                "/store/order/{orderId}": {
+                    "get": {
+                        "tags": ["store"],
+                        "summary": "Get order by ID",
+                        "operationId": "getOrderById",
+                    }
+                },
+            },
+            "tags": [{"name": "store", "description": "Access to Petstore orders"}],
+        }
+
+        # Test with include pattern - only endpoints matching the pattern
+        include_config = deepcopy(mock_rest_config)
+        include_config["source"]["sourceConfig"]["config"][
+            "apiEndpointFilterPattern"
+        ] = {"includes": [".*order.*"]}
+        rest_source_include = RestSource.create(
+            include_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+        rest_source_include.json_response = mock_json_with_paths
+        rest_source_include.context.get().__dict__[
+            "api_service"
+        ] = MOCK_API_SERVICE.fullyQualifiedName.root
+
+        endpoints_include = list(
+            rest_source_include.yield_api_endpoint(MOCK_SINGLE_COLLECTION)
+        )
+        # Should include /store/order and /store/order/{orderId} but not /store/inventory
+        assert len(endpoints_include) == 2
+        endpoint_names = [e.right.displayName for e in endpoints_include if e.right]
+        assert "/store/order" in endpoint_names
+        assert "/store/order/{orderId}" in endpoint_names
+        assert "/store/inventory" not in endpoint_names
+
+        # Test with exclude pattern
+        exclude_config = deepcopy(mock_rest_config)
+        exclude_config["source"]["sourceConfig"]["config"][
+            "apiEndpointFilterPattern"
+        ] = {"excludes": [".*inventory.*"]}
+        rest_source_exclude = RestSource.create(
+            exclude_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+        rest_source_exclude.json_response = mock_json_with_paths
+        rest_source_exclude.context.get().__dict__[
+            "api_service"
+        ] = MOCK_API_SERVICE.fullyQualifiedName.root
+
+        endpoints_exclude = list(
+            rest_source_exclude.yield_api_endpoint(MOCK_SINGLE_COLLECTION)
+        )
+        # Should exclude /store/inventory
+        assert len(endpoints_exclude) == 2
+        endpoint_names_exclude = [
+            e.right.displayName for e in endpoints_exclude if e.right
+        ]
+        assert "/store/inventory" not in endpoint_names_exclude

@@ -171,6 +171,14 @@ export interface AssetCertification {
  */
 export interface TagLabel {
     /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
+    /**
      * Description for the tag label.
      */
     description?: string;
@@ -604,6 +612,7 @@ export enum DatabaseServiceType {
     DeltaLake = "DeltaLake",
     DomoDatabase = "DomoDatabase",
     Doris = "Doris",
+    Dremio = "Dremio",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
     Epic = "Epic",
@@ -632,6 +641,7 @@ export enum DatabaseServiceType {
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
     Ssas = "SSAS",
+    StarRocks = "StarRocks",
     Synapse = "Synapse",
     Teradata = "Teradata",
     Timescale = "Timescale",

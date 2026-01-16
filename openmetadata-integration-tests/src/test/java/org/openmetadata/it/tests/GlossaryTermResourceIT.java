@@ -315,6 +315,56 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
         "Creating duplicate term in same glossary should fail");
   }
 
+  @Test
+  void test_duplicateTermInGlossaryWithDottedName(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // 1. Create a new glossary with a dot in its name
+    String glossaryName = ns.prefix("dotted.glossary");
+    CreateGlossary createGlossary =
+        new CreateGlossary().withName(glossaryName).withDescription("Glossary with a dotted name");
+    Glossary glossary = client.glossaries().create(createGlossary);
+    assertEquals(glossaryName, glossary.getName());
+
+    // 2. Create the first term
+    String termName = "testTerm";
+    CreateGlossaryTerm request1 =
+        new CreateGlossaryTerm()
+            .withName(termName)
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("First term in dotted glossary");
+
+    GlossaryTerm term1 = createEntity(request1);
+    assertNotNull(term1);
+    assertEquals(termName, term1.getName());
+
+    // 3. Attempt to create a duplicate term (case-insensitive) in the same glossary
+    CreateGlossaryTerm request2 =
+        new CreateGlossaryTerm()
+            .withName(termName.toUpperCase()) // Using uppercase to test case-insensitivity
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Duplicate term in dotted glossary");
+
+    // 4. Assert that the creation fails
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request2),
+        "Creating a duplicate term in a glossary with a dotted name should fail");
+
+    // 5. Attempt to create a duplicate term (case-insensitive - lowercase) in the same glossary
+    CreateGlossaryTerm request3 =
+        new CreateGlossaryTerm()
+            .withName(termName.toLowerCase()) // Using lowercase to test case-insensitivity
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Duplicate term in dotted glossary");
+
+    // 6. Assert that the creation fails
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request3),
+        "Creating a duplicate term in a glossary with a dotted name should fail");
+  }
+
   // ===================================================================
   // ADDITIONAL GLOSSARY TERM TESTS - Migrated from GlossaryTermResourceTest
   // ===================================================================
