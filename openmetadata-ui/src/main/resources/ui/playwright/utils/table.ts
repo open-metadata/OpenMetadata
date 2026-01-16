@@ -19,38 +19,76 @@ export const columnPaginationTable = async (page: Page) => {
 
   expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 40`);
 
+  const columnsResponse1 = page.waitForResponse(
+    '/api/v1/tables/name/*/columns?*fields=tags*&include=all*'
+  );
+
   await page.getByTestId('next').click();
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await columnsResponse1;
+  await page.waitForSelector(
+    '#KnowledgePanel\\.TableSchema [data-testid="loader"]',
+    {
+      state: 'detached',
+    }
+  );
 
   expect(page.getByTestId('page-indicator')).toHaveText(`Page 2 of 40`);
 
   expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(51);
 
+  const columnsResponse2 = page.waitForResponse(
+    '/api/v1/tables/name/*/columns?*fields=tags*&include=all*'
+  );
+
   await page.getByTestId('previous').click();
+
+  await columnsResponse2;
+  await page.waitForSelector(
+    '#KnowledgePanel\\.TableSchema [data-testid="loader"]',
+    {
+      state: 'detached',
+    }
+  );
 
   expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 40`);
 
   // Change page size to 15
   await page.getByTestId('page-size-selection-dropdown').click();
+
+  const columnsResponse3 = page.waitForResponse(
+    '/api/v1/tables/name/*/columns?*fields=tags*&include=all*'
+  );
+
   await page.getByRole('menuitem', { name: '15 / Page' }).click();
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await columnsResponse3;
+  await page.waitForSelector(
+    '#KnowledgePanel\\.TableSchema [data-testid="loader"]',
+    {
+      state: 'detached',
+    }
+  );
 
   // 15 Row + 1 Header row
   expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(16);
 
   // Change page size to 25
   await page.getByTestId('page-size-selection-dropdown').click();
+
+  const columnsResponse4 = page.waitForResponse(
+    '/api/v1/tables/name/*/columns?*fields=tags*&include=all*'
+  );
+
   await page.getByRole('menuitem', { name: '25 / Page' }).click();
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await columnsResponse4;
+  await page.waitForSelector(
+    '#KnowledgePanel\\.TableSchema [data-testid="loader"]',
+    {
+      state: 'detached',
+    }
+  );
 
   // 25 Row + 1 Header row
   expect(page.getByTestId('entity-table').getByRole('row')).toHaveCount(26);

@@ -48,9 +48,17 @@ export interface AuthenticationConfiguration {
      */
     jwtPrincipalClaims: string[];
     /**
-     * Jwt Principal Claim Mapping
+     * Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or
+     * 'email'. Both username and email mappings are required.
      */
     jwtPrincipalClaimsMapping?: string[];
+    /**
+     * JWT claim name that contains team/department information. For SAML SSO, this is the
+     * attribute name (e.g., 'department') from the SAML assertion. For JWT, this is the claim
+     * name in the JWT token. The value from this claim will be used to automatically assign
+     * users to matching teams in OpenMetadata during login.
+     */
+    jwtTeamClaimMapping?: string;
     /**
      * LDAP Configuration in case the Provider is LDAP
      */
@@ -414,6 +422,10 @@ export interface SamlSSOClientConfig {
  * This schema defines defines the identity provider config.
  */
 export interface Idp {
+    /**
+     * Authority URL (deprecated, use entityId instead).
+     */
+    authorityUrl?: string;
     /**
      * Identity Provider Entity ID usually same as the SSO login URL.
      */

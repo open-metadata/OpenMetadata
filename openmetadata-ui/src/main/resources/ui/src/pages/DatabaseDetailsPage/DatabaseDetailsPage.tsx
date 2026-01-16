@@ -102,7 +102,9 @@ const DatabaseDetails: FunctionComponent = () => {
   const { withinPageSearch } =
     useLocationSearch<{ withinPageSearch: string }>();
   const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedDatabaseFQN } = useFqn();
+  const { entityFqn: decodedDatabaseFQN } = useFqn({
+    type: EntityType.DATABASE,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const { customizedPage, isLoading: loading } = useCustomPages(
     PageType.Database

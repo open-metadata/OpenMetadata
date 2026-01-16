@@ -140,6 +140,208 @@ describe('CSVUtils', () => {
         `tags,glossaryTerms,description,domain\n"value,1","value_2","something#new","domain,1"`
       );
     });
+
+    it('should properly escape quotes in FQN values containing dots', () => {
+      const columns = [
+        { name: 'name*', key: 'name*' },
+        { name: 'fullyQualifiedName', key: 'fullyQualifiedName' },
+        { name: 'entityType*', key: 'entityType*' },
+      ];
+      const dataSource = [
+        {
+          'name*': 'default',
+          fullyQualifiedName: '"local.mysql".default',
+          'entityType*': 'database',
+        },
+      ];
+      const csvString = getCSVStringFromColumnsAndDataSource(
+        columns,
+        dataSource
+      );
+
+      expect(csvString).toBe(
+        'name*,fullyQualifiedName,entityType*\n"default","""local.mysql"".default",database'
+      );
+    });
+
+    it('should quote domain values without escaping quotes', () => {
+      const columns = [
+        { name: 'domains', key: 'domains' },
+        { name: 'name*', key: 'name*' },
+      ];
+      const dataSource = [
+        {
+          domains: 'PW%domain.7429a05d',
+          'name*': 'test-database',
+        },
+      ];
+      const csvString = getCSVStringFromColumnsAndDataSource(
+        columns,
+        dataSource
+      );
+
+      expect(csvString).toBe(
+        'domains,name*\n"PW%domain.7429a05d","test-database"'
+      );
+    });
+
+    it('should quote tags values without escaping quotes', () => {
+      const columns = [
+        { name: 'tags', key: 'tags' },
+        { name: 'name*', key: 'name*' },
+      ];
+      const dataSource = [
+        {
+          tags: 'PII.Sensitive',
+          'name*': 'test-entity',
+        },
+      ];
+      const csvString = getCSVStringFromColumnsAndDataSource(
+        columns,
+        dataSource
+      );
+
+      expect(csvString).toBe('tags,name*\n"PII.Sensitive","test-entity"');
+    });
+
+    it('should not double-escape domain values that already have escaped quotes', () => {
+      const columns = [{ name: 'domains', key: 'domains' }];
+      const dataSource = [
+        {
+          domains: 'PW%domain.7429a05d',
+        },
+      ];
+      const csvString = getCSVStringFromColumnsAndDataSource(
+        columns,
+        dataSource
+      );
+
+      expect(csvString).toBe('domains\n"PW%domain.7429a05d"');
+      expect(csvString).not.toContain('""""');
+    });
+
+    it('should handle FQN values with dots in service names correctly', () => {
+      const columns = [
+        { name: 'fullyQualifiedName', key: 'fullyQualifiedName' },
+      ];
+      const dataSource = [
+        {
+          fullyQualifiedName: '"pw.db.service.e2f0f527".pwdatabasea8657c',
+        },
+      ];
+      const csvString = getCSVStringFromColumnsAndDataSource(
+        columns,
+        dataSource
+      );
+
+      expect(csvString).toBe(
+        'fullyQualifiedName\n"""pw.db.service.e2f0f527"".pwdatabasea8657c"'
+      );
+    });
+
+    it('should handle displayName with quotes correctly', () => {
+      const columns = [{ name: 'displayName', key: 'displayName' }];
+      const dataSource = [
+        {
+          displayName: 'Test "quoted" name',
+        },
+      ];
+      const csvString = getCSVStringFromColumnsAndDataSource(
+        columns,
+        dataSource
+      );
+
+      expect(csvString).toBe('displayName\n"Test ""quoted"" name"');
+    });
+
+    it('should handle tags with commas correctly', () => {
+      const columns = [{ name: 'tags', key: 'tags' }];
+      const dataSource = [
+        {
+          tags: 'tag1,tag2',
+        },
+      ];
+      const csvString = getCSVStringFromColumnsAndDataSource(
+        columns,
+        dataSource
+      );
+
+      expect(csvString).toBe('tags\n"tag1,tag2"');
+    });
+
+    it('should handle domains with special characters correctly', () => {
+      const columns = [{ name: 'domains', key: 'domains' }];
+      const dataSource = [
+        {
+          domains: 'PW%domain.7429a05d',
+        },
+      ];
+      const csvString = getCSVStringFromColumnsAndDataSource(
+        columns,
+        dataSource
+      );
+
+      expect(csvString).toBe('domains\n"PW%domain.7429a05d"');
+    });
+
+    it('should handle mixed scenario: domains, FQN with dots, and regular values', () => {
+      const columns = [
+        { name: 'domains', key: 'domains' },
+        { name: 'fullyQualifiedName', key: 'fullyQualifiedName' },
+        { name: 'name*', key: 'name*' },
+      ];
+      const dataSource = [
+        {
+          domains: 'PW%domain.7429a05d',
+          fullyQualifiedName: '"pw.db.service.e2f0f527".pwdatabasea8657c',
+          'name*': 'test-database',
+        },
+      ];
+      const csvString = getCSVStringFromColumnsAndDataSource(
+        columns,
+        dataSource
+      );
+
+      expect(csvString).toBe(
+        'domains,fullyQualifiedName,name*\n"PW%domain.7429a05d","""pw.db.service.e2f0f527"".pwdatabasea8657c","test-database"'
+      );
+    });
+
+    it('should handle name* values containing dots correctly', () => {
+      const columns = [
+        { name: 'name*', key: 'name*' },
+        { name: 'fullyQualifiedName', key: 'fullyQualifiedName' },
+      ];
+      const dataSource = [
+        {
+          'name*': '"local.mysql".default',
+          fullyQualifiedName: '"local.mysql".default.schema',
+        },
+      ];
+      const csvString = getCSVStringFromColumnsAndDataSource(
+        columns,
+        dataSource
+      );
+
+      expect(csvString).toBe(
+        'name*,fullyQualifiedName\n"""local.mysql"".default","""local.mysql"".default.schema"'
+      );
+    });
+
+    it('should handle name* values with dots but no quotes correctly', () => {
+      const columns = [{ name: 'name*', key: 'name*' }];
+      const dataSource = [
+        {
+          'name*': 'service.name.table',
+        },
+      ];
+      const csvString = getCSVStringFromColumnsAndDataSource(
+        columns,
+        dataSource
+      );
+
+      expect(csvString).toBe('name*\n"service.name.table"');
+    });
   });
 
   describe('convertCustomPropertyStringToEntityExtension', () => {

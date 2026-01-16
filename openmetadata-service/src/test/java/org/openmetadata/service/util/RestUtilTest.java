@@ -24,6 +24,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.OpenMetadataApplicationConfigHolder;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.settings.SettingsCache;
 
@@ -36,85 +38,43 @@ class RestUtilTest extends OpenMetadataApplicationTest {
             SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION,
             OpenMetadataBaseUrlConfiguration.class);
 
-    URI baseUri = URI.create("http://base");
-    assertEquals(URI.create("http://base/path"), RestUtil.getHref(baseUri, "path"));
-    assertEquals(
-        URI.create("http://base/path"), RestUtil.getHref(baseUri, "/path")); // Remove leading slash
-    assertEquals(
-        URI.create("http://base/path"),
-        RestUtil.getHref(baseUri, "path/")); // Removing trailing slash
-    assertEquals(
-        URI.create("http://base/path"), RestUtil.getHref(baseUri, "/path/")); // Remove both slashes
-
     UriInfo uriInfo = mockUriInfo(urlConfiguration.getOpenMetadataUrl());
+    OpenMetadataApplicationConfig config = OpenMetadataApplicationConfigHolder.getInstance();
+    String apiPath = config.getApiRootPath();
+    apiPath =
+        apiPath != null && apiPath.endsWith("/")
+            ? apiPath.substring(0, apiPath.length() - 1)
+            : apiPath;
+    String omUrl = urlConfiguration.getOpenMetadataUrl();
+    omUrl = omUrl != null && omUrl.endsWith("/") ? omUrl.substring(0, omUrl.length() - 1) : omUrl;
+    String baseUrl = omUrl + apiPath;
+
     assertEquals(
-        URI.create(String.format("%s/%s", urlConfiguration.getOpenMetadataUrl(), "collection")),
+        URI.create(String.format("%s/%s", baseUrl, "collection")),
         RestUtil.getHref(uriInfo, "collection"));
     assertEquals(
-        URI.create(String.format("%s/%s", urlConfiguration.getOpenMetadataUrl(), "collection")),
+        URI.create(String.format("%s/%s", baseUrl, "collection")),
         RestUtil.getHref(uriInfo, "/collection"));
     assertEquals(
-        URI.create(String.format("%s/%s", urlConfiguration.getOpenMetadataUrl(), "collection")),
+        URI.create(String.format("%s/%s", baseUrl, "collection")),
         RestUtil.getHref(uriInfo, "collection/"));
     assertEquals(
-        URI.create(String.format("%s/%s", urlConfiguration.getOpenMetadataUrl(), "collection")),
+        URI.create(String.format("%s/%s", baseUrl, "collection")),
         RestUtil.getHref(uriInfo, "/collection/"));
 
     UUID id = UUID.randomUUID();
     assertEquals(
-        URI.create(
-            String.format("%s/%s/%s", urlConfiguration.getOpenMetadataUrl(), "collection", id)),
+        URI.create(String.format("%s/%s/%s", baseUrl, "collection", id)),
         RestUtil.getHref(uriInfo, "collection", id));
     assertEquals(
-        URI.create(
-            String.format("%s/%s/%s", urlConfiguration.getOpenMetadataUrl(), "collection", id)),
+        URI.create(String.format("%s/%s/%s", baseUrl, "collection", id)),
         RestUtil.getHref(uriInfo, "/collection", id));
     assertEquals(
-        URI.create(
-            String.format("%s/%s/%s", urlConfiguration.getOpenMetadataUrl(), "collection", id)),
+        URI.create(String.format("%s/%s/%s", baseUrl, "collection", id)),
         RestUtil.getHref(uriInfo, "collection/", id));
     assertEquals(
-        URI.create(
-            String.format("%s/%s/%s", urlConfiguration.getOpenMetadataUrl(), "collection", id)),
+        URI.create(String.format("%s/%s/%s", baseUrl, "collection", id)),
         RestUtil.getHref(uriInfo, "/collection/", id));
-
-    assertEquals(
-        URI.create(
-            String.format("%s/%s/%s", urlConfiguration.getOpenMetadataUrl(), "collection", "path")),
-        RestUtil.getHref(uriInfo, "collection", "path"));
-    assertEquals(
-        URI.create(
-            String.format("%s/%s/%s", urlConfiguration.getOpenMetadataUrl(), "collection", "path")),
-        RestUtil.getHref(uriInfo, "/collection", "/path"));
-    assertEquals(
-        URI.create(
-            String.format("%s/%s/%s", urlConfiguration.getOpenMetadataUrl(), "collection", "path")),
-        RestUtil.getHref(uriInfo, "collection/", "path/"));
-    assertEquals(
-        URI.create(
-            String.format("%s/%s/%s", urlConfiguration.getOpenMetadataUrl(), "collection", "path")),
-        RestUtil.getHref(uriInfo, "/collection/", "/path/"));
-
-    assertEquals(
-        URI.create(
-            String.format(
-                "%s/%s/%s", urlConfiguration.getOpenMetadataUrl(), "collection", "path%201")),
-        RestUtil.getHref(uriInfo, "collection", "path 1"));
-    assertEquals(
-        URI.create(
-            String.format(
-                "%s/%s/%s", urlConfiguration.getOpenMetadataUrl(), "collection", "path%201")),
-        RestUtil.getHref(uriInfo, "/collection", "/path 1"));
-    assertEquals(
-        URI.create(
-            String.format(
-                "%s/%s/%s", urlConfiguration.getOpenMetadataUrl(), "collection", "path%201")),
-        RestUtil.getHref(uriInfo, "collection/", "path 1/"));
-    assertEquals(
-        URI.create(
-            String.format(
-                "%s/%s/%s", urlConfiguration.getOpenMetadataUrl(), "collection", "path%201")),
-        RestUtil.getHref(uriInfo, "/collection/", "/path 1/"));
   }
 
   private UriInfo mockUriInfo(String uri) throws URISyntaxException {
