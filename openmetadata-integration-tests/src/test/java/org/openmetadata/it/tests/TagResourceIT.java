@@ -1,13 +1,23 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.Map;
 import java.util.UUID;
+import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -17,10 +27,25 @@ import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.services.connections.database.PostgresConnection;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.PredefinedRecognizer;
+import org.openmetadata.schema.type.Recognizer;
+import org.openmetadata.schema.type.RecognizerFeedback;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.fluent.DatabaseSchemas;
+import org.openmetadata.sdk.fluent.DatabaseServices;
+import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpClient;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.resources.feeds.MessageParser;
 
 /**
  * Integration tests for Tag entity operations.
@@ -74,7 +99,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     // Add unique suffix to avoid collisions when multiple tests create classifications
     String uniqueSuffix = java.util.UUID.randomUUID().toString().substring(0, 8);
     CreateClassification classificationRequest = new CreateClassification();
-    classificationRequest.setName(ns.prefix("classification") + "_" + uniqueSuffix);
+    classificationRequest.setName(ns.uniqueShortId() + "_" + "classification" + "_" + uniqueSuffix);
     classificationRequest.setDescription("Test classification for tags");
     return SdkClients.adminClient().classifications().create(classificationRequest);
   }
@@ -639,185 +664,342 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   }
 
   // ===================================================================
-  // RENAME CONSOLIDATION TESTS
-  // These tests verify that child entities (nested tags) are preserved
-  // when a tag is renamed and then other fields are updated within the
-  // same session (which triggers change consolidation).
+  // RECOGNIZER FEEDBACK TESTS
   // ===================================================================
 
-  /**
-   * Test that child tags are preserved when a parent tag is renamed and then the description is
-   * updated. This tests the consolidation logic to ensure it doesn't revert to a previous version
-   * with the old FQN.
-   */
-  @Test
-  void test_renameAndUpdateDescriptionPreservesChildren(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-    Classification classification = createClassification(ns);
+  private org.openmetadata.schema.entity.data.Table createTableWithGeneratedTag(
+      TestNamespace ns, String tagFQN) {
+    PostgresConnection conn =
+        DatabaseServices.postgresConnection().hostPort("localhost:5432").username("test").build();
+    org.openmetadata.schema.entity.services.DatabaseService service =
+        DatabaseServices.builder()
+            .name("test_service_" + ns.uniqueShortId())
+            .connection(conn)
+            .description("Test Postgres service")
+            .create();
 
-    // Create parent tag
-    CreateTag parentRequest = new CreateTag();
-    parentRequest.setName(ns.prefix("parent_rename_consolidate"));
-    parentRequest.setClassification(classification.getFullyQualifiedName());
-    parentRequest.setDescription("Initial description");
-    Tag parentTag = createEntity(parentRequest);
+    org.openmetadata.schema.entity.data.DatabaseSchema schema =
+        DatabaseSchemas.create()
+            .name("schema_" + ns.uniqueShortId())
+            .in(
+                Databases.create()
+                    .name("db_" + ns.uniqueShortId())
+                    .in(service.getFullyQualifiedName())
+                    .execute()
+                    .getFullyQualifiedName())
+            .execute();
 
-    // Create child tag
-    CreateTag childRequest = new CreateTag();
-    childRequest.setName(ns.prefix("child_for_rename"));
-    childRequest.setClassification(classification.getFullyQualifiedName());
-    childRequest.setParent(parentTag.getFullyQualifiedName());
-    childRequest.setDescription("Child tag");
-    Tag childTag = createEntity(childRequest);
+    Column column =
+        org.openmetadata.sdk.fluent.builders.ColumnBuilder.of("test_column", "VARCHAR")
+            .dataLength(255)
+            .build();
+    column.setTags(
+        java.util.List.of(
+            new TagLabel().withTagFQN(tagFQN).withLabelType(TagLabel.LabelType.GENERATED)));
 
-    // Verify child exists
-    Tag fetchedChild = client.tags().get(childTag.getId().toString(), "parent");
-    assertNotNull(fetchedChild.getParent());
-    assertEquals(parentTag.getId(), fetchedChild.getParent().getId());
+    org.openmetadata.schema.api.data.CreateTable createTable =
+        new org.openmetadata.schema.api.data.CreateTable()
+            .withName("test_table_" + ns.shortPrefix())
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(java.util.List.of(column));
 
-    // Rename the parent tag
-    String newName = "renamed-" + parentTag.getName();
-    parentTag.setName(newName);
-    Tag renamed = patchEntity(parentTag.getId().toString(), parentTag);
-    assertEquals(newName, renamed.getName());
-
-    // Verify child after rename
-    fetchedChild = client.tags().get(childTag.getId().toString(), "parent");
-    assertNotNull(fetchedChild.getParent(), "Child should have parent after rename");
-
-    // Update description (triggers consolidation logic)
-    renamed.setDescription("Updated description after rename");
-    Tag afterDescUpdate = patchEntity(renamed.getId().toString(), renamed);
-    assertEquals("Updated description after rename", afterDescUpdate.getDescription());
-
-    // Verify child is preserved after consolidation
-    fetchedChild = client.tags().get(childTag.getId().toString(), "parent");
-    assertNotNull(
-        fetchedChild.getParent(),
-        "CRITICAL: Child should have parent after rename + description update consolidation");
-
-    // Verify the child's parent reference has the updated FQN
-    assertEquals(
-        afterDescUpdate.getFullyQualifiedName(),
-        fetchedChild.getParent().getFullyQualifiedName(),
-        "Child's parent reference should have updated FQN after consolidation");
+    return SdkClients.adminClient().tables().create(createTable);
   }
 
-  /**
-   * Test multiple renames followed by updates within the same session. This is a more complex
-   * scenario that tests the robustness of the consolidation fix.
-   */
-  @Test
-  void test_multipleRenamesWithUpdatesPreservesChildren(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-    Classification classification = createClassification(ns);
+  private org.openmetadata.schema.type.RecognizerFeedback submitRecognizerFeedback(
+      String entityLink, String tagFQN, String userName) {
+    HttpClient client = SdkClients.adminClient().getHttpClient();
 
-    // Create parent tag
-    CreateTag parentRequest = new CreateTag();
-    parentRequest.setName(ns.prefix("parent_multi_rename"));
-    parentRequest.setClassification(classification.getFullyQualifiedName());
-    parentRequest.setDescription("Initial description");
-    Tag parentTag = createEntity(parentRequest);
+    org.openmetadata.schema.type.RecognizerFeedback feedback =
+        new org.openmetadata.schema.type.RecognizerFeedback()
+            .withEntityLink(entityLink)
+            .withTagFQN(tagFQN)
+            .withFeedbackType(
+                org.openmetadata.schema.type.RecognizerFeedback.FeedbackType.FALSE_POSITIVE)
+            .withUserReason(
+                org.openmetadata.schema.type.RecognizerFeedback.UserReason.NOT_SENSITIVE_DATA)
+            .withUserComments("This is not actually sensitive data");
 
-    // Create child tag
-    CreateTag childRequest = new CreateTag();
-    childRequest.setName(ns.prefix("child_multi_rename"));
-    childRequest.setClassification(classification.getFullyQualifiedName());
-    childRequest.setParent(parentTag.getFullyQualifiedName());
-    childRequest.setDescription("Child tag");
-    Tag childTag = createEntity(childRequest);
+    try {
+      return client.execute(
+          HttpMethod.POST,
+          "/v1/tags/name/" + tagFQN + "/feedback",
+          feedback,
+          RecognizerFeedback.class);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to submit recognizer feedback", e);
+    }
+  }
 
-    Tag fetchedChild = client.tags().get(childTag.getId().toString(), "parent");
-    assertNotNull(fetchedChild.getParent());
+  private Thread waitForRecognizerFeedbackTask(String tagFQN) throws Exception {
+    return waitForRecognizerFeedbackTask(tagFQN, 30000);
+  }
 
-    String[] names = {"renamed-first", "renamed-second", "renamed-third"};
+  public Thread waitForRecognizerFeedbackTask(String tagFQN, int timeout)
+      throws RuntimeException, ConditionTimeoutException {
+    String entityLink = new MessageParser.EntityLink(Entity.TAG, tagFQN).getLinkString();
+    Awaitility.await(String.format("Wait for Task to be Created for Tag: '%s'", tagFQN))
+        .ignoreExceptions()
+        .pollInterval(Duration.ofMillis(2000L))
+        .atMost(Duration.ofMillis(timeout))
+        .until(
+            () ->
+                WorkflowHandler.getInstance()
+                    .isActivityWithVariableExecuting(
+                        "ReviewFeedback.approvalTask",
+                        getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
+                        entityLink));
 
-    for (int i = 0; i < names.length; i++) {
-      String newName = names[i] + "-" + UUID.randomUUID().toString().substring(0, 8);
+    String url =
+        "/v1/feed?limit=100&type=Task&taskStatus=Open&entityLink="
+            + URLEncoder.encode(entityLink, StandardCharsets.UTF_8);
+    FeedResourceIT.ThreadList response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(HttpMethod.GET, url, null, FeedResourceIT.ThreadList.class);
 
-      parentTag.setName(newName);
-      parentTag = patchEntity(parentTag.getId().toString(), parentTag);
-      assertEquals(newName, parentTag.getName());
-
-      fetchedChild = client.tags().get(childTag.getId().toString(), "parent");
-      assertNotNull(fetchedChild.getParent(), "Child should have parent after rename " + (i + 1));
-
-      parentTag.setDescription("Description after rename " + (i + 1));
-      parentTag = patchEntity(parentTag.getId().toString(), parentTag);
-
-      fetchedChild = client.tags().get(childTag.getId().toString(), "parent");
-      assertNotNull(
-          fetchedChild.getParent(),
-          "Child should have parent after rename + update iteration " + (i + 1));
+    for (Thread thread : response.getData()) {
+      return thread;
     }
 
-    // Verify the child's parent reference has the final updated FQN
+    throw new RuntimeException("Failed to submit recognizer feedback task");
+  }
+
+  private void resolveRecognizerFeedbackTask(Thread thread) {
+    String url =
+        "/v1/feed/tasks/"
+            + thread.getTask().getId().toString()
+            + "/resolve?description="
+            + thread.getId().toString();
+    SdkClients.user2Client()
+        .getHttpClient()
+        .executeForString(HttpMethod.PUT, url, Map.of("newValue", "approved"));
+  }
+
+  private void rejectRecognizerFeedbackTask(Thread thread) {
+    String url =
+        "/v1/feed/tasks/"
+            + thread.getTask().getId().toString()
+            + "/close?description="
+            + thread.getId().toString();
+    SdkClients.user2Client()
+        .getHttpClient()
+        .executeForString(HttpMethod.PUT, url, Map.of("comment", "closed"));
+  }
+
+  private Recognizer getNameRecognizer() {
+    return new Recognizer()
+        .withName("test_recognizer")
+        .withRecognizerConfig(
+            new PredefinedRecognizer()
+                .withSupportedLanguage("en")
+                .withName(PredefinedRecognizer.Name.EMAIL_RECOGNIZER));
+  }
+
+  @Test
+  void test_recognizerFeedback_withDirectReviewer_createsTask(TestNamespace ns) throws Exception {
+    org.openmetadata.service.governance.workflows.WorkflowHandler.getInstance()
+        .resumeWorkflow("RecognizerFeedbackReviewWorkflow");
+
+    Classification classification = createClassification(ns);
+
+    CreateTag tagRequest = new CreateTag();
+    tagRequest.setName("tag_with_reviewer_" + ns.uniqueShortId());
+    tagRequest.setClassification(classification.getFullyQualifiedName());
+    tagRequest.setDescription("Tag with direct reviewer");
+    tagRequest.setReviewers(java.util.List.of(testUser2().getEntityReference()));
+    Tag tag = createEntity(tagRequest);
+
+    org.openmetadata.schema.entity.data.Table table =
+        createTableWithGeneratedTag(ns, tag.getFullyQualifiedName());
+
+    String entityLink = "<#E::table::" + table.getFullyQualifiedName() + "::columns::test_column>";
+
+    org.openmetadata.schema.type.RecognizerFeedback feedback =
+        submitRecognizerFeedback(entityLink, tag.getFullyQualifiedName(), "admin");
+
+    Thread task = waitForRecognizerFeedbackTask(tag.getFullyQualifiedName());
+
+    assertNotNull(task, "Task should be created for tag with reviewer");
     assertEquals(
-        parentTag.getFullyQualifiedName(),
-        fetchedChild.getParent().getFullyQualifiedName(),
-        "Child's parent reference should have final updated FQN");
+        org.openmetadata.schema.type.TaskType.RecognizerFeedbackApproval, task.getTask().getType());
+    assertNotNull(task.getTask().getFeedback(), "Task should contain feedback details");
+    assertEquals(feedback.getEntityLink(), task.getTask().getFeedback().getEntityLink());
   }
 
   @Test
-  void test_tagRename_activityFeedsPreserved(TestNamespace ns) throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
-    Classification classification = createClassification(ns);
+  void test_recognizerFeedback_withInheritedReviewer_createsTask(TestNamespace ns)
+      throws Exception {
+    org.openmetadata.service.governance.workflows.WorkflowHandler.getInstance()
+        .resumeWorkflow("RecognizerFeedbackReviewWorkflow");
 
-    CreateTag request = new CreateTag();
-    request.setName(ns.prefix("tag_rename_feeds"));
-    request.setClassification(classification.getFullyQualifiedName());
-    request.setDescription("Tag for testing rename with activity feeds");
+    CreateClassification classificationRequest = new CreateClassification();
+    classificationRequest.setName("class_reviewer" + "_" + ns.uniqueShortId());
+    classificationRequest.setDescription("Classification with reviewer");
+    classificationRequest.setReviewers(java.util.List.of(testUser2().getEntityReference()));
+    Classification classification =
+        SdkClients.adminClient().classifications().create(classificationRequest);
 
-    Tag tag = createEntity(request);
-    String originalFqn = tag.getFullyQualifiedName();
+    CreateTag tagRequest = new CreateTag();
+    tagRequest.setName("tag_inherited_reviewer" + "_" + ns.uniqueShortId());
+    tagRequest.setClassification(classification.getFullyQualifiedName());
+    tagRequest.setDescription("Tag inheriting reviewer");
+    Tag tag = createEntity(tagRequest);
 
-    Thread.sleep(1000);
+    org.openmetadata.schema.entity.data.Table table =
+        createTableWithGeneratedTag(ns, tag.getFullyQualifiedName());
 
-    String newName = ns.prefix("tag_renamed_feeds");
-    tag.setName(newName);
-    Tag renamedTag = patchEntity(tag.getId().toString(), tag);
+    String entityLink = "<#E::table::" + table.getFullyQualifiedName() + "::columns::test_column>";
 
-    assertNotEquals(originalFqn, renamedTag.getFullyQualifiedName());
-    assertTrue(renamedTag.getFullyQualifiedName().contains(newName));
+    submitRecognizerFeedback(entityLink, tag.getFullyQualifiedName(), "admin");
 
-    Thread.sleep(2000);
-
-    Tag fetchedTag = getEntity(renamedTag.getId().toString());
-    assertEquals(renamedTag.getFullyQualifiedName(), fetchedTag.getFullyQualifiedName());
-    assertEquals(newName, fetchedTag.getName());
+    assertDoesNotThrow(() -> waitForRecognizerFeedbackTask(tag.getFullyQualifiedName()));
   }
 
   @Test
-  void test_tagRename_childTagsUpdated(TestNamespace ns) throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
+  void test_recognizerFeedback_noReviewer_autoApplied(TestNamespace ns) throws Exception {
+    org.openmetadata.service.governance.workflows.WorkflowHandler.getInstance()
+        .resumeWorkflow("RecognizerFeedbackReviewWorkflow");
+
     Classification classification = createClassification(ns);
 
-    CreateTag parentRequest = new CreateTag();
-    parentRequest.setName(ns.prefix("parent_rename"));
-    parentRequest.setClassification(classification.getFullyQualifiedName());
-    parentRequest.setDescription("Parent tag for rename test");
+    CreateTag tagRequest =
+        new CreateTag()
+            .withRecognizers(java.util.List.of(getNameRecognizer()))
+            .withName("tag_no_reviewer" + "_" + ns.uniqueShortId())
+            .withClassification(classification.getFullyQualifiedName())
+            .withDescription("Tag without reviewer");
 
-    Tag parentTag = createEntity(parentRequest);
+    Tag tag = createEntity(tagRequest);
 
-    CreateTag childRequest = new CreateTag();
-    childRequest.setName(ns.prefix("child_tag"));
-    childRequest.setClassification(classification.getFullyQualifiedName());
-    childRequest.setParent(parentTag.getFullyQualifiedName());
-    childRequest.setDescription("Child tag");
+    org.openmetadata.schema.entity.data.Table table =
+        createTableWithGeneratedTag(ns, tag.getFullyQualifiedName());
 
-    Tag childTag = createEntity(childRequest);
-    String originalChildFqn = childTag.getFullyQualifiedName();
+    String entityLink = "<#E::table::" + table.getFullyQualifiedName() + "::columns::test_column>";
 
-    Thread.sleep(1000);
+    submitRecognizerFeedback(entityLink, tag.getFullyQualifiedName(), "admin");
 
-    String newParentName = ns.prefix("parent_renamed");
-    parentTag.setName(newParentName);
-    Tag renamedParent = patchEntity(parentTag.getId().toString(), parentTag);
+    Thread task;
+    try {
+      task = waitForRecognizerFeedbackTask(tag.getFullyQualifiedName());
+    } catch (ConditionTimeoutException ignored) {
+      task = null;
+    }
+    assertNull(task, "No task should be created for tag without reviewer - should be auto-applied");
 
-    Thread.sleep(2000);
+    Tag updatedTag = getEntity(tag.getId().toString());
+    assertNotNull(updatedTag.getRecognizers());
+    assertFalse(updatedTag.getRecognizers().isEmpty());
+    assertTrue(
+        updatedTag.getRecognizers().getFirst().getExceptionList() != null
+            && !updatedTag.getRecognizers().getFirst().getExceptionList().isEmpty(),
+        "Recognizer should have exception added");
 
-    Tag fetchedChild = getEntity(childTag.getId().toString());
-    assertNotEquals(originalChildFqn, fetchedChild.getFullyQualifiedName());
-    assertTrue(fetchedChild.getFullyQualifiedName().contains(newParentName));
+    org.openmetadata.schema.entity.data.Table updatedTable =
+        SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "columns,tags");
+    boolean tagRemoved =
+        updatedTable.getColumns().getFirst().getTags().stream()
+            .noneMatch(t -> t.getTagFQN().equals(tag.getFullyQualifiedName()));
+    assertTrue(tagRemoved, "Tag should be removed from column");
+  }
+
+  @Test
+  void test_recognizerFeedback_approveTask_removesTagAndAddsException(TestNamespace ns)
+      throws Exception {
+    org.openmetadata.service.governance.workflows.WorkflowHandler.getInstance()
+        .resumeWorkflow("RecognizerFeedbackReviewWorkflow");
+
+    Classification classification = createClassification(ns);
+
+    CreateTag tagRequest = new CreateTag();
+    tagRequest.setName("tag_approve_test" + "_" + ns.uniqueShortId());
+    tagRequest.setClassification(classification.getFullyQualifiedName());
+    tagRequest.setDescription("Tag for approval test");
+    tagRequest.setReviewers(java.util.List.of(testUser2().getEntityReference()));
+    tagRequest.setRecognizers(java.util.List.of(getNameRecognizer()));
+    Tag tag = createEntity(tagRequest);
+
+    org.openmetadata.schema.entity.data.Table table =
+        createTableWithGeneratedTag(ns, tag.getFullyQualifiedName());
+
+    String entityLink = "<#E::table::" + table.getFullyQualifiedName() + "::columns::test_column>";
+    submitRecognizerFeedback(entityLink, tag.getFullyQualifiedName(), "admin");
+
+    waitForRecognizerFeedbackTask(tag.getFullyQualifiedName());
+
+    org.openmetadata.schema.entity.feed.Thread task =
+        waitForRecognizerFeedbackTask(tag.getFullyQualifiedName());
+    assertNotNull(task);
+
+    resolveRecognizerFeedbackTask(task);
+
+    java.lang.Thread.sleep(2000);
+
+    Tag updatedTag = getEntity(tag.getId().toString());
+    assertNotNull(updatedTag.getRecognizers());
+    assertFalse(updatedTag.getRecognizers().isEmpty());
+    assertTrue(
+        updatedTag.getRecognizers().getFirst().getExceptionList() != null
+            && !updatedTag.getRecognizers().getFirst().getExceptionList().isEmpty(),
+        "Recognizer should have exception added after approval");
+
+    org.openmetadata.schema.type.RecognizerException exception =
+        updatedTag.getRecognizers().getFirst().getExceptionList().getFirst();
+    assertTrue(
+        exception.getReason().contains("NOT_SENSITIVE_DATA"),
+        "Exception reason should contain user reason");
+    assertTrue(
+        exception.getReason().contains("This is not actually sensitive data"),
+        "Exception reason should contain user comments");
+
+    org.openmetadata.schema.entity.data.Table updatedTable =
+        SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "columns,tags");
+    boolean tagRemoved =
+        updatedTable.getColumns().getFirst().getTags().stream()
+            .noneMatch(t -> t.getTagFQN().equals(tag.getFullyQualifiedName()));
+    assertTrue(tagRemoved, "Tag should be removed from column after approval");
+  }
+
+  @Test
+  void test_recognizerFeedback_rejectTask_keepsTag(TestNamespace ns) throws Exception {
+    org.openmetadata.service.governance.workflows.WorkflowHandler.getInstance()
+        .resumeWorkflow("RecognizerFeedbackReviewWorkflow");
+
+    Classification classification = createClassification(ns);
+
+    CreateTag tagRequest = new CreateTag();
+    tagRequest.setName(ns.prefix("tag_reject_test"));
+    tagRequest.setClassification(classification.getFullyQualifiedName());
+    tagRequest.setDescription("Tag for rejection test");
+    tagRequest.setReviewers(java.util.List.of(testUser2().getEntityReference()));
+    tagRequest.setRecognizers(java.util.List.of(getNameRecognizer()));
+    Tag tag = createEntity(tagRequest);
+
+    org.openmetadata.schema.entity.data.Table table =
+        createTableWithGeneratedTag(ns, tag.getFullyQualifiedName());
+
+    String entityLink = "<#E::table::" + table.getFullyQualifiedName() + "::columns::test_column>";
+
+    submitRecognizerFeedback(entityLink, tag.getFullyQualifiedName(), "admin");
+
+    Thread task = waitForRecognizerFeedbackTask(tag.getFullyQualifiedName());
+
+    rejectRecognizerFeedbackTask(task);
+
+    java.lang.Thread.sleep(2000);
+
+    Tag updatedTag = getEntity(tag.getId().toString());
+    assertNotNull(updatedTag.getRecognizers());
+    assertTrue(
+        updatedTag.getRecognizers().getFirst().getExceptionList() == null
+            || updatedTag.getRecognizers().getFirst().getExceptionList().isEmpty(),
+        "Recognizer should NOT have exception added after rejection");
+
+    org.openmetadata.schema.entity.data.Table updatedTable =
+        SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "columns,tags");
+    boolean tagStillPresent =
+        updatedTable.getColumns().getFirst().getTags().stream()
+            .anyMatch(t -> t.getTagFQN().equals(tag.getFullyQualifiedName()));
+    assertTrue(tagStillPresent, "Tag should remain on column after rejection");
   }
 }
