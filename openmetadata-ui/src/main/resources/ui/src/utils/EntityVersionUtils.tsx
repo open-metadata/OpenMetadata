@@ -38,6 +38,7 @@ import {
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
+import { BulkImportVersionSummary } from '../components/Entity/EntityVersionTimeLine/BulkImportVersionSummary/BulkImportVersionSummary.component';
 import { VersionButton } from '../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
@@ -390,6 +391,28 @@ const getSummaryText = ({
   return `${glossaryTermApprovalText} ${summaryText}`;
 };
 
+const getBulkImportSummary = (fieldsUpdated: FieldChange[]) => {
+  const bulkImportField = fieldsUpdated.find(
+    (field) => field.name === 'bulkImport'
+  );
+
+  if (!bulkImportField) {
+    return null;
+  }
+
+  const newValue = isObject(bulkImportField.newValue)
+    ? bulkImportField.newValue
+    : isValidJSONString(bulkImportField.newValue)
+    ? JSON.parse(bulkImportField.newValue)
+    : null;
+
+  if (!newValue) {
+    return null;
+  }
+
+  return <BulkImportVersionSummary csvImportResult={newValue} />;
+};
+
 export const getSummary = ({
   changeDescription,
   isPrefix = false,
@@ -411,6 +434,8 @@ export const getSummary = ({
       (field) => field.name === 'deleted'
     ) ?? []),
   ];
+
+  const bulkImportSummary = getBulkImportSummary(fieldsUpdated);
 
   return (
     <Fragment>
@@ -448,6 +473,7 @@ export const getSummary = ({
             actionText: t('label.updated-lowercase'),
             isGlossaryTerm,
           })}
+          {bulkImportSummary}
         </Typography.Paragraph>
       ) : null}
       {fieldsDeleted?.length ? (
