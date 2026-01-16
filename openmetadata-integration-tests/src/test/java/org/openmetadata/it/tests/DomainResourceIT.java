@@ -438,6 +438,8 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
 
   /**
    * Verify domain exists in search index with the expected FQN.
+   * Queries by domain ID to avoid complex FQN queries that can exceed
+   * Elasticsearch clause limits.
    */
   private void verifyDomainInSearch(String expectedFqn, String domainId) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -446,11 +448,12 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
     // a moment)
     Thread.sleep(500);
 
-    // Query search index for this specific FQN
+    // Query search index by ID (simpler query, avoids "too many nested clauses"
+    // error)
     String searchResponse =
-        client.search().query(expectedFqn).index("domain_search_index").size(10).execute();
+        client.search().query("id:" + domainId).index("domain_search_index").size(1).execute();
 
-    // Verify the response contains the expected domain
+    // Verify the response contains the expected domain with correct FQN
     assertTrue(
         searchResponse.contains("\"id\":\"" + domainId + "\""),
         "Search index should contain domain with ID: " + domainId);
@@ -461,18 +464,24 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
 
   /**
    * Verify domain does NOT exist in search index with the given FQN.
+   * Searches by partial FQN match to verify old FQN is not in the index.
    */
   private void verifyDomainNotInSearch(String fqn) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Query search index for this FQN
-    String searchResponse =
-        client.search().query("\"" + fqn + "\"").index("domain_search_index").size(10).execute();
+    // Extract just the domain name from the FQN to search by name field (simpler
+    // query)
+    String domainName = fqn.contains(".") ? fqn.substring(fqn.lastIndexOf(".") + 1) : fqn;
 
-    // Verify the response does NOT contain this exact FQN
+    // Query search index by name to find any matching domains
+    String searchResponse =
+        client.search().query("name:" + domainName).index("domain_search_index").size(10).execute();
+
+    // Verify the response does NOT contain the old FQN
+    // It might contain the renamed domain with a new FQN, but not the old one
     assertFalse(
         searchResponse.contains("\"fullyQualifiedName\":\"" + fqn + "\""),
-        "Search index should NOT contain domain with FQN: " + fqn);
+        "Search index should NOT contain domain with old FQN: " + fqn);
   }
 
   // ===================================================================
@@ -824,7 +833,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
             .withDescription("Analytics domain");
     Domain analytics = createEntity(createAnalytics);
 
-    String analyticsV2Name = "analytics_v2_" + ns.shortPrefix();
+    String analyticsV2Name = "anav2" + ns.shortPrefix();
     CreateDomain createAnalyticsV2 =
         new CreateDomain()
             .withName(analyticsV2Name)
@@ -991,7 +1000,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
     Domain analytics = createEntity(createAnalytics);
 
     // Create a sibling domain with similar prefix "analytics_v2"
-    String analyticsV2Name = analyticsName + "_v2";
+    String analyticsV2Name = analyticsName + "v2";
     CreateDomain createAnalyticsV2 =
         new CreateDomain()
             .withName(analyticsV2Name)
@@ -1000,7 +1009,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
     Domain analyticsV2 = createEntity(createAnalyticsV2);
 
     // Create another sibling with similar prefix "analytics_prod"
-    String analyticsProdName = analyticsName + "_prod";
+    String analyticsProdName = analyticsName + "pr";
     CreateDomain createAnalyticsProd =
         new CreateDomain()
             .withName(analyticsProdName)
@@ -1067,7 +1076,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
     // Verify renamed domain can be found by new FQN
     verifyDomainInSearch(newAnalyticsName, analytics.getId().toString());
 
-    //  Verify analytics_v2 can still be found by its ORIGINAL FQN
+    // Verify analytics_v2 can still be found by its ORIGINAL FQN
     verifyDomainInSearch(oldAnalyticsV2Fqn, analyticsV2.getId().toString());
 
     // Verify analytics_prod can still be found by its ORIGINAL FQN
