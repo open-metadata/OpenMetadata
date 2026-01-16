@@ -47,6 +47,8 @@ class AbstractEventConsumerTest {
 
   static class TestEventConsumer extends AbstractEventConsumer {
     private boolean sendAlertResult = true;
+    private final List<ChangeEvent> collectedSuccessfulEvents = new ArrayList<>();
+    private int batchWriteCallCount = 0;
 
     public TestEventConsumer(DIContainer dependencies) {
       super(dependencies);
@@ -54,6 +56,9 @@ class AbstractEventConsumerTest {
 
     @Override
     public boolean sendAlert(UUID receiverId, ChangeEvent event) {
+      if (sendAlertResult) {
+        collectedSuccessfulEvents.add(event);
+      }
       return sendAlertResult;
     }
 
@@ -83,10 +88,23 @@ class AbstractEventConsumerTest {
     @Override
     public void commit(JobExecutionContext jobExecutionContext) {
       // Override to avoid Entity.getCollectionDAO() static call in tests
+      // Simulate batch write by incrementing counter
+      if (!collectedSuccessfulEvents.isEmpty()) {
+        batchWriteCallCount++;
+        collectedSuccessfulEvents.clear();
+      }
     }
 
     public void setSendAlertResult(boolean result) {
       this.sendAlertResult = result;
+    }
+
+    public List<ChangeEvent> getCollectedSuccessfulEvents() {
+      return collectedSuccessfulEvents;
+    }
+
+    public int getBatchWriteCallCount() {
+      return batchWriteCallCount;
     }
   }
 
@@ -217,6 +235,106 @@ class AbstractEventConsumerTest {
             event2, receivers);
 
     assertDoesNotThrow(() -> testEventConsumer.publishEvents(events));
+  }
+
+  @Test
+  void testBatchCollectionOnSuccessfulSend() {
+    ChangeEvent event1 = createMockChangeEvent();
+    ChangeEvent event2 = createMockChangeEvent();
+    ChangeEvent event3 = createMockChangeEvent();
+
+    testEventConsumer.sendAlert(destinationId, event1);
+    testEventConsumer.sendAlert(destinationId, event2);
+    testEventConsumer.sendAlert(destinationId, event3);
+
+    assertEquals(
+        3,
+        testEventConsumer.getCollectedSuccessfulEvents().size(),
+        "All successful events should be collected");
+    assertEquals(
+        0, testEventConsumer.getBatchWriteCallCount(), "Batch write should not occur until commit");
+  }
+
+  @Test
+  void testBatchCollectionNotOccurringOnFailedSend() {
+    testEventConsumer.setSendAlertResult(false);
+
+    ChangeEvent event1 = createMockChangeEvent();
+    ChangeEvent event2 = createMockChangeEvent();
+
+    testEventConsumer.sendAlert(destinationId, event1);
+    testEventConsumer.sendAlert(destinationId, event2);
+
+    assertTrue(
+        testEventConsumer.getCollectedSuccessfulEvents().isEmpty(),
+        "Failed events should not be collected");
+  }
+
+  @Test
+  void testBatchWriteOccursOnCommit() {
+    ChangeEvent event1 = createMockChangeEvent();
+    ChangeEvent event2 = createMockChangeEvent();
+
+    testEventConsumer.sendAlert(destinationId, event1);
+    testEventConsumer.sendAlert(destinationId, event2);
+
+    assertEquals(2, testEventConsumer.getCollectedSuccessfulEvents().size());
+    assertEquals(0, testEventConsumer.getBatchWriteCallCount());
+
+    testEventConsumer.commit(jobExecutionContext);
+
+    assertEquals(1, testEventConsumer.getBatchWriteCallCount(), "Single batch write should occur");
+    assertTrue(
+        testEventConsumer.getCollectedSuccessfulEvents().isEmpty(),
+        "Events should be cleared after commit");
+  }
+
+  @Test
+  void testEmptyCommitDoesNotTriggerBatchWrite() {
+    assertEquals(0, testEventConsumer.getCollectedSuccessfulEvents().size());
+
+    testEventConsumer.commit(jobExecutionContext);
+
+    assertEquals(
+        0, testEventConsumer.getBatchWriteCallCount(), "No batch write for empty collection");
+  }
+
+  @Test
+  void testMultipleBatchesWithSeparateCommits() {
+    ChangeEvent event1 = createMockChangeEvent();
+    ChangeEvent event2 = createMockChangeEvent();
+    ChangeEvent event3 = createMockChangeEvent();
+
+    testEventConsumer.sendAlert(destinationId, event1);
+    testEventConsumer.sendAlert(destinationId, event2);
+    testEventConsumer.commit(jobExecutionContext);
+
+    assertEquals(1, testEventConsumer.getBatchWriteCallCount());
+
+    testEventConsumer.sendAlert(destinationId, event3);
+    testEventConsumer.commit(jobExecutionContext);
+
+    assertEquals(
+        2, testEventConsumer.getBatchWriteCallCount(), "Second batch should trigger write");
+  }
+
+  @Test
+  void testMixedSuccessAndFailureResults() {
+    ChangeEvent successEvent = createMockChangeEvent();
+    ChangeEvent failEvent = createMockChangeEvent();
+
+    testEventConsumer.setSendAlertResult(true);
+    testEventConsumer.sendAlert(destinationId, successEvent);
+
+    assertEquals(1, testEventConsumer.getCollectedSuccessfulEvents().size());
+
+    testEventConsumer.setSendAlertResult(false);
+    testEventConsumer.sendAlert(destinationId, failEvent);
+
+    assertEquals(
+        1,
+        testEventConsumer.getCollectedSuccessfulEvents().size(),
+        "Only successful events should be collected");
   }
 
   private ChangeEvent createMockChangeEvent() {
