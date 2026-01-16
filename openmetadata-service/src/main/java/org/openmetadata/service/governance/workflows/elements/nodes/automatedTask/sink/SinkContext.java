@@ -43,6 +43,9 @@ public class SinkContext {
   /** Whether batch mode is enabled. */
   private boolean batchMode;
 
+  /** Timeout in seconds for sink operations. */
+  private int timeoutSeconds;
+
   /** Additional context data from the workflow execution. */
   private Map<String, Object> additionalContext;
 
