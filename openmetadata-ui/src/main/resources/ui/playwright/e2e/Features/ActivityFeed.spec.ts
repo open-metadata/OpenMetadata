@@ -607,6 +607,24 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     await database.create(apiContext);
+
+    // Add description to generate activity
+    await apiContext.patch(
+      `/api/v1/databaseSchemas/${database.schemaResponseData.id}`,
+      {
+        data: [
+          {
+            op: 'add',
+            path: '/description',
+            value: 'Generating activity for the feed',
+          },
+        ],
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
+
     await apiEndpoint.create(apiContext);
     await adminUser.create(apiContext);
     schemaFqn = database.schemaResponseData.fullyQualifiedName;
