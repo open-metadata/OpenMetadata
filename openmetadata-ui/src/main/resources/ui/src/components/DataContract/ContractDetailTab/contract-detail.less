@@ -124,63 +124,6 @@
   }
 }
 
-// MUI Menu styling for contract actions
-.MuiMenu-root {
-  .MuiPaper-root {
-    border-radius: 8px;
-    border: 1px solid @grey-15;
-    box-shadow: @button-box-shadow-default;
-    white-space: nowrap;
-    width: auto !important;
-    min-width: auto !important;
-  }
-
-  .MuiMenu-list {
-    padding: 0;
-  }
-
-  .MuiMenuItem-root {
-    padding: 10px 0;
-    min-height: auto;
-    margin: 0;
-
-    .contract-action-dropdown-item {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 14px;
-      font-weight: 500;
-      color: @grey-700;
-      padding: 0 16px;
-
-      svg {
-        width: 16px;
-        height: 16px;
-        color: @grey-700;
-      }
-
-      &.contract-action-dropdown-delete-item {
-        color: @red-14;
-        svg {
-          color: @red-14;
-        }
-      }
-    }
-
-    &:hover {
-      background-color: #f5faff;
-
-      .contract-action-dropdown-item {
-        color: #1570ef;
-        svg {
-          color: #1570ef;
-        }
-      }
-    }
-  }
-}
-
 .contract-action-dropdown {
   .ant-dropdown-menu {
     padding: 0;

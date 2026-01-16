@@ -39,6 +39,7 @@ import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-g
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 import { ReactComponent as ImportIconSelected } from '../../../assets/svg/import-icon-selected.svg';
 import { ReactComponent as ImportIconContract } from '../../../assets/svg/import-icon.svg';
+import { PRIMARY_COLOR } from '../../../constants/Color.constants';
 import {
   ContractImportFormat,
   CONTRACT_DATE_TIME_FORMAT,
@@ -158,7 +159,7 @@ const ContractDetail: React.FC<{
               color:
                 hoveredAddContractItem ===
                 DATA_CONTRACT_ACTION_DROPDOWN_KEY.CREATE
-                  ? '#1570EF'
+                  ? PRIMARY_COLOR
                   : 'inherit',
             }}
           />
@@ -612,6 +613,55 @@ const ContractDetail: React.FC<{
               data-testid="add-contract-menu"
               id="add-contract-menu"
               open={Boolean(addContractMenuAnchor)}
+              sx={{
+                '& .MuiPaper-root': {
+                  borderRadius: '8px',
+                  border: '1px solid var(--grey-15)',
+                  boxShadow: 'var(--button-box-shadow-default)',
+                  whiteSpace: 'nowrap',
+                  width: 'auto',
+                  minWidth: 'auto',
+                },
+
+                '& .MuiMenu-list': {
+                  padding: 0,
+                },
+
+                '& .MuiMenuItem-root': {
+                  padding: '10px 0',
+                  minHeight: 'auto',
+                  margin: 0,
+
+                  '& .contract-action-dropdown-item': {
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    color: 'var(--grey-700)',
+                    padding: '0 16px',
+
+                    '& svg': {
+                      width: '16px',
+                      height: '16px',
+                      color: 'var(--grey-700)',
+                    },
+                  },
+
+                  '&:hover': {
+                    backgroundColor: '#f5faff',
+
+                    '& .contract-action-dropdown-item': {
+                      color: '#1570ef',
+
+                      '& svg': {
+                        color: '#1570ef',
+                      },
+                    },
+                  },
+                },
+              }}
               onClose={handleAddContractMenuClose}>
               {addContractActionsItems.map((item) => (
                 <MenuItem
