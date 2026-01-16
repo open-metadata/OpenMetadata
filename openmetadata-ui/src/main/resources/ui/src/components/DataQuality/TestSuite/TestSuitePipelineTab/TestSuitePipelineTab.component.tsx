@@ -12,7 +12,7 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Row, Typography } from 'antd';
+import { Button, Col, Row } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { sortBy } from 'lodash';
@@ -45,6 +45,7 @@ import { getServiceFromTestSuiteFQN } from '../../../../utils/TestSuiteUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ErrorPlaceHolderIngestion from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
+import MUIFormItemLabel from '../../../common/MUIFormItemLabel/MUIFormItemLabel';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import IngestionListTable from '../../../Settings/Services/Ingestion/IngestionListTable/IngestionListTable';
 
@@ -259,25 +260,23 @@ const TestSuitePipelineTab = ({
   const pipelineTypeColumnObj: ColumnsType<IngestionPipeline> = useMemo(
     () => [
       {
-        title: t('label.type'),
-        dataIndex: 'pipelineType',
-        key: 'pipelineType',
-        width: 150,
-        render: () => t('label.test-suite'),
-      },
-      {
-        title: t('label.test-case-plural'),
+        title: (
+          <MUIFormItemLabel
+            helperText={t('message.test-case-count-info')}
+            label={t('label.test-case-plural')}
+          />
+        ),
         dataIndex: 'testCases',
         key: 'testCases',
         width: 120,
         render: (_: string, record: IngestionPipeline) => {
           const testCasesCount =
-            record?.sourceConfig?.config?.testCases?.length ?? 0;
+            record?.sourceConfig?.config?.testCases?.length ?? t('label.all');
 
           return (
-            <Typography.Text data-testid={`test-case-count-${record.name}`}>
+            <span data-testid={`test-case-count-${record.name}`}>
               {testCasesCount}
-            </Typography.Text>
+            </span>
           );
         },
       },

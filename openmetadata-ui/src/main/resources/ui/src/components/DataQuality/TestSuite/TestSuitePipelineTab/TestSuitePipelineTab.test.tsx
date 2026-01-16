@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import React from 'react';
 import { act } from 'react-test-renderer';
 import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
@@ -166,7 +167,7 @@ jest.mock(
         currentPage: number;
       }) => void;
       pipelineTypeColumnObj?: Array<{
-        title: string;
+        title: React.ReactNode;
         dataIndex: string;
         key: string;
         width?: number;
@@ -175,6 +176,11 @@ jest.mock(
     }) {
       return (
         <div data-testid="test-suite-pipeline-tab">
+          {pipelineTypeColumnObj && (
+            <div data-testid="pipeline-type-column-header">
+              {pipelineTypeColumnObj[0]?.title}
+            </div>
+          )}
           {ingestionData.map((pipeline) => (
             <div key={pipeline.id}>
               <div>{pipeline.name}</div>
@@ -342,5 +348,17 @@ describe('TestSuite Pipeline component', () => {
     expect(pipeline1Count).toHaveTextContent('3');
     expect(pipeline2Count).toHaveTextContent('1');
     expect(pipeline3Count).toHaveTextContent('0');
+  });
+
+  it('should render test cases column header with label and helper icon', async () => {
+    await act(async () => {
+      render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
+    });
+
+    const columnHeader = screen.getByTestId('pipeline-type-column-header');
+
+    expect(columnHeader).toBeInTheDocument();
+    expect(screen.getByTestId('mui-form-item-label')).toBeInTheDocument();
+    expect(screen.getByTestId('mui-helper-icon')).toBeInTheDocument();
   });
 });

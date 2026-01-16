@@ -2684,6 +2684,7 @@
     "team-member-management-description": "Streamline access to users and teams in {{brandName}}.",
     "team-moved-success": "הקבוצה הועברה בהצלחה!",
     "team-no-asset": "לקבוצתך אין נכסים.",
+    "test-case-count-info": "מציג את מספר מקרי הבדיקה שנבחרו עבור צינור זה. 'הכל' מציין שכל מקרי הבדיקה הזמינים יבוצעו.",
     "test-case-insight-description": "גישה לתצוגה מרכזית של בריאות מערך הנתונים שלך על בסיס אימותי בדיקה מוגדרים.",
     "test-case-name-validation": "השם לא יכול להכיל נקודתיים כפולות (::), מרכאות (\") או סמלי גדול מ- (>).",
     "test-case-schedule-description": "בדיקות איכות הנתונים ניתנות לתזמון לרוץ בתדירות הרצויה. אזור הזמן הוא UTC.",

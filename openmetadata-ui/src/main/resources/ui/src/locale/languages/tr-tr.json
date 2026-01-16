@@ -2684,6 +2684,7 @@
     "team-member-management-description": "{{brandName}} içindeki kullanıcılara ve takımlara erişimi kolaylaştırın.",
     "team-moved-success": "Takım başarıyla taşındı!",
     "team-no-asset": "Takımınızın herhangi bir varlığı yok.",
+    "test-case-count-info": "Bu boru hattı için seçilen test senaryosu sayısını gösterir. 'Tümü' mevcut tüm test senaryolarının çalıştırılacağını belirtir.",
     "test-case-insight-description": "Yapılandırılmış test doğrulamalarına dayalı olarak veri setinizin sağlığının merkezi görünümüne erişin.",
     "test-case-name-validation": "Ad çift iki nokta (::), tırnak işareti (\") veya büyüktür simgesi (>) içeremez.",
     "test-case-schedule-description": "Veri kalitesi testleri istenen sıklıkta çalışacak şekilde zamanlanabilir. Saat dilimi UTC'dir.",
