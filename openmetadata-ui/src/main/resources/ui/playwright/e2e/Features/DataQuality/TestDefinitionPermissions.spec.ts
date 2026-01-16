@@ -16,6 +16,7 @@ import { RolesClass } from '../../../support/access-control/RolesClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext, redirectToHomePage, uuid } from '../../../utils/common';
+import { findSystemTestDefinition } from '../../../utils/testCases';
 
 
 const actionNotAllowed = async (page: Page) => {
@@ -330,22 +331,8 @@ test.describe('Test Definition Permissions - Data Steward', () => {
     dataStewardPage,
   }) => {
     await redirectToHomePage(dataStewardPage);
-    // Wait for API response to get test definitions
-    const response = dataStewardPage.waitForResponse((response) =>
-      response.url().includes('/api/v1/dataQuality/testDefinitions')
-    );
 
-    // Navigate to Rules Library
-    await dataStewardPage.goto('/rules-library');
-
-    const responseResolved = await response;
-    const data = await responseResolved.json();
-
-    // Find a system test definition
-    const systemTestDef = data.data.find(
-      (def: { provider: string }) => def.provider === 'system'
-    );
-
+    const systemTestDef = await findSystemTestDefinition(dataStewardPage);
 
     // Verify edit button does not exist for system test definition
     const editButton = dataStewardPage.getByTestId(
@@ -429,15 +416,10 @@ test.describe('Test Definition Permissions - API Level Validation', () => {
     await redirectToHomePage(adminPage);
     const { apiContext } = await getApiContext(adminPage);
 
-    const response = adminPage.waitForResponse((response) =>
-      response.url().includes('/api/v1/dataQuality/testDefinitions')
-    );
-
-    // Navigate to Rules Library
-    await adminPage.goto('/rules-library');
-
-    const responseResolved = await response;
-    const data = await responseResolved.json();
+    // Get a system test definition via API directly to ensure we find one
+    const response = await apiContext.get('/api/v1/dataQuality/testDefinitions?limit=100');
+    expect(response.ok()).toBeTruthy();
+    const data = await response.json();
 
     // Find a system test definition with COLUMN entity type
     const systemTestDef = data.data.find(
@@ -445,6 +427,8 @@ test.describe('Test Definition Permissions - API Level Validation', () => {
         def.provider === 'system' && def.entityType === 'COLUMN'
     );
 
+    // Ensure we found one to test against
+    expect(systemTestDef).toBeDefined();
 
     // Try to patch the test definition to change entity type (should fail even for admin)
     const patchResponse = await apiContext.patch(
