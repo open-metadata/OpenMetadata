@@ -25,12 +25,21 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Simple HTTP server for health check endpoints.
- * Provides /health and /ready endpoints for Kubernetes probes.
+ * HTTP server for health check endpoints.
+ * Provides /health, /ready, and /metrics endpoints for Kubernetes probes
+ * and observability.
+ *
+ * <p>Health checks verify:
+ * <ul>
+ *   <li>/health - Liveness: operator process is running</li>
+ *   <li>/ready - Readiness: operator is ready AND K8s API is accessible (if check is configured)</li>
+ * </ul>
  */
 public class HealthCheckService {
 
@@ -39,12 +48,25 @@ public class HealthCheckService {
   private final int port;
   private final AtomicBoolean ready = new AtomicBoolean(false);
   private final PrometheusMeterRegistry meterRegistry;
+  private final AtomicReference<Supplier<HealthStatus>> k8sHealthCheck = new AtomicReference<>();
   private HttpServer server;
 
   public HealthCheckService(int port) {
     this.port = port;
     this.meterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
     registerMetrics();
+  }
+
+  /**
+   * Set a custom health check that verifies K8s API connectivity.
+   * This check is called on each /ready request to ensure the operator
+   * can still communicate with the K8s API server.
+   *
+   * @param healthCheck supplier that returns current health status
+   */
+  public void setK8sHealthCheck(Supplier<HealthStatus> healthCheck) {
+    this.k8sHealthCheck.set(healthCheck);
+    LOG.info("Configured K8s API health check");
   }
 
   /**
@@ -127,34 +149,62 @@ public class HealthCheckService {
   }
 
   /**
-   * Readiness handler - returns 200 only when operator is ready.
+   * Readiness handler - returns 200 only when operator is ready and K8s API is accessible.
    */
   private class ReadinessHandler implements HttpHandler {
     @Override
     public void handle(HttpExchange exchange) throws IOException {
-      if (ready.get()) {
-        String response =
-            "{\"status\":\"READY\",\"timestamp\":\"" + System.currentTimeMillis() + "\"}";
+      HealthStatus status = checkReadiness();
 
-        exchange.getResponseHeaders().set("Content-Type", "application/json");
-        exchange.sendResponseHeaders(200, response.getBytes(StandardCharsets.UTF_8).length);
+      String response =
+          String.format(
+              "{\"status\":\"%s\",\"k8sApi\":\"%s\",\"message\":\"%s\",\"timestamp\":\"%d\"}",
+              status.isHealthy() ? "READY" : "NOT_READY",
+              status.isK8sApiAccessible() ? "UP" : "DOWN",
+              status.message() != null ? status.message() : "",
+              System.currentTimeMillis());
 
-        try (OutputStream os = exchange.getResponseBody()) {
-          os.write(response.getBytes(StandardCharsets.UTF_8));
-        }
-      } else {
-        String response =
-            "{\"status\":\"NOT_READY\",\"timestamp\":\"" + System.currentTimeMillis() + "\"}";
+      int statusCode = status.isHealthy() ? 200 : 503;
 
-        exchange.getResponseHeaders().set("Content-Type", "application/json");
-        exchange.sendResponseHeaders(503, response.getBytes(StandardCharsets.UTF_8).length);
+      exchange.getResponseHeaders().set("Content-Type", "application/json");
+      exchange.sendResponseHeaders(statusCode, response.getBytes(StandardCharsets.UTF_8).length);
 
-        try (OutputStream os = exchange.getResponseBody()) {
-          os.write(response.getBytes(StandardCharsets.UTF_8));
-        }
+      try (OutputStream os = exchange.getResponseBody()) {
+        os.write(response.getBytes(StandardCharsets.UTF_8));
       }
     }
   }
+
+  /**
+   * Check overall readiness including K8s API connectivity.
+   */
+  private HealthStatus checkReadiness() {
+    if (!ready.get()) {
+      return new HealthStatus(false, false, "Operator not ready");
+    }
+
+    Supplier<HealthStatus> healthCheck = k8sHealthCheck.get();
+    if (healthCheck != null) {
+      try {
+        return healthCheck.get();
+      } catch (Exception e) {
+        LOG.warn("K8s health check failed: {}", e.getMessage());
+        return new HealthStatus(false, false, "K8s API check failed: " + e.getMessage());
+      }
+    }
+
+    // No K8s health check configured, just return based on ready flag
+    return new HealthStatus(true, true, "OK");
+  }
+
+  /**
+   * Health status record for readiness checks.
+   *
+   * @param isHealthy overall health status
+   * @param isK8sApiAccessible whether K8s API is accessible
+   * @param message optional status message
+   */
+  public record HealthStatus(boolean isHealthy, boolean isK8sApiAccessible, String message) {}
 
   /**
    * Simple metrics handler placeholder.

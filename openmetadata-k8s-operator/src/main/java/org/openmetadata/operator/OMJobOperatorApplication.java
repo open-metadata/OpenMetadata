@@ -17,11 +17,13 @@ import io.javaoperatorsdk.operator.Operator;
 import io.javaoperatorsdk.operator.api.config.ConfigurationService;
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.Configuration;
+import io.kubernetes.client.openapi.apis.VersionApi;
 import io.kubernetes.client.util.Config;
 import org.openmetadata.operator.config.OperatorConfig;
 import org.openmetadata.operator.controller.CronOMJobReconciler;
 import org.openmetadata.operator.controller.OMJobReconciler;
 import org.openmetadata.operator.service.HealthCheckService;
+import org.openmetadata.operator.service.HealthCheckService.HealthStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +41,20 @@ import org.slf4j.LoggerFactory;
 public class OMJobOperatorApplication {
 
   private static final Logger LOG = LoggerFactory.getLogger(OMJobOperatorApplication.class);
+
+  /**
+   * Check K8s API connectivity by fetching the server version.
+   * This is a lightweight call that verifies the API server is reachable.
+   */
+  private static HealthStatus checkK8sApi(VersionApi versionApi) {
+    try {
+      versionApi.getCode();
+      return new HealthStatus(true, true, "OK");
+    } catch (Exception e) {
+      LOG.warn("K8s API health check failed: {}", e.getMessage());
+      return new HealthStatus(false, false, "K8s API unreachable: " + e.getMessage());
+    }
+  }
 
   public static void main(String[] args) {
     HealthCheckService healthService = null;
@@ -109,6 +125,10 @@ public class OMJobOperatorApplication {
 
       // Start operator
       operator.start();
+
+      // Configure K8s API health check
+      VersionApi versionApi = new VersionApi(client);
+      healthService.setK8sHealthCheck(() -> checkK8sApi(versionApi));
 
       // Mark as ready after successful startup
       healthService.setReady(true);
