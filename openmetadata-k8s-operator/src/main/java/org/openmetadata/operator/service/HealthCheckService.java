@@ -156,12 +156,13 @@ public class HealthCheckService {
     public void handle(HttpExchange exchange) throws IOException {
       HealthStatus status = checkReadiness();
 
+      String escapedMessage = escapeJson(status.message() != null ? status.message() : "");
       String response =
           String.format(
               "{\"status\":\"%s\",\"k8sApi\":\"%s\",\"message\":\"%s\",\"timestamp\":\"%d\"}",
               status.isHealthy() ? "READY" : "NOT_READY",
               status.isK8sApiAccessible() ? "UP" : "DOWN",
-              status.message() != null ? status.message() : "",
+              escapedMessage,
               System.currentTimeMillis());
 
       int statusCode = status.isHealthy() ? 200 : 503;
@@ -173,6 +174,15 @@ public class HealthCheckService {
         os.write(response.getBytes(StandardCharsets.UTF_8));
       }
     }
+  }
+
+  private static String escapeJson(String value) {
+    return value
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+        .replace("\t", "\\t");
   }
 
   /**

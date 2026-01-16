@@ -52,6 +52,7 @@ public class OMJobOperatorApplication {
       return new HealthStatus(true, true, "OK");
     } catch (Exception e) {
       LOG.warn("K8s API health check failed: {}", e.getMessage());
+      LOG.debug("K8s API health check exception details", e);
       return new HealthStatus(false, false, "K8s API unreachable: " + e.getMessage());
     }
   }

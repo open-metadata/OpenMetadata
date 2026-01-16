@@ -26,6 +26,7 @@ import io.fabric8.kubernetes.api.model.PodBuilder;
 import io.fabric8.kubernetes.api.model.PodSecurityContext;
 import io.fabric8.kubernetes.api.model.PodSpecBuilder;
 import io.fabric8.kubernetes.api.model.PodStatus;
+import io.fabric8.kubernetes.api.model.SecurityContext;
 import io.fabric8.kubernetes.api.model.SecurityContextBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import java.util.ArrayList;
@@ -346,8 +347,7 @@ public class PodManager {
    * Uses settings from the CR's pod security context, with secure defaults for
    * container-specific settings not specified at the pod level.
    */
-  private io.fabric8.kubernetes.api.model.SecurityContext buildContainerSecurityContext(
-      OMJobSpec.OMJobPodSpec podSpec) {
+  private SecurityContext buildContainerSecurityContext(OMJobSpec.OMJobPodSpec podSpec) {
     SecurityContextBuilder builder = new SecurityContextBuilder();
 
     // Use runAsNonRoot and runAsUser from pod security context if available
