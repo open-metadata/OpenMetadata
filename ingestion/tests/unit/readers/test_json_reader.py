@@ -54,7 +54,9 @@ class TestJSONReader(unittest.TestCase):
 
             result = reader._read(key=tmp_path, bucket_name="")
 
+            self.assertIsNotNone(result.dataframes)
             dataframes = result.dataframes()
+            self.assertIsNotNone(dataframes)
             chunks = list(dataframes)
             self.assertTrue(len(chunks) > 0)
             total_rows = sum(len(chunk) for chunk in chunks)
@@ -77,7 +79,9 @@ class TestJSONReader(unittest.TestCase):
 
             result = reader._read(key=tmp_path, bucket_name="")
 
+            self.assertIsNotNone(result.dataframes)
             dataframes = result.dataframes()
+            self.assertIsNotNone(dataframes)
             chunks = list(dataframes)
             total_rows = sum(len(chunk) for chunk in chunks)
             self.assertEqual(total_rows, 2)
@@ -99,7 +103,9 @@ class TestJSONReader(unittest.TestCase):
 
             result = reader._read(key=tmp_path, bucket_name="")
 
+            self.assertIsNotNone(result.dataframes)
             dataframes = result.dataframes()
+            self.assertIsNotNone(dataframes)
             chunks = list(dataframes)
             self.assertEqual(len(chunks), 1)
             self.assertEqual(chunks[0].shape[0], 1)
@@ -122,7 +128,9 @@ class TestJSONReader(unittest.TestCase):
 
             result = reader._read(key=tmp_path, bucket_name="")
 
+            self.assertIsNotNone(result.dataframes)
             dataframes = result.dataframes()
+            self.assertIsNotNone(dataframes)
             chunks = list(dataframes)
             self.assertTrue(len(chunks) > 0)
         finally:
@@ -145,7 +153,9 @@ class TestJSONReader(unittest.TestCase):
 
             result = reader._read(key=tmp_path, bucket_name="")
 
+            self.assertIsNotNone(result.dataframes)
             dataframes = result.dataframes()
+            self.assertIsNotNone(dataframes)
             chunks = list(dataframes)
             self.assertTrue(len(chunks) > 0)
         finally:
@@ -193,6 +203,8 @@ class TestJSONReader(unittest.TestCase):
         result = reader._read(key="test.json", bucket_name="test-bucket")
 
         self.assertIsNotNone(result.dataframes)
+        dataframes = result.dataframes()
+        self.assertIsNotNone(dataframes)
 
     @patch("adlfs.AzureBlobFileSystem")
     @patch("metadata.readers.dataframe.json.return_azure_storage_options")
@@ -219,6 +231,8 @@ class TestJSONReader(unittest.TestCase):
         result = reader._read(key="test.json", bucket_name="test-container")
 
         self.assertIsNotNone(result.dataframes)
+        dataframes = result.dataframes()
+        self.assertIsNotNone(dataframes)
 
     def test_s3_json_reading(self):
         import io
@@ -240,6 +254,8 @@ class TestJSONReader(unittest.TestCase):
         result = reader._read(key="test.json", bucket_name="test-bucket")
 
         self.assertIsNotNone(result.dataframes)
+        dataframes = result.dataframes()
+        self.assertIsNotNone(dataframes)
 
     def test_empty_json_lines(self):
         import io

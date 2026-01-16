@@ -521,11 +521,11 @@ class DatalakeUnitTest(TestCase):
             reader = JSONDataFrameReader(config, None)
 
             result1 = reader._read(key=tmp1_path, bucket_name="")
-            actual_df_1 = list(result1.dataframes)[0]
+            actual_df_1 = list(result1.dataframes())[0]
             assert actual_df_1.compare(exp_df_list).empty
 
             result2 = reader._read(key=tmp2_path, bucket_name="")
-            actual_df_2 = list(result2.dataframes)[0]
+            actual_df_2 = list(result2.dataframes())[0]
             assert actual_df_2.compare(exp_df_obj).empty
         finally:
             import os
@@ -543,7 +543,7 @@ class DatalakeUnitTest(TestCase):
 
         try:
             result3 = reader._read(key=tmp3_path, bucket_name="")
-            dataframes = list(result3.dataframes)
+            dataframes = list(result3.dataframes())
             if dataframes:
                 actual_df_3 = dataframes[0]
                 actual_cols_3 = GenericDataFrameColumnParser._get_columns(actual_df_3)
@@ -561,7 +561,7 @@ class DatalakeUnitTest(TestCase):
 
         try:
             result4 = reader._read(key=tmp4_path, bucket_name="")
-            dataframes = list(result4.dataframes)
+            dataframes = list(result4.dataframes())
             if dataframes:
                 actual_df_4 = dataframes[0]
                 actual_cols_4 = GenericDataFrameColumnParser._get_columns(actual_df_4)

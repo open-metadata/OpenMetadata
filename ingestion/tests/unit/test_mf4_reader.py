@@ -53,6 +53,7 @@ class TestMF4DataFrameReader(TestCase):
         result = MF4DataFrameReader._extract_header_from_mdf(mock_mdf)
         self.assertIsInstance(result, DatalakeColumnWrapper)
         self.assertIsNotNone(result.dataframes)
+        self.assertIsNotNone(result.dataframes())
         self.assertEqual(result.raw_data, expected_common_props)
 
     def test_extract_schema_from_header_without_common_properties(self):
@@ -64,7 +65,8 @@ class TestMF4DataFrameReader(TestCase):
         result = MF4DataFrameReader._extract_header_from_mdf(mock_mdf)
 
         self.assertIsNotNone(result)
-        chunks = list(result.dataframes)
+        self.assertIsNotNone(result.dataframes)
+        chunks = list(result.dataframes())
         self.assertEqual(len(chunks), 0)
 
     @patch("asammdf.MDF")
@@ -86,6 +88,7 @@ class TestMF4DataFrameReader(TestCase):
 
         self.assertIsNotNone(result)
         self.assertIsNotNone(result.dataframes)
+        self.assertIsNotNone(result.dataframes())
 
     @patch("asammdf.MDF")
     @patch("tempfile.NamedTemporaryFile")
@@ -122,6 +125,9 @@ class TestMF4DataFrameReader(TestCase):
         result = reader._read(key="test.mf4", bucket_name="test-bucket")
 
         self.assertIsNotNone(result)
+        self.assertIsNotNone(result.dataframes)
+        dataframes = result.dataframes()
+        self.assertIsNotNone(dataframes)
 
     @patch("asammdf.MDF")
     @patch("gcsfs.GCSFileSystem")
@@ -150,6 +156,9 @@ class TestMF4DataFrameReader(TestCase):
         result = reader._read(key="test.mf4", bucket_name="test-bucket")
 
         self.assertIsNotNone(result)
+        self.assertIsNotNone(result.dataframes)
+        dataframes = result.dataframes()
+        self.assertIsNotNone(dataframes)
 
     @patch("asammdf.MDF")
     @patch("adlfs.AzureBlobFileSystem")
@@ -189,3 +198,6 @@ class TestMF4DataFrameReader(TestCase):
         result = reader._read(key="test.mf4", bucket_name="test-container")
 
         self.assertIsNotNone(result)
+        self.assertIsNotNone(result.dataframes)
+        dataframes = result.dataframes()
+        self.assertIsNotNone(dataframes)

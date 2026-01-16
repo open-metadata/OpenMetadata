@@ -98,7 +98,9 @@ class TestAzureParquetReader(unittest.TestCase):
 
         # Consume the generator to trigger the lazy reading
         self.assertIsNotNone(result.dataframes)
-        chunks = list(result.dataframes())
+        dataframes = result.dataframes()
+        self.assertIsNotNone(dataframes)
+        chunks = list(dataframes)
 
         # Now check that the mocks were called after generator consumption
         mock_fsspec_handler.assert_called_once_with(mock_adlfs)
@@ -136,7 +138,9 @@ class TestAzureParquetReader(unittest.TestCase):
 
         # Consume the generator to trigger the lazy reading
         self.assertIsNotNone(result.dataframes)
-        chunks = list(result.dataframes())
+        dataframes = result.dataframes()
+        self.assertIsNotNone(dataframes)
+        chunks = list(dataframes)
 
         expected_account_url = (
             f"abfs://{self.bucket_name}@teststorageaccount.dfs.core.windows.net/"

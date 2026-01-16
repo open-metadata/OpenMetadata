@@ -56,7 +56,10 @@ class TestDSVReader(unittest.TestCase):
 
             result = reader._read(key=tmp_path, bucket_name="")
 
-            chunks = list(result.dataframes())
+            self.assertIsNotNone(result.dataframes)
+            dataframes = result.dataframes()
+            self.assertIsNotNone(dataframes)
+            chunks = list(dataframes)
             self.assertEqual(len(chunks), 1)
             self.assertEqual(chunks[0].shape, (2, 3))
             self.assertListEqual(list(chunks[0].columns), ["id", "name", "age"])
@@ -78,11 +81,9 @@ class TestDSVReader(unittest.TestCase):
 
             result = reader._read(key=tmp_path, bucket_name="")
 
-            dataframes = (
-                result.dataframes()
-                if callable(result.dataframes)
-                else result.dataframes
-            )
+            self.assertIsNotNone(result.dataframes)
+            dataframes = result.dataframes()
+            self.assertIsNotNone(dataframes)
             chunks = list(dataframes)
             self.assertEqual(len(chunks), 1)
             self.assertEqual(chunks[0].shape, (2, 3))
@@ -105,11 +106,9 @@ class TestDSVReader(unittest.TestCase):
 
             result = reader._read(key=tmp_path, bucket_name="")
 
-            dataframes = (
-                result.dataframes()
-                if callable(result.dataframes)
-                else result.dataframes
-            )
+            self.assertIsNotNone(result.dataframes)
+            dataframes = result.dataframes()
+            self.assertIsNotNone(dataframes)
             chunks = list(dataframes)
             self.assertEqual(len(chunks), 1)
             self.assertEqual(chunks[0].shape, (1, 2))
@@ -131,11 +130,9 @@ class TestDSVReader(unittest.TestCase):
 
             result = reader._read(key=tmp_path, bucket_name="")
 
-            dataframes = (
-                result.dataframes()
-                if callable(result.dataframes)
-                else result.dataframes
-            )
+            self.assertIsNotNone(result.dataframes)
+            dataframes = result.dataframes()
+            self.assertIsNotNone(dataframes)
             chunks = list(dataframes)
             self.assertTrue(len(chunks) > 0)
             self.assertListEqual(list(chunks[0].columns), ["col1", "col2", "col3"])
@@ -157,11 +154,9 @@ class TestDSVReader(unittest.TestCase):
 
             result = reader._read(key=tmp_path, bucket_name="")
 
-            dataframes = (
-                result.dataframes()
-                if callable(result.dataframes)
-                else result.dataframes
-            )
+            self.assertIsNotNone(result.dataframes)
+            dataframes = result.dataframes()
+            self.assertIsNotNone(dataframes)
             chunks = list(dataframes)
             self.assertEqual(len(chunks), 1)
             self.assertListEqual(list(chunks[0].columns), ["id", "name", "age"])
@@ -191,9 +186,9 @@ class TestDSVReader(unittest.TestCase):
 
         result = reader._read(key="test.csv", bucket_name="test-bucket")
 
-        dataframes = (
-            result.dataframes() if callable(result.dataframes) else result.dataframes
-        )
+        self.assertIsNotNone(result.dataframes)
+        dataframes = result.dataframes()
+        self.assertIsNotNone(dataframes)
         chunks = list(dataframes)
         self.assertEqual(len(chunks), 1)
         pd.testing.assert_frame_equal(chunks[0], mock_df)
@@ -225,9 +220,9 @@ class TestDSVReader(unittest.TestCase):
 
         result = reader._read(key="test.csv", bucket_name="test-bucket")
 
-        dataframes = (
-            result.dataframes() if callable(result.dataframes) else result.dataframes
-        )
+        self.assertIsNotNone(result.dataframes)
+        dataframes = result.dataframes()
+        self.assertIsNotNone(dataframes)
         chunks = list(dataframes)
         self.assertEqual(len(chunks), 1)
 
@@ -258,9 +253,9 @@ class TestDSVReader(unittest.TestCase):
 
         result = reader._read(key="test.csv", bucket_name="test-container")
 
-        dataframes = (
-            result.dataframes() if callable(result.dataframes) else result.dataframes
-        )
+        self.assertIsNotNone(result.dataframes)
+        dataframes = result.dataframes()
+        self.assertIsNotNone(dataframes)
         chunks = list(dataframes)
         self.assertEqual(len(chunks), 1)
 
