@@ -76,3 +76,43 @@ export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
     state: 'detached',
   });
 };
+
+export const findSystemTestDefinition = async (page: Page) => {
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+      response.request().method() === 'GET'
+  );
+
+  await page.goto('/rules-library');
+  let response = await responsePromise;
+  let data = await response.json();
+
+  while (true) {
+    const systemTest = data.data.find(
+      (def: { provider: string }) => def.provider === 'system'
+    );
+
+    if (systemTest) {
+      return systemTest;
+    }
+
+    const nextButton = page.getByTestId('next');
+
+    if ((await nextButton.isVisible()) && (await nextButton.isEnabled())) {
+      const nextResponsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+          response.request().method() === 'GET'
+      );
+      await nextButton.click();
+      response = await nextResponsePromise;
+      data = await response.json();
+      await page.waitForSelector('[data-testid="test-definition-table"]', {
+        state: 'visible',
+      });
+    } else {
+      throw new Error('System test definition not found');
+    }
+  }
+};

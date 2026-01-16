@@ -87,7 +87,7 @@ import org.openmetadata.service.util.SchemaFieldExtractor;
 @Collection(name = "types")
 @Slf4j
 public class TypeResource extends EntityResource<Type, TypeRepository> {
-  public static final String COLLECTION_PATH = "v1/metadata/types/";
+  public static final String COLLECTION_PATH = "/v1/metadata/types/";
   private final TypeMapper mapper = new TypeMapper();
   public SchemaFieldExtractor extractor;
 

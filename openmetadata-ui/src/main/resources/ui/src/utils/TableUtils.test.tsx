@@ -20,9 +20,12 @@ import { MOCK_TABLE, MOCK_TABLE_DBT } from '../mocks/TableData.mock';
 import {
   extractColumnsFromData,
   ExtraTableDropdownOptions,
+  fieldExistsByFQN,
   findColumnByEntityLink,
   getEntityIcon,
   getExpandAllKeysToDepth,
+  getHighlightedRowClassName,
+  getParentKeysToExpand,
   getSafeExpandAllKeys,
   getSchemaDepth,
   getSchemaFieldCount,
@@ -1370,6 +1373,444 @@ describe('TableUtils', () => {
       const result = extractTableColumns(mockTable);
 
       expect(result[0].tags).toEqual([]);
+    });
+  });
+
+  describe('fieldExistsByFQN', () => {
+    it('should return true when field exists at root level', () => {
+      const items = [
+        { fullyQualifiedName: 'table.column1' },
+        { fullyQualifiedName: 'table.column2' },
+        { fullyQualifiedName: 'table.column3' },
+      ];
+
+      expect(fieldExistsByFQN(items, 'table.column2')).toBe(true);
+    });
+
+    it('should return true when field exists in nested children', () => {
+      const items = [
+        {
+          fullyQualifiedName: 'table.parent',
+          children: [
+            { fullyQualifiedName: 'table.parent.child1' },
+            { fullyQualifiedName: 'table.parent.child2' },
+          ],
+        },
+        { fullyQualifiedName: 'table.other' },
+      ];
+
+      expect(fieldExistsByFQN(items, 'table.parent.child1')).toBe(true);
+      expect(fieldExistsByFQN(items, 'table.parent.child2')).toBe(true);
+    });
+
+    it('should return true when targetFqn starts with item FQN prefix', () => {
+      const items = [
+        { fullyQualifiedName: 'table.parent' },
+        { fullyQualifiedName: 'table.other' },
+      ];
+
+      expect(fieldExistsByFQN(items, 'table.parent.child')).toBe(true);
+      expect(fieldExistsByFQN(items, 'table.parent.child.grandchild')).toBe(
+        true
+      );
+    });
+
+    it('should return false when field does not exist', () => {
+      const items = [
+        { fullyQualifiedName: 'table.column1' },
+        { fullyQualifiedName: 'table.column2' },
+      ];
+
+      expect(fieldExistsByFQN(items, 'table.nonexistent')).toBe(false);
+      expect(fieldExistsByFQN(items, 'other.table.column1')).toBe(false);
+    });
+
+    it('should return false for empty array', () => {
+      expect(fieldExistsByFQN([], 'table.column1')).toBe(false);
+    });
+
+    it('should handle deeply nested structures', () => {
+      const items = [
+        {
+          fullyQualifiedName: 'table.level1',
+          children: [
+            {
+              fullyQualifiedName: 'table.level1.level2',
+              children: [
+                {
+                  fullyQualifiedName: 'table.level1.level2.level3',
+                  children: [
+                    { fullyQualifiedName: 'table.level1.level2.level3.level4' },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      expect(fieldExistsByFQN(items, 'table.level1.level2.level3.level4')).toBe(
+        true
+      );
+      expect(fieldExistsByFQN(items, 'table.level1.level2.level3')).toBe(true);
+    });
+
+    it('should handle items with undefined fullyQualifiedName', () => {
+      const items = [
+        { fullyQualifiedName: undefined },
+        { fullyQualifiedName: 'table.column1' },
+      ];
+
+      expect(fieldExistsByFQN(items, 'table.column1')).toBe(true);
+      expect(fieldExistsByFQN(items, 'table.undefined')).toBe(false);
+    });
+
+    it('should handle items with empty children array', () => {
+      const items = [
+        {
+          fullyQualifiedName: 'table.parent',
+          children: [],
+        },
+        { fullyQualifiedName: 'table.column1' },
+      ];
+
+      expect(fieldExistsByFQN(items, 'table.column1')).toBe(true);
+      expect(fieldExistsByFQN(items, 'table.parent.child')).toBe(true); // prefix match
+    });
+
+    it('should handle multiple levels of nesting with mixed results', () => {
+      const items = [
+        {
+          fullyQualifiedName: 'table.parent1',
+          children: [
+            { fullyQualifiedName: 'table.parent1.child1' },
+            {
+              fullyQualifiedName: 'table.parent1.child2',
+              children: [
+                { fullyQualifiedName: 'table.parent1.child2.grandchild' },
+              ],
+            },
+          ],
+        },
+        {
+          fullyQualifiedName: 'table.parent2',
+          children: [{ fullyQualifiedName: 'table.parent2.child1' }],
+        },
+      ];
+
+      expect(fieldExistsByFQN(items, 'table.parent1.child1')).toBe(true);
+      expect(fieldExistsByFQN(items, 'table.parent1.child2.grandchild')).toBe(
+        true
+      );
+      expect(fieldExistsByFQN(items, 'table.parent2.child1')).toBe(true);
+      expect(fieldExistsByFQN(items, 'table.parent1.nonexistent')).toBe(true); // prefix match
+      expect(fieldExistsByFQN(items, 'table.nonexistent')).toBe(false);
+    });
+  });
+
+  describe('getParentKeysToExpand', () => {
+    it('should return empty array when field is at root level', () => {
+      const items = [
+        { fullyQualifiedName: 'table.column1' },
+        { fullyQualifiedName: 'table.column2' },
+      ];
+
+      expect(getParentKeysToExpand(items, 'table.column1')).toEqual([]);
+      expect(getParentKeysToExpand(items, 'table.column2')).toEqual([]);
+    });
+
+    it('should return parent keys for field in one level of nesting', () => {
+      const items = [
+        {
+          fullyQualifiedName: 'table.parent',
+          children: [
+            { fullyQualifiedName: 'table.parent.child1' },
+            { fullyQualifiedName: 'table.parent.child2' },
+          ],
+        },
+      ];
+
+      expect(getParentKeysToExpand(items, 'table.parent.child1')).toEqual([
+        'table.parent',
+      ]);
+      expect(getParentKeysToExpand(items, 'table.parent.child2')).toEqual([
+        'table.parent',
+      ]);
+    });
+
+    it('should return all parent keys for deeply nested field', () => {
+      const items = [
+        {
+          fullyQualifiedName: 'table.level1',
+          children: [
+            {
+              fullyQualifiedName: 'table.level1.level2',
+              children: [
+                {
+                  fullyQualifiedName: 'table.level1.level2.level3',
+                  children: [
+                    { fullyQualifiedName: 'table.level1.level2.level3.level4' },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      expect(
+        getParentKeysToExpand(items, 'table.level1.level2.level3.level4')
+      ).toEqual([
+        'table.level1',
+        'table.level1.level2',
+        'table.level1.level2.level3',
+      ]);
+    });
+
+    it('should return empty array when field does not exist', () => {
+      const items = [
+        { fullyQualifiedName: 'table.column1' },
+        {
+          fullyQualifiedName: 'table.parent',
+          children: [{ fullyQualifiedName: 'table.parent.child1' }],
+        },
+      ];
+
+      expect(getParentKeysToExpand(items, 'table.nonexistent')).toEqual([]);
+      expect(getParentKeysToExpand(items, 'table.parent.nonexistent')).toEqual(
+        []
+      );
+    });
+
+    it('should return empty array for empty items array', () => {
+      expect(getParentKeysToExpand([], 'table.column1')).toEqual([]);
+    });
+
+    it('should use name as fallback when fullyQualifiedName is undefined', () => {
+      const items = [
+        {
+          name: 'parent',
+          fullyQualifiedName: undefined,
+          children: [
+            { fullyQualifiedName: 'table.parent.child1' },
+            { fullyQualifiedName: 'table.parent.child2' },
+          ],
+        },
+      ];
+
+      expect(getParentKeysToExpand(items, 'table.parent.child1')).toEqual([
+        'parent',
+      ]);
+    });
+
+    it('should use empty string when both fullyQualifiedName and name are undefined', () => {
+      const items = [
+        {
+          name: undefined,
+          fullyQualifiedName: undefined,
+          children: [{ fullyQualifiedName: 'table.child1' }],
+        },
+      ];
+
+      expect(getParentKeysToExpand(items, 'table.child1')).toEqual(['']);
+    });
+
+    it('should handle multiple parents with different children', () => {
+      const items = [
+        {
+          fullyQualifiedName: 'table.parent1',
+          children: [
+            { fullyQualifiedName: 'table.parent1.child1' },
+            { fullyQualifiedName: 'table.parent1.child2' },
+          ],
+        },
+        {
+          fullyQualifiedName: 'table.parent2',
+          children: [
+            {
+              fullyQualifiedName: 'table.parent2.child1',
+              children: [
+                { fullyQualifiedName: 'table.parent2.child1.grandchild' },
+              ],
+            },
+          ],
+        },
+      ];
+
+      expect(getParentKeysToExpand(items, 'table.parent1.child1')).toEqual([
+        'table.parent1',
+      ]);
+      expect(
+        getParentKeysToExpand(items, 'table.parent2.child1.grandchild')
+      ).toEqual(['table.parent2', 'table.parent2.child1']);
+    });
+
+    it('should handle parent keys parameter correctly', () => {
+      const items = [
+        {
+          fullyQualifiedName: 'table.parent',
+          children: [{ fullyQualifiedName: 'table.parent.child1' }],
+        },
+      ];
+
+      const initialParentKeys = ['table.root'];
+
+      expect(
+        getParentKeysToExpand(items, 'table.parent.child1', initialParentKeys)
+      ).toEqual(['table.root', 'table.parent']);
+    });
+
+    it('should return correct path when target is direct child', () => {
+      const items = [
+        {
+          fullyQualifiedName: 'table.parent',
+          children: [
+            { fullyQualifiedName: 'table.parent.child1' },
+            {
+              fullyQualifiedName: 'table.parent.child2',
+              children: [
+                { fullyQualifiedName: 'table.parent.child2.grandchild' },
+              ],
+            },
+          ],
+        },
+      ];
+
+      // Direct child should return parent
+      expect(getParentKeysToExpand(items, 'table.parent.child1')).toEqual([
+        'table.parent',
+      ]);
+
+      // Nested child should return all parents
+      expect(
+        getParentKeysToExpand(items, 'table.parent.child2.grandchild')
+      ).toEqual(['table.parent', 'table.parent.child2']);
+    });
+
+    it('should handle items without children property', () => {
+      const items = [
+        { fullyQualifiedName: 'table.column1' },
+        { fullyQualifiedName: 'table.column2' },
+      ];
+
+      expect(getParentKeysToExpand(items, 'table.column1')).toEqual([]);
+    });
+  });
+
+  describe('getHighlightedRowClassName', () => {
+    it('should return "highlighted-row" when highlightedFqn matches record fullyQualifiedName', () => {
+      const record = {
+        fullyQualifiedName: 'test.database.schema.table.column1',
+      };
+      const highlightedFqn = 'test.database.schema.table.column1';
+
+      const result = getHighlightedRowClassName(record, highlightedFqn);
+
+      expect(result).toBe('highlighted-row');
+    });
+
+    it('should return empty string when highlightedFqn does not match record fullyQualifiedName', () => {
+      const record = {
+        fullyQualifiedName: 'test.database.schema.table.column1',
+      };
+      const highlightedFqn = 'test.database.schema.table.column2';
+
+      const result = getHighlightedRowClassName(record, highlightedFqn);
+
+      expect(result).toBe('');
+    });
+
+    it('should return empty string when highlightedFqn is undefined', () => {
+      const record = {
+        fullyQualifiedName: 'test.database.schema.table.column1',
+      };
+
+      const result = getHighlightedRowClassName(record, undefined);
+
+      expect(result).toBe('');
+    });
+
+    it('should return empty string when highlightedFqn is empty string', () => {
+      const record = {
+        fullyQualifiedName: 'test.database.schema.table.column1',
+      };
+
+      const result = getHighlightedRowClassName(record, '');
+
+      expect(result).toBe('');
+    });
+
+    it('should return empty string when record fullyQualifiedName is undefined', () => {
+      const record = {
+        fullyQualifiedName: undefined,
+      };
+      const highlightedFqn = 'test.database.schema.table.column1';
+
+      const result = getHighlightedRowClassName(record, highlightedFqn);
+
+      expect(result).toBe('');
+    });
+
+    it('should return empty string when both highlightedFqn and record fullyQualifiedName are undefined', () => {
+      const record = {
+        fullyQualifiedName: undefined,
+      };
+
+      const result = getHighlightedRowClassName(record, undefined);
+
+      expect(result).toBe('');
+    });
+
+    it('should work with Column type', () => {
+      const column = {
+        name: 'column1',
+        fullyQualifiedName: 'test.database.schema.table.column1',
+        dataType: 'STRING',
+      } as Column;
+
+      expect(
+        getHighlightedRowClassName(column, 'test.database.schema.table.column1')
+      ).toBe('highlighted-row');
+      expect(
+        getHighlightedRowClassName(column, 'test.database.schema.table.column2')
+      ).toBe('');
+    });
+
+    it('should work with SearchIndexField type', () => {
+      const field = {
+        name: 'field1',
+        fullyQualifiedName: 'test.index.field1',
+        dataType: 'TEXT',
+      };
+
+      expect(getHighlightedRowClassName(field, 'test.index.field1')).toBe(
+        'highlighted-row'
+      );
+      expect(getHighlightedRowClassName(field, 'test.index.field2')).toBe('');
+    });
+
+    it('should handle case-sensitive FQN matching', () => {
+      const record = {
+        fullyQualifiedName: 'Test.Database.Schema.Table.Column1',
+      };
+      const highlightedFqn = 'test.database.schema.table.column1';
+
+      const result = getHighlightedRowClassName(record, highlightedFqn);
+
+      expect(result).toBe('');
+    });
+
+    it('should handle records with additional properties', () => {
+      const record = {
+        fullyQualifiedName: 'test.database.schema.table.column1',
+        name: 'column1',
+        description: 'Test column',
+        tags: [],
+      };
+
+      expect(
+        getHighlightedRowClassName(record, 'test.database.schema.table.column1')
+      ).toBe('highlighted-row');
     });
   });
 });

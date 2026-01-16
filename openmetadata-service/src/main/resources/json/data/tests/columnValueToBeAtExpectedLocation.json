@@ -39,6 +39,7 @@
     ],
     "supportsRowLevelPassedFailed": false,
     "provider": "system",
+  "enabled": true,
     "dataQualityDimension": "Accuracy"
   }
   
