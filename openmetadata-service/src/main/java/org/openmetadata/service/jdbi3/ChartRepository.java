@@ -36,6 +36,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.charts.ChartResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -95,7 +96,7 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   @Override
-  public void setFields(Chart chart, Fields fields) {
+  public void setFields(Chart chart, Fields fields, RelationIncludes relationIncludes) {
     chart.withService(getContainer(chart.getId()));
     chart.setDashboards(
         fields.contains("dashboards") ? getRelatedEntities(chart, Entity.DASHBOARD) : null);

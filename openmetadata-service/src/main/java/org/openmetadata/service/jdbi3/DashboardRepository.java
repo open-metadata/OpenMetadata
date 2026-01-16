@@ -48,6 +48,7 @@ import org.openmetadata.service.resources.dashboards.DashboardResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -121,7 +122,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public void setFields(Dashboard dashboard, Fields fields) {
+  public void setFields(Dashboard dashboard, Fields fields, RelationIncludes relationIncludes) {
     dashboard.setService(getContainer(dashboard.getId()));
     dashboard.setCharts(
         fields.contains("charts") ? getRelatedEntities(dashboard, Entity.CHART) : null);

@@ -99,6 +99,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -138,7 +139,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public void setFields(Team team, Fields fields) {
+  public void setFields(Team team, Fields fields, RelationIncludes relationIncludes) {
     team.setUsers(fields.contains("users") ? getUsers(team) : team.getUsers());
     team.setOwns(fields.contains("owns") ? getOwns(team) : team.getOwns());
     team.setDefaultRoles(

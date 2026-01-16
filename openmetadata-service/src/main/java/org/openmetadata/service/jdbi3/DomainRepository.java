@@ -54,6 +54,7 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedField
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.LineageUtil;
 
@@ -86,7 +87,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   @Override
-  public void setFields(Domain entity, Fields fields) {
+  public void setFields(Domain entity, Fields fields, RelationIncludes relationIncludes) {
     entity.withParent(getParent(entity));
     entity.withChildrenCount(
         fields.contains("childrenCount") ? getChildrenCount(entity) : entity.getChildrenCount());
