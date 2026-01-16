@@ -520,7 +520,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
               sx={{
                 fontSize: '14px',
                 color: theme.palette.text.secondary,
-                width: '120px',
+                width: '70px',
                 flexShrink: 0,
               }}>
               {t('label.name')}
@@ -539,7 +539,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
               sx={{
                 fontSize: '14px',
                 color: theme.palette.text.secondary,
-                width: '120px',
+                width: '70px',
                 flexShrink: 0,
               }}>
               {t('label.version')}
@@ -558,7 +558,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
               sx={{
                 fontSize: '14px',
                 color: theme.palette.text.secondary,
-                width: '120px',
+                width: '70px',
                 flexShrink: 0,
               }}>
               {t('label.status')}
@@ -637,7 +637,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
             sx={{
               fontSize: '14px',
               color: theme.palette.text.secondary,
-              width: '120px',
+              width: '70px',
               flexShrink: 0,
             }}>
             {t('label.name')}
@@ -657,7 +657,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
               sx={{
                 fontSize: '14px',
                 color: theme.palette.text.secondary,
-                width: '120px',
+                width: '70px',
                 flexShrink: 0,
               }}>
               {t('label.display-name')}
@@ -1434,6 +1434,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                   <IconButton
                     className="remove-button"
                     size="small"
+                    title="Delete file"
                     onClick={handleRemoveFile}>
                     <DeleteOutlineOutlined fontSize="small" />
                   </IconButton>
