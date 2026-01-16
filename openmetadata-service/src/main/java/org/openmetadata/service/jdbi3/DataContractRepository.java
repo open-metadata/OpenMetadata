@@ -1186,12 +1186,14 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   private DataContract mergeContracts(
       DataContract entityContract, DataContract dataProductContract) {
+    DataContract merged = JsonUtils.deepCopy(entityContract, DataContract.class);
+    
     // Inherit terms of use if not defined in entity
-    if (entityContract.getTermsOfUse() == null && dataProductContract.getTermsOfUse() != null) {
-      entityContract.setTermsOfUse(
+    if (merged.getTermsOfUse() == null && dataProductContract.getTermsOfUse() != null) {
+      merged.setTermsOfUse(
           JsonUtils.deepCopy(dataProductContract.getTermsOfUse(), TermsOfUse.class));
-      if (entityContract.getTermsOfUse() != null) {
-        entityContract.getTermsOfUse().setInherited(true);
+      if (merged.getTermsOfUse() != null) {
+        merged.getTermsOfUse().setInherited(true);
       }
     }
 
@@ -1201,8 +1203,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
       // Collect entity rule names to avoid duplicates
       Set<String> entityRuleNames =
-          entityContract.getSemantics() != null
-              ? entityContract.getSemantics().stream()
+          merged.getSemantics() != null
+              ? merged.getSemantics().stream()
                   .map(SemanticsRule::getName)
                   .collect(Collectors.toSet())
               : Collections.emptySet();
@@ -1217,35 +1219,35 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       }
 
       // Add entity's own semantics (not inherited)
-      if (entityContract.getSemantics() != null) {
-        for (SemanticsRule entityRule : entityContract.getSemantics()) {
+      if (merged.getSemantics() != null) {
+        for (SemanticsRule entityRule : merged.getSemantics()) {
           // Keep the inherited flag as-is from the entity rule (should be false/null for native
           // rules)
           mergedSemantics.add(entityRule);
         }
       }
 
-      entityContract.setSemantics(mergedSemantics);
+      merged.setSemantics(mergedSemantics);
     }
 
     // Inherit security if not defined in entity
-    if (entityContract.getSecurity() == null && dataProductContract.getSecurity() != null) {
-      entityContract.setSecurity(
+    if (merged.getSecurity() == null && dataProductContract.getSecurity() != null) {
+      merged.setSecurity(
           JsonUtils.deepCopy(dataProductContract.getSecurity(), ContractSecurity.class));
-      if (entityContract.getSecurity() != null) {
-        entityContract.getSecurity().setInherited(true);
+      if (merged.getSecurity() != null) {
+        merged.getSecurity().setInherited(true);
       }
     }
 
     // Inherit SLA if not defined in entity
-    if (entityContract.getSla() == null && dataProductContract.getSla() != null) {
-      entityContract.setSla(JsonUtils.deepCopy(dataProductContract.getSla(), ContractSLA.class));
-      if (entityContract.getSla() != null) {
-        entityContract.getSla().setInherited(true);
+    if (merged.getSla() == null && dataProductContract.getSla() != null) {
+      merged.setSla(JsonUtils.deepCopy(dataProductContract.getSla(), ContractSLA.class));
+      if (merged.getSla() != null) {
+        merged.getSla().setInherited(true);
       }
     }
 
-    return entityContract;
+    return merged;
   }
 
   @Override

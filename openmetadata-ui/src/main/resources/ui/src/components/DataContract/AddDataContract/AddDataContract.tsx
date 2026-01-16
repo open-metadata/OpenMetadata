@@ -15,7 +15,7 @@ import { Button, Card, RadioChangeEvent, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ContractIcon } from '../../../assets/svg/ic-contract.svg';
 import { ReactComponent as SecurityIcon } from '../../../assets/svg/ic-security.svg';
@@ -167,14 +167,18 @@ const AddDataContract: React.FC<{
     return result as DataContract;
   }, [contract]);
 
-  const [formValues, setFormValues] = useState<DataContract>(
-    filteredContract || ({} as DataContract)
-  );
+    const [formValues, setFormValues] = useState<DataContract>(
+      filteredContract || ({} as DataContract)
+    );
 
-  const [activeTab, setActiveTab] = useState(
-    entityContractTabs[0]?.toString() ||
-      EDataContractTab.CONTRACT_DETAIL.toString()
-  );
+    useEffect(() => {
+      setFormValues(filteredContract || ({} as DataContract));
+    }, [filteredContract]);
+
+    const [activeTab, setActiveTab] = useState(
+      entityContractTabs[0]?.toString() ||
+        EDataContractTab.CONTRACT_DETAIL.toString()
+    );
 
   const handleTabChange = useCallback((key: string) => {
     setActiveTab(key);
