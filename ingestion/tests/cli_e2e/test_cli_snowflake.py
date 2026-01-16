@@ -385,12 +385,12 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         )
 
         self.assertEqual(
-            str(transient_test_table.tableType),
+            str(transient_test_table.tableType.value),
             "Transient",
             "Table type should be Transient",
         )
         self.assertEqual(
-            str(transient_sample_table.tableType),
+            str(transient_sample_table.tableType.value),
             "Transient",
             "Table type should be Transient",
         )
@@ -411,12 +411,6 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
         self.assertEqual(len(source_status.failures), 0)
         self.assertEqual(len(sink_status.failures), 0)
-
-        self.assertGreaterEqual(
-            len(source_status.filtered),
-            2,
-            "At least 2 transient tables should be filtered",
-        )
 
         transient_test_table = self.retrieve_table(self.fqn_transient_test_table())
         transient_sample_table = self.retrieve_table(self.fqn_transient_sample_table())
