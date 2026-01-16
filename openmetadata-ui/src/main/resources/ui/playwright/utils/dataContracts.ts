@@ -368,3 +368,122 @@ export const performInitialStepForRules = async (page: Page) => {
 
   await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
 };
+
+export const navigateToContractTab = async (page: Page) => {
+  await page.click('[data-testid="contract"]');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+};
+
+export const openContractActionsDropdown = async (page: Page) => {
+  await page.getByTestId('manage-contract-actions').click();
+  await page.waitForSelector('.contract-action-dropdown', {
+    state: 'visible',
+  });
+};
+
+export const clickAddContractButton = async (page: Page) => {
+  await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
+  await expect(page.getByTestId('add-contract-button')).toBeVisible();
+  await page.getByTestId('add-contract-button').click();
+  await expect(page.getByTestId('add-contract-card')).toBeVisible();
+};
+
+export const clickEditContractButton = async (page: Page) => {
+  await openContractActionsDropdown(page);
+  await page.getByTestId('contract-edit-button').click();
+};
+
+export const deleteContract = async (
+  page: Page,
+  contractName?: string
+): Promise<void> => {
+  const deleteContractResponse = page.waitForResponse(
+    'api/v1/dataContracts/*?hardDelete=true&recursive=true'
+  );
+
+  await openContractActionsDropdown(page);
+  await page.getByTestId('delete-contract-button').click();
+
+  if (contractName) {
+    await expect(
+      page
+        .locator('.ant-modal-title')
+        .getByText(`Delete dataContract "${contractName}"`)
+    ).toBeVisible();
+  } else {
+    await expect(page.locator('.ant-modal-title')).toBeVisible();
+  }
+
+  await page.getByTestId('confirmation-text-input').click();
+  await page.getByTestId('confirmation-text-input').fill('DELETE');
+  await expect(page.getByTestId('confirm-button')).toBeEnabled();
+  await page.getByTestId('confirm-button').click();
+  await deleteContractResponse;
+};
+
+export const saveContractAndWait = async (page: Page): Promise<void> => {
+  const saveContractResponse = page.waitForResponse('/api/v1/dataContracts/*');
+  await page.getByTestId('save-contract-btn').click();
+  await saveContractResponse;
+
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+};
+
+export const triggerContractValidation = async (page: Page): Promise<void> => {
+  const runNowResponse = page.waitForResponse(
+    '/api/v1/dataContracts/*/validate'
+  );
+
+  await openContractActionsDropdown(page);
+  await page.getByTestId('contract-run-now-button').click();
+  await runNowResponse;
+};
+
+export const exportContractYaml = async (
+  page: Page,
+  type: 'native' | 'odcs' = 'native'
+): Promise<string> => {
+  const downloadPromise = page.waitForEvent('download');
+
+  await openContractActionsDropdown(page);
+
+  if (type === 'odcs') {
+    await page.getByTestId('export-odcs-contract-button').click();
+  } else {
+    await page.getByTestId('export-contract-button').click();
+  }
+
+  const download = await downloadPromise;
+
+  return download.suggestedFilename();
+};
+
+export const importOdcsViaDropdown = async (
+  page: Page,
+  yamlContent: string,
+  filename: string
+): Promise<void> => {
+  await page.getByTestId('add-contract-button').click();
+
+  await page.waitForSelector('.contract-action-dropdown', {
+    state: 'visible',
+  });
+
+  const importResponse = page.waitForResponse(
+    '/api/v1/dataContracts/odcs/yaml**'
+  );
+
+  const fileInput = page.getByTestId('odcs-import-file-input');
+  await fileInput.setInputFiles({
+    name: filename,
+    mimeType: 'application/yaml',
+    buffer: Buffer.from(yamlContent),
+  });
+
+  await importResponse;
+};
