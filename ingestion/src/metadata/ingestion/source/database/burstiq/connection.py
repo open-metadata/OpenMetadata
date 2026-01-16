@@ -12,7 +12,6 @@
 Source connection handler for BurstIQ
 """
 from typing import Optional
-from uu import Error
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -77,7 +76,7 @@ def test_connection(
         """Test fetching edges used for lineage"""
         edges = client.get_edges(limit=1)
         if not edges:
-            raise Error("Failed to fetch edges from BurstIQ")
+            raise ConnectionError("Failed to fetch edges from BurstIQ")
 
     test_fn = {
         "CheckAccess": test_get_dictionaries,
