@@ -3,6 +3,7 @@ package org.openmetadata.service.governance.workflows;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.GOVERNANCE_WORKFLOW_CHANGE_EVENT;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_OBJECT_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
@@ -13,6 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -22,13 +24,16 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.util.Registry;
 
 @Slf4j
 public class WorkflowEventConsumer implements Destination<ChangeEvent> {
@@ -95,6 +100,14 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
           Entity.DATA_CONTRACT,
           Entity.PAGE);
 
+  private static final Registry<Function<ChangeEvent, Map<String, Object>>> handlerRegistry =
+      new Registry<>(WorkflowEventConsumer::defaultHandler);
+
+  static {
+    handlerRegistry.register(
+        Entity.RECOGNIZER_FEEDBACK, WorkflowEventConsumer::handleTagRecognizerFeedback);
+  }
+
   public WorkflowEventConsumer(
       EventSubscription eventSubscription, SubscriptionDestination subscriptionDestination) {
     if (subscriptionDestination.getType()
@@ -109,87 +122,6 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
     }
   }
 
-  @Override
-  public void sendMessage(ChangeEvent event, Set<Recipient> recipients)
-      throws EventPublisherException {
-    // NOTE: We are only consuming ENTITY related events.
-    try {
-      EventType eventType = event.getEventType();
-      String entityType = event.getEntityType();
-
-      LOG.debug(
-          "WorkflowEventConsumer - Received event for entityType: {}, eventType: {}, entityId: {}",
-          entityType,
-          eventType,
-          event.getEntityId());
-
-      // Skip events from governance-bot to prevent infinite loops
-      // These are system-initiated workflow changes that shouldn't trigger new workflows
-      if (GOVERNANCE_BOT.equals(event.getUserName())
-          || (event.getImpersonatedBy() != null
-              && GOVERNANCE_BOT.equals(event.getImpersonatedBy()))) {
-        LOG.debug(
-            "Skipping workflow-initiated event from governance-bot for entity {} of type: {}",
-            event.getEntityFullyQualifiedName(),
-            event.getEntityType());
-        return;
-      }
-
-      if (validEventTypes.contains(eventType) && validEntityTypes.contains(entityType)) {
-        LOG.debug(
-            "WorkflowEventConsumer - Generating signal for entityType: {}, eventType: {}",
-            entityType,
-            eventType);
-        String eventTypeStr =
-            eventType.equals(EventType.ENTITY_CREATED) ? "entityCreated" : "entityUpdated";
-        String signal = String.format("%s-%s", entityType, eventTypeStr);
-        LOG.debug("WorkflowEventConsumer - Generated Signal: {}", signal);
-
-        EntityReference entityReference;
-        try {
-          entityReference =
-              Entity.getEntityReferenceById(entityType, event.getEntityId(), Include.ALL);
-        } catch (EntityNotFoundException e) {
-          // Entity was deleted between event creation and processing - skip workflow trigger
-          LOG.debug(
-              "Skipping workflow trigger for {} - entity {} no longer exists",
-              signal,
-              event.getEntityFullyQualifiedName());
-          return;
-        }
-        MessageParser.EntityLink entityLink =
-            new MessageParser.EntityLink(entityType, entityReference.getFullyQualifiedName());
-
-        Map<String, Object> variables = new HashMap<>();
-
-        variables.put(
-            getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
-            entityLink.getLinkString());
-
-        // Set the updatedBy variable from the change event userName
-        if (event.getUserName() != null) {
-          variables.put(
-              getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE),
-              event.getUserName());
-        }
-
-        Retry.decorateRunnable(
-                retry, () -> WorkflowHandler.getInstance().triggerWithSignal(signal, variables))
-            .run();
-      }
-    } catch (Exception exc) {
-      LOG.error("WorkflowEventConsumer - Error processing event", exc);
-      String message =
-          CatalogExceptionMessage.eventPublisherFailedToPublish(
-              GOVERNANCE_WORKFLOW_CHANGE_EVENT, event, exc.getMessage());
-      LOG.error(message);
-      throw new EventPublisherException(
-          CatalogExceptionMessage.eventPublisherFailedToPublish(
-              GOVERNANCE_WORKFLOW_CHANGE_EVENT, exc.getMessage()),
-          Pair.of(subscriptionDestination.getId(), event));
-    }
-  }
-
   private static boolean isTransientDatabaseError(Throwable e) {
     String rootCauseMessage = ExceptionUtils.getRootCauseMessage(e);
     if (rootCauseMessage == null) {
@@ -201,6 +133,135 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
         || lowerMessage.contains("try restarting transaction")
         || lowerMessage.contains("updated by another transaction concurrently")
         || lowerMessage.contains("optimisticlockingfailureexception");
+  }
+
+  public void sendMessage(ChangeEvent event, Set<Recipient> recipients)
+      throws EventPublisherException {
+    EventType eventType = event.getEventType();
+    String entityType = event.getEntityType();
+
+    String signal = String.format("%s-%s", entityType, eventType.toString());
+
+    LOG.debug(
+        "WorkflowEventConsumer - Received event for entityType: {}, eventType: {}, entityId: {}",
+        entityType,
+        eventType,
+        event.getEntityId());
+
+    if (!validEventTypes.contains(event.getEventType())) {
+      return;
+    }
+
+    // Skip events from governance-bot to prevent infinite loops
+    // These are system-initiated workflow changes that shouldn't trigger new workflows
+    if (GOVERNANCE_BOT.equals(event.getUserName())
+        || (event.getImpersonatedBy() != null
+            && GOVERNANCE_BOT.equals(event.getImpersonatedBy()))) {
+      LOG.debug(
+          "Skipping workflow-initiated event from governance-bot for entity {} of type: {}",
+          event.getEntityFullyQualifiedName(),
+          event.getEntityType());
+      return;
+    }
+
+    Function<ChangeEvent, Map<String, Object>> handler = handlerRegistry.get(event.getEntityType());
+
+    if (handler == null) {
+      LOG.debug("No handler found in registry for entity type {}", event.getEntityType());
+      return;
+    }
+
+    LOG.debug("WorkflowEventConsumer - Generated Signal: {}", signal);
+
+    Map<String, Object> variables;
+    try {
+      variables = handler.apply(event);
+    } catch (Exception exc) {
+      LOG.error("WorkflowEventConsumer - Error processing event", exc);
+      String message =
+          CatalogExceptionMessage.eventPublisherFailedToPublish(
+              GOVERNANCE_WORKFLOW_CHANGE_EVENT, event, exc.getMessage());
+      LOG.error(message);
+      throw new EventPublisherException(
+          CatalogExceptionMessage.eventPublisherFailedToPublish(
+              GOVERNANCE_WORKFLOW_CHANGE_EVENT, exc.getMessage()),
+          Pair.of(subscriptionDestination.getId(), event));
+    }
+
+    if (variables != null && !variables.isEmpty()) {
+      Retry.decorateRunnable(
+              retry, () -> WorkflowHandler.getInstance().triggerWithSignal(signal, variables))
+          .run();
+    }
+  }
+
+  public static Map<String, Object> defaultHandler(ChangeEvent event) {
+    // NOTE: We are only consuming ENTITY related events.
+    EventType eventType = event.getEventType();
+    String entityType = event.getEntityType();
+
+    Map<String, Object> variables = new HashMap<>();
+
+    if (validEventTypes.contains(eventType) && validEntityTypes.contains(entityType)) {
+      EntityReference entityReference;
+      try {
+        entityReference =
+            Entity.getEntityReferenceById(entityType, event.getEntityId(), Include.ALL);
+      } catch (EntityNotFoundException e) {
+        // Entity was deleted between event creation and processing - skip workflow trigger
+        LOG.debug(
+            "Skipping workflow trigger for event {} on {}  - entity {} no longer exists",
+            eventType,
+            entityType,
+            event.getEntityFullyQualifiedName());
+        return variables;
+      }
+
+      MessageParser.EntityLink entityLink =
+          new MessageParser.EntityLink(entityType, entityReference.getFullyQualifiedName());
+
+      variables.put(
+          getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
+          entityLink.getLinkString());
+
+      // Set the updatedBy variable from the change event userName
+      if (event.getUserName() != null) {
+        variables.put(
+            getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE), event.getUserName());
+      }
+    }
+    return variables;
+  }
+
+  private static Map<String, Object> handleTagRecognizerFeedback(ChangeEvent event) {
+    Map<String, Object> variables = new HashMap<>();
+
+    if (!Entity.RECOGNIZER_FEEDBACK.equals(event.getEntityType())) return variables;
+
+    RecognizerFeedbackRepository feedbackRepository =
+        new RecognizerFeedbackRepository(Entity.getCollectionDAO());
+
+    RecognizerFeedback feedback = feedbackRepository.get(event.getEntityId());
+
+    EntityReference entityReference =
+        Entity.getEntityReferenceByName(Entity.TAG, feedback.getTagFQN(), Include.ALL);
+    MessageParser.EntityLink entityLink =
+        new MessageParser.EntityLink(Entity.TAG, entityReference.getFullyQualifiedName());
+
+    variables.put(
+        getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
+        entityLink.getLinkString());
+
+    variables.put(
+        getNamespacedVariableName(GLOBAL_NAMESPACE, TRIGGERING_OBJECT_ID_VARIABLE),
+        feedback.getId().toString());
+
+    // Set the updatedBy variable from the change event userName
+    if (event.getUserName() != null) {
+      variables.put(
+          getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE), event.getUserName());
+    }
+    return variables;
   }
 
   @Override
