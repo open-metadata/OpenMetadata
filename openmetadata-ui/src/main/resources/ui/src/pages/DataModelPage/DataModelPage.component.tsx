@@ -59,7 +59,9 @@ const DataModelsPage = () => {
   const { currentUser } = useApplicationStore();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const { fqn: dashboardDataModelFQN } = useFqn();
+  const { entityFqn: dashboardDataModelFQN } = useFqn({
+    type: EntityType.DASHBOARD_DATA_MODEL,
+  });
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);

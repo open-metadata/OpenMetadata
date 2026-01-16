@@ -97,6 +97,7 @@ import org.openmetadata.service.exception.JsonMappingExceptionMapper;
 import org.openmetadata.service.exception.OMErrorPageHandler;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.jdbi3.BulkExecutor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -243,6 +244,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         new EntityRelationshipRepository(Entity.getCollectionDAO()));
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.setJdbi(jdbi);
+
+    // Initialize bulk operation executor for bounded concurrent processing
+    BulkExecutor.initialize(catalogConfig.getBulkOperationConfiguration());
 
     initializeSearchRepository(catalogConfig);
     // Initialize the MigrationValidationClient, used in the Settings Repository
@@ -401,10 +405,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private void registerHealthCheckJobs(OpenMetadataApplicationConfig catalogConfig) {
     ServicesStatusJobHandler healthCheckStatusHandler =
         ServicesStatusJobHandler.create(
-            catalogConfig.getEventMonitorConfiguration(),
-            catalogConfig.getPipelineServiceClientConfiguration(),
-            catalogConfig.getClusterName());
-    healthCheckStatusHandler.addPipelineServiceStatusJob();
+            catalogConfig.getEventMonitorConfiguration(), catalogConfig.getClusterName());
     healthCheckStatusHandler.addDatabaseAndSearchStatusJobs();
   }
 

@@ -380,6 +380,7 @@ public class TeamRepository extends EntityRepository<Team> {
   public void prepare(Team team, boolean update) {
     populateParents(team); // Validate parents
     populateChildren(team); // Validate children
+    validateHierarchy(team); // Validate hierarchy for circular dependency
     validateUsers(team.getUsers());
     validateRoles(team.getDefaultRoles());
     validatePolicies(team.getPolicies());
@@ -1031,6 +1032,18 @@ public class TeamRepository extends EntityRepository<Team> {
 
       // Field 5 - parent teams
       getParents(printer, csvRecord, team);
+
+      // Validate during dry run to catch logical errors early
+      TeamRepository repository = (TeamRepository) Entity.getEntityRepository(TEAM);
+      if (processRecord && importResult.getDryRun()) {
+        try {
+          repository.validateForDryRun(team, dryRunCreatedEntities);
+        } catch (Exception ex) {
+          importFailure(printer, ex.getMessage(), csvRecord);
+          processRecord = false;
+        }
+      }
+
       if (processRecord) {
         createEntity(printer, csvRecord, team);
       }
@@ -1256,5 +1269,138 @@ public class TeamRepository extends EntityRepository<Team> {
           updatedPolicies,
           false);
     }
+  }
+
+  /**
+   * Validate hierarchy to avoid circular references A -> B -> A.
+   */
+  private void validateHierarchy(Team team) {
+    if (listOrEmpty(team.getParents()).isEmpty()) {
+      return;
+    }
+
+    // Check if any parent causes a circular dependency
+    for (EntityReference parent : team.getParents()) {
+      // 1. Self-reference check
+      if (parent.getId().equals(team.getId())) {
+        throw new IllegalArgumentException(
+            String.format("Invalid hierarchy: Team '%s' cannot be its own parent", team.getName()));
+      }
+
+      // 2. Initial circular reference check (check if the proposed parent is already a child)
+      // Team --PARENT_OF--> Child. We want to find Children.
+      // Relationship: from:Team, to:Child.
+      // findTo(fromId=Team) gets the Children.
+      List<EntityReference> children = findTo(team.getId(), TEAM, Relationship.PARENT_OF, TEAM);
+      for (EntityReference child : listOrEmpty(children)) {
+        if (child.getId().equals(parent.getId())) {
+          throw new IllegalArgumentException(
+              String.format(
+                  "Circular reference detected: Team '%s' is already a child of '%s'.",
+                  parent.getName(), team.getName()));
+        }
+      }
+
+      // 3. Deep circular reference check by traversing up the parent chain of the NEW parent
+      Set<UUID> visited = new HashSet<>();
+      visited.add(team.getId());
+      visited.add(parent.getId());
+
+      checkCircularReference(parent.getId(), visited, team.getName());
+    }
+  }
+
+  private void checkCircularReference(
+      UUID currentTeamId, Set<UUID> visited, String originalTeamName) {
+    // Traverse up from the current parent to see if we reach the original team
+    // Team relationship direction: Parent --(PARENT_OF)--> Child(currentTeamId).
+    // We want the Parent.
+    // findFrom(toId=currentTeamId) gets the Parents.
+    List<EntityReference> parents = findFrom(currentTeamId, TEAM, Relationship.PARENT_OF, TEAM);
+
+    for (EntityReference parent : listOrEmpty(parents)) {
+      // Check Name match to handle potential ID mismatch during import (New Object vs DB Object)
+      if (parent.getName().equals(originalTeamName) || visited.contains(parent.getId())) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Circular reference detected in hierarchy for Team '%s'. The parent relationship creates a loop.",
+                originalTeamName));
+      }
+
+      visited.add(parent.getId());
+      checkCircularReference(parent.getId(), visited, originalTeamName);
+    }
+  }
+
+  /**
+   * Validate hierarchy during Dry Run. This is critical for CSV imports where entities might not
+   * exist in DB yet but are in the batch.
+   */
+  public void validateForDryRun(Team team, Map<String, Team> dryRunCreatedEntities) {
+    if (listOrEmpty(team.getParents()).isEmpty()) {
+      return;
+    }
+
+    for (EntityReference parentRef : team.getParents()) {
+      // 1. Self Check by Name (since ID might be new)
+      if (parentRef.getName().equals(team.getName())) {
+        throw new IllegalArgumentException(
+            String.format("Invalid hierarchy: Team '%s' cannot be its own parent", team.getName()));
+      }
+
+      // 2. Check in DryRun Entities (In-Memory check for the CSV batch)
+      checkCircularReferenceInDryRun(
+          team.getName(),
+          parentRef.getName(),
+          dryRunCreatedEntities,
+          new HashSet<>(Set.of(team.getName())));
+    }
+  }
+
+  private void checkCircularReferenceInDryRun(
+      String originalTeamName,
+      String currentParentName,
+      Map<String, Team> dryRunMap,
+      Set<String> visited) {
+    if (visited.contains(currentParentName)) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Circular reference detected in CSV: Team '%s' participates in a loop involving '%s'.",
+              originalTeamName, currentParentName));
+    }
+    visited.add(currentParentName);
+
+    // If the parent is being created in this batch, using strict FQN or lenient name match
+    Team parentTeamInCsv = findInDryRunMap(currentParentName, dryRunMap);
+
+    if (parentTeamInCsv != null) {
+      for (EntityReference grandParent : listOrEmpty(parentTeamInCsv.getParents())) {
+        checkCircularReferenceInDryRun(
+            originalTeamName, grandParent.getName(), dryRunMap, new HashSet<>(visited));
+      }
+    } else {
+      Team dbTeam = findByNameOrNull(currentParentName, Include.NON_DELETED);
+      if (dbTeam != null) {
+        for (EntityReference parent : listOrEmpty(dbTeam.getParents())) {
+          checkCircularReferenceInDryRun(
+              originalTeamName, parent.getName(), dryRunMap, new HashSet<>(visited));
+        }
+      }
+    }
+  }
+
+  private Team findInDryRunMap(String name, Map<String, Team> dryRunMap) {
+    // 1. Try direct FQN match
+    if (dryRunMap.containsKey(name)) {
+      return dryRunMap.get(name);
+    }
+    // 2. Lenient match: check if any key ends with the name (handling "Org.Team" vs "Team")
+    // or if the entity name matches
+    for (Team t : dryRunMap.values()) {
+      if (t.getName().equals(name)) {
+        return t;
+      }
+    }
+    return null;
   }
 }

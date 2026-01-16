@@ -23,6 +23,7 @@ import Loader from '../../components/common/Loader/Loader';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import WorksheetDetails from '../../components/DriveService/Worksheet/WorksheetDetails';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -48,6 +49,7 @@ import {
   getEntityMissingError,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
+import Fqn from '../../utils/Fqn';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
@@ -63,12 +65,16 @@ const WorksheetDetailsPage = () => {
   const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const { fqn: worksheetFQN } = useFqn();
+  const { fqn: decodedWorksheetFQN } = useFqn();
   const [worksheetDetails, setWorksheetDetails] = useState<Worksheet>(
     {} as Worksheet
   );
   const [isLoading, setLoading] = useState<boolean>(true);
   const [isError, setIsError] = useState(false);
+  const [resolvedEntityFqn, setResolvedEntityFqn] = useState<string>('');
+  const [activeColumnFqn, setActiveColumnFqn] = useState<string | undefined>(
+    undefined
+  );
 
   const [worksheetPermissions, setWorksheetPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -88,41 +94,19 @@ const WorksheetDetailsPage = () => {
     );
   };
 
-  const onWorksheetUpdate = async (
-    updatedData: Worksheet,
-    key?: keyof Worksheet
-  ) => {
+  const onWorksheetUpdate = async (updatedData: Worksheet) => {
     try {
-      const res = await saveUpdatedWorksheetData(updatedData);
+      await saveUpdatedWorksheetData(updatedData);
 
-      setWorksheetDetails((previous) => {
-        return {
-          ...previous,
-          ...res,
-          ...(key && { [key]: res[key] }),
-        };
-      });
+      const res = await getDriveAssetByFqn<Worksheet>(
+        worksheetDetails.fullyQualifiedName ?? decodedWorksheetFQN,
+        EntityType.WORKSHEET,
+        defaultFields
+      );
+
+      setWorksheetDetails(res);
     } catch (error) {
       showErrorToast(error as AxiosError);
-    }
-  };
-
-  const fetchResourcePermission = async (entityFqn: string) => {
-    setLoading(true);
-    try {
-      const permissions = await getEntityPermissionByFqn(
-        ResourceEntity.WORKSHEET,
-        entityFqn
-      );
-      setWorksheetPermissions(permissions);
-    } catch {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: entityFqn,
-        })
-      );
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -147,11 +131,11 @@ const WorksheetDetailsPage = () => {
         id: id,
       });
     } catch (error) {
+      // Re-throw 404 to be handled by the caller (permission fetcher fallback)
       if ((error as AxiosError).response?.status === 404) {
-        setIsError(true);
-      } else if (
-        (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
-      ) {
+        throw error;
+      }
+      if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
         navigate(ROUTES.FORBIDDEN, { replace: true });
       } else {
         showErrorToast(
@@ -162,7 +146,61 @@ const WorksheetDetailsPage = () => {
           })
         );
       }
+      setIsError(true);
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchResourcePermission = async (
+    entityFqn: string,
+    isFallback = false
+  ) => {
+    setLoading(true);
+    try {
+      const permissions = await getEntityPermissionByFqn(
+        ResourceEntity.WORKSHEET,
+        entityFqn
+      );
+
+      setWorksheetPermissions(permissions);
+
+      const viewBasicPermission = getPrioritizedViewPermission(
+        permissions,
+        PermissionOperation.ViewBasic
+      );
+
+      if (viewBasicPermission) {
+        await fetchWorksheetDetails(entityFqn);
+      } else {
+        setLoading(false);
+      }
+
+      setResolvedEntityFqn(entityFqn);
+
+      // If we successfully resolved using fallback, the remainder is the column
+      if (isFallback) {
+        setActiveColumnFqn(decodedWorksheetFQN);
+      } else {
+        setActiveColumnFqn(undefined);
+      }
+    } catch (error) {
+      if ((error as AxiosError)?.response?.status === ClientErrors.NOT_FOUND) {
+        const parentParts = Fqn.split(entityFqn).slice(0, -1);
+        if (parentParts.length > 0) {
+          const parentFqn = Fqn.build(...parentParts);
+          await fetchResourcePermission(parentFqn, true);
+
+          return;
+        }
+      }
+
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', {
+          entity: entityFqn,
+        })
+      );
+      setIsError(true);
       setLoading(false);
     }
   };
@@ -218,7 +256,7 @@ const WorksheetDetailsPage = () => {
       navigate(
         getVersionPath(
           EntityType.WORKSHEET,
-          worksheetFQN,
+          decodedWorksheetFQN,
           toString(currentVersion)
         )
       );
@@ -242,7 +280,7 @@ const WorksheetDetailsPage = () => {
     try {
       await updateDriveAssetVotes<Worksheet>(id, data, EntityType.WORKSHEET);
       const details = await getDriveAssetByFqn<Worksheet>(
-        worksheetFQN,
+        decodedWorksheetFQN,
         EntityType.WORKSHEET,
         [
           TabSpecificField.OWNERS,
@@ -270,19 +308,22 @@ const WorksheetDetailsPage = () => {
   );
 
   useEffect(() => {
-    fetchResourcePermission(worksheetFQN);
-  }, [worksheetFQN]);
-
-  useEffect(() => {
     if (
-      getPrioritizedViewPermission(
-        worksheetPermissions,
-        PermissionOperation.ViewBasic
-      )
+      resolvedEntityFqn &&
+      (decodedWorksheetFQN === resolvedEntityFqn ||
+        decodedWorksheetFQN.startsWith(resolvedEntityFqn + FQN_SEPARATOR_CHAR))
     ) {
-      fetchWorksheetDetails(worksheetFQN);
+      setActiveColumnFqn(
+        decodedWorksheetFQN === resolvedEntityFqn
+          ? undefined
+          : decodedWorksheetFQN
+      );
+
+      return;
     }
-  }, [worksheetPermissions, worksheetFQN]);
+
+    fetchResourcePermission(decodedWorksheetFQN);
+  }, [decodedWorksheetFQN, resolvedEntityFqn]);
 
   if (isLoading) {
     return <Loader />;
@@ -290,7 +331,7 @@ const WorksheetDetailsPage = () => {
   if (isError) {
     return (
       <ErrorPlaceHolder>
-        {getEntityMissingError('worksheet', worksheetFQN)}
+        {getEntityMissingError('worksheet', decodedWorksheetFQN)}
       </ErrorPlaceHolder>
     );
   }
@@ -308,7 +349,8 @@ const WorksheetDetailsPage = () => {
 
   return (
     <WorksheetDetails
-      fetchWorksheet={() => fetchWorksheetDetails(worksheetFQN)}
+      activeColumnFqn={activeColumnFqn}
+      fetchWorksheet={() => fetchWorksheetDetails(resolvedEntityFqn)}
       followWorksheetHandler={followWorksheet}
       handleToggleDelete={handleToggleDelete}
       unFollowWorksheetHandler={unFollowWorksheet}
