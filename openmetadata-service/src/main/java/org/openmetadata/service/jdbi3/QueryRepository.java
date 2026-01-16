@@ -13,7 +13,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -86,6 +88,15 @@ public class QueryRepository extends EntityRepository<Query> {
       }
       entity.setDomains(computedDomains);
     }
+  }
+
+  @Override
+  protected void setInheritedFields(List<Query> queries, EntityUtil.Fields fields) {
+    if (!fields.contains("domains") || queries == null || queries.isEmpty()) {
+      return;
+    }
+
+    fetchAndSetDomainsInBulk(queries);
   }
 
   @Override
@@ -205,6 +216,100 @@ public class QueryRepository extends EntityRepository<Query> {
     return queryEntity == null
         ? Collections.emptyList()
         : findFrom(queryEntity.getId(), Entity.QUERY, Relationship.USES, USER);
+  }
+
+  private void fetchAndSetDomainsInBulk(List<Query> queries) {
+    Set<UUID> allTableIds =
+        queries.stream()
+            .filter(q -> !nullOrEmpty(q.getQueryUsedIn()))
+            .flatMap(q -> q.getQueryUsedIn().stream())
+            .map(EntityReference::getId)
+            .collect(Collectors.toSet());
+
+    if (allTableIds.isEmpty()) {
+      return;
+    }
+
+    Map<UUID, List<EntityReference>> tableToDomains = batchFetchTableDomains(allTableIds);
+
+    Set<UUID> tablesWithoutDirectDomains =
+        allTableIds.stream()
+            .filter(tableId -> !tableToDomains.containsKey(tableId))
+            .collect(Collectors.toSet());
+
+    if (!tablesWithoutDirectDomains.isEmpty()) {
+      for (UUID tableId : tablesWithoutDirectDomains) {
+        try {
+          EntityInterface table =
+              Entity.getEntity(Entity.TABLE, tableId, "domains", Include.NON_DELETED);
+          List<EntityReference> inheritedDomains = table.getDomains();
+          if (!nullOrEmpty(inheritedDomains)) {
+            tableToDomains.put(tableId, inheritedDomains);
+          }
+        } catch (Exception e) {
+          LOG.warn("Could not fetch inherited domains for table: {}", tableId, e);
+        }
+      }
+    }
+
+    Map<UUID, List<EntityReference>> queryDomainsMap = new HashMap<>();
+    for (Query query : queries) {
+      if (nullOrEmpty(query.getQueryUsedIn())) {
+        continue;
+      }
+
+      Map<String, EntityReference> uniqueDomains = new HashMap<>();
+      for (EntityReference tableRef : query.getQueryUsedIn()) {
+        List<EntityReference> domains = tableToDomains.get(tableRef.getId());
+        if (!nullOrEmpty(domains)) {
+          for (EntityReference domain : domains) {
+            uniqueDomains.putIfAbsent(domain.getId().toString(), domain);
+          }
+        }
+      }
+
+      List<EntityReference> domainList = new ArrayList<>(uniqueDomains.values());
+      domainList.forEach(domain -> domain.setInherited(true));
+      queryDomainsMap.put(query.getId(), domainList);
+    }
+
+    queries.forEach(
+        query -> query.setDomains(queryDomainsMap.getOrDefault(query.getId(), List.of())));
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchTableDomains(Set<UUID> tableIds) {
+    if (tableIds == null || tableIds.isEmpty()) {
+      return Map.of();
+    }
+
+    List<String> tableIdStrings = tableIds.stream().map(UUID::toString).toList();
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(tableIdStrings, Relationship.HAS.ordinal(), Entity.DOMAIN, Include.ALL);
+
+    if (records.isEmpty()) {
+      return Map.of();
+    }
+
+    Set<UUID> domainIds =
+        records.stream().map(rec -> UUID.fromString(rec.getFromId())).collect(Collectors.toSet());
+
+    Map<UUID, EntityReference> domainRefMap =
+        domainIds.isEmpty()
+            ? Map.of()
+            : Entity.getEntityReferencesByIds(
+                    Entity.DOMAIN, new ArrayList<>(domainIds), Include.ALL)
+                .stream()
+                .collect(Collectors.toMap(EntityReference::getId, ref -> ref));
+
+    return records.stream()
+        .collect(
+            Collectors.groupingBy(
+                rec -> UUID.fromString(rec.getToId()),
+                Collectors.mapping(
+                    rec -> domainRefMap.get(UUID.fromString(rec.getFromId())),
+                    Collectors.filtering(java.util.Objects::nonNull, Collectors.toList()))));
   }
 
   public List<EntityReference> computeDomainsFromQueryUsage(Query queryEntity) {

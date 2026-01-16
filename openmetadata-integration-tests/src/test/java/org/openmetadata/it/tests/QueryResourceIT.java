@@ -18,9 +18,11 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -1049,14 +1051,14 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
     OpenMetadataClient client = SdkClients.adminClient();
     DatabaseService service = getOrCreateDatabaseService(ns);
 
-    org.openmetadata.schema.entity.domains.Domain domain1 = testDomain();
+    Domain domain1 = testDomain();
 
-    org.openmetadata.schema.api.domains.CreateDomain createDomain2 =
-        new org.openmetadata.schema.api.domains.CreateDomain()
+    CreateDomain createDomain2 =
+        new CreateDomain()
             .withName(ns.prefix("domain2"))
-            .withDomainType(org.openmetadata.schema.api.domains.CreateDomain.DomainType.AGGREGATE)
+            .withDomainType(CreateDomain.DomainType.AGGREGATE)
             .withDescription("Second test domain");
-    org.openmetadata.schema.entity.domains.Domain domain2 = client.domains().create(createDomain2);
+    Domain domain2 = client.domains().create(createDomain2);
 
     String shortId = ns.shortPrefix();
     CreateTable table1Request = new CreateTable();
@@ -1101,12 +1103,12 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
     OpenMetadataClient client = SdkClients.adminClient();
     DatabaseService service = getOrCreateDatabaseService(ns);
 
-    org.openmetadata.schema.entity.domains.Domain domain1 = testDomain();
+    Domain domain1 = testDomain();
 
-    org.openmetadata.schema.api.domains.CreateDomain createDomain2 =
-        new org.openmetadata.schema.api.domains.CreateDomain()
+    CreateDomain createDomain2 =
+        new CreateDomain()
             .withName(ns.prefix("domain2_update"))
-            .withDomainType(org.openmetadata.schema.api.domains.CreateDomain.DomainType.AGGREGATE)
+            .withDomainType(CreateDomain.DomainType.AGGREGATE)
             .withDescription("Second test domain for updates");
     org.openmetadata.schema.entity.domains.Domain domain2 = client.domains().create(createDomain2);
 
@@ -1197,10 +1199,10 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
 
     org.openmetadata.schema.entity.domains.Domain domain1 = testDomain();
 
-    org.openmetadata.schema.api.domains.CreateDomain createDomain2 =
-        new org.openmetadata.schema.api.domains.CreateDomain()
+    CreateDomain createDomain2 =
+        new CreateDomain()
             .withName(ns.prefix("domain2_manual"))
-            .withDomainType(org.openmetadata.schema.api.domains.CreateDomain.DomainType.AGGREGATE)
+            .withDomainType(CreateDomain.DomainType.AGGREGATE)
             .withDescription("Second test domain for manual assignment test");
     org.openmetadata.schema.entity.domains.Domain domain2 = client.domains().create(createDomain2);
 
@@ -1240,5 +1242,160 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
         domain1.getId(),
         patchedQuery.getDomains().get(0).getId(),
         "Domain should remain domain1 (from queryUsedIn), not domain2 (from manual patch)");
+  }
+
+  @Test
+  void test_listQueriesWithDomainsBulkFetch(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = getOrCreateDatabaseService(ns);
+
+    Domain domain1 = testDomain();
+
+    CreateDomain createDomain2 =
+        new CreateDomain()
+            .withName(ns.prefix("domain2_list"))
+            .withDomainType(CreateDomain.DomainType.AGGREGATE)
+            .withDescription("Second test domain for list test");
+    Domain domain2 = client.domains().create(createDomain2);
+
+    CreateDomain createDomain3 =
+        new CreateDomain()
+            .withName(ns.prefix("domain3_list"))
+            .withDomainType(CreateDomain.DomainType.AGGREGATE)
+            .withDescription("Third test domain for list test");
+    Domain domain3 = client.domains().create(createDomain3);
+
+    String shortId = ns.shortPrefix();
+
+    CreateTable table1Request = new CreateTable();
+    table1Request.setName("t_list_domain1_" + shortId);
+    table1Request.setDatabaseSchema(
+        getOrCreateTable(ns).getDatabaseSchema().getFullyQualifiedName());
+    table1Request.setColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+    table1Request.setDomains(List.of(domain1.getFullyQualifiedName()));
+    Table table1 = client.tables().create(table1Request);
+
+    CreateTable table2Request = new CreateTable();
+    table2Request.setName("t_list_domain2_" + shortId);
+    table2Request.setDatabaseSchema(
+        getOrCreateTable(ns).getDatabaseSchema().getFullyQualifiedName());
+    table2Request.setColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+    table2Request.setDomains(List.of(domain2.getFullyQualifiedName()));
+    Table table2 = client.tables().create(table2Request);
+
+    CreateTable table3Request = new CreateTable();
+    table3Request.setName("t_list_domain3_" + shortId);
+    table3Request.setDatabaseSchema(
+        getOrCreateTable(ns).getDatabaseSchema().getFullyQualifiedName());
+    table3Request.setColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+    table3Request.setDomains(List.of(domain3.getFullyQualifiedName()));
+    Table table3 = client.tables().create(table3Request);
+
+    CreateTable table4Request = new CreateTable();
+    table4Request.setName("t_list_no_domain_" + shortId);
+    table4Request.setDatabaseSchema(
+        getOrCreateTable(ns).getDatabaseSchema().getFullyQualifiedName());
+    table4Request.setColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+    Table table4 = client.tables().create(table4Request);
+
+    CreateQuery query1Request =
+        new CreateQuery()
+            .withName(ns.prefix("list_query1"))
+            .withQuery("SELECT * FROM list_test1")
+            .withQueryUsedIn(List.of(table1.getEntityReference()))
+            .withService(service.getFullyQualifiedName())
+            .withDuration(0.0)
+            .withQueryDate(System.currentTimeMillis());
+    Query query1 = createEntity(query1Request);
+
+    CreateQuery query2Request =
+        new CreateQuery()
+            .withName(ns.prefix("list_query2"))
+            .withQuery("SELECT * FROM list_test2")
+            .withQueryUsedIn(List.of(table2.getEntityReference(), table3.getEntityReference()))
+            .withService(service.getFullyQualifiedName())
+            .withDuration(0.0)
+            .withQueryDate(System.currentTimeMillis());
+    Query query2 = createEntity(query2Request);
+
+    CreateQuery query3Request =
+        new CreateQuery()
+            .withName(ns.prefix("list_query3"))
+            .withQuery("SELECT * FROM list_test3")
+            .withQueryUsedIn(List.of(table1.getEntityReference(), table2.getEntityReference()))
+            .withService(service.getFullyQualifiedName())
+            .withDuration(0.0)
+            .withQueryDate(System.currentTimeMillis());
+    Query query3 = createEntity(query3Request);
+
+    CreateQuery query4Request =
+        new CreateQuery()
+            .withName(ns.prefix("list_query4"))
+            .withQuery("SELECT * FROM list_test4")
+            .withQueryUsedIn(List.of(table4.getEntityReference()))
+            .withService(service.getFullyQualifiedName())
+            .withDuration(0.0)
+            .withQueryDate(System.currentTimeMillis());
+    Query query4 = createEntity(query4Request);
+
+    CreateQuery query5Request =
+        new CreateQuery()
+            .withName(ns.prefix("list_query5"))
+            .withQuery("SELECT * FROM list_test5")
+            .withQueryUsedIn(List.of())
+            .withService(service.getFullyQualifiedName())
+            .withDuration(0.0)
+            .withQueryDate(System.currentTimeMillis());
+    Query query5 = createEntity(query5Request);
+
+    ListParams params = new ListParams();
+    params.setFields("domains,queryUsedIn");
+    params.addFilter("include", "all");
+    params.setLimit(100);
+    ListResponse<Query> response = listEntities(params);
+
+    Query fetchedQuery1 = findQueryInResults(response, query1.getId());
+    assertNotNull(fetchedQuery1, "Query1 should be in list results");
+    assertNotNull(fetchedQuery1.getDomains(), "Query1 should have domains field");
+    assertEquals(1, fetchedQuery1.getDomains().size(), "Query1 should inherit 1 domain");
+    assertEquals(domain1.getId(), fetchedQuery1.getDomains().get(0).getId());
+    assertTrue(
+        fetchedQuery1.getDomains().get(0).getInherited(),
+        "Query1 domain should be marked as inherited");
+
+    Query fetchedQuery2 = findQueryInResults(response, query2.getId());
+    assertNotNull(fetchedQuery2, "Query2 should be in list results");
+    assertNotNull(fetchedQuery2.getDomains(), "Query2 should have domains field");
+    assertEquals(2, fetchedQuery2.getDomains().size(), "Query2 should inherit 2 domains");
+    List<UUID> query2DomainIds =
+        fetchedQuery2.getDomains().stream().map(EntityReference::getId).toList();
+    assertTrue(query2DomainIds.contains(domain2.getId()), "Query2 should have domain2");
+    assertTrue(query2DomainIds.contains(domain3.getId()), "Query2 should have domain3");
+    assertTrue(
+        fetchedQuery2.getDomains().stream().allMatch(EntityReference::getInherited),
+        "All Query2 domains should be marked as inherited");
+
+    Query fetchedQuery3 = findQueryInResults(response, query3.getId());
+    assertNotNull(fetchedQuery3, "Query3 should be in list results");
+    assertNotNull(fetchedQuery3.getDomains(), "Query3 should have domains field");
+    assertEquals(2, fetchedQuery3.getDomains().size(), "Query3 should inherit 2 domains");
+    List<UUID> query3DomainIds =
+        fetchedQuery3.getDomains().stream().map(EntityReference::getId).toList();
+    assertTrue(query3DomainIds.contains(domain1.getId()), "Query3 should have domain1");
+    assertTrue(query3DomainIds.contains(domain2.getId()), "Query3 should have domain2");
+
+    Query fetchedQuery4 = findQueryInResults(response, query4.getId());
+    assertNotNull(fetchedQuery4, "Query4 should be in list results");
+    assertNotNull(fetchedQuery4.getDomains(), "Query4 should have domains field");
+    assertEquals(
+        0,
+        fetchedQuery4.getDomains().size(),
+        "Query4 should have no domains (table has no domains)");
+
+    Query fetchedQuery5 = findQueryInResults(response, query5.getId());
+    assertNotNull(fetchedQuery5, "Query5 should be in list results");
+    assertNotNull(fetchedQuery5.getDomains(), "Query5 should have domains field");
+    assertEquals(
+        0, fetchedQuery5.getDomains().size(), "Query5 should have no domains (no queryUsedIn)");
   }
 }
