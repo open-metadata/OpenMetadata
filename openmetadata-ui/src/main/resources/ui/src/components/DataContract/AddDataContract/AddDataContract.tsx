@@ -106,20 +106,21 @@ const AddDataContract: React.FC<{
       return !ruleWithInherited.inherited;
     });
 
-    // Get termsOfUse content, excluding if inherited
-    let filteredTermsOfUse: string | undefined;
-    if (isInherited(contract.termsOfUse)) {
-      filteredTermsOfUse = undefined;
-    } else if (
-      typeof contract.termsOfUse === 'object' &&
-      contract.termsOfUse !== null
-    ) {
-      filteredTermsOfUse = (
-        contract.termsOfUse as unknown as { content?: string }
-      ).content;
-    } else if (typeof contract.termsOfUse === 'string') {
-      filteredTermsOfUse = contract.termsOfUse;
-    }
+      // Get termsOfUse, excluding if inherited
+      // Keep the object format to maintain consistency with the API and form components
+      let filteredTermsOfUse: string | { content?: string } | undefined;
+      if (isInherited(contract.termsOfUse)) {
+        filteredTermsOfUse = undefined;
+      } else if (
+        typeof contract.termsOfUse === 'object' &&
+        contract.termsOfUse !== null
+      ) {
+        // Keep as object to maintain the new schema format
+        filteredTermsOfUse = contract.termsOfUse as unknown as { content?: string };
+      } else if (typeof contract.termsOfUse === 'string') {
+        // Convert old string format to new object format for consistency
+        filteredTermsOfUse = { content: contract.termsOfUse };
+      }
 
     // Check security and SLA for inherited
     const securityWithInherited = contract.security as unknown as {
