@@ -35,10 +35,6 @@ export interface QueryRunnerRequest {
      */
     databaseSchema?: string;
     /**
-     * Optional value of the ingestion runner name responsible for running the test
-     */
-    ingestionRunner?: string;
-    /**
      * RUNTIME FIELD - Automatically injected by backend from admin
      * QueryRunnerConfig.querySettings.maxResultSize. This is NOT user-configurable in the
      * request. The backend fetches this value from the service's QueryRunnerConfig and injects
@@ -72,4 +68,8 @@ export interface QueryRunnerRequest {
      * UUID of the user executing the query (extracted from JWT token in backend)
      */
     userId?: string;
+    /**
+     * Optional value of the workflow name responsible for running the test
+     */
+    workflowName?: string;
 }
