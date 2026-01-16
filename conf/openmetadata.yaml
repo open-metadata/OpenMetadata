@@ -575,6 +575,17 @@ limits:
   className: ${LIMITS_CLASS_NAME:-"org.openmetadata.service.limits.DefaultLimits"}
   limitsConfigFile: ${LIMITS_CONFIG_FILE:-""}
 
+# Bulk Operation Configuration
+# Controls parallelism and resource usage for bulk API operations (e.g., bulk import/export)
+# Uses a bounded thread pool to prevent connection pool exhaustion
+bulkOperation:
+  # Max threads for bulk operations (recommendations: 2 vCore=5-8, 4 vCore=8-15, 8 vCore=15-25)
+  maxThreads: ${BULK_OPERATION_MAX_THREADS:-10}
+  # Max queued operations before rejection (returns 503)
+  queueSize: ${BULK_OPERATION_QUEUE_SIZE:-1000}
+  # Timeout in seconds for entire bulk operation
+  timeoutSeconds: ${BULK_OPERATION_TIMEOUT_SECONDS:-300}
+
 web:
   uriPath: ${WEB_CONF_URI_PATH:-"/api"}
   hsts:
