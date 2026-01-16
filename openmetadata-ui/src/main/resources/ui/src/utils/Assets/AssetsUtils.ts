@@ -42,6 +42,10 @@ import {
   getDataModelByFqn,
   patchDataModelDetails,
 } from '../../rest/dataModelsAPI';
+import {
+  getDataProductByName,
+  patchDataProduct,
+} from '../../rest/dataProductAPI';
 import { getDomainByName, patchDomains } from '../../rest/domainAPI';
 import {
   getDriveAssetByFqn,
@@ -112,6 +116,8 @@ export const getAPIfromSource = (
       return patchStoredProceduresDetails;
     case EntityType.DASHBOARD_DATA_MODEL:
       return patchDataModelDetails;
+    case EntityType.DATA_PRODUCT:
+      return patchDataProduct;
     case EntityType.GLOSSARY_TERM:
       return patchGlossaryTerm;
     case EntityType.GLOSSARY:
@@ -191,6 +197,8 @@ export const getEntityAPIfromSource = (
       return getStoredProceduresByFqn;
     case EntityType.DASHBOARD_DATA_MODEL:
       return getDataModelByFqn;
+    case EntityType.DATA_PRODUCT:
+      return getDataProductByName;
     case EntityType.GLOSSARY_TERM:
       return getGlossaryTermByFQN;
     case EntityType.GLOSSARY:
