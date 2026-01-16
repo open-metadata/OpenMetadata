@@ -64,8 +64,6 @@ from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
-TableResolutionResult.model_rebuild()
-
 logger = ingestion_logger()
 
 STATUS_MAP = {

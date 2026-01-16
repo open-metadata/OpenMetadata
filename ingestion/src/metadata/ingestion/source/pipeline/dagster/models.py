@@ -10,15 +10,14 @@
 #  limitations under the License.
 
 """
-Tableau Source Model module
+Dagster Source Model module
 """
 
-from typing import TYPE_CHECKING, List, Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-if TYPE_CHECKING:
-    from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Table
 
 # Models for get_task_runs
 
@@ -169,7 +168,7 @@ class TableResolutionResult(BaseModel):
     """Result of resolving a Dagster asset to an OpenMetadata table"""
 
     table_fqn: Optional[str] = None
-    table_entity: Optional["Table"] = None
+    table_entity: Optional[Table] = None
 
     @property
     def is_resolved(self) -> bool:
