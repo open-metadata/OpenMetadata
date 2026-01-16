@@ -17,7 +17,7 @@ Tests the fault-tolerant diagnostics gathering for failed pipeline jobs.
 import sys
 from pathlib import Path
 from unittest import TestCase
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 # Add the operators/docker directory to the path for imports
 operators_path = Path(__file__).parent.parent.parent / "operators" / "docker"
@@ -176,7 +176,10 @@ class TestGetMainPodLogs(TestCase):
 
         self.assertEqual(result, "log line 1\nlog line 2")
         mock_client.read_namespaced_pod_log.assert_called_once_with(
-            name="test-pod", namespace="test-namespace", container="main", tail_lines=500
+            name="test-pod",
+            namespace="test-namespace",
+            container="main",
+            tail_lines=500,
         )
 
     def test_returns_none_for_invalid_pod(self):
