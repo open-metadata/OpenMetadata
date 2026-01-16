@@ -2066,6 +2066,7 @@
     "auto-pilot-no-agents-message": "هیچ سوئیت AutoPilot وجود ندارد.",
     "availability-time-contract-description": "زمان روزی که انتظار می‌رود داده‌ها در دسترس باشند",
     "bot-email-confirmation": "{{email}} برای ربات {{botName}}",
+    "bulk-edit-entity-help": "چندین {{entity}} را به‌طور هم‌زمان با استفاده از CSV ویرایش کنید",
     "can-not-add-widget": "به دلیل محدودیت‌های اندازه، نمی‌توان ویجت را به این بخش اضافه کرد.",
     "can-you-add-a-description": "آیا می‌توانید توضیحی اضافه کنید؟",
     "checkout-service-connectors-doc": "اینجا تعدادی از اتصالات برای ایندکس کردن داده‌ها از خدمات خود موجود است. لطفاً مستندات ما را بررسی کنید.",

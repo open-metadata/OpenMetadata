@@ -2066,6 +2066,7 @@
     "auto-pilot-no-agents-message": "AutoPilot 에이전트가 없습니다.",
     "availability-time-contract-description": "데이터가 사용 가능할 것으로 예상되는 하루 중 시간",
     "bot-email-confirmation": "{{botName}} 봇의 {{email}}",
+    "bulk-edit-entity-help": "CSV를 사용하여 여러 {{entity}}를 한 번에 편집",
     "can-not-add-widget": "크기 제한으로 인해 이 섹션에 위젯을 추가할 수 없습니다.",
     "can-you-add-a-description": "설명을 추가하시겠습니까?",
     "checkout-service-connectors-doc": "여기에는 서비스에서 데이터를 인덱싱하기 위한 많은 커넥터가 있습니다. 우리의 커넥터를 확인해 보세요.",
