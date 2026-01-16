@@ -112,7 +112,7 @@ import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 public class IngestionPipelineResource
     extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
   private IngestionPipelineMapper mapper;
-  public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
+  public static final String COLLECTION_PATH = "/v1/services/ingestionPipelines/";
   private PipelineServiceClientInterface pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   static final String FIELDS = "owners,followers";

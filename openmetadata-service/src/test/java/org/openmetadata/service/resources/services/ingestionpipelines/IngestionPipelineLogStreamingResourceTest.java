@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.services.ingestionpipelines;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
+import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -167,9 +168,11 @@ class IngestionPipelineLogStreamingResourceTest extends OpenMetadataApplicationT
 
     WebTarget writeTarget = getResource(COLLECTION_PATH + "/logs/" + pipelineFQN + "/" + runId);
 
+    Map<String, Object> logBatch = Map.of("logs", logContent);
+
     Response writeResponse =
         SecurityUtil.addHeaders(writeTarget, ADMIN_AUTH_HEADERS)
-            .post(jakarta.ws.rs.client.Entity.entity(logContent, MediaType.TEXT_PLAIN));
+            .post(Entity.entity(logBatch, MediaType.APPLICATION_JSON));
 
     int status = writeResponse.getStatus();
     assertTrue(
