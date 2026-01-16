@@ -85,14 +85,16 @@ class JSONDataFrameReader(DataFrameReader):
             )
             line = line.strip()
             if not line:
-                continue
+                logger.debug("Skipping empty line while reading JSON Lines.")
             try:
                 batch.append(json.loads(line))
                 if len(batch) >= batch_size:
                     yield DataFrame.from_records(batch)
                     batch = []
-            except json.JSONDecodeError:
-                continue
+            except json.JSONDecodeError as error:
+                logger.info(
+                    f"Skipping invalid JSON line {line} due to an error: {error}"
+                )
         if batch:
             yield DataFrame.from_records(batch)
 
