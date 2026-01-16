@@ -39,11 +39,16 @@ import {
   getEntityName,
 } from '../../../../../utils/EntityUtils';
 import { columnFilterIcon } from '../../../../../utils/TableColumn.util';
+import { useFqn } from '../../../../../hooks/useFqn';
+import { useFqnDeepLink } from '../../../../../hooks/useFqnDeepLink';
 import {
   getAllTags,
   searchTagInData,
 } from '../../../../../utils/TableTags/TableTags.utils';
-import { pruneEmptyChildren } from '../../../../../utils/TableUtils';
+import {
+  getHighlightedRowClassName,
+  pruneEmptyChildren,
+} from '../../../../../utils/TableUtils';
 import DisplayName from '../../../../common/DisplayName/DisplayName';
 import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -61,9 +66,12 @@ import { ModalWithMarkdownEditor } from '../../../../Modals/ModalWithMarkdownEdi
 
 const ModelTab = () => {
   const { t } = useTranslation();
+
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
+  const [_expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
-  const { openColumnDetailPanel } = useGenericContext<DashboardDataModel>();
+  const { openColumnDetailPanel, selectedColumn } =
+    useGenericContext<DashboardDataModel>();
 
   const [paginatedColumns, setPaginatedColumns] = useState<Column[]>([]);
   const [columnsLoading, setColumnsLoading] = useState(true);
@@ -81,6 +89,27 @@ const ModelTab = () => {
   const { data: dataModel, permissions } =
     useGenericContext<DashboardDataModel>();
   const { fullyQualifiedName: entityFqn, deleted: isReadOnly } = dataModel;
+
+  const {
+    columnFqn: columnPart,
+    fqn,
+  } = useFqn({
+    type: EntityType.DASHBOARD_DATA_MODEL,
+  });
+
+  useFqnDeepLink({
+    data: paginatedColumns,
+    columnPart,
+    fqn,
+    setExpandedRowKeys: setExpandedRowKeys,
+    openColumnDetailPanel,
+    selectedColumn: selectedColumn as Column | null,
+  });
+
+  const getRowClassName = useCallback(
+    (record: Column) => getHighlightedRowClassName(record, fqn),
+    [fqn]
+  );
 
   // Always use paginated columns, never dataModel.columns directly
   const data = paginatedColumns;
@@ -110,7 +139,8 @@ const ModelTab = () => {
               fields: TabSpecificField.TAGS,
             });
 
-        setPaginatedColumns(pruneEmptyChildren(response.data) || []);
+        const data = pruneEmptyChildren(response.data) || [];
+        setPaginatedColumns(data);
         handlePagingChange(response.paging);
       } catch {
         setPaginatedColumns([]);
@@ -170,7 +200,7 @@ const ModelTab = () => {
     if (entityFqn) {
       fetchPaginatedColumns(1, searchText || undefined);
     }
-  }, [entityFqn, searchText, fetchPaginatedColumns, pageSize]);
+  }, [entityFqn, searchText, fetchPaginatedColumns, pageSize, dataModel]);
 
   const updateColumnDetails = async (
     columnFqn: string,
@@ -316,9 +346,11 @@ const ModelTab = () => {
           return (
             <DisplayName
               displayName={displayName}
+              entityType={EntityType.DASHBOARD_DATA_MODEL}
               hasEditPermission={editDisplayNamePermission}
               id={record.fullyQualifiedName ?? ''}
               name={record.name}
+              parentEntityFqn={entityFqn}
               onEditDisplayName={handleEditColumnData}
             />
           );
@@ -431,6 +463,7 @@ const ModelTab = () => {
           emptyText: <FilterTablePlaceHolder />,
         }}
         pagination={false}
+        rowClassName={getRowClassName}
         rowKey="name"
         scroll={{ x: 1200 }}
         searchProps={searchProps}

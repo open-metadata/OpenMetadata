@@ -76,7 +76,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "topics")
 public class TopicResource extends EntityResource<Topic, TopicRepository> {
-  public static final String COLLECTION_PATH = "v1/topics/";
+  public static final String COLLECTION_PATH = "/v1/topics/";
   private final TopicMapper mapper = new TopicMapper();
   static final String FIELDS = "owners,followers,tags,extension,domains,dataProducts,sourceHash";
 

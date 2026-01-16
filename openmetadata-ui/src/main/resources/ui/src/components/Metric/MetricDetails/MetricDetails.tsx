@@ -30,7 +30,9 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreMetric } from '../../../rest/metricsAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import {
+  getFeedCounts,
+} from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -75,8 +77,11 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.OVERVIEW } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedMetricFqn } = useFqn();
+
   const navigate = useNavigate();
+  
+  const { entityFqn: decodedMetricFqn } = useFqn({ type: EntityType.METRIC });
+  
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );

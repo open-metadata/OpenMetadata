@@ -18,7 +18,7 @@ public class SearchPrompt implements McpPrompt {
         limit = Integer.parseInt((String) limitObj);
       }
     }
-    String entityType = (String) params.get("entity_type");
+    String entityType = (String) params.get("entityType");
     return new McpSchema.GetPromptResult(
         "Message can be used to get search results",
         List.of(

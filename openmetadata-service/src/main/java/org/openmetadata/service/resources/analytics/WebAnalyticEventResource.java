@@ -67,7 +67,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 @Collection(name = "analytics")
 public class WebAnalyticEventResource
     extends EntityResource<WebAnalyticEvent, WebAnalyticEventRepository> {
-  public static final String COLLECTION_PATH = WebAnalyticEventRepository.COLLECTION_PATH;
+  public static final String COLLECTION_PATH = "/v1/analytics/web/events";
   static final String FIELDS = "owners";
   private static final Pattern HTML_PATTERN = Pattern.compile(".*\\<[^>]+>.*", Pattern.DOTALL);
   private final WebAnalyticEventMapper mapper = new WebAnalyticEventMapper();
