@@ -790,6 +790,24 @@ export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
   });
 };
 
+export const updateFieldExtension = <T extends TableFieldsInfoCommonEntities>(
+  changedFieldFQN: string,
+  extension: Record<string, unknown>,
+  searchIndexFields?: Array<T>
+) => {
+  searchIndexFields?.forEach((field) => {
+    if (field.fullyQualifiedName === changedFieldFQN) {
+      (field as any).extension = extension;
+    } else {
+      updateFieldExtension(
+        changedFieldFQN,
+        extension,
+        field?.children as Array<T>
+      );
+    }
+  });
+};
+
 export const getTableDetailPageBaseTabs = ({
   queryCount,
   isTourOpen,

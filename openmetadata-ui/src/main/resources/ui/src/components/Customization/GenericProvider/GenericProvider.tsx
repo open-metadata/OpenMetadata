@@ -33,6 +33,7 @@ import { EntityReference } from '../../../generated/entity/type';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { postThread } from '../../../rest/feedsAPI';
+import { updateTableColumn } from '../../../rest/tableAPI';
 import { handleColumnFieldUpdate as handleColumnFieldUpdateUtil } from '../../../utils/ColumnUpdateUtils';
 import {
   getLayoutFromCustomizedPage,
@@ -133,8 +134,9 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   }, [extractedColumns, columnFqn, cleanColumn]);
 
   // Sync selected column when extractedColumns change (e.g., after updates)
+  // Don't overwrite selectedColumn with extractedColumns data as it may lack extension
+  // The selectedColumn from SchemaTable already has the full data including extension
   useEffect(() => {
-    // Existing logic for updates
     if (!selectedColumn?.fullyQualifiedName || extractedColumns.length === 0) {
       return;
     }
@@ -145,7 +147,20 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     );
 
     if (updatedColumn) {
-      setSelectedColumn(cleanColumn(updatedColumn));
+      // Only update fields that extractedColumns might have newer data for (e.g., tags, description)
+      // but preserve extension from the original selectedColumn
+      setSelectedColumn((prev) => {
+        if (!prev) {
+          return cleanColumn(updatedColumn);
+        }
+        const prevColumn = prev as Column;
+
+        return cleanColumn({
+          ...updatedColumn,
+          // Preserve extension from prev (which came from SchemaTable with full data)
+          extension: prevColumn.extension ?? updatedColumn.extension,
+        });
+      });
     }
   }, [extractedColumns, selectedColumn?.fullyQualifiedName, cleanColumn]);
 
@@ -247,9 +262,17 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     }
   }, [data.fullyQualifiedName, type, tab, location, navigate]);
 
-  // Wrapper for onColumnFieldUpdate that updates selectedColumn after the update completes
+  // Wrapper for onColumnFieldUpdate that updates  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   const handleColumnFieldUpdate = useCallback(
     async (fqn: string, update: ColumnFieldUpdate) => {
+      let apiResponseColumn: Column | undefined;
+
+      // For Table entities, use the specific column update endpoint instead of generic patch
+      // This ensures custom properties and other column fields are updated correctly
+      if (type === EntityType.TABLE) {
+        apiResponseColumn = await updateTableColumn(fqn, update);
+      }
+
       const { updatedEntity, updatedColumn } = handleColumnFieldUpdateUtil({
         entityType: type,
         entityData: data as unknown as EntityDataMapValue,
@@ -258,14 +281,19 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       });
 
       // Call onUpdate with the updated entity (onUpdate will handle API calls)
-      await onUpdate(updatedEntity as unknown as T);
+      await onUpdate(updatedEntity as unknown as T, undefined, {
+        updateMode: 'local-only',
+      });
+
+      // Use API response column if available (more accurate), otherwise use local calculation
+      const finalColumn = apiResponseColumn ?? updatedColumn;
 
       // Update selected column if it matches the updated one
-      if (updatedColumn && selectedColumn?.fullyQualifiedName === fqn) {
-        setSelectedColumn(cleanColumn(updatedColumn as ColumnOrTask));
+      if (finalColumn && selectedColumn?.fullyQualifiedName === fqn) {
+        setSelectedColumn(cleanColumn(finalColumn as ColumnOrTask));
       }
 
-      return updatedColumn as ColumnOrTask | undefined;
+      return finalColumn as ColumnOrTask | undefined;
     },
     [data, type, onUpdate, selectedColumn, cleanColumn]
   );

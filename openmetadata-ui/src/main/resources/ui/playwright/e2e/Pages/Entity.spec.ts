@@ -49,7 +49,10 @@ import {
   uuid,
   verifyDomainPropagation,
 } from '../../utils/common';
-import { CustomPropertyTypeByName } from '../../utils/customProperty';
+import {
+  CustomPropertyTypeByName,
+  updateCustomPropertyInRightPanel,
+} from '../../utils/customProperty';
 import {
   addMultiOwner,
   closeColumnDetailPanel,
@@ -1566,6 +1569,24 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             );
           }
         });
+
+        await test.step(
+          `Update ${titleText} Custom Property in Right Panel`,
+          async () => {
+            test.slow();
+            for (const type of properties) {
+              await updateCustomPropertyInRightPanel({
+                page,
+                entityName:
+                  entity.entityResponseData['displayName'] ??
+                  entity.entityResponseData['name'],
+                propertyDetails: entity.customPropertyValue[type].property,
+                value: entity.customPropertyValue[type].value,
+                endpoint: entity.endpoint,
+              });
+            }
+          }
+        );
 
         await entity.cleanupCustomProperty(apiContext);
         await afterAction();

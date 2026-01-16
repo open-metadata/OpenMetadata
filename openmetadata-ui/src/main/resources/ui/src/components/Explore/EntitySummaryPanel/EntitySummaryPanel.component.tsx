@@ -15,7 +15,8 @@ import { CloseOutlined } from '@mui/icons-material';
 import { Button, Card } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { get } from 'lodash';
+import { compare } from 'fast-json-patch';
+import { get, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -34,35 +35,75 @@ import { PipelineViewMode } from '../../../generated/settings/settings';
 import { TagLabel } from '../../../generated/tests/testCase';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { EntityData } from '../../../pages/TasksPage/TasksPage.interface';
-import { getApiCollectionByFQN } from '../../../rest/apiCollectionsAPI';
-import { getApiEndPointByFQN } from '../../../rest/apiEndpointsAPI';
-import { getChartByFqn } from '../../../rest/chartsAPI';
-import { getDashboardByFqn } from '../../../rest/dashboardAPI';
+import {
+  getApiCollectionByFQN,
+  patchApiCollection,
+} from '../../../rest/apiCollectionsAPI';
+import {
+  getApiEndPointByFQN,
+  patchApiEndPoint,
+} from '../../../rest/apiEndpointsAPI';
+import { getChartByFqn, patchChartDetails } from '../../../rest/chartsAPI';
+import {
+  getDashboardByFqn,
+  patchDashboardDetails,
+} from '../../../rest/dashboardAPI';
 import {
   getDatabaseDetailsByFQN,
   getDatabaseSchemaDetailsByFQN,
+  patchDatabaseDetails,
+  patchDatabaseSchemaDetails,
 } from '../../../rest/databaseAPI';
-import { getDataModelByFqn } from '../../../rest/dataModelsAPI';
-import { getDataProductByName } from '../../../rest/dataProductAPI';
-import { getDomainByName } from '../../../rest/domainAPI';
-import { getDriveAssetByFqn } from '../../../rest/driveAPI';
-import { getGlossaryTermByFQN } from '../../../rest/glossaryAPI';
+import {
+  getDataModelByFqn,
+  patchDataModelDetails,
+} from '../../../rest/dataModelsAPI';
+import {
+  getDataProductByName,
+  patchDataProduct,
+} from '../../../rest/dataProductAPI';
+import { getDomainByName, patchDomains } from '../../../rest/domainAPI';
+import {
+  getDriveAssetByFqn,
+  patchDriveAssetDetails,
+} from '../../../rest/driveAPI';
+import {
+  getGlossaryTermByFQN,
+  patchGlossaryTerm,
+} from '../../../rest/glossaryAPI';
 import { getLineageDataByFQN } from '../../../rest/lineageAPI';
+import {
+  getContainerByFQN,
+  patchContainerDetails,
+} from '../../../rest/storageAPI';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
-import { getMetricByFqn } from '../../../rest/metricsAPI';
-import { getMlModelByFQN } from '../../../rest/mlModelAPI';
-import { getPipelineByFqn } from '../../../rest/pipelineAPI';
-import { getSearchIndexDetailsByFQN } from '../../../rest/SearchIndexAPI';
-import { getContainerByFQN } from '../../../rest/storageAPI';
-import { getStoredProceduresByFqn } from '../../../rest/storedProceduresAPI';
-import { getTableDetailsByFQN } from '../../../rest/tableAPI';
-import { getTopicByFqn } from '../../../rest/topicsAPI';
+import { getMetricByFqn, patchMetric } from '../../../rest/metricsAPI';
+import { getMlModelByFQN, patchMlModelDetails } from '../../../rest/mlModelAPI';
+import {
+  getPipelineByFqn,
+  patchPipelineDetails,
+} from '../../../rest/pipelineAPI';
+import {
+  getSearchIndexDetailsByFQN,
+  patchSearchIndexDetails,
+} from '../../../rest/SearchIndexAPI';
+
+import {
+  getStoredProceduresByFqn,
+  patchStoredProceduresDetails,
+} from '../../../rest/storedProceduresAPI';
+import {
+  getTableDetailsByFQN,
+  patchTableDetails,
+} from '../../../rest/tableAPI';
+import { getTopicByFqn, patchTopicDetails } from '../../../rest/topicsAPI';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityLinkFromType,
 } from '../../../utils/EntityUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
   getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
@@ -114,6 +155,7 @@ export default function EntitySummaryPanel({
   const [entityData, setEntityData] = useState<any>(null);
   const [entityTypeDetail, setEntityTypeDetail] = useState<any>(null);
   const [isEntityDataLoading, setIsEntityDataLoading] = useState(false);
+  const [isEntityTypeLoading, setIsEntityTypeLoading] = useState(false);
   const [lineageData, setLineageData] = useState<LineageData | null>(null);
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
   const [lineageFilter, setLineageFilter] = useState<'upstream' | 'downstream'>(
@@ -194,6 +236,53 @@ export default function EntitySummaryPanel({
     } as Record<string, (fqn: string) => Promise<unknown>>;
   }, []);
 
+  const entityUpdateMap = useMemo(() => {
+    return {
+      [EntityType.TABLE]: (id: string, data: any) =>
+        patchTableDetails(id, data),
+      [EntityType.TOPIC]: (id: string, data: any) =>
+        patchTopicDetails(id, data),
+      [EntityType.DASHBOARD]: (id: string, data: any) =>
+        patchDashboardDetails(id, data),
+      [EntityType.PIPELINE]: (id: string, data: any) =>
+        patchPipelineDetails(id, data),
+      [EntityType.MLMODEL]: (id: string, data: any) =>
+        patchMlModelDetails(id, data),
+      [EntityType.DATABASE]: (id: string, data: any) =>
+        patchDatabaseDetails(id, data),
+      [EntityType.DATABASE_SCHEMA]: (id: string, data: any) =>
+        patchDatabaseSchemaDetails(id, data),
+      [EntityType.DASHBOARD_DATA_MODEL]: (id: string, data: any) =>
+        patchDataModelDetails(id, data),
+      [EntityType.SEARCH_INDEX]: (id: string, data: any) =>
+        patchSearchIndexDetails(id, data),
+      [EntityType.STORED_PROCEDURE]: (id: string, data: any) =>
+        patchStoredProceduresDetails(id, data),
+      [EntityType.CONTAINER]: (id: string, data: any) =>
+        patchContainerDetails(id, data),
+      [EntityType.GLOSSARY_TERM]: (id: string, data: any) =>
+        patchGlossaryTerm(id, data),
+      [EntityType.CHART]: (id: string, data: any) =>
+        patchChartDetails(id, data),
+      [EntityType.METRIC]: (id: string, data: any) => patchMetric(id, data),
+      [EntityType.API_ENDPOINT]: (id: string, data: any) =>
+        patchApiEndPoint(id, data),
+      [EntityType.API_COLLECTION]: (id: string, data: any) =>
+        patchApiCollection(id, data),
+      [EntityType.DIRECTORY]: (id: string, data: any) =>
+        patchDriveAssetDetails(id, data, EntityType.DIRECTORY),
+      [EntityType.FILE]: (id: string, data: any) =>
+        patchDriveAssetDetails(id, data, EntityType.FILE),
+      [EntityType.SPREADSHEET]: (id: string, data: any) =>
+        patchDriveAssetDetails(id, data, EntityType.SPREADSHEET),
+      [EntityType.WORKSHEET]: (id: string, data: any) =>
+        patchDriveAssetDetails(id, data, EntityType.WORKSHEET),
+      [EntityType.DATA_PRODUCT]: (id: string, data: any) =>
+        patchDataProduct(id, data),
+      [EntityType.DOMAIN]: (id: string, data: any) => patchDomains(id, data),
+    } as Record<string, (id: string, data: any) => Promise<unknown>>;
+  }, []);
+
   const fetchEntityData = useCallback(async () => {
     if (!entityDetails?.details?.fullyQualifiedName || !entityType) {
       return;
@@ -250,11 +339,14 @@ export default function EntitySummaryPanel({
       return;
     }
 
+    setIsEntityTypeLoading(true);
     try {
       const typeDetail = await getTypeByFQN(entityType);
       setEntityTypeDetail(typeDetail);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsEntityTypeLoading(false);
     }
   }, [entityType]);
 
@@ -307,28 +399,43 @@ export default function EntitySummaryPanel({
   ]);
 
   const updateEntityData = useCallback(
-    (updatedData: Partial<EntityData>) => {
-      setEntityData((prevData: EntityData | null) => {
-        // Use entityDetails.details as a fallback if prevData is null.
-        // This handles the initial update before fetchEntityData completes.
-        const baseData = prevData || entityDetails.details;
-
-        // Safety check: If the base data's ID doesn't match the current entity,
-        // abort the update to prevent state corruption.
-        if (baseData.id !== entityDetails.details.id) {
-          return prevData; // Return the original state without changes
-        }
-
-        const newState = { ...baseData, ...updatedData };
-
-        return newState;
-      });
-
+    async (updatedData: Partial<EntityData>) => {
       if (onEntityUpdate) {
         onEntityUpdate(updatedData);
+      } else {
+        const jsonPatch = compare(entityDetails.details, {
+          ...entityDetails.details,
+          ...updatedData,
+        });
+
+        if (isEmpty(jsonPatch)) {
+          return;
+        }
+
+        try {
+          const apiFunc = entityUpdateMap[entityType];
+          if (apiFunc && id) {
+            const res = await apiFunc(id, jsonPatch);
+            setEntityData((prev: EntityData) => ({
+              ...(prev || entityDetails.details),
+              ...(res as Partial<EntityData>),
+            }));
+            // Refresh details to ensure consistency
+            fetchEntityData();
+          }
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+        }
       }
     },
-    [entityDetails.details, onEntityUpdate]
+    [
+      entityDetails.details,
+      onEntityUpdate,
+      entityType,
+      id,
+      entityUpdateMap,
+      fetchEntityData,
+    ]
   );
 
   const handleOwnerUpdate = useCallback(
@@ -395,6 +502,13 @@ export default function EntitySummaryPanel({
   const handleDescriptionUpdate = useCallback(
     (updatedDescription: string) => {
       updateEntityData({ description: updatedDescription });
+    },
+    [updateEntityData]
+  );
+
+  const handleExtensionUpdate = useCallback(
+    async (updatedExtension: Record<string, unknown> | undefined) => {
+      updateEntityData({ extension: updatedExtension });
     },
     [updateEntityData]
   );
@@ -657,11 +771,16 @@ export default function EntitySummaryPanel({
               entityDetails={entityDetails}
               entityType={entityType}
               entityTypeDetail={entityTypeDetail}
-              isEntityDataLoading={isEntityDataLoading}
+              hasEditPermissions={getPrioritizedEditPermission(
+                entityPermissions,
+                Operation.EditCustomFields
+              )}
+              isEntityDataLoading={isEntityDataLoading || isEntityTypeLoading}
               viewCustomPropertiesPermission={getPrioritizedViewPermission(
                 entityPermissions,
                 Operation.ViewCustomFields
               )}
+              onExtensionUpdate={handleExtensionUpdate}
             />
           </>
         );

@@ -192,35 +192,44 @@ const TableDetailsPageV1: React.FC = () => {
     [tableDetails?.tableType]
   );
 
-  const fetchTableDetails = useCallback(async () => {
-    setLoading(true);
-    try {
-      let fields = defaultFields;
-      if (viewUsagePermission) {
-        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+  const fetchTableDetails = useCallback(
+    async (showLoading = true) => {
+      if (showLoading) {
+        setLoading(true);
       }
-      if (viewTestCasePermission) {
-        fields += `,${TabSpecificField.TESTSUITE}`;
-      }
+      try {
+        let fields = defaultFields;
+        if (viewUsagePermission) {
+          fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+        }
+        if (viewTestCasePermission) {
+          fields += `,${TabSpecificField.TESTSUITE}`;
+        }
 
-      const details = await getTableDetailsByFQN(tableFqn, { fields });
-      setTableDetails(details);
-      addToRecentViewed({
-        displayName: getEntityName(details),
-        entityType: EntityType.TABLE,
-        fqn: details.fullyQualifiedName ?? '',
-        serviceType: details.serviceType,
-        timestamp: 0,
-        id: details.id,
-      });
-    } catch (error) {
-      if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        navigate(ROUTES.FORBIDDEN, { replace: true });
+        const details = await getTableDetailsByFQN(tableFqn, { fields });
+        setTableDetails(details);
+        addToRecentViewed({
+          displayName: getEntityName(details),
+          entityType: EntityType.TABLE,
+          fqn: details.fullyQualifiedName ?? '',
+          serviceType: details.serviceType,
+          timestamp: 0,
+          id: details.id,
+        });
+      } catch (error) {
+        if (
+          (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
+        ) {
+          navigate(ROUTES.FORBIDDEN, { replace: true });
+        }
+      } finally {
+        if (showLoading) {
+          setLoading(false);
+        }
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [tableFqn, viewUsagePermission]);
+    },
+    [tableFqn, viewUsagePermission]
+  );
 
   const fetchDQUpstreamFailureCount = async () => {
     if (!tableClassBase.getAlertEnableStatus()) {
@@ -388,10 +397,16 @@ const TableDetailsPageV1: React.FC = () => {
     [tableDetails, tableId]
   );
 
-  const onTableUpdate = async (updatedTable: Table, key?: keyof Table) => {
+  const onTableUpdate = async (
+    updatedTable: Table,
+    key?: keyof Table,
+    options?: { updateMode?: 'default' | 'local-only' }
+  ) => {
     try {
-      // Generate patch and update via API
-      const res = await saveUpdatedTableData(updatedTable);
+      const res =
+        options?.updateMode === 'local-only'
+          ? updatedTable
+          : await saveUpdatedTableData(updatedTable);
 
       setTableDetails((previous) => {
         if (!previous) {
@@ -411,6 +426,9 @@ const TableDetailsPageV1: React.FC = () => {
 
         return updatedObj;
       });
+      if (options?.updateMode !== 'local-only') {
+        await fetchTableDetails(false);
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     }

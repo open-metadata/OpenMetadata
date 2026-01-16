@@ -17,6 +17,11 @@ import {
   ENTITY_REFERENCE_PROPERTIES,
 } from '../constant/customProperty';
 import { SidebarItem } from '../constant/sidebar';
+import { waitForAllLoadersToDisappear } from './entity';
+import {
+  navigateToEntityPanelTab,
+  navigateToExploreAndSelectTable,
+} from './entityPanel';
 import {
   EntityTypeEndpoint,
   ENTITY_PATH,
@@ -290,7 +295,7 @@ export const validateValueForProperty = async (data: {
     const values = value.split(',');
 
     await expect(
-      page.getByRole('row', { name: `${values[0]} ${values[1]}` })
+      page.getByRole('row', { name: `${values[0]} ${values[1]}` }).first()
     ).toBeVisible();
   } else if (propertyType === 'markdown') {
     // For markdown, remove * and _ as they are formatting characters
@@ -872,4 +877,536 @@ export const verifyCustomPropertyInAdvancedSearch = async (
     );
   }
   await page.getByTestId('cancel-btn').click();
+};
+
+export const getTestValueForPropertyType = (propertyType: string) => {
+  switch (propertyType) {
+    case 'Integer':
+      return '123';
+    case 'String':
+      return 'Test Value Persistence';
+    case 'Markdown':
+      return '**Markdown**';
+    case 'Duration':
+      return 'PT1H';
+    case 'Email':
+      return 'test@email.com';
+    case 'Number':
+      return '456';
+    case 'Sql Query':
+      return 'SELECT * FROM table';
+    case 'Time Interval':
+      return '1600000000000,1600000000001';
+    case 'Timestamp':
+      return '1640995200000';
+    case 'Enum':
+      return 'enum1';
+    case 'Table':
+      return 'row1col1';
+    case 'Entity Reference':
+    case 'Entity Reference List':
+      return 'admin';
+    case 'Date':
+      return '2023-01-01';
+    case 'Time':
+      return '12:00:00';
+    case 'Date Time': // Assuming customType logic
+    case 'DateTime':
+      return '2023-01-01 12:00:00';
+    default:
+      return 'value';
+  }
+};
+
+export const editColumnCustomProperty = async (
+  page: Page,
+  propertyType: string,
+  testValue: string
+) => {
+  if (propertyType === 'Markdown') {
+    const editor = page.locator('.om-block-editor[contenteditable="true"]');
+    await editor.click();
+    await page.keyboard.type(testValue);
+    await editor.blur();
+    await page.getByTestId('save').click();
+  } else if (propertyType === 'Sql Query') {
+    const codeMirror = page.locator(
+      '.custom-properties-section-container .CodeMirror'
+    );
+    await expect(codeMirror).toBeVisible();
+    await codeMirror.click();
+    await page.keyboard.type(testValue);
+    await page
+      .locator('.custom-properties-section-container')
+      .getByTestId('inline-save-btn')
+      .click();
+  } else if (propertyType === 'Time Interval') {
+    const [start, end] = testValue.split(',');
+    await page.getByTestId('start-input').fill(start);
+    await page.getByTestId('end-input').fill(end);
+    await page
+      .locator('.custom-properties-section-container')
+      .getByTestId('inline-save-btn')
+      .click();
+  } else if (propertyType === 'Timestamp') {
+    await page.getByTestId('timestamp-input').fill(testValue);
+    await page
+      .locator('.custom-properties-section-container')
+      .getByTestId('inline-save-btn')
+      .click();
+  } else if (propertyType === 'Duration') {
+    await page.getByTestId('duration-input').fill(testValue);
+    await page
+      .locator('.custom-properties-section-container')
+      .getByTestId('inline-save-btn')
+      .click();
+  } else if (propertyType === 'Email') {
+    await page.getByTestId('email-input').fill(testValue);
+    await page
+      .locator('.custom-properties-section-container')
+      .getByTestId('inline-save-btn')
+      .click();
+  } else if (propertyType === 'Enum') {
+    await page.getByTestId('enum-select').click();
+    await page
+      .locator('.ant-select-item-option-content')
+      .getByText(testValue, { exact: true })
+      .click();
+    await page
+      .locator('.custom-properties-section-container')
+      .getByTestId('inline-save-btn')
+      .click();
+  } else if (propertyType === 'Table') {
+    await page.locator('[data-testid="add-new-row"]').click();
+    await page.waitForSelector('.om-rdg', { state: 'visible' });
+
+    // Fill Row
+    await page.locator('div.rdg-cell-pw-column1').last().dblclick();
+    await page
+      .getByTestId('edit-table-type-property-modal')
+      .getByRole('textbox')
+      .fill(testValue);
+    await page.locator('div.rdg-cell-pw-column1').last().press('Enter');
+
+    await page.locator('div.rdg-cell-pw-column2').last().dblclick();
+    await page
+      .getByTestId('edit-table-type-property-modal')
+      .getByRole('textbox')
+      .fill('row1col2');
+    await page.locator('div.rdg-cell-pw-column2').last().press('Enter');
+
+    await page.locator('[data-testid="update-table-type-property"]').click();
+  } else if (
+    ['Entity Reference', 'Entity Reference List'].includes(propertyType)
+  ) {
+    const input = page.getByTestId('asset-select-list').getByRole('combobox');
+    await input.click();
+    await input.fill(testValue);
+    await page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.status() === 200
+    );
+    await page.getByTestId(testValue).click();
+    await page
+      .locator('.custom-properties-section-container')
+      .getByTestId('inline-save-btn')
+      .click();
+  } else if (['Date', 'Time', 'Date Time', 'DateTime'].includes(propertyType)) {
+    // Ant Design Pickers
+    const picker = page.getByTestId(
+      propertyType === 'Time' ? 'time-picker' : 'date-time-picker'
+    );
+    await picker.click();
+    await page.keyboard.type(testValue);
+    await page.keyboard.press('Enter');
+    await page
+      .locator('.custom-properties-section-container')
+      .getByTestId('inline-save-btn')
+      .click();
+  } else if (['String', 'Integer', 'Number'].includes(propertyType)) {
+    const valueInput = page.getByTestId('value-input');
+    await expect(valueInput).toBeVisible();
+    await valueInput.fill(testValue);
+    await page
+      .locator('.custom-properties-section-container')
+      .getByTestId('inline-save-btn')
+      .click();
+  }
+};
+
+export const validateColumnCustomProperty = async (
+  page: Page,
+  propertyType: string,
+  testValue: string,
+  propertyName: string
+) => {
+  const card = page.getByTestId(`custom-property-${propertyName}-card`);
+
+  if (propertyType === 'Markdown') {
+    await expect(card.getByTestId('viewer-container')).toContainText(
+      'Markdown'
+    );
+  } else if (propertyType === 'Sql Query') {
+    await expect(card.locator('.CodeMirror-scroll')).toContainText(testValue);
+  } else if (propertyType === 'Time Interval') {
+    const [start, end] = testValue.split(',');
+    await expect(card.getByTestId('value')).toContainText(start);
+    await expect(card.getByTestId('value')).toContainText(end);
+  } else if (propertyType === 'Table') {
+    await expect(
+      page.getByRole('row', { name: `${testValue} row1col2` })
+    ).toBeVisible();
+  } else {
+    // Generic fallback for String, Integer, Email, Duration, Timestamp, Enum, EntityRef, Date, Time
+    // Enum/Date/Time/Ref now use 'value' container with text.
+    // Ref: Part 2 test uses getByText(testValue) originally, updated to getByTestId('value').
+    await expect(card.getByTestId('value')).toContainText(testValue);
+  }
+};
+
+export const verifyTableColumnCustomPropertyPersistence = async ({
+  page,
+  tableName,
+  tableFqn,
+  propertyName,
+  propertyType,
+}: {
+  page: Page;
+  tableName: string;
+  tableFqn: string;
+  propertyName: string;
+  propertyType: string;
+}) => {
+  const testValue = getTestValueForPropertyType(propertyType);
+
+  // 1. Navigate to Table Details
+  await navigateToExploreAndSelectTable(page, tableName);
+  await page.getByTestId(`table-data-card_${tableFqn}`).click();
+
+  // 2. Open Column Detail Panel
+  const firstColumnLink = page.locator('[data-testid="column-name"]').first();
+  await firstColumnLink.click();
+  const sidePanel = page.locator('.column-detail-panel-container');
+  await expect(sidePanel).toBeVisible();
+
+  // 3. Go to Custom Properties Tab
+  const customPropertiesTab = page.getByTestId('custom-properties-tab');
+  await customPropertiesTab.click();
+
+  const searchbar = page
+    .locator('.custom-properties-section-container')
+    .getByTestId('search-bar-container')
+    .getByRole('textbox');
+  await expect(searchbar).toBeVisible();
+  await searchbar.fill(propertyName);
+
+  // 4. Edit Value
+  const card = page.getByTestId(`custom-property-${propertyName}-card`);
+  await card.getByTestId('edit-icon').click();
+
+  // Define wait for response
+  const updateColumnResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/columns/name') &&
+      response.request().method() === 'PUT'
+  );
+
+  // Edit logic
+  await editColumnCustomProperty(page, propertyType, testValue);
+
+  // Wait for response (Table type handles its own response wait? No, we should wait here.)
+  // Wait, Table interaction might trigger multiple PUTs (one per cell).
+  // The util assumes one main update or at least waiting for *an* update.
+  await updateColumnResponse;
+
+  // Verify Success Message (except table?)
+  // Table doesn't show "Custom property updated successfully"?
+  // Part 2 test for Table expected "Custom property updated" toast?
+  // "await expect(page.getByText(/Custom propert.* updated successfully/i)).toBeVisible();"
+  // Yes.
+  await expect(
+    page.getByText(/Custom propert.* updated successfully/i)
+  ).toBeVisible();
+
+  // Validation
+  await validateColumnCustomProperty(
+    page,
+    propertyType,
+    testValue,
+    propertyName
+  );
+
+  // 5. Reload Page
+  await page.reload();
+  await waitForAllLoadersToDisappear(page);
+  await expect(sidePanel).toBeVisible();
+  await customPropertiesTab.click();
+  await expect(searchbar).toBeVisible();
+  await searchbar.fill(propertyName);
+
+  // Validation Logic After Reload
+  await validateColumnCustomProperty(
+    page,
+    propertyType,
+    testValue,
+    propertyName
+  );
+
+  // Close
+  await page.getByTestId('close-button').click();
+  await expect(sidePanel).not.toBeVisible();
+};
+
+export const updateCustomPropertyInRightPanel = async (data: {
+  page: Page;
+  entityName: string;
+  propertyDetails: CustomProperty;
+  value: string;
+  endpoint: EntityTypeEndpoint;
+}) => {
+  const { page, entityName, propertyDetails, value, endpoint } = data;
+  const propertyName = propertyDetails.name;
+  const propertyType = propertyDetails.propertyType.name;
+
+  await navigateToExploreAndSelectTable(page, entityName);
+  await waitForAllLoadersToDisappear(page);
+  await navigateToEntityPanelTab(page, 'custom property');
+  await waitForAllLoadersToDisappear(page);
+
+  const searchContainer = page.getByTestId('search-bar-container');
+  if (await searchContainer.isVisible()) {
+    await searchContainer.getByTestId('searchbar').fill(propertyName);
+  }
+  await page.waitForTimeout(800);
+  const container = page
+    .locator('.entity-summary-panel-container')
+    .getByTestId(`custom-property-${propertyName}-card`);
+
+  await expect(
+    container.getByTestId(`property-${propertyName}-name`)
+  ).toHaveText(propertyName);
+
+  const editButton = container.getByTestId('edit-icon');
+  await editButton.scrollIntoViewIfNeeded();
+  await editButton.click({ force: true });
+
+  const patchRequestPromise = page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/v1/${endpoint}/`) &&
+      response.request().method() === 'PATCH'
+  );
+
+  switch (propertyType) {
+    case 'markdown':
+      await page.locator(descriptionBox).isVisible();
+      await page.click(descriptionBox);
+      await page.keyboard.type(value);
+      await page.locator('[data-testid="save"]').click();
+
+      break;
+
+    case 'email':
+      await page.locator('[data-testid="email-input"]').isVisible();
+      await page.locator('[data-testid="email-input"]').fill(value);
+      await container.locator('[data-testid="inline-save-btn"]').click();
+
+      break;
+
+    case 'duration':
+      await page.locator('[data-testid="duration-input"]').isVisible();
+      await page.locator('[data-testid="duration-input"]').fill(value);
+      await container.locator('[data-testid="inline-save-btn"]').click();
+
+      break;
+
+    case 'enum':
+      await page.click('#enumValues');
+      while (
+        (await page.locator('.ant-select-selection-item-remove').count()) > 0
+      ) {
+        await page.locator('.ant-select-selection-item-remove').first().click();
+      }
+      await page.fill('#enumValues', value);
+      await page.locator(`.ant-select-item-option[title="${value}"]`).click();
+      await clickOutside(page);
+      await container.locator('[data-testid="inline-save-btn"]').click();
+
+      break;
+
+    case 'timestamp':
+      await page.locator('[data-testid="timestamp-input"]').isVisible();
+      await page.locator('[data-testid="timestamp-input"]').fill(value);
+      await container.locator('[data-testid="inline-save-btn"]').click();
+
+      break;
+
+    case 'time-cp': {
+      await page.locator('[data-testid="time-picker"]').isVisible();
+      await page.locator('[data-testid="time-picker"]').click();
+      await page.locator('[data-testid="time-picker"]').fill(value);
+      await page.getByRole('button', { name: 'OK', exact: true }).click();
+      await container.locator('[data-testid="inline-save-btn"]').click();
+
+      break;
+    }
+
+    case 'timeInterval': {
+      const [startValue, endValue] = value.split(',');
+      await page.locator('[data-testid="start-input"]').isVisible();
+      await page.locator('[data-testid="start-input"]').fill(startValue);
+      await page.locator('[data-testid="end-input"]').isVisible();
+      await page.locator('[data-testid="end-input"]').fill(endValue);
+      await container.locator('[data-testid="inline-save-btn"]').click();
+
+      break;
+    }
+
+    case 'date-cp':
+    case 'dateTime-cp': {
+      await page.locator('[data-testid="date-time-picker"]').isVisible();
+      await page.locator('[data-testid="date-time-picker"]').click();
+      await page.locator('[data-testid="date-time-picker"]').fill(value);
+      await page.locator('[data-testid="date-time-picker"]').press('Enter');
+      await container.locator('[data-testid="inline-save-btn"]').click();
+
+      break;
+    }
+
+    case 'string':
+    case 'integer':
+    case 'number':
+      await page.locator('[data-testid="value-input"]').isVisible();
+      await page.locator('[data-testid="value-input"]').clear();
+      await page.locator('[data-testid="value-input"]').fill(value);
+      await container.locator('[data-testid="inline-save-btn"]').click();
+
+      break;
+
+    case 'entityReference':
+    case 'entityReferenceList': {
+      // Clear existing values
+      while (
+        (await page.locator('.ant-select-selection-item-remove').count()) > 0
+      ) {
+        await page.locator('.ant-select-selection-item-remove').first().click();
+      }
+      const refValues = value.split(',');
+
+      for (const val of refValues) {
+        const searchApi = `**/api/v1/search/query?q=*${encodeURIComponent(
+          val
+        )}*`;
+        await page.route(searchApi, (route) => route.continue());
+        await page.locator('#entityReference').clear();
+        const searchEntity = page.waitForResponse(searchApi);
+        await page.locator('#entityReference').fill(val);
+        await searchEntity;
+        await page.locator(`[data-testid="${val}"]`).click();
+      }
+
+      await clickOutside(page);
+
+      await container.locator('[data-testid="inline-save-btn"]').click();
+
+      break;
+    }
+
+    case 'table-cp': {
+      const values = value.split(',');
+      await page.locator('[data-testid="add-new-row"]').click();
+
+      // Editor grid to be visible
+      await page.waitForSelector('.om-rdg', { state: 'visible' });
+
+      await fillTableColumnInputDetails(page, values[0], 'pw-column1');
+
+      await fillTableColumnInputDetails(page, values[1], 'pw-column2');
+
+      await page.locator('[data-testid="update-table-type-property"]').click({
+        force: true,
+      });
+
+      break;
+    }
+
+    case 'sqlQuery':
+      await page.locator("pre[role='presentation']").last().click();
+      await page.keyboard.type(value);
+      await container.locator('[data-testid="inline-save-btn"]').click();
+
+      break;
+  }
+
+  const patchRequest = await patchRequestPromise;
+  expect(patchRequest.status()).toBe(200);
+
+  // Validate
+  const toggleBtnVisibility = await container
+    .locator(`[data-testid="toggle-${propertyName}"]`)
+    .isVisible();
+
+  if (toggleBtnVisibility && propertyType !== 'table-cp') {
+    await container.locator(`[data-testid="toggle-${propertyName}"]`).click();
+  }
+
+  if (propertyType === 'enum') {
+    await expect(container.getByTestId('value')).toContainText(value);
+  } else if (propertyType === 'timeInterval') {
+    const [startValue, endValue] = value.split(',');
+
+    await expect(container.getByTestId('value')).toContainText(startValue);
+    await expect(container.getByTestId('value')).toContainText(endValue);
+  } else if (propertyType === 'sqlQuery') {
+    await waitForAllLoadersToDisappear(page);
+    await expect(container.getByTestId('value')).toContainText(value);
+  } else if (propertyType === 'table-cp') {
+    const values = value.split(',');
+
+    await expect(
+      page.getByRole('row', { name: `${values[0]} ${values[1]}` }).first()
+    ).toBeVisible();
+  } else if (propertyType === 'markdown') {
+    // For markdown, remove * and _ as they are formatting characters
+    await expect(
+      container.locator(descriptionBoxReadOnly).last()
+    ).toContainText(value.replace(/\*|_/gi, ''));
+  } else if (
+    ![
+      'entityReference',
+      'entityReferenceList',
+      'date-cp',
+      'dateTime-cp',
+    ].includes(propertyType)
+  ) {
+    // For other types (string, integer, number, duration), match exact value without transformation
+    await waitForAllLoadersToDisappear(page);
+    await expect(container.getByTestId('value')).toContainText(value);
+  } else if ('entityReferenceList' === propertyType) {
+    const refValues = value.split(',');
+
+    for (const val of refValues) {
+      const links = await container.locator('a').all();
+      let isMatchFound = false;
+
+      for (const link of links) {
+        const href = await link.getAttribute('href');
+        if (href && href.toLowerCase().includes(val.trim().toLowerCase())) {
+          await expect(link).toBeVisible();
+          isMatchFound = true;
+          break;
+        }
+      }
+
+      await expect(container.getByTestId('no-data')).not.toBeVisible();
+    }
+  } else if ('entityReference' === propertyType) {
+    await expect(container.getByRole('link')).toContainText(value, {
+      ignoreCase: true,
+    });
+    await expect(container.getByTestId('no-data')).not.toBeVisible();
+  } else {
+    await expect(container.getByTestId('value')).toBeVisible();
+    await expect(container.getByTestId('no-data')).not.toBeVisible();
+  }
 };

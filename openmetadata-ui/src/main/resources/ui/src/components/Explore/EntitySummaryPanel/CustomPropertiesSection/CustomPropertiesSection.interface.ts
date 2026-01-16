@@ -39,4 +39,8 @@ export interface CustomPropertiesSectionProps {
   entityType: EntityType;
   entityTypeDetail?: EntityTypeDetail;
   isEntityDataLoading: boolean;
+  hasEditPermissions: boolean;
+  onExtensionUpdate: (
+    updatedExtension: Record<string, unknown> | undefined
+  ) => Promise<void>;
 }

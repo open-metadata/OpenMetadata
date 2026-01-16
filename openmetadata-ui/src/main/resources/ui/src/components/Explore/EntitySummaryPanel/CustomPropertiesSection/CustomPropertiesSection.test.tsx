@@ -130,6 +130,15 @@ jest.mock('../../../../utils/SearchClassBase', () => ({
   },
 }));
 
+// Mock PropertyValue component
+jest.mock('../../../common/CustomPropertyTable/PropertyValue', () => ({
+  PropertyValue: jest.fn().mockImplementation(({ property, value }) => (
+    <div data-testid="property-value">
+      {property.displayName || property.name}: {JSON.stringify(value)}
+    </div>
+  )),
+}));
+
 const mockEntityData = {
   extension: {
     property1: 'value1',
@@ -228,6 +237,8 @@ const defaultProps = {
   isEntityDataLoading: false,
   viewCustomPropertiesPermission: true,
   entityDetails: mockEntityDetails,
+  hasEditPermissions: true,
+  onExtensionUpdate: jest.fn(),
 };
 
 describe('CustomPropertiesSection', () => {

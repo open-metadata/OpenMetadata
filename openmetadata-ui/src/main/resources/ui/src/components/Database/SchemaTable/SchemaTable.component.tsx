@@ -216,7 +216,7 @@ const SchemaTable = () => {
           q: searchQuery,
           limit: pageSize,
           offset: offset,
-          fields: 'tags,customMetrics',
+          fields: 'tags,customMetrics,extension',
         });
 
         setTableColumns(pruneEmptyChildren(response.data) || []);
@@ -248,7 +248,7 @@ const SchemaTable = () => {
         const response = await getTableColumnsByFQN(tableFqn, {
           limit: pageSize,
           offset: offset,
-          fields: 'tags,customMetrics',
+          fields: 'tags,customMetrics,extension',
         });
 
         setTableColumns(pruneEmptyChildren(response.data) || []);
