@@ -2056,6 +2056,7 @@
     "are-you-sure-you-want-to-delete-these-entities": "これらの{{count}}個の{{entity}}を削除してもよろしいですか？この操作は元に戻せません。",
     "are-you-sure-you-want-to-delete-this-entity": "この{{entity}}を削除してもよろしいですか？この操作は元に戻せません。",
     "are-you-sure-you-want-to-remove-child-from-parent": "{{parent}} から {{child}} を削除してもよろしいですか？",
+    "are-you-sure-you-want-to-remove-entity": "Are you sure you want to remove {{entity}}?",
     "are-you-want-to-restore": "{{entity}} を復元してもよろしいですか？",
     "assess-data-reliability-with-data-profiler-lineage": "データプロファイラ、リネージ、サンプルデータなどを用いてデータの信頼性を評価します。",
     "assigned-you-a-new-task-lowercase": "新しいタスクが割り当てられました",

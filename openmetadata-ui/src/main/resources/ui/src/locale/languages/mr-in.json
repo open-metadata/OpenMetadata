@@ -2056,6 +2056,7 @@
     "are-you-sure-you-want-to-delete-these-entities": "Are you sure you want to delete these {{count}} {{entity}}s? This action cannot be undone.",
     "are-you-sure-you-want-to-delete-this-entity": "Are you sure you want to delete this {{entity}}? This action cannot be undone.",
     "are-you-sure-you-want-to-remove-child-from-parent": "तुम्हाला खात्री आहे का की तुम्ही {{child}} ला {{parent}} मधून काढू इच्छिता?",
+    "are-you-sure-you-want-to-remove-entity": "Are you sure you want to remove {{entity}}?",
     "are-you-want-to-restore": "तुम्हाला खात्री आहे का की तुम्ही {{entity}} पुनर्संचयित करू इच्छिता?",
     "assess-data-reliability-with-data-profiler-lineage": "डेटा-चालित जगात योग्य डेटा गव्हर्नन्स दृष्टिकोनासह स्पर्धात्मक धार मिळवा. तुमचा डेटा सुरक्षित करा आणि तुमच्या व्यवसायाला नवकल्पना आणि वाढीसाठी सक्षम करा.",
     "assigned-you-a-new-task-lowercase": "तुम्हाला एक नवीन कार्य नियुक्त केले गेले आहे",

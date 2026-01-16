@@ -1248,3 +1248,139 @@ export const navigateToSubDomain = async (
     page.waitForResponse('/api/v1/domains/name/*'),
   ]);
 };
+
+/**
+ * Navigates to the Input/Output Ports tab on a data product page.
+ */
+export const navigateToPortsTab = async (page: Page) => {
+  await page.getByTestId('input_output_ports').click();
+  await waitForAllLoadersToDisappear(page);
+};
+
+/**
+ * Expands the lineage section in the InputOutputPortsTab.
+ * Only expands if currently collapsed.
+ */
+export const expandLineageSection = async (page: Page) => {
+  const portsViewRes = page.waitForResponse((response) =>
+    response.url().includes('/portsView')
+  );
+  await page.getByTestId('toggle-lineage-collapse').click();
+  await portsViewRes;
+  await waitForAllLoadersToDisappear(page);
+};
+
+/**
+ * Verifies the port counts displayed in the InputOutputPortsTab.
+ */
+export const verifyPortCounts = async (
+  page: Page,
+  expectedInputCount: number,
+  expectedOutputCount: number
+) => {
+  const inputPortsSection = page.locator('[data-testid="input-output-ports-tab"]').locator('text=Input Ports').first();
+  const outputPortsSection = page.locator('[data-testid="input-output-ports-tab"]').locator('text=Output Ports').first();
+
+  await expect(inputPortsSection.locator('..').locator('span').filter({ hasText: `(${expectedInputCount})` })).toBeVisible();
+  await expect(outputPortsSection.locator('..').locator('span').filter({ hasText: `(${expectedOutputCount})` })).toBeVisible();
+};
+
+/**
+ * Adds an input port to a data product via UI.
+ */
+export const addInputPortToDataProduct = async (
+  page: Page,
+  asset: EntityClass
+) => {
+  const name = get(asset, 'entityResponseData.name');
+  const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+  const displayName = get(asset, 'entityResponseData.displayName') ?? name;
+
+  await page.getByTestId('add-input-port-button').click();
+
+  await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+    state: 'visible',
+  });
+
+  const searchBar = page
+    .getByTestId('asset-selection-modal')
+    .getByTestId('searchbar');
+
+  const searchRes = page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/search/query') &&
+      res.request().method() === 'GET'
+  );
+  await searchBar.fill(displayName);
+  await searchRes;
+
+  await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+
+  const addRes = page.waitForResponse(
+    (res) =>
+      res.url().includes('/inputPorts/add') &&
+      res.request().method() === 'PUT'
+  );
+  await page.getByTestId('save-btn').click();
+  await addRes;
+};
+
+/**
+ * Adds an output port to a data product via UI.
+ */
+export const addOutputPortToDataProduct = async (
+  page: Page,
+  asset: EntityClass
+) => {
+  const name = get(asset, 'entityResponseData.name');
+  const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+  const displayName = get(asset, 'entityResponseData.displayName') ?? name;
+
+  await page.getByTestId('add-output-port-button').click();
+
+  await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+    state: 'visible',
+  });
+
+  const searchBar = page
+    .getByTestId('asset-selection-modal')
+    .getByTestId('searchbar');
+
+  const searchRes = page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/search/query') &&
+      res.request().method() === 'GET'
+  );
+  await searchBar.fill(displayName);
+  await searchRes;
+
+  await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+
+  const addRes = page.waitForResponse(
+    (res) =>
+      res.url().includes('/outputPorts/add') &&
+      res.request().method() === 'PUT'
+  );
+  await page.getByTestId('save-btn').click();
+  await addRes;
+};
+
+/**
+ * Removes a port from a data product via UI.
+ */
+export const removePortFromDataProduct = async (
+  page: Page,
+  portId: string,
+  portType: 'input' | 'output'
+) => {
+  await page.getByTestId(`port-actions-${portId}`).click();
+  await page.getByRole('menuitem', { name: 'Remove' }).click();
+
+  const removeRes = page.waitForResponse(
+    (res) =>
+      res.url().includes(`/${portType}Ports/remove`) &&
+      res.request().method() === 'PUT'
+  );
+  await page.getByRole('button', { name: 'Remove' }).click();
+  await removeRes;
+};

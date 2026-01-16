@@ -2056,6 +2056,7 @@
     "are-you-sure-you-want-to-delete-these-entities": "Êtes-vous sûr de vouloir supprimer ces {{count}} {{entity}}s ? Cette action ne peut pas être annulée.",
     "are-you-sure-you-want-to-delete-this-entity": "Êtes-vous sûr de vouloir supprimer ce {{entity}} ? Cette action ne peut pas être annulée.",
     "are-you-sure-you-want-to-remove-child-from-parent": "Êtes-vous sûr de vouloir supprimer le {{child}} de {{parent}} ?",
+    "are-you-sure-you-want-to-remove-entity": "Are you sure you want to remove {{entity}}?",
     "are-you-want-to-restore": "Êtes vous sûr de vouloir restaurer",
     "assess-data-reliability-with-data-profiler-lineage": "Évaluez la fiabilité de vos actifs de données avec le profilage, la traçabilité, l'échantillonnage, et bien plus",
     "assigned-you-a-new-task-lowercase": "vous a assigné une nouvelle tâche",

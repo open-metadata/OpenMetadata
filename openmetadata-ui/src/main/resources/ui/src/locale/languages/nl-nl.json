@@ -2056,6 +2056,7 @@
     "are-you-sure-you-want-to-delete-these-entities": "Weet u zeker dat u deze {{count}} {{entity}}s wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
     "are-you-sure-you-want-to-delete-this-entity": "Weet u zeker dat u dit {{entity}} wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
     "are-you-sure-you-want-to-remove-child-from-parent": "Weet u zeker dat u de {{child}} wilt verwijderen uit {{parent}}?",
+    "are-you-sure-you-want-to-remove-entity": "Are you sure you want to remove {{entity}}?",
     "are-you-want-to-restore": "Weet u zeker dat u {{entity}} wilt herstellen?",
     "assess-data-reliability-with-data-profiler-lineage": "Verkrijg een concurrentievoordeel in de op datagedreven wereld met de juiste benadering van datamanagement. Beveilig uw data en geef uw bedrijf de kracht om innovatie en groei te stimuleren.",
     "assigned-you-a-new-task-lowercase": "er is een nieuwe taak aan u toegewezen",

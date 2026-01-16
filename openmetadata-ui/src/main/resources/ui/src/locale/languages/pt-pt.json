@@ -2056,6 +2056,7 @@
     "are-you-sure-you-want-to-delete-these-entities": "Tem a certeza que deseja eliminar estes {{count}} {{entity}}s? Esta ação não pode ser desfeita.",
     "are-you-sure-you-want-to-delete-this-entity": "Tem a certeza que deseja eliminar este {{entity}}? Esta ação não pode ser desfeita.",
     "are-you-sure-you-want-to-remove-child-from-parent": "Você tem certeza que deseja remover o {{child}} de {{parent}}?",
+    "are-you-sure-you-want-to-remove-entity": "Are you sure you want to remove {{entity}}?",
     "are-you-want-to-restore": "Você tem certeza que deseja restaurar {{entity}}?",
     "assess-data-reliability-with-data-profiler-lineage": "Obtenha uma vantagem competitiva no mundo orientado a dados com a abordagem certa para a governança de dados. Proteja seus dados e capacite seu negócio para impulsionar inovação e crescimento.",
     "assigned-you-a-new-task-lowercase": "uma nova tarefa foi atribuída a você",

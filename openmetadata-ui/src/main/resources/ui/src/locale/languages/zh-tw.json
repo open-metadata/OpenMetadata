@@ -2056,6 +2056,7 @@
     "are-you-sure-you-want-to-delete-these-entities": "您確定要刪除這{{count}}個{{entity}}嗎？此操作無法撤銷。",
     "are-you-sure-you-want-to-delete-this-entity": "您確定要刪除此{{entity}}嗎？此操作無法撤銷。",
     "are-you-sure-you-want-to-remove-child-from-parent": "您確定要從 {{parent}} 中移除 {{child}} 嗎？",
+    "are-you-sure-you-want-to-remove-entity": "Are you sure you want to remove {{entity}}?",
     "are-you-want-to-restore": "您確定要還原 {{entity}} 嗎？",
     "assess-data-reliability-with-data-profiler-lineage": "透過正確的資料治理方法，在資料驅動的世界中獲得競爭優勢。保護您的資料並賦予您的業務能力，以推動創新和成長。",
     "assigned-you-a-new-task-lowercase": "已指派一項新任務給您",
