@@ -62,6 +62,13 @@ public abstract class AbstractEventConsumer
 
   private AlertMetrics alertMetrics;
 
+  // Collect successful events during HTTP phase, batch write in commit phase.
+  // This reduces connection pool contention from N connections to 1.
+  // Thread-safety note: ArrayList is not thread-safe, but this is safe because
+  // @DisallowConcurrentExecution ensures Quartz won't run the same job concurrently,
+  // so this instance is only accessed by a single thread at a time.
+  private final List<ChangeEvent> successfulEvents = new ArrayList<>();
+
   @Getter @Setter private JobDetail jobDetail;
   protected EventSubscription eventSubscription;
   protected Map<UUID, Destination<ChangeEvent>> destinationMap;
@@ -222,7 +229,9 @@ public abstract class AbstractEventConsumer
       for (UUID receiverId : eventWithReceivers.getValue()) {
         boolean status = sendAlert(receiverId, eventWithReceivers.getKey());
         if (status) {
-          recordSuccessfulChangeEvent(eventSubscription.getId(), eventWithReceivers.getKey());
+          // Collect successful events instead of writing immediately
+          // Batch write happens in commit() to reduce connection pool contention
+          successfulEvents.add(eventWithReceivers.getKey());
           alertMetrics.withSuccessEvents(alertMetrics.getSuccessEvents() + 1);
         } else {
           alertMetrics.withFailedEvents(alertMetrics.getFailedEvents() + 1);
@@ -234,6 +243,27 @@ public abstract class AbstractEventConsumer
   @Override
   public void commit(JobExecutionContext jobExecutionContext) {
     long currentTime = System.currentTimeMillis();
+
+    // Batch write all successful events in ONE DB call instead of N calls.
+    // This reduces connection pool contention significantly.
+    // Important: We catch exceptions here to ensure offset is always updated.
+    // If batch record fails but events were already sent to destinations,
+    // we must still advance the offset to prevent duplicate HTTP calls on retry.
+    if (!successfulEvents.isEmpty()) {
+      try {
+        batchRecordSuccessfulEvents(eventSubscription.getId(), currentTime);
+      } catch (Exception e) {
+        LOG.error(
+            "Batch recording failed for {} events in subscription {}. "
+                + "Events were delivered but success records lost. Continuing with offset update.",
+            successfulEvents.size(),
+            eventSubscription.getId(),
+            e);
+      } finally {
+        successfulEvents.clear();
+      }
+    }
+
     EventSubscriptionOffset eventSubscriptionOffset =
         new EventSubscriptionOffset()
             .withCurrentOffset(offset)
@@ -269,6 +299,24 @@ public abstract class AbstractEventConsumer
             METRICS_EXTENSION,
             "alertMetrics",
             JsonUtils.pojoToJson(metrics));
+  }
+
+  private void batchRecordSuccessfulEvents(UUID subscriptionId, long timestamp) {
+    List<String> changeEventIds = new ArrayList<>();
+    List<String> subscriptionIds = new ArrayList<>();
+    List<String> jsonList = new ArrayList<>();
+    List<Long> timestamps = new ArrayList<>();
+
+    for (ChangeEvent event : successfulEvents) {
+      changeEventIds.add(event.getId().toString());
+      subscriptionIds.add(subscriptionId.toString());
+      jsonList.add(JsonUtils.pojoToJson(event));
+      timestamps.add(timestamp);
+    }
+
+    Entity.getCollectionDAO()
+        .eventSubscriptionDAO()
+        .batchUpsertSuccessfulChangeEvents(changeEventIds, subscriptionIds, jsonList, timestamps);
   }
 
   @Override
