@@ -559,6 +559,25 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
                         && contract.getEntity().getId().equals(table2.getId()));
     assertTrue(
         foundDraftContract, "Expected to find the draft contract with matching entity and status");
+
+    // Test filtering by status - Rejected
+    ListParams rejectedParams = new ListParams();
+    rejectedParams.setLimit(10);
+    rejectedParams.addQueryParam("status", "Rejected");
+    ListResponse<DataContract> rejectedResponse = listEntities(rejectedParams);
+
+    assertNotNull(rejectedResponse);
+    assertNotNull(rejectedResponse.getData());
+    boolean foundRejectedContract =
+        rejectedResponse.getData().stream()
+            .anyMatch(
+                contract ->
+                    contract.getId().equals(rejectedContract.getId())
+                        && contract.getEntityStatus() == EntityStatus.REJECTED
+                        && contract.getEntity().getId().equals(table3.getId()));
+    assertTrue(
+        foundRejectedContract,
+        "Expected to find the rejected contract with matching entity and status");
   }
 
   @Test
