@@ -811,11 +811,11 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                   data-testid={getEntityName(item)}
                   key={item.id}>
                   <div className="d-flex items-center">
-                    <Link
-                      to={entityUtilClassBase.getEntityLink(
-                        item.type,
-                        item.fullyQualifiedName as string
-                      )}>
+                      <Link
+                        to={entityUtilClassBase.getEntityLink(
+                          item.type,
+                          item.fullyQualifiedName ?? item.name
+                        )}>
                       <Button
                         className="entity-button flex-center p-0"
                         icon={
