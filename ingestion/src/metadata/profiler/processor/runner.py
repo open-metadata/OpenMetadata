@@ -16,7 +16,7 @@ the session.
 This is useful to centralise the running logic
 and manage behavior such as timeouts.
 """
-from typing import TYPE_CHECKING, Callable, Dict, Generator, Optional, Union
+from typing import TYPE_CHECKING, Callable, Dict, Iterator, Optional, Union
 
 from sqlalchemy import Table, text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session
@@ -50,8 +50,8 @@ class PandasRunner:
 
     def __init__(
         self,
-        dataset: Callable[[], Generator["DataFrame", None, None]],
-        raw_dataset: Callable[[], Generator["DataFrame", None, None]],
+        dataset: Callable[[], Iterator["DataFrame"]],
+        raw_dataset: Callable[[], Iterator["DataFrame"]],
     ):
         """Initialize the PandasRunner.
 
@@ -62,14 +62,14 @@ class PandasRunner:
         self._dataset = dataset
         self._raw_dataset = raw_dataset
 
-    def __call__(self) -> Generator["DataFrame", None, None]:
+    def __call__(self) -> Iterator["DataFrame"]:
         return self._dataset()
 
     def __iter__(self):
         return iter(self._dataset())
 
     @property
-    def dataset(self) -> Generator["DataFrame", None, None]:
+    def dataset(self) -> Iterator["DataFrame"]:
         """Get the processed dataset (may be partitioned/sampled).
 
         Returns the runner itself as a list for API consistency with QueryRunner.
@@ -77,9 +77,23 @@ class PandasRunner:
         return self._dataset()
 
     @property
-    def raw_dataset(self) -> Generator["DataFrame", None, None]:
+    def raw_dataset(self) -> Iterator["DataFrame"]:
         """Get the raw dataset (unpartitioned and unsampled)"""
         return self._raw_dataset()
+
+    @classmethod
+    def from_dataframe(cls, df: "DataFrame") -> "PandasRunner":
+        """Create a PandasRunner from a single DataFrame.
+
+        Args:
+            df: The DataFrame to wrap
+        Returns:
+            A PandasRunner instance
+        """
+        return cls(
+            dataset=lambda: iter((df,)),
+            raw_dataset=lambda: iter((df,)),
+        )
 
 
 class QueryRunner:
