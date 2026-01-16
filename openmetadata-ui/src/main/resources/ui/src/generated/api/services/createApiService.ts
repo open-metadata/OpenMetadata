@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -67,6 +67,10 @@ export interface RESTConnection {
      */
     apiCollectionFilterPattern?: FilterPattern;
     /**
+     * Regex to only fetch api endpoints with names matching the pattern.
+     */
+    apiEndpointFilterPattern?: FilterPattern;
+    /**
      * Documentation URL for the schema.
      */
     docURL?: string;
@@ -92,6 +96,8 @@ export interface RESTConnection {
  * Regex to only fetch api collections with names matching the pattern.
  *
  * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only fetch api endpoints with names matching the pattern.
  */
 export interface FilterPattern {
     /**
