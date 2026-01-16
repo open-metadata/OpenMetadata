@@ -172,12 +172,6 @@
         <artifactId>antlr4-runtime</artifactId>
         <version>${antlr.version}</version>
       </dependency>
-      <!-- Override grpc-netty-shaded globally to fix CVE-2024-1106 -->
-      <dependency>
-        <groupId>io.grpc</groupId>
-        <artifactId>grpc-netty-shaded</artifactId>
-        <version>1.76.0</version>
-      </dependency>
       <dependency>
         <groupId>org.glassfish.jersey</groupId>
         <artifactId>jersey-bom</artifactId>

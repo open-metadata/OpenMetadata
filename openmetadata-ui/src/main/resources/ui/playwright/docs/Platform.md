@@ -2,7 +2,7 @@
 
 # Platform
 
-> **12 Components** | **69 Files** | **1274 Tests** | **1668 Scenarios** 🚀
+> **12 Components** | **72 Files** | **1381 Tests** | **1867 Scenarios** 🚀
 
 ## Table of Contents
 - [Other](#other)
@@ -23,6 +23,128 @@
 <div id="other"></div>
 
 ## Other
+
+<details open>
+<summary>📄 <b>AuditLogs.spec.ts</b> (27 tests, 63 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/AuditLogs.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/AuditLogs.spec.ts)
+
+### Audit Logs Page
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Audit Logs Page** - should display page header with correct title and subtitle | Display page header with correct title and subtitle |
+| | ↳ *Verify page header* | |
+| | ↳ *Verify page sub-header* | |
+| 2 | **Audit Logs Page** - should display Filters dropdown and search bar | Display Filters dropdown and search bar |
+| | ↳ *Verify Filters dropdown is visible* | |
+| | ↳ *Verify search bar is visible* | |
+| 3 | **Audit Logs Page** - should display audit logs list | Display audit logs list |
+| | ↳ *Verify list container is visible* | |
+| | ↳ *Verify list has header* | |
+| 4 | **Audit Logs Page** - should open Filters dropdown and show filter categories | Open Filters dropdown and show filter categories |
+| | ↳ *Verify filter categories are visible* | |
+| | ↳ *Close popover by clicking elsewhere* | |
+| 5 | **Audit Logs Page** - should apply and clear filters | Apply and clear filters |
+| | ↳ *Clear button should not be visible initially* | |
+| | ↳ *Select a Time filter* | |
+| | ↳ *Verify filter tag appears and Clear button shows* | |
+| | ↳ *Clear filters* | |
+| 6 | **Audit Logs Page** - should support multiple filters from different categories | Support multiple filters from different categories |
+| | ↳ *Select Time filter* | |
+| | ↳ *Add Entity Type filter (should add to existing filters)* | |
+| 7 | **Audit Logs Page** - should allow searching within User filter | Allow searching within User filter |
+| | ↳ *Open User filter category* | |
+| | ↳ *Verify search input is available* | |
+| | ↳ *Navigate back to categories* | |
+| 8 | **Audit Logs Page** - should allow searching within Entity Type filter | Allow searching within Entity Type filter |
+| | ↳ *Open Entity Type filter category* | |
+| | ↳ *Verify entity types are searchable* | |
+| 9 | **Audit Logs Page** - should remove individual filter by clicking close icon | Remove individual filter by clicking close icon |
+| | ↳ *Add a Time filter* | |
+| | ↳ *Verify filter tag is displayed* | |
+| | ↳ *Remove filter by clicking close icon* | |
+| 10 | **Audit Logs Page** - should replace filter value when selecting new value in same category | Replace filter value when selecting new value in same category |
+| | ↳ *Select Yesterday filter* | |
+| | ↳ *Verify Yesterday filter is active* | |
+| | ↳ *Select Last 7 Days filter (should replace Yesterday)* | |
+| | ↳ *Verify Last 7 Days filter replaced Yesterday* | |
+| 11 | **Audit Logs Page** - should search audit logs | Search audit logs |
+| | ↳ *Enter search term and press Enter* | |
+| | ↳ *Verify Clear button appears after search* | |
+| | ↳ *Clear search* | |
+| 12 | **Audit Logs Page** - should support case-insensitive search | Support case-insensitive search |
+| | ↳ *Search with lowercase term* | |
+| 13 | **Audit Logs Page** - should display Export button | Display Export button |
+| | ↳ *Verify Export button is visible* | |
+| 14 | **Audit Logs Page** - should open and close Export modal | Open and close Export modal |
+| | ↳ *Open Export modal* | |
+| | ↳ *Verify modal contains export elements* | |
+| | ↳ *Close modal* | |
+| 15 | **Audit Logs Page** - should require date range for export | Require date range for export |
+| | ↳ *Open Export modal* | |
+| | ↳ *Verify Export button is disabled without date range* | |
+| | ↳ *Verify date range label shows Required* | |
+| 16 | **Audit Logs Page** - should allow export with date range filter | Allow export with date range filter |
+| | ↳ *Open Export modal* | |
+| | ↳ *Select a date range* | |
+| | ↳ *Verify Export button is still enabled* | |
+| 17 | **Audit Logs Page** - should support pagination controls | Support pagination controls |
+| | ↳ *Verify pagination area exists* | |
+| | ↳ *Navigate pages if available* | |
+| 18 | **Audit Logs Page** - should display list items with profile picture and user info | Display list items with profile picture and user info |
+| | ↳ *Verify list items have correct structure* | |
+| | ↳ *Verify list item has user info and event type* | |
+| | ↳ *Verify list item has metadata section* | |
+| 19 | **Audit Logs Page** - should display entity type in list item metadata | Display entity type in list item metadata |
+| | ↳ *Filter by Entity Type to get results* | |
+| | ↳ *Verify entity type badge is displayed* | |
+| 20 | **Audit Logs Page** - should display relative timestamp in list items | Display relative timestamp in list items |
+| | ↳ *Verify timestamp is displayed* | |
+
+### Audit Logs - Search Functionality
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Audit Logs - Search Functionality** - should search and find admin user activity | Search and find admin user activity |
+| | ↳ *Search for admin user activity* | |
+| | ↳ *Verify search results are displayed or empty state shown* | |
+| 2 | **Audit Logs - Search Functionality** - should verify search API returns proper response structure | Search API returns proper response structure |
+| | ↳ *Perform search and validate response structure* | |
+
+### Audit Logs - Export Functionality
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Audit Logs - Export Functionality** - should complete export flow and trigger download | Complete export flow and trigger download |
+| | ↳ *Open Export modal* | |
+| | ↳ *Verify modal displays description and date picker* | |
+| | ↳ *Select date range* | |
+| | ↳ *Verify Export button is enabled after date selection* | |
+| | ↳ *Trigger export and verify API call* | |
+| 2 | **Audit Logs - Export Functionality** - should include filters and search in export request | Include filters and search in export request |
+| | ↳ *Enter a search term* | |
+| | ↳ *Open Export modal* | |
+| | ↳ *Select date range and verify export includes search term* | |
+| 3 | **Audit Logs - Export Functionality** - should validate export response structure | Validate export response structure |
+| | ↳ *Open Export modal and select date range* | |
+| | ↳ *Trigger export and validate response* | |
+
+### Audit Logs - Export Non-Admin Access
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Audit Logs - Export Non-Admin Access** - should deny export access for non-admin users | Deny export access for non-admin users |
+| | ↳ *Verify non-admin cannot access export functionality* | |
+
+### Audit Logs Page - Non-Admin Access
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Audit Logs Page - Non-Admin Access** - should handle audit logs access for non-admin users | Handle audit logs access for non-admin users |
+| | ↳ *Verify page responds without server error* | |
+
+</details>
 
 <details open>
 <summary>📄 <b>ConditionalPermissions.spec.ts</b> (22 tests, 22 scenarios)</summary>
@@ -108,45 +230,6 @@
 </details>
 
 <details open>
-<summary>📄 <b>AuditLogs.spec.ts</b> (8 tests, 19 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/AuditLogs.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/AuditLogs.spec.ts)
-
-### Audit Logs Page
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Audit Logs Page** - should display page header with correct title and subtitle | Display page header with correct title and subtitle |
-| | ↳ *Verify page header* | |
-| | ↳ *Verify page sub-header* | |
-| 2 | **Audit Logs Page** - should display all filter buttons | Display all filter buttons |
-| | ↳ *Verify User filter is visible* | |
-| | ↳ *Verify Bot filter is visible* | |
-| | ↳ *Verify Service filter is visible* | |
-| | ↳ *Verify Asset filter is visible* | |
-| 3 | **Audit Logs Page** - should display audit logs table with correct columns | Display audit logs table with correct columns |
-| | ↳ *Verify table is visible* | |
-| | ↳ *Verify table has correct columns* | |
-| 4 | **Audit Logs Page** - should open and close User filter popover | Open and close User filter popover |
-| | ↳ *Verify filter popover opens with search input* | |
-| | ↳ *Close popover by clicking filter button again* | |
-| 5 | **Audit Logs Page** - should open and close Bot filter popover | Open and close Bot filter popover |
-| | ↳ *Verify filter popover opens* | |
-| | ↳ *Close popover by clicking filter button again* | |
-| 6 | **Audit Logs Page** - should open and close Service filter popover | Open and close Service filter popover |
-| | ↳ *Verify filter popover opens* | |
-| | ↳ *Close popover by clicking filter button again* | |
-| 7 | **Audit Logs Page** - should open and close Asset filter popover | Open and close Asset filter popover |
-| | ↳ *Verify filter popover opens* | |
-| | ↳ *Close popover by clicking filter button again* | |
-| 8 | **Audit Logs Page** - should show Clear button when filter is active and clear filters | Show Clear button when filter is active and clear filters |
-| | ↳ *Clear button should not be visible initially* | |
-| | ↳ *Select a user from filter* | |
-| | ↳ *Verify Clear button appears and works* | |
-
-</details>
-
-<details open>
 <summary>📄 <b>Collect.spec.ts</b> (7 tests, 7 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Flow/Collect.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/Collect.spec.ts)
@@ -202,6 +285,22 @@
 | 3 | **Description Suggestions Table Entity** - Fetch on avatar click and then all Pending Suggestions button click | Fetch on avatar click and then all Pending Suggestions button click |
 | 4 | **Description Suggestions Table Entity** - Should auto fetch more suggestions, when last user avatar is eliminated and there are more suggestions | Auto fetch more suggestions, when last user avatar is eliminated and there are more suggestions |
 | 5 | **Description Suggestions Table Entity** - Should fetch initial 10 suggestions on entity change from table1 to table2 | Fetch initial 10 suggestions on entity change from table1 to table2 |
+
+</details>
+
+<details open>
+<summary>📄 <b>MultipleRename.spec.ts</b> (4 tests, 4 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/MultipleRename.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/MultipleRename.spec.ts)
+
+### Multiple Rename Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Multiple Rename Tests** - Glossary - should handle multiple consecutive renames | Glossary - should handle multiple consecutive renames |
+| 2 | **Multiple Rename Tests** - GlossaryTerm - should handle multiple consecutive renames | GlossaryTerm - should handle multiple consecutive renames |
+| 3 | **Multiple Rename Tests** - Classification - should handle multiple consecutive renames | Classification - should handle multiple consecutive renames |
+| 4 | **Multiple Rename Tests** - Tag - should handle multiple consecutive renames | Tag - should handle multiple consecutive renames |
 
 </details>
 
@@ -378,7 +477,7 @@
 ## Entities
 
 <details open>
-<summary>📄 <b>Entity.spec.ts</b> (335 tests, 366 scenarios)</summary>
+<summary>📄 <b>Entity.spec.ts</b> (357 tests, 451 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/Entity.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Entity.spec.ts)
 
@@ -403,19 +502,34 @@
 | | ↳ *Verify tag updates preserve glossary terms* | |
 | 14 | **Api Endpoint** - Column detail panel data type display and nested column navigation | Column detail panel data type display and nested column navigation |
 | | ↳ *Verify data type display and nested column counting* | |
-| 15 | **Api Endpoint** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
+| 15 | **Api Endpoint** - Complex nested column structures - comprehensive validation | Complex nested column structures - comprehensive validation |
+| | ↳ *Verify nested column has expand icon in main table* | |
+| | ↳ *Open column detail panel for nested column* | |
+| | ↳ *Verify NestedColumnsSection renders with correct structure* | |
+| | ↳ *Verify count badge shows only top-level columns* | |
+| | ↳ *Verify proper indentation for nested levels* | |
+| | ↳ *Verify clicking on nested column navigates correctly* | |
+| | ↳ *Verify clicking on intermediate nested levels (non-leaf nodes)* | |
+| | ↳ *Verify multiple sibling columns at same nesting level* | |
+| | ↳ *Verify deep nesting (3+ levels) if available* | |
+| | ↳ *Close panel* | |
+| 16 | **Api Endpoint** - Array type columns with nested structures in NestedColumnsSection | Array type columns with nested structures in NestedColumnsSection |
+| | ↳ *Verify array column with nested children renders correctly* | |
+| 17 | **Api Endpoint** - Mixed sibling columns (simple + nested) at same level | Mixed sibling columns (simple + nested) at same level |
+| | ↳ *Verify mixed siblings have consistent indentation* | |
+| 18 | **Api Endpoint** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
 | | ↳ *Add and remove glossary terms via column detail panel* | |
-| 16 | **Api Endpoint** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
+| 19 | **Api Endpoint** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
 | | ↳ *Update description via column detail panel and test panel features* | |
-| 17 | **Api Endpoint** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
-| 18 | **Api Endpoint** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
-| 19 | **Api Endpoint** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
-| 20 | **Api Endpoint** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 21 | **Api Endpoint** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 20 | **Api Endpoint** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
+| 21 | **Api Endpoint** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
+| 22 | **Api Endpoint** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
+| 23 | **Api Endpoint** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
+| 24 | **Api Endpoint** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
-| 22 | **Api Endpoint** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 23 | **Api Endpoint** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 25 | **Api Endpoint** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
+| 26 | **Api Endpoint** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
 ### Table
 
@@ -438,26 +552,43 @@
 | | ↳ *Verify tag updates preserve glossary terms* | |
 | 14 | **Table** - Column detail panel data type display and nested column navigation | Column detail panel data type display and nested column navigation |
 | | ↳ *Verify data type display and nested column counting* | |
-| 15 | **Table** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
+| 15 | **Table** - Complex nested column structures - comprehensive validation | Complex nested column structures - comprehensive validation |
+| | ↳ *Verify nested column has expand icon in main table* | |
+| | ↳ *Open column detail panel for nested column* | |
+| | ↳ *Verify NestedColumnsSection renders with correct structure* | |
+| | ↳ *Verify count badge shows only top-level columns* | |
+| | ↳ *Verify proper indentation for nested levels* | |
+| | ↳ *Verify clicking on nested column navigates correctly* | |
+| | ↳ *Verify clicking on intermediate nested levels (non-leaf nodes)* | |
+| | ↳ *Verify multiple sibling columns at same nesting level* | |
+| | ↳ *Verify deep nesting (3+ levels) if available* | |
+| | ↳ *Close panel* | |
+| 16 | **Table** - Array type columns with nested structures in NestedColumnsSection | Array type columns with nested structures in NestedColumnsSection |
+| | ↳ *Verify array column with nested children renders correctly* | |
+| 17 | **Table** - Mixed sibling columns (simple + nested) at same level | Mixed sibling columns (simple + nested) at same level |
+| | ↳ *Verify mixed siblings have consistent indentation* | |
+| 18 | **Table** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
 | | ↳ *Add and remove glossary terms via column detail panel* | |
-| 16 | **Table** - DisplayName Add, Update and Remove for child entities | DisplayName Add, Update and Remove for child entities |
-| 17 | **Table** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
+| 19 | **Table** - DisplayName Add, Update and Remove for child entities | DisplayName Add, Update and Remove for child entities |
+| 20 | **Table** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
 | | ↳ *Update description via column detail panel and test panel features* | |
-| 18 | **Table** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
-| 19 | **Table** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
-| 20 | **Table** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
-| 21 | **Table** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 22 | **Table** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 21 | **Table** - Column detail panel key profile metrics validation | Column detail panel key profile metrics validation |
+| | ↳ *Verify key profile metrics are displayed in column detail panel* | |
+| 22 | **Table** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
+| 23 | **Table** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
+| 24 | **Table** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
+| 25 | **Table** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
+| 26 | **Table** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
-| 23 | **Table** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 24 | **Table** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
-| 25 | **Table** - Switch from Data Observability tab to Activity Feed tab and verify data appears | Switch from Data Observability tab to Activity Feed tab and verify data appears |
+| 27 | **Table** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
+| 28 | **Table** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 29 | **Table** - Switch from Data Observability tab to Activity Feed tab and verify data appears | Switch from Data Observability tab to Activity Feed tab and verify data appears |
 | | ↳ *Navigate to Data Observability tab* | |
 | | ↳ *Verify tabs UI component is rendered in Data Observability tab* | |
 | | ↳ *Switch to Activity Feed tab* | |
 | | ↳ *Verify tabs or left component is rendered in Activity Feed tab* | |
-| 26 | **Table** - Data Consumer should be denied access to queries and sample data tabs when deny policy rule is applied on table level | Tests access control for table-level data access with deny policy  Tests that a data consumer assigned a role with deny rules for ViewQueries and ViewSampleData cannot access those tabs on table entities |
+| 30 | **Table** - Data Consumer should be denied access to queries and sample data tabs when deny policy rule is applied on table level | Tests access control for table-level data access with deny policy  Tests that a data consumer assigned a role with deny rules for ViewQueries and ViewSampleData cannot access those tabs on table entities |
 
 ### Stored Procedure
 
@@ -530,19 +661,34 @@
 | | ↳ *Verify tag updates preserve glossary terms* | |
 | 14 | **Pipeline** - Column detail panel data type display and nested column navigation | Column detail panel data type display and nested column navigation |
 | | ↳ *Verify data type display and nested column counting* | |
-| 15 | **Pipeline** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
+| 15 | **Pipeline** - Complex nested column structures - comprehensive validation | Complex nested column structures - comprehensive validation |
+| | ↳ *Verify nested column has expand icon in main table* | |
+| | ↳ *Open column detail panel for nested column* | |
+| | ↳ *Verify NestedColumnsSection renders with correct structure* | |
+| | ↳ *Verify count badge shows only top-level columns* | |
+| | ↳ *Verify proper indentation for nested levels* | |
+| | ↳ *Verify clicking on nested column navigates correctly* | |
+| | ↳ *Verify clicking on intermediate nested levels (non-leaf nodes)* | |
+| | ↳ *Verify multiple sibling columns at same nesting level* | |
+| | ↳ *Verify deep nesting (3+ levels) if available* | |
+| | ↳ *Close panel* | |
+| 16 | **Pipeline** - Array type columns with nested structures in NestedColumnsSection | Array type columns with nested structures in NestedColumnsSection |
+| | ↳ *Verify array column with nested children renders correctly* | |
+| 17 | **Pipeline** - Mixed sibling columns (simple + nested) at same level | Mixed sibling columns (simple + nested) at same level |
+| | ↳ *Verify mixed siblings have consistent indentation* | |
+| 18 | **Pipeline** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
 | | ↳ *Add and remove glossary terms via column detail panel* | |
-| 16 | **Pipeline** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
+| 19 | **Pipeline** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
 | | ↳ *Update description via column detail panel and test panel features* | |
-| 17 | **Pipeline** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
-| 18 | **Pipeline** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
-| 19 | **Pipeline** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
-| 20 | **Pipeline** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 21 | **Pipeline** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 20 | **Pipeline** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
+| 21 | **Pipeline** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
+| 22 | **Pipeline** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
+| 23 | **Pipeline** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
+| 24 | **Pipeline** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
-| 22 | **Pipeline** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 23 | **Pipeline** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 25 | **Pipeline** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
+| 26 | **Pipeline** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
 ### Topic
 
@@ -565,19 +711,34 @@
 | | ↳ *Verify tag updates preserve glossary terms* | |
 | 14 | **Topic** - Column detail panel data type display and nested column navigation | Column detail panel data type display and nested column navigation |
 | | ↳ *Verify data type display and nested column counting* | |
-| 15 | **Topic** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
+| 15 | **Topic** - Complex nested column structures - comprehensive validation | Complex nested column structures - comprehensive validation |
+| | ↳ *Verify nested column has expand icon in main table* | |
+| | ↳ *Open column detail panel for nested column* | |
+| | ↳ *Verify NestedColumnsSection renders with correct structure* | |
+| | ↳ *Verify count badge shows only top-level columns* | |
+| | ↳ *Verify proper indentation for nested levels* | |
+| | ↳ *Verify clicking on nested column navigates correctly* | |
+| | ↳ *Verify clicking on intermediate nested levels (non-leaf nodes)* | |
+| | ↳ *Verify multiple sibling columns at same nesting level* | |
+| | ↳ *Verify deep nesting (3+ levels) if available* | |
+| | ↳ *Close panel* | |
+| 16 | **Topic** - Array type columns with nested structures in NestedColumnsSection | Array type columns with nested structures in NestedColumnsSection |
+| | ↳ *Verify array column with nested children renders correctly* | |
+| 17 | **Topic** - Mixed sibling columns (simple + nested) at same level | Mixed sibling columns (simple + nested) at same level |
+| | ↳ *Verify mixed siblings have consistent indentation* | |
+| 18 | **Topic** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
 | | ↳ *Add and remove glossary terms via column detail panel* | |
-| 16 | **Topic** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
+| 19 | **Topic** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
 | | ↳ *Update description via column detail panel and test panel features* | |
-| 17 | **Topic** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
-| 18 | **Topic** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
-| 19 | **Topic** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
-| 20 | **Topic** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 21 | **Topic** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 20 | **Topic** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
+| 21 | **Topic** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
+| 22 | **Topic** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
+| 23 | **Topic** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
+| 24 | **Topic** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
-| 22 | **Topic** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 23 | **Topic** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 25 | **Topic** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
+| 26 | **Topic** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
 ### Ml Model
 
@@ -600,19 +761,34 @@
 | | ↳ *Verify tag updates preserve glossary terms* | |
 | 14 | **Ml Model** - Column detail panel data type display and nested column navigation | Column detail panel data type display and nested column navigation |
 | | ↳ *Verify data type display and nested column counting* | |
-| 15 | **Ml Model** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
+| 15 | **Ml Model** - Complex nested column structures - comprehensive validation | Complex nested column structures - comprehensive validation |
+| | ↳ *Verify nested column has expand icon in main table* | |
+| | ↳ *Open column detail panel for nested column* | |
+| | ↳ *Verify NestedColumnsSection renders with correct structure* | |
+| | ↳ *Verify count badge shows only top-level columns* | |
+| | ↳ *Verify proper indentation for nested levels* | |
+| | ↳ *Verify clicking on nested column navigates correctly* | |
+| | ↳ *Verify clicking on intermediate nested levels (non-leaf nodes)* | |
+| | ↳ *Verify multiple sibling columns at same nesting level* | |
+| | ↳ *Verify deep nesting (3+ levels) if available* | |
+| | ↳ *Close panel* | |
+| 16 | **Ml Model** - Array type columns with nested structures in NestedColumnsSection | Array type columns with nested structures in NestedColumnsSection |
+| | ↳ *Verify array column with nested children renders correctly* | |
+| 17 | **Ml Model** - Mixed sibling columns (simple + nested) at same level | Mixed sibling columns (simple + nested) at same level |
+| | ↳ *Verify mixed siblings have consistent indentation* | |
+| 18 | **Ml Model** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
 | | ↳ *Add and remove glossary terms via column detail panel* | |
-| 16 | **Ml Model** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
+| 19 | **Ml Model** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
 | | ↳ *Update description via column detail panel and test panel features* | |
-| 17 | **Ml Model** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
-| 18 | **Ml Model** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
-| 19 | **Ml Model** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
-| 20 | **Ml Model** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 21 | **Ml Model** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 20 | **Ml Model** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
+| 21 | **Ml Model** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
+| 22 | **Ml Model** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
+| 23 | **Ml Model** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
+| 24 | **Ml Model** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
-| 22 | **Ml Model** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 23 | **Ml Model** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 25 | **Ml Model** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
+| 26 | **Ml Model** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
 ### Container
 
@@ -660,19 +836,34 @@
 | | ↳ *Verify tag updates preserve glossary terms* | |
 | 14 | **Search Index** - Column detail panel data type display and nested column navigation | Column detail panel data type display and nested column navigation |
 | | ↳ *Verify data type display and nested column counting* | |
-| 15 | **Search Index** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
+| 15 | **Search Index** - Complex nested column structures - comprehensive validation | Complex nested column structures - comprehensive validation |
+| | ↳ *Verify nested column has expand icon in main table* | |
+| | ↳ *Open column detail panel for nested column* | |
+| | ↳ *Verify NestedColumnsSection renders with correct structure* | |
+| | ↳ *Verify count badge shows only top-level columns* | |
+| | ↳ *Verify proper indentation for nested levels* | |
+| | ↳ *Verify clicking on nested column navigates correctly* | |
+| | ↳ *Verify clicking on intermediate nested levels (non-leaf nodes)* | |
+| | ↳ *Verify multiple sibling columns at same nesting level* | |
+| | ↳ *Verify deep nesting (3+ levels) if available* | |
+| | ↳ *Close panel* | |
+| 16 | **Search Index** - Array type columns with nested structures in NestedColumnsSection | Array type columns with nested structures in NestedColumnsSection |
+| | ↳ *Verify array column with nested children renders correctly* | |
+| 17 | **Search Index** - Mixed sibling columns (simple + nested) at same level | Mixed sibling columns (simple + nested) at same level |
+| | ↳ *Verify mixed siblings have consistent indentation* | |
+| 18 | **Search Index** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
 | | ↳ *Add and remove glossary terms via column detail panel* | |
-| 16 | **Search Index** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
+| 19 | **Search Index** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
 | | ↳ *Update description via column detail panel and test panel features* | |
-| 17 | **Search Index** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
-| 18 | **Search Index** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
-| 19 | **Search Index** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
-| 20 | **Search Index** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 21 | **Search Index** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 20 | **Search Index** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
+| 21 | **Search Index** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
+| 22 | **Search Index** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
+| 23 | **Search Index** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
+| 24 | **Search Index** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
-| 22 | **Search Index** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 23 | **Search Index** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 25 | **Search Index** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
+| 26 | **Search Index** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
 ### Dashboard Data Model
 
@@ -696,20 +887,35 @@
 | | ↳ *Verify tag updates preserve glossary terms* | |
 | 15 | **Dashboard Data Model** - Column detail panel data type display and nested column navigation | Column detail panel data type display and nested column navigation |
 | | ↳ *Verify data type display and nested column counting* | |
-| 16 | **Dashboard Data Model** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
+| 16 | **Dashboard Data Model** - Complex nested column structures - comprehensive validation | Complex nested column structures - comprehensive validation |
+| | ↳ *Verify nested column has expand icon in main table* | |
+| | ↳ *Open column detail panel for nested column* | |
+| | ↳ *Verify NestedColumnsSection renders with correct structure* | |
+| | ↳ *Verify count badge shows only top-level columns* | |
+| | ↳ *Verify proper indentation for nested levels* | |
+| | ↳ *Verify clicking on nested column navigates correctly* | |
+| | ↳ *Verify clicking on intermediate nested levels (non-leaf nodes)* | |
+| | ↳ *Verify multiple sibling columns at same nesting level* | |
+| | ↳ *Verify deep nesting (3+ levels) if available* | |
+| | ↳ *Close panel* | |
+| 17 | **Dashboard Data Model** - Array type columns with nested structures in NestedColumnsSection | Array type columns with nested structures in NestedColumnsSection |
+| | ↳ *Verify array column with nested children renders correctly* | |
+| 18 | **Dashboard Data Model** - Mixed sibling columns (simple + nested) at same level | Mixed sibling columns (simple + nested) at same level |
+| | ↳ *Verify mixed siblings have consistent indentation* | |
+| 19 | **Dashboard Data Model** - Glossary Term Add, Update and Remove for child entities | Glossary Term Add, Update and Remove for child entities |
 | | ↳ *Add and remove glossary terms via column detail panel* | |
-| 17 | **Dashboard Data Model** - DisplayName Add, Update and Remove for child entities | DisplayName Add, Update and Remove for child entities |
-| 18 | **Dashboard Data Model** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
+| 20 | **Dashboard Data Model** - DisplayName Add, Update and Remove for child entities | DisplayName Add, Update and Remove for child entities |
+| 21 | **Dashboard Data Model** - Description Add, Update and Remove for child entities | Tests description management for child entities  Tests adding, updating, and removing descriptions on child entities within a parent entity |
 | | ↳ *Update description via column detail panel and test panel features* | |
-| 19 | **Dashboard Data Model** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
-| 20 | **Dashboard Data Model** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
-| 21 | **Dashboard Data Model** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
-| 22 | **Dashboard Data Model** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 23 | **Dashboard Data Model** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 22 | **Dashboard Data Model** - Announcement create, edit & delete | Tests announcement lifecycle management  Tests creating an announcement on an entity, editing it, and deleting it |
+| 23 | **Dashboard Data Model** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
+| 24 | **Dashboard Data Model** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
+| 25 | **Dashboard Data Model** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
+| 26 | **Dashboard Data Model** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
-| 24 | **Dashboard Data Model** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
-| 25 | **Dashboard Data Model** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
+| 27 | **Dashboard Data Model** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
+| 28 | **Dashboard Data Model** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
 ### Metric
 
@@ -1607,6 +1813,77 @@
 </details>
 
 <details open>
+<summary>📄 <b>RightEntityPanelFlow.spec.ts</b> (46 tests, 48 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Flow/RightEntityPanelFlow.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/RightEntityPanelFlow.spec.ts)
+
+### Right Entity Panel - Admin User Flow
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Description Section - Add and Update | Admin - Overview Tab - Description Section - Add and Update |
+| 2 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Owners Section - Add and Update, Verify Deleted Users Not Visible | Admin - Overview Tab - Owners Section - Add and Update, Verify Deleted Users Not Visible |
+| 3 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Owners Section - Add Team Owner and Verify Deleted Teams Not Visible | Admin - Overview Tab - Owners Section - Add Team Owner and Verify Deleted Teams Not Visible |
+| 4 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Owners Section - Remove Owner - User | Admin - Overview Tab - Owners Section - Remove Owner - User |
+| 5 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Owners Section - Remove Owner - Team | Admin - Overview Tab - Owners Section - Remove Owner - Team |
+| 6 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Tags Section - Add Tag and Verify Deleted Tags Not Visible | Admin - Overview Tab - Tags Section - Add Tag and Verify Deleted Tags Not Visible |
+| 7 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Remove Tag | Admin - Overview Tab - Remove Tag |
+| 8 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Glossary Terms Section - Add Term and Verify Deleted Terms Not Visible | Admin - Overview Tab - Glossary Terms Section - Add Term and Verify Deleted Terms Not Visible |
+| 9 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Remove Glossary Term | Admin - Overview Tab - Remove Glossary Term |
+| 10 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Tier Section - Add and Update | Admin - Overview Tab - Tier Section - Add and Update |
+| 11 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Remove Tier | Admin - Overview Tab - Remove Tier |
+| 12 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Domains Section - Add and Update | Admin - Overview Tab - Domains Section - Add and Update |
+| 13 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Remove Domain | Admin - Overview Tab - Remove Domain |
+| 14 | **Right Entity Panel - Admin User Flow** - Admin - Schema Tab - View Schema | Admin - Schema Tab - View Schema |
+| 15 | **Right Entity Panel - Admin User Flow** - Lineage Tab - No Lineage | Lineage Tab - No Lineage |
+| 16 | **Right Entity Panel - Admin User Flow** - Lineage Tab - With Upstream and Downstream | Lineage Tab - With Upstream and Downstream |
+| | ↳ *Create lineage connections* | |
+| | ↳ *Verify overview tab lineage* | |
+| | ↳ *Verify lineage tab content* | |
+| 17 | **Right Entity Panel - Admin User Flow** - Data Quality Tab - No Test Cases | Data Quality Tab - No Test Cases |
+| 18 | **Right Entity Panel - Admin User Flow** - Data Quality Tab - Incidents Empty State | Data Quality Tab - Incidents Empty State |
+| 19 | **Right Entity Panel - Admin User Flow** - Data Quality Tab - With Test Cases | Data Quality Tab - With Test Cases |
+| 20 | **Right Entity Panel - Admin User Flow** - Data Quality Tab - Incidents Tab | Data Quality Tab - Incidents Tab |
+| 21 | **Right Entity Panel - Admin User Flow** - Data Quality Tab - Incidents Tab - Test Case Link Navigation | Data Quality Tab - Incidents Tab - Test Case Link Navigation |
+| 22 | **Right Entity Panel - Admin User Flow** - Admin - Custom Properties Tab - View Custom Properties | Admin - Custom Properties Tab - View Custom Properties |
+| 23 | **Right Entity Panel - Admin User Flow** - Admin - Custom Properties Tab - Search Functionality | Admin - Custom Properties Tab - Search Functionality |
+| 24 | **Right Entity Panel - Admin User Flow** - Admin - Custom Properties Tab - Different Property Types Display | Admin - Custom Properties Tab - Different Property Types Display |
+| 25 | **Right Entity Panel - Admin User Flow** - Admin - Custom Properties Tab - Empty State | Admin - Custom Properties Tab - Empty State |
+
+### Right Entity Panel - Data Steward User Flow
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Overview Tab - Description Section - Add and Update | Data Steward - Overview Tab - Description Section - Add and Update |
+| 2 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Overview Tab - Owners Section - Add and Update | Data Steward - Overview Tab - Owners Section - Add and Update |
+| 3 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Overview Tab - Tier Section - Add and Update | Data Steward - Overview Tab - Tier Section - Add and Update |
+| 4 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Overview Tab - Tags Section - Add and Update | Data Steward - Overview Tab - Tags Section - Add and Update |
+| 5 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Overview Tab - Glossary Terms Section - Add and Update | Data Steward - Overview Tab - Glossary Terms Section - Add and Update |
+| 6 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Overview Tab - Should NOT have permissions for Domains | Data Steward - Overview Tab - Should NOT have permissions for Domains |
+| 7 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Schema Tab - View Schema | Data Steward - Schema Tab - View Schema |
+| 8 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Lineage Tab - No Lineage | Data Steward - Lineage Tab - No Lineage |
+| 9 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Data Quality Tab - No Test Cases | Data Steward - Data Quality Tab - No Test Cases |
+| 10 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Custom Properties Tab - View Custom Properties | Data Steward - Custom Properties Tab - View Custom Properties |
+
+### Right Entity Panel - Data Consumer User Flow
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Overview Tab - Description Section - Add and Update | Data Consumer - Overview Tab - Description Section - Add and Update |
+| 2 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Overview Tab - Owners Section - View Owners | Data Consumer - Overview Tab - Owners Section - View Owners |
+| 3 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Overview Tab - Tier Section - Add and Update | Data Consumer - Overview Tab - Tier Section - Add and Update |
+| 4 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Overview Tab - Tags Section - Add and Update | Data Consumer - Overview Tab - Tags Section - Add and Update |
+| 5 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Overview Tab - Glossary Terms Section - Add and Update | Data Consumer - Overview Tab - Glossary Terms Section - Add and Update |
+| 6 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Overview Tab - Should NOT have permissions for Domains & Data Products | Data Consumer - Overview Tab - Should NOT have permissions for Domains & Data Products |
+| 7 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Schema Tab - View Schema | Data Consumer - Schema Tab - View Schema |
+| 8 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Lineage Tab - No Lineage | Data Consumer - Lineage Tab - No Lineage |
+| 9 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Data Quality Tab - No Test Cases | Data Consumer - Data Quality Tab - No Test Cases |
+| 10 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Data Quality Tab - Incidents Empty State | Data Consumer - Data Quality Tab - Incidents Empty State |
+| 11 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Custom Properties Tab - View Custom Properties | Data Consumer - Custom Properties Tab - View Custom Properties |
+
+</details>
+
+<details open>
 <summary>📄 <b>EntityPermissions.spec.ts</b> (40 tests, 40 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/Permissions/EntityPermissions.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Permissions/EntityPermissions.spec.ts)
@@ -1715,71 +1992,6 @@
 |---|-----------|-------------|
 | 1 | **Worksheet Permissions** - Worksheet allow common operations permissions | Worksheet allow common operations permissions |
 | 2 | **Worksheet Permissions** - Worksheet deny common operations permissions | Worksheet deny common operations permissions |
-
-</details>
-
-<details open>
-<summary>📄 <b>RightEntityPanelFlow.spec.ts</b> (40 tests, 42 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Flow/RightEntityPanelFlow.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/RightEntityPanelFlow.spec.ts)
-
-### Right Entity Panel - Admin User Flow
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Description Section - Add and Update | Admin - Overview Tab - Description Section - Add and Update |
-| 2 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Owners Section - Add and Update, Verify Deleted Users Not Visible | Admin - Overview Tab - Owners Section - Add and Update, Verify Deleted Users Not Visible |
-| 3 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Owners Section - Add Team Owner and Verify Deleted Teams Not Visible | Admin - Overview Tab - Owners Section - Add Team Owner and Verify Deleted Teams Not Visible |
-| 4 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Tags Section - Add Tag and Verify Deleted Tags Not Visible | Admin - Overview Tab - Tags Section - Add Tag and Verify Deleted Tags Not Visible |
-| 5 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Glossary Terms Section - Add Term and Verify Deleted Terms Not Visible | Admin - Overview Tab - Glossary Terms Section - Add Term and Verify Deleted Terms Not Visible |
-| 6 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Tier Section - Add and Update | Admin - Overview Tab - Tier Section - Add and Update |
-| 7 | **Right Entity Panel - Admin User Flow** - Admin - Overview Tab - Domains Section - Add and Update | Admin - Overview Tab - Domains Section - Add and Update |
-| 8 | **Right Entity Panel - Admin User Flow** - Admin - Schema Tab - View Schema | Admin - Schema Tab - View Schema |
-| 9 | **Right Entity Panel - Admin User Flow** - Lineage Tab - No Lineage | Lineage Tab - No Lineage |
-| 10 | **Right Entity Panel - Admin User Flow** - Lineage Tab - With Upstream and Downstream | Lineage Tab - With Upstream and Downstream |
-| | ↳ *Create lineage connections* | |
-| | ↳ *Verify overview tab lineage* | |
-| | ↳ *Verify lineage tab content* | |
-| 11 | **Right Entity Panel - Admin User Flow** - Data Quality Tab - No Test Cases | Data Quality Tab - No Test Cases |
-| 12 | **Right Entity Panel - Admin User Flow** - Data Quality Tab - Incidents Empty State | Data Quality Tab - Incidents Empty State |
-| 13 | **Right Entity Panel - Admin User Flow** - Data Quality Tab - With Test Cases | Data Quality Tab - With Test Cases |
-| 14 | **Right Entity Panel - Admin User Flow** - Data Quality Tab - Incidents Tab | Data Quality Tab - Incidents Tab |
-| 15 | **Right Entity Panel - Admin User Flow** - Data Quality Tab - Incidents Tab - Test Case Link Navigation | Data Quality Tab - Incidents Tab - Test Case Link Navigation |
-| 16 | **Right Entity Panel - Admin User Flow** - Admin - Custom Properties Tab - View Custom Properties | Admin - Custom Properties Tab - View Custom Properties |
-| 17 | **Right Entity Panel - Admin User Flow** - Admin - Custom Properties Tab - Search Functionality | Admin - Custom Properties Tab - Search Functionality |
-| 18 | **Right Entity Panel - Admin User Flow** - Admin - Custom Properties Tab - Different Property Types Display | Admin - Custom Properties Tab - Different Property Types Display |
-| 19 | **Right Entity Panel - Admin User Flow** - Admin - Custom Properties Tab - Empty State | Admin - Custom Properties Tab - Empty State |
-
-### Right Entity Panel - Data Steward User Flow
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Overview Tab - Description Section - Add and Update | Data Steward - Overview Tab - Description Section - Add and Update |
-| 2 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Overview Tab - Owners Section - Add and Update | Data Steward - Overview Tab - Owners Section - Add and Update |
-| 3 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Overview Tab - Tier Section - Add and Update | Data Steward - Overview Tab - Tier Section - Add and Update |
-| 4 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Overview Tab - Tags Section - Add and Update | Data Steward - Overview Tab - Tags Section - Add and Update |
-| 5 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Overview Tab - Glossary Terms Section - Add and Update | Data Steward - Overview Tab - Glossary Terms Section - Add and Update |
-| 6 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Overview Tab - Should NOT have permissions for Domains | Data Steward - Overview Tab - Should NOT have permissions for Domains |
-| 7 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Schema Tab - View Schema | Data Steward - Schema Tab - View Schema |
-| 8 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Lineage Tab - No Lineage | Data Steward - Lineage Tab - No Lineage |
-| 9 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Data Quality Tab - No Test Cases | Data Steward - Data Quality Tab - No Test Cases |
-| 10 | **Right Entity Panel - Data Steward User Flow** - Data Steward - Custom Properties Tab - View Custom Properties | Data Steward - Custom Properties Tab - View Custom Properties |
-
-### Right Entity Panel - Data Consumer User Flow
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Overview Tab - Description Section - Add and Update | Data Consumer - Overview Tab - Description Section - Add and Update |
-| 2 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Overview Tab - Owners Section - View Owners | Data Consumer - Overview Tab - Owners Section - View Owners |
-| 3 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Overview Tab - Tier Section - Add and Update | Data Consumer - Overview Tab - Tier Section - Add and Update |
-| 4 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Overview Tab - Tags Section - Add and Update | Data Consumer - Overview Tab - Tags Section - Add and Update |
-| 5 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Overview Tab - Glossary Terms Section - Add and Update | Data Consumer - Overview Tab - Glossary Terms Section - Add and Update |
-| 6 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Overview Tab - Should NOT have permissions for Domains & Data Products | Data Consumer - Overview Tab - Should NOT have permissions for Domains & Data Products |
-| 7 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Schema Tab - View Schema | Data Consumer - Schema Tab - View Schema |
-| 8 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Lineage Tab - No Lineage | Data Consumer - Lineage Tab - No Lineage |
-| 9 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Data Quality Tab - No Test Cases | Data Consumer - Data Quality Tab - No Test Cases |
-| 10 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Data Quality Tab - Incidents Empty State | Data Consumer - Data Quality Tab - Incidents Empty State |
-| 11 | **Right Entity Panel - Data Consumer User Flow** - Data Consumer - Custom Properties Tab - View Custom Properties | Data Consumer - Custom Properties Tab - View Custom Properties |
 
 </details>
 
@@ -2116,6 +2328,56 @@
 </details>
 
 <details open>
+<summary>📄 <b>EntityRenameConsolidation.spec.ts</b> (9 tests, 9 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/EntityRenameConsolidation.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/EntityRenameConsolidation.spec.ts)
+
+### Entity Rename + Field Update Consolidation
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Entity Rename + Field Update Consolidation** - Glossary - rename then update description should preserve terms | Glossary - rename then update description should preserve terms |
+| 2 | **Entity Rename + Field Update Consolidation** - Glossary - multiple rename + update cycles should preserve terms | Glossary - multiple rename + update cycles should preserve terms |
+| 3 | **Entity Rename + Field Update Consolidation** - GlossaryTerm - rename then update description should work | GlossaryTerm - rename then update description should work |
+| 4 | **Entity Rename + Field Update Consolidation** - Classification - rename then update description should preserve tags | Classification - rename then update description should preserve tags |
+| 5 | **Entity Rename + Field Update Consolidation** - Classification - multiple rename + update cycles should preserve tags | Classification - multiple rename + update cycles should preserve tags |
+| 6 | **Entity Rename + Field Update Consolidation** - Tag - rename then update description should work | Tag - rename then update description should work |
+| 7 | **Entity Rename + Field Update Consolidation** - Tag - multiple rename + update cycles should work | Tag - multiple rename + update cycles should work |
+| 8 | **Entity Rename + Field Update Consolidation** - Domain - rename then update description should work | Domain - rename then update description should work |
+| 9 | **Entity Rename + Field Update Consolidation** - Domain - multiple rename + update cycles should work | Domain - multiple rename + update cycles should work |
+
+</details>
+
+<details open>
+<summary>📄 <b>BulkImportWithDotInName.spec.ts</b> (8 tests, 9 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/BulkImportWithDotInName.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImportWithDotInName.spec.ts)
+
+### Bulk Import Export with Dot in Service Name
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Bulk Import Export with Dot in Service Name** - Database service with dot in name - export and reimport | Test export and re-import of a database service with a dot in the name. This verifies that: 1. Export generates valid CSV with properly escaped FQN values 2. Import can parse the CSV with quoted FQN values 3. The full hierarchy (database, schema, table, columns) is preserved |
+| | ↳ *Export database service with dot in name* | |
+| | ↳ *Import exported CSV and verify parsing succeeds* | |
+| 2 | **Bulk Import Export with Dot in Service Name** - CSV with quoted FQN loads correctly in import grid | Test that CSV with quoted FQN values can be loaded into the import grid. This is the core test for issue #24401 - verifying that the CSV parsing doesn't fail when FQN values contain escaped quotes. |
+| | ↳ *Export and verify CSV loads without parsing errors* | |
+| 3 | **Bulk Import Export with Dot in Service Name** - Full import cycle with dot in service name | Test the full import cycle - export, modify in grid, and reimport. This tests that the CSV reconstruction from grid data properly escapes quotes in FQN values. |
+| | ↳ *Export, load into grid, validate, and update* | |
+| 4 | **Bulk Import Export with Dot in Service Name** - Service name with multiple dots | Test with multiple dots in service name (e.g., "org.team.mysql.prod") |
+| | ↳ *Export and reimport with multiple dots in name* | |
+| 5 | **Bulk Import Export with Dot in Service Name** - Column with dot in name under service with dot | Test column with dot in name under a service with dot in name. This tests double quoting scenario where both service and column have dots. Column FQN: """service.name"".db.schema.table.""column.name""" |
+| | ↳ *Export and reimport with column dots* | |
+| 6 | **Bulk Import Export with Dot in Service Name** - Bulk edit existing entity with dot in service name | Test bulk edit via import - modify description of existing entity. This tests that editing in the grid and reimporting works with quoted FQNs. |
+| | ↳ *Export, edit description in grid, and update* | |
+| 7 | **Bulk Import Export with Dot in Service Name** - Import at database level with dot in service name | Test import at database level (not service level). This ensures the fix works when importing from database page. |
+| | ↳ *Export and import at database level* | |
+| 8 | **Bulk Import Export with Dot in Service Name** - Import at schema level with dot in service name | Test import at schema level with dot in service name. |
+| | ↳ *Export and import at schema level* | |
+
+</details>
+
+<details open>
 <summary>📄 <b>BulkEditEntity.spec.ts</b> (6 tests, 11 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/BulkEditEntity.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkEditEntity.spec.ts)
@@ -2231,7 +2493,7 @@
 ## Settings
 
 <details open>
-<summary>📄 <b>SettingsNavigationPage.spec.ts</b> (4 tests, 4 scenarios)</summary>
+<summary>📄 <b>SettingsNavigationPage.spec.ts</b> (6 tests, 6 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/SettingsNavigationPage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SettingsNavigationPage.spec.ts)
 
@@ -2243,6 +2505,8 @@
 | 2 | **Settings Navigation Page Tests** - should show navigation blocker when leaving with unsaved changes | Show navigation blocker when leaving with unsaved changes |
 | 3 | **Settings Navigation Page Tests** - should save changes and navigate when "Save changes" is clicked in blocker | Save changes and navigate when "Save changes" is clicked in blocker |
 | 4 | **Settings Navigation Page Tests** - should handle reset functionality and prevent navigation blocker after save | Handle reset functionality and prevent navigation blocker after save |
+| 5 | **Settings Navigation Page Tests** - should support drag and drop reordering of navigation items | Support drag and drop reordering of navigation items |
+| 6 | **Settings Navigation Page Tests** - should handle multiple items being hidden at once | Handle multiple items being hidden at once |
 
 </details>
 
@@ -2448,58 +2712,58 @@
 
 > Source: [`src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts)
 
-### Widgets
+### Standalone Tests
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Widgets** - Activity Feed | Activity Feed |
+| 1 | Activity Feed Widget | Activity Feed Widget |
 | | ↳ *Test widget header and navigation* | |
 | | ↳ *Test widget filters* | |
 | | ↳ *Test widget footer navigation* | |
 | | ↳ *Test widget customization* | |
-| 2 | **Widgets** - Data Assets | Data Assets |
+| 2 | Data Assets Widget | Data Assets Widget |
 | | ↳ *Test widget header and navigation* | |
 | | ↳ *Test widget displays entities and navigation* | |
 | | ↳ *Test widget footer navigation* | |
 | | ↳ *Test widget customization* | |
-| 3 | **Widgets** - My Data | My Data |
+| 3 | My Data Widget | My Data Widget |
 | | ↳ *Test widget header and navigation* | |
 | | ↳ *Test widget filters* | |
 | | ↳ *Test widget displays entities and navigation* | |
 | | ↳ *Test widget footer navigation* | |
 | | ↳ *Test widget customization* | |
-| 4 | **Widgets** - KPI | KPI |
+| 4 | KPI Widget | KPI Widget |
 | | ↳ *Add KPI* | |
 | | ↳ *Test widget header and navigation* | |
 | | ↳ *Test widget footer navigation* | |
 | | ↳ *Test widget loads KPI data correctly* | |
 | | ↳ *Test widget customization* | |
-| 5 | **Widgets** - Total Data Assets | Total Data Assets |
+| 5 | Total Data Assets Widget | Total Data Assets Widget |
 | | ↳ *Test widget header and navigation* | |
 | | ↳ *Test widget filters* | |
 | | ↳ *Test widget footer navigation* | |
 | | ↳ *Test widget customization* | |
-| 6 | **Widgets** - Following Assets | Following Assets |
+| 6 | Following Assets Widget | Following Assets Widget |
 | | ↳ *Test widget header and navigation* | |
 | | ↳ *Test widget filters* | |
 | | ↳ *Test widget displays followed entities* | |
 | | ↳ *Test widget footer navigation* | |
 | | ↳ *Test widget customization* | |
-| 7 | **Widgets** - Domains | Domains |
+| 7 | Domains Widget | Domains Widget |
 | | ↳ *Add widget* | |
 | | ↳ *Test widget header and navigation* | |
 | | ↳ *Test widget filters* | |
 | | ↳ *Test widget displays entities and navigation* | |
 | | ↳ *Test widget footer navigation* | |
 | | ↳ *Remove widget* | |
-| 8 | **Widgets** - My Tasks | My Tasks |
+| 8 | My Tasks Widget | My Tasks Widget |
 | | ↳ *Create a task* | |
 | | ↳ *Add widget* | |
 | | ↳ *Test widget header and navigation* | |
 | | ↳ *Test widget filters* | |
 | | ↳ *Test widget displays entities and navigation* | |
 | | ↳ *Remove widget* | |
-| 9 | **Widgets** - Data Products | Data Products |
+| 9 | Data Products Widget | Data Products Widget |
 | | ↳ *Add widget* | |
 | | ↳ *Test widget header and navigation* | |
 | | ↳ *Test widget filters* | |
@@ -2557,7 +2821,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>CustomThemeConfig.spec.ts</b> (2 tests, 2 scenarios)</summary>
+<summary>📄 <b>CustomThemeConfig.spec.ts</b> (3 tests, 3 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/CustomThemeConfig.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/CustomThemeConfig.spec.ts)
 
@@ -2566,7 +2830,8 @@
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | **Custom Theme Config Page** - Update and reset custom theme config | Update and reset custom theme config |
-| 2 | **Custom Theme Config Page** - Should call customMonogramUrlPath only once after save if the monogram is not valid | Call customMonogramUrlPath only once after save if the monogram is not valid |
+| 2 | **Custom Theme Config Page** - Update Hover and selected Color  | Update Hover and selected Color  |
+| 3 | **Custom Theme Config Page** - Should call customMonogramUrlPath only once after save if the monogram is not valid | Call customMonogramUrlPath only once after save if the monogram is not valid |
 
 </details>
 
@@ -2576,6 +2841,139 @@
 <div id="navigation"></div>
 
 ## Navigation
+
+<details open>
+<summary>📄 <b>Pagination.spec.ts</b> (31 tests, 31 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Pagination.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Pagination.spec.ts)
+
+### Pagination tests for Users page
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Pagination tests for Users page** - should test pagination on Users page | Pagination on Users page |
+| 2 | **Pagination tests for Users page** - should test Users complete flow with search | Users complete flow with search |
+
+### Database Schema Tables page pagination
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Database Schema Tables page pagination** - should test Database Schema Tables normal pagination | Database Schema Tables normal pagination |
+| 2 | **Database Schema Tables page pagination** - should test Database Schema Tables complete flow with search | Database Schema Tables complete flow with search |
+
+### Table columns page pagination
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Table columns page pagination** - should test pagination on Table columns | Pagination on Table columns |
+| 2 | **Table columns page pagination** - should test Table columns complete flow with search | Table columns complete flow with search |
+
+### Service Databases page pagination
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Service Databases page pagination** - should test pagination on Service Databases page | Pagination on Service Databases page |
+| 2 | **Service Databases page pagination** - should test Service Database Tables complete flow with search | Service Database Tables complete flow with search |
+
+### Pagination tests for Classification Tags page
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Pagination tests for Classification Tags page** - should test pagination on Classification Tags page | Pagination on Classification Tags page |
+
+### Pagination tests for Metrics page
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Pagination tests for Metrics page** - should test pagination on Metrics page | Pagination on Metrics page |
+
+### Pagination tests for Notification Alerts page
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Pagination tests for Notification Alerts page** - should test pagination on Notification Alerts page | Pagination on Notification Alerts page |
+
+### Pagination tests for Observability Alerts page
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Pagination tests for Observability Alerts page** - should test pagination on Observability Alerts page | Pagination on Observability Alerts page |
+
+### Pagination tests for API Collection Endpoints page
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Pagination tests for API Collection Endpoints page** - should test API Collection normal pagination | API Collection normal pagination |
+| 2 | **Pagination tests for API Collection Endpoints page** - should test API Collection complete flow with search | API Collection complete flow with search |
+
+### Pagination tests for Stored Procedures page
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Pagination tests for Stored Procedures page** - should test Stored Procedures normal pagination | Stored Procedures normal pagination |
+| 2 | **Pagination tests for Stored Procedures page** - should test Stored Procedures complete flow with search | Stored Procedures complete flow with search |
+
+### Pagination tests for Database Schemas page
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Pagination tests for Database Schemas page** - should test Database Schemas normal pagination | Database Schemas normal pagination |
+| 2 | **Pagination tests for Database Schemas page** - should test Database Schemas complete flow with search | Database Schemas complete flow with search |
+
+### Pagination tests for Dashboard Data Models page
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Pagination tests for Dashboard Data Models page** - should test Data Models normal pagination | Data Models normal pagination |
+| 2 | **Pagination tests for Dashboard Data Models page** - should test Data Models complete flow with search | Data Models complete flow with search |
+
+### Pagination tests for Drive Service Directories page
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Pagination tests for Drive Service Directories page** - should test Directories normal pagination | Directories normal pagination |
+| 2 | **Pagination tests for Drive Service Directories page** - should test Directories complete flow with search | Directories complete flow with search |
+
+### Pagination tests for Drive Service Files page
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Pagination tests for Drive Service Files page** - should test Files normal pagination | Files normal pagination |
+| 2 | **Pagination tests for Drive Service Files page** - should test Files complete flow with search | Files complete flow with search |
+| 3 | **Pagination tests for Drive Service Files page** - should reset pagination when switching between Files and Spreadsheets tabs and also verify the api is called with correct payload | Reset pagination when switching between Files and Spreadsheets tabs and also verify the api is called with correct payload |
+
+### Pagination tests for Drive Service Spreadsheets page
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Pagination tests for Drive Service Spreadsheets page** - should test Spreadsheets normal pagination | Spreadsheets normal pagination |
+| 2 | **Pagination tests for Drive Service Spreadsheets page** - should test Spreadsheets complete flow with search | Spreadsheets complete flow with search |
+
+### Pagination tests for Roles page
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Pagination tests for Roles page** - should test pagination on Roles page | Pagination on Roles page |
+
+### Pagination tests for Policies page
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Pagination tests for Policies page** - should test pagination on Policies page | Pagination on Policies page |
+
+### Pagination tests for Bots page
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Pagination tests for Bots page** - should test pagination on Bots page | Pagination on Bots page |
+
+### Pagination tests for Service version page
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Pagination tests for Service version page** - should test pagination on Service version page | Pagination on Service version page |
+
+</details>
 
 <details open>
 <summary>📄 <b>Navbar.spec.ts</b> (22 tests, 22 scenarios)</summary>
@@ -2608,48 +3006,6 @@
 | 20 | Search Term - File | Search Term - File |
 | 21 | Search Term - Spreadsheet | Search Term - Spreadsheet |
 | 22 | Search Term - Worksheet | Search Term - Worksheet |
-
-</details>
-
-<details open>
-<summary>📄 <b>Pagination.spec.ts</b> (10 tests, 10 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/Pagination.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Pagination.spec.ts)
-
-### Pagination tests for all pages
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Pagination tests for all pages** - should test pagination on Users page | Pagination on Users page |
-| 2 | **Pagination tests for all pages** - should test pagination on Roles page | Pagination on Roles page |
-| 3 | **Pagination tests for all pages** - should test pagination on Policies page | Pagination on Policies page |
-| 4 | **Pagination tests for all pages** - should test pagination on Database Services page | Pagination on Database Services page |
-| 5 | **Pagination tests for all pages** - should test pagination on Bots page | Pagination on Bots page |
-| 6 | **Pagination tests for all pages** - should test pagination on Service version page | Pagination on Service version page |
-
-### Pagination tests for Classification Tags page
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Pagination tests for Classification Tags page** - should test pagination on Classification Tags page | Pagination on Classification Tags page |
-
-### Pagination tests for Metrics page
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Pagination tests for Metrics page** - should test pagination on Metrics page | Pagination on Metrics page |
-
-### Pagination tests for Notification Alerts page
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Pagination tests for Notification Alerts page** - should test pagination on Notification Alerts page | Pagination on Notification Alerts page |
-
-### Pagination tests for Observability Alerts page
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Pagination tests for Observability Alerts page** - should test pagination on Observability Alerts page | Pagination on Observability Alerts page |
 
 </details>
 
@@ -2691,7 +3047,7 @@
 ## Lineage (UI)
 
 <details open>
-<summary>📄 <b>Lineage.spec.ts</b> (41 tests, 97 scenarios)</summary>
+<summary>📄 <b>Lineage.spec.ts</b> (42 tests, 101 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/Lineage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Lineage.spec.ts)
 
@@ -2824,7 +3180,12 @@
 | | ↳ *Verify node tracing is cleared on exiting edit mode* | |
 | | ↳ *Verify column tracing is cleared on exiting edit mode* | |
 | 18 | Verify node full path is present as breadcrumb in lineage node | Node full path is present as breadcrumb in lineage node |
-| 19 | Verify custom properties tab visibility in lineage sidebar | Custom properties tab visibility in lineage sidebar |
+| 19 | Edges are not getting hidden when column is selected and column layer is removed | Edges are not getting hidden when column is selected and column layer is removed |
+| | ↳ *1. Create 2 tables and create column level lineage between them.* | |
+| | ↳ *2. Verify edge between 2 tables is visible* | |
+| | ↳ *3. Activate column layer and select a column - table edge should be hidden* | |
+| | ↳ *4. Remove column layer - table edge should be visible again* | |
+| 20 | Verify custom properties tab visibility in lineage sidebar | Custom properties tab visibility in lineage sidebar |
 | | ↳ *Create lineage connections* | |
 | | ↳ *Navigate to lineage tab and verify custom properties tab in sidebar* | |
 
