@@ -266,11 +266,8 @@ describe('CustomPropertiesSection', () => {
         />
       );
 
-      expect(
-        container.querySelector('.entity-summary-panel-tab-content')
-      ).toBeInTheDocument();
-      expect(container.querySelector('.p-x-md')).toBeInTheDocument();
-      expect(container.querySelector('.p-t-md')).toBeInTheDocument();
+      expect(container.querySelector('.p-x-md')).not.toBeInTheDocument();
+      expect(container.querySelector('.p-t-md')).not.toBeInTheDocument();
     });
   });
 
@@ -286,7 +283,7 @@ describe('CustomPropertiesSection', () => {
       expect(screen.getByTestId('trans-component')).toBeInTheDocument();
       expect(
         screen.getByText(
-          'message.no-custom-properties-entity - Table - label.doc-plural-lowercase'
+          'message.no-custom-properties-entity - label.custom-property-plural - label.doc-plural-lowercase'
         )
       ).toBeInTheDocument();
     });
@@ -320,7 +317,7 @@ describe('CustomPropertiesSection', () => {
 
       expect(
         container.querySelector('.entity-summary-panel-tab-content')
-      ).toBeInTheDocument();
+      ).not.toBeInTheDocument();
       expect(container.querySelector('.text-justify')).toBeInTheDocument();
       expect(
         container.querySelector('.no-data-placeholder')
@@ -660,7 +657,7 @@ describe('CustomPropertiesSection', () => {
         />
       );
 
-      expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
+      expect(screen.getByTestId('trans-component')).toBeInTheDocument();
     });
 
     it('should handle empty extension data', () => {

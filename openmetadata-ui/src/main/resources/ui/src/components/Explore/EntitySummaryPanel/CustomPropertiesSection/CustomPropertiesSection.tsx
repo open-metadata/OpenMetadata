@@ -32,6 +32,7 @@ const CustomPropertiesSection = ({
   onExtensionUpdate,
   hasEditPermissions,
   isEntityDataLoading,
+  viewCustomPropertiesPermission,
 }: CustomPropertiesSectionProps) => {
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState<string>('');
@@ -89,6 +90,7 @@ const CustomPropertiesSection = ({
                 />
               }
               values={{
+                entity: t('label.custom-property-plural'),
                 docs: t('label.doc-plural-lowercase'),
               }}
             />
@@ -99,7 +101,27 @@ const CustomPropertiesSection = ({
   }, [searchText]);
 
   if (isEntityDataLoading) {
-    return <Loader />;
+    return <Loader size="default" />;
+  }
+
+  if (!viewCustomPropertiesPermission) {
+    return (
+      <div className="lineage-items-list empty-state">
+        <ErrorPlaceHolderNew
+          className="text-grey-14 permission-error-placeholder"
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}>
+          <Transi18next
+            i18nKey="message.no-access-placeholder"
+            renderElement={<span />}
+            values={{
+              entity: t('label.view-entity', {
+                entity: t('label.custom-property-plural'),
+              }),
+            }}
+          />
+        </ErrorPlaceHolderNew>
+      </div>
+    );
   }
 
   if (!customProperties.length && !searchText) {
@@ -109,7 +131,13 @@ const CustomPropertiesSection = ({
   return (
     <div className="entity-summary-panel-tab-content custom-properties-section-container">
       <div className="p-x-md p-t-sm">
-        <SearchBarComponent searchValue={searchText} onSearch={setSearchText} />
+        <SearchBarComponent
+          placeholder={t('label.search-for-type', {
+            type: t('label.custom-property'),
+          })}
+          searchValue={searchText}
+          onSearch={setSearchText}
+        />
       </div>
       <div className="custom-properties-list p-x-md">
         {filteredProperties.length > 0
