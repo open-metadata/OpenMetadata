@@ -30,10 +30,15 @@ import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { SourceType } from '../../../SearchedData/SearchedData.interface';
 import DataProductNode from './DataProductNode.component';
 import PortNode from './PortNode.component';
 import './PortsLineageView.style.less';
 import { PortsLineageViewProps } from './PortsLineageView.types';
+
+const getPortHandleId = (port: SourceType): string => {
+  return port.fullyQualifiedName ?? port.id ?? '';
+};
 
 const nodeTypes = {
   portNode: PortNode,
@@ -41,7 +46,7 @@ const nodeTypes = {
 };
 
 const NODE_WIDTH = 240;
-const NODE_HEIGHT = 80;
+const NODE_HEIGHT = 120;
 const VERTICAL_SPACING = 20;
 const HORIZONTAL_SPACING = 200;
 
@@ -52,7 +57,6 @@ const PortsLineageView = ({
   isFullScreen = false,
   height = 350,
   onToggleFullScreen,
-  onPortClick,
 }: PortsLineageViewProps) => {
   const { t } = useTranslation();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -89,13 +93,14 @@ const PortsLineageView = ({
 
     inputPortsData.forEach((portData, index) => {
       const port = portData._source;
+      const handleId = getPortHandleId(port);
       const yPosition =
         index * (NODE_HEIGHT + VERTICAL_SPACING) +
         (totalHeight -
           inputPortsData.length * (NODE_HEIGHT + VERTICAL_SPACING)) /
           2;
 
-      const nodeId = `input-${port.id}`;
+      const nodeId = `input-${handleId}`;
       newNodes.push({
         id: nodeId,
         type: 'portNode',
@@ -104,6 +109,7 @@ const PortsLineageView = ({
           label: getEntityName(port),
           port,
           isInputPort: true,
+          handleId,
         },
         draggable: false,
       });
@@ -112,7 +118,7 @@ const PortsLineageView = ({
         id: `edge-${nodeId}-to-center`,
         source: nodeId,
         target: 'data-product-center',
-        sourceHandle: port.id,
+        sourceHandle: handleId,
         targetHandle: `${dataProduct.id}-left`,
         type: 'smoothstep',
         animated: false,
@@ -126,13 +132,14 @@ const PortsLineageView = ({
 
     outputPortsData.forEach((portData, index) => {
       const port = portData._source;
+      const handleId = getPortHandleId(port);
       const yPosition =
         index * (NODE_HEIGHT + VERTICAL_SPACING) +
         (totalHeight -
           outputPortsData.length * (NODE_HEIGHT + VERTICAL_SPACING)) /
           2;
 
-      const nodeId = `output-${port.id}`;
+      const nodeId = `output-${handleId}`;
       newNodes.push({
         id: nodeId,
         type: 'portNode',
@@ -141,6 +148,7 @@ const PortsLineageView = ({
           label: getEntityName(port),
           port,
           isInputPort: false,
+          handleId,
         },
         draggable: false,
       });
@@ -150,7 +158,7 @@ const PortsLineageView = ({
         source: 'data-product-center',
         target: nodeId,
         sourceHandle: `${dataProduct.id}-right`,
-        targetHandle: port.id,
+        targetHandle: handleId,
         type: 'smoothstep',
         animated: false,
         style: { stroke: '#b1b1b7', strokeWidth: 2 },
@@ -179,15 +187,6 @@ const PortsLineageView = ({
       }, 100);
     }
   }, [nodes, isInitialized, reactFlowInstance]);
-
-  const handleNodeClick = useCallback(
-    (_: React.MouseEvent, node: Node) => {
-      if (node.type === 'portNode' && onPortClick) {
-        onPortClick(node.data.port);
-      }
-    },
-    [onPortClick]
-  );
 
   const containerHeight = useMemo(() => {
     if (isFullScreen) {
@@ -296,7 +295,6 @@ const PortsLineageView = ({
         nodesConnectable={false}
         nodesDraggable={false}
         onEdgesChange={onEdgesChange}
-        onNodeClick={handleNodeClick}
         onNodesChange={onNodesChange}>
         <Background color="#e5e7eb" gap={16} size={1} />
         <Controls

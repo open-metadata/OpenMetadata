@@ -29,6 +29,7 @@ export interface PortNodeData {
   label: string;
   port: SearchedDataProps['data'][number]['_source'];
   isInputPort: boolean;
+  handleId: string;
 }
 
 export interface DataProductNodeData {

@@ -19,6 +19,7 @@ import { PortNodeProps } from './PortsLineageView.types';
 
 const PortNode = memo(({ data }: PortNodeProps) => {
   const { port, isInputPort } = data;
+  const { entityType: _, ...portWithoutEntityType } = port;
 
   return (
     <div
@@ -43,7 +44,7 @@ const PortNode = memo(({ data }: PortNodeProps) => {
 
       <div className="lineage-node-content">
         <div className="label-container">
-          <LineageNodeLabelV1 node={port} />
+          <LineageNodeLabelV1 node={portWithoutEntityType} />
         </div>
       </div>
     </div>
