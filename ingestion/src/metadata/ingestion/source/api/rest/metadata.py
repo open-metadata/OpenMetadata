@@ -197,7 +197,7 @@ class RestSource(ApiServiceSource):
             for path, methods in self.json_response.get("paths", {}).items():
                 for method_type, info in methods.items():
                     if (
-                        collection.name.root == "default" and not info.get("tags")
+                        collection.name.root == DEFAULT_TAG and not info.get("tags")
                     ) or collection.name.root in info.get("tags", []):
                         filtered_paths.update({path: methods})
                     break
