@@ -206,7 +206,7 @@ export default function EntitySummaryPanel({
       [EntityType.DASHBOARD_DATA_MODEL]: (fqn: string) =>
         getDataModelByFqn(fqn, { fields: commonFields }),
       [EntityType.SEARCH_INDEX]: (fqn: string) =>
-        getSearchIndexDetailsByFQN(fqn),
+        getSearchIndexDetailsByFQN(fqn, { fields: commonFields }),
       [EntityType.STORED_PROCEDURE]: (fqn: string) =>
         getStoredProceduresByFqn(fqn, { fields: commonFields }),
       [EntityType.CONTAINER]: (fqn: string) =>
