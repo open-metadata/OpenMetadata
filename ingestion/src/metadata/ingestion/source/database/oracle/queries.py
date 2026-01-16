@@ -29,18 +29,30 @@ where comments is not null and owner not in ('SYSTEM', 'SYS')
 ORACLE_ALL_VIEW_DEFINITIONS = textwrap.dedent(
     """
 SELECT
-LOWER(view_name) AS "view_name",
-LOWER(owner) AS "schema",
-text AS view_def
-FROM DBA_VIEWS
-WHERE owner NOT IN ('SYSTEM', 'SYS')
+    LOWER(v.view_name) AS "view_name",
+    LOWER(v.owner) AS "schema",
+    text AS view_def,
+    CASE
+        WHEN text IS NOT NULL THEN NULL
+        ELSE DBMS_METADATA.GET_DDL('VIEW', view_name, owner)
+    END AS view_ddl
+FROM DBA_VIEWS v
+JOIN DBA_USERS u
+    ON v.owner = u.username
+WHERE u.oracle_maintained = 'N'
 UNION ALL
 SELECT
-LOWER(mview_name) AS "view_name",
-LOWER(owner) AS "schema",
-query AS view_def
-FROM DBA_MVIEWS
-WHERE owner NOT IN ('SYSTEM', 'SYS')
+    LOWER(m.mview_name) AS "view_name",
+    LOWER(m.owner) AS "schema",
+    query AS view_def,
+    CASE
+        WHEN query IS NOT NULL THEN NULL
+        ELSE DBMS_METADATA.GET_DDL('MATERIALIZED_VIEW', mview_name, owner)
+    END AS view_ddl
+FROM DBA_MVIEWS m
+JOIN DBA_USERS u
+    ON m.owner = u.username
+WHERE u.oracle_maintained = 'N'
 """
 )
 

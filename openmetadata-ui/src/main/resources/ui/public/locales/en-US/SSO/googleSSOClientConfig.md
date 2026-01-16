@@ -99,6 +99,27 @@ Google Single Sign-On (SSO) enables users to log in with their Google Workspace 
   - Only `username` and `email` keys are allowed; no other keys are permitted
   - If validation fails, errors will be displayed on this specific field
 
+### <span data-id="jwtTeamClaimMapping">JWT Team Claim Mapping</span>
+
+- **Definition:** JWT claim or attribute containing team/department information for automatic team assignment.
+- **Example:** "department", "groups", or "organizationalUnit"
+- **Why it matters:** Automatically assigns users to existing OpenMetadata teams based on their Google Workspace attributes during login.
+- **How it works:**
+  - Extracts the value(s) from the specified JWT claim (e.g., if set to "department", reads user's department from Google)
+  - For array claims (like "groups"), processes all values in the array
+  - Matches the extracted value(s) against existing team names in OpenMetadata
+  - Assigns the user to all matching teams that are of type "Group"
+  - If a team doesn't exist or is not of type "Group", a warning is logged but authentication continues
+- **Google Workspace Configuration:**
+  - Common custom attributes can be configured in Google Admin Console
+  - For group-based teams, use "groups" claim (requires appropriate OAuth scopes)
+  - Custom schema attributes can be mapped to JWT claims
+- **Note:** 
+  - The team must already exist in OpenMetadata for assignment to work
+  - Only teams of type "Group" can be auto-assigned (not "Organization" or "BusinessUnit" teams)
+  - Team names are case-sensitive and must match exactly
+  - Multiple team assignments are supported for array claims (e.g., "groups")
+
 ### <span data-id="tokenValidation">Token Validation Algorithm</span>
 
 - **Definition:** Algorithm used to validate JWT token signatures.
