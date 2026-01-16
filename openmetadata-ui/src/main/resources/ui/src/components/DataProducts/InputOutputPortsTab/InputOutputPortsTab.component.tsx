@@ -326,6 +326,7 @@ export const InputOutputPortsTab = forwardRef<
                   fontSize: '14px',
                   fontWeight: 500,
                   cursor: 'pointer',
+                  flexShrink: 0,
                 }}
                 onClick={() => setIsInputPortsCollapsed((prev) => !prev)}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -369,8 +370,12 @@ export const InputOutputPortsTab = forwardRef<
               <Collapse in={!isInputPortsCollapsed}>
                 <CardContent
                   sx={{
-                    maxHeight: 400,
-                    overflowY: 'auto',
+                    height: 'calc(100vh - 450px)',
+                    minHeight: 300,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                    '&:last-child': { pb: 2 },
                   }}>
                   {inputPortsCount === 0 ? (
                     <ErrorPlaceHolder
@@ -421,6 +426,7 @@ export const InputOutputPortsTab = forwardRef<
                   fontSize: '14px',
                   fontWeight: 500,
                   cursor: 'pointer',
+                  flexShrink: 0,
                 }}
                 onClick={() => setIsOutputPortsCollapsed((prev) => !prev)}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -464,8 +470,12 @@ export const InputOutputPortsTab = forwardRef<
               <Collapse in={!isOutputPortsCollapsed}>
                 <CardContent
                   sx={{
-                    maxHeight: 400,
-                    overflowY: 'auto',
+                    height: 'calc(100vh - 450px)',
+                    minHeight: 300,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                    '&:last-child': { pb: 2 },
                   }}>
                   {outputPortsCount === 0 ? (
                     <ErrorPlaceHolder

@@ -42,6 +42,8 @@ import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationMod
 import { SourceType } from '../../../SearchedData/SearchedData.interface';
 import { PortsListViewProps, PortsListViewRef } from './PortsListView.types';
 
+const PORT_FIELDS = 'owners,tags,domains,extension';
+
 const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
   ({ dataProductFqn, portType, permissions, onRemovePort }, ref) => {
     const { t } = useTranslation();
@@ -74,6 +76,7 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
           const response = await fetchFn(dataProductFqn, {
             limit: pageSize,
             offset,
+            fields: PORT_FIELDS,
           });
 
           const portsData = response.data.map((entity) => ({
@@ -162,73 +165,98 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
 
     if (isLoading) {
       return (
-        <Row gutter={[16, 16]}>
-          {[1, 2, 3].map((key) => (
-            <Col key={key} span={24}>
-              <Skeleton active paragraph={{ rows: 2 }} />
-            </Col>
-          ))}
-        </Row>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            flex: 1,
+            minHeight: 0,
+          }}>
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            <Row gutter={[16, 16]}>
+              {[1, 2, 3].map((key) => (
+                <Col key={key} span={24}>
+                  <Skeleton active paragraph={{ rows: 2 }} />
+                </Col>
+              ))}
+            </Row>
+          </div>
+        </div>
       );
     }
 
     return (
-      <div className="ports-list-view" data-testid={`${portType}-ports-list`}>
-        <Row gutter={[16, 16]}>
-          {ports.map((port) => (
-            <Col key={port.id} span={24}>
-              <ExploreSearchCard
-                showEntityIcon
-                actionPopoverContent={
-                  permissions.EditAll ? (
-                    <Dropdown
-                      menu={{
-                        items: [
-                          {
-                            key: 'delete',
-                            label: (
-                              <ManageButtonItemLabel
-                                description={t('message.remove-entity-action', {
-                                  entity: t('label.port'),
-                                })}
-                                icon={DeleteIcon}
-                                id="delete-port"
-                                name={t('label.remove')}
-                              />
-                            ),
-                            onClick: () => handleDeleteClick(port),
-                          },
-                        ],
-                      }}
-                      placement="bottomRight"
-                      trigger={['click']}>
-                      <Button
-                        className="flex-center"
-                        data-testid={`port-actions-${port.id}`}
-                        icon={<IconDropdown height={14} width={14} />}
-                        size="small"
-                        type="text"
-                      />
-                    </Dropdown>
-                  ) : undefined
-                }
-                className="m-b-sm"
-                id={port.id ?? ''}
-                source={port}
-              />
-            </Col>
-          ))}
-        </Row>
+      <div
+        className="ports-list-view"
+        data-testid={`${portType}-ports-list`}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          flex: 1,
+          minHeight: 0,
+        }}>
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+          <Row gutter={[16, 16]}>
+            {ports.map((port) => (
+              <Col key={port.id} span={24}>
+                <ExploreSearchCard
+                  showEntityIcon
+                  actionPopoverContent={
+                    permissions.EditAll ? (
+                      <Dropdown
+                        menu={{
+                          items: [
+                            {
+                              key: 'delete',
+                              label: (
+                                <ManageButtonItemLabel
+                                  description={t(
+                                    'message.remove-entity-action',
+                                    {
+                                      entity: t('label.port'),
+                                    }
+                                  )}
+                                  icon={DeleteIcon}
+                                  id="delete-port"
+                                  name={t('label.remove')}
+                                />
+                              ),
+                              onClick: () => handleDeleteClick(port),
+                            },
+                          ],
+                        }}
+                        placement="bottomRight"
+                        trigger={['click']}>
+                        <Button
+                          className="flex-center"
+                          data-testid={`port-actions-${port.id}`}
+                          icon={<IconDropdown height={14} width={14} />}
+                          size="small"
+                          type="text"
+                        />
+                      </Dropdown>
+                    ) : undefined
+                  }
+                  className="m-b-sm"
+                  id={port.id ?? ''}
+                  source={port}
+                />
+              </Col>
+            ))}
+          </Row>
+        </div>
 
         {showPagination && (
-          <NextPrevious
-            isNumberBased
-            currentPage={currentPage}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={handlePagingChange2}
-            onShowSizeChange={handlePageSizeChange}
-          />
+          <div style={{ flexShrink: 0, paddingTop: '12px' }}>
+            <NextPrevious
+              isNumberBased
+              currentPage={currentPage}
+              pageSize={pageSize}
+              paging={paging}
+              pagingHandler={handlePagingChange2}
+              onShowSizeChange={handlePageSizeChange}
+            />
+          </div>
         )}
 
         <ConfirmationModal

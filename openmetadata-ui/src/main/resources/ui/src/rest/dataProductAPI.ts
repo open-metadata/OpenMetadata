@@ -271,7 +271,7 @@ export const getDataProductPortsView = async (
 
 export const getDataProductInputPorts = async (
   dataProductFqn: string,
-  params?: { limit?: number; offset?: number }
+  params?: { limit?: number; offset?: number; fields?: string }
 ) => {
   const response = await APIClient.get<PaginatedEntities>(
     `${BASE_URL}/name/${getEncodedFqn(dataProductFqn)}/inputPorts`,
@@ -283,7 +283,7 @@ export const getDataProductInputPorts = async (
 
 export const getDataProductOutputPorts = async (
   dataProductFqn: string,
-  params?: { limit?: number; offset?: number }
+  params?: { limit?: number; offset?: number; fields?: string }
 ) => {
   const response = await APIClient.get<PaginatedEntities>(
     `${BASE_URL}/name/${getEncodedFqn(dataProductFqn)}/outputPorts`,
