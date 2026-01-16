@@ -251,6 +251,12 @@ export const getColumnGrid = async (
   if (params.columnNamePattern) {
     queryParams.append('columnNamePattern', params.columnNamePattern);
   }
+  if (params.dataType) {
+    queryParams.append('dataTypes', params.dataType);
+  }
+  if (params.metadataStatus && params.metadataStatus.length > 0) {
+    queryParams.append('metadataStatus', params.metadataStatus[0]);
+  }
 
   const response = await APIClient.get<ColumnGridResponse>(
     `/columns/grid?${queryParams.toString()}`

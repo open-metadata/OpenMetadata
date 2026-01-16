@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
+import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import es.co.elastic.clients.elasticsearch._types.FieldValue;
 import es.co.elastic.clients.elasticsearch._types.SortOrder;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
@@ -109,29 +110,39 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       String columnFieldPath = INDEX_CONFIGS.get(groupEntityTypes.get(0)).columnFieldPath();
 
       Query query = buildFilters(request, columnNameKeyword);
-      SearchResponse<JsonData> response = executeSearch(request, query, indexes, columnNameKeyword);
 
-      Map<String, List<ColumnWithContext>> columnsByName =
-          parseAggregationResults(response, columnFieldPath);
+      try {
+        SearchResponse<JsonData> response =
+            executeSearch(request, query, indexes, columnNameKeyword);
 
-      // Merge results
-      for (Map.Entry<String, List<ColumnWithContext>> colEntry : columnsByName.entrySet()) {
-        allColumnsByName
-            .computeIfAbsent(colEntry.getKey(), k -> new ArrayList<>())
-            .addAll(colEntry.getValue());
-      }
+        Map<String, List<ColumnWithContext>> columnsByName =
+            parseAggregationResults(response, columnFieldPath);
 
-      String cursor = extractCursor(response);
-      if (cursor != null) {
-        lastCursor = cursor;
-        hasMore = true;
-      }
+        // Merge results
+        for (Map.Entry<String, List<ColumnWithContext>> colEntry : columnsByName.entrySet()) {
+          allColumnsByName
+              .computeIfAbsent(colEntry.getKey(), k -> new ArrayList<>())
+              .addAll(colEntry.getValue());
+        }
 
-      // Get totals only on first page
-      if (request.getCursor() == null) {
-        Map<String, Long> totals = getTotalCounts(query, indexes, columnNameKeyword);
-        totalUniqueColumns += totals.get("uniqueColumns");
-        totalOccurrences += totals.get("totalOccurrences");
+        String cursor = extractCursor(response);
+        if (cursor != null) {
+          lastCursor = cursor;
+          hasMore = true;
+        }
+
+        // Get totals only on first page
+        if (request.getCursor() == null) {
+          Map<String, Long> totals = getTotalCounts(query, indexes, columnNameKeyword);
+          totalUniqueColumns += totals.get("uniqueColumns");
+          totalOccurrences += totals.get("totalOccurrences");
+        }
+      } catch (ElasticsearchException e) {
+        if (isIndexNotFoundException(e)) {
+          LOG.warn("Search index not found for indexes {}, returning empty results", indexes);
+          continue;
+        }
+        throw e;
       }
     }
 
@@ -144,6 +155,18 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
 
     return buildResponse(
         gridItems, lastCursor, hasMore, (int) totalUniqueColumns, (int) totalOccurrences);
+  }
+
+  private boolean isIndexNotFoundException(ElasticsearchException e) {
+    String message = e.getMessage();
+    return message != null && message.contains("index_not_found_exception");
+  }
+
+  private String escapeWildcardPattern(String input) {
+    if (input == null) {
+      return null;
+    }
+    return input.replace("\\", "\\\\").replace("*", "\\*").replace("?", "\\?");
   }
 
   /** Get entity types to query - defaults to table only for performance */
@@ -203,13 +226,19 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
     }
 
     if (!nullOrEmpty(request.getColumnNamePattern())) {
+      String escapedPattern = escapeWildcardPattern(request.getColumnNamePattern());
       boolBuilder.filter(
           Query.of(
-              q ->
-                  q.wildcard(
-                      w ->
-                          w.field(columnNameKeyword)
-                              .value("*" + request.getColumnNamePattern() + "*"))));
+              q -> q.wildcard(w -> w.field(columnNameKeyword).value("*" + escapedPattern + "*"))));
+    }
+
+    if (request.getDataTypes() != null && !request.getDataTypes().isEmpty()) {
+      String dataTypeField = columnNameKeyword.replace(".name.keyword", ".dataType.keyword");
+      List<FieldValue> dataTypeValues =
+          request.getDataTypes().stream().map(FieldValue::of).toList();
+      boolBuilder.filter(
+          Query.of(
+              q -> q.terms(t -> t.field(dataTypeField).terms(tv -> tv.value(dataTypeValues)))));
     }
 
     return Query.of(q -> q.bool(boolBuilder.build()));

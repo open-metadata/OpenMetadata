@@ -58,6 +58,7 @@ export interface ColumnGridRowData {
   coverageCount?: number;
   totalCount?: number;
   hasCoverage?: boolean;
+  hasAnyMetadata?: boolean;
   // STRUCT nested children
   children?: ColumnChild[];
   isStructChild?: boolean;

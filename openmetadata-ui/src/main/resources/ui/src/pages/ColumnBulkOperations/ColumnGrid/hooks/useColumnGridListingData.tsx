@@ -156,22 +156,22 @@ export const useColumnGridListingData = (
   });
 
   // Convert URL filters to ColumnGridFilters
-  // Note: dataType and metadataStatus are NOT sent to backend (not supported yet)
-  // They are applied client-side only on the loaded data
+  // dataType and metadataStatus are now sent to backend for server-side filtering
   const columnGridFilters = useMemo<ColumnGridFilters>(() => {
     const filters: ColumnGridFilters = {
       ...serverFilters,
       entityTypes: urlState.filters[EntityFields.ENTITY_TYPE],
       serviceName: urlState.filters[EntityFields.SERVICE]?.[0],
-      // dataType and metadataStatus are filtered client-side, not sent to backend
+      dataType: urlState.dataType,
+      metadataStatus: urlState.metadataStatus,
     };
 
     return filters;
   }, [
     serverFilters,
     urlState.filters,
-    // Note: urlState.dataType and urlState.metadataStatus are intentionally excluded
-    // as they are not supported by the backend API and are filtered client-side
+    urlState.dataType,
+    urlState.metadataStatus,
   ]);
 
   // Load data function - adapts cursor-based to page-based
@@ -299,26 +299,31 @@ export const useColumnGridListingData = (
       }
 
       // Apply metadataStatus filter
+      // Metadata status logic (matches backend ColumnRepository.java):
+      // - MISSING: No description AND no tags
+      // - INCOMPLETE: Has description OR tags, but not both
+      // - COMPLETE: Has both description AND tags
       if (urlState.metadataStatus && urlState.metadataStatus.length > 0) {
         filtered = filtered.filter((row) => {
-          // Determine metadata status based on description presence
           const hasDescription =
             row.description && row.description.trim().length > 0;
-          const status = hasDescription ? 'COMPLETE' : 'MISSING';
+          const hasTags = row.tags && row.tags.length > 0;
 
           // Check if row matches any of the selected statuses
           return urlState.metadataStatus?.some((selectedStatus) => {
             const statusUpper = selectedStatus.toUpperCase();
-            if (statusUpper === 'COMPLETE') {
-              return hasDescription;
+            switch (statusUpper) {
+              case 'MISSING':
+                return !hasDescription && !hasTags;
+              case 'INCOMPLETE':
+                return (
+                  (hasDescription && !hasTags) || (!hasDescription && hasTags)
+                );
+              case 'COMPLETE':
+                return hasDescription && hasTags;
+              default:
+                return true;
             }
-            if (statusUpper === 'MISSING' || statusUpper === 'INCOMPLETE') {
-              return !hasDescription;
-            }
-
-            // For other statuses (PARTIAL, REVIEWED, APPROVED), we'd need more logic
-            // based on additional metadata fields
-            return statusUpper === status;
           });
         });
       }
@@ -328,7 +333,20 @@ export const useColumnGridListingData = (
     [urlState.searchQuery, urlState.dataType, urlState.metadataStatus]
   );
 
+  // Ref to track edited values across row regenerations
+  const editedValuesRef = useRef<
+    Map<
+      string,
+      {
+        editedDisplayName?: string;
+        editedDescription?: string;
+        editedTags?: unknown[];
+      }
+    >
+  >(new Map());
+
   // Transform grid items to rows and apply filtering
+  // IMPORTANT: Preserve edited values when rows are regenerated (e.g., on expand/collapse)
   useEffect(() => {
     if (gridItems.length > 0) {
       const transformedRows = props.transformGridItemsToRows(
@@ -336,10 +354,24 @@ export const useColumnGridListingData = (
         expandedRows,
         expandedStructRows
       );
-      setAllRows(transformedRows);
+
+      // Merge edited values from ref into transformed rows
+      const rowsWithEdits =
+        editedValuesRef.current.size > 0
+          ? transformedRows.map((row) => {
+              const editedValues = editedValuesRef.current.get(row.id);
+              if (editedValues) {
+                return { ...row, ...editedValues };
+              }
+
+              return row;
+            })
+          : transformedRows;
+
+      setAllRows(rowsWithEdits);
 
       // Apply filters (search + client-side filters if active)
-      const filtered = applyClientSideFilters(transformedRows);
+      const filtered = applyClientSideFilters(rowsWithEdits);
 
       setEntities(filtered);
     } else {
@@ -357,6 +389,27 @@ export const useColumnGridListingData = (
     applyClientSideFilters,
   ]);
 
+  // Track edited values in ref when allRows changes
+  // This ensures edits persist across row regenerations
+  useEffect(() => {
+    allRows.forEach((row) => {
+      if (
+        row.editedDisplayName !== undefined ||
+        row.editedDescription !== undefined ||
+        row.editedTags !== undefined
+      ) {
+        editedValuesRef.current.set(row.id, {
+          editedDisplayName: row.editedDisplayName,
+          editedDescription: row.editedDescription,
+          editedTags: row.editedTags,
+        });
+      } else {
+        // Remove from ref if no edited values
+        editedValuesRef.current.delete(row.id);
+      }
+    });
+  }, [allRows]);
+
   // Load data when filters or page changes - similar to domain list pattern
   useEffect(() => {
     // Check if filters have changed by comparing stringified version
@@ -367,12 +420,13 @@ export const useColumnGridListingData = (
     });
     const filtersChanged = previousFiltersRef.current !== currentFiltersString;
 
-    // Reset cursors and items when filters change
+    // Reset cursors, items, and edited values when filters change
     if (filtersChanged) {
       cursorsByPageRef.current = new Map();
       itemsByPageRef.current = new Map();
       totalUniqueColumnsRef.current = 0;
       totalOccurrencesRef.current = 0;
+      editedValuesRef.current = new Map(); // Clear edited values
       setGridItems([]); // Clear current items
       setTotalUniqueColumns(0);
       setTotalOccurrences(0);
@@ -468,6 +522,14 @@ export const useColumnGridListingData = (
   );
 
   const refetch = useCallback(() => {
+    // Clear ALL caches to ensure fresh data is fetched from the server
+    // This is especially important after bulk updates when the search index
+    // has been refreshed with new data
+    cursorsByPageRef.current = new Map();
+    itemsByPageRef.current = new Map();
+    totalUniqueColumnsRef.current = 0;
+    totalOccurrencesRef.current = 0;
+
     loadData(
       urlState.currentPage,
       urlState.searchQuery,
@@ -481,6 +543,11 @@ export const useColumnGridListingData = (
     columnGridFilters,
     loadData,
   ]);
+
+  // Clear all edited values (call after successful bulk update)
+  const clearEditedValues = useCallback(() => {
+    editedValuesRef.current = new Map();
+  }, []);
 
   return {
     entities,
@@ -510,6 +577,7 @@ export const useColumnGridListingData = (
     handlePageChange,
     handlePageSizeChange,
     refetch,
+    clearEditedValues,
     // Custom properties for ColumnGrid
     totalUniqueColumns,
     totalOccurrences,

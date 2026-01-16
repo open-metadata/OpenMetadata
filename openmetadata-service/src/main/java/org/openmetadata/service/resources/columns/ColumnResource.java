@@ -255,7 +255,23 @@ public class ColumnResource {
               schema = @Schema(type = "boolean"))
           @DefaultValue("false")
           @QueryParam("hasMissingMetadata")
-          boolean hasMissingMetadata)
+          boolean hasMissingMetadata,
+      @Parameter(
+              description = "Filter by column data types (comma-separated)",
+              example = "VARCHAR,STRING,TEXT")
+          @QueryParam("dataTypes")
+          String dataTypes,
+      @Parameter(
+              description =
+                  "Filter by metadata status: MISSING (no description AND no tags), "
+                      + "INCOMPLETE (has description OR tags, but not both), "
+                      + "COMPLETE (has both description AND tags)",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"MISSING", "INCOMPLETE", "COMPLETE"}))
+          @QueryParam("metadataStatus")
+          String metadataStatus)
       throws Exception {
 
     ColumnAggregator.ColumnAggregationRequest request =
@@ -272,6 +288,10 @@ public class ColumnResource {
     request.setDomainId(domainId);
     request.setHasConflicts(hasConflicts);
     request.setHasMissingMetadata(hasMissingMetadata);
+    if (dataTypes != null && !dataTypes.isEmpty()) {
+      request.setDataTypes(java.util.Arrays.asList(dataTypes.split(",")));
+    }
+    request.setMetadataStatus(metadataStatus);
 
     ColumnGridResponse response = repository.getColumnGridPaginated(securityContext, request);
 

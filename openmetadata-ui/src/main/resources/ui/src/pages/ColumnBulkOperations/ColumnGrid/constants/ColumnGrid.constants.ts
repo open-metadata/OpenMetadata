@@ -46,14 +46,14 @@ export const DATA_TYPE_OPTIONS = [
   { key: 'UUID', label: 'UUID' },
 ];
 
-// Metadata status options
+// Metadata status options - matches API values in ColumnResource.java
+// MISSING: No description AND no tags
+// INCOMPLETE: Has description OR tags, but not both
+// COMPLETE: Has both description AND tags
 export const METADATA_STATUS_OPTIONS = [
   { key: 'MISSING', label: 'Missing' },
   { key: 'INCOMPLETE', label: 'Incomplete' },
-  { key: 'PARTIAL', label: 'Partial' },
   { key: 'COMPLETE', label: 'Complete' },
-  { key: 'REVIEWED', label: 'Reviewed' },
-  { key: 'APPROVED', label: 'Approved' },
 ];
 
 export const ASSET_TYPE_OPTIONS = [

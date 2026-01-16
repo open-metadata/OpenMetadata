@@ -28,6 +28,7 @@ export enum SidebarItem {
   LOGOUT = 'logout',
   METRICS = 'metrics',
   LINEAGE = 'lineage',
+  COLUMN_BULK_OPERATIONS = 'column-bulk-operations',
 }
 
 export const SIDEBAR_LIST_ITEMS = {

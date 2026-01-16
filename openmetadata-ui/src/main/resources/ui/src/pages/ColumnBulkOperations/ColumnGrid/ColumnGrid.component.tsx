@@ -32,7 +32,13 @@ import {
   Typography as AntTypography,
 } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ReactComponent as OccurrencesIcon } from '../../../assets/svg/ic-occurences.svg';
@@ -54,6 +60,8 @@ import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEd
 import { EditorContentRef } from '../../../components/common/RichTextEditor/RichTextEditor.interface';
 import SearchDropdown from '../../../components/SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../../../components/SearchDropdown/SearchDropdown.interface';
+import { SOCKET_EVENTS } from '../../../constants/constants';
+import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -66,7 +74,12 @@ import {
   ColumnGridItem,
   ColumnOccurrenceRef,
 } from '../../../generated/api/data/columnGridResponse';
-import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../../../generated/type/tagLabel';
 import { bulkUpdateColumnsAsync } from '../../../rest/columnAPI';
 import { getTableFQNFromColumnFQN } from '../../../utils/CommonUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
@@ -91,6 +104,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 }) => {
   const { t } = useTranslation();
   const theme = useTheme();
+  const { socket } = useWebSocketConnector();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isUpdating, setIsUpdating] = useState(false);
   const [viewSelectedOnly, setViewSelectedOnly] = useState(false);
@@ -102,6 +116,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     rowId: null,
   });
   const editorRef = React.useRef<EditorContentRef>(null);
+  const activeJobIdRef = useRef<string | null>(null);
 
   // Get current filter values from URL
   const currentDataType = useMemo(() => {
@@ -232,20 +247,34 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     };
   };
 
-  // Calculate coverage for description
+  // Calculate metadata coverage - checks for description AND tags
+  // "Full Coverage" = has both description AND tags
+  // "Partial Coverage" = has either description OR tags
+  // "Missing" = has neither description nor tags
   const calculateCoverage = (
     item: ColumnGridItem
-  ): { covered: number; total: number } => {
+  ): { covered: number; total: number; hasAnyMetadata: boolean } => {
     let covered = 0;
     let total = 0;
+    let hasAnyMetadata = false;
+
     for (const group of item.groups) {
       total += group.occurrenceCount;
-      if (group.description && group.description.trim()) {
+      const hasDescription = !!(group.description && group.description.trim());
+      const hasTags = !!(group.tags && group.tags.length > 0);
+
+      // Track if any group has metadata
+      if (hasDescription || hasTags) {
+        hasAnyMetadata = true;
+      }
+
+      // "Covered" means has BOTH description AND tags
+      if (hasDescription && hasTags) {
         covered += group.occurrenceCount;
       }
     }
 
-    return { covered, total };
+    return { covered, total, hasAnyMetadata };
   };
 
   // Aggregate tags from all groups for parent rows
@@ -348,6 +377,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             coverageCount: coverage.covered,
             totalCount: coverage.total,
             hasCoverage: true,
+            hasAnyMetadata: coverage.hasAnyMetadata,
           };
           rows.push(parentRow);
 
@@ -415,6 +445,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             coverageCount: coverage.covered,
             totalCount: coverage.total,
             hasCoverage: true,
+            hasAnyMetadata: coverage.hasAnyMetadata,
             children: group?.children,
           };
           rows.push(parentRow);
@@ -475,6 +506,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             coverageCount: coverage.covered,
             totalCount: coverage.total,
             hasCoverage: true,
+            hasAnyMetadata: coverage.hasAnyMetadata,
             children: group?.children,
             isExpanded: isStructExpanded,
           };
@@ -617,10 +649,20 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         entity.coverageCount !== undefined &&
         entity.totalCount !== undefined
       ) {
-        const isFull = entity.coverageCount === entity.totalCount;
+        // If no metadata at all, show "Missing" instead of misleading "Full/Partial Coverage"
+        if (!entity.hasAnyMetadata) {
+          return <Text className="coverage-missing">{t('label.missing')}</Text>;
+        }
+
+        const isFull =
+          entity.coverageCount === entity.totalCount && entity.totalCount > 0;
         const coverageText = isFull
-          ? `Full Coverage (${entity.coverageCount}/${entity.totalCount})`
-          : `Partial Coverage (${entity.coverageCount}/${entity.totalCount})`;
+          ? `${t('label.full-coverage')} (${entity.coverageCount}/${
+              entity.totalCount
+            })`
+          : `${t('label.partial-coverage')} (${entity.coverageCount}/${
+              entity.totalCount
+            })`;
 
         return (
           <Text className={isFull ? 'coverage-full' : 'coverage-partial'}>
@@ -630,7 +672,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       }
 
       // Show actual description for child rows or single occurrences
-      const displayValue = description.replace(/<[^>]*>/g, '').slice(0, 100);
+      // Use complete sanitization to prevent XSS - remove all angle brackets
+      const displayValue = description.replace(/[<>]/g, '').slice(0, 100);
 
       return (
         <Box className={`description-cell ${hasEdit ? 'has-edit' : ''}`}>
@@ -1065,12 +1108,15 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         columnUpdates: cleanedUpdates,
       };
 
-      await bulkUpdateColumnsAsync(request);
+      const response = await bulkUpdateColumnsAsync(request);
+
+      // Store the jobId to listen for WebSocket notification when job completes
+      activeJobIdRef.current = response.jobId;
 
       showSuccessToast(
         t('message.bulk-update-initiated', {
           entity: t('label.column-plural'),
-          count: columnUpdates.length,
+          count: cleanedUpdates.length,
         })
       );
 
@@ -1078,8 +1124,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       closeEditDrawer();
       columnGridListing.clearSelection();
 
-      // Clear edited state and refresh data from server after a delay
-      // to allow the async backend operation to complete
+      // Clear edited state in both allRows and the editedValuesRef
+      // The page will automatically refresh when the WebSocket notification arrives
       columnGridListing.setAllRows((prev: ColumnGridRowData[]) =>
         prev.map((r: ColumnGridRowData) => ({
           ...r,
@@ -1088,13 +1134,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           editedTags: undefined,
         }))
       );
-
-      // Refresh grid data from server after backend processes updates
-      setTimeout(() => {
-        columnGridListing.setGridItems([]);
-        columnGridListing.setExpandedRows(new Set());
-        columnGridListing.refetch();
-      }, 2000);
+      columnGridListing.clearEditedValues();
     } catch (error) {
       showErrorToast(t('server.entity-updating-error'));
       setIsUpdating(false);
@@ -1102,9 +1142,51 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   }, [
     columnGridListing.allRows,
     columnGridListing.selectedEntities,
+    columnGridListing.clearEditedValues,
     t,
     columnGridListing.refetch,
   ]);
+
+  // Listen for WebSocket notifications when bulk update completes
+  useEffect(() => {
+    if (!socket) {
+      return;
+    }
+
+    const handleBulkAssetsNotification = (message: string) => {
+      try {
+        const data = JSON.parse(message) as {
+          jobId?: string;
+          status?: string;
+        };
+
+        // Check if this notification is for our active job
+        if (data.jobId && data.jobId === activeJobIdRef.current) {
+          // Job completed - refresh the grid data
+          if (data.status === 'COMPLETED' || data.status === 'SUCCESS') {
+            columnGridListing.setGridItems([]);
+            columnGridListing.setExpandedRows(new Set());
+            columnGridListing.refetch();
+            activeJobIdRef.current = null;
+          } else if (data.status === 'FAILED' || data.status === 'FAILURE') {
+            showErrorToast(t('server.entity-updating-error'));
+            activeJobIdRef.current = null;
+          }
+        }
+      } catch {
+        // Ignore JSON parse errors
+      }
+    };
+
+    socket.on(SOCKET_EVENTS.BULK_ASSETS_CHANNEL, handleBulkAssetsNotification);
+
+    return () => {
+      socket.off(
+        SOCKET_EVENTS.BULK_ASSETS_CHANNEL,
+        handleBulkAssetsNotification
+      );
+    };
+  }, [socket, columnGridListing.refetch, t]);
 
   // Set up filters
   const { quickFilters, defaultFilters } = useColumnGridFilters({
@@ -1249,14 +1331,18 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   ]);
 
   return (
-    <div className="column-grid-container">
+    <div className="column-grid-container" data-testid="column-grid-container">
       {/* Summary Stats Cards */}
       <Stack className="stats-row" direction="row" spacing={2}>
-        <Paper className="stat-card" elevation={0}>
+        <Paper
+          className="stat-card"
+          data-testid="total-unique-columns-card"
+          elevation={0}>
           <UniqueColumnsIcon className="stat-icon" />
           <Box className="stat-content">
             <Typography
               color={theme.palette.grey[900]}
+              data-testid="total-unique-columns-value"
               fontSize="18px"
               fontWeight={600}>
               {columnGridListing.totalUniqueColumns.toLocaleString()}
@@ -1269,11 +1355,15 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             </Typography>
           </Box>
         </Paper>
-        <Paper className="stat-card" elevation={0}>
+        <Paper
+          className="stat-card"
+          data-testid="total-occurrences-card"
+          elevation={0}>
           <OccurrencesIcon className="stat-icon" />
           <Box className="stat-content">
             <Typography
               color={theme.palette.grey[900]}
+              data-testid="total-occurrences-value"
               fontSize="18px"
               fontWeight={600}>
               {columnGridListing.totalOccurrences.toLocaleString()}
@@ -1286,11 +1376,15 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             </Typography>
           </Box>
         </Paper>
-        <Paper className="stat-card" elevation={0}>
+        <Paper
+          className="stat-card"
+          data-testid="pending-changes-card"
+          elevation={0}>
           <PendingChangesIcon className="stat-icon" />
           <Box className="stat-content">
             <Typography
               color={theme.palette.grey[900]}
+              data-testid="pending-changes-value"
               fontSize="18px"
               fontWeight={600}>
               {editedCount > 0
@@ -1391,6 +1485,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 <>
                   <MUIButton
                     className="edit-button-primary"
+                    data-testid="edit-button"
                     disabled={isUpdating}
                     startIcon={<EditOutlined />}
                     sx={{
@@ -1410,6 +1505,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                   </MUIButton>
                   <MUIButton
                     className="cancel-button"
+                    data-testid="cancel-selection-button"
                     sx={{
                       color: theme.palette.error.main,
                       fontSize: '14px',
@@ -1428,6 +1524,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 <MUIButton
                   disabled
                   className="edit-button"
+                  data-testid="edit-button-disabled"
                   startIcon={<EditOutlined />}
                   sx={{ color: theme.palette.grey[500] }}
                   variant="text"
@@ -1445,13 +1542,24 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       {/* Edit Drawer */}
       <Drawer
         className="edit-column-drawer"
+        data-testid="edit-column-drawer"
         extra={
-          <Button icon={<span>×</span>} type="text" onClick={closeEditDrawer} />
+          <Button
+            data-testid="drawer-close-button"
+            icon={<span>×</span>}
+            type="text"
+            onClick={closeEditDrawer}
+          />
         }
         footer={
           <Box className="drawer-footer">
-            <Button onClick={closeEditDrawer}>{t('label.cancel')}</Button>
             <Button
+              data-testid="drawer-cancel-button"
+              onClick={closeEditDrawer}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              data-testid="drawer-update-button"
               loading={isUpdating}
               type="primary"
               onClick={handleBulkUpdate}>
@@ -1479,14 +1587,48 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             );
           }
 
+          // Get current values for single selection
+          const currentDisplayName =
+            selectedCount === 1
+              ? firstRow?.editedDisplayName ?? firstRow?.displayName ?? ''
+              : '';
+          const currentDescription =
+            selectedCount === 1
+              ? firstRow?.editedDescription ?? firstRow?.description ?? ''
+              : '';
+
+          // Convert existing tags to SelectOption format for display
+          const currentTags = selectedCount === 1 ? firstRow?.tags ?? [] : [];
+          const classificationTagOptions: SelectOption[] = currentTags
+            .filter((tag: TagLabel) => tag.source !== TagSource.Glossary)
+            .map((tag: TagLabel) => ({
+              label: tag.tagFQN ?? '',
+              value: tag.tagFQN ?? '',
+              data: tag,
+            }));
+          const glossaryTermOptions: SelectOption[] = currentTags
+            .filter((tag: TagLabel) => tag.source === TagSource.Glossary)
+            .map((tag: TagLabel) => ({
+              label: tag.tagFQN ?? '',
+              value: tag.tagFQN ?? '',
+              data: tag,
+            }));
+
+          // Use a key to force re-render when selection changes
+          const drawerKey = columnGridListing.selectedEntities.join('-');
+
           return (
-            <Box className="drawer-content">
+            <Box
+              className="drawer-content"
+              data-testid="drawer-content"
+              key={drawerKey}>
               {/* Column Name */}
               <Box className="form-field">
                 <label className="field-label">{t('label.column-name')}</label>
                 <Input
                   disabled
                   className="readonly-input"
+                  data-testid="column-name-input"
                   value={
                     selectedCount === 1
                       ? firstRow?.columnName
@@ -1499,6 +1641,9 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
               <Box className="form-field">
                 <label className="field-label">{t('label.display-name')}</label>
                 <Input
+                  data-testid="display-name-input"
+                  defaultValue={currentDisplayName}
+                  key={`displayName-${drawerKey}`}
                   placeholder={t('label.display-name')}
                   onChange={(e) => {
                     columnGridListing.selectedEntities.forEach(
@@ -1511,10 +1656,11 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
               </Box>
 
               {/* Description */}
-              <Box className="form-field">
+              <Box className="form-field" data-testid="description-field">
                 <label className="field-label">{t('label.description')}</label>
                 <RichTextEditor
-                  initialValue=""
+                  initialValue={currentDescription}
+                  key={`description-${drawerKey}`}
                   placeHolder={t('label.add-entity', {
                     entity: t('label.description'),
                   })}
@@ -1530,13 +1676,14 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
               </Box>
 
               {/* Tags */}
-              <Box className="form-field">
+              <Box className="form-field" data-testid="tags-field">
                 <label className="field-label">{t('label.tag-plural')}</label>
                 <Form>
                   <AsyncSelectList
                     hasNoActionButtons
                     fetchOptions={tagClassBase.getTags}
-                    initialOptions={[]}
+                    initialOptions={classificationTagOptions}
+                    key={`tags-${drawerKey}`}
                     mode="multiple"
                     placeholder={t('label.select-tags')}
                     onChange={(selectedTags) => {
@@ -1545,18 +1692,37 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                           ? selectedTags
                           : [selectedTags]
                       ) as SelectOption[];
-                      const newTags = options
+                      // Convert Tag entities to TagLabel format with required fields
+                      const newTags: TagLabel[] = options
                         .filter((option: SelectOption) => option.data)
-                        .map((option: SelectOption) => option.data as TagLabel);
+                        .map((option: SelectOption) => {
+                          // option.data is a Tag entity from search results
+                          const tagData = option.data as {
+                            fullyQualifiedName?: string;
+                            name?: string;
+                            displayName?: string;
+                            description?: string;
+                          };
+
+                          return {
+                            tagFQN: tagData.fullyQualifiedName ?? option.value,
+                            source: TagSource.Classification,
+                            labelType: LabelType.Manual,
+                            state: State.Confirmed,
+                            name: tagData.name,
+                            displayName: tagData.displayName,
+                            description: tagData.description,
+                          };
+                        });
                       columnGridListing.selectedEntities.forEach(
                         (rowId: string) => {
                           const row = columnGridListing.allRows.find(
                             (r: ColumnGridRowData) => r.id === rowId
                           );
                           if (row) {
-                            const currentTags =
+                            const existingTags =
                               row.editedTags ?? row.tags ?? [];
-                            const glossaryTerms = currentTags.filter(
+                            const glossaryTerms = existingTags.filter(
                               (tag: TagLabel) =>
                                 tag.source === TagSource.Glossary
                             );
@@ -1573,14 +1739,15 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
               </Box>
 
               {/* Glossary Terms */}
-              <Box className="form-field">
+              <Box className="form-field" data-testid="glossary-terms-field">
                 <label className="field-label">
                   {t('label.glossary-term-plural')}
                 </label>
                 <Form>
                   <TreeAsyncSelectList
                     hasNoActionButtons
-                    initialOptions={[]}
+                    initialOptions={glossaryTermOptions}
+                    key={`glossaryTerms-${drawerKey}`}
                     placeholder={t('label.select-tags')}
                     onChange={(selectedTerms) => {
                       const options = (
@@ -1588,18 +1755,37 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                           ? selectedTerms
                           : [selectedTerms]
                       ) as SelectOption[];
-                      const newTerms = options
+                      // Convert GlossaryTerm entities to TagLabel format with required fields
+                      const newTerms: TagLabel[] = options
                         .filter((option: SelectOption) => option.data)
-                        .map((option: SelectOption) => option.data as TagLabel);
+                        .map((option: SelectOption) => {
+                          // option.data is a GlossaryTerm entity from search results
+                          const termData = option.data as {
+                            fullyQualifiedName?: string;
+                            name?: string;
+                            displayName?: string;
+                            description?: string;
+                          };
+
+                          return {
+                            tagFQN: termData.fullyQualifiedName ?? option.value,
+                            source: TagSource.Glossary,
+                            labelType: LabelType.Manual,
+                            state: State.Confirmed,
+                            name: termData.name,
+                            displayName: termData.displayName,
+                            description: termData.description,
+                          };
+                        });
                       columnGridListing.selectedEntities.forEach(
                         (rowId: string) => {
                           const row = columnGridListing.allRows.find(
                             (r: ColumnGridRowData) => r.id === rowId
                           );
                           if (row) {
-                            const currentTags =
+                            const existingTags =
                               row.editedTags ?? row.tags ?? [];
-                            const classificationTags = currentTags.filter(
+                            const classificationTags = existingTags.filter(
                               (tag: TagLabel) =>
                                 tag.source !== TagSource.Glossary
                             );

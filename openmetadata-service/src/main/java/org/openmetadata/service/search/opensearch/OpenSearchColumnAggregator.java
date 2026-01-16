@@ -37,6 +37,7 @@ import org.openmetadata.service.search.ColumnMetadataGrouper.ColumnWithContext;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.FieldValue;
+import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch._types.SortOrder;
 import os.org.opensearch.client.opensearch._types.aggregations.Aggregation;
 import os.org.opensearch.client.opensearch._types.aggregations.CompositeAggregate;
@@ -78,27 +79,48 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
   @Override
   public ColumnGridResponse aggregateColumns(ColumnAggregationRequest request) throws IOException {
     Query query = buildFilters(request);
-    SearchResponse<JsonData> response = executeSearch(request, query);
 
-    Map<String, List<ColumnWithContext>> columnsByName = parseAggregationResults(response);
+    try {
+      SearchResponse<JsonData> response = executeSearch(request, query);
 
-    List<ColumnGridItem> gridItems = ColumnMetadataGrouper.groupColumns(columnsByName);
+      Map<String, List<ColumnWithContext>> columnsByName = parseAggregationResults(response);
 
-    String cursor = extractCursor(response);
-    boolean hasMore = cursor != null;
+      List<ColumnGridItem> gridItems = ColumnMetadataGrouper.groupColumns(columnsByName);
 
-    int totalUniqueColumns;
-    int totalOccurrences;
-    if (request.getCursor() == null) {
-      Map<String, Long> totals = getTotalCounts(query);
-      totalUniqueColumns = totals.get("uniqueColumns").intValue();
-      totalOccurrences = totals.get("totalOccurrences").intValue();
-    } else {
-      totalUniqueColumns = columnsByName.size();
-      totalOccurrences = gridItems.stream().mapToInt(ColumnGridItem::getTotalOccurrences).sum();
+      String cursor = extractCursor(response);
+      boolean hasMore = cursor != null;
+
+      int totalUniqueColumns;
+      int totalOccurrences;
+      if (request.getCursor() == null) {
+        Map<String, Long> totals = getTotalCounts(query);
+        totalUniqueColumns = totals.get("uniqueColumns").intValue();
+        totalOccurrences = totals.get("totalOccurrences").intValue();
+      } else {
+        totalUniqueColumns = columnsByName.size();
+        totalOccurrences = gridItems.stream().mapToInt(ColumnGridItem::getTotalOccurrences).sum();
+      }
+
+      return buildResponse(gridItems, cursor, hasMore, totalUniqueColumns, totalOccurrences);
+    } catch (OpenSearchException e) {
+      if (isIndexNotFoundException(e)) {
+        LOG.warn("Search index not found, returning empty results");
+        return buildResponse(new ArrayList<>(), null, false, 0, 0);
+      }
+      throw e;
     }
+  }
 
-    return buildResponse(gridItems, cursor, hasMore, totalUniqueColumns, totalOccurrences);
+  private boolean isIndexNotFoundException(OpenSearchException e) {
+    String message = e.getMessage();
+    return message != null && message.contains("index_not_found_exception");
+  }
+
+  private String escapeWildcardPattern(String input) {
+    if (input == null) {
+      return null;
+    }
+    return input.replace("\\", "\\\\").replace("*", "\\*").replace("?", "\\?");
   }
 
   private Query buildFilters(ColumnAggregationRequest request) {
@@ -145,13 +167,24 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
     }
 
     if (!nullOrEmpty(request.getColumnNamePattern())) {
+      String escapedPattern = escapeWildcardPattern(request.getColumnNamePattern());
       boolBuilder.filter(
           Query.of(
               q ->
                   q.wildcard(
-                      w ->
-                          w.field("columns.name.keyword")
-                              .value("*" + request.getColumnNamePattern() + "*"))));
+                      w -> w.field("columns.name.keyword").value("*" + escapedPattern + "*"))));
+    }
+
+    if (request.getDataTypes() != null && !request.getDataTypes().isEmpty()) {
+      List<FieldValue> dataTypeValues =
+          request.getDataTypes().stream().map(FieldValue::of).toList();
+      boolBuilder.filter(
+          Query.of(
+              q ->
+                  q.terms(
+                      t ->
+                          t.field("columns.dataType.keyword")
+                              .terms(tv -> tv.value(dataTypeValues)))));
     }
 
     return Query.of(q -> q.bool(boolBuilder.build()));

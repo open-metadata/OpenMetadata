@@ -32,6 +32,8 @@ public interface ColumnAggregator {
     private String domainId;
     private Boolean hasConflicts;
     private Boolean hasMissingMetadata;
+    private List<String> dataTypes;
+    private String metadataStatus;
 
     public int getSize() {
       return size;
@@ -111,6 +113,22 @@ public interface ColumnAggregator {
 
     public void setHasMissingMetadata(Boolean hasMissingMetadata) {
       this.hasMissingMetadata = hasMissingMetadata;
+    }
+
+    public List<String> getDataTypes() {
+      return dataTypes;
+    }
+
+    public void setDataTypes(List<String> dataTypes) {
+      this.dataTypes = dataTypes;
+    }
+
+    public String getMetadataStatus() {
+      return metadataStatus;
+    }
+
+    public void setMetadataStatus(String metadataStatus) {
+      this.metadataStatus = metadataStatus;
     }
   }
 }

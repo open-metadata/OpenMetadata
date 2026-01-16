@@ -114,6 +114,13 @@ public class ColumnRepository {
               .collect(Collectors.toList()));
     }
 
+    if (request.getMetadataStatus() != null && !request.getMetadataStatus().isEmpty()) {
+      response.setColumns(
+          response.getColumns().stream()
+              .filter(item -> matchesMetadataStatus(item, request.getMetadataStatus()))
+              .collect(Collectors.toList()));
+    }
+
     return response;
   }
 
@@ -123,6 +130,23 @@ public class ColumnRepository {
             group ->
                 (group.getDescription() == null || group.getDescription().isEmpty())
                     || (group.getTags() == null || group.getTags().isEmpty()));
+  }
+
+  private boolean matchesMetadataStatus(ColumnGridItem item, String status) {
+    return item.getGroups().stream()
+        .anyMatch(
+            group -> {
+              boolean hasDescription =
+                  group.getDescription() != null && !group.getDescription().isEmpty();
+              boolean hasTags = group.getTags() != null && !group.getTags().isEmpty();
+
+              return switch (status.toUpperCase()) {
+                case "MISSING" -> !hasDescription && !hasTags;
+                case "INCOMPLETE" -> (hasDescription && !hasTags) || (!hasDescription && hasTags);
+                case "COMPLETE" -> hasDescription && hasTags;
+                default -> true;
+              };
+            });
   }
 
   public Column updateColumnByFQN(

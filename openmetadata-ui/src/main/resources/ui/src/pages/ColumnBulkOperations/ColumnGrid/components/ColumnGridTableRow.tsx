@@ -45,6 +45,7 @@ export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
   return (
     <TableRow
       hover
+      data-testid={`column-row-${entity.columnName}`}
       key={entity.id}
       selected={isSelected}
       sx={{ cursor: 'pointer' }}
@@ -52,6 +53,7 @@ export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
       <TableCell padding="checkbox">
         <Checkbox
           checked={isSelected}
+          data-testid={`column-checkbox-${entity.columnName}`}
           onChange={(e) => {
             e.stopPropagation();
             onSelect(entity.parentId || entity.id, e.target.checked);
@@ -61,12 +63,24 @@ export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
           }}
         />
       </TableCell>
-      <TableCell>{renderColumnNameCell(entity)}</TableCell>
-      <TableCell>{renderPathCell(entity)}</TableCell>
-      <TableCell>{renderDescriptionCell(entity)}</TableCell>
-      <TableCell>{entity.dataType || '-'}</TableCell>
-      <TableCell>{renderTagsCell(entity)}</TableCell>
-      <TableCell>{renderGlossaryTermsCell(entity)}</TableCell>
+      <TableCell data-testid="column-name-cell">
+        {renderColumnNameCell(entity)}
+      </TableCell>
+      <TableCell data-testid="column-path-cell">
+        {renderPathCell(entity)}
+      </TableCell>
+      <TableCell data-testid="column-description-cell">
+        {renderDescriptionCell(entity)}
+      </TableCell>
+      <TableCell data-testid="column-datatype-cell">
+        {entity.dataType || '-'}
+      </TableCell>
+      <TableCell data-testid="column-tags-cell">
+        {renderTagsCell(entity)}
+      </TableCell>
+      <TableCell data-testid="column-glossary-cell">
+        {renderGlossaryTermsCell(entity)}
+      </TableCell>
     </TableRow>
   );
 };
