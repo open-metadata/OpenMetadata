@@ -1680,6 +1680,7 @@
     "star": "ستاره",
     "star-open-metadata": "ستاره بزنید به OpenMetadata",
     "star-us-on-github": "ما را در GitHub ستاره بزنید",
+    "start-date": "Data de Início",
     "start-date-time-zone": "تاریخ شروع: ({{timeZone}})",
     "start-elasticsearch-docker": "راه‌اندازی Docker Elasticsearch",
     "start-entity": "شروع {{entity}}",

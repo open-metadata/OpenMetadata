@@ -1680,6 +1680,7 @@
     "star": "כוכב",
     "star-open-metadata": "סמן את המטא-דאטה הפתוחים",
     "star-us-on-github": "תמכו בנו ב-GitHub",
+    "start-date": "תאריך התחלה",
     "start-date-time-zone": "תאריך התחלה: ({{timeZone}})",
     "start-elasticsearch-docker": "התחל את Elasticsearch ב-Docker",
     "start-entity": "התחל {{entity}}",
