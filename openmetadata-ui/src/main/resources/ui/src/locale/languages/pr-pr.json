@@ -204,6 +204,7 @@
     "browse-app-plural": "مرور برنامه‌ها",
     "browse-csv-file": "مرور فایل CSV",
     "bulk-edit": "ویرایش دسته‌ای",
+    "bulk-import-entity": "درون‌ریزی انبوه {{entity}}",
     "bullet-point": "• {{text}}",
     "bundle-suite": "مجموعه بسته",
     "bundle-suite-plural": "مجموعه‌های بسته",

@@ -204,6 +204,7 @@
     "browse-app-plural": "アプリを参照",
     "browse-csv-file": "CSVファイルを参照",
     "bulk-edit": "一括編集",
+    "bulk-import-entity": "{{entity}}の一括インポート",
     "bullet-point": "• {{text}}",
     "bundle-suite": "バンドルスイート",
     "bundle-suite-plural": "バンドルスイート",

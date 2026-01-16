@@ -204,6 +204,7 @@
     "browse-app-plural": "瀏覽應用程式",
     "browse-csv-file": "瀏覽 CSV 檔案",
     "bulk-edit": "批次編輯",
+    "bulk-import-entity": "大量匯入{{entity}}",
     "bullet-point": "• {{text}}",
     "bundle-suite": "組合套件",
     "bundle-suite-plural": "組合套件",

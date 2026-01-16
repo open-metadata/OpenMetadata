@@ -204,6 +204,7 @@
     "browse-app-plural": "עיין באפליקציות",
     "browse-csv-file": "עיין בקובץ CSV",
     "bulk-edit": "עריכה מרובה",
+    "bulk-import-entity": "ייבוא מרוכז של {{entity}}",
     "bullet-point": "• {{text}}",
     "bundle-suite": "חבילת צרורות",
     "bundle-suite-plural": "חבילות צרורים",

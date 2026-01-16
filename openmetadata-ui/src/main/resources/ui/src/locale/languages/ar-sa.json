@@ -204,6 +204,7 @@
     "browse-app-plural": "استعراض التطبيقات",
     "browse-csv-file": "استعراض ملف CSV",
     "bulk-edit": "تعديل مجمع",
+    "bulk-import-entity": "استيراد {{entity}} بالجملة",
     "bullet-point": "• {{text}}",
     "bundle-suite": "مجموعة الحزمة",
     "bundle-suite-plural": "مجموعات الحزم",

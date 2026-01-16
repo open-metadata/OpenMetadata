@@ -204,6 +204,7 @@
     "browse-app-plural": "Apps durchsuchen",
     "browse-csv-file": "CSV-Datei durchsuchen",
     "bulk-edit": "Massenbearbeitung",
+    "bulk-import-entity": "Massenimport von {{entity}}",
     "bullet-point": "• {{text}}",
     "bundle-suite": "Bundle-Suite",
     "bundle-suite-plural": "Bundle-Suites",

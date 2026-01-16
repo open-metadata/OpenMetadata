@@ -204,6 +204,7 @@
     "browse-app-plural": "앱 탐색",
     "browse-csv-file": "CSV 파일 탐색",
     "bulk-edit": "일괄 편집",
+    "bulk-import-entity": "{{entity}} 일괄 가져오기",
     "bullet-point": "• {{text}}",
     "bundle-suite": "번들 스위트",
     "bundle-suite-plural": "번들 스위트",

@@ -204,6 +204,7 @@
     "browse-app-plural": "Blader door apps",
     "browse-csv-file": "Blader door CSV-bestand",
     "bulk-edit": "Bulk bewerken",
+    "bulk-import-entity": "Bulkimport van {{entity}}",
     "bullet-point": "• {{text}}",
     "bundle-suite": "Bundel Suite",
     "bundle-suite-plural": "Bundel Suites",

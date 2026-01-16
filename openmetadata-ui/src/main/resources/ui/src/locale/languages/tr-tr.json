@@ -204,6 +204,7 @@
     "browse-app-plural": "Uygulamalara Gözat",
     "browse-csv-file": "Browse CSV file",
     "bulk-edit": "Toplu Düzenleme",
+    "bulk-import-entity": "{{entity}} toplu içe aktarma",
     "bullet-point": "• {{text}}",
     "bundle-suite": "Paket Paketi",
     "bundle-suite-plural": "Paket Paketleri",

@@ -204,6 +204,7 @@
     "browse-app-plural": "Просмотр приложений",
     "browse-csv-file": "Просмотр CSV-файла",
     "bulk-edit": "Массовое редактирование",
+    "bulk-import-entity": "Массовый импорт {{entity}}",
     "bullet-point": "• {{text}}",
     "bundle-suite": "Набор пакетов",
     "bundle-suite-plural": "Наборы пакетов",
