@@ -186,7 +186,7 @@ jest.mock(
               <div>{pipeline.name}</div>
               {pipelineTypeColumnObj && (
                 <div data-testid={`test-case-count-${pipeline.name}`}>
-                  {pipeline?.sourceConfig?.config?.testCases?.length ?? 0}
+                  {pipeline?.sourceConfig?.config?.testCases?.length ?? 'All'}
                 </div>
               )}
             </div>
@@ -347,7 +347,7 @@ describe('TestSuite Pipeline component', () => {
 
     expect(pipeline1Count).toHaveTextContent('3');
     expect(pipeline2Count).toHaveTextContent('1');
-    expect(pipeline3Count).toHaveTextContent('0');
+    expect(pipeline3Count).toHaveTextContent('All');
   });
 
   it('should render test cases column header with label and helper icon', async () => {
