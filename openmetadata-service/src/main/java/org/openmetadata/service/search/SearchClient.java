@@ -341,12 +341,16 @@ public interface SearchClient
    */
   String UPDATE_DOMAIN_FQN_BY_PREFIX_SCRIPT =
       """
-      if (ctx._source.containsKey('fullyQualifiedName') && ctx._source.fullyQualifiedName.startsWith(params.oldFqn)) {
-        ctx._source.fullyQualifiedName = params.newFqn + ctx._source.fullyQualifiedName.substring(params.oldFqn.length());
+      if (ctx._source.containsKey('fullyQualifiedName')) {
+        String fqn = ctx._source.fullyQualifiedName;
+        if (fqn.equals(params.oldFqn) || fqn.startsWith(params.oldFqn + '.')) {
+          ctx._source.fullyQualifiedName = params.newFqn + fqn.substring(params.oldFqn.length());
+        }
       }
       if (ctx._source.containsKey('parent') && ctx._source.parent != null && ctx._source.parent.containsKey('fullyQualifiedName')) {
-        if (ctx._source.parent.fullyQualifiedName.startsWith(params.oldFqn)) {
-          ctx._source.parent.fullyQualifiedName = params.newFqn + ctx._source.parent.fullyQualifiedName.substring(params.oldFqn.length());
+        String parentFqn = ctx._source.parent.fullyQualifiedName;
+        if (parentFqn.equals(params.oldFqn) || parentFqn.startsWith(params.oldFqn + '.')) {
+          ctx._source.parent.fullyQualifiedName = params.newFqn + parentFqn.substring(params.oldFqn.length());
         }
       }
       """;
@@ -363,9 +367,11 @@ public interface SearchClient
       """
       if (ctx._source.containsKey('domains') && ctx._source.domains != null) {
         for (int i = 0; i < ctx._source.domains.size(); i++) {
-          if (ctx._source.domains[i].containsKey('fullyQualifiedName') &&
-              ctx._source.domains[i].fullyQualifiedName.startsWith(params.oldFqn)) {
-            ctx._source.domains[i].fullyQualifiedName = params.newFqn + ctx._source.domains[i].fullyQualifiedName.substring(params.oldFqn.length());
+          if (ctx._source.domains[i].containsKey('fullyQualifiedName')) {
+            String fqn = ctx._source.domains[i].fullyQualifiedName;
+            if (fqn.equals(params.oldFqn) || fqn.startsWith(params.oldFqn + '.')) {
+              ctx._source.domains[i].fullyQualifiedName = params.newFqn + fqn.substring(params.oldFqn.length());
+            }
           }
         }
       }
