@@ -42,7 +42,7 @@ from metadata.ingestion.source.api.api_service import ApiServiceSource
 from metadata.ingestion.source.api.rest.models import RESTCollection, RESTEndpoint
 from metadata.ingestion.source.api.rest.parser import parse_openapi_schema
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_collection
+from metadata.utils.filters import filter_by_collection, filter_by_endpoint
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
@@ -151,6 +151,14 @@ class RestSource(ApiServiceSource):
                         path, method_type, info, collection
                     )
                     if not endpoint:
+                        continue
+                    if filter_by_endpoint(
+                        self.source_config.apiEndpointFilterPattern,
+                        endpoint.display_name,
+                    ):
+                        self.status.filter(
+                            endpoint.display_name, "Endpoint filtered out"
+                        )
                         continue
                     yield Either(
                         right=CreateAPIEndpointRequest(

@@ -402,10 +402,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private void registerHealthCheckJobs(OpenMetadataApplicationConfig catalogConfig) {
     ServicesStatusJobHandler healthCheckStatusHandler =
         ServicesStatusJobHandler.create(
-            catalogConfig.getEventMonitorConfiguration(),
-            catalogConfig.getPipelineServiceClientConfiguration(),
-            catalogConfig.getClusterName());
-    healthCheckStatusHandler.addPipelineServiceStatusJob();
+            catalogConfig.getEventMonitorConfiguration(), catalogConfig.getClusterName());
     healthCheckStatusHandler.addDatabaseAndSearchStatusJobs();
   }
 
