@@ -2063,6 +2063,7 @@
     "auto-pilot-no-agents-message": "Нет агентов AutoPilot.",
     "availability-time-contract-description": "Время суток, к которому ожидается доступность данных",
     "bot-email-confirmation": "{{email}} для бота {{botName}}",
+    "bulk-edit-entity-help": "Редактировать несколько {{entity}} одновременно с помощью CSV",
     "can-not-add-widget": "Невозможно добавить виджет в этот раздел из-за ограничений по размеру.",
     "can-you-add-a-description": "Можете добавить описание?",
     "checkout-service-connectors-doc": "Здесь доступно множество коннекторов для индексации данных из ваших сервисов. Пожалуйста, ознакомьтесь с нашими коннекторами.",
