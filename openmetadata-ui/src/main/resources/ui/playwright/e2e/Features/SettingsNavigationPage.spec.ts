@@ -13,13 +13,14 @@
 
 import { test as base, expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { SidebarItem } from '../../constant/sidebar';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { setUserDefaultPersona } from '../../utils/customizeLandingPage';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
-import { settingClick } from '../../utils/sidebar';
+import { settingClick, sidebarClick } from '../../utils/sidebar';
 
 const adminUser = new UserClass();
 const persona = new PersonaClass();
@@ -248,10 +249,7 @@ test.describe('Settings Navigation Page Tests', () => {
     await expect(page.getByTestId('save-button')).toBeDisabled();
 
     // Verify no navigation blocker when navigating away
-    await page
-      .getByTestId('left-sidebar')
-      .getByTestId('app-bar-item-settings')
-      .click();
+    await sidebarClick(page, SidebarItem.SETTINGS);
     await expect(page).toHaveURL(/.*settings.*/);
     await expect(page.getByTestId('unsaved-changes-modal-title')).not.toBeVisible();
   });
