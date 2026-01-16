@@ -100,7 +100,7 @@ export const useUserProfile = ({
         });
       }
 
-      userProfilePicsLoading = userProfilePicsLoading.filter((p) => p !== name);
+      userProfilePicsLoading = userProfilePicsLoading.filter((p) => p !== lowerCasedName);
     }
   }, [
     updateUserProfilePics,
