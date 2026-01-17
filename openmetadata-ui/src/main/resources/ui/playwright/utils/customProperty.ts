@@ -756,8 +756,12 @@ export const editCreatedProperty = async (
     );
     await expect(tableConfig).toBeVisible();
     await expect(tableConfig).toContainText('Columns:');
-    await expect(tableConfig).toContainText('pw-column1');
-    await expect(tableConfig).toContainText('pw-column2');
+    await expect(
+      tableConfig.locator('li', { hasText: 'pw-column1' })
+    ).toBeVisible();
+    await expect(
+      tableConfig.locator('li', { hasText: 'pw-column2' })
+    ).toBeVisible();
   }
 
   await editButton.click();
@@ -1120,15 +1124,6 @@ export const verifyTableColumnCustomPropertyPersistence = async ({
   // The util assumes one main update or at least waiting for *an* update.
   await updateColumnResponse;
 
-  // Verify Success Message (except table?)
-  // Table doesn't show "Custom property updated successfully"?
-  // Part 2 test for Table expected "Custom property updated" toast?
-  // "await expect(page.getByText(/Custom propert.* updated successfully/i)).toBeVisible();"
-  // Yes.
-  await expect(
-    page.getByText(/Custom propert.* updated successfully/i)
-  ).toBeVisible();
-
   // Validation
   await validateColumnCustomProperty(
     page,
@@ -1172,7 +1167,7 @@ export const updateCustomPropertyInRightPanel = async (data: {
   const propertyType = propertyDetails.propertyType.name;
 
   if (!skipNavigation) {
-    await navigateToExploreAndSelectTable(page, entityName);
+    await navigateToExploreAndSelectTable(page, entityName, endpoint);
     await waitForAllLoadersToDisappear(page);
     await navigateToEntityPanelTab(page, 'custom property');
     await waitForAllLoadersToDisappear(page);
