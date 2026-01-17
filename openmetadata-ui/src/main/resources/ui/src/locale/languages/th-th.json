@@ -2063,6 +2063,7 @@
     "auto-pilot-no-agents-message": "ไม่มีตัวจัดการ AutoPilot",
     "availability-time-contract-description": "เวลาของวันที่คาดว่าข้อมูลจะใช้งานได้",
     "bot-email-confirmation": "{{email}} สำหรับบอท {{botName}}",
+    "bulk-edit-entity-help": "แก้ไขหลาย {{entity}} พร้อมกันโดยใช้ CSV",
     "can-not-add-widget": "ไม่สามารถเพิ่มวิดเจ็ตในส่วนนี้ได้เนื่องจากข้อจำกัดขนาด",
     "can-you-add-a-description": "คุณสามารถเพิ่มคำอธิบายได้ไหม?",
     "checkout-service-connectors-doc": "มีตัวเชื่อมต่อจำนวนมากที่นี่เพื่อจัดทำดัชนีข้อมูลจากบริการของคุณ โปรดตรวจสอบตัวเชื่อมต่อของเรา",
