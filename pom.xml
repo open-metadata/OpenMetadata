@@ -34,6 +34,7 @@
     <module>common</module>
     <module>openmetadata-shaded-deps</module>
     <module>openmetadata-service</module>
+    <module>openmetadata-k8s-operator</module>
     <module>openmetadata-integration-tests</module>
     <module>openmetadata-mcp</module>
     <module>openmetadata-ui-core-components</module>
@@ -150,7 +151,7 @@
     <json-patch.version>1.13</json-patch.version>
     <jetty.version>12.1.1</jetty.version>
     <jakarta-el.version>5.0.0-M1</jakarta-el.version>
-    <mcp-sdk.version>0.17.0</mcp-sdk.version>
+    <mcp-sdk.version>0.17.1</mcp-sdk.version>
     <lettuce.version>6.7.1.RELEASE</lettuce.version>
     <flyway.version>9.22.3</flyway.version>
     <angus-mail.version>2.0.4</angus-mail.version>
@@ -170,12 +171,6 @@
         <groupId>org.antlr</groupId>
         <artifactId>antlr4-runtime</artifactId>
         <version>${antlr.version}</version>
-      </dependency>
-      <!-- Override grpc-netty-shaded globally to fix CVE-2024-1106 -->
-      <dependency>
-        <groupId>io.grpc</groupId>
-        <artifactId>grpc-netty-shaded</artifactId>
-        <version>1.76.0</version>
       </dependency>
       <dependency>
         <groupId>org.glassfish.jersey</groupId>

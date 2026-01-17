@@ -109,3 +109,52 @@ query PipelineRuns($selector: GraphSelector!) {
   }
 }
 """
+
+DAGSTER_ASSETS_QUERY = """
+query AssetsQuery($repositorySelector: RepositorySelector!) {
+  repositoryOrError(repositorySelector: $repositorySelector) {
+    __typename
+    ... on Repository {
+      id
+      name
+      assetNodes {
+        id
+        assetKey {
+          path
+        }
+        description
+        computeKind
+        opNames
+        dependencies {
+          asset {
+            assetKey {
+              path
+            }
+          }
+        }
+        assetMaterializations(limit: 1) {
+          runId
+          timestamp
+          metadataEntries {
+            __typename
+            label
+            ... on TextMetadataEntry {
+              text
+            }
+            ... on PathMetadataEntry {
+              path
+            }
+            ... on JsonMetadataEntry {
+              jsonString
+            }
+          }
+        }
+        jobs {
+          name
+          id
+        }
+      }
+    }
+  }
+}
+"""

@@ -118,6 +118,7 @@ export default defineConfig(({ mode }) => {
         '/api/': {
           target: devServerTarget,
           changeOrigin: true,
+          ws: true,
         },
       },
       watch: {
