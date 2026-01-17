@@ -12,6 +12,7 @@ import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.json.JsonData;
 import es.co.elastic.clients.json.JsonpMapper;
 import es.co.elastic.clients.util.NamedValue;
+import io.micrometer.core.instrument.Timer;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -29,6 +30,7 @@ import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.AggregationManagementClient;
 import org.openmetadata.service.search.SearchAggregation;
@@ -177,8 +179,15 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       searchRequestBuilder.size(0);
       searchRequestBuilder.timeout("30s");
 
-      SearchResponse<JsonData> searchResponse =
-          client.search(searchRequestBuilder.build(), JsonData.class);
+      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+      SearchResponse<JsonData> searchResponse;
+      try {
+        searchResponse = client.search(searchRequestBuilder.build(), JsonData.class);
+      } finally {
+        if (searchTimerSample != null) {
+          RequestLatencyContext.endSearchOperation(searchTimerSample);
+        }
+      }
 
       String responseJson = serializeSearchResponse(searchResponse);
       return Response.status(Response.Status.OK).entity(responseJson).build();
@@ -230,7 +239,15 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
           aggregations.size());
       LOG.debug("Generic Aggregation - Full aggregations: {}", aggregations);
 
-      SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+      SearchResponse<JsonData> searchResponse;
+      try {
+        searchResponse = client.search(searchRequest, JsonData.class);
+      } finally {
+        if (searchTimerSample != null) {
+          RequestLatencyContext.endSearchOperation(searchTimerSample);
+        }
+      }
 
       String response = serializeSearchResponse(searchResponse);
       LOG.info(
@@ -327,7 +344,15 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
           aggregations.size());
       LOG.debug("Generic Aggregation with RBAC - Full aggregations: {}", aggregations);
 
-      SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+      SearchResponse<JsonData> searchResponse;
+      try {
+        searchResponse = client.search(searchRequest, JsonData.class);
+      } finally {
+        if (searchTimerSample != null) {
+          RequestLatencyContext.endSearchOperation(searchTimerSample);
+        }
+      }
 
       String response = serializeSearchResponse(searchResponse);
       LOG.info(
@@ -416,8 +441,15 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       searchRequestBuilder.size(0);
       searchRequestBuilder.timeout("30s");
 
-      SearchResponse<JsonData> searchResponse =
-          client.search(searchRequestBuilder.build(), JsonData.class);
+      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+      SearchResponse<JsonData> searchResponse;
+      try {
+        searchResponse = client.search(searchRequestBuilder.build(), JsonData.class);
+      } finally {
+        if (searchTimerSample != null) {
+          RequestLatencyContext.endSearchOperation(searchTimerSample);
+        }
+      }
 
       String response = serializeSearchResponse(searchResponse);
       JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
@@ -520,7 +552,15 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
 
       // Build and execute search
       SearchRequest searchRequest = requestBuilder.build(resolvedIndex);
-      SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+      SearchResponse<JsonData> searchResponse;
+      try {
+        searchResponse = client.search(searchRequest, JsonData.class);
+      } finally {
+        if (searchTimerSample != null) {
+          RequestLatencyContext.endSearchOperation(searchTimerSample);
+        }
+      }
 
       LOG.info("Entity type counts query for index '{}' (resolved: '{}')", index, resolvedIndex);
 

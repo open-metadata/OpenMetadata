@@ -81,7 +81,7 @@ import org.openmetadata.service.util.CSVExportResponse;
 public class DatabaseSchemaResource
     extends EntityResource<DatabaseSchema, DatabaseSchemaRepository> {
   private final DatabaseSchemaMapper mapper = new DatabaseSchemaMapper();
-  public static final String COLLECTION_PATH = "v1/databaseSchemas/";
+  public static final String COLLECTION_PATH = "/v1/databaseSchemas/";
   static final String FIELDS =
       "owners,tables,usageSummary,tags,certification,extension,domains,sourceHash,followers";
 

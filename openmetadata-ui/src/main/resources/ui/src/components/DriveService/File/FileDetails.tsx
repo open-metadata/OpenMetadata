@@ -95,10 +95,12 @@ function FileDetails({
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.OVERVIEW } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedFileFQN } = useFqn();
+
   const navigate = useNavigate();
   const { customizedPage, isLoading } = useCustomPages(PageType.File);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
+
+  const { entityFqn: decodedFileFQN } = useFqn({ type: EntityType.FILE });
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -388,10 +390,7 @@ function FileDetails({
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.file'),
-      })}>
+    <PageLayoutV1 pageTitle={entityName}>
       <Row gutter={[0, 12]}>
         <Col span={24}>
           <DataAssetsHeader

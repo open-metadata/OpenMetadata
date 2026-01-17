@@ -35,10 +35,6 @@ export interface QueryRunnerRequest {
      */
     databaseSchema?: string;
     /**
-     * Optional value of the ingestion runner name responsible for running the test
-     */
-    ingestionRunner?: string;
-    /**
      * Query to be executed.
      */
     query?: string;
@@ -64,4 +60,8 @@ export interface QueryRunnerRequest {
      * UUID of the user executing the query (extracted from JWT token in backend)
      */
     userId?: string;
+    /**
+     * Optional value of the workflow name responsible for running the test
+     */
+    workflowName?: string;
 }

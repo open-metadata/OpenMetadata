@@ -86,7 +86,9 @@ const StoredProcedurePage = () => {
   const { tab: activeTab = EntityTabs.CODE } =
     useRequiredParams<{ tab: EntityTabs }>();
 
-  const { fqn: decodedStoredProcedureFQN } = useFqn();
+  const { entityFqn: decodedStoredProcedureFQN } = useFqn({
+    type: EntityType.STORED_PROCEDURE,
+  });
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [storedProcedure, setStoredProcedure] = useState<StoredProcedure>();
@@ -577,10 +579,7 @@ const StoredProcedurePage = () => {
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.stored-procedure'),
-      })}>
+    <PageLayoutV1 pageTitle={entityName}>
       <Row gutter={[0, 12]}>
         <Col data-testid="entity-page-header" span={24}>
           <DataAssetsHeader

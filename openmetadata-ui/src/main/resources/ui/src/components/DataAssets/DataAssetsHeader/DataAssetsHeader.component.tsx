@@ -112,6 +112,7 @@ import {
 
 export const DataAssetsHeader = ({
   allowSoftDelete = true,
+  allowRename = false,
   showDomain = true,
   afterDeleteAction,
   dataAsset,
@@ -686,6 +687,7 @@ export const DataAssetsHeader = ({
                   <ManageButton
                     isAsyncDelete
                     afterDeleteAction={afterDeleteAction}
+                    allowRename={allowRename}
                     allowSoftDelete={!dataAsset.deleted && allowSoftDelete}
                     canDelete={permissions.Delete}
                     deleted={dataAsset.deleted}

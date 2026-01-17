@@ -13,6 +13,8 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ReactNode } from 'react';
+import { MemoryRouter } from 'react-router-dom';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import { Include } from '../../generated/type/include';
@@ -212,10 +214,15 @@ jest.mock('../../utils/StringsUtils', () => ({
   getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
 }));
 
-jest.mock('../../utils/TableUtils', () => ({
-  getTagsWithoutTier: jest.fn().mockReturnValue([]),
-  getTierTags: jest.fn().mockReturnValue([]),
-}));
+jest.mock('../../utils/TableUtils', () => {
+  const actual = jest.requireActual('../../utils/TableUtils');
+
+  return {
+    ...actual,
+    getTagsWithoutTier: jest.fn().mockReturnValue([]),
+    getTierTags: jest.fn().mockReturnValue([]),
+  };
+});
 
 jest.mock('../../utils/TagsUtils', () => ({
   createTagObject: jest.fn().mockImplementation((tagObject) => tagObject),
@@ -236,8 +243,16 @@ const mockUseParams = jest.fn().mockReturnValue({
 const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockImplementation(() => mockUseParams()),
+  useLocation: jest.fn().mockImplementation(() => ({
+    pathname: 'mockPath',
+    search: '',
+    hash: '',
+    state: null,
+    key: 'default',
+  })),
 }));
 
 jest.mock('../../hoc/LimitWrapper', () => {
@@ -282,13 +297,19 @@ describe('Container Page Component', () => {
     );
     getPrioritizedViewPermission.mockReturnValue(false);
 
-    render(<ContainerPage />);
+    (getContainerByName as jest.Mock).mockResolvedValue({});
+
+    render(
+      <MemoryRouter>
+        <ContainerPage />
+      </MemoryRouter>
+    );
 
     expect(screen.getByText('Loader')).toBeVisible();
 
-    expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
-
-    expect(getContainerByName).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(mockGetEntityPermissionByFqn).toHaveBeenCalled()
+    );
 
     expect(
       await screen.findByText(ERROR_PLACEHOLDER_TYPE.PERMISSION)
@@ -296,11 +317,21 @@ describe('Container Page Component', () => {
   });
 
   it('fetch container data, if have view permission', async () => {
-    render(<ContainerPage />);
+    render(
+      <MemoryRouter>
+        <ContainerPage />
+      </MemoryRouter>
+    );
 
     expect(screen.getByText('Loader')).toBeVisible();
 
-    expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
+    expect(screen.getByText('Loader')).toBeVisible();
+
+    (getContainerByName as jest.Mock).mockResolvedValue(MOCK_CONTAINER_DATA);
+
+    await waitFor(() =>
+      expect(mockGetEntityPermissionByFqn).toHaveBeenCalled()
+    );
 
     await waitFor(() =>
       expect(getContainerByName).toHaveBeenCalledWith(
@@ -324,31 +355,41 @@ describe('Container Page Component', () => {
   });
 
   it('show ErrorPlaceHolder if container data fetch fail', async () => {
-    (getContainerByName as jest.Mock).mockRejectedValueOnce(
+    (getContainerByName as jest.Mock).mockRejectedValue(
       'failed to fetch container data'
-    );
+    ); // For fetch
 
-    render(<ContainerPage />);
+    render(
+      <MemoryRouter>
+        <ContainerPage />
+      </MemoryRouter>
+    );
 
     expect(screen.getByText('Loader')).toBeVisible();
 
-    expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
+    await waitFor(() =>
+      expect(mockGetEntityPermissionByFqn).toHaveBeenCalled()
+    );
 
-    await waitFor(() => expect(getContainerByName).toHaveBeenCalled());
+    await waitFor(() => expect(getContainerByName).toHaveBeenCalledTimes(1));
 
     expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
   });
 
   it('should render the page container data, with the schema tab selected', async () => {
-    (getContainerByName as jest.Mock).mockResolvedValueOnce(
-      MOCK_CONTAINER_DATA
-    );
+    (getContainerByName as jest.Mock).mockResolvedValue(MOCK_CONTAINER_DATA);
 
-    render(<ContainerPage />);
+    render(
+      <MemoryRouter>
+        <ContainerPage />
+      </MemoryRouter>
+    );
 
     expect(screen.getByText('Loader')).toBeVisible();
 
-    expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
+    await waitFor(() =>
+      expect(mockGetEntityPermissionByFqn).toHaveBeenCalled()
+    );
 
     await waitFor(() =>
       expect(getContainerByName).toHaveBeenCalledWith(
@@ -385,11 +426,13 @@ describe('Container Page Component', () => {
   });
 
   it('onClick of follow container should call addContainerFollower', async () => {
-    (getContainerByName as jest.Mock).mockResolvedValueOnce(
-      MOCK_CONTAINER_DATA
-    );
+    (getContainerByName as jest.Mock).mockResolvedValue(MOCK_CONTAINER_DATA);
 
-    render(<ContainerPage />);
+    render(
+      <MemoryRouter>
+        <ContainerPage />
+      </MemoryRouter>
+    );
 
     expect(screen.getByText('Loader')).toBeVisible();
 
@@ -403,11 +446,13 @@ describe('Container Page Component', () => {
   });
 
   it('tab switch should work', async () => {
-    (getContainerByName as jest.Mock).mockResolvedValueOnce(
-      MOCK_CONTAINER_DATA
-    );
+    (getContainerByName as jest.Mock).mockResolvedValue(MOCK_CONTAINER_DATA);
 
-    render(<ContainerPage />);
+    render(
+      <MemoryRouter>
+        <ContainerPage />
+      </MemoryRouter>
+    );
 
     expect(screen.getByText('Loader')).toBeVisible();
 
@@ -426,15 +471,17 @@ describe('Container Page Component', () => {
   });
 
   it('children should render on children tab', async () => {
-    (getContainerByName as jest.Mock).mockResolvedValueOnce(
-      MOCK_CONTAINER_DATA_1
-    );
+    (getContainerByName as jest.Mock).mockResolvedValue(MOCK_CONTAINER_DATA_1);
     mockUseParams.mockReturnValue({
       fqn: MOCK_CONTAINER_DATA_1.fullyQualifiedName,
       tab: EntityTabs.CHILDREN,
     });
 
-    render(<ContainerPage />);
+    render(
+      <MemoryRouter>
+        <ContainerPage />
+      </MemoryRouter>
+    );
 
     expect(screen.getByText('Loader')).toBeVisible();
 
@@ -451,6 +498,27 @@ describe('Container Page Component', () => {
       {
         fields: 'children',
       }
+    );
+  });
+
+  it('should pass entity name as pageTitle to PageLayoutV1', async () => {
+    (getContainerByName as jest.Mock).mockResolvedValue(MOCK_CONTAINER_DATA);
+
+    render(
+      <MemoryRouter>
+        <ContainerPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(getContainerByName).toHaveBeenCalled());
+
+    await waitFor(() =>
+      expect(PageLayoutV1).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pageTitle: MOCK_CONTAINER_DATA.name,
+        }),
+        expect.anything()
+      )
     );
   });
 });

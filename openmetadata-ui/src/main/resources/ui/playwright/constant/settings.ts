@@ -42,6 +42,7 @@ export enum GlobalSettingOptions {
   PERSONA = 'persona',
   ROLES = 'roles',
   POLICIES = 'policies',
+  AUDIT_LOGS = 'audit-logs',
   LEARNING_RESOURCES = 'learning-resources',
   DATABASES = 'databases',
   DATABASE = 'database',
@@ -199,6 +200,10 @@ export const SETTINGS_OPTIONS_PATH = {
   [GlobalSettingOptions.POLICIES]: [
     GlobalSettingsMenuCategory.ACCESS,
     `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.POLICIES}`,
+  ],
+  [GlobalSettingOptions.AUDIT_LOGS]: [
+    GlobalSettingsMenuCategory.ACCESS,
+    `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.AUDIT_LOGS}`,
   ],
 
   // Open-metadata
