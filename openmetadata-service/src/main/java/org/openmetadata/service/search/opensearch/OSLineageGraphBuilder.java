@@ -1029,10 +1029,10 @@ public class OSLineageGraphBuilder
         }
       }
     } else if (request.getDirection() == LineageDirection.DOWNSTREAM) {
-      // Add downstream edges - entities that depend on our root entity
+      // Add downstream edges - include edges from any collected entity, not just root
       for (EsLineageData upstreamData : upstreamEntities) {
-        String rootFqnHash = FullyQualifiedName.buildHash(request.getFqn());
-        if (upstreamData.getFromEntity().getFqnHash().equals(rootFqnHash)) {
+        // Add edge if the fromEntity is in our collected set (root or intermediate nodes)
+        if (allCollectedFqns.contains(upstreamData.getFromEntity().getFullyQualifiedName())) {
           result
               .getDownstreamEdges()
               .putIfAbsent(upstreamData.getDocId(), upstreamData.withToEntity(currentEntity));
