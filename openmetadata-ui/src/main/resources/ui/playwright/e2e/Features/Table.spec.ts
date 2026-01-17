@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { Table } from '../../../src/generated/entity/data/table';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { Glossary } from '../../support/glossary/Glossary';
@@ -22,13 +23,13 @@ import { redirectToHomePage, uuid } from '../../utils/common';
 import {
   assignTagToChildren,
   getFirstRowColumnLink,
+  readClipboardText,
   removeTagsFromChildren,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { columnPaginationTable } from '../../utils/table';
 import { test } from '../fixtures/pages';
-import { Table } from '../../../src/generated/entity/data/table';
 
 const table1 = new TableClass();
 
@@ -821,9 +822,12 @@ test.describe('Large Table Column Search & Copy Link', () => {
   }) => {
     await redirectToHomePage(page);
 
+    const columnsResponse = page.waitForResponse(
+      `/api/v1/tables/name/${createdTable.fullyQualifiedName}/columns?*`
+    );
     // 1. Visit the table page directly
     await page.goto(`/table/${createdTable.fullyQualifiedName}`);
-    await page.waitForLoadState('networkidle');
+    await columnsResponse;
     await waitForAllLoadersToDisappear(page);
 
     // Ensure entity table is visible
@@ -832,7 +836,11 @@ test.describe('Large Table Column Search & Copy Link', () => {
     // 2. Search for the specific column
     const searchBar = page.getByTestId('searchbar');
     await searchBar.waitFor({ state: 'visible' });
+    const columnSearchResponse = page.waitForResponse(
+      `/api/v1/tables/name/${createdTable.fullyQualifiedName}/columns/search?*${targetColumnName}*`
+    );
     await searchBar.fill(targetColumnName);
+    await columnSearchResponse;
 
     // Wait for search results filters the rows
     // We look for the row with our target column key
@@ -846,9 +854,7 @@ test.describe('Large Table Column Search & Copy Link', () => {
     await copyButton.click();
 
     // 4. Read clipboard
-    const clipboardText = await page.evaluate(async () => {
-      return await navigator.clipboard.readText();
-    });
+    const clipboardText = await readClipboardText(page);
 
     // Verify URL format structure
     expect(clipboardText).toContain(
