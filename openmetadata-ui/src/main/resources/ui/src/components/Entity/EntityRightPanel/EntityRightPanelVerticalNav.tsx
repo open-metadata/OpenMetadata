@@ -46,7 +46,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       const items = [
         {
           key: EntityRightPanelTab.OVERVIEW,
-          icon: <ExploreIcon height={16} width={16} />,
+          icon: <ExploreIcon />,
           label: t('label.overview'),
           'data-testid': 'overview-tab',
         },
@@ -56,7 +56,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       if (hasSchemaTab(entityType) && !isColumnDetailPanel) {
         items.push({
           key: EntityRightPanelTab.SCHEMA,
-          icon: <SchemaIcon height={16} width={16} />,
+          icon: <SchemaIcon />,
           label: t('label.schema'),
           'data-testid': 'schema-tab',
         });
@@ -65,7 +65,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       if (hasLineageTab(entityType) && !isColumnDetailPanel) {
         items.push({
           key: EntityRightPanelTab.LINEAGE,
-          icon: <PlatformLineageIcon height={16} width={16} />,
+          icon: <PlatformLineageIcon />,
           label: t('label.lineage'),
           'data-testid': 'lineage-tab',
         });
@@ -75,7 +75,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       if (entityType === EntityType.TABLE) {
         items.push({
           key: EntityRightPanelTab.DATA_QUALITY,
-          icon: <DataQualityIcon height={16} width={16} />,
+          icon: <DataQualityIcon />,
           label: t('label.data-quality'),
           'data-testid': 'data-quality-tab',
         });
@@ -85,7 +85,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       if (hasCustomPropertiesTab(entityType)) {
         items.push({
           key: EntityRightPanelTab.CUSTOM_PROPERTIES,
-          icon: <CustomPropertiesIcon height={16} width={16} />,
+          icon: <CustomPropertiesIcon />,
           label: t('label.custom-property'),
           'data-testid': 'custom-properties-tab',
         });

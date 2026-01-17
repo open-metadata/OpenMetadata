@@ -33,7 +33,7 @@
   align-items: center;
   border: 1px solid @grey-15;
   border-radius: 8px;
-  padding-top: -12px;
+
   .ant-menu-vertical .ant-menu-item:not(:last-child) {
     margin-bottom: 0px;
   }
@@ -43,21 +43,21 @@
     width: 100%;
     display: flex;
     flex-direction: column;
+    gap: 20px; // Gap between menu items
 
     .ant-menu-item {
       display: flex;
-      gap: 8px;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       border: none;
       padding: 0;
-      margin-top: 16px !important;
+      height: auto !important; // Override default height
+      line-height: normal !important;
+      margin: 0 !important;
+      gap: 6px; // Gap between icon and text
 
       background: transparent;
-      .ant-menu-item-icon {
-        height: 16px;
-      }
 
       &.ant-menu-item-active:not(.ant-menu-item-selected),
       &:hover:not(.ant-menu-item-selected) {
@@ -65,7 +65,6 @@
         color: @primary-7;
 
         .ant-menu-item-icon {
-          //   background: @primary-1;
           color: @primary-7;
         }
         .ant-menu-title-content {
@@ -76,10 +75,24 @@
       &.ant-menu-item-selected {
         background: transparent;
         color: @primary-7;
-        border-left: 3px solid @primary-7;
-        border-radius: 2px;
+        border-left: none;
+        border-radius: 0;
         &::after {
           display: none;
+        }
+
+        // Add the blue bar indicator
+        position: relative;
+        &::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 50%;
+          transform: translateY(-50%);
+          height: 32px;
+          width: 4px;
+          background-color: @primary-6;
+          border-radius: 0 4px 4px 0;
         }
 
         .ant-menu-item-icon {
@@ -95,33 +108,33 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 16px;
-        height: 16px;
+        font-size: 16px; // Enforce base font size
+        width: 24px; // Container width
+        height: 24px; // Container height
         transition: all 0.2s ease;
         background: transparent;
         color: @grey-700;
-      }
 
-      svg {
-        font-size: 16px;
-      }
+        svg {
+          width: 16px;
+          height: 16px;
+          fill: transparent; // Ensure fill is handled by stroke where needed or overridden
+        }
 
-      svg {
-        fill: transparent !important;
-      }
-
-      svg * {
-        stroke: currentColor !important;
-        fill: transparent !important;
+        // Handle specific SVG structure if needed
+        svg * {
+          stroke: currentColor;
+          stroke-width: 1.2px; // Normalize stroke width
+        }
       }
 
       .ant-menu-title-content {
         display: block;
-        font-size: 11px;
+        font-size: 11px; // Slightly larger for readability
         font-weight: 400;
         text-align: center;
-        line-height: 100%;
-        width: 54px;
+        line-height: 1.2;
+        width: 54px; // Slightly wider to prevent aggressive wrapping
         word-break: break-word;
         white-space: normal;
         margin: 0 auto;
