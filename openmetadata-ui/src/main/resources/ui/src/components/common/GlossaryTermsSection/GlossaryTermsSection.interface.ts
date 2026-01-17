@@ -19,6 +19,6 @@ export interface GlossaryTermsSectionProps {
   hasPermission?: boolean;
   entityId?: string;
   onGlossaryTermsUpdate?: (updatedTags: TagLabel[]) => void;
-  entityType?: EntityType;
+  entityType: EntityType;
   maxVisibleGlossaryTerms?: number;
 }

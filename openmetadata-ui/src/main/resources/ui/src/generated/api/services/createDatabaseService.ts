@@ -134,6 +134,8 @@ export interface DatabaseConnection {
  *
  * Doris Database Connection Config
  *
+ * StarRocks Database Connection Config
+ *
  * UnityCatalog Connection Config
  *
  * SAS Connection Config
@@ -155,6 +157,9 @@ export interface DatabaseConnection {
  * Epic FHIR Connection Config
  *
  * ServiceNow Connection Config
+ *
+ * Dremio Connection Config supporting both Dremio Cloud (SaaS) and Dremio Software
+ * (self-hosted)
  */
 export interface ConfigObject {
     /**
@@ -176,6 +181,9 @@ export interface ConfigObject {
     credentials?: GCPCredentials;
     /**
      * Regex to only include/exclude databases that matches the pattern.
+     *
+     * Regex to only include/exclude namespaces (sources/spaces) that match the pattern. In
+     * Dremio Cloud, namespaces are mapped as databases.
      */
     databaseFilterPattern?: FilterPattern;
     /**
@@ -229,6 +237,8 @@ export interface ConfigObject {
      *
      * Host and port of the Doris service.
      *
+     * Host and port of the StarRocks service.
+     *
      * Host and port of the Teradata service.
      *
      * Host and Port of the SAP ERP instance.
@@ -248,7 +258,13 @@ export interface ConfigObject {
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      *
+     * Regex to only include/exclude schemas that matches the pattern. System schemas
+     * (information_schema, _statistics_, sys) are excluded by default.
+     *
      * Regex to include/exclude FHIR resource categories
+     *
+     * Regex to only include/exclude folders that match the pattern. In Dremio Cloud, folders
+     * are mapped as schemas.
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -279,6 +295,8 @@ export interface ConfigObject {
      * Regex to only include/exclude tables that matches the pattern.
      *
      * Regex to include/exclude FHIR resource types
+     *
+     * Regex to only include/exclude tables that match the pattern.
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -345,6 +363,9 @@ export interface ConfigObject {
      *
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
+     *
+     * Optional: Restrict metadata ingestion to a specific namespace (source/space). When left
+     * blank, all namespaces will be ingested.
      */
     database?: string;
     /**
@@ -416,6 +437,8 @@ export interface ConfigObject {
      * Password to connect to Couchbase.
      *
      * Password to connect to Doris.
+     *
+     * Password to connect to StarRocks.
      *
      * Password to connect to SAS Viya
      *
@@ -507,6 +530,9 @@ export interface ConfigObject {
      * Username to connect to Doris. This user should have privileges to read all the metadata
      * in Doris.
      *
+     * Username to connect to StarRocks. This user should have privileges to read all the
+     * metadata in StarRocks.
+     *
      * Username to connect to SAS Viya.
      *
      * Username to connect to Teradata. This user should have privileges to read all the
@@ -560,6 +586,8 @@ export interface ConfigObject {
      * Choose between different authentication types for Databricks.
      *
      * Choose Auth Config Type.
+     *
+     * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
      */
     authType?: AuthenticationType | NoConfigAuthenticationTypes;
     /**
@@ -597,7 +625,18 @@ export interface ConfigObject {
     /**
      * License file name to connect to DB2.
      */
-    licenseFileName?:               string;
+    licenseFileName?: string;
+    /**
+     * SSL Configuration details for DB2 connection. Provide CA certificate for server
+     * validation, and optionally client certificate and key for mutual TLS authentication.
+     *
+     * SSL Configuration details.
+     *
+     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+     * client certificate, and private key for mutual TLS authentication.
+     */
+    sslConfig?:                     Config;
+    sslMode?:                       SSLMode;
     supportsViewLineageExtraction?: boolean;
     /**
      * Available sources to fetch the metadata.
@@ -623,13 +662,6 @@ export interface ConfigObject {
      * Hive Metastore Connection Details
      */
     metastoreConnection?: HiveMetastoreConnectionDetails;
-    /**
-     * SSL Configuration details.
-     *
-     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
-     * client certificate, and private key for mutual TLS authentication.
-     */
-    sslConfig?: Config;
     /**
      * Enable SSL connection to Hive server. When enabled, SSL transport will be used for secure
      * communication.
@@ -675,7 +707,13 @@ export interface ConfigObject {
      * Custom OpenMetadata Classification name for TimescaleDB policy tags.
      */
     classificationName?: string;
-    sslMode?:            SSLMode;
+    /**
+     * Fully qualified name of the view or table to use for query logs. If not provided,
+     * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
+     * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
+     * restricted.
+     */
+    queryStatementSource?: string;
     /**
      * Protocol ( Connection Argument ) to connect to Presto.
      */
@@ -967,6 +1005,14 @@ export enum AuthMechanismEnum {
  * Azure Database Connection Config
  *
  * Configuration for connecting to DataStax Astra DB in the cloud.
+ *
+ * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
+ *
+ * Authentication configuration for Dremio Cloud using Personal Access Token (PAT). Dremio
+ * Cloud is a fully managed SaaS platform.
+ *
+ * Authentication configuration for self-hosted Dremio Software using username and password.
+ * Dremio Software is deployed on-premises or in your own cloud infrastructure.
  */
 export interface AuthenticationType {
     /**
@@ -998,6 +1044,8 @@ export interface AuthenticationType {
     azureTenantId?: string;
     /**
      * Password to connect to source.
+     *
+     * Password for the Dremio Software user account.
      */
     password?:    string;
     awsConfig?:   AWSCredentials;
@@ -1010,6 +1058,31 @@ export interface AuthenticationType {
      * Configuration for connecting to DataStax Astra DB in the cloud.
      */
     cloudConfig?: DataStaxAstraDBConfiguration;
+    /**
+     * Personal Access Token for authenticating with Dremio Cloud. Generate this token from your
+     * Dremio Cloud account settings under Settings -> Personal Access Tokens.
+     */
+    personalAccessToken?: string;
+    /**
+     * Dremio Cloud Project ID (required). This unique identifier can be found in your Dremio
+     * Cloud project URL or project settings.
+     */
+    projectId?: string;
+    /**
+     * Dremio Cloud region where your organization is hosted. Choose 'US' for United States
+     * region or 'EU' for European region.
+     */
+    region?: CloudRegion;
+    /**
+     * URL to your self-hosted Dremio Software instance, including protocol and port (e.g.,
+     * http://localhost:9047 or https://dremio.example.com:9047).
+     */
+    hostPort?: string;
+    /**
+     * Username for authenticating with Dremio Software. This user should have appropriate
+     * permissions to access metadata.
+     */
+    username?: string;
 }
 
 /**
@@ -1110,6 +1183,15 @@ export interface DataStaxAstraDBConfiguration {
      */
     token?: string;
     [property: string]: any;
+}
+
+/**
+ * Dremio Cloud region where your organization is hosted. Choose 'US' for United States
+ * region or 'EU' for European region.
+ */
+export enum CloudRegion {
+    Eu = "EU",
+    Us = "US",
 }
 
 /**
@@ -1683,9 +1765,20 @@ export interface GCPCredentials {
  *
  * Regex to only include/exclude tables that matches the pattern.
  *
+ * Regex to only include/exclude schemas that matches the pattern. System schemas
+ * (information_schema, _statistics_, sys) are excluded by default.
+ *
  * Regex to include/exclude FHIR resource categories
  *
  * Regex to include/exclude FHIR resource types
+ *
+ * Regex to only include/exclude namespaces (sources/spaces) that match the pattern. In
+ * Dremio Cloud, namespaces are mapped as databases.
+ *
+ * Regex to only include/exclude folders that match the pattern. In Dremio Cloud, folders
+ * are mapped as schemas.
+ *
+ * Regex to only include/exclude tables that match the pattern.
  */
 export interface FilterPattern {
     /**
@@ -1758,7 +1851,14 @@ export interface HiveMetastoreConnectionDetails {
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
      */
-    ingestAllDatabases?:      boolean;
+    ingestAllDatabases?: boolean;
+    /**
+     * Fully qualified name of the view or table to use for query logs. If not provided,
+     * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
+     * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
+     * restricted.
+     */
+    queryStatementSource?:    string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -1920,6 +2020,9 @@ export enum HiveMetastoreConnectionDetailsScheme {
 }
 
 /**
+ * SSL Configuration details for DB2 connection. Provide CA certificate for server
+ * validation, and optionally client certificate and key for mutual TLS authentication.
+ *
  * Client SSL configuration
  *
  * SSL Configuration details.
@@ -2079,6 +2182,7 @@ export enum ConfigType {
     DeltaLake = "DeltaLake",
     DomoDatabase = "DomoDatabase",
     Doris = "Doris",
+    Dremio = "Dremio",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
     Epic = "Epic",
@@ -2106,6 +2210,7 @@ export enum ConfigType {
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
     Ssas = "SSAS",
+    StarRocks = "StarRocks",
     Synapse = "Synapse",
     Teradata = "Teradata",
     Timescale = "Timescale",
@@ -2202,6 +2307,7 @@ export enum DatabaseServiceType {
     DeltaLake = "DeltaLake",
     DomoDatabase = "DomoDatabase",
     Doris = "Doris",
+    Dremio = "Dremio",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
     Epic = "Epic",
@@ -2230,6 +2336,7 @@ export enum DatabaseServiceType {
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
     Ssas = "SSAS",
+    StarRocks = "StarRocks",
     Synapse = "Synapse",
     Teradata = "Teradata",
     Timescale = "Timescale",

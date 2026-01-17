@@ -13,6 +13,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { DomainSelectableListProps } from '../DomainSelectableList/DomainSelectableList.interface';
 import DomainsSection from './DomainsSection';
 
@@ -120,6 +121,11 @@ jest.mock('../../../utils/EntityUtils', () => ({
     .mockImplementation((entity) => entity.displayName || entity.name),
 }));
 
+// Mock useEntityRules hook
+jest.mock('../../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn(),
+}));
+
 const validUUID = '123e4567-e89b-12d3-a456-426614174000';
 const defaultProps = {
   entityType: EntityType.TABLE,
@@ -133,6 +139,15 @@ const defaultProps = {
 describe('DomainsSection', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Set default entity rules
+    (useEntityRules as jest.Mock).mockReturnValue({
+      entityRules: {
+        canAddMultipleDomains: true,
+        maxDomains: Infinity,
+      },
+      rules: [],
+      isLoading: false,
+    });
   });
 
   describe('Rendering', () => {

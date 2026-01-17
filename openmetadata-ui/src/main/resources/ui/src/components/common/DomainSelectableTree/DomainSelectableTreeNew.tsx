@@ -68,6 +68,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
   initialDomains,
   dropdownRef,
   handleDropdownChange,
+  isClearable = true,
   open,
 }) => {
   const theme = useTheme();
@@ -402,6 +403,10 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
 
   const onSelect = (selectedKeys: React.Key[]) => {
     if (!isMultiple) {
+      if (selectedKeys.length === 0 && !isClearable) {
+        return;
+      }
+
       const selectedData = [];
       for (const item of selectedKeys) {
         const domain = domainMapper[item as string];
