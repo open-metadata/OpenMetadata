@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.security.Principal;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -186,6 +187,57 @@ public final class SecurityUtil {
     }
 
     return new ArrayList<>();
+  }
+
+  /**
+   * Extracts team names from multiple JWT claims.
+   * Supports extracting teams from multiple claim sources (e.g., groups, department, division).
+   * All claim values are combined into a single list.
+   *
+   * @param jwtTeamClaimMappings List of JWT claim names to extract team information from
+   * @param claims JWT claims map
+   * @return Combined list of team names from all specified claims
+   */
+  public static List<String> findTeamsFromMultipleClaims(
+      List<String> jwtTeamClaimMappings, Map<String, ?> claims) {
+    List<String> allTeams = new ArrayList<>();
+    
+    if (nullOrEmpty(jwtTeamClaimMappings) || claims == null) {
+      return allTeams;
+    }
+
+    for (String claimMapping : jwtTeamClaimMappings) {
+      if (!nullOrEmpty(claimMapping) && claims.containsKey(claimMapping)) {
+        List<String> teamsFromClaim = getClaimAsList(claims.get(claimMapping));
+        allTeams.addAll(teamsFromClaim);
+        LOG.debug("Extracted {} team(s) from claim '{}'", teamsFromClaim.size(), claimMapping);
+      }
+    }
+    
+    LOG.debug("Total teams extracted from {} claim mapping(s): {}", 
+              jwtTeamClaimMappings.size(), allTeams.size());
+    return allTeams;
+  }
+
+  /** Finds user profile attributes from JWT/SAML claims based on configured mappings. */
+  public static Map<String, String> findUserAttributesFromClaims(
+      Map<String, String> attributeMappings, Map<String, ?> claims) {
+    Map<String, String> attributes = new HashMap<>();
+    if (nullOrEmpty(attributeMappings) || claims == null) {
+      return attributes;
+    }
+    for (Map.Entry<String, String> mapping : attributeMappings.entrySet()) {
+      String attrName = mapping.getKey();
+      String claimName = mapping.getValue();
+      if (claims.containsKey(claimName)) {
+        String value = getClaimOrObject(claims.get(claimName));
+        if (!nullOrEmpty(value)) {
+          attributes.put(attrName, value);
+          LOG.debug("Extracted user attribute '{}' from claim '{}'", attrName, claimName);
+        }
+      }
+    }
+    return attributes;
   }
 
   @SuppressWarnings("unchecked")

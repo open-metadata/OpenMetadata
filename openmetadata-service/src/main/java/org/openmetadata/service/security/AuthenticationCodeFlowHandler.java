@@ -6,6 +6,8 @@ import static org.openmetadata.service.security.JwtFilter.EMAIL_CLAIM_KEY;
 import static org.openmetadata.service.security.JwtFilter.USERNAME_CLAIM_KEY;
 import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findTeamsFromClaims;
+import static org.openmetadata.service.security.SecurityUtil.findTeamsFromMultipleClaims;
+import static org.openmetadata.service.security.SecurityUtil.findUserAttributesFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
@@ -145,7 +147,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private OidcClient client;
   private List<String> claimsOrder;
   private Map<String, String> claimsMapping;
-  private String teamClaimMapping;
+  private List<String> teamClaimMappings;
+  private Map<String, String> userAttributeMappings;
   private String serverUrl;
   private ClientAuthentication clientAuthentication;
   private String principalDomain;
@@ -212,7 +215,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
             .map(s -> s.split(":"))
             .collect(Collectors.toMap(s -> s[0], s -> s[1]));
     validatePrincipalClaimsMapping(claimsMapping);
-    this.teamClaimMapping = authenticationConfiguration.getJwtTeamClaimMapping();
+    this.teamClaimMappings = normalizeTeamClaimMappings(authenticationConfiguration.getJwtTeamClaimMapping());
+    this.userAttributeMappings = normalizeUserAttributeMappings(authenticationConfiguration.getJwtUserAttributeMappings());
     this.principalDomain = authorizerConfiguration.getPrincipalDomain();
     this.tokenValidity = authenticationConfiguration.getOidcConfiguration().getTokenValidity();
     this.maxAge = authenticationConfiguration.getOidcConfiguration().getMaxAge();
@@ -770,13 +774,12 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   }
 
   private User getOrCreateOidcUser(String userName, String email, Map<String, Object> claims) {
-    // Extract teams from claims if configured (supports array claims like groups)
-    List<String> teamsFromClaim = findTeamsFromClaims(teamClaimMapping, claims);
+    List<String> teamsFromClaim = findTeamsFromMultipleClaims(teamClaimMappings, claims);
+    Map<String, String> userAttributes = findUserAttributesFromClaims(userAttributeMappings, claims);
 
     try {
-      // Fetch user with teams relationship loaded to preserve existing team memberships
       User user =
-          Entity.getEntityByName(Entity.USER, userName, "id,roles,teams", Include.NON_DELETED);
+          Entity.getEntityByName(Entity.USER, userName, "id,roles,teams,profile", Include.NON_DELETED);
 
       boolean shouldBeAdmin = getAdminPrincipals().contains(userName);
       boolean needsUpdate = false;
@@ -795,9 +798,9 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         needsUpdate = true;
       }
 
-      // Assign teams from claims if provided (this only adds, doesn't remove existing teams)
       boolean teamsAssigned = UserUtil.assignTeamsFromClaim(user, teamsFromClaim);
-      needsUpdate = needsUpdate || teamsAssigned;
+      boolean attrsApplied = UserUtil.applyUserAttributesFromClaims(user, userAttributes, false);
+      needsUpdate = needsUpdate || teamsAssigned || attrsApplied;
 
       if (needsUpdate) {
         UserUtil.addOrUpdateUser(user);
@@ -817,8 +820,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       User newUser =
           UserUtil.user(userName, domain, userName).withIsAdmin(isAdmin).withIsEmailVerified(true);
 
-      // Assign teams from claims if provided
       UserUtil.assignTeamsFromClaim(newUser, teamsFromClaim);
+      UserUtil.applyUserAttributesFromClaims(newUser, userAttributes, true);
 
       return UserUtil.addOrUpdateUser(newUser);
     }
@@ -1087,6 +1090,55 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     }
     LOG.debug("Token response successful");
     return (OIDCTokenResponse) response;
+  }
+
+  /**
+   * Normalizes team claim mapping configuration to a list format.
+   * Supports backward compatibility with single string or new array format.
+   *
+   * @param teamClaimMapping Single string or Object (can be List or String from JSON)
+   * @return List of team claim mapping strings
+   */
+  private static List<String> normalizeTeamClaimMappings(Object teamClaimMapping) {
+    if (teamClaimMapping == null) {
+      return new ArrayList<>();
+    }
+
+    // Handle if it's already a List (from new array format)
+    if (teamClaimMapping instanceof List<?> list) {
+      return list.stream()
+          .filter(item -> item instanceof String)
+          .map(String.class::cast)
+          .filter(s -> !nullOrEmpty(s))
+          .collect(Collectors.toList());
+    }
+
+    // Handle single string (legacy format)
+    if (teamClaimMapping instanceof String str && !nullOrEmpty(str)) {
+      return List.of(str);
+    }
+
+    LOG.warn("Unexpected type for jwtTeamClaimMapping: {}", teamClaimMapping.getClass().getName());
+    return new ArrayList<>();
+  }
+
+  /** Converts JwtUserAttributeMappings object to a Map for attribute extraction. */
+  @SuppressWarnings("unchecked")
+  private static Map<String, String> normalizeUserAttributeMappings(Object mappings) {
+    Map<String, String> result = new HashMap<>();
+    if (mappings == null) {
+      return result;
+    }
+    if (mappings instanceof Map<?, ?> map) {
+      for (Map.Entry<?, ?> entry : map.entrySet()) {
+        if (entry.getKey() instanceof String key && entry.getValue() instanceof String value) {
+          if (!nullOrEmpty(value)) {
+            result.put(key, value);
+          }
+        }
+      }
+    }
+    return result;
   }
 
   public static void validateConfig(

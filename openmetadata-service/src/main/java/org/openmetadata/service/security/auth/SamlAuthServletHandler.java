@@ -14,10 +14,13 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.felix.http.javaxwrappers.HttpServletRequestWrapper;
 import org.apache.felix.http.javaxwrappers.HttpServletResponseWrapper;
@@ -143,25 +146,37 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
 
       // Extract team/group attributes from SAML response (supports multi-valued attributes)
       List<String> teamsFromClaim = new ArrayList<>();
-      String teamClaimMapping = authConfig.getJwtTeamClaimMapping();
-      if (!nullOrEmpty(teamClaimMapping)) {
-        try {
-          Collection<String> attributeValues = auth.getAttribute(teamClaimMapping);
-          if (attributeValues != null && !attributeValues.isEmpty()) {
-            teamsFromClaim.addAll(attributeValues);
+      Object teamClaimMapping = authConfig.getJwtTeamClaimMapping();
+      List<String> teamClaimMappings = normalizeTeamClaimMappings(teamClaimMapping);
+      
+      if (!teamClaimMappings.isEmpty()) {
+        for (String claimMapping : teamClaimMappings) {
+          try {
+            Collection<String> attributeValues = auth.getAttribute(claimMapping);
+            if (attributeValues != null && !attributeValues.isEmpty()) {
+              teamsFromClaim.addAll(attributeValues);
+              LOG.debug(
+                  "[SAML] Found team attribute '{}' with {} value(s)",
+                  claimMapping,
+                  attributeValues.size());
+            }
+          } catch (Exception e) {
             LOG.debug(
-                "[SAML] Found team attribute '{}' with values '{}'",
-                teamClaimMapping,
-                teamsFromClaim);
+                "[SAML] Could not extract team attribute '{}': {}", claimMapping, e.getMessage());
           }
-        } catch (Exception e) {
-          LOG.debug(
-              "[SAML] Could not extract team attribute '{}': {}", teamClaimMapping, e.getMessage());
         }
+        LOG.debug(
+            "[SAML] Total teams extracted from {} attribute(s): {}",
+            teamClaimMappings.size(),
+            teamsFromClaim.size());
       }
 
+      // Extract user attributes from SAML response
+      Map<String, String> userAttributes =
+          extractUserAttributesFromSaml(auth, authConfig.getJwtUserAttributeMappings());
+
       // Get or create user
-      User user = getOrCreateUser(username, email, teamsFromClaim);
+      User user = getOrCreateUser(username, email, teamsFromClaim, userAttributes);
 
       // Generate JWT tokens
       JWTAuthMechanism jwtAuthMechanism =
@@ -310,12 +325,13 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
     }
   }
 
-  private User getOrCreateUser(String username, String email, List<String> teamsFromClaim) {
+  private User getOrCreateUser(
+      String username, String email, List<String> teamsFromClaim, Map<String, String> userAttributes) {
     try {
-      // Fetch user with teams relationship loaded to preserve existing team memberships
+      // Fetch user with teams and profile relationships loaded
       User existingUser =
           Entity.getEntityByName(
-              Entity.USER, username, "id,roles,teams,isAdmin,email", Include.NON_DELETED);
+              Entity.USER, username, "id,roles,teams,profile,isAdmin,email", Include.NON_DELETED);
 
       boolean shouldBeAdmin = getAdminPrincipals().contains(username);
       boolean needsUpdate = false;
@@ -338,6 +354,10 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       boolean teamsAssigned = UserUtil.assignTeamsFromClaim(existingUser, teamsFromClaim);
       needsUpdate = needsUpdate || teamsAssigned;
 
+      // Apply user attributes from claims (only updates null/empty fields)
+      boolean attributesApplied = UserUtil.applyUserAttributesFromClaims(existingUser, userAttributes, false);
+      needsUpdate = needsUpdate || attributesApplied;
+
       if (needsUpdate) {
         return UserUtil.addOrUpdateUser(existingUser);
       }
@@ -357,6 +377,9 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
         // Assign teams from claims if provided
         UserUtil.assignTeamsFromClaim(newUser, teamsFromClaim);
 
+        // Apply user attributes from claims
+        UserUtil.applyUserAttributesFromClaims(newUser, userAttributes, true);
+
         return UserUtil.addOrUpdateUser(newUser);
       }
       throw new AuthenticationException("User not found and self-signup is disabled");
@@ -366,6 +389,70 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
   private Set<String> getAdminPrincipals() {
     AuthorizerConfiguration authorizerConfig = SecurityConfigurationManager.getCurrentAuthzConfig();
     return new HashSet<>(authorizerConfig.getAdminPrincipals());
+  }
+
+  /** Extracts user attributes from SAML assertion based on configured mappings. */
+  private static Map<String, String> extractUserAttributesFromSaml(
+      Auth auth, Object attributeMappings) {
+    Map<String, String> result = new HashMap<>();
+    if (attributeMappings == null) {
+      return result;
+    }
+    if (!(attributeMappings instanceof Map<?, ?> mappings)) {
+      return result;
+    }
+
+    for (Map.Entry<?, ?> entry : mappings.entrySet()) {
+      if (!(entry.getKey() instanceof String key) || !(entry.getValue() instanceof String claimName)) {
+        continue;
+      }
+      if (nullOrEmpty(claimName)) {
+        continue;
+      }
+      try {
+        Collection<String> values = auth.getAttribute(claimName);
+        if (values != null && !values.isEmpty()) {
+          String value = values.iterator().next();
+          if (!nullOrEmpty(value)) {
+            result.put(key, value);
+            LOG.debug("[SAML] Extracted user attribute '{}' from claim '{}'", key, claimName);
+          }
+        }
+      } catch (Exception e) {
+        LOG.debug("[SAML] Could not extract attribute '{}': {}", claimName, e.getMessage());
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Normalizes team claim mapping configuration to a list format.
+   * Supports backward compatibility with single string or new array format.
+   *
+   * @param teamClaimMapping Single string or Object (can be List or String from JSON)
+   * @return List of team claim mapping strings
+   */
+  private static List<String> normalizeTeamClaimMappings(Object teamClaimMapping) {
+    if (teamClaimMapping == null) {
+      return new ArrayList<>();
+    }
+
+    // Handle if it's already a List (from new array format)
+    if (teamClaimMapping instanceof List<?> list) {
+      return list.stream()
+          .filter(item -> item instanceof String)
+          .map(String.class::cast)
+          .filter(s -> !nullOrEmpty(s))
+          .collect(Collectors.toList());
+    }
+
+    // Handle single string (legacy format)
+    if (teamClaimMapping instanceof String str && !nullOrEmpty(str)) {
+      return List.of(str);
+    }
+
+    LOG.warn("Unexpected type for jwtTeamClaimMapping: {}", teamClaimMapping.getClass().getName());
+    return new ArrayList<>();
   }
 
   private void sendError(HttpServletResponse resp, int status, String message) {
