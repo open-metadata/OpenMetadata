@@ -2063,6 +2063,7 @@
     "auto-pilot-no-agents-message": "AutoPilot एजंट्स उपस्थित नाहीत.",
     "availability-time-contract-description": "दिवस का तोिप वेळ ज्यापर्यंत डेटा उपलब्ध असण्याची अपेक्षा आहे",
     "bot-email-confirmation": "{{botName}} बॉटसाठी {{email}}",
+    "bulk-edit-entity-help": "CSV वापरून एकाच वेळी अनेक {{entity}} संपादित करा",
     "can-not-add-widget": "आकार निर्बंधांमुळे या विभागात विजेट जोडता येत नाही.",
     "can-you-add-a-description": "तुम्ही वर्णन जोडू शकता का?",
     "checkout-service-connectors-doc": "तुमच्या सेवांमधून डेटा अनुक्रमित करण्यासाठी येथे बरेच कनेक्टर्स उपलब्ध आहेत. कृपया आमचे कनेक्टर्स तपासा.",
