@@ -1574,7 +1574,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           `Update ${titleText} Custom Property in Right Panel`,
           async () => {
             test.slow();
-            for (const type of properties) {
+            for (const [index, type] of properties.entries()) {
               await updateCustomPropertyInRightPanel({
                 page,
                 entityName:
@@ -1583,6 +1583,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
                 propertyDetails: entity.customPropertyValue[type].property,
                 value: entity.customPropertyValue[type].value,
                 endpoint: entity.endpoint,
+                skipNavigation: index > 0,
               });
             }
           }

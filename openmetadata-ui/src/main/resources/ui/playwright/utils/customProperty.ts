@@ -1048,7 +1048,7 @@ export const validateColumnCustomProperty = async (
       'Markdown'
     );
   } else if (propertyType === 'Sql Query') {
-    await expect(card.locator('.CodeMirror-scroll')).toContainText(testValue);
+    await expect(card.getByTestId('value')).toContainText(testValue);
   } else if (propertyType === 'Time Interval') {
     const [start, end] = testValue.split(',');
     await expect(card.getByTestId('value')).toContainText(start);
@@ -1164,15 +1164,19 @@ export const updateCustomPropertyInRightPanel = async (data: {
   propertyDetails: CustomProperty;
   value: string;
   endpoint: EntityTypeEndpoint;
+  skipNavigation?: boolean;
 }) => {
-  const { page, entityName, propertyDetails, value, endpoint } = data;
+  const { page, entityName, propertyDetails, value, endpoint, skipNavigation } =
+    data;
   const propertyName = propertyDetails.name;
   const propertyType = propertyDetails.propertyType.name;
 
-  await navigateToExploreAndSelectTable(page, entityName);
-  await waitForAllLoadersToDisappear(page);
-  await navigateToEntityPanelTab(page, 'custom property');
-  await waitForAllLoadersToDisappear(page);
+  if (!skipNavigation) {
+    await navigateToExploreAndSelectTable(page, entityName);
+    await waitForAllLoadersToDisappear(page);
+    await navigateToEntityPanelTab(page, 'custom property');
+    await waitForAllLoadersToDisappear(page);
+  }
 
   const searchContainer = page.getByTestId('search-bar-container');
   if (await searchContainer.isVisible()) {
@@ -1387,13 +1391,11 @@ export const updateCustomPropertyInRightPanel = async (data: {
 
     for (const val of refValues) {
       const links = await container.locator('a').all();
-      let isMatchFound = false;
 
       for (const link of links) {
         const href = await link.getAttribute('href');
         if (href && href.toLowerCase().includes(val.trim().toLowerCase())) {
           await expect(link).toBeVisible();
-          isMatchFound = true;
           break;
         }
       }

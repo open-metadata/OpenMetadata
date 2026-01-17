@@ -403,8 +403,9 @@ export default function EntitySummaryPanel({
       if (onEntityUpdate) {
         onEntityUpdate(updatedData);
       } else {
-        const jsonPatch = compare(entityDetails.details, {
-          ...entityDetails.details,
+        const baseData = entityData ?? entityDetails.details;
+        const jsonPatch = compare(baseData, {
+          ...baseData,
           ...updatedData,
         });
 
@@ -435,6 +436,7 @@ export default function EntitySummaryPanel({
       id,
       entityUpdateMap,
       fetchEntityData,
+      entityData,
     ]
   );
 

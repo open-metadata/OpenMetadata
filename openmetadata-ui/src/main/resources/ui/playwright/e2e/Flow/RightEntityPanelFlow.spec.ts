@@ -1483,7 +1483,9 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     );
 
     // Verify search bar is present
-    const searchBar = tabContent.locator('.searchbar-container input');
+    const searchBar = adminPage
+      .locator('[data-testid="search-bar-container"]')
+      .getByTestId('searchbar');
 
     await expect(searchBar).toBeVisible();
 
