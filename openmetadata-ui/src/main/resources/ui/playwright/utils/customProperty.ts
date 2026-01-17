@@ -1021,6 +1021,11 @@ export const editColumnCustomProperty = async (
         response.status() === 200
     );
     await page.getByTestId(testValue).click();
+    
+    // Verify selection is applied before saving
+    // The selection usually appears as a tag or text in the container
+    await expect(page.getByTestId('asset-select-list')).toContainText(testValue);
+
     await page
       .locator('.custom-properties-section-container')
       .getByTestId('inline-save-btn')
