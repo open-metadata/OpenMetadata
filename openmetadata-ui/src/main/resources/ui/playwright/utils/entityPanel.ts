@@ -12,6 +12,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { redirectToExplorePage } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 
 export const openEntitySummaryPanel = async (
   page: Page,
@@ -479,9 +480,14 @@ export async function navigateToExploreAndSelectTable(
   const permissionsResponsePromise = page.waitForResponse((response) =>
     response.url().includes('/permissions')
   );
+  const entityDetailsResponse = page.waitForResponse("/api/v1/tables/name/*?*")
 
   await openEntitySummaryPanel(page, entityName);
 
   const permissionsResponse = await permissionsResponsePromise;
+  const entityDetailsResponseResolved = await entityDetailsResponse;
   expect(permissionsResponse.status()).toBe(200);
+  expect(entityDetailsResponseResolved.status()).toBe(200);
+
+  await waitForAllLoadersToDisappear(page);
 }
