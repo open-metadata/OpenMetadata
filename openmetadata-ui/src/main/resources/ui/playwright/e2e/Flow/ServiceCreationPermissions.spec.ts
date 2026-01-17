@@ -176,6 +176,20 @@ test.describe('Service Creation with isOwner() Permissions', () => {
 
     await afterAction();
   });
+  // Needed proper cleanup, using multiple workers tests might act flaky
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    await adminOwnedService.delete(apiContext);
+    await serviceOwnerRole.delete(apiContext);
+    await serviceOwnerPolicy.delete(apiContext);
+    await serviceViewerRole.delete(apiContext);
+    await serviceViewerPolicy.delete(apiContext);
+    await serviceOwnerUser.delete(apiContext);
+    await anotherUser.delete(apiContext);
+
+    await afterAction();
+  });
 
   test('User with service creation permission can create a new database service', async ({
     serviceOwnerPage: page,
@@ -286,6 +300,11 @@ test.describe('Service Creation with isOwner() Permissions', () => {
     await page.getByTestId('submit-btn').click();
     await page.getByTestId('submit-btn').click();
     await saveResponse;
+
+    const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
+      await performAdminLogin(browser);
+    await userOwnedService.delete(cleanupContext);
+    await cleanupAfterAction();
   });
 
   test('Different user can view but cannot modify service owned by another user', async ({
@@ -346,6 +365,11 @@ test.describe('Service Creation with isOwner() Permissions', () => {
     ).toBeVisible();
     await expect(otherPage.getByTestId('rename-button')).not.toBeVisible();
     await expect(otherPage.getByTestId('delete-button')).not.toBeVisible();
+
+    const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
+      await performAdminLogin(browser);
+    await userOwnedService.delete(cleanupContext);
+    await cleanupAfterAction();
   });
 
   test('Owner can delete their own service', async ({
@@ -441,5 +465,10 @@ test.describe('Service Creation with isOwner() Permissions', () => {
     );
 
     await updateDescription(page, 'Updated service description');
+
+    const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
+      await performAdminLogin(browser);
+    await serviceToUpdate.delete(cleanupContext);
+    await cleanupAfterAction();
   });
 });
