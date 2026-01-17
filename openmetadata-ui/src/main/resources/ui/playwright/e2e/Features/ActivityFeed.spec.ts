@@ -606,27 +606,20 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
   test.beforeAll('Create database, schema, and user with Chinese name', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
+    await adminUser.create(apiContext);
     await database.create(apiContext);
 
-    // Add description to generate activity
-    await apiContext.patch(
-      `/api/v1/databaseSchemas/${database.schemaResponseData.id}`,
-      {
-        data: [
-          {
-            op: 'add',
-            path: '/description',
-            value: 'Generating activity for the feed',
-          },
-        ],
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
-    );
+    // Create a conversation thread to ensure feed is not empty
+    await apiContext.post('/api/v1/feed', {
+      data: {
+        message: 'Test conversation',
+        from: adminUser.responseData.name,
+        about: `<#E::databaseSchema::${database.schemaResponseData.fullyQualifiedName}>`,
+        type: 'Conversation',
+      },
+    });
 
     await apiEndpoint.create(apiContext);
-    await adminUser.create(apiContext);
     schemaFqn = database.schemaResponseData.fullyQualifiedName;
     const user = new UserClass({
       firstName: userName,
