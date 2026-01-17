@@ -692,6 +692,7 @@ export const addCustomPropertiesForEntity = async ({
       await page.click('#root\\/entityReferenceConfig');
       await page.keyboard.type(val);
       await page.click(`[title="${val}"]`);
+      await expect(page.locator('#root\\/entityReferenceConfig_list')).not.toBeVisible();
       await page
         .getByTestId('form-item-label')
         .filter({ hasText: 'Entity Reference Types' })
