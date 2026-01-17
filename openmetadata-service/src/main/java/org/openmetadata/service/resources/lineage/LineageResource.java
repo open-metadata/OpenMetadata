@@ -663,7 +663,18 @@ public class LineageResource {
       @Parameter(description = "Source Fields to Include", schema = @Schema(type = "string"))
           @QueryParam("fields")
           @DefaultValue("*")
-          String includeSourceFields)
+          String includeSourceFields,
+      @Parameter(
+              description =
+                  "Column-level lineage filter. Supports filtering by column names, tags, or glossary terms (e.g., 'columnName:customer_id', 'tag:PII', 'glossary:BusinessTerm')")
+          @QueryParam("columnFilter")
+          String columnFilter,
+      @Parameter(
+              description =
+                  "When true, preserves all nodes in the path to filtered results. When false, only returns nodes matching the filter. Default is false.")
+          @QueryParam("preservePaths")
+          @DefaultValue("false")
+          Boolean preservePaths)
       throws IOException {
     if (nullOrEmpty(direction)) {
       throw new IllegalArgumentException("Lineage Direction is required.");
@@ -680,7 +691,9 @@ public class LineageResource {
                 .withQueryFilter(queryFilter)
                 .withIncludeDeleted(deleted)
                 .withIsConnectedVia(isConnectedVia(entityType))
-                .withIncludeSourceFields(getRequiredLineageFields(includeSourceFields)));
+                .withIncludeSourceFields(getRequiredLineageFields(includeSourceFields))
+                .withColumnFilter(columnFilter)
+                .withPreservePaths(preservePaths));
   }
 
   @PUT

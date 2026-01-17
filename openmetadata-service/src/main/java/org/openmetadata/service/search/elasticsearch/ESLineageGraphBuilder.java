@@ -675,11 +675,12 @@ public class ESLineageGraphBuilder
 
   public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
       throws IOException {
-    // Check for column filtering requirements
+    boolean needsPathPreservation =
+        Boolean.TRUE.equals(request.getPreservePaths())
+            || hasNodeLevelFilters(request.getQueryFilter());
     boolean hasColumnFilter = !nullOrEmpty(request.getColumnFilter());
 
-    // Check cache if no column filtering needed
-    if (!hasColumnFilter) {
+    if (!needsPathPreservation && !hasColumnFilter) {
       java.util.Optional<SearchLineageResult> cached = checkEntityCountCache(request);
       if (cached.isPresent()) {
         LOG.debug(
@@ -690,16 +691,24 @@ public class ESLineageGraphBuilder
       }
     }
 
-    // Execute standard entity count query
-    SearchLineageResult result = searchLineageByEntityCountInternal(request);
+    SearchLineageResult result;
 
-    // Apply column filters if needed
+    if (needsPathPreservation) {
+      EntityCountLineageRequest unfilteredRequest =
+          JsonUtils.deepCopy(request, EntityCountLineageRequest.class)
+              .withQueryFilter(getStructuralFilterOnly(request.getQueryFilter()));
+      result = searchLineageByEntityCountInternal(unfilteredRequest);
+
+      result = applyInMemoryFiltersWithPathPreservationForEntityCount(result, request);
+    } else {
+      result = searchLineageByEntityCountInternal(request);
+    }
+
     if (hasColumnFilter) {
       result = applyColumnFiltering(result, convertToSearchLineageRequest(request));
     }
 
-    // Cache result if eligible (no column filtering)
-    if (!hasColumnFilter) {
+    if (!needsPathPreservation && !hasColumnFilter) {
       cacheEntityCountResult(request, result);
     }
 
