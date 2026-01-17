@@ -33,7 +33,6 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/entity/type';
 import { PipelineViewMode } from '../../../generated/settings/settings';
 import { TagLabel } from '../../../generated/tests/testCase';
-import { TagSource } from '../../../generated/type/tagLabel';
 import { EntityData } from '../../../pages/TasksPage/TasksPage.interface';
 import {
   getApiCollectionByFQN,
@@ -314,9 +313,9 @@ export default function EntitySummaryPanel({
           serviceType: (entityDetails.details as any).serviceType,
           service: data.service ?? entityDetails.details.service,
           // Prefer canonical data; fallback to search result if missing
-          owners: data.owners ?? entityDetails.details.owners,
-          domains: data.domains ?? entityDetails.details.domains,
-          tags: data.tags ?? entityDetails.details.tags,
+          owners: data.owners ?? [],
+          domains: data.domains ?? [],
+          tags: data.tags ?? [],
           dataProducts:
             data.dataProducts ?? (entityDetails.details as any).dataProducts,
           tier: (entityDetails.details as any).tier,
@@ -399,45 +398,17 @@ export default function EntitySummaryPanel({
   ]);
 
   const updateEntityData = useCallback(
-    async (updatedData: Partial<EntityData>) => {
+    (updatedData: Partial<EntityData>) => {
       if (onEntityUpdate) {
         onEntityUpdate(updatedData);
       } else {
-        const baseData = entityData ?? entityDetails.details;
-        const jsonPatch = compare(baseData, {
-          ...baseData,
+        setEntityData((prev: EntityData) => ({
+          ...(prev || entityDetails.details),
           ...updatedData,
-        });
-
-        if (isEmpty(jsonPatch)) {
-          return;
-        }
-
-        try {
-          const apiFunc = entityUpdateMap[entityType];
-          if (apiFunc && id) {
-            const res = await apiFunc(id, jsonPatch);
-            setEntityData((prev: EntityData) => ({
-              ...(prev || entityDetails.details),
-              ...(res as Partial<EntityData>),
-            }));
-            // Refresh details to ensure consistency
-            fetchEntityData();
-          }
-        } catch (error) {
-          showErrorToast(error as AxiosError);
-        }
+        }));
       }
     },
-    [
-      entityDetails.details,
-      onEntityUpdate,
-      entityType,
-      id,
-      entityUpdateMap,
-      fetchEntityData,
-      entityData,
-    ]
+    [entityDetails.details, onEntityUpdate]
   );
 
   const handleOwnerUpdate = useCallback(
@@ -456,19 +427,10 @@ export default function EntitySummaryPanel({
 
   const handleTagsUpdate = useCallback(
     (updatedTags: TagLabel[]) => {
-      // updatedTags from TagsSection only contains classification tags
-      const currentTags = entityData?.tags ?? [];
-      const glossaryTags = currentTags.filter(
-        (tag: TagLabel) => tag.source === TagSource.Glossary
-      );
-      const tierTags = currentTags.filter((tag: TagLabel) =>
-        tag.tagFQN?.startsWith('Tier.')
-      );
-      updateEntityData({
-        tags: [...updatedTags, ...glossaryTags, ...tierTags],
-      });
+      // TagsSection already includes all tags (glossary, tier, and classification)
+      updateEntityData({ tags: updatedTags });
     },
-    [entityData, updateEntityData]
+    [updateEntityData]
   );
 
   const handleTierUpdate = useCallback(
@@ -510,9 +472,43 @@ export default function EntitySummaryPanel({
 
   const handleExtensionUpdate = useCallback(
     async (updatedExtension: Record<string, unknown> | undefined) => {
-      updateEntityData({ extension: updatedExtension });
+      if (onEntityUpdate) {
+        onEntityUpdate({ extension: updatedExtension });
+      } else {
+        const baseData = entityData ?? entityDetails.details;
+        const jsonPatch = compare(baseData, {
+          ...baseData,
+          extension: updatedExtension,
+        });
+
+        if (isEmpty(jsonPatch)) {
+          return;
+        }
+
+        try {
+          const apiFunc = entityUpdateMap[entityType];
+          if (apiFunc && id) {
+            const res = await apiFunc(id, jsonPatch);
+            setEntityData((prev: EntityData) => ({
+              ...(prev || entityDetails.details),
+              ...(res as Partial<EntityData>),
+            }));
+          }
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+
+          throw error;
+        }
+      }
     },
-    [updateEntityData]
+    [
+      entityDetails.details,
+      onEntityUpdate,
+      entityType,
+      id,
+      entityUpdateMap,
+      entityData,
+    ]
   );
 
   const handleLineageClick = useCallback(() => {
@@ -536,8 +532,9 @@ export default function EntitySummaryPanel({
     setActiveTab(EntityRightPanelTab.OVERVIEW);
   }, [entityDetails?.details?.id]);
 
-  // Reset lineage data when entity changes to prevent stale data
+  // Reset data when entity changes to prevent stale data
   useEffect(() => {
+    setEntityData(null);
     setLineageData(null);
     setIsLineageLoading(false);
   }, [entityDetails?.details?.id]);

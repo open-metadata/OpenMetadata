@@ -665,9 +665,11 @@ export const addCustomPropertiesForEntity = async ({
   // Enum configuration
   if (customType === 'Enum' && enumConfig) {
     for (const val of enumConfig.values) {
-      await page.click('#root\\/enumConfig');
-      await page.keyboard.type(val);
-      await page.press('#root\\/enumConfig', 'Enter');
+      const enumInput = page.locator('#root\\/enumConfig');
+      await enumInput.clear();
+      await enumInput.type(val, { delay: 50 });
+      await enumInput.press('Enter');
+      await expect(enumInput).toHaveValue('');
     }
 
     if (enumConfig.multiSelect) {
@@ -677,9 +679,15 @@ export const addCustomPropertiesForEntity = async ({
   // Table configuration
   if (customType === 'Table' && tableConfig) {
     for (const val of tableConfig.columns) {
-      await page.click('#root\\/columns');
-      await page.keyboard.type(val);
-      await page.press('#root\\/columns', 'Enter');
+      const columnInput = page.locator('#root\\/columns');
+      await columnInput.click();
+      await page.waitForTimeout(200); // Allow focus to settle
+      await columnInput.clear();
+      await page.waitForTimeout(200); // Allow clear to settle
+      await columnInput.type(val, { delay: 100 }); // Slow typing to prevent merge
+      await columnInput.press('Enter');
+      await expect(columnInput).toHaveValue(''); // Verify input is consumed
+      await page.waitForTimeout(200); // Safety wait between items
     }
   }
 
