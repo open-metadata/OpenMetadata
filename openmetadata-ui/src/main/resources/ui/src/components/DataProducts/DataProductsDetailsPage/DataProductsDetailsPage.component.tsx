@@ -643,6 +643,7 @@ const DataProductsDetailsPage = ({
               isFollowing={isFollowing}
               isFollowingLoading={isFollowingLoading}
               serviceName=""
+              suffix={<LearningIcon pageId="dataProduct" />}
               titleColor={dataProduct.style?.color}
             />
           </Box>
@@ -667,8 +668,6 @@ const DataProductsDetailsPage = ({
               )}
 
               <ButtonGroup className="spaced" size="small">
-                <LearningIcon pageId="dataProduct" />
-
                 {dataProduct?.version && (
                   <Tooltip
                     title={t(

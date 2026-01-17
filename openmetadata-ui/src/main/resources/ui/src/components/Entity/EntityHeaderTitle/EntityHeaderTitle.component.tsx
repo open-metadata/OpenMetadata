@@ -39,6 +39,7 @@ const EntityHeaderTitle = ({
   deleted = false,
   serviceName,
   badge,
+  suffix,
   isDisabled,
   className,
   showName = true,
@@ -146,6 +147,7 @@ const EntityHeaderTitle = ({
               </Typography.Text>
             </Tooltip>
             {badges}
+            {suffix}
           </div>
         ) : null}
 
@@ -183,6 +185,7 @@ const EntityHeaderTitle = ({
               onClick={handleShareButtonClick}
             />
           </Tooltip>
+          {(isEmpty(displayName) || !showName) && suffix}
           {!excludeEntityService &&
             !deleted &&
             !isCustomizedView &&

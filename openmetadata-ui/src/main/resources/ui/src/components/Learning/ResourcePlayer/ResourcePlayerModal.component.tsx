@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined, ExpandOutlined } from '@ant-design/icons';
+import { CloseOutlined } from '@ant-design/icons';
 import { Modal, Tag, Typography } from 'antd';
 import { DateTime } from 'luxon';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -49,7 +49,7 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
       return null;
     }
 
-    return DateTime.fromMillis(resource.updatedAt).toFormat('LLL dd, yyyy');
+    return DateTime.fromMillis(resource.updatedAt).toFormat('LLL d, yyyy');
   }, [resource.updatedAt]);
 
   const categoryTags = useMemo(() => {
@@ -63,22 +63,20 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
     return { visible, remaining };
   }, [resource.categories]);
 
-  const getCategoryColor = (category: string) => {
+  const getCategoryColors = useCallback((category: string) => {
     const categoryInfo =
       LEARNING_CATEGORIES[category as keyof typeof LEARNING_CATEGORIES];
 
-    return categoryInfo?.color ?? '#1890ff';
-  };
+    return {
+      bgColor: categoryInfo?.bgColor ?? '#f8f9fc',
+      borderColor: categoryInfo?.borderColor ?? '#d5d9eb',
+      color: categoryInfo?.color ?? '#363f72',
+    };
+  }, []);
 
   const handleViewMoreClick = useCallback(() => {
     setIsDescriptionExpanded(!isDescriptionExpanded);
   }, [isDescriptionExpanded]);
-
-  const handleExpandClick = useCallback(() => {
-    if (resource.source?.url) {
-      window.open(resource.source.url, '_blank');
-    }
-  }, [resource.source?.url]);
 
   const renderPlayer = useMemo(() => {
     switch (resource.resourceType) {
@@ -101,7 +99,7 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
       closable={false}
       footer={null}
       open={open}
-      width={900}
+      width="90vw"
       onCancel={onClose}>
       <div className="resource-player-header">
         <div className="resource-player-info">
@@ -114,7 +112,7 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
               <Paragraph
                 className="resource-description"
                 ellipsis={
-                  isDescriptionExpanded ? false : { rows: 2, suffix: '...' }
+                  isDescriptionExpanded ? false : { rows: 2, suffix: '... ' }
                 }>
                 {resource.description}
               </Paragraph>
@@ -128,20 +126,24 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
 
           <div className="resource-meta-row">
             <div className="resource-tags">
-              {categoryTags.visible.map((category) => (
-                <Tag
-                  className="category-tag"
-                  key={category}
-                  style={{
-                    backgroundColor: `${getCategoryColor(category)}15`,
-                    borderColor: getCategoryColor(category),
-                    color: getCategoryColor(category),
-                  }}>
-                  {LEARNING_CATEGORIES[
-                    category as keyof typeof LEARNING_CATEGORIES
-                  ]?.label ?? category}
-                </Tag>
-              ))}
+              {categoryTags.visible.map((category) => {
+                const colors = getCategoryColors(category);
+
+                return (
+                  <Tag
+                    className="category-tag"
+                    key={category}
+                    style={{
+                      backgroundColor: colors.bgColor,
+                      borderColor: colors.borderColor,
+                      color: colors.color,
+                    }}>
+                    {LEARNING_CATEGORIES[
+                      category as keyof typeof LEARNING_CATEGORIES
+                    ]?.label ?? category}
+                  </Tag>
+                );
+              })}
               {categoryTags.remaining > 0 && (
                 <Tag className="category-tag more-tag">
                   +{categoryTags.remaining}
@@ -151,26 +153,21 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
 
             <div className="resource-meta">
               {formattedDate && (
-                <Text className="meta-text" type="secondary">
-                  {formattedDate}
-                </Text>
+                <Text className="meta-text">{formattedDate}</Text>
               )}
               {formattedDate && formattedDuration && (
                 <span className="meta-separator">|</span>
               )}
               {formattedDuration && (
-                <Text className="meta-text" type="secondary">
-                  {formattedDuration}
-                </Text>
+                <Text className="meta-text">{formattedDuration}</Text>
               )}
             </div>
           </div>
         </div>
 
-        <div className="resource-player-actions">
-          <ExpandOutlined className="action-icon" onClick={handleExpandClick} />
-          <CloseOutlined className="action-icon" onClick={onClose} />
-        </div>
+        <button className="close-button" onClick={onClose}>
+          <CloseOutlined />
+        </button>
       </div>
 
       <div className="resource-player-content">{renderPlayer}</div>

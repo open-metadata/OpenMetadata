@@ -86,6 +86,13 @@ const PAGE_IDS = [
   'policies',
   'roles',
   'dataObservability',
+  'knowledgeCenter',
+  'workflows',
+  'notificationTemplates',
+  'pipelineObservability',
+  'ingestionRunners',
+  'usage',
+  'dataInsightDashboards',
 ];
 
 export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
@@ -119,7 +126,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
         estimatedDuration: resource.estimatedDuration
           ? Math.floor(resource.estimatedDuration / 60)
           : undefined,
-        contexts: resource.contexts,
+        contexts: resource.contexts?.map((ctx) => ctx.pageId) || [],
         status: resource.status || 'Active',
       });
     } else {
@@ -135,9 +142,10 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
       setIsSubmitting(true);
 
       const contexts = values.contexts.map(
-        (ctx: { pageId: string; componentId?: string }) => ({
-          componentId: ctx.componentId || undefined,
-          pageId: ctx.pageId,
+        (ctx: string | { pageId: string; componentId?: string }) => ({
+          componentId:
+            typeof ctx === 'object' ? ctx.componentId || undefined : undefined,
+          pageId: typeof ctx === 'string' ? ctx : ctx.pageId,
         })
       );
 
@@ -227,7 +235,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
       open={open}
       placement="right"
       title={drawerTitle}
-      width={480}
+      width={600}
       onClose={onClose}>
       <Form
         className="learning-resource-form"
@@ -304,11 +312,6 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
             mode="multiple"
             options={PAGE_IDS.map((id) => ({ label: id, value: id }))}
             placeholder={t('label.select-context')}
-            onChange={(values: string[]) => {
-              form.setFieldsValue({
-                contexts: values.map((pageId) => ({ pageId })),
-              });
-            }}
           />
         </Form.Item>
 
@@ -323,7 +326,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
         </Form.Item>
 
         <Form.Item label={t('label.source-provider')} name="sourceProvider">
-          <Input placeholder="https://www.youtube.com/watch?v=..." />
+          <Input placeholder="YouTube, Storylane, etc." />
         </Form.Item>
 
         <Form.Item label={t('label.duration')} name="estimatedDuration">

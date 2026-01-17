@@ -904,6 +904,7 @@ const DomainDetails = ({
               isFollowing={isFollowing}
               isFollowingLoading={isFollowingLoading}
               serviceName=""
+              suffix={<LearningIcon pageId="domain" />}
               titleColor={domain.style?.color}
             />
           </Box>
@@ -937,8 +938,6 @@ const DomainDetails = ({
               )}
 
               <ButtonGroup className="spaced" size="small">
-                <LearningIcon pageId="domain" />
-
                 {domain?.version && (
                   <Tooltip
                     title={t(

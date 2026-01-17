@@ -14,12 +14,13 @@
 import {
   AppstoreOutlined,
   DeleteOutlined,
+  DownOutlined,
   EditOutlined,
   FileTextOutlined,
   MenuOutlined,
-  PlayCircleOutlined,
+  PlayCircleFilled,
   PlusOutlined,
-  RocketOutlined,
+  RocketFilled,
   SearchOutlined,
 } from '@ant-design/icons';
 import { Button, Input, Modal, Select, Space, Table, Tag, Tooltip } from 'antd';
@@ -50,9 +51,20 @@ const CATEGORIES = [
   'DataQuality',
   'Observability',
 ];
+const CONTENT_CONTEXTS = [
+  'table',
+  'dashboard',
+  'pipeline',
+  'topic',
+  'glossary',
+  'domain',
+  'dataProduct',
+  'lineage',
+];
 const STATUSES = ['Draft', 'Active', 'Deprecated'];
 const MAX_VISIBLE_TAGS = 2;
 const MAX_VISIBLE_CONTEXTS = 3;
+const DEFAULT_PAGE_SIZE = 10;
 
 export const LearningResourcesPage: React.FC = () => {
   const { t } = useTranslation();
@@ -67,8 +79,11 @@ export const LearningResourcesPage: React.FC = () => {
   const [searchText, setSearchText] = useState('');
   const [filterType, setFilterType] = useState<string | undefined>();
   const [filterCategory, setFilterCategory] = useState<string | undefined>();
+  const [filterContent, setFilterContent] = useState<string | undefined>();
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const fetchResources = useCallback(async () => {
     setIsLoading(true);
@@ -110,12 +125,21 @@ export const LearningResourcesPage: React.FC = () => {
             | 'DataQuality'
             | 'Observability'
         );
+      const matchesContent =
+        !filterContent ||
+        resource.contexts?.some((ctx) => ctx.pageId === filterContent);
       const matchesStatus =
         !filterStatus || (resource.status || 'Active') === filterStatus;
 
-      return matchesSearch && matchesType && matchesCategory && matchesStatus;
+      return (
+        matchesSearch &&
+        matchesType &&
+        matchesCategory &&
+        matchesContent &&
+        matchesStatus
+      );
     });
-  }, [resources, searchText, filterType, filterCategory, filterStatus]);
+  }, [resources, searchText, filterType, filterCategory, filterContent, filterStatus]);
 
   const handleCreate = useCallback(() => {
     setEditingResource(null);
@@ -176,21 +200,41 @@ export const LearningResourcesPage: React.FC = () => {
   const getResourceTypeIcon = useCallback((type: string) => {
     switch (type) {
       case 'Video':
-        return <PlayCircleOutlined className="type-icon video-icon" />;
+        return (
+          <div className="type-icon-wrapper video-icon">
+            <PlayCircleFilled />
+          </div>
+        );
       case 'Storylane':
-        return <RocketOutlined className="type-icon storylane-icon" />;
+        return (
+          <div className="type-icon-wrapper storylane-icon">
+            <RocketFilled />
+          </div>
+        );
       case 'Article':
-        return <FileTextOutlined className="type-icon article-icon" />;
+        return (
+          <div className="type-icon-wrapper article-icon">
+            <FileTextOutlined />
+          </div>
+        );
       default:
-        return <FileTextOutlined className="type-icon article-icon" />;
+        return (
+          <div className="type-icon-wrapper article-icon">
+            <FileTextOutlined />
+          </div>
+        );
     }
   }, []);
 
-  const getCategoryColor = useCallback((category: string) => {
+  const getCategoryColors = useCallback((category: string) => {
     const categoryInfo =
       LEARNING_CATEGORIES[category as keyof typeof LEARNING_CATEGORIES];
 
-    return categoryInfo?.color ?? '#1890ff';
+    return {
+      bgColor: categoryInfo?.bgColor ?? '#f8f9fc',
+      borderColor: categoryInfo?.borderColor ?? '#d5d9eb',
+      color: categoryInfo?.color ?? '#363f72',
+    };
   }, []);
 
   const breadcrumbs = useMemo(
@@ -240,19 +284,23 @@ export const LearningResourcesPage: React.FC = () => {
 
         return (
           <div className="category-tags">
-            {visibleCategories.map((cat) => (
-              <Tag
-                className="category-tag"
-                key={cat}
-                style={{
-                  backgroundColor: `${getCategoryColor(cat)}15`,
-                  borderColor: getCategoryColor(cat),
-                  color: getCategoryColor(cat),
-                }}>
-                {LEARNING_CATEGORIES[cat as keyof typeof LEARNING_CATEGORIES]
-                  ?.label ?? cat}
-              </Tag>
-            ))}
+            {visibleCategories.map((cat) => {
+              const colors = getCategoryColors(cat);
+
+              return (
+                <Tag
+                  className="category-tag"
+                  key={cat}
+                  style={{
+                    backgroundColor: colors.bgColor,
+                    borderColor: colors.borderColor,
+                    color: colors.color,
+                  }}>
+                  {LEARNING_CATEGORIES[cat as keyof typeof LEARNING_CATEGORIES]
+                    ?.label ?? cat}
+                </Tag>
+              );
+            })}
             {remaining > 0 && (
               <Tag className="category-tag more-tag">+{remaining}</Tag>
             )}
@@ -359,85 +407,117 @@ export const LearningResourcesPage: React.FC = () => {
         </Button>
       </div>
 
-      <div className="filter-bar">
-        <Input
-          allowClear
-          className="search-input"
-          placeholder={t('label.search-entity', {
-            entity: t('label.resource'),
-          })}
-          prefix={<SearchOutlined className="search-icon" />}
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-        />
-
-        <Select
-          allowClear
-          className="filter-select"
-          options={RESOURCE_TYPES.map((type) => ({
-            label: type,
-            value: type,
-          }))}
-          placeholder={t('label.type')}
-          value={filterType}
-          onChange={setFilterType}
-        />
-
-        <Select
-          allowClear
-          className="filter-select"
-          options={CATEGORIES.map((cat) => ({
-            label:
-              LEARNING_CATEGORIES[cat as keyof typeof LEARNING_CATEGORIES]
-                ?.label ?? cat,
-            value: cat,
-          }))}
-          placeholder={t('label.category')}
-          value={filterCategory}
-          onChange={setFilterCategory}
-        />
-
-        <Select
-          allowClear
-          className="filter-select"
-          options={STATUSES.map((status) => ({
-            label: status,
-            value: status,
-          }))}
-          placeholder={t('label.status')}
-          value={filterStatus}
-          onChange={setFilterStatus}
-        />
-
-        <div className="view-toggle">
-          <Button
-            className={viewMode === 'list' ? 'active' : ''}
-            icon={<MenuOutlined />}
-            type="text"
-            onClick={() => setViewMode('list')}
+      <div className="content-card">
+        <div className="filter-bar">
+          <Input
+            allowClear
+            className="search-input"
+            placeholder={t('label.search-entity', {
+              entity: t('label.resource'),
+            })}
+            prefix={<SearchOutlined className="search-icon" />}
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
           />
-          <Button
-            className={viewMode === 'card' ? 'active' : ''}
-            icon={<AppstoreOutlined />}
-            type="text"
-            onClick={() => setViewMode('card')}
+
+          <Select
+            allowClear
+            className="filter-select"
+            dropdownStyle={{ minWidth: 120 }}
+            options={RESOURCE_TYPES.map((type) => ({
+              label: type,
+              value: type,
+            }))}
+            placeholder={t('label.type')}
+            popupMatchSelectWidth={false}
+            suffixIcon={<DownOutlined className="filter-arrow" />}
+            value={filterType}
+            variant="borderless"
+            onChange={setFilterType}
           />
+
+          <Select
+            allowClear
+            className="filter-select"
+            dropdownStyle={{ minWidth: 140 }}
+            options={CATEGORIES.map((cat) => ({
+              label:
+                LEARNING_CATEGORIES[cat as keyof typeof LEARNING_CATEGORIES]
+                  ?.label ?? cat,
+              value: cat,
+            }))}
+            placeholder={t('label.category')}
+            popupMatchSelectWidth={false}
+            suffixIcon={<DownOutlined className="filter-arrow" />}
+            value={filterCategory}
+            variant="borderless"
+            onChange={setFilterCategory}
+          />
+
+          <Select
+            allowClear
+            className="filter-select"
+            dropdownStyle={{ minWidth: 160 }}
+            options={CONTENT_CONTEXTS.map((ctx) => ({
+              label: ctx.charAt(0).toUpperCase() + ctx.slice(1),
+              value: ctx,
+            }))}
+            placeholder="Content"
+            popupMatchSelectWidth={false}
+            suffixIcon={<DownOutlined className="filter-arrow" />}
+            value={filterContent}
+            variant="borderless"
+            onChange={setFilterContent}
+          />
+
+          <Select
+            allowClear
+            className="filter-select"
+            dropdownStyle={{ minWidth: 120 }}
+            options={STATUSES.map((status) => ({
+              label: status,
+              value: status,
+            }))}
+            placeholder={t('label.status')}
+            popupMatchSelectWidth={false}
+            suffixIcon={<DownOutlined className="filter-arrow" />}
+            value={filterStatus}
+            variant="borderless"
+            onChange={setFilterStatus}
+          />
+
+          <div className="view-toggle">
+            <Button
+              className={viewMode === 'list' ? 'active' : ''}
+              icon={<MenuOutlined />}
+              type="text"
+              onClick={() => setViewMode('list')}
+            />
+            <Button
+              className={viewMode === 'card' ? 'active' : ''}
+              icon={<AppstoreOutlined />}
+              type="text"
+              onClick={() => setViewMode('card')}
+            />
+          </div>
         </div>
-      </div>
 
-      <Table
-        columns={columns}
-        dataSource={filteredResources}
-        loading={isLoading}
-        pagination={{
-          pageSize: 10,
-          showSizeChanger: true,
-          showTotal: (total, range) =>
-            `${range[0]}-${range[1]} of ${total} items`,
-        }}
-        rowKey="id"
-        scroll={{ x: 1000 }}
-      />
+        <Table
+          columns={columns}
+          dataSource={filteredResources}
+          loading={isLoading}
+          pagination={{
+            current: currentPage,
+            pageSize: pageSize,
+            showSizeChanger: false,
+            onChange: (page: number) => {
+              setCurrentPage(page);
+            },
+          }}
+          rowKey="id"
+          scroll={{ x: 1000 }}
+        />
+      </div>
 
       {isFormOpen && (
         <LearningResourceForm

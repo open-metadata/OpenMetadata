@@ -24,13 +24,20 @@
   }
 
   .learning-icon-svg {
-    width: 16px;
-    height: 16px;
+    width: 20px;
+    height: 20px;
+    display: block;
   }
 }
 
 .learning-icon-badge {
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  position: relative;
+  margin-left: 8px;
+  margin-right: 12px;
 
   .ant-badge-count {
     background-color: #f04438;
@@ -40,50 +47,10 @@
     line-height: 16px;
     padding: 0 4px;
     box-shadow: 0 0 0 1px @white;
+    position: absolute !important;
+    top: -6px !important;
+    right: -10px !important;
+    transform: none !important;
   }
 }
 
-.learning-icon-popover {
-  display: flex;
-  align-items: center;
-  gap: @size-sm;
-  padding: @padding-xs @padding-sm;
-  cursor: pointer;
-  min-width: 200px;
-
-  &:hover {
-    background-color: @grey-50;
-  }
-
-  .popover-text {
-    font-size: 13px;
-    color: @grey-700;
-  }
-
-  .popover-action {
-    display: flex;
-    align-items: center;
-    gap: @size-xxs;
-    margin-left: auto;
-    padding-left: @padding-sm;
-    border-left: 1px solid @border-color-1;
-
-    .resource-count {
-      font-size: 13px;
-      color: @grey-500;
-    }
-
-    .arrow-icon {
-      font-size: 10px;
-      color: @grey-400;
-    }
-  }
-}
-
-.ant-popover-inner {
-  .learning-icon-popover {
-    margin: -@padding-sm -@padding-md;
-    padding: @padding-sm @padding-md;
-    border-radius: @border-rad-xs;
-  }
-}

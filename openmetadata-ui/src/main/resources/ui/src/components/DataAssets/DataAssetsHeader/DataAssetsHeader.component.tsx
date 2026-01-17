@@ -623,6 +623,7 @@ export const DataAssetsHeader = ({
                 isFollowingLoading={isFollowingLoading}
                 name={dataAsset?.name}
                 serviceName={dataAssetServiceName}
+                suffix={<LearningIcon pageId={entityType} />}
               />
             </Col>
             <Col className="flex items-center">
@@ -710,7 +711,6 @@ export const DataAssetsHeader = ({
                     onProfilerSettingUpdate={onProfilerSettingUpdate}
                     onRestoreEntity={onRestoreDataAsset}
                   />
-                  <LearningIcon pageId={entityType} />
                 </ButtonGroup>
 
                 {activeAnnouncement && (

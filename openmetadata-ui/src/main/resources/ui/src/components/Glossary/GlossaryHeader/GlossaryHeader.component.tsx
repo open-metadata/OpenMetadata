@@ -536,6 +536,9 @@ const GlossaryHeader = ({
             entityType={EntityType.GLOSSARY_TERM}
             icon={icon}
             serviceName=""
+            suffix={
+              <LearningIcon pageId={isGlossary ? 'glossary' : 'glossaryTerm'} />
+            }
             titleColor={isGlossary ? undefined : selectedData.style?.color}
           />
         </div>
@@ -544,8 +547,6 @@ const GlossaryHeader = ({
             {!isVersionView && createButtons}
 
             <ButtonGroup className="spaced" size="small">
-              <LearningIcon pageId={isGlossary ? 'glossary' : 'glossaryTerm'} />
-
               {updateVote && (
                 <Voting
                   voteStatus={voteStatus}

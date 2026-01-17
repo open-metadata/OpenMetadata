@@ -35,6 +35,7 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
   const { t } = useTranslation();
   const [resources, setResources] = useState<LearningResource[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasError, setHasError] = useState(false);
   const [selectedResource, setSelectedResource] =
     useState<LearningResource | null>(null);
   const [playerOpen, setPlayerOpen] = useState(false);
@@ -45,6 +46,7 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
     }
 
     setIsLoading(true);
+    setHasError(false);
     try {
       const response = await getLearningResourcesByContext(pageId, {
         limit: 50,
@@ -52,6 +54,7 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
       });
       setResources(response.data || []);
     } catch {
+      setHasError(true);
       setResources([]);
     } finally {
       setIsLoading(false);
@@ -123,6 +126,11 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
                 indicator={<LoadingOutlined spin style={{ fontSize: 24 }} />}
               />
             </div>
+          ) : hasError ? (
+            <Empty
+              description={t('message.failed-to-load-learning-resources')}
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+            />
           ) : resources.length === 0 ? (
             <Empty
               description={t('message.no-learning-resources-available')}

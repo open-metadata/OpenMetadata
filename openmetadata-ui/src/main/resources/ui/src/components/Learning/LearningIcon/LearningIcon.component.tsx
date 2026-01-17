@@ -11,10 +11,16 @@
  *  limitations under the License.
  */
 
-import { RightOutlined } from '@ant-design/icons';
-import { Badge, Popover, Typography } from 'antd';
+import { Badge, Tooltip } from 'antd';
 import classNames from 'classnames';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, {
+  Component,
+  ErrorInfo,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as LearningIconSvg } from '../../../assets/svg/ic-learning.svg';
 import { getLearningResourcesByContext } from '../../../rest/learningResourceAPI';
@@ -22,9 +28,38 @@ import { LearningDrawer } from '../LearningDrawer/LearningDrawer.component';
 import { LearningIconProps } from './LearningIcon.interface';
 import './LearningIcon.less';
 
-const { Text } = Typography;
+interface ErrorBoundaryState {
+  hasError: boolean;
+}
 
-export const LearningIcon: React.FC<LearningIconProps> = ({
+class LearningIconErrorBoundary extends Component<
+  { children: ReactNode },
+  ErrorBoundaryState
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(): ErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    // eslint-disable-next-line no-console
+    console.error('LearningIcon error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return null;
+    }
+
+    return this.props.children;
+  }
+}
+
+const LearningIconContent: React.FC<LearningIconProps> = ({
   pageId,
   title,
   className = '',
@@ -33,10 +68,10 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [resourceCount, setResourceCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [popoverVisible, setPopoverVisible] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   const fetchResourceCount = useCallback(async () => {
-    if (resourceCount > 0 || isLoading) {
+    if (resourceCount > 0 || isLoading || hasError) {
       return;
     }
     setIsLoading(true);
@@ -46,18 +81,18 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
       });
       setResourceCount(response.paging?.total ?? 0);
     } catch {
+      setHasError(true);
       setResourceCount(0);
     } finally {
       setIsLoading(false);
     }
-  }, [pageId, resourceCount, isLoading]);
+  }, [pageId, resourceCount, isLoading, hasError]);
 
   useEffect(() => {
     fetchResourceCount();
   }, []);
 
   const handleClick = useCallback(() => {
-    setPopoverVisible(false);
     setDrawerOpen(true);
   }, []);
 
@@ -65,48 +100,28 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
     setDrawerOpen(false);
   }, []);
 
-  const handlePopoverVisibleChange = useCallback((visible: boolean) => {
-    setPopoverVisible(visible);
-  }, []);
-
-  const popoverContent = (
-    <div className="learning-icon-popover" onClick={handleClick}>
-      <Text className="popover-text">
-        {t('label.learn-how-this-feature-works')}
-      </Text>
-      <div className="popover-action">
-        <Text className="resource-count">
-          {resourceCount} {t('label.resource-plural')}
-        </Text>
-        <RightOutlined className="arrow-icon" />
-      </div>
-    </div>
-  );
-
-  if (resourceCount === 0 && !isLoading) {
+  if (hasError || (resourceCount === 0 && !isLoading)) {
     return null;
   }
 
+  const tooltipTitle = `${resourceCount} ${t('label.resource-plural')} ${t('label.available').toLowerCase()}`;
+
   return (
     <>
-      <Popover
-        content={popoverContent}
-        open={popoverVisible}
-        placement="bottomLeft"
-        trigger="hover"
-        onOpenChange={handlePopoverVisibleChange}>
+      <Tooltip placement="bottom" title={tooltipTitle}>
         <Badge
           className={classNames('learning-icon-badge', className)}
           count={resourceCount}
-          offset={[-4, 4]}
+          offset={[8, -4]}
           size="small">
           <div
             className="learning-icon-container"
-            data-testid={`learning-icon-${pageId}`}>
+            data-testid={`learning-icon-${pageId}`}
+            onClick={handleClick}>
             <LearningIconSvg className="learning-icon-svg" />
           </div>
         </Badge>
-      </Popover>
+      </Tooltip>
 
       <LearningDrawer
         open={drawerOpen}
@@ -115,5 +130,13 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
         onClose={handleClose}
       />
     </>
+  );
+};
+
+export const LearningIcon: React.FC<LearningIconProps> = (props) => {
+  return (
+    <LearningIconErrorBoundary>
+      <LearningIconContent {...props} />
+    </LearningIconErrorBoundary>
   );
 };

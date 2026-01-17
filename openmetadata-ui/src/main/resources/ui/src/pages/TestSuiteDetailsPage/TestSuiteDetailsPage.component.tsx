@@ -526,11 +526,11 @@ const TestSuiteDetailsPage = () => {
                 icon={<TestSuiteIcon className="h-9" />}
                 name={testSuite?.name ?? ''}
                 serviceName="testSuite"
+                suffix={<LearningIcon pageId="testSuite" />}
               />
             </Col>
             <Col className="d-flex justify-end" span={6}>
               <Space>
-                <LearningIcon pageId="testSuite" />
                 {(testSuitePermissions.EditAll ||
                   testSuitePermissions.EditTests) && (
                   <Button

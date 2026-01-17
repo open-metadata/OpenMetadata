@@ -28,6 +28,8 @@ export interface CategoryInfo {
   description: string;
   icon: string;
   color: string;
+  bgColor: string;
+  borderColor: string;
 }
 
 export const LEARNING_CATEGORIES: Record<ResourceCategory, CategoryInfo> = {
@@ -36,34 +38,44 @@ export const LEARNING_CATEGORIES: Record<ResourceCategory, CategoryInfo> = {
     label: 'Discovery',
     description: 'Learn how to discover and explore data assets',
     icon: 'search',
-    color: '#1570EF',
+    color: '#175cd3',
+    bgColor: '#eff8ff',
+    borderColor: '#b2ddff',
   },
   Administration: {
     key: 'Administration',
-    label: 'Administration',
+    label: 'Admin',
     description: 'Manage users, teams, and system configuration',
     icon: 'setting',
-    color: '#7147E8',
+    color: '#026aa2',
+    bgColor: '#f0f9ff',
+    borderColor: '#b9e6fe',
   },
   DataGovernance: {
     key: 'DataGovernance',
     label: 'Governance',
     description: 'Implement governance policies and workflows',
     icon: 'shield',
-    color: '#17B26A',
+    color: '#5925dc',
+    bgColor: '#f4f3ff',
+    borderColor: '#d9d6fe',
   },
   DataQuality: {
     key: 'DataQuality',
     label: 'Data Quality',
     description: 'Monitor data quality and set up tests',
     icon: 'dashboard',
-    color: '#F79009',
+    color: '#b93815',
+    bgColor: '#fef6ee',
+    borderColor: '#f9dbaf',
   },
   Observability: {
     key: 'Observability',
     label: 'Observability',
     description: 'Monitor system health and performance',
     icon: 'eye',
-    color: '#0BA5EC',
+    color: '#b93815',
+    bgColor: '#fef6ee',
+    borderColor: '#f9dbaf',
   },
 };
