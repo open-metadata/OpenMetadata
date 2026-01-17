@@ -797,7 +797,7 @@ export const updateFieldExtension = <T extends TableFieldsInfoCommonEntities>(
 ) => {
   searchIndexFields?.forEach((field) => {
     if (field.fullyQualifiedName === changedFieldFQN) {
-      (field as any).extension = extension;
+      field.extension = extension;
     } else {
       updateFieldExtension(
         changedFieldFQN,

@@ -121,7 +121,7 @@ const CustomEntityDetailV1 = () => {
   const handleDrawerClose = useCallback(() => {
     setIsDrawerOpen(false);
     form.resetFields();
-  }, []);
+  }, [form]);
 
   const handleDrawerSubmit = useCallback(
     async (data: CustomProperty) => {
