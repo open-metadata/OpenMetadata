@@ -13,9 +13,11 @@
 
 import { expect, Page, test as base } from '@playwright/test';
 import {
-  PolicyClass,
-  PolicyRulesType,
-} from '../../support/access-control/PoliciesClass';
+  SERVICE_CREATOR_RULES,
+  SERVICE_VIEWER_RULES,
+} from '../../constant/permission';
+import { GlobalSettingOptions } from '../../constant/settings';
+import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -28,62 +30,6 @@ import {
 import { updateDescription } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import { settingClick } from '../../utils/sidebar';
-import { GlobalSettingOptions } from '../../constant/settings';
-
-// Policy for serviceOwnerUser: Can create services and manage owned services
-const SERVICE_CREATOR_RULES: PolicyRulesType[] = [
-  {
-    name: 'DatabaseService-Create-Rule',
-    resources: ['databaseService'],
-    operations: ['Create', 'ViewAll'],
-    effect: 'allow',
-  },
-  {
-    name: 'DatabaseService-OwnerAll-Rule',
-    resources: ['databaseService'],
-    operations: ['All'],
-    effect: 'allow',
-    condition: 'isOwner()',
-  },
-  {
-    name: 'IngestionPipeline-OwnerAll-Rule',
-    resources: ['ingestionPipeline'],
-    operations: ['All'],
-    effect: 'allow',
-    condition: 'isOwner()',
-  },
-  {
-    name: 'Database-OwnerAll-Rule',
-    resources: ['database'],
-    operations: ['All'],
-    effect: 'allow',
-    condition: 'isOwner()',
-  },
-  {
-    name: 'DatabaseSchema-OwnerAll-Rule',
-    resources: ['databaseSchema'],
-    operations: ['All'],
-    effect: 'allow',
-    condition: 'isOwner()',
-  },
-  {
-    name: 'Table-OwnerAll-Rule',
-    resources: ['table'],
-    operations: ['All'],
-    effect: 'allow',
-    condition: 'isOwner()',
-  },
-];
-
-// Policy for anotherUser: Can only view services, no create or modify
-const SERVICE_VIEWER_RULES: PolicyRulesType[] = [
-  {
-    name: 'DatabaseService-ViewOnly-Rule',
-    resources: ['databaseService'],
-    operations: ['ViewAll'],
-    effect: 'allow',
-  },
-];
 
 const serviceOwnerPolicy = new PolicyClass();
 const serviceOwnerRole = new RolesClass();
@@ -176,7 +122,7 @@ test.describe('Service Creation with isOwner() Permissions', () => {
 
     await afterAction();
   });
-  // Needed proper cleanup, using multiple workers tests might act flaky
+  // Needed proper cleanup, while using multiple workers tests might act flaky
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
