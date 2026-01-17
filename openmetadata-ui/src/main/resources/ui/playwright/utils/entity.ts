@@ -2222,19 +2222,32 @@ export const testCopyLinkButton = async ({
   // Wait a bit for clipboard to be populated
   await page.waitForTimeout(500);
 
-  // Read clipboard content
-  const clipboardText = await page.evaluate(async () => {
-    try {
-      return await navigator.clipboard.readText();
-    } catch (error) {
-      // If clipboard API fails, return error message
-      return `CLIPBOARD_ERROR: ${error}`;
-    }
-  });
+  // Read clipboard content with proper permission handling
+  const clipboardText = await readClipboardText(page);
 
   // Verify the clipboard text contains expected URL path and entity FQN
   expect(clipboardText).toContain(expectedUrlPath);
   expect(clipboardText).toContain(entityFqn);
+};
+
+/**
+ * Reads text from the clipboard with proper permission handling.
+ * Grants clipboard permissions before reading to ensure it works in CI environments.
+ *
+ * @param page - Playwright Page object
+ * @returns The clipboard text content, or an error message if reading fails
+ */
+export const readClipboardText = async (page: Page): Promise<string> => {
+  // Grant clipboard permissions before reading
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+
+  return page.evaluate(async () => {
+    try {
+      return await navigator.clipboard.readText();
+    } catch (error) {
+      return `CLIPBOARD_ERROR: ${error}`;
+    }
+  });
 };
 
 /**
