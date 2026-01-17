@@ -11,17 +11,59 @@
  *  limitations under the License.
  */
 
+@import (reference) '../../../styles/variables.less';
+
 .learning-drawer {
   .ant-drawer-header {
-    padding: 16px 24px;
+    padding: @padding-md @padding-lg;
+    border-bottom: 1px solid @border-color-1;
+  }
+
+  .ant-drawer-header-title {
+    flex: 1;
   }
 
   .ant-drawer-body {
-    padding: 16px;
+    padding: @padding-md;
+    background-color: @grey-50;
+  }
+
+  .learning-drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+
+  .learning-drawer-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: @font-semibold;
+    color: @grey-900;
+  }
+
+  .learning-drawer-close {
+    font-size: 14px;
+    color: @grey-500;
+    cursor: pointer;
+    padding: @padding-xs;
+    border-radius: @border-rad-base;
+    transition: all 0.2s ease;
+
+    &:hover {
+      color: @grey-700;
+      background-color: @grey-100;
+    }
   }
 
   .learning-drawer-content {
     height: 100%;
+  }
+
+  .learning-drawer-cards {
+    display: flex;
+    flex-direction: column;
+    gap: @size-sm;
   }
 
   .learning-drawer-loading {

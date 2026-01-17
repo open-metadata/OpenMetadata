@@ -36,6 +36,7 @@ import DataQualityTab from '../../components/Database/Profiler/DataQualityTab/Da
 import { AddTestCaseList } from '../../components/DataQuality/AddTestCaseList/AddTestCaseList.component';
 import TestSuitePipelineTab from '../../components/DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
 import EntityHeaderTitle from '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { LearningIcon } from '../../components/Learning/LearningIcon/LearningIcon.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { INITIAL_PAGING_VALUE } from '../../constants/constants';
@@ -495,6 +496,7 @@ const TestSuiteDetailsPage = () => {
             </Col>
             <Col className="d-flex justify-end" span={6}>
               <Space>
+                <LearningIcon pageId="testSuite" />
                 {(testSuitePermissions.EditAll ||
                   testSuitePermissions.EditTests) && (
                   <Button

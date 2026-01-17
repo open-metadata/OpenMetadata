@@ -12,27 +12,78 @@
  */
 @import (reference) '../../../styles/variables.less';
 
-.learning-icon {
-  transition: all 0.3s ease;
-  color: @text-color;
+.learning-icon-container {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
 
   &:hover {
-    color: @primary-color;
-    transform: scale(1.05);
+    transform: scale(1.1);
   }
 
-  &:active {
-    transform: scale(0.95);
-  }
-
-  .anticon {
-    font-size: 16px;
-    color: inherit;
+  .learning-icon-svg {
+    width: 16px;
+    height: 16px;
   }
 }
 
 .learning-icon-badge {
+  cursor: pointer;
+
   .ant-badge-count {
-    background-color: @error-color;
+    background-color: #f04438;
+    font-size: 10px;
+    min-width: 16px;
+    height: 16px;
+    line-height: 16px;
+    padding: 0 4px;
+    box-shadow: 0 0 0 1px @white;
+  }
+}
+
+.learning-icon-popover {
+  display: flex;
+  align-items: center;
+  gap: @size-sm;
+  padding: @padding-xs @padding-sm;
+  cursor: pointer;
+  min-width: 200px;
+
+  &:hover {
+    background-color: @grey-50;
+  }
+
+  .popover-text {
+    font-size: 13px;
+    color: @grey-700;
+  }
+
+  .popover-action {
+    display: flex;
+    align-items: center;
+    gap: @size-xxs;
+    margin-left: auto;
+    padding-left: @padding-sm;
+    border-left: 1px solid @border-color-1;
+
+    .resource-count {
+      font-size: 13px;
+      color: @grey-500;
+    }
+
+    .arrow-icon {
+      font-size: 10px;
+      color: @grey-400;
+    }
+  }
+}
+
+.ant-popover-inner {
+  .learning-icon-popover {
+    margin: -@padding-sm -@padding-md;
+    padding: @padding-sm @padding-md;
+    border-radius: @border-rad-xs;
   }
 }

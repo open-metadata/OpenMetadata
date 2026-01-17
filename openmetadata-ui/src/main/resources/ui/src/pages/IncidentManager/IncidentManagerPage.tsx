@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Typography } from 'antd';
+import { Col, Row, Space, Typography } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import IncidentManager from '../../components/IncidentManager/IncidentManager.component';
+import { LearningIcon } from '../../components/Learning/LearningIcon/LearningIcon.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import incidentManagerClassBase from './IncidentManagerClassBase';
@@ -29,12 +30,15 @@ const IncidentManagerPage = () => {
     <PageLayoutV1 pageTitle={t('label.incident-manager')}>
       <Row gutter={[0, 16]}>
         <Col span={24}>
-          <Typography.Title
-            className="m-b-md"
-            data-testid="page-title"
-            level={5}>
-            {t(PAGE_HEADERS.INCIDENT_MANAGER.header)}
-          </Typography.Title>
+          <Space align="center" className="m-b-md">
+            <Typography.Title
+              className="m-b-0"
+              data-testid="page-title"
+              level={5}>
+              {t(PAGE_HEADERS.INCIDENT_MANAGER.header)}
+            </Typography.Title>
+            <LearningIcon pageId="incidentManager" />
+          </Space>
           <Typography.Paragraph
             className="text-grey-muted"
             data-testid="page-sub-title">

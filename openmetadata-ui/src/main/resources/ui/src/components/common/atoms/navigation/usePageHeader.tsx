@@ -69,7 +69,7 @@ export const usePageHeader = (config: PageHeaderConfig) => {
                 {displayTitle}
               </Typography>
               {config.learningPageId && (
-                <LearningIcon pageId={config.learningPageId} size="small" />
+                <LearningIcon pageId={config.learningPageId} />
               )}
             </Box>
             {displayDescription && (

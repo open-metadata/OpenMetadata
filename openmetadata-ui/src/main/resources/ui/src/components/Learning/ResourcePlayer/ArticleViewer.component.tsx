@@ -38,7 +38,7 @@ export const ArticleViewer: React.FC<ArticleViewerProps> = ({ resource }) => {
 
       // Check for embedded content in embedConfig first
       if (resource.source.embedConfig?.content) {
-        setContent(resource.source.embedConfig.content);
+        setContent(resource.source.embedConfig.content as string);
       } else if (resource.source.url.startsWith('http')) {
         const response = await fetch(resource.source.url);
         if (!response.ok) {

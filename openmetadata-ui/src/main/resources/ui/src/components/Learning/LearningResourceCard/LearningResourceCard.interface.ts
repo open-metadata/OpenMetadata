@@ -15,6 +15,5 @@ import { LearningResource } from '../../../rest/learningResourceAPI';
 
 export interface LearningResourceCardProps {
   resource: LearningResource;
-  showProgress?: boolean;
   onClick?: (resource: LearningResource) => void;
 }

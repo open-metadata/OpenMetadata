@@ -13,9 +13,6 @@
 
 export interface LearningIconProps {
   pageId: string;
+  title?: string;
   className?: string;
-  size?: 'small' | 'medium' | 'large';
-  label?: string;
-  tooltip?: string;
-  placement?: 'left' | 'right' | 'top' | 'bottom';
 }

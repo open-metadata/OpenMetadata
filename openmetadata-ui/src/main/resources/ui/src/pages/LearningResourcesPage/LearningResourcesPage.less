@@ -11,17 +11,177 @@
  *  limitations under the License.
  */
 
+@import (reference) '../../styles/variables.less';
+
 .learning-resources-page {
-  padding: 24px;
+  padding: @padding-lg;
 
   .page-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
+    align-items: flex-start;
+    margin-bottom: @margin-lg;
+    margin-top: @margin-md;
 
-    h3 {
+    .page-header-title {
+      .page-title {
+        margin: 0 0 @margin-xs 0;
+        font-size: 20px;
+        font-weight: @font-semibold;
+        color: @grey-900;
+      }
+
+      .page-description {
+        margin: 0;
+        font-size: 13px;
+        color: @grey-600;
+      }
+    }
+  }
+
+  .filter-bar {
+    display: flex;
+    align-items: center;
+    gap: @size-sm;
+    margin-bottom: @margin-md;
+    flex-wrap: wrap;
+
+    .search-input {
+      width: 280px;
+      height: 36px;
+
+      .search-icon {
+        color: @grey-400;
+      }
+    }
+
+    .filter-select {
+      min-width: 120px;
+      height: 36px;
+    }
+
+    .view-toggle {
+      display: flex;
+      align-items: center;
+      margin-left: auto;
+      border: 1px solid @border-color-1;
+      border-radius: @border-rad-base;
+      overflow: hidden;
+
+      .ant-btn {
+        border-radius: 0;
+        border: none;
+        color: @grey-500;
+
+        &.active {
+          background-color: @grey-100;
+          color: @grey-700;
+        }
+
+        &:hover:not(.active) {
+          background-color: @grey-50;
+        }
+      }
+    }
+  }
+
+  .ant-table {
+    .ant-table-thead > tr > th {
+      background-color: @white;
+      font-weight: @font-medium;
+      color: @grey-600;
+      font-size: 12px;
+      text-transform: uppercase;
+      padding: @padding-sm @padding-md;
+      border-bottom: 1px solid @border-color-1;
+    }
+
+    .ant-table-tbody > tr > td {
+      padding: @padding-sm @padding-md;
+      border-bottom: 1px solid @border-color-1;
+    }
+
+    .ant-table-tbody > tr:hover > td {
+      background-color: @grey-50;
+    }
+  }
+
+  .content-name-cell {
+    display: flex;
+    align-items: center;
+    gap: @size-xs;
+    cursor: pointer;
+
+    &:hover .content-name {
+      color: @primary-color;
+    }
+
+    .type-icon {
+      font-size: 14px;
+      flex-shrink: 0;
+
+      &.video-icon {
+        color: #1570ef;
+      }
+
+      &.storylane-icon {
+        color: #7147e8;
+      }
+
+      &.article-icon {
+        color: #17b26a;
+      }
+    }
+
+    .content-name {
+      font-size: @font-size-base;
+      color: @grey-900;
+      transition: color 0.2s ease;
+    }
+  }
+
+  .category-tags,
+  .context-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: @size-xxs;
+
+    .category-tag,
+    .context-tag {
       margin: 0;
+      font-size: 11px;
+      line-height: 16px;
+      padding: 2px 6px;
+      border-radius: @border-rad-base;
+      font-weight: @font-medium;
+    }
+
+    .context-tag {
+      background-color: @grey-100;
+      border-color: @grey-300;
+      color: @grey-600;
+    }
+
+    .more-tag {
+      background-color: @grey-100;
+      border-color: @grey-300;
+      color: @grey-600;
+    }
+  }
+
+  .action-buttons {
+    .action-btn {
+      color: @grey-500;
+
+      &:hover {
+        color: @grey-700;
+        background-color: @grey-100;
+      }
+
+      &.delete-btn:hover {
+        color: @error-color;
+        background-color: @red-9;
+      }
     }
   }
 }

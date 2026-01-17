@@ -15,6 +15,20 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { LearningResource } from '../../../rest/learningResourceAPI';
 import { LearningResourceCard } from './LearningResourceCard.component';
 
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => {
+      const translations: Record<string, string> = {
+        'label.min-read': 'min read',
+        'label.view-more': 'View More',
+        'label.view-less': 'View Less',
+      };
+
+      return translations[key] ?? key;
+    },
+  }),
+}));
+
 const mockVideoResource: LearningResource = {
   id: 'video-resource-1',
   name: 'TestVideoResource',
@@ -23,7 +37,7 @@ const mockVideoResource: LearningResource = {
   resourceType: 'Video',
   categories: ['Discovery'],
   difficulty: 'Intro',
-  estimatedDuration: 300, // 5 minutes in seconds
+  estimatedDuration: 300,
   source: {
     url: 'https://youtube.com/watch?v=test',
     provider: 'YouTube',
@@ -52,12 +66,9 @@ const mockArticleResource: LearningResource = {
   resourceType: 'Article',
 };
 
-const mockResourceWithProgress: LearningResource = {
+const mockResourceWithMultipleCategories: LearningResource = {
   ...mockVideoResource,
-  progress: {
-    progressPercent: 75,
-    status: 'InProgress',
-  },
+  categories: ['Discovery', 'Administration', 'DataGovernance', 'DataQuality'],
 };
 
 describe('LearningResourceCard', () => {
@@ -81,14 +92,27 @@ describe('LearningResourceCard', () => {
     render(<LearningResourceCard resource={mockVideoResource} />);
 
     expect(
-      screen.getByText('A test video learning resource')
+      screen.getByText(/A test video learning resource/i)
     ).toBeInTheDocument();
   });
 
-  it('should render difficulty tag', () => {
+  it('should render View More link for description', () => {
     render(<LearningResourceCard resource={mockVideoResource} />);
 
-    expect(screen.getByText('Intro')).toBeInTheDocument();
+    expect(screen.getByText('View More')).toBeInTheDocument();
+  });
+
+  it('should toggle description expansion when View More is clicked', () => {
+    render(<LearningResourceCard resource={mockVideoResource} />);
+
+    const viewMoreLink = screen.getByText('View More');
+    fireEvent.click(viewMoreLink);
+
+    expect(screen.getByText('View Less')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('View Less'));
+
+    expect(screen.getByText('View More')).toBeInTheDocument();
   });
 
   it('should render category tag', () => {
@@ -100,7 +124,7 @@ describe('LearningResourceCard', () => {
   it('should render formatted duration', () => {
     render(<LearningResourceCard resource={mockVideoResource} />);
 
-    expect(screen.getByText('5m 0s')).toBeInTheDocument();
+    expect(screen.getByText('5 min read')).toBeInTheDocument();
   });
 
   it('should not render duration when estimatedDuration is not provided', () => {
@@ -110,7 +134,7 @@ describe('LearningResourceCard', () => {
     };
     render(<LearningResourceCard resource={resourceWithoutDuration} />);
 
-    expect(screen.queryByText(/m.*s/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/min read/)).not.toBeInTheDocument();
   });
 
   it('should render play icon for Video resource type', () => {
@@ -164,31 +188,6 @@ describe('LearningResourceCard', () => {
     expect(() => fireEvent.click(card)).not.toThrow();
   });
 
-  it('should render progress bar when showProgress is true and progress exists', () => {
-    render(
-      <LearningResourceCard showProgress resource={mockResourceWithProgress} />
-    );
-
-    expect(screen.getByRole('progressbar')).toBeInTheDocument();
-  });
-
-  it('should not render progress bar when showProgress is false', () => {
-    render(
-      <LearningResourceCard
-        resource={mockResourceWithProgress}
-        showProgress={false}
-      />
-    );
-
-    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
-  });
-
-  it('should not render progress bar when progress data is not available', () => {
-    render(<LearningResourceCard showProgress resource={mockVideoResource} />);
-
-    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
-  });
-
   it('should have correct data-testid attribute', () => {
     render(<LearningResourceCard resource={mockVideoResource} />);
 
@@ -197,7 +196,7 @@ describe('LearningResourceCard', () => {
     ).toBeInTheDocument();
   });
 
-  it('should be hoverable when onClick is provided', () => {
+  it('should be clickable when onClick is provided', () => {
     const mockOnClick = jest.fn();
     render(
       <LearningResourceCard
@@ -210,6 +209,27 @@ describe('LearningResourceCard', () => {
       `learning-resource-card-${mockVideoResource.name}`
     );
 
-    expect(card).toHaveClass('ant-card-hoverable');
+    expect(card).toHaveClass('learning-resource-card-clickable');
+  });
+
+  it('should show only first 3 categories and +N for remaining', () => {
+    render(
+      <LearningResourceCard resource={mockResourceWithMultipleCategories} />
+    );
+
+    expect(screen.getByText('Discovery')).toBeInTheDocument();
+    expect(screen.getByText('Administration')).toBeInTheDocument();
+    expect(screen.getByText('Governance')).toBeInTheDocument();
+    expect(screen.getByText('+1')).toBeInTheDocument();
+  });
+
+  it('should not render description section when description is not provided', () => {
+    const resourceWithoutDescription = {
+      ...mockVideoResource,
+      description: undefined,
+    };
+    render(<LearningResourceCard resource={resourceWithoutDescription} />);
+
+    expect(screen.queryByText('View More')).not.toBeInTheDocument();
   });
 });

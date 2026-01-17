@@ -12,7 +12,7 @@
  */
 
 import { CloseOutlined, LoadingOutlined } from '@ant-design/icons';
-import { Button, Drawer, Empty, Space, Spin, Typography } from 'antd';
+import { Drawer, Empty, Spin, Typography } from 'antd';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -24,11 +24,12 @@ import { ResourcePlayerModal } from '../ResourcePlayer/ResourcePlayerModal.compo
 import { LearningDrawerProps } from './LearningDrawer.interface';
 import './LearningDrawer.less';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 export const LearningDrawer: React.FC<LearningDrawerProps> = ({
   open,
   pageId,
+  title,
   onClose,
 }) => {
   const { t } = useTranslation();
@@ -51,7 +52,6 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
       });
       setResources(response.data || []);
     } catch {
-      // Silently fail - learning resources are optional
       setResources([]);
     } finally {
       setIsLoading(false);
@@ -75,6 +75,10 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
   }, []);
 
   const getPageTitle = useCallback(() => {
+    if (title) {
+      return title;
+    }
+
     const titleMap: Record<string, string> = {
       glossary: t('label.glossary'),
       glossaryTerm: t('label.glossary-term'),
@@ -88,7 +92,7 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
     };
 
     return titleMap[pageId] || pageId;
-  }, [pageId, t]);
+  }, [pageId, title, t]);
 
   return (
     <>
@@ -99,38 +103,24 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
         open={open}
         placement="right"
         title={
-          <Space align="start" className="w-full" size="middle">
-            <div className="flex-1">
-              <Title level={4}>
-                {t('label.learning-resources-for', {
-                  context: getPageTitle(),
-                })}
-              </Title>
-              {resources.length > 0 && (
-                <Text type="secondary">
-                  {t('message.resources-available', {
-                    count: resources.length,
-                  })}
-                </Text>
-              )}
-            </div>
-            <Button
+          <div className="learning-drawer-header">
+            <Title className="learning-drawer-title" level={5}>
+              {t('label.entity-resource', { entity: getPageTitle() })}
+            </Title>
+            <CloseOutlined
+              className="learning-drawer-close"
               data-testid="close-drawer"
-              icon={<CloseOutlined />}
-              size="small"
-              type="text"
               onClick={onClose}
             />
-          </Space>
+          </div>
         }
-        width={480}
+        width={420}
         onClose={onClose}>
         <div className="learning-drawer-content">
           {isLoading ? (
             <div className="learning-drawer-loading">
               <Spin
                 indicator={<LoadingOutlined spin style={{ fontSize: 24 }} />}
-                tip={t('label.loading')}
               />
             </div>
           ) : resources.length === 0 ? (
@@ -139,15 +129,15 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
               image={Empty.PRESENTED_IMAGE_SIMPLE}
             />
           ) : (
-            <Space className="w-full" direction="vertical" size="middle">
+            <div className="learning-drawer-cards">
               {resources.map((resource) => (
                 <LearningResourceCard
                   key={resource.id}
                   resource={resource}
-                  onClick={() => handleResourceClick(resource)}
+                  onClick={handleResourceClick}
                 />
               ))}
-            </Space>
+            </div>
           )}
         </div>
       </Drawer>

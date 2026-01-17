@@ -12,92 +12,103 @@
  */
 @import (reference) '../../styles/variables.less';
 
-.learning-resource-form {
-  .ant-form-item {
-    margin-bottom: @size-lg;
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
-
-  .form-card-section {
-    background-color: @grey-26;
-    border-radius: @border-rad-sm;
-    margin-bottom: @size-mlg;
-    border: none;
-
-    .ant-card-body {
-      padding: @size-md;
-    }
-
-    .ant-form-item {
-      margin-bottom: @size-lg;
-
-      &:last-child {
-        margin-bottom: 0;
-      }
-    }
-
-    .card-title-container {
-      margin-bottom: @margin-md;
-
-      .card-title-text {
-        color: @grey-700;
-        font-weight: @font-semibold;
-        font-size: @font-size-base;
-        margin-bottom: 0;
-      }
-
-      .card-title-description {
-        color: @grey-600;
-        font-size: @font-size-base;
-        margin-top: @margin-xs;
-      }
-    }
-  }
-
-  .context-list-item {
-    display: flex;
-    align-items: flex-start;
-    gap: @size-xs;
-    margin-bottom: @size-md;
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-
-    .context-fields {
-      display: flex;
-      gap: @size-xs;
-      flex-wrap: wrap;
-    }
-
-    .context-page-id {
-      min-width: 180px;
-    }
-
-    .context-component-id {
-      min-width: 180px;
-    }
-  }
-
-  .add-context-btn {
-    margin-top: @margin-sm;
-  }
-}
-
 .learning-resource-form-drawer {
+  .ant-drawer-header {
+    padding: @padding-md @padding-lg;
+    border-bottom: 1px solid @border-color-1;
+  }
+
+  .ant-drawer-header-title {
+    flex: 1;
+  }
+
+  .drawer-title-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+
+    .drawer-title {
+      font-size: 16px;
+      font-weight: @font-semibold;
+      color: @grey-900;
+    }
+
+    .drawer-close {
+      font-size: 14px;
+      color: @grey-500;
+      cursor: pointer;
+      padding: @padding-xs;
+      border-radius: @border-rad-base;
+      transition: all 0.2s ease;
+
+      &:hover {
+        color: @grey-700;
+        background-color: @grey-100;
+      }
+    }
+  }
+
   .ant-drawer-body {
     padding: @padding-lg;
-  }
-
-  .ant-drawer-header {
-    border-bottom: 1px solid @grey-200;
+    background-color: @white;
   }
 
   .ant-drawer-footer {
-    border-top: 1px solid @grey-200;
+    border-top: 1px solid @border-color-1;
     padding: @padding-md @padding-lg;
+  }
+
+  .drawer-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: @size-sm;
+  }
+}
+
+.learning-resource-form {
+  .ant-form-item {
+    margin-bottom: @size-mlg;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .ant-form-item-label {
+    padding-bottom: @padding-xs;
+
+    > label {
+      font-size: 13px;
+      font-weight: @font-medium;
+      color: @grey-700;
+    }
+  }
+
+  .form-item-required {
+    .ant-form-item-label {
+      > label::after {
+        content: '*';
+        color: @error-color;
+        margin-left: 2px;
+      }
+    }
+  }
+
+  .ant-input,
+  .ant-select-selector {
+    border-radius: @border-rad-xs;
+  }
+
+  .ant-select-selection-item {
+    display: flex;
+    align-items: center;
+    gap: @size-xs;
+  }
+
+  .embedded-content-hint {
+    display: block;
+    margin-bottom: @margin-xs;
+    font-size: 12px;
   }
 }

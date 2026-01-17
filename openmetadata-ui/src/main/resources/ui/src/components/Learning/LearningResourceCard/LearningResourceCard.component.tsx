@@ -12,34 +12,40 @@
  */
 
 import {
-  ClockCircleOutlined,
   FileTextOutlined,
   PlayCircleOutlined,
   RocketOutlined,
 } from '@ant-design/icons';
-import { Card, Progress, Space, Tag, Typography } from 'antd';
-import React, { useMemo } from 'react';
+import { Tag, Typography } from 'antd';
+import classNames from 'classnames';
+import { DateTime } from 'luxon';
+import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LEARNING_CATEGORIES } from '../Learning.interface';
 import { LearningResourceCardProps } from './LearningResourceCard.interface';
 import './LearningResourceCard.less';
 
-const { Text, Paragraph } = Typography;
+const { Text, Paragraph, Link } = Typography;
+
+const MAX_VISIBLE_TAGS = 3;
 
 export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
   resource,
-  showProgress = false,
   onClick,
 }) => {
+  const { t } = useTranslation();
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+
   const resourceTypeIcon = useMemo(() => {
     switch (resource.resourceType) {
       case 'Video':
-        return <PlayCircleOutlined />;
+        return <PlayCircleOutlined className="resource-type-icon video-icon" />;
       case 'Storylane':
-        return <RocketOutlined />;
+        return <RocketOutlined className="resource-type-icon storylane-icon" />;
       case 'Article':
-        return <FileTextOutlined />;
+        return <FileTextOutlined className="resource-type-icon article-icon" />;
       default:
-        return <FileTextOutlined />;
+        return <FileTextOutlined className="resource-type-icon article-icon" />;
     }
   }, [resource.resourceType]);
 
@@ -48,66 +54,113 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
       return null;
     }
     const minutes = Math.floor(resource.estimatedDuration / 60);
-    const seconds = resource.estimatedDuration % 60;
-    if (minutes > 0) {
-      return `${minutes}m ${seconds}s`;
+
+    return `${minutes} ${t('label.min-read')}`;
+  }, [resource.estimatedDuration, t]);
+
+  const formattedDate = useMemo(() => {
+    if (!resource.updatedAt) {
+      return null;
     }
 
-    return `${seconds}s`;
-  }, [resource.estimatedDuration]);
+    return DateTime.fromMillis(resource.updatedAt).toFormat('LLL dd, yyyy');
+  }, [resource.updatedAt]);
 
-  const categoryInfo = useMemo(() => {
-    if (resource.categories && resource.categories.length > 0) {
-      return LEARNING_CATEGORIES[
-        resource.categories[0] as keyof typeof LEARNING_CATEGORIES
-      ];
+  const categoryTags = useMemo(() => {
+    if (!resource.categories || resource.categories.length === 0) {
+      return { visible: [], remaining: 0 };
     }
 
-    return null;
+    const visible = resource.categories.slice(0, MAX_VISIBLE_TAGS);
+    const remaining = resource.categories.length - MAX_VISIBLE_TAGS;
+
+    return { visible, remaining };
   }, [resource.categories]);
 
+  const getCategoryColor = (category: string) => {
+    const categoryInfo =
+      LEARNING_CATEGORIES[category as keyof typeof LEARNING_CATEGORIES];
+
+    return categoryInfo?.color ?? '#1890ff';
+  };
+
+  const handleViewMoreClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsDescriptionExpanded(!isDescriptionExpanded);
+  };
+
   return (
-    <Card
-      className="learning-resource-card"
+    <div
+      className={classNames('learning-resource-card', {
+        'learning-resource-card-clickable': !!onClick,
+      })}
       data-testid={`learning-resource-card-${resource.name}`}
-      hoverable={!!onClick}
       onClick={() => onClick?.(resource)}>
-      <Space className="w-full" direction="vertical" size="small">
+      <div className="learning-resource-content">
         <div className="learning-resource-header">
-          <Space size="small">
-            <span className="resource-type-icon">{resourceTypeIcon}</span>
-            <Text strong>{resource.displayName || resource.name}</Text>
-          </Space>
+          {resourceTypeIcon}
+          <Text strong className="learning-resource-title">
+            {resource.displayName || resource.name}
+          </Text>
         </div>
 
         {resource.description && (
-          <Paragraph
-            className="learning-resource-description"
-            ellipsis={{ rows: 2 }}>
-            {resource.description}
-          </Paragraph>
-        )}
-
-        <Space wrap className="learning-resource-meta" size="small">
-          {resource.difficulty && <Tag>{resource.difficulty}</Tag>}
-          {categoryInfo && <Tag>{categoryInfo.label}</Tag>}
-          {formattedDuration && (
-            <Tag icon={<ClockCircleOutlined />}>{formattedDuration}</Tag>
-          )}
-        </Space>
-
-        {showProgress && resource.progress && (
-          <div className="learning-resource-progress">
-            <Progress
-              percent={Math.round(resource.progress.progressPercent || 0)}
-              size="small"
-              status={
-                resource.progress.status === 'Completed' ? 'success' : 'active'
-              }
-            />
+          <div className="learning-resource-description-container">
+            <Paragraph
+              className="learning-resource-description"
+              ellipsis={
+                isDescriptionExpanded ? false : { rows: 2, suffix: '...' }
+              }>
+              {resource.description}
+            </Paragraph>
+            <Link className="view-more-link" onClick={handleViewMoreClick}>
+              {isDescriptionExpanded
+                ? t('label.view-less')
+                : t('label.view-more')}
+            </Link>
           </div>
         )}
-      </Space>
-    </Card>
+
+        <div className="learning-resource-footer">
+          <div className="learning-resource-tags">
+            {categoryTags.visible.map((category) => (
+              <Tag
+                className="category-tag"
+                key={category}
+                style={{
+                  backgroundColor: `${getCategoryColor(category)}15`,
+                  borderColor: getCategoryColor(category),
+                  color: getCategoryColor(category),
+                }}>
+                {LEARNING_CATEGORIES[
+                  category as keyof typeof LEARNING_CATEGORIES
+                ]?.label ?? category}
+              </Tag>
+            ))}
+            {categoryTags.remaining > 0 && (
+              <Tag className="category-tag more-tag">
+                +{categoryTags.remaining}
+              </Tag>
+            )}
+          </div>
+
+          <div className="learning-resource-meta">
+            {formattedDate && (
+              <Text className="meta-text" type="secondary">
+                {formattedDate}
+              </Text>
+            )}
+            {formattedDate && formattedDuration && (
+              <span className="meta-separator">|</span>
+            )}
+            {formattedDuration && (
+              <Text className="meta-text" type="secondary">
+                {formattedDuration}
+              </Text>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };

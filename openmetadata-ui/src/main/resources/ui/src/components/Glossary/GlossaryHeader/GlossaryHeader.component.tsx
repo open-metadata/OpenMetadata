@@ -544,10 +544,7 @@ const GlossaryHeader = ({
             {!isVersionView && createButtons}
 
             <ButtonGroup className="spaced" size="small">
-              <LearningIcon
-                pageId={isGlossary ? 'glossary' : 'glossaryTerm'}
-                size="small"
-              />
+              <LearningIcon pageId={isGlossary ? 'glossary' : 'glossaryTerm'} />
 
               {updateVote && (
                 <Voting

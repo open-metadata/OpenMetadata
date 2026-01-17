@@ -929,7 +929,7 @@ const DomainDetails = ({
               )}
 
               <ButtonGroup className="spaced" size="small">
-                <LearningIcon pageId="domain" size="small" />
+                <LearningIcon pageId="domain" />
 
                 {domain?.version && (
                   <Tooltip

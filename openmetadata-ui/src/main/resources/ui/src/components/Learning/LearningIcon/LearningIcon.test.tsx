@@ -63,31 +63,68 @@ describe('LearningIcon', () => {
     });
   });
 
-  it('should render learning icon button', () => {
+  it('should render learning icon when resources exist', async () => {
     render(<LearningIcon pageId="glossary" />);
 
-    expect(screen.getByTestId('learning-icon-glossary')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('learning-icon-glossary')).toBeInTheDocument();
+    });
   });
 
-  it('should render with correct data-testid based on pageId', () => {
+  it('should render with correct data-testid based on pageId', async () => {
     render(<LearningIcon pageId="domain" />);
 
-    expect(screen.getByTestId('learning-icon-domain')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('learning-icon-domain')).toBeInTheDocument();
+    });
   });
 
-  it('should render label when provided', () => {
-    render(<LearningIcon label="Learn More" pageId="glossary" />);
+  it('should not render when resource count is 0', async () => {
+    mockGetLearningResourcesByContext.mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
 
-    expect(screen.getByText('Learn More')).toBeInTheDocument();
+    const { container } = render(<LearningIcon pageId="glossary" />);
+
+    await waitFor(() => {
+      expect(mockGetLearningResourcesByContext).toHaveBeenCalled();
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId('learning-icon-glossary')
+      ).not.toBeInTheDocument();
+    });
+
+    expect(container.firstChild).toBeNull();
   });
 
-  it('should open drawer when clicked', async () => {
+  it('should open drawer when popover is clicked', async () => {
     render(<LearningIcon pageId="glossary" />);
 
-    const button = screen.getByTestId('learning-icon-glossary');
+    await waitFor(() => {
+      expect(screen.getByTestId('learning-icon-glossary')).toBeInTheDocument();
+    });
+
+    const iconContainer = screen.getByTestId('learning-icon-glossary');
 
     await act(async () => {
-      fireEvent.click(button);
+      fireEvent.mouseEnter(iconContainer.parentElement!);
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('label.learn-how-this-feature-works')
+      ).toBeInTheDocument();
+    });
+
+    const popoverContent = screen.getByText(
+      'label.learn-how-this-feature-works'
+    );
+
+    await act(async () => {
+      fireEvent.click(popoverContent.parentElement!);
     });
 
     expect(screen.getByTestId('learning-drawer')).toBeInTheDocument();
@@ -96,10 +133,28 @@ describe('LearningIcon', () => {
   it('should close drawer when close button is clicked', async () => {
     render(<LearningIcon pageId="glossary" />);
 
-    const button = screen.getByTestId('learning-icon-glossary');
+    await waitFor(() => {
+      expect(screen.getByTestId('learning-icon-glossary')).toBeInTheDocument();
+    });
+
+    const iconContainer = screen.getByTestId('learning-icon-glossary');
 
     await act(async () => {
-      fireEvent.click(button);
+      fireEvent.mouseEnter(iconContainer.parentElement!);
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('label.learn-how-this-feature-works')
+      ).toBeInTheDocument();
+    });
+
+    const popoverContent = screen.getByText(
+      'label.learn-how-this-feature-works'
+    );
+
+    await act(async () => {
+      fireEvent.click(popoverContent.parentElement!);
     });
 
     expect(screen.getByTestId('learning-drawer')).toBeInTheDocument();
@@ -113,14 +168,8 @@ describe('LearningIcon', () => {
     expect(screen.queryByTestId('learning-drawer')).not.toBeInTheDocument();
   });
 
-  it('should fetch resource count on mouse enter', async () => {
+  it('should fetch resource count on mount', async () => {
     render(<LearningIcon pageId="glossary" />);
-
-    const button = screen.getByTestId('learning-icon-glossary');
-
-    await act(async () => {
-      fireEvent.mouseEnter(button);
-    });
 
     await waitFor(() => {
       expect(mockGetLearningResourcesByContext).toHaveBeenCalledWith(
@@ -133,21 +182,14 @@ describe('LearningIcon', () => {
   it('should not fetch resource count again if already fetched', async () => {
     render(<LearningIcon pageId="glossary" />);
 
-    const button = screen.getByTestId('learning-icon-glossary');
-
-    await act(async () => {
-      fireEvent.mouseEnter(button);
-    });
-
     await waitFor(() => {
       expect(mockGetLearningResourcesByContext).toHaveBeenCalledTimes(1);
     });
 
-    await act(async () => {
-      fireEvent.mouseEnter(button);
+    await waitFor(() => {
+      expect(screen.getByTestId('learning-icon-glossary')).toBeInTheDocument();
     });
 
-    // Should still be 1 since count is cached
     expect(mockGetLearningResourcesByContext).toHaveBeenCalledTimes(1);
   });
 
@@ -156,41 +198,59 @@ describe('LearningIcon', () => {
       new Error('API Error')
     );
 
-    render(<LearningIcon pageId="glossary" />);
+    const { container } = render(<LearningIcon pageId="glossary" />);
 
-    const button = screen.getByTestId('learning-icon-glossary');
-
-    await act(async () => {
-      fireEvent.mouseEnter(button);
+    await waitFor(() => {
+      expect(mockGetLearningResourcesByContext).toHaveBeenCalled();
     });
 
-    // Should not throw error
-    expect(screen.getByTestId('learning-icon-glossary')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(container.firstChild).toBeNull();
+    });
   });
 
-  it('should apply custom className', () => {
+  it('should apply custom className', async () => {
     render(<LearningIcon className="custom-class" pageId="glossary" />);
 
-    const button = screen.getByTestId('learning-icon-glossary');
+    await waitFor(() => {
+      expect(screen.getByTestId('learning-icon-glossary')).toBeInTheDocument();
+    });
 
-    expect(button).toHaveClass('custom-class');
+    const badge = screen
+      .getByTestId('learning-icon-glossary')
+      .closest('.learning-icon-badge');
+
+    expect(badge).toHaveClass('custom-class');
   });
 
-  it('should render with small size', () => {
-    render(<LearningIcon pageId="glossary" size="small" />);
+  it('should display resource count in badge', async () => {
+    render(<LearningIcon pageId="glossary" />);
 
-    const button = screen.getByTestId('learning-icon-glossary');
+    await waitFor(() => {
+      expect(screen.getByTestId('learning-icon-glossary')).toBeInTheDocument();
+    });
 
-    expect(button).toBeInTheDocument();
-    expect(button).toHaveClass('learning-icon');
+    expect(screen.getByText('5')).toBeInTheDocument();
   });
 
-  it('should render with large size', () => {
-    render(<LearningIcon pageId="glossary" size="large" />);
+  it('should show popover on hover with resource count', async () => {
+    render(<LearningIcon pageId="glossary" />);
 
-    const button = screen.getByTestId('learning-icon-glossary');
+    await waitFor(() => {
+      expect(screen.getByTestId('learning-icon-glossary')).toBeInTheDocument();
+    });
 
-    expect(button).toBeInTheDocument();
-    expect(button).toHaveClass('learning-icon');
+    const iconContainer = screen.getByTestId('learning-icon-glossary');
+
+    await act(async () => {
+      fireEvent.mouseEnter(iconContainer.parentElement!);
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('label.learn-how-this-feature-works')
+      ).toBeInTheDocument();
+      expect(screen.getByText('5 label.resource-plural')).toBeInTheDocument();
+    });
   });
 });

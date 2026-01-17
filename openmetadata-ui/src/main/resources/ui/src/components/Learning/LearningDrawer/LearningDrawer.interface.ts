@@ -14,5 +14,6 @@
 export interface LearningDrawerProps {
   open: boolean;
   pageId: string;
+  title?: string;
   onClose: () => void;
 }

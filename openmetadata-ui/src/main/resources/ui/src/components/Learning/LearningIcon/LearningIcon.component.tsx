@@ -11,36 +11,32 @@
  *  limitations under the License.
  */
 
-import { BulbOutlined } from '@ant-design/icons';
-import { Badge, Button, Tooltip } from 'antd';
-import React, { useCallback, useMemo, useState } from 'react';
+import { RightOutlined } from '@ant-design/icons';
+import { Badge, Popover, Typography } from 'antd';
+import classNames from 'classnames';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as LearningIconSvg } from '../../../assets/svg/ic-learning.svg';
 import { getLearningResourcesByContext } from '../../../rest/learningResourceAPI';
 import { LearningDrawer } from '../LearningDrawer/LearningDrawer.component';
 import { LearningIconProps } from './LearningIcon.interface';
 import './LearningIcon.less';
 
+const { Text } = Typography;
+
 export const LearningIcon: React.FC<LearningIconProps> = ({
   pageId,
+  title,
   className = '',
-  size = 'medium',
-  label,
-  tooltip,
-  placement = 'bottom',
 }) => {
   const { t } = useTranslation();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [resourceCount, setResourceCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
-
-  const sizeMap = {
-    small: 'sm',
-    medium: 'middle',
-    large: 'lg',
-  };
+  const [popoverVisible, setPopoverVisible] = useState(false);
 
   const fetchResourceCount = useCallback(async () => {
-    if (resourceCount > 0) {
+    if (resourceCount > 0 || isLoading) {
       return;
     }
     setIsLoading(true);
@@ -49,14 +45,19 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
         limit: 1,
       });
       setResourceCount(response.paging?.total ?? 0);
-    } catch (error) {
+    } catch {
       setResourceCount(0);
     } finally {
       setIsLoading(false);
     }
-  }, [pageId, resourceCount]);
+  }, [pageId, resourceCount, isLoading]);
+
+  useEffect(() => {
+    fetchResourceCount();
+  }, []);
 
   const handleClick = useCallback(() => {
+    setPopoverVisible(false);
     setDrawerOpen(true);
   }, []);
 
@@ -64,54 +65,55 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
     setDrawerOpen(false);
   }, []);
 
-  const tooltipTitle = useMemo(
-    () =>
-      tooltip ||
-      (resourceCount > 0
-        ? t('label.learning-resources-available', {
-            count: resourceCount,
-          })
-        : t('label.learn-more')),
-    [tooltip, resourceCount, t]
+  const handlePopoverVisibleChange = useCallback((visible: boolean) => {
+    setPopoverVisible(visible);
+  }, []);
+
+  const popoverContent = (
+    <div className="learning-icon-popover" onClick={handleClick}>
+      <Text className="popover-text">
+        {t('label.learn-how-this-feature-works')}
+      </Text>
+      <div className="popover-action">
+        <Text className="resource-count">
+          {resourceCount} {t('label.resource-plural')}
+        </Text>
+        <RightOutlined className="arrow-icon" />
+      </div>
+    </div>
   );
 
-  const buttonContent = useMemo(() => {
-    if (label) {
-      return (
-        <>
-          <BulbOutlined />
-          <span className="m-l-xs">{label}</span>
-        </>
-      );
-    }
-
-    return <BulbOutlined />;
-  }, [label]);
+  if (resourceCount === 0 && !isLoading) {
+    return null;
+  }
 
   return (
     <>
-      <Tooltip placement={placement} title={tooltipTitle}>
+      <Popover
+        content={popoverContent}
+        open={popoverVisible}
+        placement="bottomLeft"
+        trigger="hover"
+        onOpenChange={handlePopoverVisibleChange}>
         <Badge
-          className="learning-icon-badge"
+          className={classNames('learning-icon-badge', className)}
           count={resourceCount}
-          offset={[-2, 2]}
-          overflowCount={99}
+          offset={[-4, 4]}
           size="small">
-          <Button
-            className={`learning-icon ${className}`}
-            data-testid={`learning-icon-${pageId}`}
-            icon={!label ? <BulbOutlined /> : undefined}
-            loading={isLoading}
-            size={sizeMap[size]}
-            type="text"
-            onClick={handleClick}
-            onMouseEnter={fetchResourceCount}>
-            {label && buttonContent}
-          </Button>
+          <div
+            className="learning-icon-container"
+            data-testid={`learning-icon-${pageId}`}>
+            <LearningIconSvg className="learning-icon-svg" />
+          </div>
         </Badge>
-      </Tooltip>
+      </Popover>
 
-      <LearningDrawer open={drawerOpen} pageId={pageId} onClose={handleClose} />
+      <LearningDrawer
+        open={drawerOpen}
+        pageId={pageId}
+        title={title}
+        onClose={handleClose}
+      />
     </>
   );
 };

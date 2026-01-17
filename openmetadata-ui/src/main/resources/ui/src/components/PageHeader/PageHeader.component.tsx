@@ -45,9 +45,7 @@ const PageHeader = ({
             />
           )}
         </Typography.Title>
-        {learningPageId && (
-          <LearningIcon pageId={learningPageId} size="small" />
-        )}
+        {learningPageId && <LearningIcon pageId={learningPageId} />}
       </Space>
       <Typography.Paragraph
         className="sub-heading"

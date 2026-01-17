@@ -11,17 +11,21 @@
  *  limitations under the License.
  */
 
-import { ClockCircleOutlined } from '@ant-design/icons';
-import { Button, Modal, Space, Tag, Typography } from 'antd';
-import React, { useMemo } from 'react';
+import { CloseOutlined, ExpandOutlined } from '@ant-design/icons';
+import { Modal, Tag, Typography } from 'antd';
+import { DateTime } from 'luxon';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { LEARNING_CATEGORIES } from '../Learning.interface';
 import { ArticleViewer } from './ArticleViewer.component';
 import { ResourcePlayerModalProps } from './ResourcePlayerModal.interface';
 import './ResourcePlayerModal.less';
 import { StorylaneTour } from './StorylaneTour.component';
 import { VideoPlayer } from './VideoPlayer.component';
 
-const { Title, Text } = Typography;
+const { Text, Paragraph, Link } = Typography;
+
+const MAX_VISIBLE_TAGS = 3;
 
 export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
   open,
@@ -29,19 +33,52 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
   onClose,
 }) => {
   const { t } = useTranslation();
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
   const formattedDuration = useMemo(() => {
     if (!resource.estimatedDuration) {
       return null;
     }
     const minutes = Math.floor(resource.estimatedDuration / 60);
-    const seconds = resource.estimatedDuration % 60;
-    if (minutes > 0) {
-      return `${minutes}m ${seconds}s`;
+
+    return `${minutes} ${t('label.min-watch')}`;
+  }, [resource.estimatedDuration, t]);
+
+  const formattedDate = useMemo(() => {
+    if (!resource.updatedAt) {
+      return null;
     }
 
-    return `${seconds}s`;
-  }, [resource.estimatedDuration]);
+    return DateTime.fromMillis(resource.updatedAt).toFormat('LLL dd, yyyy');
+  }, [resource.updatedAt]);
+
+  const categoryTags = useMemo(() => {
+    if (!resource.categories || resource.categories.length === 0) {
+      return { visible: [], remaining: 0 };
+    }
+
+    const visible = resource.categories.slice(0, MAX_VISIBLE_TAGS);
+    const remaining = resource.categories.length - MAX_VISIBLE_TAGS;
+
+    return { visible, remaining };
+  }, [resource.categories]);
+
+  const getCategoryColor = (category: string) => {
+    const categoryInfo =
+      LEARNING_CATEGORIES[category as keyof typeof LEARNING_CATEGORIES];
+
+    return categoryInfo?.color ?? '#1890ff';
+  };
+
+  const handleViewMoreClick = useCallback(() => {
+    setIsDescriptionExpanded(!isDescriptionExpanded);
+  }, [isDescriptionExpanded]);
+
+  const handleExpandClick = useCallback(() => {
+    if (resource.source?.url) {
+      window.open(resource.source.url, '_blank');
+    }
+  }, [resource.source?.url]);
 
   const renderPlayer = useMemo(() => {
     switch (resource.resourceType) {
@@ -61,26 +98,81 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
       centered
       destroyOnClose
       className="resource-player-modal"
-      footer={<Button onClick={onClose}>{t('label.close')}</Button>}
+      closable={false}
+      footer={null}
       open={open}
-      title={
-        <Space direction="vertical" size="small">
-          <Title level={4}>{resource.displayName || resource.name}</Title>
-          <Space wrap size="small">
-            {resource.difficulty && (
-              <Tag color="blue">{resource.difficulty}</Tag>
-            )}
-            {formattedDuration && (
-              <Tag icon={<ClockCircleOutlined />}>{formattedDuration}</Tag>
-            )}
-          </Space>
-          {resource.description && (
-            <Text type="secondary">{resource.description}</Text>
-          )}
-        </Space>
-      }
-      width="90%"
+      width={900}
       onCancel={onClose}>
+      <div className="resource-player-header">
+        <div className="resource-player-info">
+          <Text strong className="resource-title">
+            {resource.displayName || resource.name}
+          </Text>
+
+          {resource.description && (
+            <div className="resource-description-container">
+              <Paragraph
+                className="resource-description"
+                ellipsis={
+                  isDescriptionExpanded ? false : { rows: 2, suffix: '...' }
+                }>
+                {resource.description}
+              </Paragraph>
+              <Link className="view-more-link" onClick={handleViewMoreClick}>
+                {isDescriptionExpanded
+                  ? t('label.view-less')
+                  : t('label.view-more')}
+              </Link>
+            </div>
+          )}
+
+          <div className="resource-meta-row">
+            <div className="resource-tags">
+              {categoryTags.visible.map((category) => (
+                <Tag
+                  className="category-tag"
+                  key={category}
+                  style={{
+                    backgroundColor: `${getCategoryColor(category)}15`,
+                    borderColor: getCategoryColor(category),
+                    color: getCategoryColor(category),
+                  }}>
+                  {LEARNING_CATEGORIES[
+                    category as keyof typeof LEARNING_CATEGORIES
+                  ]?.label ?? category}
+                </Tag>
+              ))}
+              {categoryTags.remaining > 0 && (
+                <Tag className="category-tag more-tag">
+                  +{categoryTags.remaining}
+                </Tag>
+              )}
+            </div>
+
+            <div className="resource-meta">
+              {formattedDate && (
+                <Text className="meta-text" type="secondary">
+                  {formattedDate}
+                </Text>
+              )}
+              {formattedDate && formattedDuration && (
+                <span className="meta-separator">|</span>
+              )}
+              {formattedDuration && (
+                <Text className="meta-text" type="secondary">
+                  {formattedDuration}
+                </Text>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="resource-player-actions">
+          <ExpandOutlined className="action-icon" onClick={handleExpandClick} />
+          <CloseOutlined className="action-icon" onClick={onClose} />
+        </div>
+      </div>
+
       <div className="resource-player-content">{renderPlayer}</div>
     </Modal>
   );

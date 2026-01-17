@@ -168,6 +168,7 @@ const ProfilerConfigurationPage = () => {
                 'message.page-sub-header-for-profiler-configuration'
               ),
             }}
+            learningPageId="profilerConfiguration"
           />
         </Col>
         <Col span={24}>

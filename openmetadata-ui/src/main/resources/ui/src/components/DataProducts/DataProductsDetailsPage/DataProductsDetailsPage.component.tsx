@@ -649,7 +649,7 @@ const DataProductsDetailsPage = ({
               )}
 
               <ButtonGroup className="spaced" size="small">
-                <LearningIcon pageId="dataProduct" size="small" />
+                <LearningIcon pageId="dataProduct" />
 
                 {dataProduct?.version && (
                   <Tooltip

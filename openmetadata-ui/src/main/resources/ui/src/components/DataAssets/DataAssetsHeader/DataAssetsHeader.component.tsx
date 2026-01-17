@@ -708,7 +708,7 @@ export const DataAssetsHeader = ({
                     onProfilerSettingUpdate={onProfilerSettingUpdate}
                     onRestoreEntity={onRestoreDataAsset}
                   />
-                  <LearningIcon pageId={entityType} size="small" />
+                  <LearningIcon pageId={entityType} />
                 </ButtonGroup>
 
                 {activeAnnouncement && (
