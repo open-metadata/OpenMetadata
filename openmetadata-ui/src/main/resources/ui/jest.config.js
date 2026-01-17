@@ -60,7 +60,8 @@ module.exports = {
     '\\.(scss)$': 'identity-obj-proxy', // Mock style imports
     '\\.(jpg|JPG|gif|GIF|png|PNG|less|LESS|css|CSS)$':
       '<rootDir>/src/test/unit/mocks/file.mock.js',
-    '\\.json': '<rootDir>/src/test/unit/mocks/json.mock.js',
+    // fix vendors.map error
+    '^<rootDir>/src/.*\\.json$': '<rootDir>/src/test/unit/mocks/json.mock.js',
     '@github/g-emoji-element': '<rootDir>/src/test/unit/mocks/gemoji.mock.js',
     'quilljs-markdown': '<rootDir>/src/test/unit/mocks/gemoji.mock.js',
     '@azure/msal-browser':

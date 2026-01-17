@@ -2064,6 +2064,7 @@
     "auto-pilot-no-agents-message": "لا يوجد وكلاء AutoPilot حاليًا.",
     "availability-time-contract-description": "الوقت المتوقع لتوافر البيانات",
     "bot-email-confirmation": "{{email}} لروبوت {{botName}}",
+    "bulk-edit-entity-help": "تحرير عدة {{entity}} في وقت واحد باستخدام CSV",
     "can-not-add-widget": "لا يمكن إضافة الأداة إلى هذا القسم بسبب قيود الحجم.",
     "can-you-add-a-description": "هل يمكنك إضافة وصف؟",
     "checkout-service-connectors-doc": "هناك الكثير من الموصلات المتاحة هنا لفهرسة البيانات من خدماتك. يرجى الاطلاع على موصلاتنا.",

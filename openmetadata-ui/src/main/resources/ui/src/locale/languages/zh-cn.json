@@ -2064,6 +2064,7 @@
     "auto-pilot-no-agents-message": "没有 AutoPilot 代理",
     "availability-time-contract-description": "数据预期可用的一天中的时间",
     "bot-email-confirmation": "{{botName}}机器人的邮箱{{email}}",
+    "bulk-edit-entity-help": "使用 CSV 一次编辑多个{{entity}}",
     "can-not-add-widget": "由于大小限制，无法将小部件添加到此部分。",
     "can-you-add-a-description": "您能添加一些描述吗？",
     "checkout-service-connectors-doc": "我们已经预置了很多连接器, 可用于索引您的各项服务数据",
