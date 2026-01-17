@@ -229,7 +229,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       await expect(ownersSection).toBeVisible();
       await adminPage
         .getByTestId('edit-owners')
-        .evaluate((el) => el.scrollIntoView({ block: 'center' }))
+        .evaluate((el) => el.scrollIntoView({ block: 'center' }));
 
       await addOwnerWithoutValidation({
         page: adminPage,
@@ -344,7 +344,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       await adminPage
         .getByTestId('edit-owners')
-        .evaluate((el) => el.scrollIntoView({ block: 'center' }))
+        .evaluate((el) => el.scrollIntoView({ block: 'center' }));
 
       await addOwnerWithoutValidation({
         page: adminPage,
@@ -1000,8 +1000,9 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       const testCase2 = await adminTestEntity.createTestCase(apiContext, {
         name: `pw_test_case_failed_${uuid()}`,
-        entityLink: `<#E::table::${adminTestEntity.entityResponseData?.['fullyQualifiedName']
-          }::columns::${(adminTestEntity.entity?.columns as Column[])[0].name}>`,
+        entityLink: `<#E::table::${
+          adminTestEntity.entityResponseData?.['fullyQualifiedName']
+        }::columns::${(adminTestEntity.entity?.columns as Column[])[0].name}>`,
         testDefinition: 'columnValueLengthsToBeBetween',
         parameterValues: [
           { name: 'minLength', value: 3 },
