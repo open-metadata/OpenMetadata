@@ -227,6 +227,9 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       const ownersSection = summaryPanel.locator('.owners-section');
 
       await expect(ownersSection).toBeVisible();
+      await adminPage
+        .getByTestId('edit-owners')
+        .evaluate((el) => el.scrollIntoView({ block: 'center' }));
 
       await addOwnerWithoutValidation({
         page: adminPage,
@@ -296,6 +299,10 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       await testUser.create(apiContext);
       const testUserDisplayName = testUser.getUserDisplayName();
 
+      await adminPage
+        .getByTestId('edit-owners')
+        .evaluate((el) => el.scrollIntoView({ block: 'center' }));
+
       await addOwnerWithoutValidation({
         page: adminPage,
         owner: testUserDisplayName,
@@ -334,6 +341,10 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     try {
       await testTeam.create(apiContext);
       const testTeamDisplayName = testTeam.getTeamDisplayName();
+
+      await adminPage
+        .getByTestId('edit-owners')
+        .evaluate((el) => el.scrollIntoView({ block: 'center' }));
 
       await addOwnerWithoutValidation({
         page: adminPage,

@@ -23,6 +23,8 @@ from metadata.generated.schema.entity.services.connections.pipeline.dagsterConne
     DagsterConnection,
 )
 from metadata.ingestion.source.pipeline.dagster.models import (
+    AssetsQueryResponse,
+    DagsterAssetNode,
     DagsterPipeline,
     GraphOrError,
     GraphOrErrorModel,
@@ -31,6 +33,7 @@ from metadata.ingestion.source.pipeline.dagster.models import (
     RepositoriesOrErrorModel,
 )
 from metadata.ingestion.source.pipeline.dagster.queries import (
+    DAGSTER_ASSETS_QUERY,
     DAGSTER_PIPELINE_DETAILS_GRAPHQL,
     GRAPHQL_QUERY_FOR_JOBS,
     GRAPHQL_RUNS_QUERY,
@@ -135,3 +138,34 @@ class DagsterClient:
             logger.error(f"Error while getting jobs {pipeline_name} - {err}")
 
         return None
+
+    def get_assets(
+        self, repository_name: str, repository_location: str
+    ) -> Optional[List[DagsterAssetNode]]:
+        """
+        Retrieve all assets from a repository with their dependencies.
+        """
+        try:
+            parameters = {
+                "repositorySelector": {
+                    "repositoryName": repository_name,
+                    "repositoryLocationName": repository_location,
+                }
+            }
+            result = self.client._execute(  # pylint: disable=protected-access
+                query=DAGSTER_ASSETS_QUERY, variables=parameters
+            )
+            response = AssetsQueryResponse.model_validate(result)
+
+            if response.repositoryOrError.typename == "Repository":
+                return response.repositoryOrError.assetNodes
+
+            logger.warning(
+                f"Failed to fetch assets: {response.repositoryOrError.typename}"
+            )
+            return None
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Error fetching assets: {exc}")
+            return None

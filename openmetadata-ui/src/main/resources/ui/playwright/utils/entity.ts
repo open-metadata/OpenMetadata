@@ -23,6 +23,7 @@ import { ES_RESERVED_CHARACTERS } from '../constant/entity';
 import { SidebarItem } from '../constant/sidebar';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
+import { EntityType } from '../support/entity/EntityDataClass.interface';
 import { TableClass } from '../support/entity/TableClass';
 import { TagClass } from '../support/tag/TagClass';
 import {
@@ -40,7 +41,6 @@ import {
 } from './dateTime';
 import { searchAndClickOnOption } from './explore';
 import { sidebarClick } from './sidebar';
-import { EntityType } from '../support/entity/EntityDataClass.interface';
 
 export const waitForAllLoadersToDisappear = async (
   page: Page,
@@ -706,6 +706,8 @@ export const assignTag = async (
   await page.getByTestId('saveAssociatedTag').click();
 
   await patchRequest;
+  await page.waitForSelector('[data-testid="saveAssociatedTag"] [data-icon="loading"]', { state: 'detached' });
+  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
   await expect(
     page
@@ -765,6 +767,9 @@ export const assignTagToChildren = async ({
   await page.getByTestId('saveAssociatedTag').click();
 
   await patchRequest;
+
+  await page.waitForSelector('[data-testid="saveAssociatedTag"] [data-icon="loading"]', { state: 'detached' });
+  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
   await expect(
     page
@@ -2099,8 +2104,8 @@ export const checkExploreSearchFilter = async (
     filterKey === 'tier.tagFQN'
       ? filterValue
       : /["%]/.test(filterValue ?? '')
-      ? escapedValue
-      : rawFilterValue;
+        ? escapedValue
+        : rawFilterValue;
 
   // Use a predicate to check the response URL contains the correct filter
   const queryRes = page.waitForResponse(
@@ -2147,8 +2152,7 @@ export const checkExploreSearchFilter = async (
 
   await expect(
     page.getByTestId(
-      `table-data-card_${
-        (entity as TableClass)?.entityResponseData?.fullyQualifiedName
+      `table-data-card_${(entity as TableClass)?.entityResponseData?.fullyQualifiedName
       }`
     )
   ).toBeVisible();
@@ -2179,14 +2183,14 @@ export const getEntityDataTypeDisplayPatch = (entity: EntityClass) => {
 /**
  * Test utility for verifying copy link button functionality across different entity types.
  * Follows Playwright Developer Handbook guidelines for user-centric testing.
- * 
+ *
  * This function tests the copy link feature by:
  * 1. Clicking the copy button
  * 2. Reading clipboard content via navigator.clipboard API
  * 3. Verifying the clipboard URL contains expected values
- * 
+ *
  * Note: This requires the test to run in a secure context (HTTPS or localhost)
- * 
+ *
  * @param page - Playwright Page object
  * @param buttonTestId - Test ID of the copy button ('copy-column-link-button' or 'copy-field-link-button')
  * @param containerTestId - Test ID of the container element to wait for
@@ -2214,29 +2218,42 @@ export const testCopyLinkButton = async ({
 
   // Click the copy button
   await copyButton.click();
-  
+
   // Wait a bit for clipboard to be populated
   await page.waitForTimeout(500);
 
-  // Read clipboard content
-  const clipboardText = await page.evaluate(async () => {
-    try {
-      return await navigator.clipboard.readText();
-    } catch (error) {
-      // If clipboard API fails, return error message
-      return `CLIPBOARD_ERROR: ${error}`;
-    }
-  });
-  
+  // Read clipboard content with proper permission handling
+  const clipboardText = await readClipboardText(page);
+
   // Verify the clipboard text contains expected URL path and entity FQN
   expect(clipboardText).toContain(expectedUrlPath);
   expect(clipboardText).toContain(entityFqn);
 };
 
 /**
+ * Reads text from the clipboard with proper permission handling.
+ * Grants clipboard permissions before reading to ensure it works in CI environments.
+ *
+ * @param page - Playwright Page object
+ * @returns The clipboard text content, or an error message if reading fails
+ */
+export const readClipboardText = async (page: Page): Promise<string> => {
+  // Grant clipboard permissions before reading
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+
+  return page.evaluate(async () => {
+    try {
+      return await navigator.clipboard.readText();
+    } catch (error) {
+      return `CLIPBOARD_ERROR: ${error}`;
+    }
+  });
+};
+
+/**
  * Validates the format and structure of a copied link URL.
  * Ensures URLs are properly formatted, contain all required components, and follow expected patterns.
- * 
+ *
  * @param clipboardText - The text copied to clipboard
  * @param expectedEntityType - Expected entity type in URL (e.g., 'table', 'topic', 'container')
  * @param entityFqn - Fully qualified name of the entity

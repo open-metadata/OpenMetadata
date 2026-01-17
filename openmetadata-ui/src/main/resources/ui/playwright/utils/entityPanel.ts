@@ -12,6 +12,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { redirectToExplorePage } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 
 import { ENDPOINT_TO_FILTER_MAP } from '../constant/explore';
 
@@ -85,10 +86,16 @@ export async function navigateToExploreAndSelectTable(
     response.url().includes('/permissions')
   );
 
+  const entityDetailsResponse = page.waitForResponse('/api/v1/tables/name/*?*');
+
   await openEntitySummaryPanel(page, entityName, endpoint);
 
   const permissionsResponse = await permissionsResponsePromise;
+  const entityDetailsResponseResolved = await entityDetailsResponse;
   expect(permissionsResponse.status()).toBe(200);
+  expect(entityDetailsResponseResolved.status()).toBe(200);
+
+  await waitForAllLoadersToDisappear(page);
 }
 
 export const waitForPatchResponse = async (page: Page) => {
