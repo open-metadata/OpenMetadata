@@ -597,7 +597,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         <CustomPropertiesSection
           entityData={toEntityData(activeColumn)}
           entityType={entityType}
-          entityTypeDetail={entityTypeDetail as any}
+          entityTypeDetail={entityTypeDetail}
           hasEditPermissions={hasEditPermission.customProperties}
           isEntityDataLoading={false}
           viewCustomPropertiesPermission={

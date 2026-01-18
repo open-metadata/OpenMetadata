@@ -268,10 +268,16 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     async (fqn: string, update: ColumnFieldUpdate) => {
       let apiResponseColumn: Column | undefined;
 
-      // For Table entities, use the specific column update endpoint instead of generic patch
-      // This ensures custom properties and other column fields are updated correctly
-      if (type === EntityType.TABLE) {
-        apiResponseColumn = await updateTableColumn(fqn, update);
+      try {
+        // For Table entities, use the specific column update endpoint instead of generic patch
+        // This ensures custom properties and other column fields are updated correctly
+        if (type === EntityType.TABLE) {
+          apiResponseColumn = await updateTableColumn(fqn, update);
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+
+        return;
       }
 
       const { updatedEntity, updatedColumn } = handleColumnFieldUpdateUtil({
