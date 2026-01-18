@@ -417,10 +417,10 @@ describe('CustomPropertyItem', () => {
     });
   });
 
-  it('should render with null extension data', () => {
+  it('should render with empty extension data', () => {
     render(
       <CustomPropertyItem
-        extensionData={null}
+        extensionData={{}}
         hasEditPermissions={false}
         property={mockProperty}
         value="test value"

@@ -27,15 +27,16 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import { PropertyValueType } from '../../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import './CustomPropertiesSection.less';
 import CustomPropertyInput from './CustomPropertyInput';
+import { ExtensionDataProps } from '../../../Modals/ModalWithCustomProperty/ModalWithMarkdownEditor.interface';
 
 const CustomPropertyItem: FC<{
   property: CustomProperty;
-  value: any;
+  value: PropertyValueType | undefined;
   hasEditPermissions: boolean;
   onExtensionUpdate: (
     updatedExtension: Record<string, unknown> | undefined
   ) => Promise<void>;
-  extensionData: any;
+  extensionData: ExtensionDataProps;
 }> = ({
   property,
   value,

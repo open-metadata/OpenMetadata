@@ -22,6 +22,7 @@ import { Transi18next } from '../../../../utils/CommonUtils';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../../common/Loader/Loader';
 import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
+import { ExtensionDataProps } from '../../../Modals/ModalWithCustomProperty/ModalWithMarkdownEditor.interface';
 import { CustomPropertiesSectionProps } from './CustomPropertiesSection.interface';
 import './CustomPropertiesSection.less';
 import CustomPropertyItem from './CustomPropertyItem';
@@ -38,7 +39,7 @@ const CustomPropertiesSection = ({
   const [searchText, setSearchText] = useState<string>('');
 
   const customProperties = entityTypeDetail?.customProperties || [];
-  const extensionData = entityData?.extension || {};
+  const extensionData = (entityData?.extension || {}) as ExtensionDataProps;
 
   const filteredProperties = useMemo(() => {
     if (!searchText) {
