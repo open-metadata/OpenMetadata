@@ -17,6 +17,7 @@ import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import {
   assignTagToChildren,
+  readClipboardText,
   removeTagsFromChildren,
   testCopyLinkButton,
   validateCopiedLinkFormat,
@@ -188,13 +189,7 @@ test.describe('Container entity specific tests ', () => {
     await expect(copyButton).toBeVisible();
     await copyButton.click();
 
-    const clipboardText = await page.evaluate(async () => {
-      try {
-        return await navigator.clipboard.readText();
-      } catch (error) {
-        return `CLIPBOARD_ERROR: ${error}`;
-      }
-    });
+    const clipboardText = await readClipboardText(page);
 
     const validationResult = validateCopiedLinkFormat({
       clipboardText,

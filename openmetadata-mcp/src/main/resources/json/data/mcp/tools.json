@@ -2,22 +2,22 @@
   "tools": [
     {
       "name": "search_metadata",
-      "description": "Find your data and business terms in OpenMetadata. This tool automatically generates optimized OpenSearch queries based on natural language input and searches the OpenMetadata catalog for tables, dashboards, topics, pipelines, and other data assets.",
+      "description": "Find data assets and business terms in OpenMetadata catalog. Searches tables, dashboards, topics, pipelines, and other metadata entities using natural language.",
       "parameters": {
-        "description": "Search for metadata in the OpenMetadata catalog using natural language queries. The tool automatically converts your search intent into optimized OpenSearch queries with proper filtering.",
+        "description": "Use 'query' parameter for natural language search (recommended for most use cases). The system will automatically optimize the search query.",
         "type": "object",
         "properties": {
           "query": {
             "type": "string",
-            "description": "Optional , Only specify if queryFilter is not passed .Natural language search query that will be converted to OpenSearch syntax in queryFilter. Examples: 'tables owned by marketing', 'dashboards with customer data', 'find all tier1 tables', 'tables with column SKU', 'count BigQuery services', 'tables tagged with PII.Sensitive'."
+            "description": "Natural language search query. Use this for simple searches. Examples: 'tables owned by marketing', 'dashboards with customer data', 'tier1 tables', 'tables with column SKU', 'BigQuery services'. The query will be automatically converted to an optimized search."
           },
           "entityType": {
             "type": "string",
-            "description": "Optional entity type to filter results, only specify if queryFilter is not passed. If not specified, will be auto-detected from the query. Available types: Service Entities (databaseService, messagingService, apiService, dashboardService, pipelineService, storageService, mlmodelService, metadataService, searchService), Data Asset Entities (apiCollection, apiEndpoint, table, storedProcedure, database, databaseSchema, dashboard, dashboardDataModel, pipeline, chart, topic, searchIndex, mlmodel, container), User Entities (user, team), Domain entities (domain, dataProduct), Governance entities (metric, glossary, glossaryTerm)."
+            "description": "Filter by entity type (auto-detected if not specified). Use singular form: table, dashboard, topic, pipeline, database, databaseService, glossary, glossaryTerm, mlmodel, container, chart, metric, user, team, domain, dataProduct."
           },
           "queryFilter": {
             "type": "string",
-            "description": "REQUIRED: OpenSearch JSON query filter that you must generate based on the natural language query. Use the comprehensive guidelines below to create the proper OpenSearch query.\n\n=== QUERY GENERATION INSTRUCTIONS ===\n\nYou are an expert OpenSearch query generator for OpenMetadata. Your task is to translate the natural language query into a precise OpenSearch JSON query.\n\n## QUERY TYPE DETECTION\nFirst determine if the user wants:\n1. **SEARCH QUERY** - Finding specific entities (e.g., \"find tables owned by marketing\")\n2. **AGGREGATION QUERY** - Counting, grouping, statistics (e.g., \"how many BigQuery services\", \"count assets by team\")\n3. **BOTH** - Search and aggregation combined\n\n## FIELD MAPPING FOR TABLES\n- displayName.keyword: Exact match on table display name\n- name: Text analysis on table name with tokenization\n- name.ngram: Partial matching using n-grams\n- description: Full-text search on descriptions\n- fullyQualifiedName: Complete hierarchical name search\n- columns.name.keyword: Exact match on column names\n- columns.description: Full-text search on column descriptions\n- tags.tagFQN.text: Search within tag name parts\n- tier.tagFQN.text: Search within tier classification parts\n- domains.displayName.keyword: Exact match on domain\n- dataProducts.displayName.keyword: Exact match on data products\n- owners.name: Owner name (use 'owners' plural, not 'owner')\n- service.name: Service name filtering\n- extension.*: Custom properties (e.g., extension.businessOwner.name)\n\n## CRITICAL QUERY RULES\n1. **Entity Type Filtering**: Always add {\"term\": {\"entityType\": \"table\"}} when searching tables (use SINGULAR form)\n2. **Field Selection**: Use 'term' for exact matches (.keyword fields), 'match' for text search\n3. **Owners Field**: Use 'owners.name' (plural) NOT 'owner.name'\n4. **Tier Format**: Use \"Tier.Tier1\", \"Tier.Tier2\", \"Tier.Tier3\" format\n5. **Tags**: Use 'tags.tagFQN' for tag filtering\n6. **Columns**: Use direct match queries, NOT nested (columns are NOT nested)\n7. **Custom Properties**: Use 'extension.propertyName' pattern\n\n## EXAMPLE QUERY PATTERNS\n\n**Tables owned by marketing:**\n```json\n{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"owners.name\": \"marketing\"}}]}}\n```\n\n**Tables with customer data:**\n```json\n{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"match\": {\"columns.name\": \"customer\"}}]}}\n```\n\n**Tier1 tables:**\n```json\n{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"tier.tagFQN\": \"Tier.Tier1\"}}]}}\n```\n\n**Tables with PII tag:**\n```json\n{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"tags.tagFQN\": \"PII.Sensitive\"}}]}}\n```\n\n**Count query - How many BigQuery services:**\n```json\n{\"size\": 0, \"query\": {\"bool\": {\"must\": [{\"term\": {\"entityType\": \"databaseService\"}}, {\"term\": {\"serviceType\": \"BigQuery\"}}]}}, \"aggs\": {\"total_count\": {\"value_count\": {\"field\": \"_id\"}}}}\n```\n\n**Tables with business owner infrastructure:**\n```json\n{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"extension.businessOwner.name\": \"infrastructure\"}}]}}\n```\n\n## AGGREGATION FIELDS\nFor counting/grouping use these aggregation fields:\n- serviceType, service.displayName.keyword, entityType\n- tier.tagFQN, owners.displayName.keyword, domains.displayName.keyword\n- tags.tagFQN, database.name.keyword, databaseSchema.name.keyword\n\n## IMPORTANT MISTAKES TO AVOID\n❌ Missing entityType filter when type mentioned\n❌ Using 'owner.name' instead of 'owners.name'\n❌ Using nested queries for columns (columns are NOT nested)\n❌ Wrong tier format (use \"Tier.Tier1\" not \"tier1\")\n❌ Using 'tags.tagFQN' for tier (use 'tier.tagFQN')\n\n**Generate the complete OpenSearch JSON query and return ONLY the JSON object.**"
+            "description": "Advanced: Direct OpenSearch JSON query string for precise control. Only use if you can generate valid OpenSearch DSL. When provided, this overrides the 'query' parameter. Must include entityType filter. Example: '{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"owners.name\": \"marketing\"}}]}}'. Key rules: Use singular entityType, 'owners.name' (plural), tier format is 'Tier.Tier1', columns are NOT nested."
           },
           "from": {
             "type": "integer",
@@ -49,43 +49,52 @@
             "default": 10
           }
         },
-        "required": ["queryFilter"],
+        "required": [],
         "examples": [
           {
-            "description": "Find tables owned by marketing team",
+            "description": "Simple search - Find tables owned by a team",
             "query": "tables owned by marketing",
-            "queryFilter": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"owners.name\": \"marketing\"}}]}}",
             "entityType": "table"
           },
           {
-            "description": "Search for customer data across all tables",
-            "query": "tables with customer data",
+            "description": "Simple search - Find customer-related data",
+            "query": "tables with customer data"
+          },
+          {
+            "description": "Simple search - Find tier1 tables",
+            "query": "tier1 tables",
+            "entityType": "table"
+          },
+          {
+            "description": "Simple search - Find dashboards",
+            "query": "sales dashboards",
+            "entityType": "dashboard"
+          },
+          {
+            "description": "Simple search with pagination",
+            "query": "tables",
+            "size": 20,
+            "from": 0
+          },
+          {
+            "description": "Advanced - Owner filter with OpenSearch",
+            "queryFilter": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"owners.name\": \"marketing\"}}]}}"
+          },
+          {
+            "description": "Advanced - Column search with OpenSearch",
             "queryFilter": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"match\": {\"columns.name\": \"customer\"}}]}}"
           },
           {
-            "description": "Find all Tier 1 classified tables",
-            "query": "tables with tier1 classification",
+            "description": "Advanced - Tier1 tables with OpenSearch",
             "queryFilter": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"tier.tagFQN\": \"Tier.Tier1\"}}]}}"
           },
           {
-            "description": "Count BigQuery services",
-            "query": "how many BigQuery services are there",
-            "queryFilter": "{\"size\": 0, \"query\": {\"bool\": {\"must\": [{\"term\": {\"entityType\": \"databaseService\"}}, {\"term\": {\"serviceType\": \"BigQuery\"}}]}}, \"aggs\": {\"total_count\": {\"value_count\": {\"field\": \"_id\"}}}}"
-          },
-          {
-            "description": "Find tables with specific column",
-            "query": "tables with column SKU",
-            "queryFilter": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"match\": {\"columns.name\": \"SKU\"}}]}}"
-          },
-          {
-            "description": "Search by tags",
-            "query": "tables tagged with PII.Sensitive",
+            "description": "Advanced - Tag filtering with OpenSearch",
             "queryFilter": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"tags.tagFQN\": \"PII.Sensitive\"}}]}}"
           },
           {
-            "description": "Custom property search",
-            "query": "tables where business owner is infrastructure",
-            "queryFilter": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"extension.businessOwner.name\": \"infrastructure\"}}]}}"
+            "description": "Advanced - Aggregation query for counting",
+            "queryFilter": "{\"size\": 0, \"query\": {\"bool\": {\"must\": [{\"term\": {\"entityType\": \"databaseService\"}}, {\"term\": {\"serviceType\": \"BigQuery\"}}]}}, \"aggs\": {\"total_count\": {\"value_count\": {\"field\": \"_id\"}}}}"
           }
         ]
       }

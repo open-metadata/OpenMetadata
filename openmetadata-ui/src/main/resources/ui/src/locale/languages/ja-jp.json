@@ -2078,6 +2078,7 @@
     "auto-pilot-no-agents-message": "AutoPilot エージェントが存在しません。",
     "availability-time-contract-description": "データが利用可能になると予想される時刻帯",
     "bot-email-confirmation": "{{botName}} ボットのメールアドレス：{{email}}",
+    "bulk-edit-entity-help": "CSV を使用して複数の{{entity}}を一括編集",
     "can-not-add-widget": "このセクションにウィジェットを追加できません（サイズ制限）。",
     "can-you-add-a-description": "説明を追加していただけますか？",
     "checkout-service-connectors-doc": "サービスからデータを取り込むための多くのコネクタが利用可能です。ドキュメントをご確認ください。",

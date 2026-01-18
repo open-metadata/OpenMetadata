@@ -393,6 +393,8 @@ export enum AuthProvider {
  *
  * Regex to only fetch api collections with names matching the pattern.
  *
+ * Regex to only fetch api endpoints with names matching the pattern.
+ *
  * Regex to only include/exclude schemas that matches the pattern. System schemas
  * (information_schema, _statistics_, sys) are excluded by default.
  *
@@ -651,6 +653,10 @@ export interface TestServiceConnectionRequest {
      * UUID of the user executing the query (extracted from JWT token in backend)
      */
     userId?: string;
+    /**
+     * Optional value of the workflow name responsible for running the test
+     */
+    workflowName?: string;
     /**
      * Spark Engine Configuration.
      */
@@ -936,6 +942,10 @@ export interface ConfigObject {
      * Regex to only fetch api collections with names matching the pattern.
      */
     apiCollectionFilterPattern?: FilterPattern;
+    /**
+     * Regex to only fetch api endpoints with names matching the pattern.
+     */
+    apiEndpointFilterPattern?: FilterPattern;
     /**
      * Documentation URL for the schema.
      */
