@@ -271,6 +271,66 @@ describe('CSVUtils', () => {
       expect(csvString).toBe('tags\n"tag1,tag2"');
     });
 
+    it('should escape quotes in values that contain commas', () => {
+      const columns = [{ name: 'description', key: 'description' }];
+      const dataSource = [
+        {
+          description: 'value with "quotes" and, comma',
+        },
+      ];
+      const csvString = getCSVStringFromColumnsAndDataSource(
+        columns,
+        dataSource
+      );
+
+      expect(csvString).toBe('description\n"value with ""quotes"" and, comma"');
+    });
+
+    it('should escape quotes in tags column values', () => {
+      const columns = [{ name: 'tags', key: 'tags' }];
+      const dataSource = [
+        {
+          tags: 'tag "quoted" value',
+        },
+      ];
+      const csvString = getCSVStringFromColumnsAndDataSource(
+        columns,
+        dataSource
+      );
+
+      expect(csvString).toBe('tags\n"tag ""quoted"" value"');
+    });
+
+    it('should escape quotes in domains column values', () => {
+      const columns = [{ name: 'domains', key: 'domains' }];
+      const dataSource = [
+        {
+          domains: 'domain "with" quotes',
+        },
+      ];
+      const csvString = getCSVStringFromColumnsAndDataSource(
+        columns,
+        dataSource
+      );
+
+      expect(csvString).toBe('domains\n"domain ""with"" quotes"');
+    });
+
+    it('should escape quotes in values that contain newlines', () => {
+      const columns = [{ name: 'description', key: 'description' }];
+      const dataSource = [
+        {
+          description: 'line1 "quoted"\nline2',
+        },
+      ];
+      const csvString = getCSVStringFromColumnsAndDataSource(
+        columns,
+        dataSource
+      );
+
+      expect(csvString).toBe('description\n"line1 ""quoted""\nline2"');
+    });
+
     it('should handle domains with special characters correctly', () => {
       const columns = [{ name: 'domains', key: 'domains' }];
       const dataSource = [

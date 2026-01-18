@@ -224,7 +224,7 @@ export const getCSVStringFromColumnsAndDataSource = (
           colName.includes('tags') ||
           colName.includes('domains')
         ) {
-          return `"${value}"`;
+          return `"${value.replaceAll(/"/g, '""')}"`;
         }
         // Values with quotes: escape quotes (for name/displayName/FQN or any other column)
         if (value.includes('"')) {
