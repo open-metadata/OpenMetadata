@@ -125,10 +125,15 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   public void setFields(Dashboard dashboard, Fields fields, RelationIncludes relationIncludes) {
     dashboard.setService(getContainer(dashboard.getId()));
     dashboard.setCharts(
-        fields.contains("charts") ? getRelatedEntities(dashboard, Entity.CHART) : null);
+        fields.contains("charts")
+            ? getRelatedEntities(dashboard, Entity.CHART, relationIncludes.getIncludeFor("charts"))
+            : null);
     dashboard.setDataModels(
         fields.contains("dataModels")
-            ? getRelatedEntities(dashboard, Entity.DASHBOARD_DATA_MODEL)
+            ? getRelatedEntities(
+                dashboard,
+                Entity.DASHBOARD_DATA_MODEL,
+                relationIncludes.getIncludeFor("dataModels"))
             : null);
     if (dashboard.getUsageSummary() == null) {
       dashboard.withUsageSummary(
@@ -409,10 +414,11 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
-  private List<EntityReference> getRelatedEntities(Dashboard dashboard, String entityType) {
+  private List<EntityReference> getRelatedEntities(
+      Dashboard dashboard, String entityType, Include include) {
     return dashboard == null
         ? Collections.emptyList()
-        : findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, entityType);
+        : findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, entityType, include);
   }
 
   private Map<UUID, List<EntityReference>> batchFetchCharts(List<Dashboard> dashboards) {

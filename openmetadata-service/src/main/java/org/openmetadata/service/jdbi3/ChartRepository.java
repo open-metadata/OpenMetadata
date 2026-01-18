@@ -98,10 +98,12 @@ public class ChartRepository extends EntityRepository<Chart> {
   @Override
   public void setFields(Chart chart, Fields fields, RelationIncludes relationIncludes) {
     chart.withService(getContainer(chart.getId()));
+    // Use Include.ALL for dashboards to match legacy behavior - dashboard-chart relationship
+    // should show all associated dashboards regardless of delete status to maintain referential
+    // integrity
     chart.setDashboards(
         fields.contains("dashboards")
-            ? getRelatedEntities(
-                chart, Entity.DASHBOARD, relationIncludes.getIncludeFor("dashboards"))
+            ? getRelatedEntities(chart, Entity.DASHBOARD, Include.ALL)
             : null);
   }
 
