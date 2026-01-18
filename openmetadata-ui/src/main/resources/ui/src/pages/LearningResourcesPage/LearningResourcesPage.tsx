@@ -50,16 +50,48 @@ const CATEGORIES = [
   'DataGovernance',
   'DataQuality',
   'Observability',
+  'AI',
 ];
 const CONTENT_CONTEXTS = [
-  'table',
-  'dashboard',
-  'pipeline',
-  'topic',
-  'glossary',
-  'domain',
-  'dataProduct',
-  'lineage',
+  { value: 'domain', label: 'Domain' },
+  { value: 'dataProduct', label: 'Data Product' },
+  { value: 'glossary', label: 'Glossary' },
+  { value: 'glossaryTerm', label: 'Glossary Term' },
+  { value: 'classification', label: 'Classification' },
+  { value: 'tags', label: 'Tags' },
+  { value: 'lineage', label: 'Lineage' },
+  { value: 'dataInsights', label: 'Data Insights' },
+  { value: 'dataQuality', label: 'Data Quality' },
+  { value: 'testSuite', label: 'Test Suite' },
+  { value: 'incidentManager', label: 'Incident Manager' },
+  { value: 'explore', label: 'Explore' },
+  { value: 'table', label: 'Table' },
+  { value: 'dashboard', label: 'Dashboard' },
+  { value: 'pipeline', label: 'Pipeline' },
+  { value: 'topic', label: 'Topic' },
+  { value: 'container', label: 'Container' },
+  { value: 'mlmodel', label: 'ML Model' },
+  { value: 'storedProcedure', label: 'Stored Procedure' },
+  { value: 'searchIndex', label: 'Search Index' },
+  { value: 'apiEndpoint', label: 'API Endpoint' },
+  { value: 'database', label: 'Database' },
+  { value: 'databaseSchema', label: 'Database Schema' },
+  { value: 'homePage', label: 'Home Page' },
+  { value: 'workflows', label: 'Workflows' },
+  { value: 'automations', label: 'Automations' },
+  { value: 'knowledgeCenter', label: 'Knowledge Center' },
+  { value: 'sqlStudio', label: 'SQL Studio' },
+  { value: 'askCollate', label: 'Ask Collate' },
+  { value: 'metrics', label: 'Metrics' },
+  { value: 'dataObservability', label: 'Data Observability' },
+  { value: 'pipelineObservability', label: 'Pipeline Observability' },
+  { value: 'alerts', label: 'Alerts' },
+  { value: 'services', label: 'Services' },
+  { value: 'policies', label: 'Policies' },
+  { value: 'roles', label: 'Roles' },
+  { value: 'teams', label: 'Teams' },
+  { value: 'users', label: 'Users' },
+  { value: 'settings', label: 'Settings' },
 ];
 const STATUSES = ['Draft', 'Active', 'Deprecated'];
 const MAX_VISIBLE_TAGS = 2;
@@ -124,6 +156,7 @@ export const LearningResourcesPage: React.FC = () => {
             | 'DataGovernance'
             | 'DataQuality'
             | 'Observability'
+            | 'AI'
         );
       const matchesContent =
         !filterContent ||
@@ -139,7 +172,14 @@ export const LearningResourcesPage: React.FC = () => {
         matchesStatus
       );
     });
-  }, [resources, searchText, filterType, filterCategory, filterContent, filterStatus]);
+  }, [
+    resources,
+    searchText,
+    filterType,
+    filterCategory,
+    filterContent,
+    filterStatus,
+  ]);
 
   const handleCreate = useCallback(() => {
     setEditingResource(null);
@@ -320,11 +360,17 @@ export const LearningResourcesPage: React.FC = () => {
         const visibleContexts = contexts.slice(0, MAX_VISIBLE_CONTEXTS);
         const remaining = contexts.length - MAX_VISIBLE_CONTEXTS;
 
+        const getContextLabel = (pageId: string) => {
+          const context = CONTENT_CONTEXTS.find((c) => c.value === pageId);
+
+          return context?.label ?? pageId;
+        };
+
         return (
           <div className="context-tags">
             {visibleContexts.map((ctx, idx) => (
               <Tag className="context-tag" key={idx}>
-                {ctx.pageId}
+                {getContextLabel(ctx.pageId)}
               </Tag>
             ))}
             {remaining > 0 && (
@@ -458,11 +504,8 @@ export const LearningResourcesPage: React.FC = () => {
             allowClear
             className="filter-select"
             dropdownStyle={{ minWidth: 160 }}
-            options={CONTENT_CONTEXTS.map((ctx) => ({
-              label: ctx.charAt(0).toUpperCase() + ctx.slice(1),
-              value: ctx,
-            }))}
-            placeholder="Content"
+            options={CONTENT_CONTEXTS}
+            placeholder={t('label.context')}
             popupMatchSelectWidth={false}
             suffixIcon={<DownOutlined className="filter-arrow" />}
             value={filterContent}

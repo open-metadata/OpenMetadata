@@ -46,11 +46,12 @@ const RESOURCE_TYPES = [
   { value: 'Article', label: 'Article', icon: <FileTextOutlined /> },
 ];
 const CATEGORIES = [
-  'Discovery',
-  'Administration',
-  'DataGovernance',
-  'DataQuality',
-  'Observability',
+  { value: 'Discovery', label: 'Discovery' },
+  { value: 'DataGovernance', label: 'Governance' },
+  { value: 'DataQuality', label: 'Data Quality' },
+  { value: 'Observability', label: 'Observability' },
+  { value: 'Administration', label: 'Admin' },
+  { value: 'AI', label: 'AI' },
 ];
 const STATUSES = ['Draft', 'Active', 'Deprecated'];
 const DURATIONS = [
@@ -64,35 +65,71 @@ const DURATIONS = [
 ];
 
 const PAGE_IDS = [
-  'glossary',
-  'glossaryTerm',
-  'domain',
-  'dataProduct',
-  'dataQuality',
-  'testSuite',
-  'incidentManager',
-  'profilerConfiguration',
-  'lineage',
-  'table',
-  'dashboard',
-  'pipeline',
-  'topic',
-  'container',
-  'mlmodel',
-  'storedProcedure',
-  'searchIndex',
-  'automations',
-  'services',
-  'policies',
-  'roles',
-  'dataObservability',
-  'knowledgeCenter',
-  'workflows',
-  'notificationTemplates',
-  'pipelineObservability',
-  'ingestionRunners',
-  'usage',
-  'dataInsightDashboards',
+  // Domains & Data Products
+  { value: 'domain', label: 'Domain' },
+  { value: 'dataProduct', label: 'Data Product' },
+  // Glossaries
+  { value: 'glossary', label: 'Glossary' },
+  { value: 'glossaryTerm', label: 'Glossary Term' },
+  // Classification
+  { value: 'classification', label: 'Classification' },
+  { value: 'tags', label: 'Tags' },
+  // Lineage
+  { value: 'lineage', label: 'Lineage' },
+  // Data Insights
+  { value: 'dataInsights', label: 'Data Insights' },
+  { value: 'dataInsightDashboards', label: 'Data Insight Dashboards' },
+  // Data Quality
+  { value: 'dataQuality', label: 'Data Quality' },
+  { value: 'testSuite', label: 'Test Suite' },
+  { value: 'incidentManager', label: 'Incident Manager' },
+  { value: 'profilerConfiguration', label: 'Profiler Configuration' },
+  // Rules Library
+  { value: 'rulesLibrary', label: 'Rules Library' },
+  // Explore & Discovery
+  { value: 'explore', label: 'Explore' },
+  { value: 'table', label: 'Table' },
+  { value: 'dashboard', label: 'Dashboard' },
+  { value: 'pipeline', label: 'Pipeline' },
+  { value: 'topic', label: 'Topic' },
+  { value: 'container', label: 'Container' },
+  { value: 'mlmodel', label: 'ML Model' },
+  { value: 'storedProcedure', label: 'Stored Procedure' },
+  { value: 'searchIndex', label: 'Search Index' },
+  { value: 'apiEndpoint', label: 'API Endpoint' },
+  { value: 'apiCollection', label: 'API Collection' },
+  { value: 'database', label: 'Database' },
+  { value: 'databaseSchema', label: 'Database Schema' },
+  // Home Page
+  { value: 'homePage', label: 'Home Page' },
+  { value: 'myData', label: 'My Data' },
+  // Workflows & Automations
+  { value: 'workflows', label: 'Workflows' },
+  { value: 'automations', label: 'Automations' },
+  // Knowledge Center
+  { value: 'knowledgeCenter', label: 'Knowledge Center' },
+  // SQL Studio
+  { value: 'sqlStudio', label: 'SQL Studio' },
+  { value: 'queryBuilder', label: 'Query Builder' },
+  // Ask Collate
+  { value: 'askCollate', label: 'Ask Collate' },
+  { value: 'aiAssistant', label: 'AI Assistant' },
+  // Metrics
+  { value: 'metrics', label: 'Metrics' },
+  // Observability
+  { value: 'dataObservability', label: 'Data Observability' },
+  { value: 'pipelineObservability', label: 'Pipeline Observability' },
+  { value: 'alerts', label: 'Alerts' },
+  // Administration
+  { value: 'services', label: 'Services' },
+  { value: 'policies', label: 'Policies' },
+  { value: 'roles', label: 'Roles' },
+  { value: 'teams', label: 'Teams' },
+  { value: 'users', label: 'Users' },
+  { value: 'notificationTemplates', label: 'Notification Templates' },
+  { value: 'ingestionRunners', label: 'Ingestion Runners' },
+  { value: 'usage', label: 'Usage' },
+  { value: 'settings', label: 'Settings' },
 ];
 
 export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
@@ -285,19 +322,29 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
 
         <Form.Item
           className="form-item-required"
+          extra={
+            <Text type="secondary">
+              {t('message.learning-resource-category-description')}
+            </Text>
+          }
           label={t('label.category-plural')}
           name="categories"
           rules={[{ message: t('label.field-required'), required: true }]}>
           <Select
             mode="multiple"
-            options={CATEGORIES.map((cat) => ({ label: cat, value: cat }))}
+            options={CATEGORIES}
             placeholder={t('label.select-type')}
           />
         </Form.Item>
 
         <Form.Item
           className="form-item-required"
-          label={t('label.context')}
+          extra={
+            <Text type="secondary">
+              {t('message.learning-resource-context-description')}
+            </Text>
+          }
+          label={t('label.page-plural')}
           name="contexts"
           rules={[
             {
@@ -310,8 +357,8 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
           ]}>
           <Select
             mode="multiple"
-            options={PAGE_IDS.map((id) => ({ label: id, value: id }))}
-            placeholder={t('label.select-context')}
+            options={PAGE_IDS}
+            placeholder={t('label.select-page-plural')}
           />
         </Form.Item>
 

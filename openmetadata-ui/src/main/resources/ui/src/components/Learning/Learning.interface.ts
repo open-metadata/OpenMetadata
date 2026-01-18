@@ -16,7 +16,8 @@ export type ResourceCategory =
   | 'Administration'
   | 'DataGovernance'
   | 'DataQuality'
-  | 'Observability';
+  | 'Observability'
+  | 'AI';
 
 export type ResourceType = 'Storylane' | 'Video' | 'Article';
 
@@ -77,5 +78,14 @@ export const LEARNING_CATEGORIES: Record<ResourceCategory, CategoryInfo> = {
     color: '#b93815',
     bgColor: '#fef6ee',
     borderColor: '#f9dbaf',
+  },
+  AI: {
+    key: 'AI',
+    label: 'AI',
+    description: 'AI-powered features and assistants',
+    icon: 'robot',
+    color: '#7c3aed',
+    bgColor: '#f5f3ff',
+    borderColor: '#ddd6fe',
   },
 };
