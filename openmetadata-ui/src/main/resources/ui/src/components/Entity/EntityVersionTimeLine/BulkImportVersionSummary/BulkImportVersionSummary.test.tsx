@@ -45,17 +45,6 @@ jest.mock('react-papaparse', () => ({
   }),
 }));
 
-jest.mock(
-  '../../../common/EntityImport/ImportStatus/ImportStatus.component',
-  () => ({
-    ImportStatus: jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="import-status">ImportStatus</div>
-      )),
-  })
-);
-
 jest.mock('react-data-grid', () => {
   return jest
     .fn()
@@ -75,7 +64,7 @@ const renderWithTheme = (component: React.ReactElement) => {
 describe('BulkImportVersionSummary', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockReadString.mockImplementation((csv, options) => {
+    mockReadString.mockImplementation((_csv, options) => {
       options.complete({
         data: [
           ['status', 'details', 'name'],
@@ -86,12 +75,17 @@ describe('BulkImportVersionSummary', () => {
     });
   });
 
-  it('should render ImportStatus component', () => {
+  it('should render bulk import stats in column layout', () => {
     renderWithTheme(
       <BulkImportVersionSummary csvImportResult={mockCsvImportResult} />
     );
 
-    expect(screen.getByTestId('import-status')).toBeInTheDocument();
+    expect(screen.getByText('label.rows-processed:')).toBeInTheDocument();
+    expect(screen.getByTestId('processed-row')).toHaveTextContent('2');
+    expect(screen.getByText('label.passed:')).toBeInTheDocument();
+    expect(screen.getByTestId('passed-row')).toHaveTextContent('2');
+    expect(screen.getByText('label.failed:')).toBeInTheDocument();
+    expect(screen.getByTestId('failed-row')).toHaveTextContent('0');
   });
 
   it('should render View More button', () => {

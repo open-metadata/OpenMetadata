@@ -466,14 +466,14 @@ export const getSummary = ({
       ) : null}
       {fieldsUpdated?.length ? (
         <Typography.Paragraph>
-          {getSummaryText({
-            isPrefix,
-            fieldsChanged: fieldsUpdated,
-            actionType: t('label.edited'),
-            actionText: t('label.updated-lowercase'),
-            isGlossaryTerm,
-          })}
-          {bulkImportSummary}
+          {bulkImportSummary ??
+            getSummaryText({
+              isPrefix,
+              fieldsChanged: fieldsUpdated,
+              actionType: t('label.edited'),
+              actionText: t('label.updated-lowercase'),
+              isGlossaryTerm,
+            })}
         </Typography.Paragraph>
       ) : null}
       {fieldsDeleted?.length ? (

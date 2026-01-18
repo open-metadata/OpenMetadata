@@ -17,8 +17,10 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
+  Typography,
   useTheme,
 } from '@mui/material';
+import { capitalize } from 'lodash';
 import { useState } from 'react';
 import DataGrid from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
@@ -27,7 +29,6 @@ import { usePapaParse } from 'react-papaparse';
 import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
 import { CSVImportResult } from '../../../../generated/type/csvImportResult';
 import { renderColumnDataEditor } from '../../../../utils/CSV/CSV.utils';
-import { ImportStatus } from '../../../common/EntityImport/ImportStatus/ImportStatus.component';
 
 interface BulkImportVersionSummaryProps {
   csvImportResult: CSVImportResult;
@@ -54,7 +55,7 @@ export const BulkImportVersionSummary = ({
           const [cols, ...rows] = results.data as string[][];
           const columns = cols?.map((column) => ({
             key: column,
-            name: column,
+            name: capitalize(column),
             sortable: false,
             resizable: true,
             minWidth: column === 'status' ? 70 : 180,
@@ -88,10 +89,54 @@ export const BulkImportVersionSummary = ({
     setIsModalOpen(false);
   };
 
+  const labelStyle = {
+    color: theme.palette.grey[500],
+    minWidth: 120,
+  };
+
+  const valueStyle = {
+    fontWeight: theme.typography.h6.fontWeight,
+    color: theme.palette.grey[900],
+  };
+
   return (
     <>
       <Box sx={{ mt: 1 }}>
-        <ImportStatus csvImportResult={csvImportResult} />
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Box sx={{ display: 'flex' }}>
+            <Typography sx={labelStyle} variant="caption">
+              {t('label.rows-processed')}:
+            </Typography>
+            <Typography
+              data-testid="processed-row"
+              sx={valueStyle}
+              variant="caption">
+              {csvImportResult.numberOfRowsProcessed}
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex' }}>
+            <Typography sx={labelStyle} variant="caption">
+              {t('label.passed')}:
+            </Typography>
+            <Typography
+              data-testid="passed-row"
+              sx={valueStyle}
+              variant="caption">
+              {csvImportResult.numberOfRowsPassed}
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex' }}>
+            <Typography sx={labelStyle} variant="caption">
+              {t('label.failed')}:
+            </Typography>
+            <Typography
+              data-testid="failed-row"
+              sx={valueStyle}
+              variant="caption">
+              {csvImportResult.numberOfRowsFailed}
+            </Typography>
+          </Box>
+        </Box>
         <Button
           data-testid="view-more-button"
           size="small"
@@ -101,7 +146,7 @@ export const BulkImportVersionSummary = ({
             minWidth: 'auto',
             fontSize: theme.typography.caption.fontSize,
             color: theme.palette.primary.main,
-            '&: hover': {
+            '&:hover': {
               color: theme.palette.allShades.brand[700],
             },
           }}
