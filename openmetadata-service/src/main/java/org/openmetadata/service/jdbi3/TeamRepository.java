@@ -735,16 +735,25 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   protected List<EntityReference> getChildren(Team team) {
-    return getChildren(team.getId());
+    return getChildren(team.getId(), NON_DELETED);
+  }
+
+  @Override
+  protected List<EntityReference> getChildren(Team team, Include include) {
+    return getChildren(team.getId(), include);
   }
 
   protected List<EntityReference> getChildren(UUID teamId) {
+    return getChildren(teamId, NON_DELETED);
+  }
+
+  protected List<EntityReference> getChildren(UUID teamId, Include include) {
     if (teamId.equals(
         organization.getId())) { // For organization all the parentless teams are children
       List<String> children = daoCollection.teamDAO().listTeamsUnderOrganization(teamId);
       return EntityUtil.populateEntityReferencesById(EntityUtil.strToIds(children), Entity.TEAM);
     }
-    return findTo(teamId, TEAM, Relationship.PARENT_OF, TEAM);
+    return findTo(teamId, TEAM, Relationship.PARENT_OF, TEAM, include);
   }
 
   private Integer getChildrenCount(Team team) {
