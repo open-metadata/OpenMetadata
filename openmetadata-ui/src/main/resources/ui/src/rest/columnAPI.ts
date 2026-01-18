@@ -15,17 +15,8 @@ import { BulkColumnUpdatePreview } from '../generated/api/data/bulkColumnUpdateP
 import { BulkColumnUpdateRequest } from '../generated/api/data/bulkColumnUpdateRequest';
 import { ColumnGridResponse } from '../generated/api/data/columnGridResponse';
 import { GroupedColumnsResponse } from '../generated/api/data/groupedColumnsResponse';
+import { CSVImportResult } from '../generated/type/csvImportResult';
 import APIClient from './index';
-
-export interface CsvImportResult {
-  status: 'SUCCESS' | 'FAILURE' | 'PARTIAL_SUCCESS' | 'ABORTED';
-  numberOfRowsProcessed: number;
-  numberOfRowsPassed: number;
-  numberOfRowsFailed: number;
-  importResultsCsv?: string;
-  dryRun?: boolean;
-  abortReason?: string;
-}
 
 export interface CSVImportResponse {
   jobId: string;
@@ -149,7 +140,7 @@ export const exportColumnsCSV = async (
 
 export const importColumnsCSV = async (
   params: ImportColumnsParams
-): Promise<CsvImportResult> => {
+): Promise<CSVImportResult> => {
   const queryParams = new URLSearchParams();
 
   if (params.dryRun !== undefined) {
@@ -171,7 +162,7 @@ export const importColumnsCSV = async (
     queryParams.append('domainId', params.domainId);
   }
 
-  const response = await APIClient.post<string, AxiosResponse<CsvImportResult>>(
+  const response = await APIClient.post<string, AxiosResponse<CSVImportResult>>(
     `/columns/import?${queryParams.toString()}`,
     params.csv,
     {
