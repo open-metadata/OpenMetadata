@@ -36,15 +36,17 @@ class AthenaLakeFormationClient:
         connection: AthenaConnection,
     ):
         self.lake_formation_client = get_lake_formation_client(connection=connection)
+        self.catalog_id = connection.catalogId
 
     def get_database_tags(self, name: str) -> Optional[List[TagItem]]:
         """
         Method to call the API and get the database tags
         """
         try:
-            response = self.lake_formation_client.get_resource_lf_tags(
-                Resource={"Database": {"Name": name}}
-            )
+            resource = {"Database": {"Name": name}}
+            if self.catalog_id:
+                resource["Database"]["CatalogId"] = self.catalog_id
+            response = self.lake_formation_client.get_resource_lf_tags(Resource=resource)
             lf_tags = LFTags(**response)
             return lf_tags.LFTagOnDatabase
         except Exception as exc:
@@ -59,16 +61,21 @@ class AthenaLakeFormationClient:
         Method to call the API and get the table and column tags
         """
         try:
+            table_resource = {
+                "DatabaseName": schema_name,
+                "Name": table_name,
+            }
+            table_with_columns_resource = {
+                "DatabaseName": schema_name,
+                "Name": table_name,
+            }
+            if self.catalog_id:
+                table_resource["CatalogId"] = self.catalog_id
+                table_with_columns_resource["CatalogId"] = self.catalog_id
             response = self.lake_formation_client.get_resource_lf_tags(
                 Resource={
-                    "Table": {
-                        "DatabaseName": schema_name,
-                        "Name": table_name,
-                    },
-                    "TableWithColumns": {
-                        "DatabaseName": schema_name,
-                        "Name": table_name,
-                    },
+                    "Table": table_resource,
+                    "TableWithColumns": table_with_columns_resource,
                 }
             )
             return LFTags(**response)
