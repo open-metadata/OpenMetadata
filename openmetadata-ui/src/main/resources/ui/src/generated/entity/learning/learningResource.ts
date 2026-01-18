@@ -70,6 +70,7 @@ export interface LearningResource {
  * Primary topic grouping for the resource.
  */
 export enum ResourceCategory {
+    AI = "AI",
     Administration = "Administration",
     DataGovernance = "DataGovernance",
     DataQuality = "DataQuality",
