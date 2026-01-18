@@ -148,7 +148,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       List<String> teamsFromClaim = new ArrayList<>();
       Object teamClaimMapping = authConfig.getJwtTeamClaimMapping();
       List<String> teamClaimMappings = normalizeTeamClaimMappings(teamClaimMapping);
-      
+
       if (!teamClaimMappings.isEmpty()) {
         for (String claimMapping : teamClaimMappings) {
           try {
@@ -326,7 +326,10 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
   }
 
   private User getOrCreateUser(
-      String username, String email, List<String> teamsFromClaim, Map<String, String> userAttributes) {
+      String username,
+      String email,
+      List<String> teamsFromClaim,
+      Map<String, String> userAttributes) {
     try {
       // Fetch user with teams and profile relationships loaded
       User existingUser =
@@ -355,7 +358,8 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       needsUpdate = needsUpdate || teamsAssigned;
 
       // Apply user attributes from claims (only updates null/empty fields)
-      boolean attributesApplied = UserUtil.applyUserAttributesFromClaims(existingUser, userAttributes, false);
+      boolean attributesApplied =
+          UserUtil.applyUserAttributesFromClaims(existingUser, userAttributes, false);
       needsUpdate = needsUpdate || attributesApplied;
 
       if (needsUpdate) {
@@ -403,7 +407,8 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
     }
 
     for (Map.Entry<?, ?> entry : mappings.entrySet()) {
-      if (!(entry.getKey() instanceof String key) || !(entry.getValue() instanceof String claimName)) {
+      if (!(entry.getKey() instanceof String key)
+          || !(entry.getValue() instanceof String claimName)) {
         continue;
       }
       if (nullOrEmpty(claimName)) {

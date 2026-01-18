@@ -125,12 +125,9 @@ class MultiTeamClaimMappingTest {
   void testOktaScenario() {
     // Typical Okta JWT token claims
     Map<String, Object> claims = new HashMap<>();
-    claims.put("groups", Arrays.asList(
-        "Everyone",
-        "OpenMetadata-Admins",
-        "Data-Engineers",
-        "Data-Stewards"
-    ));
+    claims.put(
+        "groups",
+        Arrays.asList("Everyone", "OpenMetadata-Admins", "Data-Engineers", "Data-Stewards"));
     claims.put("department", "Data Platform");
     claims.put("email", "user@company.com");
     claims.put("name", "John Doe");
@@ -152,10 +149,11 @@ class MultiTeamClaimMappingTest {
   void testAzureADScenario() {
     // Typical Azure AD claims
     Map<String, Object> claims = new HashMap<>();
-    claims.put("groups", Arrays.asList(
-        "a1b2c3d4-...", // Azure AD returns group IDs by default
-        "e5f6g7h8-..."
-    ));
+    claims.put(
+        "groups",
+        Arrays.asList(
+            "a1b2c3d4-...", // Azure AD returns group IDs by default
+            "e5f6g7h8-..."));
     claims.put("roles", Arrays.asList("DataSteward", "Admin"));
     claims.put("jobTitle", "Senior Data Engineer");
 
@@ -175,10 +173,11 @@ class MultiTeamClaimMappingTest {
   void testSAMLScenario() {
     // SAML attributes from IdP
     Map<String, Object> claims = new HashMap<>();
-    claims.put("memberOf", Arrays.asList(
-        "CN=DataTeam,OU=Groups,DC=company,DC=com",
-        "CN=Engineering,OU=Groups,DC=company,DC=com"
-    ));
+    claims.put(
+        "memberOf",
+        Arrays.asList(
+            "CN=DataTeam,OU=Groups,DC=company,DC=com",
+            "CN=Engineering,OU=Groups,DC=company,DC=com"));
     claims.put("department", "Data Engineering");
     claims.put("company", "Acme Corp");
     claims.put("division", "Technology");

@@ -5,7 +5,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.JwtFilter.EMAIL_CLAIM_KEY;
 import static org.openmetadata.service.security.JwtFilter.USERNAME_CLAIM_KEY;
 import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
-import static org.openmetadata.service.security.SecurityUtil.findTeamsFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findTeamsFromMultipleClaims;
 import static org.openmetadata.service.security.SecurityUtil.findUserAttributesFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
@@ -215,8 +214,10 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
             .map(s -> s.split(":"))
             .collect(Collectors.toMap(s -> s[0], s -> s[1]));
     validatePrincipalClaimsMapping(claimsMapping);
-    this.teamClaimMappings = normalizeTeamClaimMappings(authenticationConfiguration.getJwtTeamClaimMapping());
-    this.userAttributeMappings = normalizeUserAttributeMappings(authenticationConfiguration.getJwtUserAttributeMappings());
+    this.teamClaimMappings =
+        normalizeTeamClaimMappings(authenticationConfiguration.getJwtTeamClaimMapping());
+    this.userAttributeMappings =
+        normalizeUserAttributeMappings(authenticationConfiguration.getJwtUserAttributeMappings());
     this.principalDomain = authorizerConfiguration.getPrincipalDomain();
     this.tokenValidity = authenticationConfiguration.getOidcConfiguration().getTokenValidity();
     this.maxAge = authenticationConfiguration.getOidcConfiguration().getMaxAge();
@@ -775,11 +776,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
   private User getOrCreateOidcUser(String userName, String email, Map<String, Object> claims) {
     List<String> teamsFromClaim = findTeamsFromMultipleClaims(teamClaimMappings, claims);
-    Map<String, String> userAttributes = findUserAttributesFromClaims(userAttributeMappings, claims);
+    Map<String, String> userAttributes =
+        findUserAttributesFromClaims(userAttributeMappings, claims);
 
     try {
       User user =
-          Entity.getEntityByName(Entity.USER, userName, "id,roles,teams,profile", Include.NON_DELETED);
+          Entity.getEntityByName(
+              Entity.USER, userName, "id,roles,teams,profile", Include.NON_DELETED);
 
       boolean shouldBeAdmin = getAdminPrincipals().contains(userName);
       boolean needsUpdate = false;

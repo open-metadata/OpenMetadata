@@ -201,7 +201,7 @@ public final class SecurityUtil {
   public static List<String> findTeamsFromMultipleClaims(
       List<String> jwtTeamClaimMappings, Map<String, ?> claims) {
     List<String> allTeams = new ArrayList<>();
-    
+
     if (nullOrEmpty(jwtTeamClaimMappings) || claims == null) {
       return allTeams;
     }
@@ -213,9 +213,11 @@ public final class SecurityUtil {
         LOG.debug("Extracted {} team(s) from claim '{}'", teamsFromClaim.size(), claimMapping);
       }
     }
-    
-    LOG.debug("Total teams extracted from {} claim mapping(s): {}", 
-              jwtTeamClaimMappings.size(), allTeams.size());
+
+    LOG.debug(
+        "Total teams extracted from {} claim mapping(s): {}",
+        jwtTeamClaimMappings.size(),
+        allTeams.size());
     return allTeams;
   }
 
