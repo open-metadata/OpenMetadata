@@ -701,10 +701,13 @@ export const addCustomPropertiesForEntity = async ({
       await page.keyboard.type(val);
       await page.click(`[title="${val}"]`);
       // Wait for dropdown to close completely
-      await page.locator('[data-testid="form-item-label"]').filter({hasText:'Entity Reference Types'}).click()
-      await page.waitForSelector('#root\\/entityReferenceConfig_list', {
-        state: 'hidden',
-      });
+      await page
+        .locator('[data-testid="form-item-label"]')
+        .filter({ hasText: 'Entity Reference Types' })
+        .click({ force: true });
+      await expect(
+        page.locator('#root\\/entityReferenceConfig_list')
+      ).not.toBeVisible();
       // Additional wait for DOM to settle on slower environments
       await page.waitForTimeout(300);
     }
@@ -719,7 +722,9 @@ export const addCustomPropertiesForEntity = async ({
   }
 
   // Description
-  await expect(page.locator('#root\\/entityReferenceConfig_list')).not.toBeVisible();
+  await expect(
+    page.locator('#root\\/entityReferenceConfig_list')
+  ).not.toBeVisible();
   await page.locator(`${descriptionBox} p`).click();
   await page.waitForTimeout(200);
   await page.keyboard.type(customPropertyData.description, { delay: 50 });
@@ -1026,10 +1031,12 @@ export const editColumnCustomProperty = async (
         response.status() === 200
     );
     await page.getByTestId(testValue).click();
-    
+
     // Verify selection is applied before saving
     // The selection usually appears as a tag or text in the container
-    await expect(page.getByTestId('asset-select-list')).toContainText(testValue);
+    await expect(page.getByTestId('asset-select-list')).toContainText(
+      testValue
+    );
 
     await page
       .locator('.custom-properties-section-container')
@@ -1080,10 +1087,13 @@ export const validateColumnCustomProperty = async (
     await expect(
       page.getByRole('row', { name: `${testValue} row1col2` })
     ).toBeVisible();
+  } else if (propertyType === 'Entity Reference') {
+    await expect(card.getByTestId('value')).toContainText(testValue);
   } else {
     // Generic fallback for String, Integer, Email, Duration, Timestamp, Enum, EntityRef, Date, Time
     // Enum/Date/Time/Ref now use 'value' container with text.
     // Ref: Part 2 test uses getByText(testValue) originally, updated to getByTestId('value').
+    await expect(card.getByTestId('value')).not.toHaveText('Not set');
     await expect(card.getByTestId('value')).toContainText(testValue);
   }
 };
