@@ -232,7 +232,7 @@ public class LineageResource {
       @Parameter(
               description =
                   "Column-level lineage filter. Supports filtering by column names, tags, or glossary terms (e.g., 'columnName:customer_id', 'tag:PII', 'glossary:BusinessTerm')")
-          @QueryParam("columnFilter")
+          @QueryParam("column_filter")
           String columnFilter,
       @Parameter(
               description =
@@ -340,7 +340,7 @@ public class LineageResource {
       @Parameter(
               description =
                   "Column-level lineage filter. Supports filtering by column names, tags, or glossary terms (e.g., 'columnName:customer_id', 'tag:PII', 'glossary:BusinessTerm')")
-          @QueryParam("columnFilter")
+          @QueryParam("column_filter")
           String columnFilter,
       @Parameter(
               description =
@@ -667,7 +667,7 @@ public class LineageResource {
       @Parameter(
               description =
                   "Column-level lineage filter. Supports filtering by column names, tags, or glossary terms (e.g., 'columnName:customer_id', 'tag:PII', 'glossary:BusinessTerm')")
-          @QueryParam("columnFilter")
+          @QueryParam("column_filter")
           String columnFilter,
       @Parameter(
               description =

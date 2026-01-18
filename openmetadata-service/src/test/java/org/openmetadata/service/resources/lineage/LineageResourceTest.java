@@ -1705,7 +1705,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
             .queryParam("fqn", tableA.getFullyQualifiedName())
             .queryParam("upstreamDepth", "0")
             .queryParam("downstreamDepth", "3")
-            .queryParam("columnFilter", "tag:User.Address");
+            .queryParam("column_filter", "tag:User.Address");
 
     SearchLineageResult result =
         TestUtils.get(target, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
