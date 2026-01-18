@@ -888,6 +888,7 @@
     "include-entity": "{{entity}} opnemen",
     "include-owner": "Eigenaren opnemen",
     "incomplete": "Incomplete",
+    "inconsistent": "Inconsistent",
     "index-states": "Indexstaten",
     "indirect": "Indirect",
     "ingest-sample-data": "Voorbeelddata inladen",

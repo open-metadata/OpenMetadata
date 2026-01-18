@@ -888,6 +888,7 @@
     "include-entity": "כלול {{entity}}",
     "include-owner": "כלול בעלים",
     "incomplete": "Incomplete",
+    "inconsistent": "Inconsistent",
     "index-states": "מצבי אינדקס",
     "indirect": "עקיף",
     "ingest-sample-data": "טען נתוני דוגמא (Sample)",

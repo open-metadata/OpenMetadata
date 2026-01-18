@@ -888,6 +888,7 @@
     "include-entity": "包含 {{entity}}",
     "include-owner": "包含擁有者",
     "incomplete": "不完整",
+    "inconsistent": "Inconsistent",
     "index-states": "索引狀態",
     "indirect": "間接",
     "ingest-sample-data": "擷取範例資料",

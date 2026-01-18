@@ -888,6 +888,7 @@
     "include-entity": "包括{{entity}}",
     "include-owner": "包括所有者",
     "incomplete": "Incomplete",
+    "inconsistent": "Inconsistent",
     "index-states": "索引状态",
     "indirect": "Indirect",
     "ingest-sample-data": "提取样本数据",

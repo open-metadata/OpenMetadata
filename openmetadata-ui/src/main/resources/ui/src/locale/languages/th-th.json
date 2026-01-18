@@ -888,6 +888,7 @@
     "include-entity": "รวม {{entity}}",
     "include-owner": "รวมเจ้าของ",
     "incomplete": "ไม่สมบูรณ์",
+    "inconsistent": "Inconsistent",
     "index-states": "สถานะดัชนี",
     "indirect": "โดยอ้อม",
     "ingest-sample-data": "นำเข้าข้อมูลตัวอย่าง",

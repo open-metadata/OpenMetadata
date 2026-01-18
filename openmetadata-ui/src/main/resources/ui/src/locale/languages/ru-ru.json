@@ -888,6 +888,7 @@
     "include-entity": "Включить объект «{{entity}}»",
     "include-owner": "Включить владельцев",
     "incomplete": "Не завершено",
+    "inconsistent": "Inconsistent",
     "index-states": "Статистика индекса",
     "indirect": "Косвенный",
     "ingest-sample-data": "Получение демонстрационных данных",

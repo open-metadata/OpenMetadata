@@ -888,6 +888,7 @@
     "include-entity": "{{entity}} 포함",
     "include-owner": "소유자 포함",
     "incomplete": "미완료",
+    "inconsistent": "Inconsistent",
     "index-states": "인덱스 통계",
     "indirect": "간접",
     "ingest-sample-data": "샘플 데이터 수집",

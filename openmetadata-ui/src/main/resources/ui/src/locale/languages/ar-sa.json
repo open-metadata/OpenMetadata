@@ -888,6 +888,7 @@
     "include-entity": "تضمين {{entity}}",
     "include-owner": "تضمين المالكين",
     "incomplete": "غير مكتمل",
+    "inconsistent": "Inconsistent",
     "index-states": "إحصائيات الفهرس",
     "indirect": "غير مباشر",
     "ingest-sample-data": "استيعاب بيانات العينة",

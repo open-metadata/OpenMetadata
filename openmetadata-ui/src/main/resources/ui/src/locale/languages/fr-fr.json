@@ -888,6 +888,7 @@
     "include-entity": "Inclure {{entity}}",
     "include-owner": "Inclure les Propriétaires",
     "incomplete": "Incomplet",
+    "inconsistent": "Inconsistent",
     "index-states": "États de l'Index",
     "indirect": "Indirect",
     "ingest-sample-data": "Ingestion des Exemples de Données",

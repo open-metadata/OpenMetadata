@@ -888,6 +888,7 @@
     "include-entity": "{{entity}} einschließen",
     "include-owner": "Besitzer einschließen",
     "incomplete": "Incomplete",
+    "inconsistent": "Inconsistent",
     "index-states": "Indexstatus",
     "indirect": "Indirekt",
     "ingest-sample-data": "Beispieldaten einlesen",

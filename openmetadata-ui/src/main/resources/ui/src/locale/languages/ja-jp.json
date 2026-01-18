@@ -888,6 +888,7 @@
     "include-entity": "{{entity}}を含める",
     "include-owner": "所有者を含める",
     "incomplete": "未完了",
+    "inconsistent": "Inconsistent",
     "index-states": "インデックス状態",
     "indirect": "間接",
     "ingest-sample-data": "サンプルデータをインジェスト",
