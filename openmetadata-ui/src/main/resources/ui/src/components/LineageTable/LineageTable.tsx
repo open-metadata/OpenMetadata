@@ -37,7 +37,6 @@ import {
   IMPACT_ANALYSIS_STATIC_COLUMNS,
 } from '../../constants/Lineage.constants';
 import { useLineageProvider } from '../../context/LineageProvider/LineageProvider';
-import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SIZE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
@@ -92,6 +91,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     setSelectedQuickFilters,
     lineageConfig,
     updateEntityData,
+    columnFilter,
   } = useLineageProvider();
   const { fqn } = useFqn();
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
@@ -400,6 +400,8 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           from: (currentPage - 1) * pageSize,
           size: pageSize,
           query_filter: queryFilter,
+          column_filter:
+            impactLevel === EImpactLevel.ColumnLevel ? columnFilter : undefined,
         });
 
         delete res.nodes[fqn];
@@ -436,12 +438,20 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     pageSize,
     impactLevel,
     lineageConfig,
+    columnFilter,
   ]);
 
   // Fetch Lineage data when dependencies change
   useEffect(() => {
     fetchNodes();
-  }, [nodeDepth, currentPage, impactLevel, pageSize, queryFilter]);
+  }, [
+    nodeDepth,
+    currentPage,
+    impactLevel,
+    pageSize,
+    queryFilter,
+    columnFilter,
+  ]);
 
   useEffect(() => {
     if (impactLevel === EImpactLevel.TableLevel) {
@@ -696,13 +706,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
   // Initialize quick filters on component mount
   useEffect(() => {
-    const items =
-      impactLevel === EImpactLevel.TableLevel
-        ? LINEAGE_DROPDOWN_ITEMS
-        : LINEAGE_DROPDOWN_ITEMS.filter(
-            (item) =>
-              ![EntityFields.TAG, EntityFields.COLUMN].includes(item.key)
-          );
+    const items = LINEAGE_DROPDOWN_ITEMS;
     const updatedQuickFilters = items.map((selectedFilterItem) => {
       const originalFilterItem = selectedQuickFilters?.find(
         (filter) => filter.key === selectedFilterItem.key

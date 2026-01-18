@@ -89,6 +89,8 @@ const CustomControls: FC<{
     onLineageEditClick,
     isEditMode,
     platformView,
+    columnFilter,
+    setColumnFilter,
   } = useLineageProvider();
   const [filterSelectionActive, setFilterSelectionActive] = useState(false);
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -272,7 +274,8 @@ const CustomControls: FC<{
     setSelectedQuickFilters((prev) =>
       (prev ?? []).map((filter) => ({ ...filter, value: [] }))
     );
-  }, [setSelectedQuickFilters]);
+    setColumnFilter('');
+  }, [setSelectedQuickFilters, setColumnFilter]);
 
   // Function to handle export click
   const handleImpactAnalysisExport = useCallback(
@@ -283,8 +286,9 @@ const CustomControls: FC<{
         direction: lineageDirection,
         nodeDepth: nodeDepth,
         query_filter: quickFilters,
+        column_filter: columnFilter,
       }),
-    [fqn, entityType, lineageDirection, nodeDepth, quickFilters]
+    [fqn, entityType, lineageDirection, nodeDepth, quickFilters, columnFilter]
   );
 
   const handleExportClick = useCallback(() => {
@@ -317,10 +321,11 @@ const CustomControls: FC<{
   };
 
   const filterApplied = useMemo(() => {
-    return selectedQuickFilters.some(
-      (filter) => (filter.value ?? []).length > 0
+    return (
+      selectedQuickFilters.some((filter) => (filter.value ?? []).length > 0) ||
+      columnFilter.length > 0
     );
-  }, [selectedQuickFilters]);
+  }, [selectedQuickFilters, columnFilter]);
 
   const searchBarComponent = useMemo(() => {
     return activeTab === 'impact_analysis' && onSearchValueChange ? (
