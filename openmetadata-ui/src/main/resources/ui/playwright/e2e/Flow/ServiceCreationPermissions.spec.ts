@@ -60,6 +60,8 @@ const test = base.extend<{
 });
 
 test.describe('Service Creation with isOwner() Permissions', () => {
+  test.slow();
+
   test.beforeAll('Setup prerequisites', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
