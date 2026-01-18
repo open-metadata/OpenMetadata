@@ -19,8 +19,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.openmetadata.schema.type.ColumnDataType.INT;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
+import static org.openmetadata.service.resources.databases.TableResourceTest.getColumn;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -87,11 +89,13 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.jdbi3.LineageRepository;
+import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResourceTest;
@@ -1630,5 +1634,110 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     Set<String> unknownChildren =
         (Set<String>) getChildrenNamesMethod.invoke(lineageRepository, unknownRef);
     assertTrue(unknownChildren.isEmpty(), "Unknown entity type should return empty set");
+  }
+
+  @Order(16)
+  @Test
+  void test_columnFilterOnlyReturnsMatchingEdges(TestInfo test) throws IOException {
+    // This test verifies that columnFilter returns only edges where columns match the filter
+    // Scenario:
+    // tableA (col1 no tag) -> tableB (col1 no tag) -> tableC (col1 with USER_ADDRESS tag)
+    // When filtering by columnFilter=tag:User.Address, only the edge tableB -> tableC should be
+    // returned
+    // because only that edge has column lineage with a taggedcla column
+
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    TagLabel addressTag = EntityResourceTest.USER_ADDRESS_TAG_LABEL;
+
+    // Create tableA with column without tag
+    Column colA = getColumn("address_id", INT, null);
+    CreateTable createTableA =
+        tableResourceTest
+            .createRequest(test)
+            .withName("columnFilter_tableA")
+            .withColumns(List.of(colA))
+            .withTableConstraints(null);
+    Table tableA = tableResourceTest.createEntity(createTableA, ADMIN_AUTH_HEADERS);
+
+    // Create tableB with column without tag
+    Column colB = getColumn("address_id", INT, null);
+    CreateTable createTableB =
+        tableResourceTest
+            .createRequest(test)
+            .withName("columnFilter_tableB")
+            .withColumns(List.of(colB))
+            .withTableConstraints(null);
+    Table tableB = tableResourceTest.createEntity(createTableB, ADMIN_AUTH_HEADERS);
+
+    // Create tableC with column WITH tag
+    Column colC = getColumn("address_id", INT, addressTag);
+    CreateTable createTableC =
+        tableResourceTest
+            .createRequest(test)
+            .withName("columnFilter_tableC")
+            .withColumns(List.of(colC))
+            .withTableConstraints(null);
+    Table tableC = tableResourceTest.createEntity(createTableC, ADMIN_AUTH_HEADERS);
+
+    // Get column FQNs for lineage
+    String colAFqn = tableA.getFullyQualifiedName() + ".address_id";
+    String colBFqn = tableB.getFullyQualifiedName() + ".address_id";
+    String colCFqn = tableC.getFullyQualifiedName() + ".address_id";
+
+    // Create lineage: tableA -> tableB with column lineage
+    LineageDetails detailsAB = new LineageDetails();
+    detailsAB
+        .getColumnsLineage()
+        .add(new ColumnLineage().withFromColumns(List.of(colAFqn)).withToColumn(colBFqn));
+    addEdge(tableA, tableB, detailsAB, ADMIN_AUTH_HEADERS);
+
+    // Create lineage: tableB -> tableC with column lineage
+    LineageDetails detailsBC = new LineageDetails();
+    detailsBC
+        .getColumnsLineage()
+        .add(new ColumnLineage().withFromColumns(List.of(colBFqn)).withToColumn(colCFqn));
+    addEdge(tableB, tableC, detailsBC, ADMIN_AUTH_HEADERS);
+
+    // Query lineage from tableA with columnFilter=tag:User.Address
+    // Only the edge tableB -> tableC should be returned since only colC has the tag
+    WebTarget target =
+        getResource("lineage/getLineage")
+            .queryParam("fqn", tableA.getFullyQualifiedName())
+            .queryParam("upstreamDepth", "0")
+            .queryParam("downstreamDepth", "3")
+            .queryParam("columnFilter", "tag:User.Address");
+
+    SearchLineageResult result =
+        TestUtils.get(target, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(result);
+
+    // Should have 2 nodes: tableB and tableC (connected by the matching edge), plus root tableA
+    assertEquals(3, result.getNodes().size(), "Should have 3 nodes: tableA, tableB, and tableC");
+    assertTrue(
+        result.getNodes().containsKey(tableA.getFullyQualifiedName()),
+        "Should contain tableA (root)");
+    assertTrue(
+        result.getNodes().containsKey(tableB.getFullyQualifiedName()),
+        "Should contain tableB (fromEntity of matching edge)");
+    assertTrue(
+        result.getNodes().containsKey(tableC.getFullyQualifiedName()),
+        "Should contain tableC (toEntity of matching edge)");
+
+    // Should have only 1 downstream edge: tableB -> tableC
+    // The edge tableA -> tableB should be filtered out because colB doesn't have the tag
+    assertEquals(
+        1,
+        result.getDownstreamEdges().size(),
+        "Should have exactly 1 downstream edge (tableB -> tableC)");
+
+    // Verify the edge is from tableB to tableC
+    var edge = result.getDownstreamEdges().values().iterator().next();
+    assertEquals(tableB.getId(), edge.getFromEntity().getId(), "Edge should be from tableB");
+    assertEquals(tableC.getId(), edge.getToEntity().getId(), "Edge should be to tableC");
+
+    // Cleanup
+    deleteEdge(tableA, tableB);
+    deleteEdge(tableB, tableC);
   }
 }
