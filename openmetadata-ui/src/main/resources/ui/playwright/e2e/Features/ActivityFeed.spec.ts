@@ -629,6 +629,27 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     });
 
     await user.create(apiContext);
+
+    // Create a conversation thread via API so we can post replies in the tests
+    await apiContext.post('/api/v1/feed', {
+      data: {
+        from: adminUser.responseData.name,
+        message: 'Initial conversation for Chinese character encoding test',
+        about: `<#E::databaseSchema::${schemaFqn}>`,
+        type: 'Conversation',
+      },
+    });
+
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup: delete database and apiEndpoint', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    await database.delete(apiContext);
+    await apiEndpoint.delete(apiContext);
+    await adminUser.delete(apiContext);
+
     await afterAction();
   });
 
@@ -640,7 +661,6 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
   test('Should allow mentioning a user with Chinese characters in the activity feed', async ({
     page,
   }) => {
-    test.slow();
     const feedPromise = page.waitForResponse((response) => {
       const url = response.url();
       return (
@@ -718,7 +738,6 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
 
 
   test('Should encode the chinese character while mentioning api endpoint', async ({ page }) => {
-    test.slow();
     const feedPromise = page.waitForResponse((response) => {
       const url = response.url();
       return (

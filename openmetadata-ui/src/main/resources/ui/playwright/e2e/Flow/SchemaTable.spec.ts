@@ -19,6 +19,7 @@ import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import {
   addOwner,
+  readClipboardText,
   testCopyLinkButton,
   updateDisplayNameForEntityChildren,
   validateCopiedLinkFormat,
@@ -212,13 +213,7 @@ test('Copy column link should have valid URL format', async ({ page }) => {
   await expect(copyButton).toBeVisible();
   await copyButton.click();
 
-  const clipboardText = await page.evaluate(async () => {
-    try {
-      return await navigator.clipboard.readText();
-    } catch (error) {
-      return `CLIPBOARD_ERROR: ${error}`;
-    }
-  });
+  const clipboardText = await readClipboardText(page);
 
   const validationResult = validateCopiedLinkFormat({
     clipboardText,
@@ -271,13 +266,7 @@ test('Copy nested column link should include full hierarchical path', async ({ p
       await expect(nestedCopyButton).toBeVisible();
       await nestedCopyButton.click();
 
-      const clipboardText = await page.evaluate(async () => {
-        try {
-          return await navigator.clipboard.readText();
-        } catch (error) {
-          return `CLIPBOARD_ERROR: ${error}`;
-        }
-      });
+      const clipboardText = await readClipboardText(page);
 
       expect(clipboardText).toContain('/table/');
       expect(clipboardText).toContain(
