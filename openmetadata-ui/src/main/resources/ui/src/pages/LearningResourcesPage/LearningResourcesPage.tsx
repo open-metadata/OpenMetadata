@@ -434,12 +434,16 @@ export const LearningResourcesPage: React.FC = () => {
   ];
 
   return (
-    <div className="learning-resources-page">
+    <div
+      className="learning-resources-page"
+      data-testid="learning-resources-page">
       <TitleBreadcrumb titleLinks={breadcrumbs} />
 
       <div className="page-header">
         <div className="page-header-title">
-          <h4 className="page-title">{t('label.learning-resource')}</h4>
+          <h4 className="page-title" data-testid="page-title">
+            {t('label.learning-resource')}
+          </h4>
           <p className="page-description">
             {t('message.learning-resource-page-description')}
           </p>

@@ -14,7 +14,7 @@
 import { Spin } from 'antd';
 import React, { useCallback, useMemo, useState } from 'react';
 import { LearningResource } from '../../../rest/learningResourceAPI';
-import './VideoPlayer.less';
+import './video-player.style.less';
 
 interface VideoPlayerProps {
   resource: LearningResource;
@@ -64,7 +64,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ resource }) => {
     }
 
     const isVimeoHost =
-      hostname === 'vimeo.com' || hostname === 'www.vimeo.com' || hostname === 'player.vimeo.com';
+      hostname === 'vimeo.com' ||
+      hostname === 'www.vimeo.com' ||
+      hostname === 'player.vimeo.com';
 
     if (isVimeoHost) {
       // Vimeo URL: https://vimeo.com/<videoId> or https://player.vimeo.com/video/<videoId>
@@ -96,6 +98,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ resource }) => {
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
         className="video-player-iframe"
         frameBorder="0"
+        sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
         src={embedUrl}
         title={resource.displayName || resource.name}
         onLoad={handleLoad}

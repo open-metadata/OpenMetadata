@@ -103,7 +103,6 @@ const DomainListPage = () => {
               patchEntity: patchDomains,
               onSuccess: () => {
                 closeDrawer();
-                // eslint-disable-next-line @typescript-eslint/no-use-before-define
                 refreshAllDomains();
               },
               enqueueSnackbar,

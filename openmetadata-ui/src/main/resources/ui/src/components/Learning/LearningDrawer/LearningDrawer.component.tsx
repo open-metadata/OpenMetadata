@@ -21,8 +21,8 @@ import {
 } from '../../../rest/learningResourceAPI';
 import { LearningResourceCard } from '../LearningResourceCard/LearningResourceCard.component';
 import { ResourcePlayerModal } from '../ResourcePlayer/ResourcePlayerModal.component';
+import './learning-drawer.style.less';
 import { LearningDrawerProps } from './LearningDrawer.interface';
-import './LearningDrawer.less';
 
 const { Title } = Typography;
 
@@ -34,7 +34,7 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
 }) => {
   const { t } = useTranslation();
   const [resources, setResources] = useState<LearningResource[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [selectedResource, setSelectedResource] =
     useState<LearningResource | null>(null);
@@ -123,6 +123,7 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
           {isLoading ? (
             <div className="learning-drawer-loading">
               <Spin
+                data-testid="loader"
                 indicator={<LoadingOutlined spin style={{ fontSize: 24 }} />}
               />
             </div>

@@ -13,53 +13,15 @@
 
 import { Badge, Tooltip } from 'antd';
 import classNames from 'classnames';
-import React, {
-  Component,
-  ErrorInfo,
-  ReactNode,
-  useCallback,
-  useEffect,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as LearningIconSvg } from '../../../assets/svg/ic-learning.svg';
 import { getLearningResourcesByContext } from '../../../rest/learningResourceAPI';
 import { LearningDrawer } from '../LearningDrawer/LearningDrawer.component';
+import './learning-icon.style.less';
 import { LearningIconProps } from './LearningIcon.interface';
-import './LearningIcon.less';
 
-interface ErrorBoundaryState {
-  hasError: boolean;
-}
-
-class LearningIconErrorBoundary extends Component<
-  { children: ReactNode },
-  ErrorBoundaryState
-> {
-  constructor(props: { children: ReactNode }) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError(): ErrorBoundaryState {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    // eslint-disable-next-line no-console
-    console.error('LearningIcon error:', error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return null;
-    }
-
-    return this.props.children;
-  }
-}
-
-const LearningIconContent: React.FC<LearningIconProps> = ({
+export const LearningIcon: React.FC<LearningIconProps> = ({
   pageId,
   title,
   className = '',
@@ -67,11 +29,11 @@ const LearningIconContent: React.FC<LearningIconProps> = ({
   const { t } = useTranslation();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [resourceCount, setResourceCount] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
 
   const fetchResourceCount = useCallback(async () => {
-    if (resourceCount > 0 || isLoading || hasError) {
+    if (resourceCount > 0 || hasError) {
       return;
     }
     setIsLoading(true);
@@ -86,7 +48,7 @@ const LearningIconContent: React.FC<LearningIconProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [pageId, resourceCount, isLoading, hasError]);
+  }, [pageId, resourceCount, hasError]);
 
   useEffect(() => {
     fetchResourceCount();
@@ -104,7 +66,9 @@ const LearningIconContent: React.FC<LearningIconProps> = ({
     return null;
   }
 
-  const tooltipTitle = `${resourceCount} ${t('label.resource-plural')} ${t('label.available').toLowerCase()}`;
+  const tooltipTitle = `${resourceCount} ${t('label.resource-plural')} ${t(
+    'label.available'
+  ).toLowerCase()}`;
 
   return (
     <>
@@ -116,7 +80,7 @@ const LearningIconContent: React.FC<LearningIconProps> = ({
           size="small">
           <div
             className="learning-icon-container"
-            data-testid={`learning-icon-${pageId}`}
+            data-testid="learning-icon"
             onClick={handleClick}>
             <LearningIconSvg className="learning-icon-svg" />
           </div>
@@ -130,13 +94,5 @@ const LearningIconContent: React.FC<LearningIconProps> = ({
         onClose={handleClose}
       />
     </>
-  );
-};
-
-export const LearningIcon: React.FC<LearningIconProps> = (props) => {
-  return (
-    <LearningIconErrorBoundary>
-      <LearningIconContent {...props} />
-    </LearningIconErrorBoundary>
   );
 };

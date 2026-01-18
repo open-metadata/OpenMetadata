@@ -22,8 +22,8 @@ import { DateTime } from 'luxon';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_CATEGORIES } from '../Learning.interface';
+import './learning-resource-card.style.less';
 import { LearningResourceCardProps } from './LearningResourceCard.interface';
-import './LearningResourceCard.less';
 
 const { Text, Paragraph, Link } = Typography;
 

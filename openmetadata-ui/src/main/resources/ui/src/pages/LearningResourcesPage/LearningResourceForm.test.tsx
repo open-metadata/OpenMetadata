@@ -78,8 +78,8 @@ describe('LearningResourceForm', () => {
       render(<LearningResourceForm {...mockProps} />);
     });
 
-    expect(document.querySelector('.ant-drawer-title')).toHaveTextContent(
-      'label.add-entity'
+    expect(document.querySelector('.drawer-title')).toHaveTextContent(
+      'label.add-resource'
     );
     expect(screen.getByTestId('save-resource')).toBeInTheDocument();
   });
@@ -89,8 +89,8 @@ describe('LearningResourceForm', () => {
       render(<LearningResourceForm {...mockProps} resource={mockResource} />);
     });
 
-    expect(document.querySelector('.ant-drawer-title')).toHaveTextContent(
-      'label.edit-entity'
+    expect(document.querySelector('.drawer-title')).toHaveTextContent(
+      'label.edit-resource'
     );
   });
 
@@ -99,7 +99,7 @@ describe('LearningResourceForm', () => {
       render(<LearningResourceForm {...mockProps} resource={mockResource} />);
     });
 
-    const nameInput = screen.getByPlaceholderText('e.g., Intro_GlossaryBasics');
+    const nameInput = document.querySelector('#name') as HTMLInputElement;
 
     expect(nameInput).toHaveValue('TestResource');
   });
@@ -133,24 +133,12 @@ describe('LearningResourceForm', () => {
     expect(mockCreateLearningResource).not.toHaveBeenCalled();
   });
 
-  it('should show create button text for new resource', async () => {
+  it('should show save button', async () => {
     await act(async () => {
       render(<LearningResourceForm {...mockProps} />);
     });
 
-    expect(screen.getByTestId('save-resource')).toHaveTextContent(
-      'label.create'
-    );
-  });
-
-  it('should show update button text when editing', async () => {
-    await act(async () => {
-      render(<LearningResourceForm {...mockProps} resource={mockResource} />);
-    });
-
-    expect(screen.getByTestId('save-resource')).toHaveTextContent(
-      'label.update'
-    );
+    expect(screen.getByTestId('save-resource')).toHaveTextContent('label.save');
   });
 
   it('should render all form fields', async () => {
@@ -159,17 +147,13 @@ describe('LearningResourceForm', () => {
     });
 
     expect(screen.getByText('label.name')).toBeInTheDocument();
-    expect(screen.getByText('label.display-name')).toBeInTheDocument();
     expect(screen.getByText('label.description')).toBeInTheDocument();
     expect(screen.getByText('label.type')).toBeInTheDocument();
     expect(screen.getByText('label.category-plural')).toBeInTheDocument();
-    expect(screen.getByText('label.difficulty')).toBeInTheDocument();
+    expect(screen.getByText('label.page-plural')).toBeInTheDocument();
     expect(screen.getByText('label.source-url')).toBeInTheDocument();
     expect(screen.getByText('label.source-provider')).toBeInTheDocument();
-    expect(
-      screen.getByText('label.estimated-duration-minutes')
-    ).toBeInTheDocument();
-    expect(screen.getByText('label.context-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.duration')).toBeInTheDocument();
     expect(screen.getByText('label.status')).toBeInTheDocument();
   });
 
@@ -178,6 +162,30 @@ describe('LearningResourceForm', () => {
       render(<LearningResourceForm {...mockProps} open={false} />);
     });
 
-    expect(document.querySelector('.ant-drawer-title')).toBeNull();
+    expect(document.querySelector('.drawer-title')).toBeNull();
+  });
+
+  it('should call onClose when close icon is clicked', async () => {
+    await act(async () => {
+      render(<LearningResourceForm {...mockProps} />);
+    });
+
+    const closeIcon = document.querySelector('.drawer-close');
+
+    await act(async () => {
+      fireEvent.click(closeIcon as Element);
+    });
+
+    expect(mockProps.onClose).toHaveBeenCalled();
+  });
+
+  it('should show RichTextEditor for Article type', async () => {
+    await act(async () => {
+      render(<LearningResourceForm {...mockProps} />);
+    });
+
+    // By default, resourceType is 'Article' so RichTextEditor should be shown
+    expect(screen.getByText('label.embedded-content')).toBeInTheDocument();
+    expect(screen.getByTestId('rich-text-editor')).toBeInTheDocument();
   });
 });

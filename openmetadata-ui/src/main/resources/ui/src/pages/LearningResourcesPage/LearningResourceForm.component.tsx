@@ -299,10 +299,12 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
 
         <Form.Item
           className="form-item-required"
+          data-testid="resource-type-form-item"
           label={t('label.type')}
           name="resourceType"
           rules={[{ message: t('label.field-required'), required: true }]}>
           <Select
+            data-testid="resource-type-select"
             optionLabelProp="label"
             placeholder={t('label.select-field', { field: t('label.type') })}
             onChange={setResourceType}>
@@ -322,6 +324,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
 
         <Form.Item
           className="form-item-required"
+          data-testid="categories-form-item"
           extra={
             <Text type="secondary">
               {t('message.learning-resource-category-description')}
@@ -331,6 +334,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
           name="categories"
           rules={[{ message: t('label.field-required'), required: true }]}>
           <Select
+            data-testid="categories-select"
             mode="multiple"
             options={CATEGORIES}
             placeholder={t('label.select-type')}
@@ -339,6 +343,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
 
         <Form.Item
           className="form-item-required"
+          data-testid="contexts-form-item"
           extra={
             <Text type="secondary">
               {t('message.learning-resource-context-description')}
@@ -356,6 +361,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
             },
           ]}>
           <Select
+            data-testid="contexts-select"
             mode="multiple"
             options={PAGE_IDS}
             placeholder={t('label.select-page-plural')}

@@ -71,7 +71,7 @@ export class LearningResourceClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const response = await apiContext.post('/api/v1/learningResources', {
+    const response = await apiContext.post('/api/v1/learning/resources', {
       data: this.data,
     });
     const data = await response.json();
@@ -85,7 +85,7 @@ export class LearningResourceClass {
     patchData: Partial<LearningResourceData>
   ) {
     const response = await apiContext.patch(
-      `/api/v1/learningResources/${this.responseData.id}`,
+      `/api/v1/learning/resources/${this.responseData.id}`,
       {
         data: [
           ...Object.entries(patchData).map(([key, value]) => ({
@@ -107,7 +107,7 @@ export class LearningResourceClass {
 
   async delete(apiContext: APIRequestContext) {
     const response = await apiContext.delete(
-      `/api/v1/learningResources/${this.responseData.id}?hardDelete=true`
+      `/api/v1/learning/resources/${this.responseData.id}?hardDelete=true`
     );
 
     return await response.json();

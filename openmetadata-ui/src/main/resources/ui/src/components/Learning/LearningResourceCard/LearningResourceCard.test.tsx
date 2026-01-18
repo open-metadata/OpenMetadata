@@ -217,8 +217,9 @@ describe('LearningResourceCard', () => {
       <LearningResourceCard resource={mockResourceWithMultipleCategories} />
     );
 
+    // Categories are mapped to labels: Administration -> Admin, DataGovernance -> Governance
     expect(screen.getByText('Discovery')).toBeInTheDocument();
-    expect(screen.getByText('Administration')).toBeInTheDocument();
+    expect(screen.getByText('Admin')).toBeInTheDocument();
     expect(screen.getByText('Governance')).toBeInTheDocument();
     expect(screen.getByText('+1')).toBeInTheDocument();
   });

@@ -14,7 +14,7 @@
 import { Spin } from 'antd';
 import React, { useCallback, useState } from 'react';
 import { LearningResource } from '../../../rest/learningResourceAPI';
-import './StorylaneTour.less';
+import './storylane-tour.style.less';
 
 interface StorylaneTourProps {
   resource: LearningResource;
@@ -39,6 +39,7 @@ export const StorylaneTour: React.FC<StorylaneTourProps> = ({ resource }) => {
         allow="fullscreen"
         className="storylane-tour-iframe"
         frameBorder="0"
+        sandbox="allow-scripts allow-same-origin allow-presentation allow-popups allow-forms"
         src={resource.source.url}
         title={resource.displayName || resource.name}
         onLoad={handleLoad}
