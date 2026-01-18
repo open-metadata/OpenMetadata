@@ -700,10 +700,16 @@ export const addCustomPropertiesForEntity = async ({
       await page.click('#root\\/entityReferenceConfig');
       await page.keyboard.type(val);
       await page.click(`[title="${val}"]`);
-      await expect(page.locator('#root\\/entityReferenceConfig_list')).not.toBeVisible();
-      // Wait for UI to settle before next iteration
-      await page.waitForTimeout(200);
+      // Wait for dropdown to close completely
+      await page.locator('[data-testid="form-item-label"]').filter({hasText:'Entity Reference Types'}).click()
+      await page.waitForSelector('#root\\/entityReferenceConfig_list', {
+        state: 'hidden',
+      });
+      // Additional wait for DOM to settle on slower environments
+      await page.waitForTimeout(300);
     }
+    // Extra wait after all selections to ensure dropdown is fully closed
+    await page.waitForTimeout(200);
   }
 
   // Format configuration

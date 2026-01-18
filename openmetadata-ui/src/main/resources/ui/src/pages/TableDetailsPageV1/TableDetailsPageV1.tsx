@@ -397,16 +397,9 @@ const TableDetailsPageV1: React.FC = () => {
     [tableDetails, tableId]
   );
 
-  const onTableUpdate = async (
-    updatedTable: Table,
-    key?: keyof Table,
-    options?: { updateMode?: 'default' | 'local-only' }
-  ) => {
+  const onTableUpdate = async (updatedTable: Table, key?: keyof Table) => {
     try {
-      const res =
-        options?.updateMode === 'local-only'
-          ? updatedTable
-          : await saveUpdatedTableData(updatedTable);
+      const res = await saveUpdatedTableData(updatedTable);
 
       setTableDetails((previous) => {
         if (!previous) {
@@ -426,9 +419,7 @@ const TableDetailsPageV1: React.FC = () => {
 
         return updatedObj;
       });
-      if (options?.updateMode !== 'local-only') {
-        await fetchTableDetails(false);
-      }
+      await fetchTableDetails(true);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -604,6 +595,10 @@ const TableDetailsPageV1: React.FC = () => {
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Table),
     [tabs[0], activeTab]
   );
+
+  const handleTableSync = useCallback((updatedTable: Table) => {
+    setTableDetails(updatedTable);
+  }, []);
 
   const onTierUpdate = useCallback(
     async (newTier?: Tag) => {
@@ -859,6 +854,7 @@ const TableDetailsPageV1: React.FC = () => {
         isVersionView={false}
         permissions={tablePermissions}
         type={EntityType.TABLE}
+        onEntitySync={handleTableSync}
         onUpdate={onTableUpdate}>
         <Row gutter={[0, 12]}>
           {/* Entity Heading */}

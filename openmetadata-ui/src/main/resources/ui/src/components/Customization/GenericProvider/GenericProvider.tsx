@@ -68,6 +68,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   data,
   type,
   onUpdate,
+  onEntitySync,
   isVersionView,
   permissions,
   currentVersionData,
@@ -157,8 +158,8 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
 
         return cleanColumn({
           ...updatedColumn,
-          // Preserve extension from prev (which came from SchemaTable with full data)
-          extension: prevColumn.extension ?? updatedColumn.extension,
+          // Use new extension if available, otherwise fallback to prev (which might have full data)
+          extension: updatedColumn.extension ?? prevColumn.extension,
         });
       });
     }
@@ -262,7 +263,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     }
   }, [data.fullyQualifiedName, type, tab, location, navigate]);
 
-  // Wrapper for onColumnFieldUpdate that updates  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+  // Wrapper for onColumnFieldUpdate that updates
   const handleColumnFieldUpdate = useCallback(
     async (fqn: string, update: ColumnFieldUpdate) => {
       let apiResponseColumn: Column | undefined;
@@ -280,10 +281,11 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
         update,
       });
 
-      // Call onUpdate with the updated entity (onUpdate will handle API calls)
-      await onUpdate(updatedEntity as unknown as T, undefined, {
-        updateMode: 'local-only',
-      });
+      if (onEntitySync) {
+        onEntitySync(updatedEntity as unknown as T);
+      } else {
+        await onUpdate(updatedEntity as unknown as T);
+      }
 
       // Use API response column if available (more accurate), otherwise use local calculation
       const finalColumn = apiResponseColumn ?? updatedColumn;
@@ -295,7 +297,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
 
       return finalColumn as ColumnOrTask | undefined;
     },
-    [data, type, onUpdate, selectedColumn, cleanColumn]
+    [data, type, onUpdate, onEntitySync, selectedColumn, cleanColumn]
   );
 
   // Extract deleted status from entity data

@@ -23,11 +23,8 @@ export interface GenericProviderProps<T extends Omit<EntityReference, 'type'>> {
   children?: React.ReactNode;
   data: T;
   type: CustomizeEntityType;
-  onUpdate: (
-    updatedData: T,
-    key?: keyof T,
-    options?: { updateMode?: 'default' | 'local-only' }
-  ) => Promise<void>;
+  onUpdate: (updatedData: T, key?: keyof T) => Promise<void>;
+  onEntitySync?: (updatedData: T) => void;
   isVersionView?: boolean;
   permissions: OperationPermission;
   currentVersionData?: T;
