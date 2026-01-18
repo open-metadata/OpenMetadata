@@ -26,6 +26,7 @@ import org.openmetadata.schema.api.data.ColumnChild;
 import org.openmetadata.schema.api.data.ColumnGridItem;
 import org.openmetadata.schema.api.data.ColumnMetadataGroup;
 import org.openmetadata.schema.api.data.ColumnOccurrenceRef;
+import org.openmetadata.schema.api.data.MetadataStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.TagLabel;
 
@@ -81,11 +82,21 @@ public class ColumnMetadataGrouper {
         group.setOccurrenceCount(group.getOccurrenceCount() + 1);
       }
 
+      List<ColumnMetadataGroup> groupList = new ArrayList<>(groups.values());
+
+      // Calculate metadata status for each group
+      for (ColumnMetadataGroup group : groupList) {
+        group.setMetadataStatus(calculateGroupStatus(group));
+      }
+
       ColumnGridItem gridItem = new ColumnGridItem();
       gridItem.setColumnName(columnName);
       gridItem.setTotalOccurrences(occurrences.size());
       gridItem.setHasVariations(groups.size() > 1);
-      gridItem.setGroups(new ArrayList<>(groups.values()));
+      gridItem.setGroups(groupList);
+
+      // Calculate aggregate metadata status
+      gridItem.setMetadataStatus(calculateAggregateStatus(groupList, groups.size() > 1));
 
       gridItems.add(gridItem);
     }
@@ -138,6 +149,33 @@ public class ColumnMetadataGrouper {
       LOG.error("Failed to generate metadata hash", e);
       return "default";
     }
+  }
+
+  private static MetadataStatus calculateGroupStatus(ColumnMetadataGroup group) {
+    boolean hasDescription =
+        group.getDescription() != null && !group.getDescription().trim().isEmpty();
+    boolean hasTags = group.getTags() != null && !group.getTags().isEmpty();
+
+    if (!hasDescription && !hasTags) {
+      return MetadataStatus.MISSING;
+    } else if (hasDescription && hasTags) {
+      return MetadataStatus.COMPLETE;
+    } else {
+      return MetadataStatus.INCOMPLETE;
+    }
+  }
+
+  private static MetadataStatus calculateAggregateStatus(
+      List<ColumnMetadataGroup> groups, boolean hasVariations) {
+    if (hasVariations) {
+      return MetadataStatus.INCONSISTENT;
+    }
+
+    if (groups.isEmpty()) {
+      return MetadataStatus.MISSING;
+    }
+
+    return groups.get(0).getMetadataStatus();
   }
 
   public static class ColumnWithContext {

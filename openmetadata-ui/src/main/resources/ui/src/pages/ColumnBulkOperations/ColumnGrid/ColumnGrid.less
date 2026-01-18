@@ -19,6 +19,62 @@
   gap: 16px;
   padding: 0;
   overflow: hidden;
+
+  // MUI Table column widths
+  .MuiTable-root {
+    table-layout: fixed;
+    width: 100%;
+
+    .MuiTableCell-root {
+      vertical-align: middle;
+      word-break: break-word;
+      overflow-wrap: break-word;
+    }
+
+    // Checkbox column
+    .MuiTableCell-paddingCheckbox {
+      width: 48px;
+      min-width: 48px;
+      max-width: 48px;
+    }
+
+    // Column Name cell (first data column after checkbox)
+    [data-testid='column-name-cell'] {
+      width: 200px;
+      min-width: 180px;
+    }
+
+    // Path cell
+    [data-testid='column-path-cell'] {
+      width: 250px;
+      min-width: 200px;
+      max-width: 300px;
+    }
+
+    // Description cell
+    [data-testid='column-description-cell'] {
+      width: 200px;
+      min-width: 150px;
+    }
+
+    // Data Type cell
+    [data-testid='column-datatype-cell'] {
+      width: 100px;
+      min-width: 80px;
+    }
+
+    // Tags cell
+    [data-testid='column-tags-cell'] {
+      width: 180px;
+      min-width: 120px;
+    }
+
+    // Glossary Terms cell
+    [data-testid='column-glossary-cell'] {
+      width: 180px;
+      min-width: 120px;
+    }
+  }
 }
 
 // Stats Row - 3 cards in a row matching Figma design
@@ -398,10 +454,16 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 200px;
+  max-width: 300px;
 
   .path-text {
     font-size: 14px;
     color: #374151;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+    line-height: 1.4;
   }
 
   .path-more {
@@ -432,6 +494,11 @@
 
 .coverage-missing {
   color: #9ca3af;
+  font-weight: 500;
+}
+
+.coverage-inconsistent {
+  color: #ef4444;
   font-weight: 500;
 }
 

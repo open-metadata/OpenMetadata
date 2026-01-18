@@ -51,6 +51,11 @@ export interface ColumnGridItem {
      */
     hasVariations: boolean;
     /**
+     * Aggregate metadata status across all occurrences. Uses worst-case: MISSING if any
+     * occurrence is missing, INCOMPLETE if any is incomplete, otherwise COMPLETE.
+     */
+    metadataStatus?: MetadataStatus;
+    /**
      * Total number of occurrences for this column name.
      */
     totalOccurrences: number;
@@ -80,6 +85,10 @@ export interface ColumnMetadataGroup {
      * Unique identifier for this metadata group (hash of metadata values).
      */
     groupId: string;
+    /**
+     * Metadata completeness status for this group.
+     */
+    metadataStatus?: MetadataStatus;
     /**
      * Number of column occurrences in this group.
      */
@@ -248,6 +257,21 @@ export interface CoverImage {
      * URL of the cover image.
      */
     url?: string;
+}
+
+/**
+ * Metadata completeness status for this group.
+ *
+ * Metadata completeness status for a column or group of columns.
+ *
+ * Aggregate metadata status across all occurrences. Uses worst-case: MISSING if any
+ * occurrence is missing, INCOMPLETE if any is incomplete, otherwise COMPLETE.
+ */
+export enum MetadataStatus {
+    Complete = "COMPLETE",
+    Incomplete = "INCOMPLETE",
+    Inconsistent = "INCONSISTENT",
+    Missing = "MISSING",
 }
 
 /**

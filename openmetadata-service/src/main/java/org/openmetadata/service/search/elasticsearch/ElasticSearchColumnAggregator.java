@@ -241,7 +241,65 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
               q -> q.terms(t -> t.field(dataTypeField).terms(tv -> tv.value(dataTypeValues)))));
     }
 
+    if (!nullOrEmpty(request.getMetadataStatus())) {
+      Query metadataStatusQuery =
+          buildMetadataStatusFilter(request.getMetadataStatus(), columnFieldPath);
+      if (metadataStatusQuery != null) {
+        boolBuilder.filter(metadataStatusQuery);
+      }
+    }
+
     return Query.of(q -> q.bool(boolBuilder.build()));
+  }
+
+  private Query buildMetadataStatusFilter(String status, String columnFieldPath) {
+    String descField = columnFieldPath + ".description";
+    String tagsField = columnFieldPath + ".tags";
+
+    Query hasDesc = hasNonEmptyField(descField);
+    Query hasTags = existsQuery(tagsField);
+    Query noDesc = hasEmptyOrMissingField(descField);
+    Query noTags = notExistsQuery(tagsField);
+
+    return switch (status.toUpperCase()) {
+      case "MISSING" -> Query.of(q -> q.bool(b -> b.must(noDesc).must(noTags)));
+      case "INCOMPLETE" -> Query.of(
+          q ->
+              q.bool(
+                  b ->
+                      b.should(Query.of(qs -> qs.bool(bs -> bs.must(hasDesc).must(noTags))))
+                          .should(Query.of(qs -> qs.bool(bs -> bs.must(noDesc).must(hasTags))))
+                          .minimumShouldMatch("1")));
+      case "COMPLETE" -> Query.of(q -> q.bool(b -> b.must(hasDesc).must(hasTags)));
+      default -> null;
+    };
+  }
+
+  private Query existsQuery(String field) {
+    return Query.of(q -> q.exists(e -> e.field(field)));
+  }
+
+  private Query notExistsQuery(String field) {
+    return Query.of(q -> q.bool(b -> b.mustNot(existsQuery(field))));
+  }
+
+  private Query hasNonEmptyField(String field) {
+    return Query.of(
+        q ->
+            q.bool(
+                b ->
+                    b.must(existsQuery(field))
+                        .mustNot(Query.of(qn -> qn.term(t -> t.field(field).value(""))))));
+  }
+
+  private Query hasEmptyOrMissingField(String field) {
+    return Query.of(
+        q ->
+            q.bool(
+                b ->
+                    b.should(notExistsQuery(field))
+                        .should(Query.of(qs -> qs.term(t -> t.field(field).value(""))))
+                        .minimumShouldMatch("1")));
   }
 
   private SearchResponse<JsonData> executeSearch(

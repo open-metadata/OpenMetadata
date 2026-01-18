@@ -3,6 +3,8 @@ package org.openmetadata.sdk.fluent;
 import java.util.*;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.DataModelType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 
 /**
@@ -115,6 +117,16 @@ public final class DashboardDataModels {
 
     public DashboardDataModelCreator in(String service) {
       request.setService(service);
+      return this;
+    }
+
+    public DashboardDataModelCreator withColumns(List<Column> columns) {
+      request.setColumns(columns);
+      return this;
+    }
+
+    public DashboardDataModelCreator withDataModelType(DataModelType dataModelType) {
+      request.setDataModelType(dataModelType);
       return this;
     }
 

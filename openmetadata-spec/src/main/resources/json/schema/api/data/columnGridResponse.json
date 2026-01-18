@@ -48,6 +48,10 @@
           "description": "Whether this column has different metadata across occurrences.",
           "type": "boolean"
         },
+        "metadataStatus": {
+          "description": "Aggregate metadata status across all occurrences. Uses worst-case: MISSING if any occurrence is missing, INCOMPLETE if any is incomplete, otherwise COMPLETE.",
+          "$ref": "#/definitions/metadataStatus"
+        },
         "groups": {
           "description": "Metadata groups - columns with identical metadata are grouped together.",
           "type": "array",
@@ -86,6 +90,10 @@
         "dataType": {
           "description": "Data type (common across all columns in this group).",
           "type": "string"
+        },
+        "metadataStatus": {
+          "description": "Metadata completeness status for this group.",
+          "$ref": "#/definitions/metadataStatus"
         },
         "occurrenceCount": {
           "description": "Number of column occurrences in this group.",
@@ -189,6 +197,18 @@
       },
       "required": ["columnFQN", "entityType", "entityFQN"],
       "additionalProperties": false
+    },
+    "metadataStatus": {
+      "javaType": "org.openmetadata.schema.api.data.MetadataStatus",
+      "description": "Metadata completeness status for a column or group of columns.",
+      "type": "string",
+      "enum": ["MISSING", "INCOMPLETE", "INCONSISTENT", "COMPLETE"],
+      "javaEnums": [
+        {"name": "MISSING", "description": "No description and no tags."},
+        {"name": "INCOMPLETE", "description": "Has description or tags, but not both."},
+        {"name": "INCONSISTENT", "description": "Metadata varies across occurrences (different descriptions, tags, or glossary terms)."},
+        {"name": "COMPLETE", "description": "Has both description and tags, and is consistent across all occurrences."}
+      ]
     }
   },
   "additionalProperties": false

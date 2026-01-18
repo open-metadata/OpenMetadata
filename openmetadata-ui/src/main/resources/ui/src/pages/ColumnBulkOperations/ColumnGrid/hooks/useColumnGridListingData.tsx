@@ -290,7 +290,7 @@ export const useColumnGridListingData = (
         );
       }
 
-      // Apply dataType filter
+      // Apply dataType filter (client-side for multi-select support)
       if (urlState.dataType) {
         filtered = filtered.filter(
           (row) =>
@@ -298,39 +298,13 @@ export const useColumnGridListingData = (
         );
       }
 
-      // Apply metadataStatus filter
-      // Metadata status logic (matches backend ColumnRepository.java):
-      // - MISSING: No description AND no tags
-      // - INCOMPLETE: Has description OR tags, but not both
-      // - COMPLETE: Has both description AND tags
-      if (urlState.metadataStatus && urlState.metadataStatus.length > 0) {
-        filtered = filtered.filter((row) => {
-          const hasDescription =
-            row.description && row.description.trim().length > 0;
-          const hasTags = row.tags && row.tags.length > 0;
-
-          // Check if row matches any of the selected statuses
-          return urlState.metadataStatus?.some((selectedStatus) => {
-            const statusUpper = selectedStatus.toUpperCase();
-            switch (statusUpper) {
-              case 'MISSING':
-                return !hasDescription && !hasTags;
-              case 'INCOMPLETE':
-                return (
-                  (hasDescription && !hasTags) || (!hasDescription && hasTags)
-                );
-              case 'COMPLETE':
-                return hasDescription && hasTags;
-              default:
-                return true;
-            }
-          });
-        });
-      }
+      // Note: metadataStatus filtering is now handled server-side by the API
+      // The backend filters by MISSING, INCOMPLETE, COMPLETE, and INCONSISTENT
+      // No client-side filtering needed
 
       return filtered;
     },
-    [urlState.searchQuery, urlState.dataType, urlState.metadataStatus]
+    [urlState.searchQuery, urlState.dataType]
   );
 
   // Ref to track edited values across row regenerations
@@ -382,7 +356,6 @@ export const useColumnGridListingData = (
     gridItems,
     urlState.searchQuery,
     urlState.dataType,
-    urlState.metadataStatus,
     expandedRows,
     expandedStructRows,
     props.transformGridItemsToRows,

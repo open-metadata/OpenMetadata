@@ -49,10 +49,12 @@ export const DATA_TYPE_OPTIONS = [
 // Metadata status options - matches API values in ColumnResource.java
 // MISSING: No description AND no tags
 // INCOMPLETE: Has description OR tags, but not both
-// COMPLETE: Has both description AND tags
+// INCONSISTENT: Metadata varies across occurrences (different descriptions, tags, etc.)
+// COMPLETE: Has both description AND tags, and is consistent across all occurrences
 export const METADATA_STATUS_OPTIONS = [
   { key: 'MISSING', label: 'Missing' },
   { key: 'INCOMPLETE', label: 'Incomplete' },
+  { key: 'INCONSISTENT', label: 'Inconsistent' },
   { key: 'COMPLETE', label: 'Complete' },
 ];
 

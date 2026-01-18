@@ -23,14 +23,7 @@ import {
   useTheme,
 } from '@mui/material';
 import { Tag01 as TagIcon } from '@untitledui/icons';
-import {
-  Button,
-  Drawer,
-  Form,
-  Input,
-  Tag,
-  Typography as AntTypography,
-} from 'antd';
+import { Button, Drawer, Input, Tag, Typography as AntTypography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, {
   useCallback,
@@ -73,6 +66,7 @@ import {
   ColumnChild,
   ColumnGridItem,
   ColumnOccurrenceRef,
+  MetadataStatus,
 } from '../../../generated/api/data/columnGridResponse';
 import {
   LabelType,
@@ -115,6 +109,9 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     open: false,
     rowId: null,
   });
+  // Counter to force re-render of drawer content when it reopens
+  // This ensures defaultValue inputs get fresh values after Cancel
+  const [drawerOpenCount, setDrawerOpenCount] = useState(0);
   const editorRef = React.useRef<EditorContentRef>(null);
   const activeJobIdRef = useRef<string | null>(null);
 
@@ -378,6 +375,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             totalCount: coverage.total,
             hasCoverage: true,
             hasAnyMetadata: coverage.hasAnyMetadata,
+            metadataStatus: item.metadataStatus,
           };
           rows.push(parentRow);
 
@@ -446,6 +444,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             totalCount: coverage.total,
             hasCoverage: true,
             hasAnyMetadata: coverage.hasAnyMetadata,
+            metadataStatus: item.metadataStatus,
             children: group?.children,
           };
           rows.push(parentRow);
@@ -507,6 +506,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             totalCount: coverage.total,
             hasCoverage: true,
             hasAnyMetadata: coverage.hasAnyMetadata,
+            metadataStatus: item.metadataStatus,
             children: group?.children,
             isExpanded: isStructExpanded,
           };
@@ -643,37 +643,42 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       const description = entity.editedDescription ?? entity.description ?? '';
       const hasEdit = entity.editedDescription !== undefined;
 
-      // Show coverage status for parent rows
-      if (
-        entity.hasCoverage &&
-        entity.coverageCount !== undefined &&
-        entity.totalCount !== undefined
-      ) {
-        // If no metadata at all, show "Missing" instead of misleading "Full/Partial Coverage"
-        if (!entity.hasAnyMetadata) {
-          return <Text className="coverage-missing">{t('label.missing')}</Text>;
-        }
+      // Show metadata status for parent rows (using API-provided status)
+      if (entity.hasCoverage && entity.metadataStatus) {
+        const statusLabels: Record<MetadataStatus, string> = {
+          [MetadataStatus.Missing]: t('label.missing'),
+          [MetadataStatus.Incomplete]: t('label.partial-coverage'),
+          [MetadataStatus.Inconsistent]: t('label.inconsistent'),
+          [MetadataStatus.Complete]: t('label.full-coverage'),
+        };
 
-        const isFull =
-          entity.coverageCount === entity.totalCount && entity.totalCount > 0;
-        const coverageText = isFull
-          ? `${t('label.full-coverage')} (${entity.coverageCount}/${
-              entity.totalCount
-            })`
-          : `${t('label.partial-coverage')} (${entity.coverageCount}/${
-              entity.totalCount
-            })`;
+        const statusClasses: Record<MetadataStatus, string> = {
+          [MetadataStatus.Missing]: 'coverage-missing',
+          [MetadataStatus.Incomplete]: 'coverage-partial',
+          [MetadataStatus.Inconsistent]: 'coverage-inconsistent',
+          [MetadataStatus.Complete]: 'coverage-full',
+        };
+
+        const statusText = statusLabels[entity.metadataStatus];
+        const statusClass = statusClasses[entity.metadataStatus];
+
+        // Show occurrence count for context
+        const countText =
+          entity.coverageCount !== undefined && entity.totalCount !== undefined
+            ? ` (${entity.coverageCount}/${entity.totalCount})`
+            : '';
 
         return (
-          <Text className={isFull ? 'coverage-full' : 'coverage-partial'}>
-            {coverageText}
+          <Text className={statusClass}>
+            {statusText}
+            {countText}
           </Text>
         );
       }
 
       // Show actual description for child rows or single occurrences
-      // Use complete sanitization to prevent XSS - remove all angle brackets
-      const displayValue = description.replace(/[<>]/g, '').slice(0, 100);
+      // Strip HTML tags for display - React's JSX escaping handles XSS prevention
+      const displayValue = description.replace(/<[^>]*>/g, '').slice(0, 100);
 
       return (
         <Box className={`description-cell ${hasEdit ? 'has-edit' : ''}`}>
@@ -795,7 +800,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
               icon={entity.isExpanded ? <DownOutlined /> : <RightOutlined />}
               size="small"
               type="text"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 columnGridListing.setExpandedStructRows((prev: Set<string>) => {
                   const newSet = new Set(prev);
                   if (newSet.has(entity.id)) {
@@ -825,7 +831,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             icon={entity.isExpanded ? <DownOutlined /> : <RightOutlined />}
             size="small"
             type="text"
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               columnGridListing.setExpandedRows((prev: Set<string>) => {
                 const newSet = new Set(prev);
                 if (newSet.has(entity.id)) {
@@ -872,16 +879,14 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           />
         ) : null;
 
+        // For aggregate rows (multiple occurrences), don't show a link
+        // Clicking the row will open the edit drawer instead of navigating
         return (
           <Box className="column-name-cell">
             {expandButton}
-            {link ? (
-              <Link className="column-link" to={link}>
-                {nameWithCount}
-              </Link>
-            ) : (
-              <Text strong>{nameWithCount}</Text>
-            )}
+            <Text strong className="column-link">
+              {nameWithCount}
+            </Text>
             {structButton}
           </Box>
         );
@@ -899,7 +904,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             size="small"
             title="Expand nested fields"
             type="text"
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               columnGridListing.setExpandedStructRows((prev: Set<string>) => {
                 const newSet = new Set(prev);
                 if (newSet.has(entity.id)) {
@@ -995,6 +1001,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   // Checkbox rendering now handled directly in TableRow - no separate renderers needed
 
   const openEditDrawer = useCallback(() => {
+    // Increment counter to force new drawer content with fresh defaultValue inputs
+    setDrawerOpenCount((prev) => prev + 1);
     setEditDrawer({
       open: true,
       rowId: null, // We'll edit all selected rows
@@ -1002,11 +1010,29 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   }, []);
 
   const closeEditDrawer = useCallback(() => {
+    // Capture selected IDs before state update to avoid stale closure
+    const selectedIds = new Set(columnGridListing.selectedEntities);
+
+    // Discard any pending edits for selected rows
+    columnGridListing.setAllRows((prev: ColumnGridRowData[]) =>
+      prev.map((r: ColumnGridRowData) => {
+        if (selectedIds.has(r.id)) {
+          return {
+            ...r,
+            editedDisplayName: undefined,
+            editedDescription: undefined,
+            editedTags: undefined,
+          };
+        }
+
+        return r;
+      })
+    );
     setEditDrawer({
       open: false,
       rowId: null,
     });
-  }, []);
+  }, [columnGridListing]);
 
   const handleBulkUpdate = useCallback(async () => {
     const selectedRowsData = columnGridListing.allRows.filter(
@@ -1260,12 +1286,36 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     columnGridListing.selectedEntities,
   ]);
 
+  // Handle row click - for aggregate rows, select and open edit drawer
+  const handleEntityClick = useCallback(
+    (entity: ColumnGridRowData) => {
+      // For aggregate rows (parent rows with multiple occurrences), open edit drawer
+      if (entity.isGroup && entity.occurrenceCount > 1) {
+        // Select the row if not already selected
+        if (!columnGridListing.isSelected(entity.id)) {
+          columnGridListing.handleSelect(entity.id, true);
+        }
+        // Open the edit drawer
+        setEditDrawer({
+          open: true,
+          rowId: entity.id,
+        });
+      }
+      // For child rows, do nothing - they have Links for navigation
+    },
+    [columnGridListing]
+  );
+
   const { dataTable } = useDataTable({
     listing: {
       ...columnGridListing,
       entities: filteredEntities,
       columns,
       renderers: finalRenderers,
+      actionHandlers: {
+        ...columnGridListing.actionHandlers,
+        onEntityClick: handleEntityClick,
+      },
     },
     enableSelection: true,
     entityLabelKey: 'label.column',
@@ -1598,24 +1648,64 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
               : '';
 
           // Convert existing tags to SelectOption format for display
-          const currentTags = selectedCount === 1 ? firstRow?.tags ?? [] : [];
+          const currentTags =
+            selectedCount === 1
+              ? firstRow?.editedTags ?? firstRow?.tags ?? []
+              : [];
+
+          // Helper to get display label from tag - use displayName, name, or extract from FQN
+          const getTagDisplayLabel = (tag: TagLabel): string => {
+            if (tag.displayName) {
+              return tag.displayName;
+            }
+            if (tag.name) {
+              return tag.name;
+            }
+            // Extract last part from FQN (e.g., "PersonalData.Personal" -> "Personal")
+            const fqn = tag.tagFQN || '';
+            const parts = fqn.split('.');
+
+            return parts[parts.length - 1] || fqn;
+          };
+
           const classificationTagOptions: SelectOption[] = currentTags
             .filter((tag: TagLabel) => tag.source !== TagSource.Glossary)
-            .map((tag: TagLabel) => ({
-              label: tag.tagFQN ?? '',
-              value: tag.tagFQN ?? '',
-              data: tag,
-            }));
+            .map((tag: TagLabel) => {
+              const displayLabel = getTagDisplayLabel(tag);
+
+              return {
+                label: displayLabel,
+                value: tag.tagFQN ?? '',
+                // Ensure displayName is set for TagsV1 rendering
+                data: {
+                  ...tag,
+                  displayName: tag.displayName || displayLabel,
+                  name: tag.name || displayLabel,
+                },
+              };
+            });
           const glossaryTermOptions: SelectOption[] = currentTags
             .filter((tag: TagLabel) => tag.source === TagSource.Glossary)
-            .map((tag: TagLabel) => ({
-              label: tag.tagFQN ?? '',
-              value: tag.tagFQN ?? '',
-              data: tag,
-            }));
+            .map((tag: TagLabel) => {
+              const displayLabel = getTagDisplayLabel(tag);
+
+              return {
+                label: displayLabel,
+                value: tag.tagFQN ?? '',
+                // Ensure displayName is set for TagsV1 rendering
+                data: {
+                  ...tag,
+                  displayName: tag.displayName || displayLabel,
+                  name: tag.name || displayLabel,
+                },
+              };
+            });
 
           // Use a key to force re-render when selection changes
-          const drawerKey = columnGridListing.selectedEntities.join('-');
+          // Include drawerOpenCount in key to force new inputs when drawer reopens after Cancel
+          const drawerKey = `${drawerOpenCount}-${columnGridListing.selectedEntities.join(
+            '-'
+          )}`;
 
           return (
             <Box
@@ -1678,64 +1768,62 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
               {/* Tags */}
               <Box className="form-field" data-testid="tags-field">
                 <label className="field-label">{t('label.tag-plural')}</label>
-                <Form>
-                  <AsyncSelectList
-                    hasNoActionButtons
-                    fetchOptions={tagClassBase.getTags}
-                    initialOptions={classificationTagOptions}
-                    key={`tags-${drawerKey}`}
-                    mode="multiple"
-                    placeholder={t('label.select-tags')}
-                    onChange={(selectedTags) => {
-                      const options = (
-                        Array.isArray(selectedTags)
-                          ? selectedTags
-                          : [selectedTags]
-                      ) as SelectOption[];
-                      // Convert Tag entities to TagLabel format with required fields
-                      const newTags: TagLabel[] = options
-                        .filter((option: SelectOption) => option.data)
-                        .map((option: SelectOption) => {
-                          // option.data is a Tag entity from search results
-                          const tagData = option.data as {
-                            fullyQualifiedName?: string;
-                            name?: string;
-                            displayName?: string;
-                            description?: string;
-                          };
+                <AsyncSelectList
+                  fetchOptions={tagClassBase.getTags}
+                  getPopupContainer={(trigger) =>
+                    trigger.closest('.ant-drawer-body') || document.body
+                  }
+                  initialOptions={classificationTagOptions}
+                  key={`tags-${drawerKey}`}
+                  mode="multiple"
+                  placeholder={t('label.select-tags')}
+                  onChange={(selectedTags) => {
+                    const options = (
+                      Array.isArray(selectedTags)
+                        ? selectedTags
+                        : [selectedTags]
+                    ) as SelectOption[];
+                    // Convert Tag entities to TagLabel format with required fields
+                    const newTags: TagLabel[] = options
+                      .filter((option: SelectOption) => option.data)
+                      .map((option: SelectOption) => {
+                        // option.data is a Tag entity from search results
+                        const tagData = option.data as {
+                          fullyQualifiedName?: string;
+                          name?: string;
+                          displayName?: string;
+                          description?: string;
+                        };
 
-                          return {
-                            tagFQN: tagData.fullyQualifiedName ?? option.value,
-                            source: TagSource.Classification,
-                            labelType: LabelType.Manual,
-                            state: State.Confirmed,
-                            name: tagData.name,
-                            displayName: tagData.displayName,
-                            description: tagData.description,
-                          };
-                        });
-                      columnGridListing.selectedEntities.forEach(
-                        (rowId: string) => {
-                          const row = columnGridListing.allRows.find(
-                            (r: ColumnGridRowData) => r.id === rowId
+                        return {
+                          tagFQN: tagData.fullyQualifiedName ?? option.value,
+                          source: TagSource.Classification,
+                          labelType: LabelType.Manual,
+                          state: State.Confirmed,
+                          name: tagData.name,
+                          displayName: tagData.displayName,
+                          description: tagData.description,
+                        };
+                      });
+                    columnGridListing.selectedEntities.forEach(
+                      (rowId: string) => {
+                        const row = columnGridListing.allRows.find(
+                          (r: ColumnGridRowData) => r.id === rowId
+                        );
+                        if (row) {
+                          const existingTags = row.editedTags ?? row.tags ?? [];
+                          const glossaryTerms = existingTags.filter(
+                            (tag: TagLabel) => tag.source === TagSource.Glossary
                           );
-                          if (row) {
-                            const existingTags =
-                              row.editedTags ?? row.tags ?? [];
-                            const glossaryTerms = existingTags.filter(
-                              (tag: TagLabel) =>
-                                tag.source === TagSource.Glossary
-                            );
-                            updateRowField(rowId, 'tags', [
-                              ...newTags,
-                              ...glossaryTerms,
-                            ]);
-                          }
+                          updateRowField(rowId, 'tags', [
+                            ...newTags,
+                            ...glossaryTerms,
+                          ]);
                         }
-                      );
-                    }}
-                  />
-                </Form>
+                      }
+                    );
+                  }}
+                />
               </Box>
 
               {/* Glossary Terms */}
@@ -1743,62 +1831,60 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 <label className="field-label">
                   {t('label.glossary-term-plural')}
                 </label>
-                <Form>
-                  <TreeAsyncSelectList
-                    hasNoActionButtons
-                    initialOptions={glossaryTermOptions}
-                    key={`glossaryTerms-${drawerKey}`}
-                    placeholder={t('label.select-tags')}
-                    onChange={(selectedTerms) => {
-                      const options = (
-                        Array.isArray(selectedTerms)
-                          ? selectedTerms
-                          : [selectedTerms]
-                      ) as SelectOption[];
-                      // Convert GlossaryTerm entities to TagLabel format with required fields
-                      const newTerms: TagLabel[] = options
-                        .filter((option: SelectOption) => option.data)
-                        .map((option: SelectOption) => {
-                          // option.data is a GlossaryTerm entity from search results
-                          const termData = option.data as {
-                            fullyQualifiedName?: string;
-                            name?: string;
-                            displayName?: string;
-                            description?: string;
-                          };
+                <TreeAsyncSelectList
+                  getPopupContainer={(trigger) =>
+                    trigger.closest('.ant-drawer-body') || document.body
+                  }
+                  initialOptions={glossaryTermOptions}
+                  key={`glossaryTerms-${drawerKey}`}
+                  placeholder={t('label.select-tags')}
+                  onChange={(selectedTerms) => {
+                    const options = (
+                      Array.isArray(selectedTerms)
+                        ? selectedTerms
+                        : [selectedTerms]
+                    ) as SelectOption[];
+                    // Convert GlossaryTerm entities to TagLabel format with required fields
+                    const newTerms: TagLabel[] = options
+                      .filter((option: SelectOption) => option.data)
+                      .map((option: SelectOption) => {
+                        // option.data is a GlossaryTerm entity from search results
+                        const termData = option.data as {
+                          fullyQualifiedName?: string;
+                          name?: string;
+                          displayName?: string;
+                          description?: string;
+                        };
 
-                          return {
-                            tagFQN: termData.fullyQualifiedName ?? option.value,
-                            source: TagSource.Glossary,
-                            labelType: LabelType.Manual,
-                            state: State.Confirmed,
-                            name: termData.name,
-                            displayName: termData.displayName,
-                            description: termData.description,
-                          };
-                        });
-                      columnGridListing.selectedEntities.forEach(
-                        (rowId: string) => {
-                          const row = columnGridListing.allRows.find(
-                            (r: ColumnGridRowData) => r.id === rowId
+                        return {
+                          tagFQN: termData.fullyQualifiedName ?? option.value,
+                          source: TagSource.Glossary,
+                          labelType: LabelType.Manual,
+                          state: State.Confirmed,
+                          name: termData.name,
+                          displayName: termData.displayName,
+                          description: termData.description,
+                        };
+                      });
+                    columnGridListing.selectedEntities.forEach(
+                      (rowId: string) => {
+                        const row = columnGridListing.allRows.find(
+                          (r: ColumnGridRowData) => r.id === rowId
+                        );
+                        if (row) {
+                          const existingTags = row.editedTags ?? row.tags ?? [];
+                          const classificationTags = existingTags.filter(
+                            (tag: TagLabel) => tag.source !== TagSource.Glossary
                           );
-                          if (row) {
-                            const existingTags =
-                              row.editedTags ?? row.tags ?? [];
-                            const classificationTags = existingTags.filter(
-                              (tag: TagLabel) =>
-                                tag.source !== TagSource.Glossary
-                            );
-                            updateRowField(rowId, 'tags', [
-                              ...classificationTags,
-                              ...newTerms,
-                            ]);
-                          }
+                          updateRowField(rowId, 'tags', [
+                            ...classificationTags,
+                            ...newTerms,
+                          ]);
                         }
-                      );
-                    }}
-                  />
-                </Form>
+                      }
+                    );
+                  }}
+                />
               </Box>
             </Box>
           );

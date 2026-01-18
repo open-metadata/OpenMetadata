@@ -15,6 +15,7 @@ import {
   ColumnChild,
   ColumnGridItem,
   ColumnMetadataGroup,
+  MetadataStatus,
 } from '../../../generated/api/data/columnGridResponse';
 import { TagLabel } from '../../../generated/type/tagLabel';
 
@@ -59,6 +60,8 @@ export interface ColumnGridRowData {
   totalCount?: number;
   hasCoverage?: boolean;
   hasAnyMetadata?: boolean;
+  // Metadata status from API
+  metadataStatus?: MetadataStatus;
   // STRUCT nested children
   children?: ColumnChild[];
   isStructChild?: boolean;
