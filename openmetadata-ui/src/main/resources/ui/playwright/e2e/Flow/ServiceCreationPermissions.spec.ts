@@ -185,7 +185,6 @@ test.describe('Service Creation with isOwner() Permissions', () => {
 
     await adminOwnedService.visitEntityPage(page);
 
-    await page.waitForLoadState('networkidle');
 
     await expect(page.getByTestId('entity-header-name')).toBeVisible();
 
@@ -298,11 +297,8 @@ test.describe('Service Creation with isOwner() Permissions', () => {
     await expect(ownerPage.getByTestId('manage-button')).toBeVisible();
 
     await redirectToHomePage(otherPage);
-    await otherPage.goto(
-      `/service/databaseServices/${userOwnedService.entityResponseData.fullyQualifiedName}`
-    );
+    userOwnedService.visitEntityPage(otherPage)
 
-    await otherPage.waitForLoadState('networkidle');
 
     await expect(otherPage.getByTestId('entity-header-name')).toBeVisible();
 

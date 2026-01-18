@@ -319,34 +319,6 @@ export const SERVICE_CREATOR_RULES: PolicyRulesType[] = [
     effect: 'allow',
     condition: 'isOwner()',
   },
-  {
-    name: 'IngestionPipeline-OwnerAll-Rule',
-    resources: ['ingestionPipeline'],
-    operations: ['All'],
-    effect: 'allow',
-    condition: 'isOwner()',
-  },
-  {
-    name: 'Database-OwnerAll-Rule',
-    resources: ['database'],
-    operations: ['All'],
-    effect: 'allow',
-    condition: 'isOwner()',
-  },
-  {
-    name: 'DatabaseSchema-OwnerAll-Rule',
-    resources: ['databaseSchema'],
-    operations: ['All'],
-    effect: 'allow',
-    condition: 'isOwner()',
-  },
-  {
-    name: 'Table-OwnerAll-Rule',
-    resources: ['table'],
-    operations: ['All'],
-    effect: 'allow',
-    condition: 'isOwner()',
-  },
 ];
 
 export const SERVICE_VIEWER_RULES: PolicyRulesType[] = [
