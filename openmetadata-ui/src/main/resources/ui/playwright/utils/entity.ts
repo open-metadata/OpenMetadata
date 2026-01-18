@@ -2243,51 +2243,33 @@ export const copyAndGetClipboardText = async (
   page: Page,
   locator: Locator
 ): Promise<string> => {
-  interface WindowWithClipboard extends Window {
-    __capturedClipboardText?: string;
-  }
-  // Setup clipboard intercept
-  await page.evaluate(() => {
-    const win = window as WindowWithClipboard;
-    win.__capturedClipboardText = '';
+  // Hover and click the copy button
+  await locator.hover();
+  await locator.click({ force: true });
 
-    if (!navigator.clipboard) {
-      Object.defineProperty(navigator, 'clipboard', {
-        value: {},
-        writable: true,
-      });
-    }
+  // Small delay to allow clipboard write to complete
+  await page.waitForTimeout(300);
 
-    const originalWriteText = navigator.clipboard.writeText?.bind(
-      navigator.clipboard
-    );
+  // Read clipboard using paste method (works reliably in all environments)
+  const textareaId = '__clipboard_reader__';
 
-    navigator.clipboard.writeText = async (text: string): Promise<void> => {
-      win.__capturedClipboardText = text;
-      if (originalWriteText) {
-        try {
-          return await originalWriteText(text);
-        } catch {
-          // Ignore errors from original writeText
-          return Promise.resolve();
-        }
-      }
+  await page.evaluate((id) => {
+    const textarea = document.createElement('textarea');
+    textarea.id = id;
+    textarea.style.cssText = 'position:fixed;left:-9999px;top:0;';
+    document.body.appendChild(textarea);
+  }, textareaId);
 
-      return Promise.resolve();
-    };
-  });
+  await page.locator(`#${textareaId}`).focus();
+  await page.keyboard.press('ControlOrMeta+V');
 
-  // Click the copy button
-  await locator.click();
+  const clipboardText = await page.locator(`#${textareaId}`).inputValue();
 
-  await page.waitForFunction(
-    () => (window as WindowWithClipboard).__capturedClipboardText !== ''
-  );
+  await page.evaluate((id) => {
+    document.getElementById(id)?.remove();
+  }, textareaId);
 
-  // Return captured clipboard text
-  return page.evaluate(() => {
-    return (window as WindowWithClipboard).__capturedClipboardText ?? '';
-  });
+  return clipboardText;
 };
 
 /**
