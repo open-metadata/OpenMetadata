@@ -13,7 +13,6 @@ SFTP Source Unit Tests
 """
 import stat
 from collections import namedtuple
-from datetime import datetime
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
@@ -434,7 +433,9 @@ class TestSftpConnectionModule(TestCase):
         mock_rsa_key = MagicMock()
         mock_paramiko.RSAKey.from_private_key.return_value = mock_rsa_key
 
-        key_content = "-----BEGIN RSA PRIVATE KEY-----\ntest\n-----END RSA PRIVATE KEY-----"
+        key_content = (
+            "-----BEGIN RSA PRIVATE KEY-----\ntest\n-----END RSA PRIVATE KEY-----"
+        )
         result = _parse_private_key(key_content)
 
         self.assertEqual(result, mock_rsa_key)

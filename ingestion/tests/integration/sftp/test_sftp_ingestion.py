@@ -65,7 +65,9 @@ class TestSftpIngestion:
         assert nested_dir.name.root == "nested"
         assert nested_dir.parent is not None
 
-    def test_directory_with_files_and_subdirectory(self, metadata, ingest_sftp, service_name):
+    def test_directory_with_files_and_subdirectory(
+        self, metadata, ingest_sftp, service_name
+    ):
         """Test that a directory can have both files and subdirectories"""
         # data directory should exist
         data_dir: Directory = metadata.get_by_name(
@@ -276,7 +278,9 @@ class TestSftpIngestion:
         assert level3_dir.parent is not None
         assert level3_dir.parent.name == "level2"
 
-    def test_files_in_deeply_nested_directories(self, metadata, ingest_sftp, service_name):
+    def test_files_in_deeply_nested_directories(
+        self, metadata, ingest_sftp, service_name
+    ):
         """Test files in deeply nested directories"""
         # File in level 2
         level2_file: File = metadata.get_by_name(
@@ -381,6 +385,7 @@ class TestSftpIngestion:
         assert "header2" in column_names
         assert "header3" in column_names
 
+
 @pytest.mark.skipif(
     sys.version_info < (3, 9),
     reason="testcontainers requires python3.9 or higher",
@@ -388,7 +393,9 @@ class TestSftpIngestion:
 class TestSftpStructuredOnly:
     """Test SFTP ingestion with structuredDataFilesOnly enabled"""
 
-    def test_service_created(self, metadata, ingest_sftp_structured_only, service_name_structured):
+    def test_service_created(
+        self, metadata, ingest_sftp_structured_only, service_name_structured
+    ):
         """Test that the drive service is created"""
         service: DriveService = metadata.get_by_name(
             entity=DriveService, fqn=service_name_structured
@@ -396,7 +403,9 @@ class TestSftpStructuredOnly:
         assert service is not None
         assert service.name.root == service_name_structured
 
-    def test_structured_files_included(self, metadata, ingest_sftp_structured_only, service_name_structured):
+    def test_structured_files_included(
+        self, metadata, ingest_sftp_structured_only, service_name_structured
+    ):
         """Test that structured files (CSV, TSV, JSON) are included"""
         # CSV file should be included
         csv_file: File = metadata.get_by_name(
@@ -425,7 +434,9 @@ class TestSftpStructuredOnly:
         )
         assert json_file is not None
 
-    def test_unstructured_files_excluded(self, metadata, ingest_sftp_structured_only, service_name_structured):
+    def test_unstructured_files_excluded(
+        self, metadata, ingest_sftp_structured_only, service_name_structured
+    ):
         """Test that unstructured files (images, PDFs) are excluded"""
         # PNG file should NOT be included
         png_file: File = metadata.get_by_name(
@@ -467,7 +478,9 @@ class TestSftpStructuredOnly:
         )
         assert txt_file is None
 
-    def test_directories_still_created(self, metadata, ingest_sftp_structured_only, service_name_structured):
+    def test_directories_still_created(
+        self, metadata, ingest_sftp_structured_only, service_name_structured
+    ):
         """Test that directories are still created even with structuredDataFilesOnly"""
         # media directory should exist (even though its files are filtered)
         media_dir: Directory = metadata.get_by_name(

@@ -15,7 +15,6 @@ import io
 import mimetypes
 import stat
 import traceback
-from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional
 
 import pandas as pd
@@ -120,8 +119,8 @@ class SftpSource(DriveServiceSource):
         components = clean_path.split("/")
         for root_prefix in self._root_directory_prefixes:
             prefix_parts = root_prefix.strip("/").split("/")
-            if components[:len(prefix_parts)] == prefix_parts:
-                components = components[len(prefix_parts):]
+            if components[: len(prefix_parts)] == prefix_parts:
+                components = components[len(prefix_parts) :]
                 break
         return components
 
@@ -178,7 +177,9 @@ class SftpSource(DriveServiceSource):
                         full_path = f"{normalized_path}/{dir_name}"
 
                     path_components = self._build_directory_path(full_path)
-                    parent_paths = path_components[:-1] if len(path_components) > 1 else []
+                    parent_paths = (
+                        path_components[:-1] if len(path_components) > 1 else []
+                    )
 
                     directory_info = SftpDirectoryInfo(
                         name=dir_name,
@@ -278,10 +279,19 @@ class SftpSource(DriveServiceSource):
         root_directories = []
 
         for full_path, directory_info in self._directories_cache.items():
-            parent_stripped_path = directory_info.path[:-1] if len(directory_info.path) > 1 else None
-            parent_full_path = self._get_full_path_for_stripped(parent_stripped_path) if parent_stripped_path else None
+            parent_stripped_path = (
+                directory_info.path[:-1] if len(directory_info.path) > 1 else None
+            )
+            parent_full_path = (
+                self._get_full_path_for_stripped(parent_stripped_path)
+                if parent_stripped_path
+                else None
+            )
 
-            if parent_full_path is None or parent_full_path not in self._directories_cache:
+            if (
+                parent_full_path is None
+                or parent_full_path not in self._directories_cache
+            ):
                 root_directories.append(full_path)
             else:
                 if parent_full_path not in children_map:
@@ -330,7 +340,9 @@ class SftpSource(DriveServiceSource):
 
                 should_include = True
                 if directory_info.parents:
-                    parent_full_path = self._get_full_path_for_stripped(directory_info.parents)
+                    parent_full_path = self._get_full_path_for_stripped(
+                        directory_info.parents
+                    )
                     if (
                         parent_full_path
                         and parent_full_path in self._directories_cache
@@ -391,7 +403,9 @@ class SftpSource(DriveServiceSource):
 
             parent_reference = None
             if directory_info.parents:
-                parent_full_path = self._get_full_path_for_stripped(directory_info.parents)
+                parent_full_path = self._get_full_path_for_stripped(
+                    directory_info.parents
+                )
                 if parent_full_path and parent_full_path in self._directories_cache:
                     parent_info = self._directories_cache[parent_full_path]
 
@@ -442,7 +456,9 @@ class SftpSource(DriveServiceSource):
             yield Either(right=request)
 
         except Exception as exc:
-            logger.error(f"Error creating directory request for {directory_path}: {exc}")
+            logger.error(
+                f"Error creating directory request for {directory_path}: {exc}"
+            )
             logger.debug(traceback.format_exc())
             yield Either(
                 left=StackTraceError(
@@ -480,9 +496,7 @@ class SftpSource(DriveServiceSource):
 
         self.directory_source_state.add(directory_fqn)
 
-    def yield_file(
-        self, directory_path: str
-    ) -> Iterable[Either[CreateFileRequest]]:
+    def yield_file(self, directory_path: str) -> Iterable[Either[CreateFileRequest]]:
         """Process all files in given directory."""
         if not getattr(self.source_config, "includeFiles", True):
             return
@@ -498,9 +512,7 @@ class SftpSource(DriveServiceSource):
             if not self._root_files_processed:
                 root_files = self._files_by_parent_cache.get("root", [])
                 if root_files:
-                    logger.debug(
-                        f"Processing {len(root_files)} root files"
-                    )
+                    logger.debug(f"Processing {len(root_files)} root files")
 
                     for file_info in root_files:
                         try:
@@ -510,10 +522,15 @@ class SftpSource(DriveServiceSource):
                             ):
                                 # Check if we should skip non-structured files
                                 structured_only = getattr(
-                                    self.service_connection, "structuredDataFilesOnly", False
+                                    self.service_connection,
+                                    "structuredDataFilesOnly",
+                                    False,
                                 )
-                                if structured_only and not self._is_structured_data_file(
-                                    file_info.name
+                                if (
+                                    structured_only
+                                    and not self._is_structured_data_file(
+                                        file_info.name
+                                    )
                                 ):
                                     logger.debug(
                                         f"Skipping non-structured root file '{file_info.name}' "
@@ -719,7 +736,9 @@ class SftpSource(DriveServiceSource):
         """
         try:
             separator = self._get_csv_separator(filename)
-            logger.debug(f"Extracting CSV schema from {file_path} with separator '{separator}'")
+            logger.debug(
+                f"Extracting CSV schema from {file_path} with separator '{separator}'"
+            )
 
             with self.client.sftp.open(file_path, "r") as remote_file:
                 content = remote_file.read()

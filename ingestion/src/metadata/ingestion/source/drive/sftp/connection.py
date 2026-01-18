@@ -14,11 +14,10 @@ SFTP connection and helpers
 import io
 import traceback
 from dataclasses import dataclass
-from functools import partial
 from typing import Optional
 
 import paramiko
-from paramiko import AutoAddPolicy, SFTPClient, Transport
+from paramiko import SFTPClient, Transport
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
