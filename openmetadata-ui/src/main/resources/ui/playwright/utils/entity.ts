@@ -2280,6 +2280,10 @@ export const copyAndGetClipboardText = async (
   // Click the copy button
   await locator.click();
 
+  await page.waitForFunction(
+    () => (window as WindowWithClipboard).__capturedClipboardText !== ''
+  );
+
   // Return captured clipboard text
   return page.evaluate(() => {
     return (window as WindowWithClipboard).__capturedClipboardText ?? '';
