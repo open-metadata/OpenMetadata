@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { DOMAIN_TAGS } from '../../../constant/config';
 import { redirectToHomePage, uuid } from '../../../utils/common';
 import { findSystemTestDefinition } from '../../../utils/testCases';
 
@@ -22,7 +23,7 @@ const TEST_DEFINITION_DESCRIPTION =
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe('Rules Library', () => {
+test.describe('Rules Library', { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Rules_Library` }, () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });

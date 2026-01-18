@@ -65,6 +65,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getEntityLinkCondition());
     conditions.add(getAgentTypeCondition());
     conditions.add(getProviderCondition(tableName));
+    conditions.add(getEntityStatusCondition());
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -113,6 +114,19 @@ public class ListFilter extends Filter<ListFilter> {
   private String getEntityLinkCondition() {
     String entityLinkStr = queryParams.get("entityLink");
     return entityLinkStr == null ? "" : "entityLink = :entityLink";
+  }
+
+  private String getEntityStatusCondition() {
+    String entityStatus = queryParams.get("entityStatus");
+    if (entityStatus == null || entityStatus.trim().isEmpty()) {
+      return "";
+    }
+
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      return "json->>'$.entityStatus' = :entityStatus";
+    } else {
+      return "json->>'entityStatus' = :entityStatus";
+    }
   }
 
   private String getAgentTypeCondition() {
