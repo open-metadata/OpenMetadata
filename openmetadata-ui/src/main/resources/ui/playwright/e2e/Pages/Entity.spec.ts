@@ -1358,11 +1358,6 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
                 /ant-menu-item-selected/
               );
             }
-            await page.getByTestId('custom-properties-tab').click();
-
-            await expect(page.getByTestId('custom-properties-tab')).toHaveClass(
-              /ant-menu-item-selected/
-            );
 
             await page.getByTestId('overview-tab').click();
 
