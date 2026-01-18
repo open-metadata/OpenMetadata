@@ -22,8 +22,8 @@ import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import {
   assignTagToChildren,
+  copyAndGetClipboardText,
   getFirstRowColumnLink,
-  readClipboardText,
   removeTagsFromChildren,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
@@ -851,10 +851,9 @@ test.describe('Large Table Column Search & Copy Link', () => {
 
     // 3. Click "Copy Link" for that column
     const copyButton = rowSelector.getByTestId('copy-column-link-button');
-    await copyButton.click();
 
     // 4. Read clipboard
-    const clipboardText = await readClipboardText(page);
+    const clipboardText = await copyAndGetClipboardText(page, copyButton);
 
     // Verify URL format structure
     expect(clipboardText).toContain(
