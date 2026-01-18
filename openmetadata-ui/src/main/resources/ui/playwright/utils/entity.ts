@@ -2262,15 +2262,18 @@ export const copyAndGetClipboardText = async (
       navigator.clipboard
     );
 
-    navigator.clipboard.writeText = async (text: string) => {
+    navigator.clipboard.writeText = async (text: string): Promise<void> => {
       win.__capturedClipboardText = text;
       if (originalWriteText) {
         try {
           return await originalWriteText(text);
         } catch {
           // Ignore errors from original writeText
+          return Promise.resolve();
         }
       }
+
+      return Promise.resolve();
     };
   });
 
