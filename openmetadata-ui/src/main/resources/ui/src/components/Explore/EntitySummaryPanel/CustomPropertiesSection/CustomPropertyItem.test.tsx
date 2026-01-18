@@ -24,7 +24,11 @@ jest.mock('../../../../utils/CustomPropertyRenderers', () => ({
   CustomPropertyValueRenderer: jest
     .fn()
     .mockImplementation(({ value }) => (
-      <div data-testid="value-renderer">{value}</div>
+      <div data-testid="value-renderer">
+        {typeof value === 'object' && value !== null
+          ? JSON.stringify(value)
+          : value}
+      </div>
     )),
 }));
 
@@ -47,6 +51,18 @@ jest.mock('./CustomPropertyInput', () =>
         data-testid="save-input-undefined"
         onClick={() => onInputSave(undefined)}>
         Save Undefined
+      </button>
+      <button
+        data-testid="save-input-object"
+        onClick={() =>
+          onInputSave({
+            id: 'ref-id',
+            type: 'table',
+            name: 'ref-name',
+            fullyQualifiedName: 'ref-fqn',
+          })
+        }>
+        Save Object
       </button>
       <button data-testid="cancel-input" onClick={onHideInput}>
         Cancel
@@ -104,6 +120,16 @@ const mockPropertyWithDisplayName: CustomProperty = {
   propertyType: {
     id: 'id5',
     name: 'string',
+    type: 'type',
+  },
+};
+
+const mockEntityReferenceProperty: CustomProperty = {
+  name: 'testEntityReferenceProperty',
+  description: 'Test Entity Reference Property',
+  propertyType: {
+    id: 'id6',
+    name: 'entityReference',
     type: 'type',
   },
 };
@@ -432,5 +458,69 @@ describe('CustomPropertyItem', () => {
     expect(screen.getByTestId('value-renderer')).toHaveTextContent(
       'test value'
     );
+  });
+
+  it('should save entity reference property correctly', async () => {
+    render(
+      <CustomPropertyItem
+        hasEditPermissions
+        extensionData={{}}
+        property={mockEntityReferenceProperty}
+        value={undefined}
+        onExtensionUpdate={mockOnExtensionUpdate}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('edit-icon'));
+    fireEvent.click(screen.getByTestId('save-input-object'));
+
+    await waitFor(() => {
+      expect(mockOnExtensionUpdate).toHaveBeenCalledWith({
+        testEntityReferenceProperty: {
+          id: 'ref-id',
+          type: 'table',
+          name: 'ref-name',
+          fullyQualifiedName: 'ref-fqn',
+        },
+      });
+    });
+  });
+  
+  it('should handle clearing entity reference property', async () => {
+    const propertyWithValues = {
+      ...mockEntityReferenceProperty,
+    };
+    const extensionDataWithRef = {
+      testEntityReferenceProperty: {
+        id: 'ref-id',
+        type: 'table',
+        name: 'ref-name',
+        fullyQualifiedName: 'ref-fqn',
+      },
+    };
+
+    render(
+      <CustomPropertyItem
+        hasEditPermissions
+        extensionData={extensionDataWithRef}
+        property={propertyWithValues}
+        value={extensionDataWithRef.testEntityReferenceProperty}
+        onExtensionUpdate={mockOnExtensionUpdate}
+      />
+    );
+
+    // Initial state should show the value
+    expect(screen.getByTestId('value-renderer')).toHaveTextContent('ref-name');
+
+    fireEvent.click(screen.getByTestId('edit-icon'));
+    fireEvent.click(screen.getByTestId('save-input-undefined'));
+
+    await waitFor(() => {
+      // Expect the update to contain the extension object WITHOUT the property (omitted)
+      // or explicitly undefined if that's how the component handles it when empty.
+      // Based on code: isEmpty(updatedExtension) ? undefined : updatedExtension
+      // If we only have one property and we remove it -> undefined.
+      expect(mockOnExtensionUpdate).toHaveBeenCalledWith(undefined);
+    });
   });
 });

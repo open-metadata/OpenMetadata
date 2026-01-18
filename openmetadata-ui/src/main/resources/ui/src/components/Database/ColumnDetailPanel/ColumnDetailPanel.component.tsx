@@ -201,7 +201,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         // Fallback to existing data if fetch fails
       }
     }
-  }, [column, isOpen, entityType, tableFqn]);
+  }, [column?.fullyQualifiedName, isOpen, entityType, tableFqn]);
 
   useEffect(() => {
     fetchColumnDetails();
@@ -686,12 +686,26 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         </Tooltip>
         <div className="d-flex items-center gap-2">
           {isColumn(activeColumn) && getDataTypeDisplay(activeColumn) && (
-            <Chip
-              className="data-type-chip"
-              label={getDataTypeDisplay(activeColumn) || ''}
-              size="small"
-              variant="outlined"
-            />
+            <Tooltip
+              placement="bottom"
+              title={getDataTypeDisplay(activeColumn)}
+              trigger="hover">
+              <Chip
+                className="data-type-chip"
+                label={getDataTypeDisplay(activeColumn) || ''}
+                size="small"
+                sx={{
+                  maxWidth: '240px',
+                  '& .MuiChip-label': {
+                    display: 'block',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  },
+                }}
+                variant="outlined"
+              />
+            </Tooltip>
           )}
           {isColumn(activeColumn) && isPrimaryKey && (
             <Chip

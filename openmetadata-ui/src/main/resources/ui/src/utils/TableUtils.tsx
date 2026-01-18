@@ -597,7 +597,8 @@ export const generateEntityLink = (fqn: string, includeColumn = false) => {
 };
 
 export function getTableExpandableConfig<T>(
-  isDraggable?: boolean
+  isDraggable?: boolean,
+  expandIconClass?: string
 ): ExpandableConfig<T> {
   const expandableConfig: ExpandableConfig<T> = {
     expandIcon: ({ expanded, onExpand, expandable, record }) =>
@@ -605,7 +606,10 @@ export function getTableExpandableConfig<T>(
         <>
           {isDraggable && <IconDrag className="drag-icon" />}
           <Icon
-            className="table-expand-icon vertical-baseline"
+            className={classNames(
+              'table-expand-icon vertical-baseline',
+              expandIconClass
+            )}
             component={expanded ? IconDown : IconRight}
             data-testid="expand-icon"
             onClick={(e) => onExpand(record, e)}

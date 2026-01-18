@@ -1309,14 +1309,9 @@ describe('CustomPropertiesSection', () => {
         },
       };
 
-      const { container } = render(
-        <CustomPropertiesSection {...emptyEnumProps} />
-      );
+      render(<CustomPropertiesSection {...emptyEnumProps} />);
 
-      const tagsWrapper = container.querySelector('.d-flex.flex-wrap.gap-2');
-
-      expect(tagsWrapper).toBeInTheDocument();
-      expect(tagsWrapper?.children.length).toBe(0);
+      expect(screen.getByText('label.not-set')).toBeInTheDocument();
     });
 
     it('should handle mixed entityReferenceList with users and other entities', () => {
@@ -1409,7 +1404,7 @@ describe('CustomPropertiesSection', () => {
       });
     });
 
-    it('should handle zero values (currently treated as falsy)', () => {
+    it('should handle zero values', () => {
       const zeroData = {
         extension: {
           zeroProp: 0,
@@ -1440,13 +1435,11 @@ describe('CustomPropertiesSection', () => {
 
       render(<CustomPropertiesSection {...zeroProps} />);
 
-      // Note: Currently zero is treated as falsy in formatValue (if (!val))
-      // This test documents the current behavior
-      expect(screen.getByText('label.not-set')).toBeInTheDocument();
+      expect(screen.getByText('0')).toBeInTheDocument();
       expect(screen.getByText(/label\.start-entity.*0/)).toBeInTheDocument();
     });
 
-    it('should handle false boolean value (currently treated as falsy)', () => {
+    it('should handle false boolean value', () => {
       const falseData = {
         extension: {
           falseProp: false,
@@ -1470,9 +1463,7 @@ describe('CustomPropertiesSection', () => {
 
       render(<CustomPropertiesSection {...falseProps} />);
 
-      // Note: Currently false is treated as falsy in formatValue (if (!val))
-      // This test documents the current behavior
-      expect(screen.getByText('label.not-set')).toBeInTheDocument();
+      expect(screen.getByText('false')).toBeInTheDocument();
     });
   });
 });

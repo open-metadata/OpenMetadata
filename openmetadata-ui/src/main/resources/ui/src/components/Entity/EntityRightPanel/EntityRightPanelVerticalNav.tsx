@@ -41,7 +41,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
     isColumnDetailPanel = false,
   }) => {
     const { t } = useTranslation();
-
+console.log(entityType)
     const getTabItems = () => {
       const items = [
         {
@@ -82,7 +82,10 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       }
 
       // Add custom properties tab
-      if (hasCustomPropertiesTab(entityType)) {
+      if (
+        (!isColumnDetailPanel && hasCustomPropertiesTab(entityType)) ||
+        (isColumnDetailPanel && entityType === EntityType.TABLE)
+      ) {
         items.push({
           key: EntityRightPanelTab.CUSTOM_PROPERTIES,
           icon: <CustomPropertiesIcon />,

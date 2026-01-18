@@ -487,7 +487,7 @@ const SchemaTable = () => {
 
   const expandableConfig: ExpandableConfig<Column> = useMemo(
     () => ({
-      ...getTableExpandableConfig<Column>(),
+      ...getTableExpandableConfig<Column>(false, 'text-link-color'),
       rowExpandable: (record) => !isEmpty(record.children),
       expandedRowKeys,
       onExpand: (expanded, record) => {
@@ -583,7 +583,7 @@ const SchemaTable = () => {
                   })}
                   <Typography.Text
                     className={classNames(
-                      'm-b-0 d-block break-word cursor-pointer',
+                      'm-b-0 d-block break-word cursor-pointer text-link-color',
                       {
                         'text-grey-600': !isEmpty(displayName),
                       }

@@ -47,6 +47,7 @@ import {
 } from '../../../../../utils/TableTags/TableTags.utils';
 import {
   getHighlightedRowClassName,
+  getTableExpandableConfig,
   pruneEmptyChildren,
 } from '../../../../../utils/TableUtils';
 import DisplayName from '../../../../common/DisplayName/DisplayName';
@@ -90,10 +91,7 @@ const ModelTab = () => {
     useGenericContext<DashboardDataModel>();
   const { fullyQualifiedName: entityFqn, deleted: isReadOnly } = dataModel;
 
-  const {
-    columnFqn: columnPart,
-    fqn,
-  } = useFqn({
+  const { columnFqn: columnPart, fqn } = useFqn({
     type: EntityType.DASHBOARD_DATA_MODEL,
   });
 
@@ -333,7 +331,7 @@ const ModelTab = () => {
         key: TABLE_COLUMNS_KEYS.NAME,
         width: 250,
         fixed: 'left',
-        className: 'cursor-pointer',
+        className: 'cursor-pointer text-link-color',
         sorter: getColumnSorter<Column, 'name'>('name'),
         onCell: (record: Column) => ({
           onClick: (event: React.MouseEvent) =>
@@ -458,6 +456,10 @@ const ModelTab = () => {
         data-testid="data-model-column-table"
         dataSource={data}
         defaultVisibleColumns={DEFAULT_DASHBOARD_DATA_MODEL_VISIBLE_COLUMNS}
+        expandable={{
+          ...getTableExpandableConfig<Column>(false, 'text-link-color'),
+          rowExpandable: (record) => !isEmpty(record.children),
+        }}
         loading={columnsLoading}
         locale={{
           emptyText: <FilterTablePlaceHolder />,
