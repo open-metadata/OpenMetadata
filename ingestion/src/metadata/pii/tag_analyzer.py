@@ -11,13 +11,15 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.type.classificationLanguages import (
+    ClassificationLanguage,
+)
 from metadata.generated.schema.type.recognizer import RecognizerException, Target
 from metadata.pii.algorithms.feature_extraction import split_column_name
 from metadata.pii.algorithms.presidio_recognizer_factory import (
     PresidioRecognizerFactory,
 )
 from metadata.pii.algorithms.presidio_utils import explain_recognition_results
-from metadata.pii.constants import SUPPORTED_LANG
 from metadata.utils.entity_link import (
     get_entity_link,  # pyright: ignore[reportUnknownVariableType]
 )
@@ -36,10 +38,17 @@ class TagAnalyzer:
 
     tag: Tag
 
-    def __init__(self, tag: Tag, column: Column, nlp_engine: NlpEngine):
+    def __init__(
+        self,
+        tag: Tag,
+        column: Column,
+        nlp_engine: NlpEngine,
+        language: ClassificationLanguage = ClassificationLanguage.en,
+    ):
         self.tag = tag
         self._column = column
         self._nlp_engine = nlp_engine
+        self._language = language
 
     def should_skip_recognizer(self, exception_list: list[RecognizerException]):
         blacklisted_entities = {ex.entityLink.root for ex in exception_list}
@@ -92,11 +101,14 @@ class TagAnalyzer:
     def build_analyzer_with(
         self, recognizers: list[EntityRecognizer]
     ) -> AnalyzerEngine:
-        recognizer_registry = RecognizerRegistry(recognizers=recognizers)
+        supported_languages = [rec.supported_language for rec in recognizers]
+        recognizer_registry = RecognizerRegistry(
+            recognizers=recognizers, supported_languages=supported_languages
+        )
         return AnalyzerEngine(
             registry=recognizer_registry,
             nlp_engine=self._nlp_engine,
-            supported_languages=[SUPPORTED_LANG],
+            supported_languages=supported_languages,
         )
 
     def analyze_content(self, values: Sequence[str]) -> TagAnalysis:
@@ -113,7 +125,7 @@ class TagAnalyzer:
             results.extend(
                 analyzer.analyze(
                     value,
-                    language=SUPPORTED_LANG,
+                    language=self._language.value,
                     context=context,
                     return_decision_process=True,
                 )
@@ -129,7 +141,9 @@ class TagAnalyzer:
 
         analyzer = self.build_analyzer_with(recognizers)
         results = analyzer.analyze(
-            self._column_name, language=SUPPORTED_LANG, return_decision_process=True
+            self._column_name,
+            language=self._language.value,
+            return_decision_process=True,
         )
 
         return self._build_tag_analysis(results, 1)
