@@ -701,10 +701,8 @@ export const addCustomPropertiesForEntity = async ({
       await page.keyboard.type(val);
       await page.click(`[title="${val}"]`);
       await expect(page.locator('#root\\/entityReferenceConfig_list')).not.toBeVisible();
-      await page
-        .getByTestId('form-item-label')
-        .filter({ hasText: 'Entity Reference Types' })
-        .click();
+      // Wait for UI to settle before next iteration
+      await page.waitForTimeout(200);
     }
   }
 
@@ -715,6 +713,7 @@ export const addCustomPropertiesForEntity = async ({
   }
 
   // Description
+  await expect(page.locator('#root\\/entityReferenceConfig_list')).not.toBeVisible();
   await page.locator(`${descriptionBox} p`).click();
   await page.waitForTimeout(200);
   await page.keyboard.type(customPropertyData.description, { delay: 50 });

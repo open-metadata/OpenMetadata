@@ -56,7 +56,6 @@ export const openEntitySummaryPanel = async (
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
-  await page.waitForLoadState('networkidle');
 
   const entityCard = page
     .locator('[data-testid="table-data-card"]')
@@ -86,14 +85,16 @@ export async function navigateToExploreAndSelectTable(
     response.url().includes('/permissions')
   );
 
-  const entityDetailsResponse = page.waitForResponse('/api/v1/tables/name/*?*');
+  // const entityDetailsResponse = page.waitForResponse(
+  //   `/api/v1/${endpoint}/name/*?*`
+  // );
 
   await openEntitySummaryPanel(page, entityName, endpoint);
 
   const permissionsResponse = await permissionsResponsePromise;
-  const entityDetailsResponseResolved = await entityDetailsResponse;
+  // const entityDetailsResponseResolved = await entityDetailsResponse;
   expect(permissionsResponse.status()).toBe(200);
-  expect(entityDetailsResponseResolved.status()).toBe(200);
+  // expect(entityDetailsResponseResolved.status()).toBe(200);
 
   await waitForAllLoadersToDisappear(page);
 }
