@@ -557,39 +557,69 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     }
   }
 
+  /**
+   * Regenerates session after successful authentication to prevent session fixation attacks.
+   *
+   * <p>SECURITY: After authentication, the session ID must be changed to prevent attackers from
+   * hijacking a session using a pre-set session ID. This method does NOT preserve old session
+   * attributes - callers must read needed values before calling this method.
+   *
+   * <p>Session fixation attack scenario: 1. Attacker sets victim's session ID to known value 2.
+   * Victim authenticates with that session ID 3. Attacker uses the known session ID to hijack the
+   * authenticated session
+   *
+   * <p>Prevention: Regenerate session ID after authentication, invalidating any pre-set session ID.
+   *
+   * @param oldSession The session to regenerate (will be invalidated)
+   */
   private void regenerateSession(HttpSession oldSession) {
     String oldSessionId = oldSession.getId();
 
     try {
+      // Preferred method: Change session ID in-place (Servlet 3.1+)
+      // This keeps request attributes but changes the session ID
       String newSessionId = currentRequest.get().changeSessionId();
-      LOG.info("Session regenerated after authentication: {} -> {}", oldSessionId, newSessionId);
+      LOG.info(
+          "SECURITY: Session ID regenerated after authentication to prevent fixation: {} -> {}",
+          oldSessionId,
+          newSessionId);
     } catch (UnsupportedOperationException | IllegalStateException e) {
+      // Fallback for older servlet containers: invalidate and create new session
+      // SECURITY: Do NOT preserve old session attributes - caller must handle needed values
       LOG.warn(
-          "Session ID change not supported by servlet container, using invalidate/recreate fallback",
+          "Session ID change not supported by servlet container, using invalidate/recreate fallback. "
+              + "Note: Session attributes will be cleared (caller should preserve needed values).",
           e);
 
-      Map<String, Object> sessionData = new HashMap<>();
-      sessionData.put(
-          SESSION_MCP_PKCE_CHALLENGE, oldSession.getAttribute(SESSION_MCP_PKCE_CHALLENGE));
-      sessionData.put(SESSION_MCP_PKCE_METHOD, oldSession.getAttribute(SESSION_MCP_PKCE_METHOD));
-      sessionData.put(SESSION_MCP_CLIENT_ID, oldSession.getAttribute(SESSION_MCP_CLIENT_ID));
-      sessionData.put(SESSION_MCP_REDIRECT_URI, oldSession.getAttribute(SESSION_MCP_REDIRECT_URI));
-      sessionData.put(SESSION_MCP_STATE, oldSession.getAttribute(SESSION_MCP_STATE));
-      sessionData.put(SESSION_MCP_SCOPES, oldSession.getAttribute(SESSION_MCP_SCOPES));
-      sessionData.put(SESSION_MCP_AUTH_METHOD, oldSession.getAttribute(SESSION_MCP_AUTH_METHOD));
-
       oldSession.invalidate();
-
       HttpSession newSession = currentRequest.get().getSession(true);
-      sessionData.forEach(newSession::setAttribute);
 
-      LOG.debug("Regenerated session using invalidate/recreate fallback");
+      LOG.info(
+          "SECURITY: Session regenerated using invalidate/recreate: {} -> {}",
+          oldSessionId,
+          newSession.getId());
     }
   }
 
   public void handleSSOCallback(
       HttpServletRequest request, HttpServletResponse response, String userName, String email)
       throws Exception {
+
+    // HIGH: Validate user identity from SSO provider
+    if (userName == null || userName.trim().isEmpty()) {
+      LOG.error("SECURITY ALERT: SSO callback received null or empty username");
+      throw new IllegalStateException(
+          "Invalid SSO response: username is required but was not provided by identity provider");
+    }
+
+    if (email == null || email.trim().isEmpty()) {
+      LOG.error("SECURITY ALERT: SSO callback received null or empty email for user: {}", userName);
+      throw new IllegalStateException(
+          "Invalid SSO response: email is required but was not provided by identity provider");
+    }
+
+    LOG.debug("SSO callback received valid user identity: username={}, email={}", userName, email);
+
     HttpSession session = getHttpSession(request, false);
     if (session == null) {
       throw new IllegalStateException("No session found for SSO callback");
@@ -654,6 +684,21 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       String email,
       String ssoState)
       throws Exception {
+
+    // HIGH: Validate user identity from SSO provider
+    if (userName == null || userName.trim().isEmpty()) {
+      LOG.error("SECURITY ALERT: SSO callback received null or empty username");
+      throw new IllegalStateException(
+          "Invalid SSO response: username is required but was not provided by identity provider");
+    }
+
+    if (email == null || email.trim().isEmpty()) {
+      LOG.error("SECURITY ALERT: SSO callback received null or empty email for user: {}", userName);
+      throw new IllegalStateException(
+          "Invalid SSO response: email is required but was not provided by identity provider");
+    }
+
+    LOG.debug("SSO callback received valid user identity: username={}, email={}", userName, email);
 
     // Extract authRequestId from composite state
     if (ssoState == null || !ssoState.startsWith("mcp:")) {
@@ -741,13 +786,58 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
       OAuthAuthorizationCodeRecord codeRecord = codeRepository.markAsUsedAtomic(code);
       if (codeRecord == null) {
-        LOG.warn("Authorization code reuse detected or code not found - possible attack");
+        String clientIP = currentRequest.get() != null ? currentRequest.get().getRemoteAddr() : "unknown";
+        LOG.error(
+            "SECURITY ALERT: Authorization code replay attack or invalid code detected! "
+                + "Client: {}, IP: {}. This could indicate: 1) Code reuse (replay attack), "
+                + "2) Non-existent code, or 3) Previously deleted code.",
+            client.getClientId(),
+            clientIP);
         throw new TokenException("invalid_grant", "Authorization code invalid or already used");
       }
 
+      // CRITICAL: Validate client ID matches (prevents authorization code theft attack)
+      if (!client.getClientId().equals(codeRecord.clientId())) {
+        String clientIP = currentRequest.get() != null ? currentRequest.get().getRemoteAddr() : "unknown";
+        LOG.error(
+            "SECURITY ALERT: Authorization code theft attack detected! "
+                + "Code issued to client '{}' but presented by client '{}'. IP: {}",
+            codeRecord.clientId(),
+            client.getClientId(),
+            clientIP);
+        throw new TokenException(
+            "invalid_grant", "Authorization code was issued to a different client");
+      }
+
+      // CRITICAL: Validate redirect URI matches (RFC 6749 Section 4.1.3)
+      // If redirect_uri was provided in token request, it MUST match the one from authorization
+      URI requestRedirectUri = authCode.getRedirectUri();
+      if (requestRedirectUri != null) {
+        String storedRedirectUri = codeRecord.redirectUri();
+        String requestRedirectUriStr = requestRedirectUri.toString();
+
+        if (!requestRedirectUriStr.equals(storedRedirectUri)) {
+          LOG.error(
+              "SECURITY ALERT: Redirect URI mismatch in token exchange! "
+                  + "Authorization used '{}' but token request used '{}'",
+              storedRedirectUri,
+              requestRedirectUriStr);
+          throw new TokenException(
+              "invalid_grant",
+              "Redirect URI in token request does not match authorization request");
+        }
+      }
+
       if (System.currentTimeMillis() > codeRecord.expiresAt()) {
-        LOG.warn("Authorization code expired");
-        throw new TokenException("invalid_grant", "Authorization code expired");
+        long expiredSecondsAgo = (System.currentTimeMillis() - codeRecord.expiresAt()) / 1000;
+        LOG.warn(
+            "Authorization code expired {} seconds ago. Expiration time: {}, Client: {}",
+            expiredSecondsAgo,
+            new java.util.Date(codeRecord.expiresAt()),
+            client.getClientId());
+        throw new TokenException(
+            "invalid_grant",
+            "Authorization code expired " + expiredSecondsAgo + " seconds ago. Please restart the authorization flow.");
       }
 
       if (!verifyPKCE(codeVerifier, codeRecord.codeChallenge())) {
@@ -896,6 +986,26 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       String userName = tokenRecord.getUserName();
       LOG.info("Refresh token validated successfully for user: {} (rotating token)", userName);
 
+      // HIGH: Validate user account status before issuing new tokens
+      // Check if user still exists and is not deleted (security requirement)
+      User user = Entity.getEntityByName(Entity.USER, userName, "roles,teams", Include.NON_DELETED);
+      if (user == null) {
+        LOG.error(
+            "SECURITY: User account deleted or not found during refresh token exchange: {}. "
+                + "Revoking refresh token to prevent further use.",
+            userName);
+
+        // Revoke the refresh token since the user no longer exists
+        tokenRepository.revokeRefreshToken(refreshTokenValue);
+
+        throw new TokenException(
+            "invalid_grant",
+            "User account has been deleted or deactivated. All tokens have been revoked. "
+                + "Please re-authenticate if your account has been restored.");
+      }
+
+      LOG.debug("User status validated: User {} is active and not deleted", userName);
+
       // Atomic token rotation: Revoke old token and generate new one
       // This implements the refresh token rotation pattern (RFC 6749 Section 10.4)
       tokenRepository.revokeRefreshToken(refreshTokenValue);
@@ -917,14 +1027,6 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
           "New refresh token generated for user: {} (expires in {} days)",
           userName,
           REFRESH_TOKEN_EXPIRY_DAYS);
-
-      // Generate new JWT access token (same logic as authorization code flow)
-      User user = Entity.getEntityByName(Entity.USER, userName, "roles,teams", Include.NON_DELETED);
-      if (user == null) {
-        LOG.error("User not found during refresh token exchange: {}", userName);
-        throw new TokenException(
-            "invalid_grant", "User account no longer exists. Please re-authenticate.");
-      }
 
       JWTAuthMechanism jwtAuth =
           jwtGenerator.generateJWTToken(

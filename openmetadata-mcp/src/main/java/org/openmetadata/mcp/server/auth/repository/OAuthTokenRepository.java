@@ -54,6 +54,9 @@ public class OAuthTokenRepository {
 
   /**
    * Find access token by token value.
+   *
+   * <p>HIGH: Handles Fernet decryption failures gracefully (e.g., during key rotation). If
+   * decryption fails, the token is deleted and null is returned.
    */
   public AccessToken findAccessToken(String tokenValue) {
     String tokenHash = hashToken(tokenValue);
@@ -63,15 +66,29 @@ public class OAuthTokenRepository {
       return null;
     }
 
-    String decryptedToken = fernet.decrypt(record.accessTokenEncrypted());
+    try {
+      String decryptedToken = fernet.decrypt(record.accessTokenEncrypted());
 
-    AccessToken token = new AccessToken();
-    token.setToken(decryptedToken);
-    token.setExpiresAt(record.expiresAt());
-    token.setClientId(record.clientId());
-    token.setScopes(record.scopes());
+      AccessToken token = new AccessToken();
+      token.setToken(decryptedToken);
+      token.setExpiresAt(record.expiresAt());
+      token.setClientId(record.clientId());
+      token.setScopes(record.scopes());
 
-    return token;
+      return token;
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to decrypt access token for client {}. This may indicate Fernet key rotation. "
+              + "Token will be deleted and user must re-authenticate. Error: {}",
+          record.clientId(),
+          e.getMessage());
+
+      // Delete the undecryptable token - it's unusable anyway
+      accessTokenDAO.delete(tokenHash);
+      LOG.debug("Deleted undecryptable access token for client: {}", record.clientId());
+
+      return null;
+    }
   }
 
   /**
@@ -105,6 +122,9 @@ public class OAuthTokenRepository {
 
   /**
    * Find refresh token by token value.
+   *
+   * <p>HIGH: Handles Fernet decryption failures gracefully (e.g., during key rotation). If
+   * decryption fails, the token is deleted and null is returned.
    */
   public RefreshToken findRefreshToken(String tokenValue) {
     String tokenHash = hashToken(tokenValue);
@@ -114,16 +134,34 @@ public class OAuthTokenRepository {
       return null;
     }
 
-    String decryptedToken = fernet.decrypt(record.refreshTokenEncrypted());
+    try {
+      String decryptedToken = fernet.decrypt(record.refreshTokenEncrypted());
 
-    RefreshToken token = new RefreshToken();
-    token.setToken(decryptedToken);
-    token.setExpiresAt(record.expiresAt());
-    token.setClientId(record.clientId());
-    token.setUserName(record.userName());
-    token.setScopes(record.scopes());
+      RefreshToken token = new RefreshToken();
+      token.setToken(decryptedToken);
+      token.setExpiresAt(record.expiresAt());
+      token.setClientId(record.clientId());
+      token.setUserName(record.userName());
+      token.setScopes(record.scopes());
 
-    return token;
+      return token;
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to decrypt refresh token for user {} (client: {}). This may indicate Fernet key rotation. "
+              + "Token will be deleted and user must re-authenticate. Error: {}",
+          record.userName(),
+          record.clientId(),
+          e.getMessage());
+
+      // Delete the undecryptable token - it's unusable anyway
+      refreshTokenDAO.delete(tokenHash);
+      LOG.debug(
+          "Deleted undecryptable refresh token for user: {}, client: {}",
+          record.userName(),
+          record.clientId());
+
+      return null;
+    }
   }
 
   /**

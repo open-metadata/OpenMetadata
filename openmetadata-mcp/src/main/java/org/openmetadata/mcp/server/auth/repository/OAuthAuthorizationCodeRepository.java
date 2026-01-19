@@ -89,9 +89,10 @@ public class OAuthAuthorizationCodeRepository {
 
   /**
    * Delete all expired authorization codes.
+   * Note: Expiry times are stored in milliseconds (System.currentTimeMillis())
    */
   public void deleteExpired() {
-    long currentTime = java.time.Instant.now().getEpochSecond();
+    long currentTime = System.currentTimeMillis();
     dao.deleteExpired(currentTime);
     LOG.info("Deleted expired authorization codes");
   }

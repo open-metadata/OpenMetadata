@@ -52,6 +52,10 @@ public class OAuthClientRepository {
 
   /**
    * Get OAuth client by client ID.
+   *
+   * <p>HIGH: Handles Fernet decryption failures gracefully (e.g., during key rotation). If client
+   * secret decryption fails, the client is still returned but without the secret (null). This
+   * allows public clients to continue working, but confidential clients will fail authentication.
    */
   public OAuthClientInformation findByClientId(String clientId) {
     OAuthClientRecord record = dao.findByClientId(clientId);
@@ -68,10 +72,21 @@ public class OAuthClientRepository {
     // Convert scope from List<String> to space-separated String
     metadata.setScope(String.join(" ", record.scopes()));
 
-    String decryptedSecret =
-        record.clientSecretEncrypted() != null
-            ? fernet.decrypt(record.clientSecretEncrypted())
-            : null;
+    // HIGH: Handle Fernet decryption failures gracefully
+    String decryptedSecret = null;
+    if (record.clientSecretEncrypted() != null) {
+      try {
+        decryptedSecret = fernet.decrypt(record.clientSecretEncrypted());
+      } catch (Exception e) {
+        LOG.error(
+            "CRITICAL: Failed to decrypt client secret for client {}. This may indicate Fernet key rotation. "
+                + "Client authentication will fail until secret is re-registered. Error: {}",
+            clientId,
+            e.getMessage());
+        // Continue without secret - public clients may still work
+        // Confidential clients will fail authentication later
+      }
+    }
 
     OAuthClientInformation clientInfo = new OAuthClientInformation();
     clientInfo.setClientId(record.clientId());
