@@ -211,7 +211,7 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
                               label: (
                                 <ManageButtonItemLabel
                                   description={t(
-                                    'message.remove-entity-action',
+                                    'label.remove-entity',
                                     {
                                       entity: t('label.port'),
                                     }
@@ -225,6 +225,8 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
                             },
                           ],
                         }}
+                        overlayClassName="manage-dropdown-list-container"
+                        overlayStyle={{ width: '350px' }}
                         placement="bottomRight"
                         trigger={['click']}>
                         <Button
