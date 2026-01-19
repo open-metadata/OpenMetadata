@@ -24,6 +24,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
     OpenLineageConnection,
 )
@@ -50,8 +51,10 @@ from metadata.ingestion.source.pipeline.openlineage.models import (
     LineageEdge,
     LineageNode,
     OpenLineageEvent,
+    EntityDetails,
     TableDetails,
     TableFQN,
+    TopicDetails
 )
 from metadata.ingestion.source.pipeline.openlineage.utils import (
     FQNNotFoundException,
@@ -97,6 +100,22 @@ class OpenlineageSource(PipelineServiceSource):
         self.metadata.compute_percentile(Pipeline, self.today)
         self.metadata.close()
 
+    @staticmethod
+    def _get_entity_details(data: Dict) -> EntityDetails:
+        namespace = data.get("namespace", "")
+
+        # Kafka topic detection
+        if namespace.startswith("kafka://"):
+            return EntityDetails(
+                entity_type="topic",
+                topic_details=OpenlineageSource._get_topic_details(data)
+            )
+        else:
+            return EntityDetails(
+                entity_type="table", 
+                table_details=OpenlineageSource._get_table_details(data)
+            )
+
     @classmethod
     def _get_table_details(cls, data: Dict) -> TableDetails:
         """
@@ -136,6 +155,24 @@ class OpenlineageSource(PipelineServiceSource):
         # in BigQuery Open Lineage events name_parts would be list of 3 elements as first one is GCP Project ID
         # however, concept of GCP Project ID is not represented in Open Metadata and hence - we need to skip this part
         return TableDetails(name=name_parts[-1], schema=name_parts[-2])
+
+    @staticmethod
+    def _get_topic_details(data: Dict) -> TopicDetails:
+        try:
+            namespace = data["namespace"]
+        except KeyError:
+            raise ValueError(
+                "Topic namespace is not present"
+            )
+        
+        try:
+            name = data["name"]
+        except KeyError:
+            raise ValueError(
+                "Topic name is not present."
+            )
+        
+        return TopicDetails(name, namespace)
 
     def _get_table_fqn(self, table_details: TableDetails) -> Optional[str]:
         try:
