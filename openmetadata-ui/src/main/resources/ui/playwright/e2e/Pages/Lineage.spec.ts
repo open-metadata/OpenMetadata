@@ -941,6 +941,238 @@ test('Edges are not getting hidden when column is selected and column layer is r
   }
 });
 
+test.describe('node selection edge behavior', () => {
+  /**
+   * Test setup:
+   * - table1 -> table2 -> table3
+   *          -> table4
+   *
+   * This creates a lineage graph where:
+   * - table1 is upstream of table2
+   * - table2 is upstream of table3 and table4
+   * - When table3 is selected, the traced path is: table1 -> table2 -> table3
+   * - The edge table2 -> table4 should be dimmed (not in traced path)
+   */
+  const table1 = new TableClass();
+  const table2 = new TableClass();
+  const table3 = new TableClass();
+  const table4 = new TableClass();
+
+  let table1Fqn: string;
+  let table2Fqn: string;
+  let table3Fqn: string;
+  let table4Fqn: string;
+
+  let table1Col: string;
+  let table2Col: string;
+  let table3Col: string;
+  let table4Col: string;
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    await Promise.all([
+      table1.create(apiContext),
+      table2.create(apiContext),
+      table3.create(apiContext),
+      table4.create(apiContext),
+    ]);
+
+    table1Fqn = get(table1, 'entityResponseData.fullyQualifiedName');
+    table2Fqn = get(table2, 'entityResponseData.fullyQualifiedName');
+    table3Fqn = get(table3, 'entityResponseData.fullyQualifiedName');
+    table4Fqn = get(table4, 'entityResponseData.fullyQualifiedName');
+
+    table1Col = `${table1Fqn}.${get(
+      table1,
+      'entityResponseData.columns[0].name'
+    )}`;
+    table2Col = `${table2Fqn}.${get(
+      table2,
+      'entityResponseData.columns[0].name'
+    )}`;
+    table3Col = `${table3Fqn}.${get(
+      table3,
+      'entityResponseData.columns[0].name'
+    )}`;
+    table4Col = `${table4Fqn}.${get(
+      table4,
+      'entityResponseData.columns[0].name'
+    )}`;
+
+    await connectEdgeBetweenNodesViaAPI(
+      apiContext,
+      { id: table1.entityResponseData.id, type: 'table' },
+      { id: table2.entityResponseData.id, type: 'table' },
+      [{ fromColumns: [table1Col], toColumn: table2Col }]
+    );
+
+    await connectEdgeBetweenNodesViaAPI(
+      apiContext,
+      { id: table2.entityResponseData.id, type: 'table' },
+      { id: table3.entityResponseData.id, type: 'table' },
+      [{ fromColumns: [table2Col], toColumn: table3Col }]
+    );
+
+    await connectEdgeBetweenNodesViaAPI(
+      apiContext,
+      { id: table2.entityResponseData.id, type: 'table' },
+      { id: table4.entityResponseData.id, type: 'table' },
+      [{ fromColumns: [table2Col], toColumn: table4Col }]
+    );
+
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await Promise.all([
+      table1.delete(apiContext),
+      table2.delete(apiContext),
+      table3.delete(apiContext),
+      table4.delete(apiContext),
+    ]);
+    await afterAction();
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+  });
+
+  test('highlights traced node-to-node edges when a node is selected', async ({
+    page,
+  }) => {
+    await table2.visitEntityPage(page);
+    await visitLineageTab(page);
+    await performZoomOut(page);
+
+    await clickLineageNode(page, table3Fqn);
+
+    await page.keyboard.press('Escape');
+
+    const tracedEdge1 = page.locator(
+      `[data-testid="edge-${table1Fqn}-${table2Fqn}"]`
+    );
+    const tracedEdge2 = page.locator(
+      `[data-testid="edge-${table2Fqn}-${table3Fqn}"]`
+    );
+
+    await expect(tracedEdge1).toBeVisible();
+    await expect(tracedEdge2).toBeVisible();
+
+    const tracedEdge1Style = await tracedEdge1.getAttribute('style');
+    const tracedEdge2Style = await tracedEdge2.getAttribute('style');
+
+    expect(tracedEdge1Style).toContain('opacity: 1');
+    expect(tracedEdge2Style).toContain('opacity: 1');
+  });
+
+  test('hides column-to-column edges when a node is selected', async ({
+    page,
+  }) => {
+    await table2.visitEntityPage(page);
+    await visitLineageTab(page);
+    await activateColumnLayer(page);
+    await performZoomOut(page);
+
+    const columnEdge = page.locator(
+      `[data-testid="column-edge-${btoa(table1Col)}-${btoa(table2Col)}"]`
+    );
+    await expect(columnEdge).toBeVisible();
+
+    await clickLineageNode(page, table3Fqn);
+
+    const columnEdgeStyle = await columnEdge.getAttribute('style');
+
+    expect(columnEdgeStyle).toContain('display: none');
+  });
+
+  test('grays out non-traced node-to-node edges when a node is selected', async ({
+    page,
+  }) => {
+    await table2.visitEntityPage(page);
+    await visitLineageTab(page);
+    await performZoomOut(page);
+
+    await clickLineageNode(page, table3Fqn);
+
+    const nonTracedEdge = page.locator(
+      `[data-testid="edge-${table2Fqn}-${table4Fqn}"]`
+    );
+
+    await expect(nonTracedEdge).toBeVisible();
+
+    const nonTracedEdgeStyle = await nonTracedEdge.getAttribute('style');
+
+    expect(nonTracedEdgeStyle).toContain('opacity: 0.3');
+  });
+
+  test('highlights traced column-to-column edges when a column is selected', async ({
+    page,
+  }) => {
+    await table2.visitEntityPage(page);
+    await visitLineageTab(page);
+    await activateColumnLayer(page);
+    await performZoomOut(page);
+
+    const table1Column = page.locator(`[data-testid="column-${table1Col}"]`);
+    await table1Column.click();
+
+    const tracedColumnEdge = page.locator(
+      `[data-testid="column-edge-${btoa(table1Col)}-${btoa(table2Col)}"]`
+    );
+
+    await expect(tracedColumnEdge).toBeVisible();
+
+    const tracedEdgeStyle = await tracedColumnEdge.getAttribute('style');
+
+    expect(tracedEdgeStyle).toContain('opacity: 1');
+    expect(tracedEdgeStyle).not.toContain('display: none');
+  });
+
+  test('hides non-traced column-to-column edges when a column is selected', async ({
+    page,
+  }) => {
+    await table2.visitEntityPage(page);
+    await visitLineageTab(page);
+    await activateColumnLayer(page);
+    await performZoomOut(page);
+
+    const table3Column = page.locator(`[data-testid="column-${table3Col}"]`);
+    await table3Column.click();
+
+    const nonTracedColumnEdge = page.locator(
+      `[data-testid="column-edge-${btoa(table2Col)}-${btoa(table4Col)}"]`
+    );
+
+    const edgeStyle = await nonTracedColumnEdge.getAttribute('style');
+
+    expect(edgeStyle).toContain('display: none');
+  });
+
+  test('grays out node-to-node edges when a column is selected', async ({
+    page,
+  }) => {
+    await table2.visitEntityPage(page);
+    await visitLineageTab(page);
+    await activateColumnLayer(page);
+    await performZoomOut(page);
+
+    const table3Column = page.locator(`[data-testid="column-${table3Col}"]`);
+    await table3Column.click();
+
+    const nodeEdge = page.locator(
+      `[data-testid="edge-${table2Fqn}-${table3Fqn}"]`
+    );
+
+    await expect(nodeEdge).toBeVisible();
+
+    const nodeEdgeStyle = await nodeEdge.getAttribute('style');
+
+    expect(nodeEdgeStyle).toContain('opacity: 0.3');
+  });
+});
+
 test.describe.serial('Test pagination in column level lineage', () => {
   const generateColumnsWithNames = (count: number) => {
     const columns = [];

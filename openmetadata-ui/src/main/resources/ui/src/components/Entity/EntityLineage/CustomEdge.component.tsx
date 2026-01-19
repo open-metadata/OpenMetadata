@@ -172,16 +172,14 @@ export const CustomEdge = ({
       tracedNodes.includes(edge.toEntity.id);
 
     let stroke = '';
-    let display = '';
+    let display = 'block';
+    let opacity = 1;
 
     // For nodes edges
     if (isNodeTraced) {
       stroke = theme.palette.primary.main;
-      display = 'block';
-    } else if (tracedNodes.length === 0 && tracedColumns.length === 0) {
-      display = 'block';
-    } else {
-      display = 'none';
+    } else if (!(tracedNodes.length === 0) || !(tracedColumns.length === 0)) {
+      opacity = 0.3;
     }
 
     // For columns edges
@@ -193,6 +191,7 @@ export const CustomEdge = ({
         stroke = selectedColumn
           ? theme.palette.allShades.indigo[600]
           : theme.palette.primary.main;
+        opacity = 1;
       } else if (noTracing && areBothColumnHandlesPresentInCurrentPage) {
         display = 'block';
       } else {
@@ -207,6 +206,7 @@ export const CustomEdge = ({
     return {
       ...style,
       stroke,
+      opacity,
       display,
     };
   }, [
