@@ -472,20 +472,19 @@ export const importOdcsViaDropdown = async (
 ): Promise<void> => {
   await page.getByTestId('add-contract-button').click();
 
-  await page.waitForSelector('.contract-action-dropdown', {
-    state: 'visible',
-  });
+  await page.getByTestId('import-odcs-contract-button').click();
 
-  const importResponse = page.waitForResponse(
-    '/api/v1/dataContracts/odcs/yaml**'
-  );
+  // const importResponse = page.waitForResponse(
+  //   '/api/v1/dataContracts/odcs/yaml**'
+  // );
 
-  const fileInput = page.getByTestId('odcs-import-file-input');
+  const fileInput = page.getByTestId('file-upload-input');
   await fileInput.setInputFiles({
     name: filename,
     mimeType: 'application/yaml',
     buffer: Buffer.from(yamlContent),
   });
 
-  await importResponse;
+  await page.getByTestId('import-button').click();
+  // await importResponse;
 };

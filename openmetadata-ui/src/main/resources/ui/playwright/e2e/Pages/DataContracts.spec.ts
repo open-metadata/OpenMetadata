@@ -51,7 +51,7 @@ import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
-import { resetTokenFromBotPage } from '../../utils/bot';
+
 import {
   clickOutside,
   getApiContext,
@@ -120,6 +120,7 @@ const entitySupportsQuality = (entityType: string): boolean => {
 };
 
 test.describe('Data Contracts', () => {
+  test.slow(true)
   const user = new UserClass();
   test.slow(true)
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
@@ -669,7 +670,7 @@ test.describe('Data Contracts', () => {
       await test.step('Import contract from ODCS YAML', async () => {
         await importOdcsViaDropdown(page, ODCS_WITH_SLA_YAML, 'contract.yaml');
 
-        await toastNotification(page, 'Contract imported successfully');
+        await toastNotification(page, 'ODCS Contract imported successfully');
 
         await expect(page.getByTestId('contract-title')).toBeVisible();
 
@@ -956,6 +957,9 @@ test.describe('Data Contracts', () => {
 
     await page.getByTestId('add-contract-button').click();
 
+    await expect(page.getByTestId('add-contract-menu')).toBeVisible();
+    await page.getByTestId('create-contract-button').click();
+
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
@@ -1126,6 +1130,9 @@ test.describe('Data Contracts', () => {
 
     await page.getByTestId('add-contract-button').click();
 
+    await expect(page.getByTestId('add-contract-menu')).toBeVisible();
+    await page.getByTestId('create-contract-button').click();
+
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
@@ -1288,6 +1295,9 @@ test.describe('Data Contracts', () => {
 
     await page.getByTestId('add-contract-button').click();
 
+    await expect(page.getByTestId('add-contract-menu')).toBeVisible();
+    await page.getByTestId('create-contract-button').click();
+
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
     await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
@@ -1358,6 +1368,10 @@ test.describe('Data Contracts', () => {
     await navigateToContractTab(page);
 
     await page.getByTestId('add-contract-button').click();
+
+
+    await expect(page.getByTestId('add-contract-menu')).toBeVisible();
+    await page.getByTestId('create-contract-button').click();
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
@@ -1492,6 +1506,9 @@ test.describe('Data Contracts', () => {
     await navigateToContractTab(page);
 
     await page.getByTestId('add-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-menu')).toBeVisible();
+    await page.getByTestId('create-contract-button').click();
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
@@ -1827,8 +1844,7 @@ test.describe('Data Contracts', () => {
         await expect(
           page.getByTestId(`contract-security-rowFilter-0-${filter.index}`)
         ).toContainText(
-          `${table.columnsName[filter.index]} = ${filter.values[0]},${
-            filter.values[1]
+          `${table.columnsName[filter.index]} = ${filter.values[0]},${filter.values[1]
           }`
         );
       }
@@ -1906,8 +1922,7 @@ test.describe('Data Contracts', () => {
           await expect(
             page.getByTestId(`contract-security-rowFilter-0-${filter.index}`)
           ).toContainText(
-            `${table.columnsName[filter.index]} = ${filter.values[0]},${
-              filter.values[1]
+            `${table.columnsName[filter.index]} = ${filter.values[0]},${filter.values[1]
             },${filter.values[2]},${filter.values[3]}`
           );
         }
@@ -2002,7 +2017,7 @@ test.describe('Data Contracts', () => {
         await navigateToContractTab(page);
         await importOdcsViaDropdown(page, ODCS_WITH_SLA_YAML, 'initial.yaml');
 
-        await toastNotification(page, 'Contract imported successfully');
+        await toastNotification(page, 'ODCSContract imported successfully');
 
         await expect(page.getByTestId('contract-title')).toBeVisible();
         await expect(page.getByTestId('contract-sla-card')).toBeVisible();
@@ -2096,7 +2111,7 @@ description:
           await navigateToContractTab(page);
           await importOdcsViaDropdown(page, ODCS_WITH_SLA_YAML, 'initial.yaml');
 
-          await toastNotification(page, 'Contract imported successfully');
+          await toastNotification(page, 'ODCS Contract imported successfully');
 
           // Verify SLA is present
           await expect(page.getByTestId('contract-sla-card')).toBeVisible();
@@ -2247,6 +2262,9 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               ).toBeVisible();
 
               await page.getByTestId('add-contract-button').click();
+
+              await expect(page.getByTestId('add-contract-menu')).toBeVisible();
+              await page.getByTestId('create-contract-button').click();
 
               await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
