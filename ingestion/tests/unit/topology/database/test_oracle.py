@@ -13,7 +13,7 @@ Test Oracle using the topology
 """
 
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, Mock, patch
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -41,6 +41,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.oracle.metadata import OracleSource
 from metadata.ingestion.source.database.oracle.models import OracleStoredObject
@@ -286,3 +287,38 @@ class OracleUnitTest(TestCase):
             mock_dialect.all_view_definitions[("test_view_with_ddl", "test_schema")]
             == expected_view_ddl_definition
         )
+
+    def test_get_stored_procedures(self):
+        """
+        Test fetching stored procedures with filter
+        """
+        self.oracle.source_config.includeStoredProcedures = True
+        self.oracle.source_config.storedProcedureFilterPattern = FilterPattern(
+            includes=["sp_include"]
+        )
+        self.oracle.context.get().__dict__["database"] = "test_db"
+        self.oracle.context.get().__dict__["database_schema"] = "test_schema"
+
+        mock_engine = MagicMock()
+        self.oracle.engine = mock_engine
+
+        # Row format: owner, name, line, text, procedure_type
+        rows_procedures = [
+            ("owner", "sp_include", 1, "def1", "StoredProcedure"),
+            ("owner", "sp_exclude", 1, "def2", "StoredProcedure"),
+        ]
+
+        rows_packages = []
+
+        mock_result_proc = MagicMock()
+        mock_result_proc.all.return_value = rows_procedures
+
+        mock_result_pkg = MagicMock()
+        mock_result_pkg.all.return_value = rows_packages
+
+        mock_engine.execute.side_effect = [mock_result_proc, mock_result_pkg]
+
+        results = list(self.oracle.get_stored_procedures())
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].name, "sp_include")

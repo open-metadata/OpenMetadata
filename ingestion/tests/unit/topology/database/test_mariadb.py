@@ -20,6 +20,7 @@ from unittest.mock import Mock, patch
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureType
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -88,7 +89,7 @@ class MariaDBUnitTest(TestCase):
         self.mariadb_source._connection_map = {}
 
     def test_get_stored_procedures(self):
-        """Test getting both stored procedures and functions"""
+        """Test getting both stored procedures and functions with filter"""
         mock_proc_row = Mock()
         mock_proc_row._mapping = {
             "procedure_name": "test_procedure",
@@ -109,10 +110,31 @@ class MariaDBUnitTest(TestCase):
             "description": "Test function",
         }
 
+        mock_exclude_row = Mock()
+        mock_exclude_row._mapping = {
+            "procedure_name": "exclude_procedure",
+            "schema_name": "test_schema",
+            "definition": "RETURN 1",
+            "language": "SQL",
+            "procedure_type": "PROCEDURE",
+            "description": "Test exclude",
+        }
+
+        # Configure filter
+        self.mariadb_source.source_config.includeStoredProcedures = True
+        self.mariadb_source.source_config.storedProcedureFilterPattern = FilterPattern(
+            excludes=["exclude_procedure"]
+        )
+
         with patch.object(self.mariadb_source, "engine") as mock_engine:
             mock_results = [Mock(), Mock()]
-            mock_results[0].all.return_value = [mock_proc_row]
-            mock_results[1].all.return_value = [mock_func_row]
+            mock_results[0].all.return_value = [
+                mock_proc_row,
+                mock_exclude_row,
+            ]  # Procedures query
+            mock_results[1].all.return_value = [mock_func_row]  # Functions query
+
+            # Since execute is called with different queries, side_effect should return result sets
             mock_engine.execute.side_effect = mock_results
 
             procedures = list(self.mariadb_source.get_stored_procedures())

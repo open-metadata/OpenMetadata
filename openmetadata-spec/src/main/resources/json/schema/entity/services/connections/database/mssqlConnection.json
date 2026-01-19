@@ -122,7 +122,7 @@
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
       "default": {
         "includes": [],
-        "excludes": ["sp_*"]
+        "excludes": ["^sp_"]
       }
     },
     "connectionOptions": {

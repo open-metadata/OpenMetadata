@@ -36,6 +36,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.source.database.common_pg_mappings import (
     GEOMETRY,
     POINT,
@@ -357,6 +358,43 @@ class PostgresUnitTest(TestCase):
         )
         for i, _ in enumerate(EXPECTED_COLUMN_VALUE):
             self.assertEqual(result[i], EXPECTED_COLUMN_VALUE[i])
+
+    def test_get_stored_procedures(self):
+        """
+        Test fetching stored procedures with filter
+        """
+        self.postgres_source.source_config.includeStoredProcedures = True
+        self.postgres_source.source_config.storedProcedureFilterPattern = FilterPattern(
+            excludes=["sp_exclude"]
+        )
+        self.postgres_source.context.get().__dict__["database"] = "test_db"
+        self.postgres_source.context.get().__dict__["database_schema"] = "test_schema"
+
+        mock_engine = MagicMock()
+        self.postgres_source.engine = mock_engine
+
+        # Mock rows
+        row1 = {
+            "procedure_name": "sp_include",
+            "schema_name": "test_schema",
+            "definition": "def1",
+            "language": "SQL",
+            "procedure_type": "PROCEDURE",
+        }
+        row2 = {
+            "procedure_name": "sp_exclude",
+            "schema_name": "test_schema",
+            "definition": "def2",
+            "language": "SQL",
+            "procedure_type": "PROCEDURE",
+        }
+
+        mock_engine.execute.return_value.all.return_value = [row1, row2]
+
+        results = list(self.postgres_source.get_stored_procedures())
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].name, "sp_include")
 
     @patch("sqlalchemy.engine.base.Engine")
     def test_get_version_info(self, engine):
