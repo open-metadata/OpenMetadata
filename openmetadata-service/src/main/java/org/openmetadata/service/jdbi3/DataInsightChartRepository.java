@@ -8,10 +8,10 @@ import java.util.List;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.datainsight.DataInsightChartResource;
 import org.openmetadata.service.util.EntityUtil;
 
 public class DataInsightChartRepository extends EntityRepository<DataInsightChart> {
-  public static final String COLLECTION_PATH = "/v1/analytics/dataInsights/charts";
   public static final String LAST_SESSION = "lastSession";
   public static final String DATA_ENTITY_TYPE = "data.entityType";
   public static final String TIMESTAMP = "timestamp";
@@ -71,7 +71,7 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
 
   public DataInsightChartRepository() {
     super(
-        COLLECTION_PATH,
+        DataInsightChartResource.COLLECTION_PATH,
         DATA_INSIGHT_CHART,
         DataInsightChart.class,
         Entity.getCollectionDAO().dataInsightChartDAO(),

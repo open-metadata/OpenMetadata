@@ -38,7 +38,12 @@ import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { TagClass } from '../../support/tag/TagClass';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
-import { updateDisplayNameForEntity } from '../../utils/entity';
+import {
+  copyAndGetClipboardText,
+  testCopyLinkButton,
+  updateDisplayNameForEntity,
+  validateCopiedLinkFormat,
+} from '../../utils/entity';
 import {
   Bucket,
   validateBucketsForIndex,
@@ -48,7 +53,12 @@ import {
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
+test.use({
+  storageState: 'playwright/.auth/admin.json',
+  contextOptions: {
+    permissions: ['clipboard-read', 'clipboard-write'],
+  },
+});
 
 test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
@@ -426,5 +436,113 @@ test.describe('Explore page', () => {
         }
       }
     );
+  });
+
+  test('Copy field link button should copy the field URL to clipboard for SearchIndex', async ({
+    page,
+  }) => {
+    await searchIndex.visitEntityPage(page);
+
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    await testCopyLinkButton({
+      page,
+      buttonTestId: 'copy-field-link-button',
+      containerTestId: 'search-index-fields-table',
+      expectedUrlPath: '/searchIndex/',
+      entityFqn: searchIndex.entityResponseData?.['fullyQualifiedName'] ?? '',
+    });
+  });
+
+  test('Copy field link button should copy the field URL to clipboard for APIEndpoint', async ({
+    page,
+  }) => {
+    await apiEndpoint.visitEntityPage(page);
+
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    await testCopyLinkButton({
+      page,
+      buttonTestId: 'copy-field-link-button',
+      containerTestId: 'schema-fields-table',
+      expectedUrlPath: '/apiEndpoint/',
+      entityFqn: apiEndpoint.entityResponseData?.['fullyQualifiedName'] ?? '',
+    });
+  });
+
+  test('Copy field link should have valid URL format for SearchIndex', async ({
+    page,
+  }) => {
+    await searchIndex.visitEntityPage(page);
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    await expect(page.getByTestId('search-index-fields-table')).toBeVisible();
+
+    const copyButton = page.getByTestId('copy-field-link-button').first();
+    await expect(copyButton).toBeVisible();
+
+    const clipboardText = await copyAndGetClipboardText(page, copyButton);
+
+    const validationResult = validateCopiedLinkFormat({
+      clipboardText,
+      expectedEntityType: 'searchIndex',
+      entityFqn: searchIndex.entityResponseData?.['fullyQualifiedName'] ?? '',
+    });
+
+    expect(validationResult.isValid).toBe(true);
+    expect(validationResult.protocol).toMatch(/^https?:$/);
+    expect(validationResult.pathname).toContain('searchIndex');
+
+    // Visit the copied link to verify it opens the side panel
+    await page.goto(clipboardText);
+
+    // Verify side panel is open
+    const sidePanel = page.locator('.column-detail-panel');
+    await expect(sidePanel).toBeVisible();
+
+    // Close side panel
+    await page.getByTestId('close-button').click();
+    await expect(sidePanel).not.toBeVisible();
+
+    // Verify URL does not contain the column part
+    await expect(page).toHaveURL(new RegExp(`/searchIndex/${searchIndex.entityResponseData?.['fullyQualifiedName']}$`));
+  });
+
+  test('Copy field link should have valid URL format for APIEndpoint', async ({
+    page,
+  }) => {
+    await apiEndpoint.visitEntityPage(page);
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    await expect(page.getByTestId('schema-fields-table')).toBeVisible();
+
+    const copyButton = page.getByTestId('copy-field-link-button').first();
+    await expect(copyButton).toBeVisible();
+
+    const clipboardText = await copyAndGetClipboardText(page, copyButton);
+
+    const validationResult = validateCopiedLinkFormat({
+      clipboardText,
+      expectedEntityType: 'apiEndpoint',
+      entityFqn: apiEndpoint.entityResponseData?.['fullyQualifiedName'] ?? '',
+    });
+
+    expect(validationResult.isValid).toBe(true);
+    expect(validationResult.protocol).toMatch(/^https?:$/);
+    expect(validationResult.pathname).toContain('apiEndpoint');
+
+    // Visit the copied link to verify it opens the side panel
+    await page.goto(clipboardText);
+
+    // Verify side panel is open
+    const sidePanel = page.locator('.column-detail-panel');
+    await expect(sidePanel).toBeVisible();
+
+    // Close side panel
+    await page.getByTestId('close-button').click();
+    await expect(sidePanel).not.toBeVisible();
+
+    // Verify URL does not contain the column part
+    await expect(page).toHaveURL(new RegExp(`/apiEndpoint/${apiEndpoint.entityResponseData?.['fullyQualifiedName']}$`));
   });
 });

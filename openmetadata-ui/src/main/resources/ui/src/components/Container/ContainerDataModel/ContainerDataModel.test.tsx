@@ -15,6 +15,7 @@ import {
   findAllByTestId,
   findByTestId,
   findByText,
+  fireEvent,
   queryByTestId,
   render,
   screen,
@@ -170,6 +171,12 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
     ))
 );
 
+jest.mock('../../../utils/RouterUtils', () => ({
+  getEntityDetailsPath: jest
+    .fn()
+    .mockImplementation((_entityType, fqn) => `/container/${fqn}`),
+}));
+
 jest.mock(
   '../../Database/ColumnDetailPanel/ColumnDetailPanel.component',
   () => ({
@@ -265,5 +272,46 @@ describe('ContainerDataModel', () => {
     const editDescriptionButton = queryByTestId(row1, 'edit-button');
 
     expect(editDescriptionButton).toBeNull();
+  });
+
+  it('Should render copy column link button for each column', async () => {
+    render(
+      <MemoryRouter>
+        <ContainerDataModel {...props} />
+      </MemoryRouter>
+    );
+
+    const copyButtons = await screen.findAllByTestId('copy-column-link-button');
+
+    expect(copyButtons).toHaveLength(4);
+  });
+
+  it('Should copy column link to clipboard when copy button is clicked', async () => {
+    const mockWriteText = jest.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: mockWriteText,
+      },
+    });
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      writable: true,
+    });
+
+    render(
+      <MemoryRouter>
+        <ContainerDataModel {...props} />
+      </MemoryRouter>
+    );
+
+    const copyButtons = await screen.findAllByTestId('copy-column-link-button');
+
+    await act(async () => {
+      fireEvent.click(copyButtons[0]);
+    });
+
+    expect(mockWriteText).toHaveBeenCalledWith(
+      expect.stringContaining(props.dataModel.columns[0].fullyQualifiedName!)
+    );
   });
 });

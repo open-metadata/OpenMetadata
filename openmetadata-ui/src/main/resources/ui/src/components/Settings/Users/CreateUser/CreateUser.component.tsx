@@ -198,13 +198,15 @@ const CreateUser = ({
               },
             },
           }
-        : {
+        : isAuthProviderBasic
+        ? {
             password: isPasswordGenerated ? generatedPassword : password,
             confirmPassword: isPasswordGenerated
               ? generatedPassword
               : confirmPassword,
             createPasswordType: CreatePasswordType.AdminCreate,
-          }),
+          }
+        : {}),
     };
     onSave(userProfile);
   };
