@@ -9,6 +9,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
   public TestDefinitionRepository() {
@@ -22,7 +23,8 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
   }
 
   @Override
-  public void setFields(TestDefinition entity, EntityUtil.Fields fields) {
+  public void setFields(
+      TestDefinition entity, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     /* Nothing to do */
   }
 

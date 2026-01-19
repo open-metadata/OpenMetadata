@@ -29,6 +29,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
 import org.openmetadata.service.resources.kpi.KpiResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 public class KpiRepository extends EntityRepository<Kpi> {
@@ -50,7 +51,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
   }
 
   @Override
-  public void setFields(Kpi kpi, EntityUtil.Fields fields) {
+  public void setFields(Kpi kpi, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     kpi.setDataInsightChart(
         fields.contains("dataInsightChart") ? getDataInsightChart(kpi) : kpi.getDataInsightChart());
     kpi.withKpiResult(

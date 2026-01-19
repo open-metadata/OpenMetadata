@@ -438,6 +438,73 @@ public final class EntityUtil {
   }
 
   /**
+   * Holds include values for relation fields, allowing per-field control over whether to include
+   * deleted, non-deleted, or all related entities.
+   *
+   * <p>Usage: API parameter format is "field:include_value,field2:include_value2" Example:
+   * "owners:non_deleted,followers:all,experts:deleted"
+   */
+  @Getter
+  public static class RelationIncludes {
+    private final Include defaultInclude;
+    private final Map<String, Include> fieldIncludes;
+
+    public RelationIncludes(Include defaultInclude) {
+      this.defaultInclude = defaultInclude != null ? defaultInclude : ALL;
+      this.fieldIncludes = new HashMap<>();
+    }
+
+    public RelationIncludes(Include defaultInclude, String includeRelationsParam) {
+      this.defaultInclude = defaultInclude != null ? defaultInclude : ALL;
+      this.fieldIncludes = parseIncludeRelations(includeRelationsParam);
+    }
+
+    public RelationIncludes(Include defaultInclude, Map<String, Include> fieldIncludes) {
+      this.defaultInclude = defaultInclude != null ? defaultInclude : ALL;
+      this.fieldIncludes = fieldIncludes != null ? new HashMap<>(fieldIncludes) : new HashMap<>();
+    }
+
+    public Include getIncludeFor(String fieldName) {
+      return fieldIncludes.getOrDefault(fieldName, defaultInclude);
+    }
+
+    public boolean hasFieldSpecificInclude(String fieldName) {
+      return fieldIncludes.containsKey(fieldName);
+    }
+
+    private static Map<String, Include> parseIncludeRelations(String includeRelationsParam) {
+      Map<String, Include> result = new HashMap<>();
+      if (nullOrEmpty(includeRelationsParam)) {
+        return result;
+      }
+      String[] pairs = includeRelationsParam.split(",");
+      for (String pair : pairs) {
+        String[] parts = pair.trim().split(":");
+        if (parts.length == 2) {
+          String fieldName = parts[0].trim();
+          String includeValue = parts[1].trim().toUpperCase().replace("-", "_");
+          try {
+            Include include = Include.valueOf(includeValue);
+            result.put(fieldName, include);
+          } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                "Invalid include value '"
+                    + parts[1].trim()
+                    + "' for field '"
+                    + fieldName
+                    + "'. Valid values are: all, deleted, non-deleted");
+          }
+        }
+      }
+      return result;
+    }
+
+    public static RelationIncludes fromInclude(Include include) {
+      return new RelationIncludes(include);
+    }
+  }
+
+  /**
    * Entity version extension name formed by entityType.version.versionNumber. Example -
    * `table.version.0.1`
    */

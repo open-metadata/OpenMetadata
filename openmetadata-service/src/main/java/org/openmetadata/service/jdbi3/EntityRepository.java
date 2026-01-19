@@ -217,6 +217,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityETag;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.ListWithOffsetFunction;
 import org.openmetadata.service.util.RestUtil;
@@ -281,6 +282,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final CollectionDAO daoCollection;
   @Getter protected final JobDAO jobDao;
   @Getter protected final SearchRepository searchRepository;
+  @Getter protected final EntityRelationshipRepository relationshipRepository;
   @Getter protected final Set<String> allowedFields;
   public final boolean supportsSoftDelete;
   @Getter protected final boolean supportsTags;
@@ -353,6 +355,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     this.daoCollection = Entity.getCollectionDAO();
     this.jobDao = Entity.getJobDAO();
     this.searchRepository = Entity.getSearchRepository();
+    this.relationshipRepository = new EntityRelationshipRepository(this.daoCollection);
     this.entityType = entityType;
     this.patchFields = getFields(patchFields);
     this.putFields = getFields(putFields);
@@ -461,11 +464,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Set the requested fields in an entity. This is used for requesting specific fields in the object during GET
    * operations. It is also used during PUT and PATCH operations to set up fields that can be updated.
    */
-  protected abstract void setFields(T entity, Fields fields);
+  protected abstract void setFields(T entity, Fields fields, RelationIncludes relationIncludes);
 
   /**
    * Set the requested fields in an entity. This is used for requesting specific fields in the object during GET
    * operations. It is also used during PUT and PATCH operations to set up fields that can be updated.
+   *
+   * @param entity The entity to set fields on
+   * @param fields The fields to set
+   * @param relationIncludes Per-relation include filter for handling soft-deleted related entities
    */
   protected abstract void clearFields(T entity, Fields fields);
 
@@ -710,19 +717,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Used for getting an entity with a set of requested fields
    */
   public final T get(UriInfo uriInfo, UUID id, Fields fields, Include include, boolean fromCache) {
+    return get(uriInfo, id, fields, RelationIncludes.fromInclude(include), fromCache);
+  }
+
+  /**
+   * Used for getting an entity with a set of requested fields with per-relation include control
+   */
+  public final T get(
+      UriInfo uriInfo,
+      UUID id,
+      Fields fields,
+      RelationIncludes relationIncludes,
+      boolean fromCache) {
     if (!fromCache) {
-      // Clear the cache and always get the entity from the database to ensure read-after-write
-      // consistency
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
     }
-    // Find the entity from the cache. Set all the fields that are not already set
-    T entity = find(id, include);
-    setFieldsInternal(entity, fields);
+    T entity = find(id, relationIncludes.getDefaultInclude());
+    setFieldsInternal(entity, fields, relationIncludes);
     setInheritedFields(entity, fields);
 
-    // Clone the entity from the cache and reset all the fields that are not already set
-    // Cloning is necessary to ensure different threads making a call to this method don't
-    // overwrite the fields of the entity being returned
     T entityClone = JsonUtils.deepCopy(entity, entityClass);
     clearFieldsInternal(entityClone, fields);
     return withHref(uriInfo, entityClone);
@@ -798,20 +811,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final T getByName(
       UriInfo uriInfo, String fqn, Fields fields, Include include, boolean fromCache) {
+    return getByName(uriInfo, fqn, fields, RelationIncludes.fromInclude(include), fromCache);
+  }
+
+  public final T getByName(
+      UriInfo uriInfo,
+      String fqn,
+      Fields fields,
+      RelationIncludes relationIncludes,
+      boolean fromCache) {
     fqn = quoteFqn ? quoteName(fqn) : fqn;
     if (!fromCache) {
-      // Clear the cache and always get the entity from the database to ensure read-after-write
-      // consistency
       CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, fqn));
     }
-    // Find the entity from the cache. Set all the fields that are not already set
-    T entity = findByName(fqn, include);
-    setFieldsInternal(entity, fields);
+    T entity = findByName(fqn, relationIncludes.getDefaultInclude());
+    setFieldsInternal(entity, fields, relationIncludes);
     setInheritedFields(entity, fields);
 
-    // Clone the entity from the cache and reset all the fields that are not already set
-    // Cloning is necessary to ensure different threads making a call to this method don't
-    // overwrite the fields of the entity being returned
     T entityClone = JsonUtils.deepCopy(entity, entityClass);
     clearFieldsInternal(entityClone, fields);
     return withHref(uriInfo, entityClone);
@@ -1209,7 +1225,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final T setFieldsInternal(T entity, Fields fields) {
     // Revert to original implementation without optimization logic
-    entity.setOwners(fields.contains(FIELD_OWNERS) ? getOwners(entity) : entity.getOwners());
+    return setFieldsInternal(entity, fields, NON_DELETED);
+  }
+
+  public final T setFieldsInternal(T entity, Fields fields, Include include) {
+    return setFieldsInternal(entity, fields, RelationIncludes.fromInclude(include));
+  }
+
+  public final T setFieldsInternal(T entity, Fields fields, RelationIncludes relationIncludes) {
+    entity.setOwners(
+        fields.contains(FIELD_OWNERS)
+            ? getOwners(entity, relationIncludes.getIncludeFor(FIELD_OWNERS))
+            : entity.getOwners());
     entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity) : entity.getTags());
     entity.setCertification(
         fields.contains(FIELD_TAGS) || fields.contains(FIELD_CERTIFICATION)
@@ -1217,20 +1244,30 @@ public abstract class EntityRepository<T extends EntityInterface> {
             : null);
     entity.setExtension(
         fields.contains(FIELD_EXTENSION) ? getExtension(entity) : entity.getExtension());
-    // Always return domains of entity
-    entity.setDomains(getDomains(entity));
+    entity.setDomains(getDomains(entity, relationIncludes.getIncludeFor(FIELD_DOMAINS)));
     entity.setDataProducts(
-        fields.contains(FIELD_DATA_PRODUCTS) ? getDataProducts(entity) : entity.getDataProducts());
+        fields.contains(FIELD_DATA_PRODUCTS)
+            ? getDataProducts(entity, relationIncludes.getIncludeFor(FIELD_DATA_PRODUCTS))
+            : entity.getDataProducts());
     entity.setFollowers(
-        fields.contains(FIELD_FOLLOWERS) ? getFollowers(entity) : entity.getFollowers());
+        fields.contains(FIELD_FOLLOWERS)
+            ? getFollowers(entity, relationIncludes.getIncludeFor(FIELD_FOLLOWERS))
+            : entity.getFollowers());
     entity.setChildren(
-        fields.contains(FIELD_CHILDREN) ? getChildren(entity) : entity.getChildren());
-    entity.setExperts(fields.contains(FIELD_EXPERTS) ? getExperts(entity) : entity.getExperts());
+        fields.contains(FIELD_CHILDREN)
+            ? getChildren(entity, relationIncludes.getIncludeFor(FIELD_CHILDREN))
+            : entity.getChildren());
+    entity.setExperts(
+        fields.contains(FIELD_EXPERTS)
+            ? getExperts(entity, relationIncludes.getIncludeFor(FIELD_EXPERTS))
+            : entity.getExperts());
     entity.setReviewers(
-        fields.contains(FIELD_REVIEWERS) ? getReviewers(entity) : entity.getReviewers());
+        fields.contains(FIELD_REVIEWERS)
+            ? getReviewers(entity, relationIncludes.getIncludeFor(FIELD_REVIEWERS))
+            : entity.getReviewers());
     entity.setVotes(fields.contains(FIELD_VOTES) ? getVotes(entity) : entity.getVotes());
 
-    setFields(entity, fields);
+    setFields(entity, fields, relationIncludes);
     return entity;
   }
 
@@ -2972,9 +3009,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected List<EntityReference> getFollowers(T entity) {
+    return getFollowers(entity, NON_DELETED);
+  }
+
+  protected List<EntityReference> getFollowers(T entity, Include include) {
     return !supportsFollower || entity == null
         ? Collections.emptyList()
-        : findFrom(entity.getId(), entityType, Relationship.FOLLOWS, USER);
+        : findFrom(entity.getId(), entityType, Relationship.FOLLOWS, USER, include);
   }
 
   protected Votes getVotes(T entity) {
@@ -3139,9 +3180,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final List<EntityReference> findFrom(
       UUID toId, String toEntityType, Relationship relationship, String fromEntityType) {
+    return findFrom(toId, toEntityType, relationship, fromEntityType, NON_DELETED);
+  }
+
+  public final List<EntityReference> findFrom(
+      UUID toId,
+      String toEntityType,
+      Relationship relationship,
+      String fromEntityType,
+      Include include) {
     List<EntityRelationshipRecord> records =
         findFromRecords(toId, toEntityType, relationship, fromEntityType);
-    return getEntityReferences(records);
+    return Entity.getEntityRelationshipRepository().getEntityReferences(records, include);
   }
 
   public final List<CollectionDAO.EntityRelationshipObject> findFromRecordsBatch(
@@ -3227,18 +3277,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final List<EntityReference> getFromEntityRefs(
       UUID toId, Relationship relationship, String fromEntityType) {
+    return getFromEntityRefs(toId, relationship, fromEntityType, NON_DELETED);
+  }
+
+  public final List<EntityReference> getFromEntityRefs(
+      UUID toId, Relationship relationship, String fromEntityType, Include include) {
     List<EntityRelationshipRecord> records =
         findFromRecords(toId, entityType, relationship, fromEntityType);
     if (!records.isEmpty()) {
-      List<EntityReference> refs = new ArrayList<>();
-      for (EntityRelationshipRecord record : records) {
-        try {
-          refs.add(Entity.getEntityReferenceById(record.getType(), record.getId(), ALL));
-        } catch (EntityNotFoundException e) {
-          // Skip deleted entities
-          LOG.debug("Skipping deleted entity reference: {} {}", record.getType(), record.getId());
-        }
-      }
+      List<EntityReference> refs =
+          Entity.getEntityRelationshipRepository().getEntityReferences(records, include);
       return refs.isEmpty() ? null : refs;
     }
     return null;
@@ -3292,10 +3340,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final List<EntityReference> findTo(
       UUID fromId, String fromEntityType, Relationship relationship, String toEntityType) {
+    return findTo(fromId, fromEntityType, relationship, toEntityType, NON_DELETED);
+  }
+
+  public final List<EntityReference> findTo(
+      UUID fromId,
+      String fromEntityType,
+      Relationship relationship,
+      String toEntityType,
+      Include include) {
     // When toEntityType is null, all the relationships to any entity is returned
     List<EntityRelationshipRecord> records =
         findToRecords(fromId, fromEntityType, relationship, toEntityType);
-    return getEntityReferences(records);
+    return Entity.getEntityRelationshipRepository().getEntityReferences(records, include);
   }
 
   public final List<EntityRelationshipRecord> findToRecords(
@@ -3421,13 +3478,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final List<EntityReference> getOwners(T entity) {
+    return getOwners(entity, NON_DELETED);
+  }
+
+  public final List<EntityReference> getOwners(T entity, Include include) {
     if (!supportsOwners) {
       return Collections.emptyList();
     }
 
-    // Try to get from cache first
+    // Try to get from cache first (only for NON_DELETED as cache stores non-deleted data)
     var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
-    if (cachedRelationshipDao != null) {
+    if (include == NON_DELETED && cachedRelationshipDao != null) {
       List<EntityReference> cached = cachedRelationshipDao.getOwners(entityType, entity.getId());
       if (cached != null) {
         LOG.debug("CACHE HIT: Retrieved owners from cache for {} {}", entityType, entity.getId());
@@ -3436,10 +3497,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     // Fall back to database
-    List<EntityReference> owners = findFrom(entity.getId(), entityType, Relationship.OWNS, null);
+    List<EntityReference> owners =
+        findFrom(entity.getId(), entityType, Relationship.OWNS, null, include);
 
-    // Cache the result for next time
-    if (cachedRelationshipDao != null && owners != null) {
+    // Cache the result for next time (only for NON_DELETED)
+    if (include == NON_DELETED && cachedRelationshipDao != null && owners != null) {
       String ownersJson = JsonUtils.pojoToJson(owners);
       cachedRelationshipDao.putOwners(entityType, entity.getId(), ownersJson);
     }
@@ -3448,10 +3510,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final List<EntityReference> getOwners(EntityReference ref) {
-    return supportsOwners ? getFromEntityRefs(ref.getId(), Relationship.OWNS, null) : null;
+    return getOwners(ref, NON_DELETED);
+  }
+
+  public final List<EntityReference> getOwners(EntityReference ref, Include include) {
+    return supportsOwners ? getFromEntityRefs(ref.getId(), Relationship.OWNS, null, include) : null;
   }
 
   protected List<EntityReference> getDomains(T entity) {
+    return getDomains(entity, NON_DELETED);
+  }
+
+  protected List<EntityReference> getDomains(T entity, Include include) {
     if (!supportsDomains) {
       return null;
     }
@@ -3463,9 +3533,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return null;
     }
 
-    // Try to get from cache first
+    // Try to get from cache first (only for NON_DELETED as cache stores non-deleted data)
     var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
-    if (cachedRelationshipDao != null) {
+    if (include == NON_DELETED && cachedRelationshipDao != null) {
       List<EntityReference> cached = cachedRelationshipDao.getDomains(entityType, entity.getId());
       if (cached != null) {
         LOG.debug("CACHE HIT: Retrieved domains from cache for {} {}", entityType, entity.getId());
@@ -3474,10 +3544,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     // Fall back to database
-    List<EntityReference> domains = getFromEntityRefs(entity.getId(), Relationship.HAS, DOMAIN);
+    List<EntityReference> domains =
+        getFromEntityRefs(entity.getId(), Relationship.HAS, DOMAIN, include);
 
-    // Cache the result for next time
-    if (cachedRelationshipDao != null && domains != null) {
+    // Cache the result for next time (only for NON_DELETED)
+    if (include == NON_DELETED && cachedRelationshipDao != null && domains != null) {
       String domainsJson = JsonUtils.pojoToJson(domains);
       cachedRelationshipDao.putDomains(entityType, entity.getId(), domainsJson);
     }
@@ -3486,13 +3557,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private List<EntityReference> getDataProducts(T entity) {
+    return getDataProducts(entity, NON_DELETED);
+  }
+
+  private List<EntityReference> getDataProducts(T entity, Include include) {
     return !supportsDataProducts
         ? null
-        : findFrom(entity.getId(), entityType, Relationship.HAS, DATA_PRODUCT);
+        : findFrom(entity.getId(), entityType, Relationship.HAS, DATA_PRODUCT, include);
   }
 
   protected List<EntityReference> getDataProducts(UUID entityId, String entityType) {
-    return findFrom(entityId, entityType, Relationship.HAS, DATA_PRODUCT);
+    return getDataProducts(entityId, entityType, NON_DELETED);
+  }
+
+  protected List<EntityReference> getDataProducts(
+      UUID entityId, String entityType, Include include) {
+    return findFrom(entityId, entityType, Relationship.HAS, DATA_PRODUCT, include);
   }
 
   public EntityInterface getParentEntity(T entity, String fields) {
@@ -3504,17 +3584,31 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected List<EntityReference> getChildren(T entity) {
-    return findTo(entity.getId(), entityType, Relationship.CONTAINS, entityType);
+    return getChildren(entity, NON_DELETED);
+  }
+
+  protected List<EntityReference> getChildren(T entity, Include include) {
+    return findTo(entity.getId(), entityType, Relationship.CONTAINS, entityType, include);
   }
 
   protected List<EntityReference> getReviewers(T entity) {
+    return getReviewers(entity, NON_DELETED);
+  }
+
+  protected List<EntityReference> getReviewers(T entity, Include include) {
     return supportsReviewers
-        ? findFrom(entity.getId(), entityType, Relationship.REVIEWS, null)
+        ? findFrom(entity.getId(), entityType, Relationship.REVIEWS, null, include)
         : null;
   }
 
   protected List<EntityReference> getExperts(T entity) {
-    return supportsExperts ? findTo(entity.getId(), entityType, Relationship.EXPERT, USER) : null;
+    return getExperts(entity, NON_DELETED);
+  }
+
+  protected List<EntityReference> getExperts(T entity, Include include) {
+    return supportsExperts
+        ? findTo(entity.getId(), entityType, Relationship.EXPERT, USER, include)
+        : null;
   }
 
   public final void inheritDomains(T entity, Fields fields, EntityInterface parent) {
@@ -3898,7 +3992,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         .map(
             owner -> {
               if (owner.getType().equals(TEAM)) {
-                Team team = Entity.getEntity(TEAM, owner.getId(), "", ALL);
+                // Use NON_DELETED to throw EntityNotFoundException if team is deleted
+                Team team = Entity.getEntity(TEAM, owner.getId(), "", NON_DELETED);
                 if (!team.getTeamType().equals(CreateTeam.TeamType.GROUP)) {
                   throw new IllegalArgumentException(
                       CatalogExceptionMessage.invalidTeamOwner(team.getTeamType()));
@@ -3907,7 +4002,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 throw new IllegalArgumentException(
                     CatalogExceptionMessage.invalidOwnerType(owner.getType()));
               }
-              return getEntityReferenceById(owner.getType(), owner.getId(), ALL);
+              // Use NON_DELETED to throw EntityNotFoundException if entity is deleted
+              return getEntityReferenceById(owner.getType(), owner.getId(), NON_DELETED);
             })
         .collect(Collectors.toList());
   }

@@ -114,7 +114,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   @Override
-  public void setFields(DataProduct entity, Fields fields) {
+  public void setFields(DataProduct entity, Fields fields, EntityUtil.RelationIncludes includes) {
     // Assets field is not exposed via API - use dedicated paginated API:
     // GET /v1/dataProducts/{id}/assets
   }
