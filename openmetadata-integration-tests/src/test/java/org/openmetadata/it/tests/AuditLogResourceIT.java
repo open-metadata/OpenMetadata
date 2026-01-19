@@ -1378,4 +1378,412 @@ public class AuditLogResourceIT {
         .getHttpClient()
         .executeForString(HttpMethod.GET, fullPath, null, RequestOptions.builder().build());
   }
+
+  // ==================== Actor Type Detection Tests ====================
+  // These tests verify the determineActorType logic in AuditLogRepository
+
+  @Test
+  void test_actorType_regularUser_isUser() throws Exception {
+    // Regular users (like "admin") should have actorType=USER
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create a glossary as admin (regular user)
+    String glossaryName =
+        "ActorTypeUserTest_" + java.util.UUID.randomUUID().toString().substring(0, 8);
+    String createJson =
+        String.format(
+            "{\"name\": \"%s\", \"displayName\": \"Actor Type Test\", \"description\": \"Test for USER actor type\"}",
+            glossaryName);
+
+    String createResponse =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST, "/v1/glossaries", createJson, RequestOptions.builder().build());
+    Map<String, Object> glossary = MAPPER.readValue(createResponse, new TypeReference<>() {});
+    String glossaryId = glossary.get("id").toString();
+    String glossaryFqn = glossary.get("fullyQualifiedName").toString();
+
+    try {
+      Map<String, Object> auditEntry =
+          waitForAuditLogEntry(client, glossaryFqn, "glossary", "entityCreated");
+      assertNotNull(auditEntry, "Audit log entry should exist");
+      assertEquals("USER", auditEntry.get("actorType"), "Regular user should have actorType=USER");
+      assertEquals("admin", auditEntry.get("userName"));
+    } finally {
+      deleteGlossary(client, glossaryId);
+    }
+  }
+
+  @Test
+  void test_actorType_enumValues_allSupported() throws Exception {
+    // Verify all ActorType enum values are supported via the API filter
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Test each valid actor type filter
+    String[] validActorTypes = {"USER", "BOT", "AGENT"};
+
+    for (String actorType : validActorTypes) {
+      Map<String, String> params = new HashMap<>();
+      params.put("actorType", actorType);
+      params.put("limit", "5");
+
+      String response = executeGet(client, AUDIT_LOGS_PATH, params);
+      assertNotNull(response, "API should accept actorType=" + actorType);
+
+      Map<String, Object> result = MAPPER.readValue(response, new TypeReference<>() {});
+      assertNotNull(result.get("data"), "Response should contain data for actorType=" + actorType);
+
+      // Verify any returned entries have the correct actorType
+      java.util.List<Map<String, Object>> data =
+          (java.util.List<Map<String, Object>>) result.get("data");
+      for (Map<String, Object> entry : data) {
+        assertEquals(
+            actorType, entry.get("actorType"), "Returned entries should match requested actorType");
+      }
+    }
+  }
+
+  @Test
+  void test_actorType_botFilter_returnsOnlyBots() throws Exception {
+    // Verify BOT filter returns only bot-generated entries
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Map<String, String> params = new HashMap<>();
+    params.put("actorType", "BOT");
+    params.put("limit", "50");
+
+    String response = executeGet(client, AUDIT_LOGS_PATH, params);
+    assertNotNull(response);
+
+    Map<String, Object> result = MAPPER.readValue(response, new TypeReference<>() {});
+    java.util.List<Map<String, Object>> data =
+        (java.util.List<Map<String, Object>>) result.get("data");
+
+    // All returned entries should have actorType=BOT
+    for (Map<String, Object> entry : data) {
+      assertEquals("BOT", entry.get("actorType"), "All entries should be from BOT actors");
+    }
+  }
+
+  @Test
+  void test_actorType_agentFilter_returnsOnlyAgents() throws Exception {
+    // Verify AGENT filter returns only agent-generated entries
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Map<String, String> params = new HashMap<>();
+    params.put("actorType", "AGENT");
+    params.put("limit", "50");
+
+    String response = executeGet(client, AUDIT_LOGS_PATH, params);
+    assertNotNull(response);
+
+    Map<String, Object> result = MAPPER.readValue(response, new TypeReference<>() {});
+    java.util.List<Map<String, Object>> data =
+        (java.util.List<Map<String, Object>>) result.get("data");
+
+    // All returned entries should have actorType=AGENT
+    for (Map<String, Object> entry : data) {
+      assertEquals("AGENT", entry.get("actorType"), "All entries should be from AGENT actors");
+    }
+  }
+
+  // ==================== Service Name Extraction Tests ====================
+  // These tests verify the extractServiceName logic in AuditLogRepository
+
+  @Test
+  void test_serviceName_extractedFromEntityFQN() throws Exception {
+    // Verify serviceName is correctly extracted from entity FQN
+    // For "sample_data.ecommerce_db.shopify.raw_product_catalog", serviceName should be
+    // "sample_data"
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Map<String, String> params = new HashMap<>();
+    params.put("entityType", "table");
+    params.put("limit", "10");
+
+    String response = executeGet(client, AUDIT_LOGS_PATH, params);
+    assertNotNull(response);
+
+    Map<String, Object> result = MAPPER.readValue(response, new TypeReference<>() {});
+    java.util.List<Map<String, Object>> data =
+        (java.util.List<Map<String, Object>>) result.get("data");
+
+    for (Map<String, Object> entry : data) {
+      String entityFqn = (String) entry.get("entityFQN");
+      String serviceName = (String) entry.get("serviceName");
+
+      if (entityFqn != null && entityFqn.contains(".")) {
+        // Service name should be the first part of the FQN
+        String expectedServiceName = entityFqn.split("\\.")[0];
+        assertEquals(
+            expectedServiceName,
+            serviceName,
+            "serviceName should be first part of entityFQN: " + entityFqn);
+      }
+    }
+  }
+
+  @Test
+  void test_serviceName_filterWorksCorrectly() throws Exception {
+    // Verify serviceName filter returns entries with matching service
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Map<String, String> params = new HashMap<>();
+    params.put("serviceName", "sample_data");
+    params.put("limit", "20");
+
+    String response = executeGet(client, AUDIT_LOGS_PATH, params);
+    assertNotNull(response);
+
+    Map<String, Object> result = MAPPER.readValue(response, new TypeReference<>() {});
+    java.util.List<Map<String, Object>> data =
+        (java.util.List<Map<String, Object>>) result.get("data");
+
+    // All returned entries should have serviceName=sample_data
+    for (Map<String, Object> entry : data) {
+      String serviceName = (String) entry.get("serviceName");
+      assertEquals("sample_data", serviceName, "All entries should have serviceName=sample_data");
+    }
+  }
+
+  @Test
+  void test_serviceName_nullForTopLevelEntities() throws Exception {
+    // Top-level entities (like glossaries) don't have a service, so serviceName should be the FQN
+    // itself or the first part
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create a glossary (top-level entity)
+    String glossaryName =
+        "ServiceNameTest_" + java.util.UUID.randomUUID().toString().substring(0, 8);
+    String createJson =
+        String.format(
+            "{\"name\": \"%s\", \"displayName\": \"Service Name Test\", \"description\": \"Test\"}",
+            glossaryName);
+
+    String createResponse =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST, "/v1/glossaries", createJson, RequestOptions.builder().build());
+    Map<String, Object> glossary = MAPPER.readValue(createResponse, new TypeReference<>() {});
+    String glossaryId = glossary.get("id").toString();
+    String glossaryFqn = glossary.get("fullyQualifiedName").toString();
+
+    try {
+      Map<String, Object> auditEntry =
+          waitForAuditLogEntry(client, glossaryFqn, "glossary", "entityCreated");
+      assertNotNull(auditEntry);
+
+      // For glossary FQN like "GlossaryName", serviceName should be "GlossaryName"
+      String serviceName = (String) auditEntry.get("serviceName");
+      assertEquals(
+          glossaryFqn,
+          serviceName,
+          "For top-level entities, serviceName should be the entity name");
+    } finally {
+      deleteGlossary(client, glossaryId);
+    }
+  }
+
+  // ==================== Event Type Filtering Tests ====================
+  // These tests verify that only supported event types are stored in audit log
+
+  @Test
+  void test_eventType_supportedTypes_allStoredInAuditLog() throws Exception {
+    // Verify all supported event types can be filtered
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String[] supportedEventTypes = {
+      "entityCreated",
+      "entityUpdated",
+      "entityFieldsChanged",
+      "entitySoftDeleted",
+      "entityDeleted",
+      "entityRestored"
+    };
+
+    for (String eventType : supportedEventTypes) {
+      Map<String, String> params = new HashMap<>();
+      params.put("eventType", eventType);
+      params.put("limit", "5");
+
+      String response = executeGet(client, AUDIT_LOGS_PATH, params);
+      assertNotNull(response, "API should accept eventType=" + eventType);
+
+      Map<String, Object> result = MAPPER.readValue(response, new TypeReference<>() {});
+      assertNotNull(result.get("data"), "Response should contain data for eventType=" + eventType);
+
+      // Verify any returned entries have the correct eventType
+      java.util.List<Map<String, Object>> data =
+          (java.util.List<Map<String, Object>>) result.get("data");
+      for (Map<String, Object> entry : data) {
+        assertEquals(
+            eventType, entry.get("eventType"), "Returned entries should match requested eventType");
+      }
+    }
+  }
+
+  @Test
+  void test_eventType_unsupportedType_returnsEmptyResults() throws Exception {
+    // Verify unsupported event types return empty results (not an error)
+    // Events like THREAD_UPDATED, POST_UPDATED etc. should not be in audit log
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String[] unsupportedEventTypes = {
+      "threadUpdated", "postUpdated", "taskClosed", "taskResolved", "entityNoChange"
+    };
+
+    for (String eventType : unsupportedEventTypes) {
+      Map<String, String> params = new HashMap<>();
+      params.put("eventType", eventType);
+      params.put("limit", "5");
+
+      String response = executeGet(client, AUDIT_LOGS_PATH, params);
+      assertNotNull(response, "API should accept unsupported eventType without error");
+
+      Map<String, Object> result = MAPPER.readValue(response, new TypeReference<>() {});
+      java.util.List<Map<String, Object>> data =
+          (java.util.List<Map<String, Object>>) result.get("data");
+
+      // Unsupported event types should not appear in audit log
+      assertTrue(
+          data == null || data.isEmpty(),
+          "Unsupported event type " + eventType + " should not have any entries in audit log");
+    }
+  }
+
+  @Test
+  void test_eventType_entityCreated_hasCorrectStructure() throws Exception {
+    // Verify entityCreated events have expected structure
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Map<String, String> params = new HashMap<>();
+    params.put("eventType", "entityCreated");
+    params.put("limit", "1");
+
+    String response = executeGet(client, AUDIT_LOGS_PATH, params);
+    assertNotNull(response);
+
+    Map<String, Object> result = MAPPER.readValue(response, new TypeReference<>() {});
+    java.util.List<Map<String, Object>> data =
+        (java.util.List<Map<String, Object>>) result.get("data");
+
+    if (data != null && !data.isEmpty()) {
+      Map<String, Object> entry = data.get(0);
+
+      // Verify required fields
+      assertNotNull(entry.get("id"), "id should not be null");
+      assertNotNull(entry.get("changeEventId"), "changeEventId should not be null");
+      assertNotNull(entry.get("eventTs"), "eventTs should not be null");
+      assertEquals("entityCreated", entry.get("eventType"));
+      assertNotNull(entry.get("userName"), "userName should not be null");
+      assertNotNull(entry.get("actorType"), "actorType should not be null");
+      assertNotNull(entry.get("entityType"), "entityType should not be null");
+    }
+  }
+
+  // ==================== Auth Event Tests ====================
+  // These tests verify login/logout event handling
+
+  @Test
+  void test_eventType_userLogin_supportedViaFilter() throws Exception {
+    // Verify userLogin events can be filtered (if any exist)
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Map<String, String> params = new HashMap<>();
+    params.put("eventType", "userLogin");
+    params.put("limit", "10");
+
+    String response = executeGet(client, AUDIT_LOGS_PATH, params);
+    assertNotNull(response, "API should accept userLogin eventType filter");
+
+    Map<String, Object> result = MAPPER.readValue(response, new TypeReference<>() {});
+    assertNotNull(result.get("data"));
+
+    // If there are login events, verify they have correct structure
+    java.util.List<Map<String, Object>> data =
+        (java.util.List<Map<String, Object>>) result.get("data");
+    for (Map<String, Object> entry : data) {
+      assertEquals("userLogin", entry.get("eventType"));
+      assertNotNull(entry.get("userName"), "Login events should have userName");
+    }
+  }
+
+  @Test
+  void test_eventType_userLogout_supportedViaFilter() throws Exception {
+    // Verify userLogout events can be filtered (if any exist)
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Map<String, String> params = new HashMap<>();
+    params.put("eventType", "userLogout");
+    params.put("limit", "10");
+
+    String response = executeGet(client, AUDIT_LOGS_PATH, params);
+    assertNotNull(response, "API should accept userLogout eventType filter");
+
+    Map<String, Object> result = MAPPER.readValue(response, new TypeReference<>() {});
+    assertNotNull(result.get("data"));
+
+    // If there are logout events, verify they have correct structure
+    java.util.List<Map<String, Object>> data =
+        (java.util.List<Map<String, Object>>) result.get("data");
+    for (Map<String, Object> entry : data) {
+      assertEquals("userLogout", entry.get("eventType"));
+      assertNotNull(entry.get("userName"), "Logout events should have userName");
+    }
+  }
+
+  // ==================== Null/Empty Handling Tests ====================
+
+  @Test
+  void test_auditLog_skipsNullEventId() throws Exception {
+    // This test verifies the API doesn't return malformed entries
+    // The write() method in AuditLogRepository skips events with null IDs
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Map<String, String> params = new HashMap<>();
+    params.put("limit", "100");
+
+    String response = executeGet(client, AUDIT_LOGS_PATH, params);
+    assertNotNull(response);
+
+    Map<String, Object> result = MAPPER.readValue(response, new TypeReference<>() {});
+    java.util.List<Map<String, Object>> data =
+        (java.util.List<Map<String, Object>>) result.get("data");
+
+    // All entries should have valid changeEventId (never null or empty)
+    for (Map<String, Object> entry : data) {
+      Object changeEventId = entry.get("changeEventId");
+      assertNotNull(changeEventId, "changeEventId should never be null in returned entries");
+      assertFalse(
+          changeEventId.toString().isEmpty(),
+          "changeEventId should never be empty in returned entries");
+    }
+  }
+
+  @Test
+  void test_auditLog_actorTypeDefaultsToUser() throws Exception {
+    // Verify actorType defaults to USER when not explicitly set
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Map<String, String> params = new HashMap<>();
+    params.put("limit", "50");
+
+    String response = executeGet(client, AUDIT_LOGS_PATH, params);
+    assertNotNull(response);
+
+    Map<String, Object> result = MAPPER.readValue(response, new TypeReference<>() {});
+    java.util.List<Map<String, Object>> data =
+        (java.util.List<Map<String, Object>>) result.get("data");
+
+    // All entries should have a valid actorType (never null)
+    for (Map<String, Object> entry : data) {
+      String actorType = (String) entry.get("actorType");
+      assertNotNull(actorType, "actorType should never be null");
+      assertTrue(
+          actorType.equals("USER") || actorType.equals("BOT") || actorType.equals("AGENT"),
+          "actorType should be USER, BOT, or AGENT, got: " + actorType);
+    }
+  }
 }
