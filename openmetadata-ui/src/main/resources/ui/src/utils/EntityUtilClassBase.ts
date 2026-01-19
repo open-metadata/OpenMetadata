@@ -81,7 +81,6 @@ import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDetailsUtils
 import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
 import { getEntityByFqnUtil } from './EntityByFqnUtils';
 import { EntityTypeName } from './EntityUtils';
-import Fqn from './Fqn';
 import {
   FormattedAPIServiceType,
   FormattedDashboardServiceType,
@@ -94,6 +93,7 @@ import {
   FormattedSearchServiceType,
   FormattedStorageServiceType,
 } from './EntityUtils.interface';
+import Fqn from './Fqn';
 import {
   getApplicationDetailsPath,
   getBotsPath,
