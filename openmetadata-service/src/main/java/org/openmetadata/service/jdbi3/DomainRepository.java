@@ -39,6 +39,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
@@ -160,7 +161,8 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   @Override
   public void setInheritedFields(Domain domain, Fields fields) {
-    // If subdomain does not have owners and experts, then inherit it from parent domain
+    // If subdomain does not have owners and experts, then inherit it from parent
+    // domain
     EntityReference parentRef = domain.getParent() != null ? domain.getParent() : getParent(domain);
     if (parentRef != null) {
       Domain parent = Entity.getEntity(DOMAIN, parentRef.getId(), "owners,experts", ALL);
@@ -443,6 +445,7 @@ public class DomainRepository extends EntityRepository<Domain> {
       recordChange("name", FullyQualifiedName.unquoteName(oldFqn), updated.getName());
       updateEntityLinks(oldFqn, newFqn, updated);
       updateSearchIndexes(oldFqn, newFqn, updated);
+      updateTagUsage(oldFqn, newFqn);
     }
 
     private void updateEntityLinks(String oldFqn, String newFqn, Domain updated) {
@@ -466,19 +469,41 @@ public class DomainRepository extends EntityRepository<Domain> {
     }
 
     private void updateSearchIndexes(String oldFqn, String newFqn, Domain updated) {
-      // Update search index for the renamed domain
-      searchRepository.updateEntity(updated.getEntityReference());
+      LOG.info(
+          "Updating search indexes after renaming domain from {} to {} using bulk operations",
+          oldFqn,
+          newFqn);
 
-      // Update search indexes for child domains
-      List<Domain> childDomains = getNestedDomains(updated);
-      for (Domain child : childDomains) {
-        searchRepository.updateEntity(child.getEntityReference());
-      }
+      // Update parent domain in search index with new FQN
+      Domain parentWithFields = get(null, updated.getId(), getFields("parent,owners,experts"));
+      parentWithFields.setFullyQualifiedName(newFqn);
+      parentWithFields.setName(updated.getName());
+      searchRepository.updateEntityIndex(parentWithFields);
 
-      // Reindex assets that reference this domain across all search indices
-      searchRepository
-          .getSearchClient()
-          .reindexAcrossIndices("domain.fullyQualifiedName", updated.getEntityReference());
+      // Bulk update all domain entities' FQNs and parent.fullyQualifiedName in search
+      // index
+      // This updates domain_search_index for all nested domains
+      searchRepository.updateDomainFqnByPrefix(oldFqn, newFqn);
+      LOG.info("Bulk updated all domain FQNs in search index from {} to {}", oldFqn, newFqn);
+
+      // Bulk update all asset domain references across all indices via global alias
+      // This updates the domains[].fullyQualifiedName field in all assets
+      searchRepository.updateAssetDomainFqnByPrefix(oldFqn, newFqn);
+      LOG.info(
+          "Bulk updated all asset domain references in search index from {} to {}", oldFqn, newFqn);
+    }
+
+    private void updateTagUsage(String oldFqn, String newFqn) {
+      // Update exact match for the domain itself
+      daoCollection.tagUsageDAO().updateTargetFQNHash(oldFqn, newFqn);
+
+      // Update prefix matches for child domains (subdomains)
+      daoCollection
+          .tagUsageDAO()
+          .renameByTargetFQNHash(TagSource.CLASSIFICATION.ordinal(), oldFqn, newFqn);
+      daoCollection
+          .tagUsageDAO()
+          .renameByTargetFQNHash(TagSource.GLOSSARY.ordinal(), oldFqn, newFqn);
     }
   }
 
