@@ -2066,6 +2066,7 @@
     "availability-time-contract-description": "שעת היום שבה צפויים הנתונים להיות זמינים",
     "bot-email-confirmation": "{{email}} לבוט {{botName}}",
     "bulk-edit-entity-help": "ערוך מספר {{entity}} בבת אחת באמצעות CSV",
+    "bulk-import-completed": "ייבוא בכמות הושלם",
     "can-not-add-widget": "לא ניתן להוסיף את הווידג'ט לסקשן זה עקב הגבלות בגודל.",
     "can-you-add-a-description": "האם תוכל להוסיף תיאור?",
     "checkout-service-connectors-doc": "ישנם חיבורים רבים כאן זמינים לאינדקסציה של נתונים מהשירותים שלך. בדוק את החיבורים שלנו.",

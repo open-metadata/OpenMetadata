@@ -2066,6 +2066,7 @@
     "availability-time-contract-description": "Hora do dia em que se espera que os dados estejam disponíveis",
     "bot-email-confirmation": "{{email}} para o bot {{botName}}",
     "bulk-edit-entity-help": "Edite várias {{entity}} de uma só vez usando CSV",
+    "bulk-import-completed": "Importação em Massa Concluída",
     "can-not-add-widget": "Não é possível adicionar o widget a esta seção devido a restrições de tamanho.",
     "can-you-add-a-description": "Você pode adicionar uma descrição?",
     "checkout-service-connectors-doc": "Há muitos conectores disponíveis aqui para indexar dados de seus serviços. Por favor, confira nossos conectores.",

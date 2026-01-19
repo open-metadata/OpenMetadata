@@ -2066,6 +2066,7 @@
     "availability-time-contract-description": "Tijdstip van de dag waarop gegevens beschikbaar worden verwacht",
     "bot-email-confirmation": "{{email}} voor {{botName}} bot",
     "bulk-edit-entity-help": "Bewerk meerdere {{entity}} tegelijk met CSV",
+    "bulk-import-completed": "Bulkimport Voltooid",
     "can-not-add-widget": "Kan de widget niet toevoegen aan deze sectie vanwege beperkingen in grootte.",
     "can-you-add-a-description": "Kunt u een beschrijving toevoegen?",
     "checkout-service-connectors-doc": "Er zijn hier veel connectors beschikbaar om data van uw services te indexeren. Bekijk onze connectors.",
