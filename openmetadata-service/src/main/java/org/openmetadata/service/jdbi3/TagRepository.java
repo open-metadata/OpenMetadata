@@ -656,10 +656,10 @@ public class TagRepository extends EntityRepository<Tag> {
       return new DescriptionTaskWorkflow(threadContext);
     } else if (EntityUtil.isTagTask(taskType)) {
       return new TagTaskWorkflow(threadContext);
-    } else if (!EntityUtil.isTestCaseFailureResolutionTask(taskType)) {
-      return new ApprovalTaskWorkflow(threadContext);
     } else if (isRecognizerFeedbackTask(threadContext.getThread().getId())) {
       return new RecognizerFeedbackTaskWorkflow(threadContext);
+    } else if (!EntityUtil.isTestCaseFailureResolutionTask(taskType)) {
+      return new ApprovalTaskWorkflow(threadContext);
     }
     return super.getTaskWorkflow(threadContext);
   }

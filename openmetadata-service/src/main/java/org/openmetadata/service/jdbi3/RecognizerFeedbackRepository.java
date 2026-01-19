@@ -21,6 +21,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
 
@@ -431,8 +432,17 @@ public class RecognizerFeedbackRepository {
   }
 
   private org.openmetadata.schema.type.EntityReference getUserReference(String userName) {
-    return Entity.getEntityReferenceByName(
-        Entity.USER, userName, org.openmetadata.schema.type.Include.NON_DELETED);
+    if (userName == null || userName.isEmpty()) {
+      LOG.warn("Attempted to get user reference with null or empty userName");
+      return null;
+    }
+    try {
+      return Entity.getEntityReferenceByName(
+          Entity.USER, userName, org.openmetadata.schema.type.Include.NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      LOG.warn("User '{}' not found, returning null reference", userName);
+      return null;
+    }
   }
 
   /**

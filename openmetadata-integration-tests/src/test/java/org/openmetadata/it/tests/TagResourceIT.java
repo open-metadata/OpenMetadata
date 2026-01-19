@@ -933,15 +933,21 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
 
     resolveRecognizerFeedbackTask(task);
 
-    java.lang.Thread.sleep(2000);
+    Awaitility.await("Wait for recognizer exception to be added after approval")
+        .atMost(Duration.ofSeconds(10))
+        .pollInterval(Duration.ofMillis(200))
+        .untilAsserted(
+            () -> {
+              Tag updatedTag = getEntity(tag.getId().toString());
+              assertNotNull(updatedTag.getRecognizers());
+              assertFalse(updatedTag.getRecognizers().isEmpty());
+              assertTrue(
+                  updatedTag.getRecognizers().getFirst().getExceptionList() != null
+                      && !updatedTag.getRecognizers().getFirst().getExceptionList().isEmpty(),
+                  "Recognizer should have exception added after approval");
+            });
 
     Tag updatedTag = getEntity(tag.getId().toString());
-    assertNotNull(updatedTag.getRecognizers());
-    assertFalse(updatedTag.getRecognizers().isEmpty());
-    assertTrue(
-        updatedTag.getRecognizers().getFirst().getExceptionList() != null
-            && !updatedTag.getRecognizers().getFirst().getExceptionList().isEmpty(),
-        "Recognizer should have exception added after approval");
 
     org.openmetadata.schema.type.RecognizerException exception =
         updatedTag.getRecognizers().getFirst().getExceptionList().getFirst();
@@ -986,7 +992,14 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
 
     rejectRecognizerFeedbackTask(task);
 
-    java.lang.Thread.sleep(2000);
+    Awaitility.await("Wait for task rejection to be processed")
+        .atMost(Duration.ofSeconds(10))
+        .pollInterval(Duration.ofMillis(200))
+        .untilAsserted(
+            () -> {
+              Tag polledTag = getEntity(tag.getId().toString());
+              assertNotNull(polledTag.getRecognizers());
+            });
 
     Tag updatedTag = getEntity(tag.getId().toString());
     assertNotNull(updatedTag.getRecognizers());
