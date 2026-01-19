@@ -383,29 +383,29 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     return dataProductAssetCounts;
   }
 
-  public ResultList<Map<String, Object>> getPaginatedInputPorts(
+  public ResultList<EntityInterface> getPaginatedInputPorts(
       UUID dataProductId, String fields, int limit, int offset) {
     return getPaginatedPorts(dataProductId, Relationship.INPUT_PORT, fields, limit, offset);
   }
 
-  public ResultList<Map<String, Object>> getPaginatedInputPortsByName(
+  public ResultList<EntityInterface> getPaginatedInputPortsByName(
       String dataProductName, String fields, int limit, int offset) {
     DataProduct dataProduct = getByName(null, dataProductName, getFields("id"));
     return getPaginatedInputPorts(dataProduct.getId(), fields, limit, offset);
   }
 
-  public ResultList<Map<String, Object>> getPaginatedOutputPorts(
+  public ResultList<EntityInterface> getPaginatedOutputPorts(
       UUID dataProductId, String fields, int limit, int offset) {
     return getPaginatedPorts(dataProductId, Relationship.OUTPUT_PORT, fields, limit, offset);
   }
 
-  public ResultList<Map<String, Object>> getPaginatedOutputPortsByName(
+  public ResultList<EntityInterface> getPaginatedOutputPortsByName(
       String dataProductName, String fields, int limit, int offset) {
     DataProduct dataProduct = getByName(null, dataProductName, getFields("id"));
     return getPaginatedOutputPorts(dataProduct.getId(), fields, limit, offset);
   }
 
-  private ResultList<Map<String, Object>> getPaginatedPorts(
+  private ResultList<EntityInterface> getPaginatedPorts(
       UUID dataProductId, Relationship relationship, String fields, int limit, int offset) {
     List<CollectionDAO.EntityRelationshipRecord> relationshipRecords =
         daoCollection
@@ -430,31 +430,27 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     }
 
     // Bulk fetch entities by type and collect in order
+    // Use empty string if fields is null to avoid NPE
     String fieldsToFetch = fields != null ? fields : "";
     Map<UUID, EntityInterface> entitiesById = new HashMap<>();
-    Map<UUID, String> entityTypeById = new HashMap<>();
     for (Map.Entry<String, List<EntityReference>> entry : refsByType.entrySet()) {
       List<EntityInterface> entitiesOfType =
           Entity.getEntities(entry.getValue(), fieldsToFetch, NON_DELETED);
       for (int i = 0; i < entitiesOfType.size(); i++) {
-        UUID entityId = entry.getValue().get(i).getId();
-        entitiesById.put(entityId, entitiesOfType.get(i));
-        entityTypeById.put(entityId, entry.getKey());
+        entitiesById.put(entry.getValue().get(i).getId(), entitiesOfType.get(i));
       }
     }
 
-    // Preserve original order and convert to Maps with entityType
-    List<Map<String, Object>> results = new ArrayList<>();
+    // Preserve original order
+    List<EntityInterface> entities = new ArrayList<>();
     for (CollectionDAO.EntityRelationshipRecord record : relationshipRecords) {
       EntityInterface entity = entitiesById.get(record.getId());
       if (entity != null) {
-        Map<String, Object> entityMap = JsonUtils.getMap(entity);
-        entityMap.put("entityType", record.getType());
-        results.add(entityMap);
+        entities.add(entity);
       }
     }
 
-    return new ResultList<>(results, offset, total);
+    return new ResultList<>(entities, offset, total);
   }
 
   public DataProductPortsView getPortsView(
@@ -487,9 +483,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       int inputOffset,
       int outputLimit,
       int outputOffset) {
-    ResultList<Map<String, Object>> inputPorts =
+    ResultList<EntityInterface> inputPorts =
         getPaginatedInputPorts(dataProduct.getId(), fields, inputLimit, inputOffset);
-    ResultList<Map<String, Object>> outputPorts =
+    ResultList<EntityInterface> outputPorts =
         getPaginatedOutputPorts(dataProduct.getId(), fields, outputLimit, outputOffset);
 
     return new DataProductPortsView()
