@@ -786,7 +786,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
       OAuthAuthorizationCodeRecord codeRecord = codeRepository.markAsUsedAtomic(code);
       if (codeRecord == null) {
-        String clientIP = currentRequest.get() != null ? currentRequest.get().getRemoteAddr() : "unknown";
+        String clientIP =
+            currentRequest.get() != null ? currentRequest.get().getRemoteAddr() : "unknown";
         LOG.error(
             "SECURITY ALERT: Authorization code replay attack or invalid code detected! "
                 + "Client: {}, IP: {}. This could indicate: 1) Code reuse (replay attack), "
@@ -798,7 +799,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
       // CRITICAL: Validate client ID matches (prevents authorization code theft attack)
       if (!client.getClientId().equals(codeRecord.clientId())) {
-        String clientIP = currentRequest.get() != null ? currentRequest.get().getRemoteAddr() : "unknown";
+        String clientIP =
+            currentRequest.get() != null ? currentRequest.get().getRemoteAddr() : "unknown";
         LOG.error(
             "SECURITY ALERT: Authorization code theft attack detected! "
                 + "Code issued to client '{}' but presented by client '{}'. IP: {}",
@@ -837,7 +839,9 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
             client.getClientId());
         throw new TokenException(
             "invalid_grant",
-            "Authorization code expired " + expiredSecondsAgo + " seconds ago. Please restart the authorization flow.");
+            "Authorization code expired "
+                + expiredSecondsAgo
+                + " seconds ago. Please restart the authorization flow.");
       }
 
       if (!verifyPKCE(codeVerifier, codeRecord.codeChallenge())) {
