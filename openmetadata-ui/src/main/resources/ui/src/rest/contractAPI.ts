@@ -101,6 +101,17 @@ export const validateContractById = async (contractId: string) => {
   return response.data;
 };
 
+export const validateContractByEntityId = async (
+  entityId: string,
+  entityType: string
+) => {
+  const response = await APIClient.post<void>(
+    `/dataContracts/entity/validate?entityId=${entityId}&entityType=${entityType}`
+  );
+
+  return response.data;
+};
+
 export const deleteContractById = async (contractId: string) => {
   const response = await APIClient.delete<void>(
     `/dataContracts/${contractId}?hardDelete=true&recursive=true`

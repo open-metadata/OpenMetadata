@@ -723,6 +723,80 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     return addContractResult(dataContract, result);
   }
 
+  /**
+   * Materialize an empty contract for an entity that currently only has an inherited contract.
+   * This allows the entity to have its own contract to store validation results, while still
+   * inheriting properties from the Data Product contract.
+   */
+  public DataContract materializeInheritedContract(EntityInterface entity, String user) {
+    String contractName = entity.getName() + "_contract";
+    String contractFqn = entity.getFullyQualifiedName() + ".contract";
+
+    DataContract newContract =
+        new DataContract()
+            .withId(UUID.randomUUID())
+            .withName(contractName)
+            .withFullyQualifiedName(contractFqn)
+            .withEntity(entity.getEntityReference())
+            .withEntityStatus(EntityStatus.DRAFT)
+            .withUpdatedBy(user)
+            .withUpdatedAt(System.currentTimeMillis());
+
+    return createInternal(newContract);
+  }
+
+  /**
+   * Validate a contract using the effective contract rules (which may include inherited properties)
+   * but store the results against the provided contract entity.
+   */
+  public RestUtil.PutResponse<DataContractResult> validateContractWithEffective(
+      DataContract contractForResults, DataContract effectiveContract) {
+    // Check if there's a running validation and abort it
+    abortRunningValidation(contractForResults);
+
+    DataContractResult result =
+        new DataContractResult()
+            .withId(UUID.randomUUID())
+            .withDataContractFQN(contractForResults.getFullyQualifiedName())
+            .withContractExecutionStatus(ContractExecutionStatus.Running)
+            .withTimestamp(System.currentTimeMillis());
+    addContractResult(contractForResults, result);
+
+    // Validate schema using effective contract's schema (if any)
+    if (effectiveContract.getSchema() != null && !effectiveContract.getSchema().isEmpty()) {
+      SchemaValidation schemaValidation =
+          validateSchemaFieldsAgainstEntity(effectiveContract, effectiveContract.getEntity());
+      result.withSchemaValidation(schemaValidation);
+    }
+
+    // Validate semantics using effective contract's rules (includes inherited rules)
+    if (!nullOrEmpty(effectiveContract.getSemantics())) {
+      SemanticsValidation semanticsValidation = validateSemantics(effectiveContract);
+      result.withSemanticsValidation(semanticsValidation);
+    }
+
+    // Handle quality expectations
+    if (!nullOrEmpty(effectiveContract.getQualityExpectations())) {
+      try {
+        deployAndTriggerDQValidation(effectiveContract);
+      } catch (Exception e) {
+        LOG.error(
+            "Failed to trigger DQ validation for data contract {}: {}",
+            contractForResults.getFullyQualifiedName(),
+            e.getMessage());
+        result
+            .withContractExecutionStatus(ContractExecutionStatus.Aborted)
+            .withResult("Failed to trigger DQ validation: " + e.getMessage());
+        compileResult(result, ContractExecutionStatus.Aborted);
+      }
+    } else {
+      compileResult(result, ContractExecutionStatus.Success);
+    }
+
+    // Store results against the entity's own contract
+    return addContractResult(contractForResults, result);
+  }
+
   public void deployAndTriggerDQValidation(DataContract dataContract) {
     if (dataContract.getTestSuite() == null) {
       throw DataContractValidationException.byMessage(
@@ -1155,9 +1229,15 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     // Update the entity reference to point to the actual entity, not the data product
     inherited.setEntity(entity.getEntityReference());
 
+    // Clear entity-specific fields that should not be inherited
     inherited.setQualityExpectations(null);
     inherited.setSchema(null);
     inherited.setTestSuite(null);
+
+    // Clear execution-related fields - inherited contracts have no execution history
+    inherited.setLatestResult(null);
+    inherited.setContractUpdates(null);
+    inherited.setEntityStatus(EntityStatus.DRAFT);
 
     // Mark all fields as inherited
     if (inherited.getTermsOfUse() != null) {
@@ -1343,7 +1423,15 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   @Override
   protected void preDelete(DataContract entity, String deletedBy) {
-    // A data contract in `Draft` state can only be deleted by the reviewers
+    // Inherited contracts cannot be deleted - they are virtual contracts derived from Data Product
+    if (Boolean.TRUE.equals(entity.getInherited())) {
+      throw BadRequestException.of(
+          "Cannot delete an inherited data contract. The contract is inherited from a Data Product "
+              + "and can only be removed by removing the entity from the Data Product or by creating "
+              + "an entity-specific contract that overrides the inherited one.");
+    }
+
+    // A data contract in `IN_REVIEW` state can only be deleted by the reviewers
     if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
       checkUpdatedByReviewer(entity, deletedBy);
     }

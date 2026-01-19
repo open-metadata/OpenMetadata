@@ -48,6 +48,7 @@ import { ContractExecutionStatus } from '../../../generated/type/contractExecuti
 import {
   exportContractToODCSYaml,
   getContractResultByResultId,
+  validateContractByEntityId,
   validateContractById,
 } from '../../../rest/contractAPI';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
@@ -131,6 +132,8 @@ const ContractDetail: React.FC<{
     );
   }, [latestContractResults]);
 
+  const isInheritedContract = Boolean(contract?.inherited);
+
   const contractActionsItems: MenuProps['items'] = useMemo(() => {
     return [
       {
@@ -187,17 +190,25 @@ const ContractDetail: React.FC<{
       {
         label: (
           <div
-            className="contract-action-dropdown-item contract-action-dropdown-delete-item"
-            data-testid="delete-contract-button">
+            className={`contract-action-dropdown-item contract-action-dropdown-delete-item ${
+              isInheritedContract ? 'disabled' : ''
+            }`}
+            data-testid="delete-contract-button"
+            title={
+              isInheritedContract
+                ? t('message.inherited-contract-cannot-be-deleted')
+                : undefined
+            }>
             <DeleteIcon className="anticon" />
 
             {t('label.delete')}
           </div>
         ),
         key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.DELETE,
+        disabled: isInheritedContract,
       },
     ];
-  }, []);
+  }, [isInheritedContract]);
 
   const handleExportContract = useCallback(() => {
     if (!contract) {
@@ -226,16 +237,26 @@ const ContractDetail: React.FC<{
   }, [contract]);
 
   const handleRunNow = async () => {
-    if (contract?.id) {
-      try {
-        setValidateLoading(true);
+    if (!contract) {
+      return;
+    }
+
+    try {
+      setValidateLoading(true);
+      // Use entity-based validation for inherited contracts to materialize and store results
+      if (isInheritedContract && contract.entity?.id && contract.entity?.type) {
+        await validateContractByEntityId(
+          contract.entity.id,
+          contract.entity.type
+        );
+      } else if (contract.id) {
         await validateContractById(contract.id);
-        showSuccessToast(t('message.contract-validation-trigger-successfully'));
-      } catch (err) {
-        showErrorToast(err as AxiosError);
-      } finally {
-        setValidateLoading(false);
       }
+      showSuccessToast(t('message.contract-validation-trigger-successfully'));
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setValidateLoading(false);
     }
   };
 

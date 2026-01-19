@@ -893,6 +893,72 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     return result.toResponse();
   }
 
+  @POST
+  @Path("/entity/validate")
+  @Operation(
+      operationId = "validateDataContractByEntityId",
+      summary = "Validate a data contract for an entity",
+      description =
+          "Execute on-demand validation of a data contract for an entity. If the entity only has "
+              + "an inherited contract from a Data Product, an empty contract will be materialized "
+              + "for the entity to store validation results.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Validation result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataContractResult.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Entity not found or no contract available")
+      })
+  public Response validateContractByEntityId(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "ID of the entity", schema = @Schema(type = "UUID"))
+          @QueryParam("entityId")
+          UUID entityId,
+      @Parameter(description = "Type of the entity", schema = @Schema(type = "string"))
+          @QueryParam("entityType")
+          String entityType) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL),
+        getResourceContextById(entityId));
+
+    EntityInterface entity = Entity.getEntity(entityType, entityId, "*", Include.NON_DELETED);
+
+    // Get the entity's direct contract (if exists)
+    DataContract directContract = repository.getEntityDataContractSafely(entity);
+
+    // Get the effective contract (with inherited properties)
+    DataContract effectiveContract = repository.getEffectiveDataContract(entity);
+
+    if (effectiveContract == null) {
+      throw EntityNotFoundException.byMessage(
+          String.format("No data contract found for entity %s", entityId));
+    }
+
+    // If entity has no direct contract but has an inherited one, materialize an empty contract
+    DataContract contractForValidation;
+    if (directContract == null && Boolean.TRUE.equals(effectiveContract.getInherited())) {
+      // Materialize an empty contract for this entity to store validation results
+      contractForValidation =
+          repository.materializeInheritedContract(
+              entity, securityContext.getUserPrincipal().getName());
+    } else {
+      contractForValidation = directContract != null ? directContract : effectiveContract;
+    }
+
+    // Validate using the effective contract (to include inherited rules)
+    // but store results against the entity's own contract
+    RestUtil.PutResponse<DataContractResult> result =
+        repository.validateContractWithEffective(contractForValidation, effectiveContract);
+    return result.toResponse();
+  }
+
   // Add runId and dataContractFQN to the result if not incoming
   private DataContractResult getContractResult(
       DataContract dataContract, DataContractResult newResult) {
