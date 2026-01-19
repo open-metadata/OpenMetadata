@@ -748,6 +748,16 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public void updateDomainFqnByPrefix(String oldFqn, String newFqn) {
+    entityManager.updateDomainFqnByPrefix(oldFqn, newFqn);
+  }
+
+  @Override
+  public void updateAssetDomainFqnByPrefix(String oldFqn, String newFqn) {
+    entityManager.updateAssetDomainFqnByPrefix(oldFqn, newFqn);
+  }
+
+  @Override
   public void updateColumnsInUpstreamLineage(
       String indexName, HashMap<String, String> originalUpdatedColumnFqnMap) {
     entityManager.updateColumnsInUpstreamLineage(indexName, originalUpdatedColumnFqnMap);
