@@ -23,13 +23,13 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.felix.http.javaxwrappers.HttpServletRequestWrapper;
-import org.apache.felix.http.javaxwrappers.HttpServletResponseWrapper;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.RefreshToken;
@@ -38,7 +38,8 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.auth.JwtResponse;
-import org.openmetadata.service.exception.AuthenticationException;
+import org.openmetadata.service.security.AuthServeletHandler;
+import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.TokenUtil;
@@ -60,21 +61,10 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
 
   @Override
   protected void doPost(HttpServletRequest request, HttpServletResponse response) {
-    try {
-      // Convert Jakarta servlet types to javax servlet types using Apache Felix wrappers
-      javax.servlet.http.HttpServletRequest wrappedRequest = new HttpServletRequestWrapper(request);
-      javax.servlet.http.HttpServletResponse wrappedResponse =
-          new HttpServletResponseWrapper(response);
-      auth = new Auth(SamlSettingsHolder.getSaml2Settings(), wrappedRequest, wrappedResponse);
-      auth.processResponse();
-      if (!auth.isAuthenticated()) {
-        throw new AuthenticationException("SAML authentication failed");
-      }
-      handleResponse(request, response);
-    } catch (Exception ex) {
-      LOG.error("Error processing SAML response", ex);
-      throw new AuthenticationException("Error processing SAML response");
-    }
+    // Delegate to the unified SAML handler for consistent behavior with /callback endpoint
+    // This ensures both /api/v1/saml/acs and /callback use the same logic
+    AuthServeletHandler handler = AuthServeletHandlerRegistry.getHandler();
+    handler.handleCallback(request, response);
   }
 
   private void handleResponse(HttpServletRequest req, HttpServletResponse resp) throws Exception {
@@ -97,10 +87,33 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
         email = String.format("%s@%s", username, SamlSettingsHolder.getInstance().getDomain());
       }
 
+      // Extract team/department attributes from SAML response (supports multi-valued attributes)
+      List<String> teamsFromClaim = new ArrayList<>();
+      String teamClaimMapping =
+          SecurityConfigurationManager.getCurrentAuthConfig().getJwtTeamClaimMapping();
+      if (!nullOrEmpty(teamClaimMapping)) {
+        try {
+          Collection<String> attributeValues = auth.getAttribute(teamClaimMapping);
+          if (attributeValues != null && !attributeValues.isEmpty()) {
+            teamsFromClaim.addAll(attributeValues);
+            LOG.debug(
+                "[SAML ACS] Found team attribute '{}' with values '{}'",
+                teamClaimMapping,
+                teamsFromClaim);
+          }
+        } catch (Exception e) {
+          LOG.debug(
+              "[SAML ACS] Could not extract team attribute '{}': {}",
+              teamClaimMapping,
+              e.getMessage());
+        }
+      }
+
       JWTAuthMechanism jwtAuthMechanism;
       User user;
+      boolean userExists = true;
       try {
-        user = Entity.getEntityByName(Entity.USER, username, "id,roles", Include.NON_DELETED);
+        user = Entity.getEntityByName(Entity.USER, username, "id,roles,teams", Include.NON_DELETED);
         jwtAuthMechanism =
             JWTTokenGenerator.getInstance()
                 .generateJWTToken(
@@ -113,8 +126,9 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
                     ServiceTokenType.OM_USER);
       } catch (Exception e) {
         LOG.error("[SAML ACS] User not found: " + username);
+        userExists = false;
         // Create the user
-        user = UserUtil.addOrUpdateUser(UserUtil.user(username, email.split("@")[1], username));
+        user = UserUtil.user(username, email.split("@")[1], username);
         jwtAuthMechanism =
             JWTTokenGenerator.getInstance()
                 .generateJWTToken(
@@ -125,6 +139,14 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
                     SamlSettingsHolder.getInstance().getTokenValidity(),
                     false,
                     ServiceTokenType.OM_USER);
+      }
+
+      // Assign teams from claim if provided
+      boolean teamsAssigned = UserUtil.assignTeamsFromClaim(user, teamsFromClaim);
+
+      // Add or update user after team assignment
+      if (!userExists || teamsAssigned) {
+        user = UserUtil.addOrUpdateUser(user);
       }
 
       // Add to json response cookie

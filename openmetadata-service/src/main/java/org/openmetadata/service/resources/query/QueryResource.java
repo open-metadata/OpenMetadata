@@ -29,6 +29,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.common.utils.CommonUtil;
@@ -48,9 +49,12 @@ import org.openmetadata.service.jdbi3.QueryRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Path("/v1/queries")
 @Tag(
@@ -62,7 +66,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 @Collection(name = "queries")
 public class QueryResource extends EntityResource<Query, QueryRepository> {
   private final QueryMapper mapper = new QueryMapper();
-  public static final String COLLECTION_PATH = "v1/queries/";
+  public static final String COLLECTION_PATH = "/v1/queries/";
   static final String FIELDS = "owners,followers,users,votes,tags,queryUsedIn";
 
   public QueryResource(Authorizer authorizer, Limits limits) {
@@ -94,7 +98,9 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       description =
           "Get a list of queries. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
-              + "entries in the list using `limit` and `before` or `after` query params.",
+              + "entries in the list using `limit` and `before` or `after` query params. "
+              + "When filtering by `entityId`, also provide `entityType` to enable proper authorization "
+              + "based on the parent entity's permissions.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -117,6 +123,12 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
               schema = @Schema(type = "UUID"))
           @QueryParam("entityId")
           UUID entityId,
+      @Parameter(
+              description =
+                  "Type of the entity specified by entityId (e.g., 'table', 'storedProcedure'). "
+                      + "Required when entityId is provided for proper authorization.")
+          @QueryParam("entityType")
+          String parentEntityType,
       @Parameter(
               description = "Filter Queries by service Fully Qualified Name",
               schema = @Schema(type = "string"))
@@ -142,10 +154,33 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     if (!CommonUtil.nullOrEmpty(entityId)) {
       filter.addQueryParam("entityId", entityId.toString());
     }
+    if (!CommonUtil.nullOrEmpty(parentEntityType)) {
+      filter.addQueryParam("entityType", parentEntityType);
+    }
     filter.addQueryParam("service", service);
+
+    Fields fields = getFields(fieldsParam);
+    List<AuthRequest> authRequests = new ArrayList<>();
+
+    // Standard authorization: check if user has VIEW_BASIC/VIEW_ALL on Query entity
+    OperationContext queryOperationContext =
+        new OperationContext(entityType, getViewOperations(fields));
+    ResourceContext<?> queryResourceContext = filter.getResourceContext(entityType);
+    authRequests.add(new AuthRequest(queryOperationContext, queryResourceContext));
+
+    // Fix for GitHub Issue #22551: When filtering by entityId and entityType, also check if user
+    // has VIEW_QUERIES permission on the parent entity (e.g., table). This allows users with
+    // tag-based policies on tables to view queries associated with those tables.
+    ResourceContext<?> parentResourceContext = filter.getParentResourceContext();
+    if (parentResourceContext != null) {
+      OperationContext parentOperationContext =
+          new OperationContext(parentResourceContext.getResource(), MetadataOperation.VIEW_QUERIES);
+      authRequests.add(new AuthRequest(parentOperationContext, parentResourceContext));
+    }
+
     ResultList<Query> queries =
         super.listInternal(
-            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+            uriInfo, securityContext, fields, filter, limitParam, before, after, authRequests);
     return PIIMasker.getQueries(queries, authorizer, securityContext);
   }
 

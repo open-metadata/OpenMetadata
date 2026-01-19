@@ -87,7 +87,7 @@ import org.openmetadata.service.util.RestUtil;
 @Consumes({MediaType.APPLICATION_JSON, "application/yaml", "text/yaml"})
 @Collection(name = "dataContracts")
 public class DataContractResource extends EntityResource<DataContract, DataContractRepository> {
-  public static final String COLLECTION_PATH = "v1/dataContracts/";
+  public static final String COLLECTION_PATH = "/v1/dataContracts/";
   static final String FIELDS = "owners,reviewers,extension";
 
   @Override
@@ -170,7 +170,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "string", format = "uuid"))
           @QueryParam("entity")
           UUID entityId) {
-    ListFilter filter = new ListFilter(include).addQueryParam("status", status);
+    ListFilter filter = new ListFilter(include).addQueryParam("entityStatus", status);
     if (entityId != null) {
       filter.addQueryParam("entity", entityId.toString());
     }
@@ -211,8 +211,17 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
   }
 
   @GET
@@ -251,8 +260,17 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include, includeRelations);
   }
 
   @GET

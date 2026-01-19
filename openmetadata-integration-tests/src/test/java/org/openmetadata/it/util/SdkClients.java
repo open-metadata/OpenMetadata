@@ -254,4 +254,15 @@ public class SdkClients {
     Tags.setDefaultClient(client);
     TestCases.setDefaultClient(client);
   }
+
+  /** Get the base server URL for direct HTTP calls */
+  public static String getServerUrl() {
+    return BASE_URL;
+  }
+
+  /** Get an admin JWT token for direct HTTP calls */
+  public static String getAdminToken() {
+    return JwtAuthProvider.tokenFor(
+        "admin@open-metadata.org", "admin@open-metadata.org", new String[] {"admin"}, 3600);
+  }
 }

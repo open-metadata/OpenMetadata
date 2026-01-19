@@ -841,6 +841,7 @@ class SampleDataSource(
         yield from self.ingest_teams()
         yield from self.ingest_users()
         yield from self.ingest_drives()
+
         yield from self.ingest_tables()
         self.ingest_tables_sample_data()
         yield from self.ingest_glue()
@@ -1490,6 +1491,29 @@ class SampleDataSource(
                             table_entity.id.root,
                         )
 
+            # Patch certification if present in the sample data
+            if table.get("certification"):
+                try:
+                    from metadata.generated.schema.type.assetCertification import (
+                        AssetCertification,
+                    )
+
+                    destination = table_entity.model_copy(deep=True)
+                    destination.certification = AssetCertification.model_validate(
+                        table["certification"]
+                    )
+
+                    self.metadata.patch(
+                        entity=Table, source=table_entity, destination=destination
+                    )
+                    logger.debug(
+                        f"Patched certification for {table_entity.fullyQualifiedName.root}"
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        f"Failed to patch certification for {table.get('name')}: {exc}"
+                    )
+
     def ingest_stored_procedures(self) -> Iterable[Either[Entity]]:
         """Ingest Sample Stored Procedures"""
 
@@ -1933,13 +1957,17 @@ class SampleDataSource(
                         if pipeline:
                             pipeline_obs = PipelineObservability(
                                 pipeline=EntityReference(
-                                    id=pipeline.id.root
-                                    if hasattr(pipeline.id, "root")
-                                    else pipeline.id,
+                                    id=(
+                                        pipeline.id.root
+                                        if hasattr(pipeline.id, "root")
+                                        else pipeline.id
+                                    ),
                                     type="pipeline",
-                                    fullyQualifiedName=pipeline.fullyQualifiedName.root
-                                    if hasattr(pipeline.fullyQualifiedName, "root")
-                                    else str(pipeline.fullyQualifiedName),
+                                    fullyQualifiedName=(
+                                        pipeline.fullyQualifiedName.root
+                                        if hasattr(pipeline.fullyQualifiedName, "root")
+                                        else str(pipeline.fullyQualifiedName)
+                                    ),
                                 ),
                                 scheduleInterval=obs_data.get("scheduleInterval"),
                                 startTime=obs_data.get("startTime"),
@@ -2213,24 +2241,16 @@ class SampleDataSource(
                 fqn=table_profile["fqn"],
             )
             for days, profile in enumerate(table_profile["profile"]):
-                table_profile = OMetaTableProfileSampleData(
-                    table=table,
-                    profile=CreateTableProfileRequest(
-                        tableProfile=TableProfile(
-                            columnCount=profile["columnCount"],
-                            rowCount=profile["rowCount"],
-                            createDateTime=profile.get("createDateTime"),
-                            sizeInByte=profile.get("sizeInByte"),
-                            customMetrics=profile.get("customMetrics"),
-                            timestamp=Timestamp(
-                                int(
-                                    (datetime.now() - timedelta(days=days)).timestamp()
-                                    * 1000
-                                )
-                            ),
-                        ),
-                        columnProfile=[
-                            ColumnProfile(
+                try:
+                    table_profile = OMetaTableProfileSampleData(
+                        table=table,
+                        profile=CreateTableProfileRequest(
+                            tableProfile=TableProfile(
+                                columnCount=profile["columnCount"],
+                                rowCount=profile["rowCount"],
+                                createDateTime=profile.get("createDateTime"),
+                                sizeInByte=profile.get("sizeInByte"),
+                                customMetrics=profile.get("customMetrics"),
                                 timestamp=Timestamp(
                                     int(
                                         (
@@ -2239,30 +2259,45 @@ class SampleDataSource(
                                         * 1000
                                     )
                                 ),
-                                **col_profile,
-                            )
-                            for col_profile in profile["columnProfile"]
-                        ],
-                        systemProfile=[
-                            SystemProfile(
-                                timestamp=Timestamp(
-                                    int(
-                                        (
-                                            datetime.now()
-                                            - timedelta(
-                                                days=days, hours=random.randint(0, 24)
-                                            )
-                                        ).timestamp()
-                                        * 1000
-                                    )
-                                ),
-                                **system_profile,
-                            )
-                            for system_profile in profile["systemProfile"]
-                        ],
-                    ),
-                )
-                yield Either(right=table_profile)
+                            ),
+                            columnProfile=[
+                                ColumnProfile(
+                                    timestamp=Timestamp(
+                                        int(
+                                            (
+                                                datetime.now() - timedelta(days=days)
+                                            ).timestamp()
+                                            * 1000
+                                        )
+                                    ),
+                                    **col_profile,
+                                )
+                                for col_profile in profile["columnProfile"]
+                            ],
+                            systemProfile=[
+                                SystemProfile(
+                                    timestamp=Timestamp(
+                                        int(
+                                            (
+                                                datetime.now()
+                                                - timedelta(
+                                                    days=days,
+                                                    hours=random.randint(0, 24),
+                                                )
+                                            ).timestamp()
+                                            * 1000
+                                        )
+                                    ),
+                                    **system_profile,
+                                )
+                                for system_profile in profile["systemProfile"]
+                            ],
+                        ),
+                    )
+                    yield Either(right=table_profile)
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(f"Error ingesting Profiles [{table_profile}]: {exc}")
 
     def ingest_test_suite(self) -> Iterable[Either[OMetaTestSuiteSample]]:
         """Iterate over all the testSuite and testCase and ingest them"""

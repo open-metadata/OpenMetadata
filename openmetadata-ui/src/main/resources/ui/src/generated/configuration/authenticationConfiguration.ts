@@ -48,9 +48,17 @@ export interface AuthenticationConfiguration {
      */
     jwtPrincipalClaims: string[];
     /**
-     * Jwt Principal Claim Mapping
+     * Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or
+     * 'email'. Both username and email mappings are required.
      */
     jwtPrincipalClaimsMapping?: string[];
+    /**
+     * JWT claim name that contains team/department information. For SAML SSO, this is the
+     * attribute name (e.g., 'department') from the SAML assertion. For JWT, this is the claim
+     * name in the JWT token. The value from this claim will be used to automatically assign
+     * users to matching teams in OpenMetadata during login.
+     */
+    jwtTeamClaimMapping?: string;
     /**
      * LDAP Configuration in case the Provider is LDAP
      */
@@ -415,7 +423,7 @@ export interface SamlSSOClientConfig {
  */
 export interface Idp {
     /**
-     * Authority URL to redirect the users on Sign In page
+     * Authority URL (deprecated, use entityId instead).
      */
     authorityUrl?: string;
     /**
@@ -427,7 +435,7 @@ export interface Idp {
      */
     idpX509Certificate?: string;
     /**
-     * Authority URL to redirect the users on Sign In page
+     * Name ID format for SAML assertions
      */
     nameId?: string;
     /**
@@ -520,6 +528,9 @@ export interface SP {
  * Token Validation Algorithm to use.
  */
 export enum TokenValidationAlgorithm {
+    Es256 = "ES256",
+    Es384 = "ES384",
+    Es512 = "ES512",
     Rs256 = "RS256",
     Rs384 = "RS384",
     Rs512 = "RS512",
