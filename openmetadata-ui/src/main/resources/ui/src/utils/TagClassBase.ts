@@ -262,6 +262,14 @@ class TagClassBase {
   ): React.ReactElement | null {
     return null;
   }
+
+  public getClassificationReviewerWidget(): React.ReactElement | null {
+    return null;
+  }
+
+  public getClassificationFields(): string[] {
+    return [];
+  }
 }
 
 const tagClassBase = new TagClassBase();

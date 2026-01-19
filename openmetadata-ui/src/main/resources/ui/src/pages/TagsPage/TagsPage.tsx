@@ -60,6 +60,7 @@ import {
 } from '../../utils/PermissionsUtils';
 import { getTagPath } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
+import tagClassBase from '../../utils/TagClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ClassificationFormDrawer from './ClassificationFormDrawer';
 import TagFormDrawer from './TagFormDrawer';
@@ -173,6 +174,7 @@ const TagsPage = () => {
             TabSpecificField.USAGE_COUNT,
             TabSpecificField.TERM_COUNT,
             TabSpecificField.DOMAINS,
+            ...tagClassBase.getClassificationFields(),
           ],
         });
         if (currentClassification) {
