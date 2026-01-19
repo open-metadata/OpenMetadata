@@ -39,6 +39,10 @@ import org.openmetadata.sdk.models.ListResponse;
 @Execution(ExecutionMode.CONCURRENT)
 public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
 
+  {
+    supportsLifeCycle = true;
+  }
+
   // ===================================================================
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
   // ===================================================================

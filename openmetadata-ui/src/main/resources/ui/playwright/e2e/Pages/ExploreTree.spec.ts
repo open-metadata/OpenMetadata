@@ -39,7 +39,7 @@ import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { TagClass } from '../../support/tag/TagClass';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
 import {
-  readClipboardText,
+  copyAndGetClipboardText,
   testCopyLinkButton,
   updateDisplayNameForEntity,
   validateCopiedLinkFormat,
@@ -480,9 +480,8 @@ test.describe('Explore page', () => {
 
     const copyButton = page.getByTestId('copy-field-link-button').first();
     await expect(copyButton).toBeVisible();
-    await copyButton.click();
 
-    const clipboardText = await readClipboardText(page);
+    const clipboardText = await copyAndGetClipboardText(page, copyButton);
 
     const validationResult = validateCopiedLinkFormat({
       clipboardText,
@@ -519,9 +518,8 @@ test.describe('Explore page', () => {
 
     const copyButton = page.getByTestId('copy-field-link-button').first();
     await expect(copyButton).toBeVisible();
-    await copyButton.click();
 
-    const clipboardText = await readClipboardText(page);
+    const clipboardText = await copyAndGetClipboardText(page, copyButton);
 
     const validationResult = validateCopiedLinkFormat({
       clipboardText,

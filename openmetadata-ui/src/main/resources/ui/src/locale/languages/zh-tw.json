@@ -2685,6 +2685,7 @@
     "team-member-management-description": "在 {{brandName}} 中簡化對使用者和團隊的存取。",
     "team-moved-success": "團隊移動成功！",
     "team-no-asset": "您的團隊沒有任何資產。",
+    "test-case-count-info": "顯示此管道選定的測試案例數量。「全部」表示將執行所有可用的測試案例。",
     "test-case-insight-description": "根據設定的測試驗證，存取您資料集的健康狀況集中檢視。",
     "test-case-name-validation": "名稱不能包含雙冒號(::)、引號(\")或大於符號(>)。",
     "test-case-schedule-description": "可以排程資料品質測試以所需的頻率執行。時區為 UTC。",

@@ -2685,6 +2685,7 @@
     "team-member-management-description": "简化对 {{brandName}} 用户和团队的访问",
     "team-moved-success": "团队移动成功",
     "team-no-asset": "您的团队没有任何资产",
+    "test-case-count-info": "显示为此管道选择的测试用例数量。\"全部\"表示将执行所有可用的测试用例。",
     "test-case-insight-description": "基于配置的测试验证，访问数据集健康状况的集中视图。",
     "test-case-name-validation": "名称不能包含双冒号(::)、引号(\")或大于符号(>)。",
     "test-case-schedule-description": "数据质控测试可按所需频率安排运行, 时区为 UTC",
