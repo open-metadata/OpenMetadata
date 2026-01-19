@@ -84,6 +84,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityWithType;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.LineageUtil;
 import org.openmetadata.service.util.RestUtil;
@@ -382,29 +383,29 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     return dataProductAssetCounts;
   }
 
-  public ResultList<EntityInterface> getPaginatedInputPorts(
+  public ResultList<EntityWithType> getPaginatedInputPorts(
       UUID dataProductId, String fields, int limit, int offset) {
     return getPaginatedPorts(dataProductId, Relationship.INPUT_PORT, fields, limit, offset);
   }
 
-  public ResultList<EntityInterface> getPaginatedInputPortsByName(
+  public ResultList<EntityWithType> getPaginatedInputPortsByName(
       String dataProductName, String fields, int limit, int offset) {
     DataProduct dataProduct = getByName(null, dataProductName, getFields("id"));
     return getPaginatedInputPorts(dataProduct.getId(), fields, limit, offset);
   }
 
-  public ResultList<EntityInterface> getPaginatedOutputPorts(
+  public ResultList<EntityWithType> getPaginatedOutputPorts(
       UUID dataProductId, String fields, int limit, int offset) {
     return getPaginatedPorts(dataProductId, Relationship.OUTPUT_PORT, fields, limit, offset);
   }
 
-  public ResultList<EntityInterface> getPaginatedOutputPortsByName(
+  public ResultList<EntityWithType> getPaginatedOutputPortsByName(
       String dataProductName, String fields, int limit, int offset) {
     DataProduct dataProduct = getByName(null, dataProductName, getFields("id"));
     return getPaginatedOutputPorts(dataProduct.getId(), fields, limit, offset);
   }
 
-  private ResultList<EntityInterface> getPaginatedPorts(
+  private ResultList<EntityWithType> getPaginatedPorts(
       UUID dataProductId, Relationship relationship, String fields, int limit, int offset) {
     List<CollectionDAO.EntityRelationshipRecord> relationshipRecords =
         daoCollection
@@ -431,19 +432,21 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     // Bulk fetch entities by type and collect in order
     // Use empty string if fields is null to avoid NPE
     String fieldsToFetch = fields != null ? fields : "";
-    Map<UUID, EntityInterface> entitiesById = new HashMap<>();
+    Map<UUID, EntityWithType> entitiesById = new HashMap<>();
     for (Map.Entry<String, List<EntityReference>> entry : refsByType.entrySet()) {
+      String entityType = entry.getKey();
       List<EntityInterface> entitiesOfType =
           Entity.getEntities(entry.getValue(), fieldsToFetch, NON_DELETED);
       for (int i = 0; i < entitiesOfType.size(); i++) {
-        entitiesById.put(entry.getValue().get(i).getId(), entitiesOfType.get(i));
+        entitiesById.put(
+            entry.getValue().get(i).getId(), new EntityWithType(entitiesOfType.get(i), entityType));
       }
     }
 
     // Preserve original order from relationship records
-    List<EntityInterface> entities = new ArrayList<>();
+    List<EntityWithType> entities = new ArrayList<>();
     for (CollectionDAO.EntityRelationshipRecord record : relationshipRecords) {
-      EntityInterface entity = entitiesById.get(record.getId());
+      EntityWithType entity = entitiesById.get(record.getId());
       if (entity != null) {
         entities.add(entity);
       }
@@ -482,9 +485,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       int inputOffset,
       int outputLimit,
       int outputOffset) {
-    ResultList<EntityInterface> inputPorts =
+    ResultList<EntityWithType> inputPorts =
         getPaginatedInputPorts(dataProduct.getId(), fields, inputLimit, inputOffset);
-    ResultList<EntityInterface> outputPorts =
+    ResultList<EntityWithType> outputPorts =
         getPaginatedOutputPorts(dataProduct.getId(), fields, outputLimit, outputOffset);
 
     return new DataProductPortsView()
