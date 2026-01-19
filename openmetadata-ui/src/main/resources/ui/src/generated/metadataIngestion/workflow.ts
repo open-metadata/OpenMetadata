@@ -4919,7 +4919,8 @@ export interface Pipeline {
      */
     useStatistics?: boolean;
     /**
-     * Language to use for auto classification recognizers
+     * Language to use for auto classification recognizers. Only recognizers that support this
+     * language will be used.
      */
     classificationLanguage?: ClassificationLanguage;
     /**
@@ -6192,7 +6193,8 @@ export interface AppLimitsConfig {
 }
 
 /**
- * Language to use for auto classification recognizers
+ * Language to use for auto classification recognizers. Only recognizers that support this
+ * language will be used.
  *
  * Supported languages for auto classification recognizers (ISO 639-1 codes)
  */
