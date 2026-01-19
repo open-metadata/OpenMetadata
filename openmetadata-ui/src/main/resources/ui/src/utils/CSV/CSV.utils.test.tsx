@@ -254,6 +254,24 @@ describe('CSVUtils', () => {
       expect(csvString).toBe('displayName\n"Test ""quoted"" name"');
     });
 
+    it('should handle displayName with both commas and quotes correctly', () => {
+      const columns = [{ name: 'displayName', key: 'displayName' }];
+      const dataSource = [
+        {
+          displayName:
+            'Contains a timestamp for the most recent "login" of this feature user, to be used for PIN expiration.',
+        },
+      ];
+      const csvString = getCSVStringFromColumnsAndDataSource(
+        columns,
+        dataSource
+      );
+
+      expect(csvString).toBe(
+        'displayName\n"Contains a timestamp for the most recent ""login"" of this feature user, to be used for PIN expiration."'
+      );
+    });
+
     it('should handle tags with commas correctly', () => {
       const columns = [{ name: 'tags', key: 'tags' }];
       const dataSource = [
