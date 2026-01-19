@@ -231,14 +231,15 @@ export const InputOutputPortsTab = forwardRef<
         className="input-output-ports-tab"
         data-testid="input-output-ports-tab"
         sx={{ p: 2, height: '100%', overflowY: 'auto' }}>
-        <Grid container spacing={2}>
+        <Grid container spacing={5}>
           {/* Lineage View Section */}
           <Grid size={12}>
             <Card
               sx={{
-                border: `1px solid ${theme.palette.grey[300]}`,
+                border: `1px solid ${theme.palette.allShades.blueGray[100]}`,
                 borderRadius: '8px',
                 overflow: 'visible',
+                boxShadow: 'none',
               }}
               variant="outlined">
               <Box
@@ -246,13 +247,13 @@ export const InputOutputPortsTab = forwardRef<
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  p: 2,
+                  padding: '8px 16px',
                   backgroundColor: theme.palette.grey[50],
                   borderRadius: isLineageCollapsed ? '8px' : '8px 8px 0 0',
                   cursor: 'pointer',
                 }}
                 onClick={handleToggleLineageCollapse}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
                   <Typography fontWeight={500} variant="body1">
                     {t('label.port-plural')} {t('label.lineage')}
                   </Typography>
@@ -311,8 +312,9 @@ export const InputOutputPortsTab = forwardRef<
           <Grid size={{ xs: 12, md: 6 }}>
             <Card
               sx={{
-                border: `1px solid ${theme.palette.grey[300]}`,
+                border: `1px solid ${theme.palette.allShades.blueGray[100]}`,
                 borderRadius: '8px',
+                boxShadow: 'none',
               }}
               variant="outlined">
               <Box
@@ -320,7 +322,7 @@ export const InputOutputPortsTab = forwardRef<
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  p: 2,
+                  padding: '8px 16px',
                   backgroundColor: theme.palette.grey[50],
                   borderRadius: isInputPortsCollapsed ? '8px' : '8px 8px 0 0',
                   fontSize: '14px',
@@ -329,7 +331,7 @@ export const InputOutputPortsTab = forwardRef<
                   flexShrink: 0,
                 }}
                 onClick={() => setIsInputPortsCollapsed((prev) => !prev)}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
                   <Typography fontWeight={500} variant="body1">
                     {t('label.entity-port-plural', {
                       entity: t('label.input'),
@@ -344,6 +346,7 @@ export const InputOutputPortsTab = forwardRef<
                     <Button
                       data-testid="add-input-port-button"
                       size="small"
+                      sx={{ height: 32 }}
                       variant="contained"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -411,8 +414,9 @@ export const InputOutputPortsTab = forwardRef<
           <Grid size={{ xs: 12, md: 6 }}>
             <Card
               sx={{
-                border: `1px solid ${theme.palette.grey[300]}`,
+                border: `1px solid ${theme.palette.allShades.blueGray[100]}`,
                 borderRadius: '8px',
+                boxShadow: 'none',
               }}
               variant="outlined">
               <Box
@@ -420,7 +424,7 @@ export const InputOutputPortsTab = forwardRef<
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  p: 2,
+                  padding: '8px 16px',
                   backgroundColor: theme.palette.grey[50],
                   borderRadius: isOutputPortsCollapsed ? '8px' : '8px 8px 0 0',
                   fontSize: '14px',
@@ -429,7 +433,7 @@ export const InputOutputPortsTab = forwardRef<
                   flexShrink: 0,
                 }}
                 onClick={() => setIsOutputPortsCollapsed((prev) => !prev)}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
                   <Typography fontWeight={500} variant="body1">
                     {t('label.entity-port-plural', {
                       entity: t('label.output'),
@@ -444,6 +448,7 @@ export const InputOutputPortsTab = forwardRef<
                     <Button
                       data-testid="add-output-port-button"
                       size="small"
+                      sx={{ height: 32 }}
                       variant="contained"
                       onClick={(e) => {
                         e.stopPropagation();
