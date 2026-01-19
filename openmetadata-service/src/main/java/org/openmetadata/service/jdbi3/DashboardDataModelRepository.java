@@ -48,6 +48,7 @@ import org.openmetadata.service.resources.datamodels.DashboardDataModelResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -167,7 +168,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
-  public void setFields(DashboardDataModel dashboardDataModel, Fields fields) {
+  public void setFields(
+      DashboardDataModel dashboardDataModel, Fields fields, RelationIncludes relationIncludes) {
     setDefaultFields(dashboardDataModel);
     populateEntityFieldTags(
         entityType,

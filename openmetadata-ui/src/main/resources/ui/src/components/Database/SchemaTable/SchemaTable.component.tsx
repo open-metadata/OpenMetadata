@@ -53,9 +53,9 @@ import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
-import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useSub } from '../../../hooks/usePubSub';
+import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { useTableFilters } from '../../../hooks/useTableFilters';
 import {
   getTableColumnsByFQN,

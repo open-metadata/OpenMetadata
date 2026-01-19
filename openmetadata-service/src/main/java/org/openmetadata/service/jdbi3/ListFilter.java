@@ -89,6 +89,22 @@ public class ListFilter extends Filter<ListFilter> {
     return new ResourceContext<>(entityType);
   }
 
+  /**
+   * Get the parent entity ResourceContext when filtering by entityId and entityType.
+   * This is used for authorization checks on the parent entity (e.g., checking VIEW_QUERIES
+   * permission on a table when listing queries for that table).
+   *
+   * @return ResourceContext for the parent entity, or null if entityId/entityType not specified
+   */
+  public ResourceContext<?> getParentResourceContext() {
+    String entityId = queryParams.get("entityId");
+    String parentEntityType = queryParams.get("entityType");
+    if (!nullOrEmpty(entityId) && !nullOrEmpty(parentEntityType)) {
+      return new ResourceContext<>(parentEntityType, java.util.UUID.fromString(entityId), null);
+    }
+    return null;
+  }
+
   private String getAssignee() {
     String assignee = queryParams.get("assignee");
     return assignee == null ? "" : String.format("assignee = '%s'", assignee);

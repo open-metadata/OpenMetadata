@@ -70,7 +70,14 @@ export const getServiceByFQN = async (
 ) => {
   const response = await APIClient.get<ServicesType>(
     `/services/${serviceCat}/name/${getEncodedFqn(fqn)}`,
-    { params: { ...params, include: params?.include ?? Include.NonDeleted } }
+    {
+      params: {
+        ...params,
+        include: params?.include ?? Include.NonDeleted,
+        includeRelations:
+          params?.includeRelations ?? 'owners:non-deleted,experts:non-deleted',
+      },
+    }
   );
 
   return response.data;

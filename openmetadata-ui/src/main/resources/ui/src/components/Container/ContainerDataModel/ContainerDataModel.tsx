@@ -22,7 +22,6 @@ import {
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { FC, useCallback, useMemo, useState } from 'react';
-import { useFqn } from '../../../hooks/useFqn';
 import { useTranslation } from 'react-i18next';
 import {
   HIGHLIGHTED_ROW_SELECTOR,
@@ -40,13 +39,14 @@ import {
   TagLabel,
 } from '../../../generated/entity/data/container';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { useFqn } from '../../../hooks/useFqn';
+import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
+import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import {
   updateContainerColumnDescription,
   updateContainerColumnTags,
 } from '../../../utils/ContainerDetailUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
-import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   getAllTags,
@@ -87,10 +87,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
 
   const schema = pruneEmptyChildren(dataModel?.columns ?? []);
 
-  const {
-    columnFqn: columnPart,
-    fqn,
-  } = useFqn({
+  const { columnFqn: columnPart, fqn } = useFqn({
     type: EntityType.CONTAINER,
   });
   useFqnDeepLink({
