@@ -190,6 +190,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "# Clustering Information",
             "# Delta Statistics Columns",
             "# Detailed Table Information",
+            "# Delta Uniform Iceberg",
         ):
             break
         # Take out the more detailed type information
