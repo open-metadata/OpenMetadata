@@ -27,7 +27,9 @@ import { useCustomPages } from '../../../../hooks/useCustomPages';
 import { useFqn } from '../../../../hooks/useFqn';
 import { FeedCounts } from '../../../../interface/feed.interface';
 import { restoreDataModel } from '../../../../rest/dataModelsAPI';
-import { getFeedCounts } from '../../../../utils/CommonUtils';
+import {
+  getFeedCounts,
+} from '../../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -67,7 +69,7 @@ const DataModelDetails = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedDataModelFQN } = useFqn();
+
   const { customizedPage, isLoading } = useCustomPages(
     PageType.DashboardDataModel
   );
@@ -75,6 +77,10 @@ const DataModelDetails = ({
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
+
+  const { entityFqn: decodedDataModelFQN } = useFqn({
+    type: EntityType.DASHBOARD_DATA_MODEL,
+  });
 
   const { deleted, version } = useMemo(() => {
     return {

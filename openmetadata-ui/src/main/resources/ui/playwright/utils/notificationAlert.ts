@@ -64,19 +64,23 @@ export const addFilterWithUsersListInput = async ({
 }) => {
   // Select updater name filter
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
-  await page.click(`[data-testid="${filterTestId}"]:visible`);
+  const filterOption = page.locator(
+    `.ant-select-dropdown:visible [data-testid="${filterTestId}"]`
+  );
+  await expect(filterOption).toBeVisible();
+  await filterOption.click({ force: true });
 
   // Search and select user
   const getSearchResult = page.waitForResponse('/api/v1/search/query?q=*');
-  await page.fill(
-    '[data-testid="user-name-select"] [role="combobox"]',
-    updaterName,
-    {
-      force: true,
-    }
+  const userSelectInput = page.locator(
+    '[data-testid="user-name-select"] [role="combobox"]'
   );
+  await userSelectInput.click({ force: true });
+  await userSelectInput.fill(updaterName, { force: true });
   await getSearchResult;
-  await page.click(`.ant-select-dropdown:visible [title="${updaterName}"]`);
+  await page
+    .locator(`.ant-select-dropdown:visible [title="${updaterName}"]`)
+    .click({ force: true });
 
   await expect(page.getByTestId('user-name-select')).toHaveText(updaterName);
 
@@ -105,7 +109,9 @@ export const addInternalDestination = async ({
   await page.click(
     `[data-testid="destination-category-select-${destinationNumber}"]`
   );
-  await page.click(`[data-testid="${category}-internal-option"]:visible`);
+  await page
+    .locator(`[data-testid="${category}-internal-option"]:visible`)
+    .click();
 
   // Select the receivers
   if (typeId) {
@@ -120,14 +126,16 @@ export const addInternalDestination = async ({
       );
 
       await getSearchResult;
-      await page.click(
-        `.ant-dropdown:visible [data-testid="${searchText}-option-label"]`
-      );
+      await page
+        .locator(`.ant-dropdown:visible [data-testid="${searchText}-option-label"]`)
+        .click();
     } else {
       const getSearchResult = page.waitForResponse('/api/v1/search/query?q=*');
       await page.fill(`[data-testid="${typeId}"]`, searchText);
       await getSearchResult;
-      await page.click(`.ant-select-dropdown:visible [title="${searchText}"]`);
+      await page
+        .locator(`.ant-select-dropdown:visible [title="${searchText}"]`)
+        .click();
     }
     await clickOutside(page);
   }
@@ -136,9 +144,9 @@ export const addInternalDestination = async ({
   await page.click(
     `[data-testid="destination-type-select-${destinationNumber}"]`
   );
-  await page.click(
-    `.select-options-container [data-testid="${type}-external-option"]:visible`
-  );
+  await page
+    .locator(`.select-options-container [data-testid="${type}-external-option"]:visible`)
+    .click();
 
   // Check the added destination type
   await expect(

@@ -1319,6 +1319,7 @@ export enum DatabaseServiceType {
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
     Ssas = "SSAS",
+    StarRocks = "StarRocks",
     Synapse = "Synapse",
     Teradata = "Teradata",
     Timescale = "Timescale",

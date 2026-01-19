@@ -437,7 +437,15 @@ class RESTTest(TestCase):
     def test_get_api_collections(self):
         """test get api collections"""
         collections = list(self.rest_source.get_api_collections())
-        assert collections == MOCK_COLLECTIONS
+        expected_collections = MOCK_COLLECTIONS + [
+            RESTCollection(
+                name=EntityName(root="default"),
+                display_name=None,
+                description=None,
+                url=None,
+            )
+        ]
+        assert collections == expected_collections
 
     def test_yield_api_collection(self):
         """test yield api collections"""
@@ -453,6 +461,14 @@ class RESTTest(TestCase):
             collections = list(self.rest_source.get_api_collections())
         MOCK_COLLECTIONS_COPY = deepcopy(MOCK_COLLECTIONS)
         MOCK_COLLECTIONS_COPY[2].description = Markdown(root="Operations about user")
+        MOCK_COLLECTIONS_COPY.append(
+            RESTCollection(
+                name=EntityName(root="default"),
+                display_name=None,
+                description=None,
+                url=None,
+            )
+        )
         assert collections == MOCK_COLLECTIONS_COPY
 
     def test_generate_collection_url(self):
@@ -494,7 +510,7 @@ class RESTTest(TestCase):
             self.config.workflowConfig.openMetadataServerConfig,
         )
         collections_exclude = list(rest_source_exclude.get_api_collections())
-        assert len(collections_exclude) == 2
+        assert len(collections_exclude) == 3
         assert all(col.name.root != "store" for col in collections_exclude)
 
         # Test with both include and exclude patterns
@@ -1045,3 +1061,130 @@ class RESTTest(TestCase):
         assert result.dataType == DataTypeTopic.ARRAY
         # When no items key exists, children is None
         assert result.children is None
+
+    @patch("metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection")
+    def test_endpoint_filter_pattern(self, test_connection):
+        """test endpoint filter pattern"""
+        test_connection.return_value = False
+
+        # Setup mock JSON response with paths
+        mock_json_with_paths = {
+            "paths": {
+                "/store/order": {
+                    "post": {
+                        "tags": ["store"],
+                        "summary": "Place an order",
+                        "operationId": "placeOrder",
+                    }
+                },
+                "/store/inventory": {
+                    "get": {
+                        "tags": ["store"],
+                        "summary": "Get inventory",
+                        "operationId": "getInventory",
+                    }
+                },
+                "/store/order/{orderId}": {
+                    "get": {
+                        "tags": ["store"],
+                        "summary": "Get order by ID",
+                        "operationId": "getOrderById",
+                    }
+                },
+            },
+            "tags": [{"name": "store", "description": "Access to Petstore orders"}],
+        }
+
+        # Test with include pattern - only endpoints matching the pattern
+        include_config = deepcopy(mock_rest_config)
+        include_config["source"]["sourceConfig"]["config"][
+            "apiEndpointFilterPattern"
+        ] = {"includes": [".*order.*"]}
+        rest_source_include = RestSource.create(
+            include_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+        rest_source_include.json_response = mock_json_with_paths
+        rest_source_include.context.get().__dict__[
+            "api_service"
+        ] = MOCK_API_SERVICE.fullyQualifiedName.root
+
+        endpoints_include = list(
+            rest_source_include.yield_api_endpoint(MOCK_SINGLE_COLLECTION)
+        )
+        # Should include /store/order and /store/order/{orderId} but not /store/inventory
+        assert len(endpoints_include) == 2
+        endpoint_names = [e.right.displayName for e in endpoints_include if e.right]
+        assert "/store/order" in endpoint_names
+        assert "/store/order/{orderId}" in endpoint_names
+        assert "/store/inventory" not in endpoint_names
+
+        # Test with exclude pattern
+        exclude_config = deepcopy(mock_rest_config)
+        exclude_config["source"]["sourceConfig"]["config"][
+            "apiEndpointFilterPattern"
+        ] = {"excludes": [".*inventory.*"]}
+        rest_source_exclude = RestSource.create(
+            exclude_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+        rest_source_exclude.json_response = mock_json_with_paths
+        rest_source_exclude.context.get().__dict__[
+            "api_service"
+        ] = MOCK_API_SERVICE.fullyQualifiedName.root
+
+        endpoints_exclude = list(
+            rest_source_exclude.yield_api_endpoint(MOCK_SINGLE_COLLECTION)
+        )
+        # Should exclude /store/inventory
+        assert len(endpoints_exclude) == 2
+        endpoint_names_exclude = [
+            e.right.displayName for e in endpoints_exclude if e.right
+        ]
+        assert "/store/inventory" not in endpoint_names_exclude
+
+    def test_filter_collection_endpoints(self):
+        """Test _filter_collection_endpoints filters endpoints correctly for default and tagged collections"""
+        self.rest_source.json_response = {
+            "paths": {
+                "/pet/findByStatus": {
+                    "get": {
+                        "tags": ["pet"],
+                        "summary": "Find pets by status",
+                        "operationId": "findPetsByStatus",
+                    }
+                },
+                "/store/order": {
+                    "post": {
+                        "tags": ["store"],
+                        "summary": "Place an order",
+                        "operationId": "placeOrder",
+                    }
+                },
+                "/health": {
+                    "get": {"summary": "Health check", "operationId": "healthCheck"}
+                },
+                "/untagged/endpoint": {
+                    "get": {"summary": "Untagged endpoint", "operationId": "untagged"}
+                },
+            }
+        }
+
+        pet_collection = RESTCollection(name=EntityName(root="pet"))
+        result = self.rest_source._filter_collection_endpoints(pet_collection)
+        assert result is not None
+        assert len(result) == 1
+        assert "/pet/findByStatus" in result
+
+        store_collection = RESTCollection(name=EntityName(root="store"))
+        result = self.rest_source._filter_collection_endpoints(store_collection)
+        assert result is not None
+        assert len(result) == 1
+        assert "/store/order" in result
+
+        default_collection = RESTCollection(name=EntityName(root="default"))
+        result = self.rest_source._filter_collection_endpoints(default_collection)
+        assert result is not None
+        assert len(result) == 2
+        assert "/health" in result
+        assert "/untagged/endpoint" in result

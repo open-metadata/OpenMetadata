@@ -210,6 +210,13 @@ export interface PipelineServiceClientConfiguration {
      */
     jwtPrincipalClaimsMapping?: string[];
     /**
+     * JWT claim name that contains team/department information. For SAML SSO, this is the
+     * attribute name (e.g., 'department') from the SAML assertion. For JWT, this is the claim
+     * name in the JWT token. The value from this claim will be used to automatically assign
+     * users to matching teams in OpenMetadata during login.
+     */
+    jwtTeamClaimMapping?: string;
+    /**
      * LDAP Configuration in case the Provider is LDAP
      */
     ldapConfiguration?: LDAPConfiguration;
@@ -280,6 +287,12 @@ export interface PipelineServiceClientConfiguration {
      */
     useRolesFromProvider?: boolean;
     /**
+     * AWS IAM authentication configuration for OpenSearch. IAM auth is automatically enabled
+     * when region is configured. Uses standard AWS environment variables (AWS_DEFAULT_REGION,
+     * AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN).
+     */
+    aws?: Aws;
+    /**
      * Batch Size for Requests
      */
     batchSize?: number;
@@ -292,7 +305,8 @@ export interface PipelineServiceClientConfiguration {
      */
     connectionTimeoutSecs?: number;
     /**
-     * Elastic Search Host
+     * Elastic Search Host. Supports single host or comma-separated list for multiple hosts
+     * (e.g., 'localhost' or 'es-node1:9200,es-node2:9200,es-node3:9200').
      */
     host?: string;
     /**
@@ -322,7 +336,8 @@ export interface PipelineServiceClientConfiguration {
      */
     payLoadSize?: number;
     /**
-     * Elastic Search port
+     * Elastic Search port. Used when host does not include port. Ignored when using
+     * comma-separated hosts with ports.
      */
     port?: number;
     /**
@@ -1017,6 +1032,13 @@ export interface AuthenticationConfiguration {
      */
     jwtPrincipalClaimsMapping?: string[];
     /**
+     * JWT claim name that contains team/department information. For SAML SSO, this is the
+     * attribute name (e.g., 'department') from the SAML assertion. For JWT, this is the claim
+     * name in the JWT token. The value from this claim will be used to automatically assign
+     * users to matching teams in OpenMetadata during login.
+     */
+    jwtTeamClaimMapping?: string;
+    /**
      * LDAP Configuration in case the Provider is LDAP
      */
     ldapConfiguration?: LDAPConfiguration;
@@ -1524,6 +1546,20 @@ export interface AuthorizerConfiguration {
      * Use Roles from Provider
      */
     useRolesFromProvider?: boolean;
+}
+
+/**
+ * AWS IAM authentication configuration for OpenSearch. IAM auth is automatically enabled
+ * when region is configured. Uses standard AWS environment variables (AWS_DEFAULT_REGION,
+ * AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN).
+ */
+export interface Aws {
+    /**
+     * AWS service name for signing (es for Elasticsearch/OpenSearch, aoss for OpenSearch
+     * Serverless)
+     */
+    serviceName?: string;
+    [property: string]: any;
 }
 
 /**
@@ -2053,9 +2089,9 @@ export interface NaturalLanguageSearch {
  */
 export interface Bedrock {
     /**
-     * AWS access key for Bedrock service authentication
+     * AWS credentials configuration for Bedrock service
      */
-    accessKey?: string;
+    awsConfig?: AWSBaseConfig;
     /**
      * Dimension of the embedding vector
      */
@@ -2068,18 +2104,43 @@ export interface Bedrock {
      * Bedrock model identifier to use for query transformation
      */
     modelId?: string;
+}
+
+/**
+ * AWS credentials configuration for Bedrock service
+ *
+ * Base AWS configuration for authentication. Supports static credentials, IAM roles, and
+ * default credential provider chain.
+ */
+export interface AWSBaseConfig {
     /**
-     * AWS Region for Bedrock service
+     * AWS Access Key ID. Falls back to default credential provider chain if not set.
+     */
+    accessKeyId?: string;
+    /**
+     * ARN of IAM role to assume for cross-account access.
+     */
+    assumeRoleArn?: string;
+    /**
+     * Session name for assumed role.
+     */
+    assumeRoleSessionName?: string;
+    /**
+     * Custom endpoint URL for AWS-compatible services (MinIO, LocalStack).
+     */
+    endpointUrl?: string;
+    /**
+     * AWS Region (e.g., us-east-1). When set, enables AWS authentication.
      */
     region?: string;
     /**
-     * AWS secret key for Bedrock service authentication
+     * AWS Secret Access Key. Falls back to default credential provider chain if not set.
      */
-    secretKey?: string;
+    secretAccessKey?: string;
     /**
-     * Set to true to use IAM role based authentication instead of access/secret keys.
+     * AWS Session Token for temporary credentials.
      */
-    useIamRole?: boolean;
+    sessionToken?: string;
 }
 
 /**

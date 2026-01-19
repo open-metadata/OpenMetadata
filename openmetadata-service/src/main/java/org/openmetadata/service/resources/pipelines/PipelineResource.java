@@ -82,7 +82,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "pipelines")
 public class PipelineResource extends EntityResource<Pipeline, PipelineRepository> {
-  public static final String COLLECTION_PATH = "v1/pipelines/";
+  public static final String COLLECTION_PATH = "/v1/pipelines/";
   private final PipelineMapper mapper = new PipelineMapper();
   static final String FIELDS =
       "owners,tasks,pipelineStatus,followers,tags,extension,scheduleInterval,domains,sourceHash";
