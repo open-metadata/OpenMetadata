@@ -19,6 +19,8 @@ import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { MlFeature, Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { TagSource } from '../../../generated/type/schema';
+import { useFqn } from '../../../hooks/useFqn';
+import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { createTagObject } from '../../../utils/TagsUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
@@ -35,9 +37,14 @@ const MlModelFeaturesList = () => {
     {} as MlFeature
   );
   const [editDescription, setEditDescription] = useState<boolean>(false);
-  const { data, onUpdate, permissions, openColumnDetailPanel } =
+  const [_expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+  const { data, onUpdate, permissions, openColumnDetailPanel, selectedColumn } =
     useGenericContext<Mlmodel>();
 
+  // Extract base FQN and column part from URL
+  const { columnFqn: columnPart, fqn } = useFqn({
+    type: EntityType.MLMODEL,
+  });
   const { mlFeatures, isDeleted, entityFqn } = useMemo(() => {
     return {
       mlFeatures: data?.mlFeatures,
@@ -45,6 +52,16 @@ const MlModelFeaturesList = () => {
       entityFqn: data?.fullyQualifiedName ?? '',
     };
   }, [data]);
+
+  // Use deep link hook to handle URL-based column selection
+  useFqnDeepLink({
+    data: mlFeatures || [],
+    columnPart,
+    fqn,
+    setExpandedRowKeys: setExpandedRowKeys,
+    openColumnDetailPanel,
+    selectedColumn: selectedColumn as MlFeature | null,
+  });
 
   const hasEditPermission = useMemo(
     () => permissions.EditTags || permissions.EditAll,
@@ -112,8 +129,9 @@ const MlModelFeaturesList = () => {
     (feature: MlFeature, event: React.MouseEvent) => {
       const target = event.target as HTMLElement;
       const isExpandIcon = target.closest('.table-expand-icon') !== null;
+      const isButton = target.closest('button') !== null;
 
-      if (!isExpandIcon) {
+      if (!isExpandIcon && !isButton) {
         openColumnDetailPanel(feature);
       }
     },

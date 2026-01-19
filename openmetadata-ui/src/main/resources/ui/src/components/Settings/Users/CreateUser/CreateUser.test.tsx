@@ -118,8 +118,10 @@ describe('Test CreateUser component', () => {
   });
 
   it('should render password fields for Basic auth provider', async () => {
-    const { useApplicationStore } = require('../../../../hooks/useApplicationStore');
-    
+    const {
+      useApplicationStore,
+    } = require('../../../../hooks/useApplicationStore');
+
     (useApplicationStore as jest.Mock).mockImplementation(() => ({
       authConfig: {
         provider: 'basic',
@@ -140,8 +142,10 @@ describe('Test CreateUser component', () => {
   });
 
   it('should not render password fields for SSO auth provider', async () => {
-    const { useApplicationStore } = require('../../../../hooks/useApplicationStore');
-    
+    const {
+      useApplicationStore,
+    } = require('../../../../hooks/useApplicationStore');
+
     (useApplicationStore as jest.Mock).mockImplementation(() => ({
       authConfig: {
         provider: 'google',

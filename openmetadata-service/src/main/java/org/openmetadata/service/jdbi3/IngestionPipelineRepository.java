@@ -62,6 +62,7 @@ import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
@@ -113,7 +114,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  public void setFields(IngestionPipeline ingestionPipeline, Fields fields) {
+  public void setFields(
+      IngestionPipeline ingestionPipeline, Fields fields, RelationIncludes relationIncludes) {
     if (ingestionPipeline.getService() == null) {
       ingestionPipeline.withService(getContainer(ingestionPipeline.getId()));
     }

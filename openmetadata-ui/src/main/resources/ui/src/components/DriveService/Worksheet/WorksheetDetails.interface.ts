@@ -41,4 +41,5 @@ export interface WorksheetDetailsProps {
     key?: keyof Worksheet
   ) => Promise<void>;
   onUpdateVote: (data: QueryVote, id: string) => Promise<void>;
+  activeColumnFqn?: string;
 }

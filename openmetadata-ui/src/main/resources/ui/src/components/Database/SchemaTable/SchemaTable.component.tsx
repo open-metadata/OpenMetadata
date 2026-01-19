@@ -22,7 +22,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
@@ -32,6 +31,7 @@ import {
 } from '../../../constants/constants';
 import {
   COLUMN_CONSTRAINT_TYPE_OPTIONS,
+  HIGHLIGHTED_ROW_SELECTOR,
   TABLE_SCROLL_VALUE,
 } from '../../../constants/Table.constants';
 import {
@@ -39,7 +39,7 @@ import {
   DEFAULT_SCHEMA_TABLE_VISIBLE_COLUMNS,
   TABLE_COLUMNS_KEYS,
 } from '../../../constants/TableKeys.constants';
-import { EntityType, FqnPart } from '../../../enums/entity.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import {
   Column,
   Table as TableType,
@@ -53,7 +53,9 @@ import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
+import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useSub } from '../../../hooks/usePubSub';
+import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { useTableFilters } from '../../../hooks/useTableFilters';
 import {
   getTableColumnsByFQN,
@@ -61,7 +63,6 @@ import {
   updateTableColumn,
 } from '../../../rest/tableAPI';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
-import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
   getColumnSorter,
@@ -81,12 +82,14 @@ import {
 import {
   findColumnByEntityLink,
   getAllRowKeysByKeyName,
+  getHighlightedRowClassName,
   getTableExpandableConfig,
   prepareConstraintIcon,
   pruneEmptyChildren,
   updateColumnInNestedStructure,
 } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
@@ -134,7 +137,11 @@ const SchemaTable = () => {
   const [prevTableColumns, setPrevTableColumns] = useState<
     Column[] | undefined
   >();
-  const { fqn: decodedEntityFqn } = useFqn();
+  const {
+    entityFqn: tableFqn,
+    columnFqn: columnPart,
+    fqn,
+  } = useFqn({ type: EntityType.TABLE });
 
   const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
 
@@ -145,6 +152,14 @@ const SchemaTable = () => {
     openColumnDetailPanel,
   } = useGenericContext<TableType>();
 
+  useFqnDeepLink({
+    data: table.columns || [],
+    columnPart,
+    fqn,
+    setExpandedRowKeys: setExpandedRowKeys,
+    openColumnDetailPanel,
+  });
+
   const { testCaseCounts, joins, tableConstraints, deleted } = useMemo(
     () => ({
       testCaseCounts: testCaseSummary?.columnTestSummary ?? [],
@@ -152,17 +167,17 @@ const SchemaTable = () => {
       tableConstraints: table?.tableConstraints,
       deleted: table?.deleted,
     }),
-    [table, testCaseSummary]
+    [testCaseSummary, table]
   );
 
-  const tableFqn = useMemo(
-    () =>
-      getPartialNameFromTableFQN(
-        decodedEntityFqn,
-        [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
-        FQN_SEPARATOR_CHAR
-      ),
-    [decodedEntityFqn]
+  useScrollToElement(
+    HIGHLIGHTED_ROW_SELECTOR,
+    Boolean(fqn && tableColumns.length > 0 && !columnsLoading)
+  );
+
+  const getRowClassName = useCallback(
+    (record: Column) => getHighlightedRowClassName(record, fqn),
+    [fqn]
   );
 
   const {
@@ -532,8 +547,9 @@ const SchemaTable = () => {
     (column: Column, event: React.MouseEvent) => {
       const target = event.target as HTMLElement;
       const isExpandIcon = target.closest('.table-expand-icon') !== null;
+      const isButton = target.closest('button') !== null;
 
-      if (!isExpandIcon) {
+      if (!isExpandIcon && !isButton) {
         openColumnDetailPanel(column);
       }
     },
@@ -558,25 +574,55 @@ const SchemaTable = () => {
 
           return (
             <div className="d-inline-flex flex-column hover-icon-group w-max-90">
-              <div className="d-inline-flex items-baseline">
-                {prepareConstraintIcon({
-                  columnName: name,
-                  columnConstraint: record.constraint,
-                  tableConstraints,
-                })}
-                <Typography.Text
-                  className={classNames(
-                    'm-b-0 d-block break-word cursor-pointer',
-                    {
-                      'text-grey-600': !isEmpty(displayName),
-                    }
+              <div className="d-inline-flex items-center gap-2">
+                <div className="d-inline-flex items-baseline">
+                  {prepareConstraintIcon({
+                    columnName: name,
+                    columnConstraint: record.constraint,
+                    tableConstraints,
+                  })}
+                  <Typography.Text
+                    className={classNames(
+                      'm-b-0 d-block break-word cursor-pointer',
+                      {
+                        'text-grey-600': !isEmpty(displayName),
+                      }
+                    )}
+                    data-testid="column-name">
+                    {stringToHTML(highlightSearchText(name, searchText))}
+                  </Typography.Text>
+                </div>
+                <div className="d-flex items-center">
+                  {editDisplayNamePermission && (
+                    <Tooltip placement="top" title={t('label.edit')}>
+                      <Button
+                        className="cursor-pointer hover-cell-icon flex-center"
+                        data-testid="edit-displayName-button"
+                        style={{
+                          color: DE_ACTIVE_COLOR,
+                          padding: 0,
+                          border: 'none',
+                          background: 'transparent',
+                          width: '24px',
+                          height: '24px',
+                        }}
+                        onClick={() => handleEditDisplayNameClick(record)}>
+                        <IconEdit
+                          style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                        />
+                      </Button>
+                    </Tooltip>
                   )}
-                  data-testid="column-name">
-                  {stringToHTML(highlightSearchText(name, searchText))}
-                </Typography.Text>
+                  {record.fullyQualifiedName && (
+                    <CopyLinkButton
+                      entityType={EntityType.TABLE}
+                      fieldFqn={record.fullyQualifiedName}
+                      testId="copy-column-link-button"
+                    />
+                  )}
+                </div>
               </div>
               {isEmpty(displayName) ? null : (
-                // It will render displayName fallback to name
                 <Typography.Text
                   className="m-b-0 d-block break-word"
                   data-testid="column-display-name">
@@ -584,28 +630,6 @@ const SchemaTable = () => {
                     highlightSearchText(getEntityName(record), searchText)
                   )}
                 </Typography.Text>
-              )}
-
-              {editDisplayNamePermission && (
-                <Tooltip placement="right" title={t('label.edit')}>
-                  <Button
-                    className="cursor-pointer hover-cell-icon w-fit-content"
-                    data-testid="edit-displayName-button"
-                    style={{
-                      color: DE_ACTIVE_COLOR,
-                      padding: 0,
-                      border: 'none',
-                      background: 'transparent',
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEditDisplayNameClick(record);
-                    }}>
-                    <IconEdit
-                      style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                    />
-                  </Button>
-                </Tooltip>
               )}
             </div>
           );
@@ -696,11 +720,11 @@ const SchemaTable = () => {
       tableConstraints,
       editTagsPermission,
       editGlossaryTermsPermission,
+      editDisplayNamePermission,
       handleUpdate,
       handleTagSelection,
       renderDataTypeDisplay,
       renderDescription,
-      handleTagSelection,
       onThreadLinkSelect,
       tagFilter,
       testCaseCounts,
@@ -736,7 +760,7 @@ const SchemaTable = () => {
   );
 
   const handleEditTable = () => {
-    navigate(getEntityBulkEditPath(EntityType.TABLE, decodedEntityFqn));
+    navigate(getEntityBulkEditPath(EntityType.TABLE, tableFqn));
   };
 
   useEffect(() => {
@@ -744,23 +768,6 @@ const SchemaTable = () => {
       getAllRowKeysByKeyName<Column>(tableColumns ?? [], 'fullyQualifiedName')
     );
   }, [tableColumns]);
-
-  // Need to scroll to the selected row
-  useEffect(() => {
-    const columnName = getPartialNameFromTableFQN(decodedEntityFqn, [
-      FqnPart.Column,
-    ]);
-    if (!columnName) {
-      return;
-    }
-
-    const row = document.querySelector(`[data-row-key="${decodedEntityFqn}"]`);
-
-    if (row && tableColumns?.length && tableColumns.length > 0) {
-      // Need to wait till table loads fully so that we can call scroll accurately
-      setTimeout(() => row.scrollIntoView(), 1);
-    }
-  }, [tableColumns, decodedEntityFqn]);
 
   const searchProps = useMemo(
     () => ({
@@ -820,6 +827,7 @@ const SchemaTable = () => {
             emptyText: <FilterTablePlaceHolder />,
           }}
           pagination={false}
+          rowClassName={getRowClassName}
           rowKey="fullyQualifiedName"
           scroll={TABLE_SCROLL_VALUE}
           searchProps={searchProps}

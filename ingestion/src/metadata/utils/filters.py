@@ -327,6 +327,21 @@ def filter_by_collection(
     return _filter(collection_pattern, collection_name)
 
 
+def filter_by_endpoint(
+    endpoint_pattern: Optional[FilterPattern], endpoint_name: str
+) -> bool:
+    """
+    Return True if the endpoint needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param endpoint_pattern: Model defining endpoint filtering logic
+    :param endpoint_name: endpoint name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(endpoint_pattern, endpoint_name)
+
+
 def filter_by_tag(tag_pattern: Optional[FilterPattern], tag_name: str) -> bool:
     """
     Return True if the models needs to be filtered, False otherwise
