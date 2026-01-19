@@ -13,6 +13,8 @@
 
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -935,6 +937,422 @@ public class AuditLogResourceIT {
     assertNotNull(response);
     Map<String, Object> result = MAPPER.readValue(response, new TypeReference<>() {});
     assertNotNull(result.get("data"));
+  }
+
+  // ==================== Audit Log Event Verification Tests ====================
+  // These tests verify that audit log entries are created with valid UUIDs for all event types.
+  // They catch bugs where JDBI @BindBean doesn't properly convert UUID to String.
+
+  private static final long AUDIT_LOG_TIMEOUT_MS = 30000;
+  private static final long AUDIT_LOG_POLL_INTERVAL_MS = 500;
+
+  @Test
+  void test_auditLog_entityCreated_hasValidUUIDs() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create a glossary
+    String glossaryName =
+        "AuditLogCreateTest_" + java.util.UUID.randomUUID().toString().substring(0, 8);
+    String createJson =
+        String.format(
+            "{\"name\": \"%s\", \"displayName\": \"Test Glossary\", \"description\": \"Test for entityCreated audit\"}",
+            glossaryName);
+
+    String createResponse =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST, "/v1/glossaries", createJson, RequestOptions.builder().build());
+    Map<String, Object> glossary = MAPPER.readValue(createResponse, new TypeReference<>() {});
+    String glossaryId = glossary.get("id").toString();
+    String glossaryFqn = glossary.get("fullyQualifiedName").toString();
+
+    try {
+      // Verify entityCreated audit log entry
+      Map<String, Object> auditEntry =
+          waitForAuditLogEntry(client, glossaryFqn, "glossary", "entityCreated");
+      assertNotNull(auditEntry, "entityCreated audit log entry should exist for: " + glossaryFqn);
+      verifyAuditEntryHasValidUUIDs(auditEntry, glossaryId);
+      assertEquals("entityCreated", auditEntry.get("eventType"));
+    } finally {
+      deleteGlossary(client, glossaryId);
+    }
+  }
+
+  @Test
+  void test_auditLog_entityUpdated_hasValidUUIDs() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create a glossary
+    String glossaryName =
+        "AuditLogUpdateTest_" + java.util.UUID.randomUUID().toString().substring(0, 8);
+    String createJson =
+        String.format(
+            "{\"name\": \"%s\", \"displayName\": \"Test Glossary\", \"description\": \"Original description\"}",
+            glossaryName);
+
+    String createResponse =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST, "/v1/glossaries", createJson, RequestOptions.builder().build());
+    Map<String, Object> glossary = MAPPER.readValue(createResponse, new TypeReference<>() {});
+    String glossaryId = glossary.get("id").toString();
+    String glossaryFqn = glossary.get("fullyQualifiedName").toString();
+
+    try {
+      // Wait for create event first
+      waitForAuditLogEntry(client, glossaryFqn, "glossary", "entityCreated");
+
+      // Update the glossary description using PATCH
+      String patchJson =
+          "[{\"op\": \"replace\", \"path\": \"/description\", \"value\": \"Updated description for audit test\"}]";
+      client
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.PATCH,
+              "/v1/glossaries/" + glossaryId,
+              patchJson,
+              RequestOptions.builder()
+                  .header("Content-Type", "application/json-patch+json")
+                  .build());
+
+      // Verify entityUpdated or entityFieldsChanged audit log entry
+      Map<String, Object> auditEntry =
+          waitForAuditLogEntryMultipleTypes(
+              client,
+              glossaryFqn,
+              "glossary",
+              java.util.List.of("entityUpdated", "entityFieldsChanged"));
+      assertNotNull(auditEntry, "entityUpdated/entityFieldsChanged audit log entry should exist");
+      verifyAuditEntryHasValidUUIDs(auditEntry, glossaryId);
+      assertTrue(
+          "entityUpdated".equals(auditEntry.get("eventType"))
+              || "entityFieldsChanged".equals(auditEntry.get("eventType")),
+          "Event type should be entityUpdated or entityFieldsChanged");
+    } finally {
+      deleteGlossary(client, glossaryId);
+    }
+  }
+
+  @Test
+  void test_auditLog_entitySoftDeleted_hasValidUUIDs() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create a glossary
+    String glossaryName =
+        "AuditLogSoftDeleteTest_" + java.util.UUID.randomUUID().toString().substring(0, 8);
+    String createJson =
+        String.format(
+            "{\"name\": \"%s\", \"displayName\": \"Test Glossary\", \"description\": \"Test for soft delete audit\"}",
+            glossaryName);
+
+    String createResponse =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST, "/v1/glossaries", createJson, RequestOptions.builder().build());
+    Map<String, Object> glossary = MAPPER.readValue(createResponse, new TypeReference<>() {});
+    String glossaryId = glossary.get("id").toString();
+    String glossaryFqn = glossary.get("fullyQualifiedName").toString();
+
+    try {
+      // Wait for create event first
+      waitForAuditLogEntry(client, glossaryFqn, "glossary", "entityCreated");
+
+      // Soft delete the glossary
+      client
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.DELETE,
+              "/v1/glossaries/" + glossaryId,
+              null,
+              RequestOptions.builder().build());
+
+      // Verify entitySoftDeleted audit log entry
+      Map<String, Object> auditEntry =
+          waitForAuditLogEntry(client, glossaryFqn, "glossary", "entitySoftDeleted");
+      assertNotNull(
+          auditEntry, "entitySoftDeleted audit log entry should exist for: " + glossaryFqn);
+      verifyAuditEntryHasValidUUIDs(auditEntry, glossaryId);
+      assertEquals("entitySoftDeleted", auditEntry.get("eventType"));
+    } finally {
+      // Hard delete for cleanup
+      deleteGlossary(client, glossaryId);
+    }
+  }
+
+  @Test
+  void test_auditLog_entityRestored_hasValidUUIDs() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create a glossary
+    String glossaryName =
+        "AuditLogRestoreTest_" + java.util.UUID.randomUUID().toString().substring(0, 8);
+    String createJson =
+        String.format(
+            "{\"name\": \"%s\", \"displayName\": \"Test Glossary\", \"description\": \"Test for restore audit\"}",
+            glossaryName);
+
+    String createResponse =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST, "/v1/glossaries", createJson, RequestOptions.builder().build());
+    Map<String, Object> glossary = MAPPER.readValue(createResponse, new TypeReference<>() {});
+    String glossaryId = glossary.get("id").toString();
+    String glossaryFqn = glossary.get("fullyQualifiedName").toString();
+
+    try {
+      // Wait for create event
+      waitForAuditLogEntry(client, glossaryFqn, "glossary", "entityCreated");
+
+      // Soft delete the glossary
+      client
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.DELETE,
+              "/v1/glossaries/" + glossaryId,
+              null,
+              RequestOptions.builder().build());
+      waitForAuditLogEntry(client, glossaryFqn, "glossary", "entitySoftDeleted");
+
+      // Restore the glossary
+      client
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.PUT,
+              "/v1/glossaries/restore",
+              "{\"id\": \"" + glossaryId + "\"}",
+              RequestOptions.builder().build());
+
+      // Verify entityRestored audit log entry
+      Map<String, Object> auditEntry =
+          waitForAuditLogEntry(client, glossaryFqn, "glossary", "entityRestored");
+      assertNotNull(auditEntry, "entityRestored audit log entry should exist for: " + glossaryFqn);
+      verifyAuditEntryHasValidUUIDs(auditEntry, glossaryId);
+      assertEquals("entityRestored", auditEntry.get("eventType"));
+    } finally {
+      deleteGlossary(client, glossaryId);
+    }
+  }
+
+  @Test
+  void test_auditLog_entityDeleted_hasValidUUIDs() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create a glossary
+    String glossaryName =
+        "AuditLogHardDeleteTest_" + java.util.UUID.randomUUID().toString().substring(0, 8);
+    String createJson =
+        String.format(
+            "{\"name\": \"%s\", \"displayName\": \"Test Glossary\", \"description\": \"Test for hard delete audit\"}",
+            glossaryName);
+
+    String createResponse =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST, "/v1/glossaries", createJson, RequestOptions.builder().build());
+    Map<String, Object> glossary = MAPPER.readValue(createResponse, new TypeReference<>() {});
+    String glossaryId = glossary.get("id").toString();
+    String glossaryFqn = glossary.get("fullyQualifiedName").toString();
+
+    // Wait for create event
+    waitForAuditLogEntry(client, glossaryFqn, "glossary", "entityCreated");
+
+    // Hard delete the glossary
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.DELETE,
+            "/v1/glossaries/" + glossaryId + "?hardDelete=true",
+            null,
+            RequestOptions.builder().build());
+
+    // Verify entityDeleted audit log entry
+    Map<String, Object> auditEntry =
+        waitForAuditLogEntry(client, glossaryFqn, "glossary", "entityDeleted");
+    assertNotNull(auditEntry, "entityDeleted audit log entry should exist for: " + glossaryFqn);
+    verifyAuditEntryHasValidUUIDs(auditEntry, glossaryId);
+    assertEquals("entityDeleted", auditEntry.get("eventType"));
+  }
+
+  @Test
+  void test_auditLog_allEventTypes_summary() throws Exception {
+    // This test creates one entity and performs all operations to verify the complete audit trail
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String glossaryName =
+        "AuditLogFullTest_" + java.util.UUID.randomUUID().toString().substring(0, 8);
+    String createJson =
+        String.format(
+            "{\"name\": \"%s\", \"displayName\": \"Full Audit Test\", \"description\": \"Testing all event types\"}",
+            glossaryName);
+
+    // 1. Create
+    String createResponse =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST, "/v1/glossaries", createJson, RequestOptions.builder().build());
+    Map<String, Object> glossary = MAPPER.readValue(createResponse, new TypeReference<>() {});
+    String glossaryId = glossary.get("id").toString();
+    String glossaryFqn = glossary.get("fullyQualifiedName").toString();
+
+    Map<String, Object> createEntry =
+        waitForAuditLogEntry(client, glossaryFqn, "glossary", "entityCreated");
+    assertNotNull(createEntry, "entityCreated should be logged");
+    verifyAuditEntryHasValidUUIDs(createEntry, glossaryId);
+
+    // 2. Update
+    String patchJson =
+        "[{\"op\": \"replace\", \"path\": \"/description\", \"value\": \"Updated\"}]";
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/glossaries/" + glossaryId,
+            patchJson,
+            RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+    Map<String, Object> updateEntry =
+        waitForAuditLogEntryMultipleTypes(
+            client,
+            glossaryFqn,
+            "glossary",
+            java.util.List.of("entityUpdated", "entityFieldsChanged"));
+    assertNotNull(updateEntry, "entityUpdated/entityFieldsChanged should be logged");
+    verifyAuditEntryHasValidUUIDs(updateEntry, glossaryId);
+
+    // 3. Soft Delete
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.DELETE,
+            "/v1/glossaries/" + glossaryId,
+            null,
+            RequestOptions.builder().build());
+
+    Map<String, Object> softDeleteEntry =
+        waitForAuditLogEntry(client, glossaryFqn, "glossary", "entitySoftDeleted");
+    assertNotNull(softDeleteEntry, "entitySoftDeleted should be logged");
+    verifyAuditEntryHasValidUUIDs(softDeleteEntry, glossaryId);
+
+    // 4. Restore
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/glossaries/restore",
+            "{\"id\": \"" + glossaryId + "\"}",
+            RequestOptions.builder().build());
+
+    Map<String, Object> restoreEntry =
+        waitForAuditLogEntry(client, glossaryFqn, "glossary", "entityRestored");
+    assertNotNull(restoreEntry, "entityRestored should be logged");
+    verifyAuditEntryHasValidUUIDs(restoreEntry, glossaryId);
+
+    // 5. Hard Delete
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.DELETE,
+            "/v1/glossaries/" + glossaryId + "?hardDelete=true",
+            null,
+            RequestOptions.builder().build());
+
+    Map<String, Object> hardDeleteEntry =
+        waitForAuditLogEntry(client, glossaryFqn, "glossary", "entityDeleted");
+    assertNotNull(hardDeleteEntry, "entityDeleted should be logged");
+    verifyAuditEntryHasValidUUIDs(hardDeleteEntry, glossaryId);
+  }
+
+  // ==================== Helper Methods for Audit Log Verification ====================
+
+  private Map<String, Object> waitForAuditLogEntry(
+      OpenMetadataClient client, String entityFqn, String entityType, String eventType)
+      throws Exception {
+    return waitForAuditLogEntryMultipleTypes(
+        client, entityFqn, entityType, java.util.List.of(eventType));
+  }
+
+  private Map<String, Object> waitForAuditLogEntryMultipleTypes(
+      OpenMetadataClient client,
+      String entityFqn,
+      String entityType,
+      java.util.List<String> eventTypes)
+      throws Exception {
+    long startTime = System.currentTimeMillis();
+
+    while ((System.currentTimeMillis() - startTime) < AUDIT_LOG_TIMEOUT_MS) {
+      for (String eventType : eventTypes) {
+        Map<String, String> params = new HashMap<>();
+        params.put("entityFQN", entityFqn);
+        params.put("entityType", entityType);
+        params.put("eventType", eventType);
+        params.put("limit", "1");
+
+        String response = executeGet(client, AUDIT_LOGS_PATH, params);
+        Map<String, Object> result = MAPPER.readValue(response, new TypeReference<>() {});
+        java.util.List<Map<String, Object>> data =
+            (java.util.List<Map<String, Object>>) result.get("data");
+
+        if (data != null && !data.isEmpty()) {
+          return data.get(0);
+        }
+      }
+      Thread.sleep(AUDIT_LOG_POLL_INTERVAL_MS);
+    }
+
+    fail(
+        "Audit log entry not found within timeout for entityFQN="
+            + entityFqn
+            + ", entityType="
+            + entityType
+            + ", eventTypes="
+            + eventTypes);
+    return null;
+  }
+
+  private void verifyAuditEntryHasValidUUIDs(
+      Map<String, Object> auditEntry, String expectedEntityId) {
+    // Verify changeEventId is a valid UUID (not empty)
+    Object changeEventId = auditEntry.get("changeEventId");
+    assertNotNull(changeEventId, "changeEventId should not be null");
+    String changeEventIdStr = changeEventId.toString();
+    assertFalse(
+        changeEventIdStr.isEmpty(),
+        "changeEventId should not be empty - indicates UUID binding failure with @BindBean");
+    try {
+      java.util.UUID.fromString(changeEventIdStr);
+    } catch (IllegalArgumentException e) {
+      fail("changeEventId should be a valid UUID, got: " + changeEventIdStr);
+    }
+
+    // Verify entityId is a valid UUID and matches expected
+    Object entityId = auditEntry.get("entityId");
+    assertNotNull(entityId, "entityId should not be null");
+    String entityIdStr = entityId.toString();
+    assertFalse(
+        entityIdStr.isEmpty(),
+        "entityId should not be empty - indicates UUID binding failure with @BindBean");
+    assertEquals(
+        expectedEntityId, entityIdStr, "entityId in audit log should match the entity's ID");
+  }
+
+  private void deleteGlossary(OpenMetadataClient client, String glossaryId) {
+    try {
+      client
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.DELETE,
+              "/v1/glossaries/" + glossaryId + "?hardDelete=true",
+              null,
+              RequestOptions.builder().build());
+    } catch (Exception e) {
+      // Ignore cleanup errors
+    }
   }
 
   private String executeGet(OpenMetadataClient client, String path, Map<String, String> params)
