@@ -13,9 +13,8 @@
 Test Teradata using the topology
 """
 
-import types
 from unittest import TestCase
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -80,6 +79,9 @@ class TeradataUnitTest(TestCase):
         self.teradata_source.source_config.storedProcedureFilterPattern = FilterPattern(
             excludes=["sp_exclude"]
         )
+        self.teradata_source.context.get().__dict__[
+            "database_service"
+        ] = "teradata_source"
         self.teradata_source.context.get().__dict__["database"] = "test_db"
         self.teradata_source.context.get().__dict__["database_schema"] = "test_schema"
 

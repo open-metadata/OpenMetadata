@@ -374,14 +374,16 @@ class PostgresUnitTest(TestCase):
         self.postgres_source.engine = mock_engine
 
         # Mock rows
-        row1 = {
+        row1 = MagicMock()
+        row1._mapping = {
             "procedure_name": "sp_include",
             "schema_name": "test_schema",
             "definition": "def1",
             "language": "SQL",
             "procedure_type": "PROCEDURE",
         }
-        row2 = {
+        row2 = MagicMock()
+        row2._mapping = {
             "procedure_name": "sp_exclude",
             "schema_name": "test_schema",
             "definition": "def2",
@@ -389,7 +391,15 @@ class PostgresUnitTest(TestCase):
             "procedure_type": "PROCEDURE",
         }
 
-        mock_engine.execute.return_value.all.return_value = [row1, row2]
+        # PostgreSQL get_stored_procedures calls _get_stored_procedures_internal twice
+        # once for procedures and once for functions
+        mock_result_proc = MagicMock()
+        mock_result_proc.all.return_value = [row1, row2]
+
+        mock_result_func = MagicMock()
+        mock_result_func.all.return_value = []
+
+        mock_engine.execute.side_effect = [mock_result_proc, mock_result_func]
 
         results = list(self.postgres_source.get_stored_procedures())
 

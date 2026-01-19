@@ -14,12 +14,12 @@ Test Redshift Provisioned cluster detection and query selection
 """
 
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
-from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.source.database.redshift.connection import (
     get_redshift_instance_type,
 )
@@ -227,18 +227,23 @@ class RedshiftUnitTest(unittest.TestCase):
         self.redshift_source.source_config.storedProcedureFilterPattern = FilterPattern(
             excludes=["sp_exclude"]
         )
+        self.redshift_source.context.get().__dict__[
+            "database_service"
+        ] = "redshift_source"
         self.redshift_source.context.get().__dict__["database"] = "test_db"
         self.redshift_source.context.get().__dict__["database_schema"] = "test_schema"
 
-        mock_engine = Mock()
-        self.redshift_source.engine = mock_engine
+        # Mock connection via _connection_map
+        mock_connection = MagicMock()
+        thread_id = self.redshift_source.context.get_current_thread_id()
+        self.redshift_source._connection_map[thread_id] = mock_connection
 
         # Mock rows
         row1 = {"name": "sp_include", "definition": "def1", "owner": "owner"}
         row2 = {"name": "sp_exclude1", "definition": "def2", "owner": "owner"}
         row3 = {"name": "sp_exclude2", "definition": "def2", "owner": "owner"}
 
-        mock_engine.execute.return_value.all.return_value = [row1, row2, row3]
+        mock_connection.execute.return_value.all.return_value = [row1, row2, row3]
 
         results = list(self.redshift_source.get_stored_procedures())
 

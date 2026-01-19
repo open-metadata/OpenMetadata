@@ -551,8 +551,6 @@ class BigqueryUnitTest(TestCase):
         self.bq_source.source_config.storedProcedureFilterPattern = FilterPattern(
             excludes=["sp_exclude"]
         )
-        self.bq_source.context.get().__dict__["database"] = "test_db"
-        self.bq_source.context.get().__dict__["database_schema"] = "test_schema"
 
         mock_engine = MagicMock()
         self.bq_source.engine = mock_engine

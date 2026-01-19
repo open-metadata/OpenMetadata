@@ -165,6 +165,7 @@ EXPECTED_TABLE = [
                 dataLength=1,
                 dataTypeDisplay="varchar(50)",
                 constraint="NULL",
+                tags=None,
             ),
             Column(
                 name=ColumnName("sample_col_2"),
@@ -172,6 +173,7 @@ EXPECTED_TABLE = [
                 dataLength=1,
                 dataTypeDisplay="int",
                 constraint="NULL",
+                tags=None,
             ),
             Column(
                 name=ColumnName("sample_col_3"),
@@ -179,6 +181,7 @@ EXPECTED_TABLE = [
                 dataLength=1,
                 dataTypeDisplay="varchar(50)",
                 constraint="NULL",
+                tags=None,
             ),
             Column(
                 name=ColumnName("sample_col_4"),
@@ -186,6 +189,7 @@ EXPECTED_TABLE = [
                 dataLength=1,
                 dataTypeDisplay="varchar(50)",
                 constraint="NULL",
+                tags=None,
             ),
         ],
         tableConstraints=[],
@@ -290,8 +294,10 @@ class MssqlUnitTest(TestCase):
         self.mssql.source_config.storedProcedureFilterPattern = FilterPattern(
             excludes=["sp_exclude"]
         )
-        self.mssql.context.get().__dict__["database"] = "test_db"
-        self.mssql.context.get().__dict__["database_schema"] = "test_schema"
+        self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.mssql.context.get().__dict__[
+            "database_schema"
+        ] = MOCK_DATABASE_SCHEMA.name.root
 
         mock_engine = MagicMock()
         self.mssql.engine = mock_engine

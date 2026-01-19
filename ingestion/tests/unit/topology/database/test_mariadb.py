@@ -20,12 +20,12 @@ from unittest.mock import Mock, patch
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
-from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureType
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.basic import EntityName, Markdown
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.database.mariadb.metadata import MariadbSource
 from metadata.ingestion.source.database.mariadb.models import MariaDBStoredProcedure

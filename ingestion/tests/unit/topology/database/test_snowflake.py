@@ -615,6 +615,7 @@ class SnowflakeUnitTest(TestCase):
         source.source_config.storedProcedureFilterPattern = FilterPattern(
             excludes=["sp_exclude"]
         )
+        source.context.get().__dict__["database_service"] = "snowflake_source"
         source.context.get().__dict__["database"] = "test_db"
         source.context.get().__dict__["database_schema"] = "test_schema"
 
