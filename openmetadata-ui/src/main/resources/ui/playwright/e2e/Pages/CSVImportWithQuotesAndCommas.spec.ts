@@ -15,7 +15,7 @@ import * as fs from 'fs';
 import { SidebarItem } from '../../constant/sidebar';
 import { Glossary } from '../../support/glossary/Glossary';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
-import { selectActiveGlossary } from '../../utils/glossary';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { validateImportStatus } from '../../utils/importUtils';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -50,9 +50,10 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
     await test.step(
       'Import CSV with fields containing both commas and quotes',
       async () => {
+        const glossaryResponse = page.waitForResponse('/api/v1/glossaries?fields=*');
         await sidebarClick(page, SidebarItem.GLOSSARY);
-        await selectActiveGlossary(page, quoteCommaGlossary.data.displayName);
-
+        await glossaryResponse;
+        await waitForAllLoadersToDisappear(page);
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="import-button-description"]');
         await page.waitForLoadState('networkidle');
@@ -124,8 +125,10 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
     await test.step('Create glossary and import data with quotes and commas', async () => {
       await exportImportGlossary.create(apiContext);
 
+      const glossaryResponse = page.waitForResponse('/api/v1/glossaries?fields=*');
       await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, exportImportGlossary.data.displayName);
+      await glossaryResponse;
+      await waitForAllLoadersToDisappear(page);
 
       await page.click('[data-testid="manage-button"]');
       await page.click('[data-testid="import-button-description"]');
@@ -167,8 +170,11 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
     });
 
     await test.step('Export CSV and verify it contains properly escaped quotes', async () => {
+      const glossaryResponse = page.waitForResponse('/api/v1/glossaries?fields=*');
       await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, exportImportGlossary.data.displayName);
+      await glossaryResponse;
+      await waitForAllLoadersToDisappear(page);
+
 
       const downloadPromise = page.waitForEvent('download');
       await page.click('[data-testid="manage-button"]');
@@ -192,7 +198,7 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
 
     await test.step('Re-import the exported CSV', async () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, exportImportGlossary.data.displayName);
+      await waitForAllLoadersToDisappear(page);
 
       await page.click('[data-testid="manage-button"]');
       await page.click('[data-testid="import-button-description"]');
