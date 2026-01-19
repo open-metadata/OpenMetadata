@@ -807,25 +807,18 @@ test.describe('Bulk Import Export', () => {
         await fillColumnDetails(columnDetails2, page);
 
         await page.getByRole('button', { name: 'Next' }).click();
-
+        // total column count +1 for header row and +2 for newly added columns
+        const count = `${tableEntity.entityLinkColumnsName.length + 3}`;
         await validateImportStatus(page, {
-          passed: '11',
-          processed: '11',
+          passed: count,
+          processed: count,
           failed: '0',
         });
 
-        const rowStatus = [
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-        ];
+        // total column count +2 for newly added columns
+        const rowStatus = Array(
+          tableEntity.entityLinkColumnsName.length + 2
+        ).fill('Entity updated');
 
         await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
@@ -870,11 +863,11 @@ test.describe('Bulk Import Export', () => {
           'downloads/' + dbEntity.entity.name + '.csv',
         ]);
 
-        // Adding manual wait for the file to load
-        await page.waitForTimeout(500);
+        await page.waitForSelector('[data-testid="add-row-btn"]', {
+          state: 'visible',
+        });
 
         // Adding some assertion to make sure that CSV loaded correctly
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
         await expect(page.getByTestId('add-row-btn')).toBeVisible();
         await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
         await expect(
@@ -955,11 +948,11 @@ test.describe('Bulk Import Export', () => {
         'downloads/' + `${dbEntity.entity.name}-delete` + '.csv',
       ]);
 
-      // Adding manual wait for the file to load
-      await page.waitForTimeout(500);
+      await page.waitForSelector('[data-testid="add-row-btn"]', {
+        state: 'visible',
+      });
 
       // Adding some assertion to make sure that CSV loaded correctly
-      await expect(page.locator('.rdg-header-row')).toBeVisible();
       await expect(page.getByTestId('add-row-btn')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
       await expect(

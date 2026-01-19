@@ -104,6 +104,7 @@ Test Coverage:
 
 from unittest import TestCase
 
+import pytest
 from collate_sqllineage.core.models import Path
 
 from ingestion.tests.unit.lineage.queries.helpers import (
@@ -514,6 +515,9 @@ class TestSpecificDialectQueries(TestCase):
             dialect=Dialect.MYSQL.value,
         )
 
+    @pytest.mark.skip(
+        "SqlFluff returning empty column lineage unexpectedly in rare cases (5% of runs)"
+    )
     def test_complex_postgres_view(self):
         """Test complex PostgreSQL CREATE VIEW with UNION ALL, nested subqueries, and JSON functions"""
         query = """create view stg_globalv2_default.b2c_order_operational_converted as

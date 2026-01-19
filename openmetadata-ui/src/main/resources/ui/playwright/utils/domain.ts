@@ -257,7 +257,7 @@ export const selectDataProduct = async (
   });
 };
 
-const goToAssetsTab = async (
+export const goToAssetsTab = async (
   page: Page,
   domain: Domain['data'],
   skipDomainSelection = false
@@ -275,6 +275,25 @@ const goToAssetsTab = async (
 
   await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+};
+
+export const verifyAssetsInDomain = async (
+  page: Page,
+  domain: Domain['data'],
+  tables: TableClass[],
+  expectedVisible: boolean
+) => {
+  await goToAssetsTab(page, domain);
+
+  for (const table of tables) {
+    const tableFqn = table.entityResponseData.fullyQualifiedName;
+    const tableCard = page.locator(`[data-testid="table-data-card_${tableFqn}"]`);
+    if (expectedVisible) {
+      await expect(tableCard).toBeVisible({ timeout: 10000 });
+    } else {
+      await expect(tableCard).not.toBeVisible({ timeout: 5000 });
+    }
+  }
 };
 
 const fillCommonFormItems = async (
@@ -644,6 +663,40 @@ export const createDataProduct = async (
   );
 
   await fillCommonFormItems(page, dataProduct);
+  const saveRes = page.waitForResponse('/api/v1/dataProducts');
+  await page.getByTestId('save-btn').click();
+  await saveRes;
+};
+
+export const createDataProductFromListPage = async (
+  page: Page,
+  dataProduct: DataProduct['data'],
+  domain: Domain['data']
+) => {
+  await page.getByTestId('add-entity-button').click();
+
+  await expect(page.getByTestId('form-heading')).toContainText(
+    'Add Data Product'
+  );
+
+  await fillCommonFormItems(page, dataProduct);
+
+  // Fill domain field (required when creating from list page)
+  const domainInput = page.getByTestId('domain-select');
+  await domainInput.scrollIntoViewIfNeeded();
+  await domainInput.waitFor({ state: 'visible' });
+  await domainInput.click();
+
+  const searchDomain = page.waitForResponse(
+    `/api/v1/search/query?q=*index=domain_search_index*`
+  );
+  await domainInput.fill(domain.displayName);
+  await searchDomain;
+
+  const domainOption = page.getByText(domain.displayName);
+  await domainOption.waitFor({ state: 'visible', timeout: 5000 });
+  await domainOption.click();
+
   const saveRes = page.waitForResponse('/api/v1/dataProducts');
   await page.getByTestId('save-btn').click();
   await saveRes;
@@ -1114,4 +1167,105 @@ export const setupNoDomainRule = async (apiContext: APIRequestContext) => {
     domainTeam,
     cleanup,
   };
+};
+
+/**
+ * Creates a data product under a subdomain via direct API call.
+ * Use this when you need to create a data product that belongs to a subdomain
+ * rather than a parent domain.
+ */
+export const createDataProductForSubDomain = async (
+  apiContext: APIRequestContext,
+  subDomain: SubDomain
+) => {
+  const id = uuid();
+  const response = await apiContext.post('/api/v1/dataProducts', {
+    data: {
+      name: `PW%dataProduct.${id}`,
+      displayName: `PW SubDomain Data Product ${id}`,
+      description: 'playwright subdomain data product description',
+      domains: [subDomain.responseData.fullyQualifiedName],
+    },
+  });
+
+  if (!response.ok()) {
+    throw new Error(
+      `Failed to create data product for subdomain: ${response.status()} ${await response.text()}`
+    );
+  }
+
+  const responseData = await response.json();
+
+  return {
+    ...responseData,
+    async delete(deleteContext: APIRequestContext) {
+      await deleteContext.delete(
+        `/api/v1/dataProducts/name/${encodeURIComponent(
+          responseData.fullyQualifiedName
+        )}`
+      );
+    },
+  };
+};
+
+/**
+ * Verifies the data products count displayed in the Data Products tab.
+ * Clicks on the Data Products tab and checks if the count matches the expected value.
+ */
+export const verifyDataProductsCount = async (
+  page: Page,
+  expectedCount: number
+) => {
+  await page.getByTestId('data_products').click();
+  await waitForAllLoadersToDisappear(page);
+  await page.waitForLoadState('networkidle');
+
+  const dataProductCountElement = page
+    .getByTestId('data_products')
+    .getByTestId('count');
+  const countText = await dataProductCountElement.textContent();
+  const displayedCount = parseInt(countText ?? '0', 10);
+
+  expect(displayedCount).toBe(expectedCount);
+};
+
+/**
+ * Navigates to a subdomain from the current domain/subdomain page.
+ * Clicks on the Sub Domains tab and then clicks on the specified subdomain.
+ */
+export const navigateToSubDomain = async (
+  page: Page,
+  subDomainData: { name: string }
+) => {
+  await page.getByTestId('subdomains').getByText('Sub Domains').click();
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  await Promise.all([
+    page.getByTestId(subDomainData.name).click(),
+    page.waitForResponse('/api/v1/domains/name/*'),
+  ]);
+};
+
+/**
+ * Renames a domain or subdomain via the UI.
+ * Opens the manage menu, clicks rename, fills the new name and saves.
+ */
+export const renameDomain = async (page: Page, newName: string) => {
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('rename-button-title').click();
+
+  await expect(page.getByRole('dialog')).toBeVisible();
+
+  await page.locator('#name').clear();
+  await page.locator('#name').fill(newName);
+
+  const patchRes = page.waitForResponse('/api/v1/domains/*');
+  await page.getByTestId('save-button').click();
+  await patchRes;
+
+  await page.reload();
+  await waitForAllLoadersToDisappear(page);
 };

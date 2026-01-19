@@ -91,8 +91,11 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.google.gson.Gson;
-import com.networknt.schema.JsonSchema;
-import com.networknt.schema.ValidationMessage;
+import com.networknt.schema.Error;
+import com.networknt.schema.Schema;
+import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.Timer;
 import jakarta.json.JsonPatch;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.constraints.NotNull;
@@ -126,8 +129,6 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
@@ -208,6 +209,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.lock.HierarchicalLockManager;
+import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.resources.teams.RoleResource;
@@ -2443,29 +2445,81 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection.entityExtensionTimeSeriesDao().deleteBeforeTimestamp(fqn, extension, timestamp);
   }
 
-  private void validateExtension(T entity, Entry<String, JsonNode> field) {
-    if (entity.getExtension() == null) {
+  /**
+   * Public utility method to validate custom properties extension for any entity type.
+   * This method can be used by other repositories that need to validate extensions
+   * without extending EntityRepository.
+   */
+  public static void validateExtension(Object extension, String entityTypeName) {
+    if (extension == null) {
       return;
     }
 
-    // Validate single extension field
-    JsonNode jsonNode = JsonUtils.valueToTree(entity.getExtension());
-    String fieldName = field.getKey();
-    JsonNode fieldValue = field.getValue();
+    JsonNode jsonNode = JsonUtils.valueToTree(extension);
+    Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
 
-    JsonSchema jsonSchema = TypeRegistry.instance().getSchema(entityType, fieldName);
-    if (jsonSchema == null) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.unknownCustomField(fieldName));
+    while (customFields.hasNext()) {
+      Entry<String, JsonNode> entry = customFields.next();
+      String fieldName = entry.getKey();
+      JsonNode fieldValue = entry.getValue();
+
+      // Validate that the custom property exists for this entity type
+      Schema jsonSchema = TypeRegistry.instance().getSchema(entityTypeName, fieldName);
+      if (jsonSchema == null) {
+        throw new IllegalArgumentException(CatalogExceptionMessage.unknownCustomField(fieldName));
+      }
+
+      // Validate against JSON schema - this handles all validation including type-specific rules
+      List<Error> validationMessages = jsonSchema.validate(fieldValue);
+      if (!validationMessages.isEmpty()) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.jsonValidationError(fieldName, validationMessages.toString()));
+      }
     }
-    String customPropertyType = TypeRegistry.getCustomPropertyType(entityType, fieldName);
-    String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityType, fieldName);
-    validateAndUpdateExtensionBasedOnPropertyType(
-        entity, (ObjectNode) jsonNode, fieldName, fieldValue, customPropertyType, propertyConfig);
-    Set<ValidationMessage> validationMessages = jsonSchema.validate(fieldValue);
-    if (!validationMessages.isEmpty()) {
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.jsonValidationError(fieldName, validationMessages.toString()));
+  }
+
+  public static Object validateAndTransformExtension(Object extension, String entityTypeName) {
+    if (extension == null) {
+      return null;
     }
+
+    // Validate custom properties existence and schema compliance
+    validateExtension(extension, entityTypeName);
+
+    // Apply property type-specific transformations (date formatting, enum sorting, etc.)
+    ObjectNode jsonNode = (ObjectNode) JsonUtils.valueToTree(extension);
+    Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
+
+    while (customFields.hasNext()) {
+      Entry<String, JsonNode> entry = customFields.next();
+      String fieldName = entry.getKey();
+      JsonNode fieldValue = entry.getValue();
+
+      String customPropertyType = TypeRegistry.getCustomPropertyType(entityTypeName, fieldName);
+      String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityTypeName, fieldName);
+
+      switch (customPropertyType) {
+        case "date-cp", "dateTime-cp", "time-cp" -> {
+          String formattedValue =
+              getFormattedDateTimeField(
+                  fieldValue.textValue(), customPropertyType, propertyConfig, fieldName);
+          jsonNode.put(fieldName, formattedValue);
+        }
+        case "table-cp" -> validateTableType(fieldValue, propertyConfig, fieldName);
+        case "enum" -> {
+          validateEnumKeys(fieldName, fieldValue, propertyConfig);
+          List<String> enumValues =
+              StreamSupport.stream(fieldValue.spliterator(), false)
+                  .map(JsonNode::asText)
+                  .sorted()
+                  .collect(Collectors.toList());
+          jsonNode.set(fieldName, JsonUtils.valueToTree(enumValues));
+        }
+        default -> {}
+      }
+    }
+
+    return JsonUtils.treeToValue(jsonNode, Object.class);
   }
 
   private void validateExtension(T entity, boolean update) {
@@ -2474,62 +2528,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return;
     }
 
-    JsonNode jsonNode = JsonUtils.valueToTree(entity.getExtension());
-    Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
-    while (customFields.hasNext()) {
-      Entry<String, JsonNode> entry = customFields.next();
-      String fieldName = entry.getKey();
-      JsonNode fieldValue = entry.getValue();
-
-      // Validate the customFields using jsonSchema
-      JsonSchema jsonSchema = TypeRegistry.instance().getSchema(entityType, fieldName);
-      if (jsonSchema == null) {
-        throw new IllegalArgumentException(CatalogExceptionMessage.unknownCustomField(fieldName));
-      }
-      String customPropertyType = TypeRegistry.getCustomPropertyType(entityType, fieldName);
-      String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityType, fieldName);
-
-      validateAndUpdateExtensionBasedOnPropertyType(
-          entity, (ObjectNode) jsonNode, fieldName, fieldValue, customPropertyType, propertyConfig);
-      Set<ValidationMessage> validationMessages = jsonSchema.validate(entry.getValue());
-      if (!validationMessages.isEmpty()) {
-        throw new IllegalArgumentException(
-            CatalogExceptionMessage.jsonValidationError(fieldName, validationMessages.toString()));
-      }
-    }
+    Object transformedExtension = validateAndTransformExtension(entity.getExtension(), entityType);
+    entity.setExtension(transformedExtension);
   }
 
-  private void validateAndUpdateExtensionBasedOnPropertyType(
-      T entity,
-      ObjectNode jsonNode,
-      String fieldName,
-      JsonNode fieldValue,
-      String customPropertyType,
-      String propertyConfig) {
-
-    switch (customPropertyType) {
-      case "date-cp", "dateTime-cp", "time-cp" -> {
-        String formattedValue =
-            getFormattedDateTimeField(
-                fieldValue.textValue(), customPropertyType, propertyConfig, fieldName);
-        jsonNode.put(fieldName, formattedValue);
-      }
-      case "table-cp" -> validateTableType(fieldValue, propertyConfig, fieldName);
-      case "enum" -> {
-        validateEnumKeys(fieldName, fieldValue, propertyConfig);
-        List<String> enumValues =
-            StreamSupport.stream(fieldValue.spliterator(), false)
-                .map(JsonNode::asText)
-                .sorted()
-                .collect(Collectors.toList());
-        jsonNode.set(fieldName, JsonUtils.valueToTree(enumValues));
-        entity.setExtension(jsonNode);
-      }
-      default -> {}
-    }
-  }
-
-  private String getFormattedDateTimeField(
+  private static String getFormattedDateTimeField(
       String fieldValue, String customPropertyType, String propertyConfig, String fieldName) {
     DateTimeFormatter formatter;
 
@@ -2562,7 +2565,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private void validateTableType(JsonNode fieldValue, String propertyConfig, String fieldName) {
+  private static void validateTableType(
+      JsonNode fieldValue, String propertyConfig, String fieldName) {
     TableConfig tableConfig =
         JsonUtils.convertValue(JsonUtils.readTree(propertyConfig), TableConfig.class);
     org.openmetadata.schema.type.customProperties.Table tableValue =
@@ -2743,7 +2747,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 targetFQN,
                 tagLabel.getLabelType().ordinal(),
                 tagLabel.getState().ordinal(),
-                tagLabel.getReason());
+                tagLabel.getReason(),
+                tagLabel.getAppliedBy());
 
         // Update RDF store
         org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
@@ -4004,6 +4009,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private ChangeSource changeSource;
     private final boolean useOptimisticLocking;
 
+    // Store the original FQN at construction time, before any modifications or revert.
+    // This is needed because during change consolidation, revert() reassigns 'original' to
+    // 'previous',
+    // which would cause original.getFullyQualifiedName() to return an outdated value.
+    @Getter private final String originalFqn;
+
     public EntityUpdater(T original, T updated, Operation operation) {
       this(original, updated, operation, null);
     }
@@ -4021,6 +4032,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.original = original;
       this.updated = updated;
       this.operation = operation;
+      this.originalFqn = original.getFullyQualifiedName();
       User updatingUser =
           updated.getUpdatedBy().equalsIgnoreCase(ADMIN_USER_NAME)
               ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
@@ -4441,7 +4453,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         applyTagsDelete(deletedTags, fqn);
       }
       if (!addedTags.isEmpty()) {
-        applyTagsAdd(addedTags, fqn);
+        applyTagsAdd(
+            addedTags.stream().map(tag -> tag.withAppliedBy(updatingUser.getName())).toList(), fqn);
       }
 
       // Record changes for audit trail
@@ -4517,10 +4530,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       if (!consolidatingChanges) {
-        for (JsonNode node :
-            Stream.of(addedFields, updatedFields, deletedFields).flatMap(List::stream).toList()) {
-          node.fields().forEachRemaining(field -> validateExtension(updated, field));
+        ObjectNode extensionNode = (ObjectNode) JsonUtils.valueToTree(updated.getExtension());
+        for (JsonNode node : Stream.of(addedFields, updatedFields).flatMap(List::stream).toList()) {
+          node.fields()
+              .forEachRemaining(
+                  field -> {
+                    Map<String, Object> singleField = new HashMap<>();
+                    singleField.put(
+                        field.getKey(), JsonUtils.treeToValue(field.getValue(), Object.class));
+                    Object transformedField =
+                        validateAndTransformExtension(singleField, entityType);
+                    JsonNode transformedNode = JsonUtils.valueToTree(transformedField);
+                    extensionNode.set(field.getKey(), transformedNode.get(field.getKey()));
+                  });
         }
+        updated.setExtension(JsonUtils.treeToValue(extensionNode, Object.class));
       }
       if (!addedFields.isEmpty()) {
         fieldAdded(changeDescription, FIELD_EXTENSION, JsonUtils.pojoToJson(addedFields));
@@ -4782,7 +4806,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
           updatedLifeCycle.setUpdated(origLifeCycle.getUpdated());
         }
       }
-      recordChange(FIELD_LIFE_CYCLE, origLifeCycle, updatedLifeCycle, true);
+      // Use updateVersion=false to prevent version pollution from lifecycle-only changes
+      // See: https://github.com/open-metadata/OpenMetadata/issues/21326
+      recordChange(FIELD_LIFE_CYCLE, origLifeCycle, updatedLifeCycle, true, objectMatch, false);
     }
 
     private void updateCertification() {
@@ -5272,7 +5298,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void storeNewVersion() {
-      LOG.info("storeNewVersion called for entity: {} {}", entityType, updated.getId());
+      LOG.info(
+          "storeNewVersion called for entity: {} {}, changeDescription={}",
+          entityType,
+          updated.getId(),
+          updated.getChangeDescription());
       EntityRepository.this.storeEntity(updated, true);
       // Write-through cache after update
       EntityRepository.this.writeThroughCache(updated, true);
@@ -5306,6 +5336,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return false;
       }
 
+      // Skip consolidation if the name is being changed in this update.
+      // Renaming updates FQN and related entity references (assets, relationships).
+      // Consolidation would revert to a previous version with the old name/FQN,
+      // causing inconsistencies with already-updated references.
+      if (!original.getName().equals(updated.getName())) {
+        LOG.debug("Skipping consolidation for {} - name change detected", original.getId());
+        return false;
+      }
+
+      // Skip consolidation if a previous change in the session was a name change.
+      // The previous version would have the old name/FQN, and reverting to it
+      // would cause the same issues as above.
+      if (wasRenamedInSession(original)) {
+        LOG.debug(
+            "Skipping consolidation for {} - entity was renamed in session", original.getId());
+        return false;
+      }
+
       // If user is the same and the new update is with in the user session timeout
       return original.getVersion() > 0.1 // First update on an entity that
           && operation == Operation.PATCH
@@ -5318,6 +5366,32 @@ public abstract class EntityRepository<T extends EntityInterface> {
               <= sessionTimeoutMillis // With in session timeout
           && diffChangeSource();
       // changes to children
+    }
+
+    /**
+     * Check if the entity was renamed in a previous update within the consolidation window.
+     * This is detected by checking if the changeDescription contains a 'name' field update.
+     */
+    private boolean wasRenamedInSession(T original) {
+      ChangeDescription changeDesc = original.getChangeDescription();
+      ChangeDescription incChangeDesc = original.getIncrementalChangeDescription();
+
+      // Check main changeDescription first
+      if (changeDesc != null && changeDesc.getFieldsUpdated() != null) {
+        if (changeDesc.getFieldsUpdated().stream().anyMatch(fc -> "name".equals(fc.getName()))) {
+          return true;
+        }
+      }
+
+      // Also check incrementalChangeDescription - this captures the name change
+      // even when renameProcessed prevents it from being in the main changeDescription
+      if (incChangeDesc != null && incChangeDesc.getFieldsUpdated() != null) {
+        if (incChangeDesc.getFieldsUpdated().stream().anyMatch(fc -> "name".equals(fc.getName()))) {
+          return true;
+        }
+      }
+
+      return false;
     }
 
     /**
@@ -5409,7 +5483,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Add tags related to newly added columns
       for (Column added : addedColumns) {
-        applyTags(added.getTags(), added.getFullyQualifiedName());
+        applyTags(
+            added.getTags().stream().map(tag -> tag.withAppliedBy(updatingUser.getName())).toList(),
+            added.getFullyQualifiedName());
       }
 
       // Carry forward the user generated metadata from existing columns to new columns
@@ -6628,13 +6704,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null;
   }
 
-  private static final ExecutorService BULK_PROCESSING_EXECUTOR =
-      Executors.newVirtualThreadPerTaskExecutor();
-
-  private static final ExecutorService BOUNDED_BULK_EXECUTOR =
-      Executors.newFixedThreadPool(20, Thread.ofVirtual().factory());
-
   private static final ConcurrentHashMap<String, CompletableFuture<BulkOperationResult>> BULK_JOBS =
+      new ConcurrentHashMap<>();
+
+  // Cached metrics to avoid Timer.builder overhead on every call
+  private static final ConcurrentHashMap<String, Timer> ENTITY_LATENCY_TIMERS =
+      new ConcurrentHashMap<>();
+  private static final ConcurrentHashMap<String, Timer> ENTITY_QUEUE_WAIT_TIMERS =
+      new ConcurrentHashMap<>();
+  private static final ConcurrentHashMap<String, Timer> BULK_OPERATION_TIMERS =
+      new ConcurrentHashMap<>();
+  private static final ConcurrentHashMap<String, DistributionSummary> BATCH_SIZE_SUMMARIES =
+      new ConcurrentHashMap<>();
+  private static final ConcurrentHashMap<String, DistributionSummary> SUCCESS_RATE_SUMMARIES =
       new ConcurrentHashMap<>();
 
   public CompletableFuture<BulkOperationResult> submitAsyncBulkOperation(
@@ -6644,6 +6726,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     LOG.info(
         "Submitting async bulk operation with jobId: {} for {} entities", jobId, entities.size());
 
+    // Use BulkExecutor for async operations too
     CompletableFuture<BulkOperationResult> job =
         CompletableFuture.supplyAsync(
             () -> {
@@ -6658,7 +6741,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 return errorResult;
               }
             },
-            BULK_PROCESSING_EXECUTOR);
+            BulkExecutor.getInstance().getExecutor());
 
     BULK_JOBS.put(jobId, job);
 
@@ -6680,14 +6763,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<BulkResponse> successRequests = new ArrayList<>();
     List<BulkResponse> failedRequests = new ArrayList<>();
 
+    long bulkStartTime = System.nanoTime();
+    List<Long> entityLatenciesNanos = new ArrayList<>();
+
     for (T entity : entities) {
+      long entityStartTime = System.nanoTime();
       try {
         createOrUpdate(uriInfo, entity, userName);
+        long entityDuration = System.nanoTime() - entityStartTime;
+        entityLatenciesNanos.add(entityDuration);
+        recordEntityMetrics(entityType, entityDuration, 0, true);
         successRequests.add(
             new BulkResponse()
                 .withRequest(entity.getFullyQualifiedName())
                 .withStatus(Status.OK.getStatusCode()));
       } catch (Exception e) {
+        long entityDuration = System.nanoTime() - entityStartTime;
+        entityLatenciesNanos.add(entityDuration);
+        recordEntityMetrics(entityType, entityDuration, 0, false);
         LOG.warn("Failed to process entity in bulk operation", e);
         failedRequests.add(
             new BulkResponse()
@@ -6697,21 +6790,44 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
+    long totalDurationNanos = System.nanoTime() - bulkStartTime;
+
     result.setNumberOfRowsProcessed(entities.size());
     result.setNumberOfRowsPassed(successRequests.size());
     result.setNumberOfRowsFailed(failedRequests.size());
     result.setSuccessRequest(successRequests);
     result.setFailedRequest(failedRequests);
 
-    if (failedRequests.size() > 0) {
-      result.setStatus(ApiStatus.PARTIAL_SUCCESS);
+    if (!failedRequests.isEmpty()) {
+      result.setStatus(successRequests.isEmpty() ? ApiStatus.FAILURE : ApiStatus.PARTIAL_SUCCESS);
     }
 
+    // Calculate metrics
+    long avgEntityLatencyMs = 0;
+    long maxEntityLatencyMs = 0;
+    if (!entityLatenciesNanos.isEmpty()) {
+      avgEntityLatencyMs =
+          entityLatenciesNanos.stream().mapToLong(Long::longValue).sum()
+              / entityLatenciesNanos.size()
+              / 1_000_000;
+      maxEntityLatencyMs =
+          entityLatenciesNanos.stream().mapToLong(Long::longValue).max().orElse(0) / 1_000_000;
+    }
+
+    recordBulkMetrics(
+        entityType,
+        entities.size(),
+        successRequests.size(),
+        totalDurationNanos,
+        avgEntityLatencyMs,
+        maxEntityLatencyMs);
+
     LOG.info(
-        "Async bulk operation completed: {} succeeded, {} failed out of {} total",
+        "Async bulk operation completed: {} succeeded, {} failed out of {} total, took {}ms",
         successRequests.size(),
         failedRequests.size(),
-        entities.size());
+        entities.size(),
+        totalDurationNanos / 1_000_000);
 
     return result;
   }
@@ -6799,35 +6915,142 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<BulkResponse> successRequests = Collections.synchronizedList(new ArrayList<>());
     List<BulkResponse> failedRequests = Collections.synchronizedList(new ArrayList<>());
 
+    BulkExecutor bulkExecutor = BulkExecutor.getInstance();
+
+    // Track overall wall-clock time
+    long bulkStartTime = System.nanoTime();
+
+    // Check if system can accept more work
+    if (!bulkExecutor.hasCapacity()) {
+      LOG.warn(
+          "Bulk operation rejected: queue full (depth={}, max={})",
+          bulkExecutor.getQueueDepth(),
+          bulkExecutor.getQueueSize());
+      result.setStatus(ApiStatus.FAILURE);
+      result.setNumberOfRowsProcessed(0);
+      result.setNumberOfRowsFailed(entities.size());
+      for (T entity : entities) {
+        failedRequests.add(
+            new BulkResponse()
+                .withRequest(entity.getFullyQualifiedName())
+                .withStatus(Status.SERVICE_UNAVAILABLE.getStatusCode())
+                .withMessage("System overloaded, please retry later"));
+      }
+      result.setFailedRequest(failedRequests);
+      recordBulkMetrics(entityType, entities.size(), 0, System.nanoTime() - bulkStartTime, 0, 0);
+      return result;
+    }
+
+    LOG.info(
+        "Starting bulk operation for {} {} entities (active={}, queued={})",
+        entities.size(),
+        entityType,
+        bulkExecutor.getActiveCount(),
+        bulkExecutor.getQueueDepth());
+
     List<CompletableFuture<Void>> futures = new ArrayList<>();
 
+    // Track per-entity latencies for accurate metrics
+    List<Long> entityLatenciesNanos = Collections.synchronizedList(new ArrayList<>());
+
+    // Capture parent thread's latency context for propagation to worker threads
+    final RequestLatencyContext.RequestContext parentLatencyContext =
+        RequestLatencyContext.getContext();
+
     for (T entity : entities) {
-      CompletableFuture<Void> future =
-          CompletableFuture.runAsync(
-              () -> {
+      CompletableFuture<Void> future = new CompletableFuture<>();
+      futures.add(future);
+
+      final long submitTime = System.nanoTime();
+
+      try {
+        bulkExecutor.submit(
+            () -> {
+              // Propagate latency context to worker thread for accurate DB/Search tracking
+              if (parentLatencyContext != null) {
+                RequestLatencyContext.setContext(parentLatencyContext);
+              }
+              try {
+                long entityStartTime = System.nanoTime();
+                long queueWaitTime = entityStartTime - submitTime;
                 try {
                   PutResponse<T> putResponse = bulkCreateOrUpdateEntity(uriInfo, entity, userName);
+                  long entityDuration = System.nanoTime() - entityStartTime;
+                  entityLatenciesNanos.add(entityDuration);
+
                   successRequests.add(
                       new BulkResponse()
                           .withRequest(entity.getFullyQualifiedName())
                           .withStatus(Status.OK.getStatusCode()));
                   createChangeEventForBulkOperation(
                       putResponse.getEntity(), putResponse.getChangeType(), userName);
-                } catch (Exception e) {
-                  LOG.warn("Failed to process entity in bulk operation", e);
-                  failedRequests.add(
-                      new BulkResponse()
-                          .withRequest(entity.getFullyQualifiedName())
-                          .withStatus(Status.BAD_REQUEST.getStatusCode())
-                          .withMessage(e.getMessage()));
-                }
-              },
-              BOUNDED_BULK_EXECUTOR);
 
-      futures.add(future);
+                  // Record per-entity metrics
+                  recordEntityMetrics(entityType, entityDuration, queueWaitTime, true);
+                  future.complete(null);
+                } catch (Exception e) {
+                  long entityDuration = System.nanoTime() - entityStartTime;
+                  entityLatenciesNanos.add(entityDuration);
+                  recordEntityMetrics(entityType, entityDuration, queueWaitTime, false);
+                  handleBulkOperationError(entity, e, failedRequests);
+                  future.complete(null); // Complete even on error so we don't hang
+                }
+              } finally {
+                // Clear context from worker thread to prevent memory leaks in pooled threads
+                if (parentLatencyContext != null) {
+                  RequestLatencyContext.clearContext();
+                }
+              }
+            });
+      } catch (java.util.concurrent.RejectedExecutionException e) {
+        // Queue became full between check and submit
+        LOG.warn("Task rejected for entity: {}", entity.getFullyQualifiedName());
+        failedRequests.add(
+            new BulkResponse()
+                .withRequest(entity.getFullyQualifiedName())
+                .withStatus(Status.SERVICE_UNAVAILABLE.getStatusCode())
+                .withMessage("System overloaded, please retry later"));
+        future.complete(null);
+      }
     }
 
-    CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+    // Wait with timeout
+    boolean timedOut = false;
+    try {
+      CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+          .get(bulkExecutor.getTimeoutSeconds(), TimeUnit.SECONDS);
+    } catch (java.util.concurrent.TimeoutException e) {
+      timedOut = true;
+      LOG.error(
+          "Bulk operation timed out after {}s. Completed: {}, Failed: {}, Total: {}",
+          bulkExecutor.getTimeoutSeconds(),
+          successRequests.size(),
+          failedRequests.size(),
+          entities.size());
+
+      // Check each future to find which entities actually timed out
+      // futures[i] corresponds to entities[i]
+      for (int i = 0; i < futures.size(); i++) {
+        CompletableFuture<Void> future = futures.get(i);
+        if (!future.isDone()) {
+          T entity = entities.get(i);
+          failedRequests.add(
+              new BulkResponse()
+                  .withRequest(entity.getFullyQualifiedName())
+                  .withStatus(Status.REQUEST_TIMEOUT.getStatusCode())
+                  .withMessage("Operation timed out"));
+          // Cancel the future to signal we're no longer interested
+          future.cancel(false);
+        }
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOG.warn("Bulk operation interrupted");
+    } catch (ExecutionException e) {
+      LOG.error("Unexpected error in bulk operation", e.getCause());
+    }
+
+    long totalDurationNanos = System.nanoTime() - bulkStartTime;
 
     result.setNumberOfRowsProcessed(entities.size());
     result.setNumberOfRowsPassed(successRequests.size());
@@ -6835,16 +7058,148 @@ public abstract class EntityRepository<T extends EntityInterface> {
     result.setSuccessRequest(successRequests);
     result.setFailedRequest(failedRequests);
 
-    if (failedRequests.size() > 0) {
-      result.setStatus(ApiStatus.PARTIAL_SUCCESS);
+    if (!failedRequests.isEmpty()) {
+      result.setStatus(successRequests.isEmpty() ? ApiStatus.FAILURE : ApiStatus.PARTIAL_SUCCESS);
     }
 
+    // Calculate and log detailed metrics
+    long avgEntityLatencyMs = 0;
+    long maxEntityLatencyMs = 0;
+    if (!entityLatenciesNanos.isEmpty()) {
+      avgEntityLatencyMs =
+          entityLatenciesNanos.stream().mapToLong(Long::longValue).sum()
+              / entityLatenciesNanos.size()
+              / 1_000_000;
+      maxEntityLatencyMs =
+          entityLatenciesNanos.stream().mapToLong(Long::longValue).max().orElse(0) / 1_000_000;
+    }
+
+    long totalDurationMs = totalDurationNanos / 1_000_000;
+    double throughput = entities.size() * 1000.0 / Math.max(1, totalDurationMs);
+
+    // Record bulk operation metrics
+    recordBulkMetrics(
+        entityType,
+        entities.size(),
+        successRequests.size(),
+        totalDurationNanos,
+        avgEntityLatencyMs,
+        maxEntityLatencyMs);
+
     LOG.info(
-        "Bulk operation completed: {} succeeded, {} failed out of {} total",
+        "Bulk operation completed: entity={}, total={}, succeeded={}, failed={}, "
+            + "wallClockMs={}, avgEntityMs={}, maxEntityMs={}, throughput={}/s",
+        entityType,
+        entities.size(),
         successRequests.size(),
         failedRequests.size(),
-        entities.size());
+        totalDurationMs,
+        avgEntityLatencyMs,
+        maxEntityLatencyMs,
+        String.format("%.1f", throughput));
 
     return result;
+  }
+
+  private void recordEntityMetrics(
+      String entityType, long durationNanos, long queueWaitNanos, boolean success) {
+    // Per-entity processing time (cached, no histogram to reduce Prometheus cardinality)
+    // This fires for EVERY entity in a bulk operation, so we use simple timers.
+    // The bulk.operation.latency metric has histograms for percentile analysis.
+    String latencyKey = entityType + "|" + success;
+    Timer latencyTimer =
+        ENTITY_LATENCY_TIMERS.computeIfAbsent(
+            latencyKey,
+            k ->
+                Timer.builder("bulk.entity.latency")
+                    .tag("entity", entityType)
+                    .tag("success", String.valueOf(success))
+                    .register(Metrics.globalRegistry));
+    latencyTimer.record(durationNanos, TimeUnit.NANOSECONDS);
+
+    // Queue wait time (cached, simple timer)
+    Timer queueTimer =
+        ENTITY_QUEUE_WAIT_TIMERS.computeIfAbsent(
+            entityType,
+            k ->
+                Timer.builder("bulk.entity.queue_wait")
+                    .tag("entity", entityType)
+                    .register(Metrics.globalRegistry));
+    queueTimer.record(queueWaitNanos, TimeUnit.NANOSECONDS);
+  }
+
+  private void recordBulkMetrics(
+      String entityType,
+      int totalEntities,
+      int successCount,
+      long durationNanos,
+      long avgEntityMs,
+      long maxEntityMs) {
+    // Total bulk operation time (cached)
+    Timer operationTimer =
+        BULK_OPERATION_TIMERS.computeIfAbsent(
+            entityType,
+            k ->
+                Timer.builder("bulk.operation.latency")
+                    .tag("entity", entityType)
+                    .publishPercentileHistogram(true)
+                    .register(Metrics.globalRegistry));
+    operationTimer.record(durationNanos, TimeUnit.NANOSECONDS);
+
+    // Batch size distribution (cached)
+    DistributionSummary batchSizeSummary =
+        BATCH_SIZE_SUMMARIES.computeIfAbsent(
+            entityType,
+            k ->
+                DistributionSummary.builder("bulk.operation.batch_size")
+                    .tag("entity", entityType)
+                    .register(Metrics.globalRegistry));
+    batchSizeSummary.record(totalEntities);
+
+    // Success rate as distribution (cached, avoids gauge memory leak)
+    if (totalEntities > 0) {
+      DistributionSummary successRateSummary =
+          SUCCESS_RATE_SUMMARIES.computeIfAbsent(
+              entityType,
+              k ->
+                  DistributionSummary.builder("bulk.operation.success_rate")
+                      .tag("entity", entityType)
+                      .register(Metrics.globalRegistry));
+      successRateSummary.record(successCount * 100.0 / totalEntities);
+    }
+
+    // Record success and failure counts for alerting (Micrometer caches counters internally)
+    Metrics.counter("bulk.operation.entities.success", "entity", entityType)
+        .increment(successCount);
+    Metrics.counter("bulk.operation.entities.failed", "entity", entityType)
+        .increment(totalEntities - successCount);
+  }
+
+  private void handleBulkOperationError(T entity, Exception e, List<BulkResponse> failedRequests) {
+    String fqn = entity.getFullyQualifiedName();
+    int statusCode;
+    String message;
+
+    // Categorize errors properly
+    if (e instanceof jakarta.ws.rs.WebApplicationException wae) {
+      statusCode = wae.getResponse().getStatus();
+      message = e.getMessage();
+      LOG.warn("Entity {} failed with status {}: {}", fqn, statusCode, message);
+    } else if (e instanceof java.sql.SQLException) {
+      statusCode = Status.INTERNAL_SERVER_ERROR.getStatusCode();
+      message = "Database error: " + e.getMessage();
+      LOG.error("Database error processing entity {}", fqn, e);
+    } else if (e instanceof IllegalArgumentException || e instanceof IllegalStateException) {
+      statusCode = Status.BAD_REQUEST.getStatusCode();
+      message = e.getMessage();
+      LOG.warn("Validation error for entity {}: {}", fqn, message);
+    } else {
+      statusCode = Status.INTERNAL_SERVER_ERROR.getStatusCode();
+      message = "Unexpected error: " + e.getMessage();
+      LOG.error("Unexpected error processing entity {}", fqn, e);
+    }
+
+    failedRequests.add(
+        new BulkResponse().withRequest(fqn).withStatus(statusCode).withMessage(message));
   }
 }

@@ -26,6 +26,7 @@ const DomainSelectableListNew = ({
   multiple = false,
   onUpdate,
   selectedDomain,
+  isClearable,
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
@@ -63,6 +64,10 @@ const DomainSelectableListNew = ({
 
   const [popoverHeight, setPopoverHeight] = useState<number>(156);
   const dropdownRef = useRef<BaseSelectRef>(null);
+
+  useEffect(() => {
+    setIsDropdownOpen(popupVisible);
+  }, [popupVisible]);
 
   useEffect(() => {
     const observer = new MutationObserver(() => {
@@ -116,7 +121,9 @@ const DomainSelectableListNew = ({
               dropdownRef={dropdownRef}
               handleDropdownChange={handleDropdownChange}
               initialDomains={initialDomains}
+              isClearable={isClearable}
               isMultiple={multiple}
+              open={isDropdownOpen}
               value={selectedDomainsList as string[]}
               visible={popupVisible}
               onCancel={() => setPopupVisible(false)}

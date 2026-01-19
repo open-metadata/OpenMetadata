@@ -82,6 +82,7 @@ import spark from '../assets/img/service-icon-spark.png';
 import spline from '../assets/img/service-icon-spline.png';
 import mysql from '../assets/img/service-icon-sql.png';
 import sqlite from '../assets/img/service-icon-sqlite.png';
+import starrocks from '../assets/img/service-icon-starrocks.png';
 import superset from '../assets/img/service-icon-superset.png';
 import synapse from '../assets/img/service-icon-synapse.png';
 import tableau from '../assets/img/service-icon-tableau.png';
@@ -162,6 +163,7 @@ export const DATABRICK = databrick;
 export const UNITYCATALOG = unitycatalog;
 export const IBMDB2 = ibmdb2;
 export const DORIS = doris;
+export const STARROCKS = starrocks;
 export const DRUID = druid;
 export const DYNAMODB = dynamodb;
 export const SIGMA = sigma;
@@ -449,6 +451,7 @@ export const BETA_SERVICES = [
   DashboardServiceType.Hex,
   DatabaseServiceType.ServiceNow,
   DatabaseServiceType.Timescale,
+  DatabaseServiceType.Dremio,
   MetadataServiceType.Collibra,
   PipelineServiceType.Mulesoft,
 ];

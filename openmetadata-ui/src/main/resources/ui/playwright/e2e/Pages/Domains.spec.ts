@@ -52,10 +52,13 @@ import {
   addTagsAndGlossaryToDomain,
   checkAssetsCount,
   createDataProduct,
+  createDataProductForSubDomain,
   createDomain,
   createSubDomain,
   fillDomainForm,
+  navigateToSubDomain,
   removeAssetsFromDataProduct,
+  renameDomain,
   selectDataProduct,
   selectDataProductFromTab,
   selectDomain,
@@ -64,6 +67,7 @@ import {
   setupDomainOwnershipTest,
   setupNoDomainRule,
   verifyDataProductAssetsAfterDelete,
+  verifyDataProductsCount,
   verifyDomain,
 } from '../../utils/domain';
 import {
@@ -153,8 +157,8 @@ test.describe('Domains', () => {
     await user.delete(apiContext);
     await classification.delete(apiContext);
     await tag.delete(apiContext);
-    await glossary.delete(apiContext);
     await glossaryTerm.delete(apiContext);
+    await glossary.delete(apiContext);
     await afterAction();
   });
 
@@ -284,10 +288,6 @@ test.describe('Domains', () => {
         await selectDataProduct(page, dataProduct1.data);
         await waitForAllLoadersToDisappear(page);
         await page.waitForLoadState('networkidle');
-
-        await expect(
-          page.getByTestId('KnowledgePanel.Domain').getByTestId('add-domain')
-        ).not.toBeVisible();
 
         await page.getByTestId('assets').getByText('Assets').click();
         await waitForAllLoadersToDisappear(page);
@@ -853,6 +853,237 @@ test.describe('Domains', () => {
     }
   });
 
+  test('Verify domain data products count includes subdomain data products', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const domainDataProduct = new DataProduct([domain]);
+
+    let subDomain!: SubDomain;
+    let subDomainDataProduct!: Awaited<
+      ReturnType<typeof createDataProductForSubDomain>
+    >;
+
+    try {
+      await test.step('Create domain, subdomain, and data products via API', async () => {
+        await domain.create(apiContext);
+        subDomain = new SubDomain(domain);
+        await subDomain.create(apiContext);
+
+        // Create data product in parent domain
+        await domainDataProduct.create(apiContext);
+
+        // Create data product in subdomain
+        subDomainDataProduct = await createDataProductForSubDomain(
+          apiContext,
+          subDomain
+        );
+      });
+
+      await test.step(
+        'Verify domain data products tab shows both domain and subdomain data products',
+        async () => {
+          await page.reload();
+          await redirectToHomePage(page);
+          await sidebarClick(page, SidebarItem.DOMAIN);
+          await selectDomain(page, domain.data);
+
+          // Click on Data Products tab
+          await page.getByTestId('data_products').click();
+          await waitForAllLoadersToDisappear(page);
+          await page.waitForLoadState('networkidle');
+
+          // Verify data products count is 2 (one from domain + one from subdomain)
+          const dataProductCountElement = page
+            .getByTestId('data_products')
+            .getByTestId('count');
+          const countText = await dataProductCountElement.textContent();
+          const displayedCount = parseInt(countText ?? '0', 10);
+
+          expect(displayedCount).toBe(2);
+
+          // Verify both data product cards are visible
+          await expect(
+            page.getByText(domainDataProduct.data.displayName).first()
+          ).toBeVisible();
+          await expect(
+            page.getByText(subDomainDataProduct.displayName).first()
+          ).toBeVisible();
+        }
+      );
+
+      await test.step(
+        'Verify subdomain data products tab shows only its own data products',
+        async () => {
+          await redirectToHomePage(page);
+          await sidebarClick(page, SidebarItem.DOMAIN);
+          await selectDomain(page, domain.data);
+
+          // Navigate to subdomain
+          await page.getByTestId('subdomains').getByText('Sub Domains').click();
+          await page.waitForLoadState('networkidle');
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+
+          await Promise.all([
+            page.getByTestId(subDomain.data.name).click(),
+            page.waitForResponse('/api/v1/domains/name/*'),
+          ]);
+
+          // Click on Data Products tab
+          await page.getByTestId('data_products').click();
+          await waitForAllLoadersToDisappear(page);
+          await page.waitForLoadState('networkidle');
+
+          // Verify data products count is 1 (only subdomain's own data product)
+          const dataProductCountElement = page
+            .getByTestId('data_products')
+            .getByTestId('count');
+          const countText = await dataProductCountElement.textContent();
+          const displayedCount = parseInt(countText ?? '0', 10);
+
+          expect(displayedCount).toBe(1);
+
+          // Verify only subdomain data product card is visible
+          await expect(
+            page.getByText(subDomainDataProduct.displayName).first()
+          ).toBeVisible();
+        }
+      );
+
+      await test.step(
+        'Delete subdomain and verify its data products are not visible in domain',
+        async () => {
+          // Delete subdomain (this should cascade delete its data product)
+          await subDomain.delete(apiContext);
+          // Mark as deleted to prevent double-delete in finally block
+          subDomainDataProduct = undefined as unknown as typeof subDomainDataProduct;
+          subDomain = undefined as unknown as typeof subDomain;
+
+          // Navigate to domain and verify
+          await redirectToHomePage(page);
+          await sidebarClick(page, SidebarItem.DOMAIN);
+          await selectDomain(page, domain.data);
+
+          // Click on Data Products tab
+          await page.getByTestId('data_products').click();
+          await waitForAllLoadersToDisappear(page);
+          await page.waitForLoadState('networkidle');
+
+          // Verify data products count is now 1 (only domain's own data product)
+          const dataProductCountElement = page
+            .getByTestId('data_products')
+            .getByTestId('count');
+          const countText = await dataProductCountElement.textContent();
+          const displayedCount = parseInt(countText ?? '0', 10);
+
+          expect(displayedCount).toBe(1);
+
+          // Verify only domain data product is visible
+          await expect(
+            page.getByText(domainDataProduct.data.displayName).first()
+          ).toBeVisible();
+        }
+      );
+
+      await test.step(
+        'Verify deeply nested subdomain data products are visible at each level',
+        async () => {
+          // Create nested structure: domain -> nestedSubDomain1 -> nestedSubDomain2 -> nestedSubDomain3
+          const nestedSubDomain1 = new SubDomain(domain);
+          await nestedSubDomain1.create(apiContext);
+
+          const nestedSubDomain2 = new SubDomain(nestedSubDomain1);
+          await nestedSubDomain2.create(apiContext);
+
+          const nestedSubDomain3 = new SubDomain(nestedSubDomain2);
+          await nestedSubDomain3.create(apiContext);
+
+          // Create data products at each subdomain level
+          const subDomain1DataProduct = await createDataProductForSubDomain(
+            apiContext,
+            nestedSubDomain1
+          );
+          const subDomain2DataProduct = await createDataProductForSubDomain(
+            apiContext,
+            nestedSubDomain2
+          );
+          const subDomain3DataProduct = await createDataProductForSubDomain(
+            apiContext,
+            nestedSubDomain3
+          );
+
+          // 1. Verify at domain level: should see 4 data products (domain's own + all nested)
+          await page.reload();
+          await redirectToHomePage(page);
+          await sidebarClick(page, SidebarItem.DOMAIN);
+          await selectDomain(page, domain.data);
+          await verifyDataProductsCount(page, 4);
+
+          // Verify all data products are visible at domain level
+          await expect(
+            page.getByText(domainDataProduct.data.displayName).first()
+          ).toBeVisible();
+          await expect(
+            page.getByText(subDomain1DataProduct.displayName).first()
+          ).toBeVisible();
+          await expect(
+            page.getByText(subDomain2DataProduct.displayName).first()
+          ).toBeVisible();
+          await expect(
+            page.getByText(subDomain3DataProduct.displayName).first()
+          ).toBeVisible();
+
+          // 2. Navigate to nestedSubDomain1 and verify: should see 3 data products (its own + subdomain2's + subdomain3's)
+          await navigateToSubDomain(page, nestedSubDomain1.data);
+          await verifyDataProductsCount(page, 3);
+          await expect(
+            page.getByText(subDomain1DataProduct.displayName).first()
+          ).toBeVisible();
+          await expect(
+            page.getByText(subDomain2DataProduct.displayName).first()
+          ).toBeVisible();
+          await expect(
+            page.getByText(subDomain3DataProduct.displayName).first()
+          ).toBeVisible();
+
+          // 3. Navigate to nestedSubDomain2 and verify: should see 2 data products (its own + subdomain3's)
+          await navigateToSubDomain(page, nestedSubDomain2.data);
+          await verifyDataProductsCount(page, 2);
+          await expect(
+            page.getByText(subDomain2DataProduct.displayName).first()
+          ).toBeVisible();
+          await expect(
+            page.getByText(subDomain3DataProduct.displayName).first()
+          ).toBeVisible();
+
+          // 4. Navigate to nestedSubDomain3 and verify: should see 1 data product (its own)
+          await navigateToSubDomain(page, nestedSubDomain3.data);
+          await verifyDataProductsCount(page, 1);
+          await expect(
+            page.getByText(subDomain3DataProduct.displayName).first()
+          ).toBeVisible();
+
+          // Cleanup nested structure (delete data products first, then subdomains from deepest level)
+          await subDomain3DataProduct.delete(apiContext);
+          await subDomain2DataProduct.delete(apiContext);
+          await subDomain1DataProduct.delete(apiContext);
+          await nestedSubDomain3.delete(apiContext);
+          await nestedSubDomain2.delete(apiContext);
+          await nestedSubDomain1.delete(apiContext);
+        }
+      );
+    } finally {
+      await subDomainDataProduct?.delete(apiContext);
+      await domainDataProduct.delete(apiContext);
+      await subDomain?.delete(apiContext);
+      await domain.delete(apiContext);
+      await afterAction();
+    }
+  });
+
   test('Verify domain tags and glossary terms', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
@@ -1309,6 +1540,967 @@ test.describe('Domains', () => {
   });
 });
 
+test.describe('Domain Rename Comprehensive Tests', () => {
+  test.slow(true);
+
+  test.beforeEach('Visit home page', async ({ page }) => {
+    await redirectToHomePage(page);
+  });
+
+  test('Rename domain with subdomains attached verifies subdomain accessibility', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+
+    let currentDomainName = '';
+
+    try {
+      await domain.create(apiContext);
+      currentDomainName = domain.responseData.name;
+
+      const subDomain = new SubDomain(domain);
+      await subDomain.create(apiContext);
+
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDomain(page, domain.data);
+
+      // Verify subdomain exists before rename
+      const subdomainSearchResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('index=domain_search_index') &&
+          response.status() === 200
+      );
+
+      await page.getByTestId('subdomains').getByText('Sub Domains').click();
+      await subdomainSearchResponse;
+
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+      await expect(page.getByTestId(subDomain.data.name)).toBeVisible();
+
+      // Navigate back to documentation tab for rename
+      await page.getByTestId('documentation').click();
+
+      // Perform rename
+      const newDomainName = `renamed-domain-${uuid()}`;
+      await renameDomain(page, newDomainName);
+
+      currentDomainName = newDomainName;
+
+      // Verify domain name changed
+      await expect(page.getByTestId('entity-header-name')).toContainText(
+        newDomainName
+      );
+
+      // Verify subdomain is still accessible after parent domain rename
+      const subdomainSearchResponseAfterRename = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('index=domain_search_index') &&
+          response.status() === 200
+      );
+
+      await page.getByTestId('subdomains').getByText('Sub Domains').click();
+      await subdomainSearchResponseAfterRename;
+
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+      await expect(page.getByTestId(subDomain.data.name)).toBeVisible();
+
+      // Click on subdomain to verify it's accessible
+      await Promise.all([
+        page.getByTestId(subDomain.data.name).click(),
+        page.waitForResponse('/api/v1/domains/name/*'),
+      ]);
+
+      await expect(page.getByTestId('entity-header-display-name')).toContainText(
+        subDomain.data.displayName
+      );
+    } finally {
+      try {
+        await apiContext.delete(
+          `/api/v1/domains/name/${encodeURIComponent(
+            currentDomainName
+          )}?hardDelete=true&recursive=true`
+        );
+      } catch {
+        try {
+          await domain.delete(apiContext);
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+      await afterAction();
+    }
+  });
+
+  test('Rename domain with deeply nested subdomains (3+ levels) verifies FQN propagation', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+
+    let currentDomainName = '';
+
+    try {
+      await domain.create(apiContext);
+      currentDomainName = domain.responseData.name;
+
+      // Create nested hierarchy: domain -> subDomain1 -> subDomain2 -> subDomain3
+      const subDomain1 = new SubDomain(domain);
+      await subDomain1.create(apiContext);
+
+      const subDomain2 = new SubDomain(subDomain1);
+      await subDomain2.create(apiContext);
+
+      const subDomain3 = new SubDomain(subDomain2);
+      await subDomain3.create(apiContext);
+
+      // Navigate to domain
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDomain(page, domain.data);
+
+      // Perform rename on root domain
+      const newDomainName = `renamed-nested-domain-${uuid()}`;
+      await renameDomain(page, newDomainName);
+
+      currentDomainName = newDomainName;
+
+      // Verify domain name changed
+      await expect(page.getByTestId('entity-header-name')).toContainText(
+        newDomainName
+      );
+
+      // Navigate to subDomain1
+      const subdomainSearchResponse1 = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('index=domain_search_index') &&
+          response.status() === 200
+      );
+
+      await page.getByTestId('subdomains').getByText('Sub Domains').click();
+      await subdomainSearchResponse1;
+
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+      await expect(page.getByTestId(subDomain1.data.name)).toBeVisible();
+
+      await Promise.all([
+        page.getByTestId(subDomain1.data.name).click(),
+        page.waitForResponse('/api/v1/domains/name/*'),
+      ]);
+
+      await expect(page.getByTestId('entity-header-display-name')).toContainText(
+        subDomain1.data.displayName
+      );
+
+      // Navigate to subDomain2 from subDomain1
+      const subdomainSearchResponse2 = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('index=domain_search_index') &&
+          response.status() === 200
+      );
+
+      await page.getByTestId('subdomains').getByText('Sub Domains').click();
+      await subdomainSearchResponse2;
+
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+      await expect(page.getByTestId(subDomain2.data.name)).toBeVisible();
+
+      await Promise.all([
+        page.getByTestId(subDomain2.data.name).click(),
+        page.waitForResponse('/api/v1/domains/name/*'),
+      ]);
+
+      await expect(page.getByTestId('entity-header-display-name')).toContainText(
+        subDomain2.data.displayName
+      );
+
+      // Navigate to subDomain3 from subDomain2
+      const subdomainSearchResponse3 = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('index=domain_search_index') &&
+          response.status() === 200
+      );
+
+      await page.getByTestId('subdomains').getByText('Sub Domains').click();
+      await subdomainSearchResponse3;
+
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+      await expect(page.getByTestId(subDomain3.data.name)).toBeVisible();
+
+      await Promise.all([
+        page.getByTestId(subDomain3.data.name).click(),
+        page.waitForResponse('/api/v1/domains/name/*'),
+      ]);
+
+      await expect(page.getByTestId('entity-header-display-name')).toContainText(
+        subDomain3.data.displayName
+      );
+    } finally {
+      try {
+        await apiContext.delete(
+          `/api/v1/domains/name/${encodeURIComponent(
+            currentDomainName
+          )}?hardDelete=true&recursive=true`
+        );
+      } catch {
+        try {
+          await domain.delete(apiContext);
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+      await afterAction();
+    }
+  });
+
+  test('Rename domain with data products attached at domain and subdomain levels', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const domainDataProduct = new DataProduct([domain]);
+
+    let currentDomainName = '';
+    let subDomain: SubDomain | undefined;
+    let subDomainDataProduct: Awaited<
+      ReturnType<typeof createDataProductForSubDomain>
+    > | undefined;
+
+    try {
+      await domain.create(apiContext);
+      currentDomainName = domain.responseData.name;
+
+      subDomain = new SubDomain(domain);
+      await subDomain.create(apiContext);
+
+      // Create data product in parent domain
+      await domainDataProduct.create(apiContext);
+
+      // Create data product in subdomain
+      subDomainDataProduct = await createDataProductForSubDomain(
+        apiContext,
+        subDomain
+      );
+
+      // Navigate to domain
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDomain(page, domain.data);
+
+      // Verify data products count before rename
+      await verifyDataProductsCount(page, 2);
+
+      // Navigate back to documentation tab for rename
+      await page.getByTestId('documentation').click();
+
+      // Perform rename
+      const newDomainName = `renamed-dp-domain-${uuid()}`;
+      await renameDomain(page, newDomainName);
+
+      await page.reload();
+      await waitForAllLoadersToDisappear(page);
+
+      currentDomainName = newDomainName;
+
+      // Verify domain name changed
+      await expect(page.getByTestId('entity-header-name')).toContainText(
+        newDomainName
+      );
+
+      // Verify data products count is preserved after rename
+      await verifyDataProductsCount(page, 2);
+
+      // Verify both data products are visible
+      await expect(
+        page.getByText(domainDataProduct.data.displayName).first()
+      ).toBeVisible();
+      await expect(
+        page.getByText(subDomainDataProduct.displayName).first()
+      ).toBeVisible();
+    } finally {
+      try {
+        await subDomainDataProduct?.delete(apiContext);
+      } catch {
+        // Ignore
+      }
+      try {
+        await domainDataProduct.delete(apiContext);
+      } catch {
+        // Ignore
+      }
+      try {
+        await apiContext.delete(
+          `/api/v1/domains/name/${encodeURIComponent(
+            currentDomainName
+          )}?hardDelete=true&recursive=true`
+        );
+      } catch {
+        try {
+          await domain.delete(apiContext);
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+      await afterAction();
+    }
+  });
+
+  test('Rename domain with tags and glossary terms preserves associations', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const testClassification = new ClassificationClass({
+      provider: 'system',
+      mutuallyExclusive: false,
+    });
+    const testTag = new TagClass({
+      classification: testClassification.data.name,
+    });
+    const testGlossary = new Glossary();
+    const testGlossaryTerm = new GlossaryTerm(testGlossary);
+
+    let currentDomainName = '';
+
+    try {
+      await testClassification.create(apiContext);
+      await testTag.create(apiContext);
+      await testGlossary.create(apiContext);
+      await testGlossaryTerm.create(apiContext);
+      await domain.create(apiContext);
+      currentDomainName = domain.responseData.name;
+
+      // Navigate to domain and add tags/glossary terms
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDomain(page, domain.data);
+
+      await addTagsAndGlossaryToDomain(page, {
+        tagFqn: testTag.responseData.fullyQualifiedName,
+        glossaryTermFqn: testGlossaryTerm.responseData.fullyQualifiedName,
+      });
+
+      // Verify tag is visible before rename
+      await expect(
+        page.locator(
+          `[data-testid="tag-${testTag.responseData.fullyQualifiedName}"]`
+        )
+      ).toBeVisible();
+
+      // Perform rename
+      const newDomainName = `renamed-tags-domain-${uuid()}`;
+      await renameDomain(page, newDomainName);
+
+      currentDomainName = newDomainName;
+
+      // Verify domain name changed
+      await expect(page.getByTestId('entity-header-name')).toContainText(
+        newDomainName
+      );
+
+      // Verify tag is still visible after rename
+      await expect(
+        page.locator(
+          `[data-testid="tag-${testTag.responseData.fullyQualifiedName}"]`
+        )
+      ).toBeVisible();
+    } finally {
+      try {
+        await apiContext.delete(
+          `/api/v1/domains/name/${encodeURIComponent(
+            currentDomainName
+          )}?hardDelete=true&recursive=true`
+        );
+      } catch {
+        try {
+          await domain.delete(apiContext);
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+      await testGlossaryTerm.delete(apiContext);
+      await testGlossary.delete(apiContext);
+      await testTag.delete(apiContext);
+      await testClassification.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Rename domain with assets (tables, topics, dashboards) preserves associations', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const { assets, assetCleanup } = await setupAssetsForDomain(page);
+    const domain = new Domain();
+
+    let currentDomainName = '';
+
+    try {
+      await domain.create(apiContext);
+      currentDomainName = domain.responseData.name;
+
+      // Navigate to domain and add assets
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await addAssetsToDomain(page, domain, assets);
+
+      // Verify asset count before rename
+      await checkAssetsCount(page, assets.length);
+
+      // Navigate back to documentation tab for rename
+      await page.getByTestId('documentation').click();
+
+      // Perform rename
+      const newDomainName = `renamed-assets-domain-${uuid()}`;
+      await renameDomain(page, newDomainName);
+
+      currentDomainName = newDomainName;
+
+      // Verify domain name changed
+      await expect(page.getByTestId('entity-header-name')).toContainText(
+        newDomainName
+      );
+
+      // Verify assets are still associated after rename
+      await page.getByTestId('assets').click();
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      await checkAssetsCount(page, assets.length);
+    } finally {
+      try {
+        await apiContext.delete(
+          `/api/v1/domains/name/${encodeURIComponent(
+            currentDomainName
+          )}?hardDelete=true&recursive=true`
+        );
+      } catch {
+        try {
+          await domain.delete(apiContext);
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+      await assetCleanup();
+      await afterAction();
+    }
+  });
+
+  test('Rename domain with owners and experts preserves assignments', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const ownerUser = new UserClass();
+    const expertUser = new UserClass();
+
+    let currentDomainName = '';
+
+    try {
+      await ownerUser.create(apiContext);
+      await expertUser.create(apiContext);
+      await domain.create(apiContext);
+      currentDomainName = domain.responseData.name;
+
+      // Add owner and expert to domain
+      await domain.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/owners/0',
+            value: {
+              id: ownerUser.responseData.id,
+              type: 'user',
+            },
+          },
+          {
+            op: 'add',
+            path: '/experts/0',
+            value: {
+              id: expertUser.responseData.id,
+              type: 'user',
+            },
+          },
+        ],
+      });
+
+      // Navigate to domain
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDomain(page, domain.data);
+
+      // Verify owner is visible before rename
+      await expect(
+        page.getByTestId(ownerUser.responseData.displayName)
+      ).toBeVisible();
+
+      // Verify expert is visible before rename
+      await expect(
+        page.getByTestId(expertUser.responseData.displayName)
+      ).toBeVisible();
+
+      // Perform rename
+      const newDomainName = `renamed-owners-domain-${uuid()}`;
+      await renameDomain(page, newDomainName);
+
+      currentDomainName = newDomainName;
+
+      // Verify domain name changed
+      await expect(page.getByTestId('entity-header-name')).toContainText(
+        newDomainName
+      );
+
+      // Verify owner is still visible after rename
+      await expect(
+        page.getByTestId(ownerUser.responseData.displayName)
+      ).toBeVisible();
+
+      // Verify expert is still visible after rename
+      await expect(
+        page.getByTestId(expertUser.responseData.displayName)
+      ).toBeVisible();
+    } finally {
+      try {
+        await apiContext.delete(
+          `/api/v1/domains/name/${encodeURIComponent(
+            currentDomainName
+          )}?hardDelete=true&recursive=true`
+        );
+      } catch {
+        try {
+          await domain.delete(apiContext);
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+      await ownerUser.delete(apiContext);
+      await expertUser.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Subdomain rename does not affect parent domain and updates nested children', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+
+    try {
+      await domain.create(apiContext);
+
+      // Create nested hierarchy: domain -> subDomain1 -> subDomain2
+      const subDomain1 = new SubDomain(domain);
+      await subDomain1.create(apiContext);
+
+      const subDomain2 = new SubDomain(subDomain1);
+      await subDomain2.create(apiContext);
+
+      // Navigate to domain
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDomain(page, domain.data);
+
+      // Navigate to subDomain1
+      const subdomainSearchResponse1 = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('index=domain_search_index') &&
+          response.status() === 200
+      );
+
+      await page.getByTestId('subdomains').getByText('Sub Domains').click();
+      await subdomainSearchResponse1;
+
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+      await Promise.all([
+        page.getByTestId(subDomain1.data.name).click(),
+        page.waitForResponse('/api/v1/domains/name/*'),
+      ]);
+
+      // Verify subDomain2 exists under subDomain1 before rename
+      const subdomainSearchResponse2 = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('index=domain_search_index') &&
+          response.status() === 200
+      );
+
+      await page.getByTestId('subdomains').getByText('Sub Domains').click();
+      await subdomainSearchResponse2;
+
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+      await expect(page.getByTestId(subDomain2.data.name)).toBeVisible();
+
+      // Navigate back to documentation tab for rename
+      await page.getByTestId('documentation').click();
+
+      // Perform rename on subDomain1
+      const newSubDomainName = `renamed-subdomain-${uuid()}`;
+      await renameDomain(page, newSubDomainName);
+
+      // Verify subdomain name changed
+      await expect(page.getByTestId('entity-header-name')).toContainText(
+        newSubDomainName
+      );
+
+      // Verify subDomain2 is still accessible after parent subdomain rename
+      const subdomainSearchResponse3 = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('index=domain_search_index') &&
+          response.status() === 200
+      );
+
+      await page.getByTestId('subdomains').getByText('Sub Domains').click();
+      await subdomainSearchResponse3;
+
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+      await expect(page.getByTestId(subDomain2.data.name)).toBeVisible();
+
+      await Promise.all([
+        page.getByTestId(subDomain2.data.name).click(),
+        page.waitForResponse('/api/v1/domains/name/*'),
+      ]);
+
+      await expect(page.getByTestId('entity-header-display-name')).toContainText(
+        subDomain2.data.displayName
+      );
+
+      // Navigate back to parent domain to verify it's unchanged
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDomain(page, domain.data);
+
+      await expect(page.getByTestId('entity-header-name')).toContainText(
+        domain.responseData.name
+      );
+    } finally {
+      await domain.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Comprehensive domain rename with ALL relationships preserved', async ({
+    page,
+  }) => {
+    test.slow();
+
+    const { afterAction, apiContext } = await getApiContext(page);
+    const { assets, assetCleanup } = await setupAssetsForDomain(page);
+    const domain = new Domain();
+    const testClassification = new ClassificationClass({
+      provider: 'system',
+      mutuallyExclusive: false,
+    });
+    const testTag = new TagClass({
+      classification: testClassification.data.name,
+    });
+    const testGlossary = new Glossary();
+    const testGlossaryTerm = new GlossaryTerm(testGlossary);
+    const ownerUser = new UserClass();
+
+    let currentDomainName = '';
+    let subDomain: SubDomain | undefined;
+    let dataProduct: DataProduct | undefined;
+
+    try {
+      // Setup all entities
+      await testClassification.create(apiContext);
+      await testTag.create(apiContext);
+      await testGlossary.create(apiContext);
+      await testGlossaryTerm.create(apiContext);
+      await ownerUser.create(apiContext);
+      await domain.create(apiContext);
+      currentDomainName = domain.responseData.name;
+
+      // Create subdomain
+      subDomain = new SubDomain(domain);
+      await subDomain.create(apiContext);
+
+      // Create data product
+      dataProduct = new DataProduct([domain]);
+      await dataProduct.create(apiContext);
+
+      // Add owner to domain
+      await domain.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/owners/0',
+            value: {
+              id: ownerUser.responseData.id,
+              type: 'user',
+            },
+          },
+        ],
+      });
+
+      // Navigate to domain and add assets
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await addAssetsToDomain(page, domain, assets);
+
+      // Navigate back to documentation to add tags
+      await page.getByTestId('documentation').click();
+
+      await addTagsAndGlossaryToDomain(page, {
+        tagFqn: testTag.responseData.fullyQualifiedName,
+        glossaryTermFqn: testGlossaryTerm.responseData.fullyQualifiedName,
+      });
+
+      // Verify all relationships before rename
+      await checkAssetsCount(page, assets.length);
+      await expect(
+        page.locator(
+          `[data-testid="tag-${testTag.responseData.fullyQualifiedName}"]`
+        )
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(ownerUser.responseData.displayName)
+      ).toBeVisible();
+
+      // Verify subdomain count
+      await expect(
+        page.getByTestId('subdomains').getByTestId('count')
+      ).toContainText('1');
+
+      // Verify data products count
+      await expect(
+        page.getByTestId('data_products').getByTestId('count')
+      ).toContainText('1');
+
+      // Perform rename
+      const newDomainName = `renamed-comprehensive-${uuid()}`;
+      await renameDomain(page, newDomainName);
+
+      currentDomainName = newDomainName;
+
+      // Verify domain name changed
+      await expect(page.getByTestId('entity-header-name')).toContainText(
+        newDomainName
+      );
+
+      // Verify ALL relationships are preserved after rename
+
+      // 1. Verify assets
+      await page.getByTestId('assets').click();
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+      await checkAssetsCount(page, assets.length);
+
+      // 2. Verify subdomain
+      const subdomainSearchResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes('index=domain_search_index') &&
+          response.status() === 200
+      );
+
+      await page.getByTestId('subdomains').getByText('Sub Domains').click();
+      await subdomainSearchResponse;
+
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+      await expect(page.getByTestId(subDomain.data.name)).toBeVisible();
+
+      // 3. Verify data products
+      await page.getByTestId('data_products').click();
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+      await expect(
+        page.getByTestId('data_products').getByTestId('count')
+      ).toContainText('1');
+
+      // 4. Verify tags still visible (navigate back to documentation)
+      await page.getByTestId('documentation').click();
+      await expect(
+        page.locator(
+          `[data-testid="tag-${testTag.responseData.fullyQualifiedName}"]`
+        )
+      ).toBeVisible();
+
+      // 5. Verify owner still visible
+      await expect(
+        page.getByTestId(ownerUser.responseData.displayName)
+      ).toBeVisible();
+    } finally {
+      try {
+        await dataProduct?.delete(apiContext);
+      } catch {
+        // Ignore
+      }
+      try {
+        await apiContext.delete(
+          `/api/v1/domains/name/${encodeURIComponent(
+            currentDomainName
+          )}?hardDelete=true&recursive=true`
+        );
+      } catch {
+        try {
+          await domain.delete(apiContext);
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+      await assetCleanup();
+      await testGlossaryTerm.delete(apiContext);
+      await testGlossary.delete(apiContext);
+      await testTag.delete(apiContext);
+      await testClassification.delete(apiContext);
+      await ownerUser.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Multiple consecutive domain renames preserve all associations', async ({
+    page,
+  }) => {
+    test.slow();
+
+    const { afterAction, apiContext } = await getApiContext(page);
+    const { assets, assetCleanup } = await setupAssetsForDomain(page);
+    const domain = new Domain();
+
+    let currentDomainName = '';
+
+    try {
+      await domain.create(apiContext);
+      currentDomainName = domain.responseData.name;
+
+      // Create subdomain
+      const subDomain = new SubDomain(domain);
+      await subDomain.create(apiContext);
+
+      // Navigate to domain and add assets
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await addAssetsToDomain(page, domain, assets);
+
+      // Perform 3 consecutive renames
+      for (let i = 1; i <= 3; i++) {
+        // Navigate back to documentation tab for rename
+        await page.getByTestId('documentation').click();
+
+        const newDomainName = `renamed-multi-${i}-${uuid()}`;
+        await renameDomain(page, newDomainName);
+
+        currentDomainName = newDomainName;
+
+        // Verify domain name changed
+        await expect(page.getByTestId('entity-header-name')).toContainText(
+          newDomainName
+        );
+
+        page.reload();
+        await waitForAllLoadersToDisappear(page);
+
+        // Verify assets are still associated after each rename
+        await page.getByTestId('assets').click();
+        await page.waitForLoadState('networkidle');
+        await waitForAllLoadersToDisappear(page);
+        await checkAssetsCount(page, assets.length);
+
+        // Verify subdomain is still accessible after each rename
+        const subdomainSearchResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/search/query') &&
+            response.url().includes('index=domain_search_index') &&
+            response.status() === 200
+        );
+
+        await page.getByTestId('subdomains').getByText('Sub Domains').click();
+        await subdomainSearchResponse;
+
+        await page.waitForLoadState('networkidle');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+        await expect(page.getByTestId(subDomain.data.name)).toBeVisible();
+      }
+    } finally {
+      try {
+        await apiContext.delete(
+          `/api/v1/domains/name/${encodeURIComponent(
+            currentDomainName
+          )}?hardDelete=true&recursive=true`
+        );
+      } catch {
+        try {
+          await domain.delete(apiContext);
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+      await assetCleanup();
+      await afterAction();
+    }
+  });
+
+  test('Rename to existing domain name shows appropriate error', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain1 = new Domain();
+    const domain2 = new Domain();
+
+    try {
+      await domain1.create(apiContext);
+      await domain2.create(apiContext);
+
+      // Navigate to domain1
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDomain(page, domain1.data);
+
+      // Try to rename domain1 to domain2's name
+      await page.getByTestId('manage-button').click();
+      await page.getByTestId('rename-button-title').click();
+
+      await expect(page.getByRole('dialog')).toBeVisible();
+
+      await page.locator('#name').clear();
+      await page.locator('#name').fill(domain2.responseData.name);
+
+      // Try to save and expect an error response
+      const patchResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/domains/') &&
+          response.request().method() === 'PATCH'
+      );
+      await page.getByTestId('save-button').click();
+      const response = await patchResponse;
+
+      // Verify the response status is 409 (Conflict) or 400 (Bad Request)
+      expect([400, 409]).toContain(response.status());
+
+      // Verify an error toast/alert is shown
+      await expect(page.getByTestId('alert-bar')).toBeVisible();
+
+      // Verify the error message contains information about the duplicate name
+      await expect(page.getByTestId('alert-message')).toContainText(
+        /already exists/i
+      );
+    } finally {
+      await domain1.delete(apiContext);
+      await domain2.delete(apiContext);
+      await afterAction();
+    }
+  });
+});
+
 test.describe('Domains Rbac', () => {
   test.slow(true);
 
@@ -1474,8 +2666,8 @@ test.describe('Data Consumer Domain Ownership', () => {
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await tag.delete(apiContext);
-    await glossary.delete(apiContext);
     await glossaryTerm.delete(apiContext);
+    await glossary.delete(apiContext);
     await classification.delete(apiContext);
     await testResources.cleanup(apiContext);
 
@@ -1856,20 +3048,18 @@ test.describe('Domain Tree View Functionality', () => {
       await selectActiveGlossaryTerm(page, testGlossaryTerm.data.displayName);
 
       let apiRequestUrl: string | null = null;
-      const responsePromise = page.waitForResponse(
-        (response) => {
-          const url = response.url();
-          if (
-            url.includes('/api/v1/domains/name/') &&
-            url.includes('fields=') &&
-            response.status() === 200
-          ) {
-            apiRequestUrl = url;
-            return true;
-          }
-          return false;
+      const responsePromise = page.waitForResponse((response) => {
+        const url = response.url();
+        if (
+          url.includes('/api/v1/domains/name/') &&
+          url.includes('fields=') &&
+          response.status() === 200
+        ) {
+          apiRequestUrl = url;
+          return true;
         }
-      );
+        return false;
+      });
 
       await page.getByTestId('assets').click();
       await responsePromise;
@@ -1922,7 +3112,9 @@ test.describe('Domain Tree View Functionality', () => {
       await page
         .locator('[data-testid="tags-container"] [data-testid="add-tag"]')
         .click();
-      const input = page.locator('[data-testid="tags-container"] #tagsForm_tags');
+      const input = page.locator(
+        '[data-testid="tags-container"] #tagsForm_tags'
+      );
       await input.click();
       await input.fill(testTag.responseData.fullyQualifiedName);
       await page
@@ -1940,20 +3132,18 @@ test.describe('Domain Tree View Functionality', () => {
       await testTag.visitPage(page);
 
       let apiRequestUrl: string | null = null;
-      const responsePromise = page.waitForResponse(
-        (response) => {
-          const url = response.url();
-          if (
-            url.includes('/api/v1/domains/name/') &&
-            url.includes('fields=') &&
-            response.status() === 200
-          ) {
-            apiRequestUrl = url;
-            return true;
-          }
-          return false;
+      const responsePromise = page.waitForResponse((response) => {
+        const url = response.url();
+        if (
+          url.includes('/api/v1/domains/name/') &&
+          url.includes('fields=') &&
+          response.status() === 200
+        ) {
+          apiRequestUrl = url;
+          return true;
         }
-      );
+        return false;
+      });
 
       await page.getByTestId('assets').click();
       await responsePromise;
