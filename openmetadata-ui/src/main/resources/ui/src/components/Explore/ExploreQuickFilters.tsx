@@ -147,24 +147,17 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
 
         return;
       }
-      if (key !== TIER_FQN_KEY) {
-        const res = await getAggregationOptions(
-          index,
-          key,
-          value,
-          JSON.stringify(combinedQueryFilter),
-          independent,
-          showDeleted
-        );
+      const res = await getAggregationOptions(
+        index,
+        key,
+        value,
+        JSON.stringify(combinedQueryFilter),
+        independent,
+        showDeleted
+      );
 
-        const buckets = res.data.aggregations[`sterms#${key}`].buckets;
-        setOptions(uniqWith(getOptionsFromAggregationBucket(buckets), isEqual));
-      } else if (key === TIER_FQN_KEY) {
-        const filteredOptions = tierOptions?.filter((option) => {
-          return option.label.toLowerCase().includes(value.toLowerCase());
-        });
-        setOptions(filteredOptions);
-      }
+      const buckets = res.data.aggregations[`sterms#${key}`].buckets;
+      setOptions(uniqWith(getOptionsFromAggregationBucket(buckets), isEqual));
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
