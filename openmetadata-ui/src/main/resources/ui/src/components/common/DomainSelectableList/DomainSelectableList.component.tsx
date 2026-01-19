@@ -37,6 +37,7 @@ const DomainSelectableList = ({
   showAllDomains = false,
   wrapInButton = true,
   overlayClassName,
+  isClearable,
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
@@ -98,6 +99,7 @@ const DomainSelectableList = ({
             <FocusTrapWithContainer active={popoverProps?.open || false}>
               <DomainSelectablTree
                 initialDomains={initialDomains}
+                isClearable={isClearable}
                 isMultiple={multiple}
                 showAllDomains={showAllDomains}
                 value={selectedDomainsList as string[]}
@@ -148,6 +150,7 @@ const DomainSelectableList = ({
     selectedDomainsList,
     selectedDomain,
     isVersionView,
+    isClearable,
   ]);
 
   if (wrapInButton) {
