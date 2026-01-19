@@ -95,6 +95,8 @@ jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
     setSelectedQuickFilters: mockSetSelectedQuickFilters,
     lineageConfig: mockLineageConfig,
     nodes: [],
+    columnFilter: [],
+    setColumnFilter: jest.fn(),
   })),
 }));
 
@@ -386,6 +388,8 @@ describe('CustomControls', () => {
         { id: 'node1', name: 'Node 1' },
         { id: 'node2', name: 'Node 2' },
       ],
+      columnFilter: [],
+      setColumnFilter: jest.fn(),
     }));
 
     render(
@@ -428,6 +432,8 @@ describe('CustomControls', () => {
         { data: { node: { id: 'node1', name: 'Node 1' } } },
         { data: { node: { id: 'node2', name: 'Node 2' } } },
       ],
+      columnFilter: [],
+      setColumnFilter: jest.fn(),
     }));
 
     render(<CustomControlsComponent {...defaultProps} />, {

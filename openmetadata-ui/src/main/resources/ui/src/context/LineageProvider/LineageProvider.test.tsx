@@ -158,6 +158,12 @@ jest.mock('../../rest/lineageAPI', () => ({
 }));
 
 describe('LineageProvider', () => {
+  beforeEach(() => {
+    mockLocation.search = '';
+    mockIsAlertSupported = false;
+    jest.clearAllMocks();
+  });
+
   it('renders Lineage component and fetches data', async () => {
     render(
       <LineageProvider>
@@ -193,18 +199,23 @@ describe('LineageProvider', () => {
       config: {
         downstreamDepth: 1,
         nodesPerLayer: 50,
+        pipelineViewMode: undefined,
         upstreamDepth: 1,
       },
       queryFilter: '',
+      columnFilter: '',
     });
     expect(getDataQualityLineage).toHaveBeenCalledWith(
       'table1',
-      { downstreamDepth: 1, nodesPerLayer: 50, upstreamDepth: 1 },
+      {
+        downstreamDepth: 1,
+        nodesPerLayer: 50,
+        pipelineViewMode: undefined,
+        upstreamDepth: 1,
+      },
+      '',
       ''
     );
-
-    mockIsAlertSupported = false;
-    mockLocation.search = '';
   });
 
   it('should call loadChildNodesHandler', async () => {
