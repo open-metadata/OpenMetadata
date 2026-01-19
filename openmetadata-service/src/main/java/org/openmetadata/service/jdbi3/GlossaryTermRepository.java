@@ -117,6 +117,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
@@ -215,7 +216,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
-  public void setFields(GlossaryTerm entity, Fields fields) {
+  public void setFields(GlossaryTerm entity, Fields fields, RelationIncludes relationIncludes) {
     entity.withParent(getParent(entity)).withGlossary(getGlossary(entity));
     entity.setRelatedTerms(
         fields.contains("relatedTerms") ? getRelatedTerms(entity) : entity.getRelatedTerms());

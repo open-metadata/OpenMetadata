@@ -75,6 +75,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
@@ -1017,7 +1018,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         new OperationContext(entityType, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     TestCase testCase = repository.find(id, Include.NON_DELETED);
-    repository.setFields(testCase, new Fields(Set.of("testCaseResult")));
+    repository.setFields(
+        testCase, new Fields(Set.of("testCaseResult")), RelationIncludes.fromInclude(ALL));
     if (testCase.getTestCaseResult() == null
         || !testCase.getTestCaseResult().getTestCaseStatus().equals(TestCaseStatus.Failed)) {
       throw new IllegalArgumentException("Failed rows can only be added to a failed test case.");
