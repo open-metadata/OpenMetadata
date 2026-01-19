@@ -2515,6 +2515,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                   .collect(Collectors.toList());
           jsonNode.set(fieldName, JsonUtils.valueToTree(enumValues));
         }
+        case "hyperlink-cp" -> validateHyperlinkUrl(fieldValue, fieldName);
         default -> {}
       }
     }
@@ -2532,38 +2533,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setExtension(transformedExtension);
   }
 
-  private void validateAndUpdateExtensionBasedOnPropertyType(
-      T entity,
-      ObjectNode jsonNode,
-      String fieldName,
-      JsonNode fieldValue,
-      String customPropertyType,
-      String propertyConfig) {
-
-    switch (customPropertyType) {
-      case "date-cp", "dateTime-cp", "time-cp" -> {
-        String formattedValue =
-            getFormattedDateTimeField(
-                fieldValue.textValue(), customPropertyType, propertyConfig, fieldName);
-        jsonNode.put(fieldName, formattedValue);
-      }
-      case "table-cp" -> validateTableType(fieldValue, propertyConfig, fieldName);
-      case "enum" -> {
-        validateEnumKeys(fieldName, fieldValue, propertyConfig);
-        List<String> enumValues =
-            StreamSupport.stream(fieldValue.spliterator(), false)
-                .map(JsonNode::asText)
-                .sorted()
-                .collect(Collectors.toList());
-        jsonNode.set(fieldName, JsonUtils.valueToTree(enumValues));
-        entity.setExtension(jsonNode);
-      }
-      case "hyperlink-cp" -> validateHyperlinkUrl(fieldValue, fieldName);
-      default -> {}
-    }
-  }
-
-  private void validateHyperlinkUrl(JsonNode fieldValue, String fieldName) {
+  private static void validateHyperlinkUrl(JsonNode fieldValue, String fieldName) {
     if (fieldValue == null || fieldValue.isNull()) {
       return;
     }
