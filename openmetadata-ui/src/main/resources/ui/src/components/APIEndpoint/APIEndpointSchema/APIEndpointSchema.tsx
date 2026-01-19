@@ -96,10 +96,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     selectedColumn,
   } = useGenericContext<APIEndpoint>();
 
-  const {
-    columnFqn: columnPart,
-    fqn,
-  } = useFqn({
+  const { columnFqn: columnPart, fqn } = useFqn({
     type: EntityType.API_ENDPOINT,
   });
 
