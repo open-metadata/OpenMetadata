@@ -55,7 +55,7 @@
       <dependency>
         <groupId>com.google.cloud</groupId>
         <artifactId>libraries-bom</artifactId>
-        <version>26.71.0</version>
+        <version>26.73.0</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -1001,6 +1001,10 @@
      <dependency>
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>auth</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>regions</artifactId>
     </dependency>
     <dependency>
       <groupId>jakarta.ws.rs</groupId>

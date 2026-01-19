@@ -54,6 +54,7 @@
         "Couchbase",
         "Greenplum",
         "Doris",
+        "StarRocks",
         "UnityCatalog",
         "SAS",
         "Iceberg",
@@ -185,6 +186,9 @@
         },
         {
           "name": "Doris"
+        },
+        {
+          "name": "StarRocks"
         },
         {
           "name": "UnityCatalog"
@@ -347,6 +351,9 @@
             },
             {
               "$ref": "./connections/database/dorisConnection.json"
+            },
+            {
+              "$ref": "./connections/database/starrocksConnection.json"
             },
             {
               "$ref": "./connections/database/unityCatalogConnection.json"
