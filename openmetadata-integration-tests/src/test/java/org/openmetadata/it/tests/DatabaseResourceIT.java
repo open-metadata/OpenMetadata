@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.csv.EntityCsvTest.assertSummary;
 import static org.openmetadata.csv.EntityCsvTest.createCsv;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.util.HashMap;
 import java.util.List;
@@ -25,16 +26,27 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.UpdateType;
 import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.services.CreateDatabaseService;
+import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
+import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.service.jdbi3.DatabaseRepository;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * Integration tests for Database entity operations.
@@ -65,9 +77,9 @@ import org.openmetadata.service.jdbi3.DatabaseRepository;
 @Execution(ExecutionMode.CONCURRENT)
 public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
 
-  // Enable import/export for databases
   {
     supportsImportExport = true;
+    supportsLifeCycle = true;
   }
 
   // Store last created database for import/export tests
@@ -638,6 +650,547 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     // READY - needs SDK endpoint fix
   }
   */
+
+  // ===================================================================
+  // CSV EXPORT/IMPORT TESTS WITH DOT IN SERVICE NAME
+  // Tests for issue #24401
+  // ===================================================================
+
+  /**
+   * Test: CSV export and import with dot in service name.
+   *
+   * <p>This test reproduces issue #24401 where CSV import fails with:
+   * "Invalid character between encapsulated token and delimiter"
+   *
+   * <p>The issue occurs because FQNs with dots are quoted (e.g., "asd.asd"),
+   * and these quotes can conflict with CSV's field encapsulation when not
+   * properly escaped during export.
+   *
+   * @see <a href="https://github.com/open-metadata/OpenMetadata/issues/24401">Issue #24401</a>
+   */
+  @Test
+  void test_csvExportImportWithDotInServiceName(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String serviceNameWithDot = ns.prefix("asd.asd");
+
+    PostgresConnection conn =
+        new PostgresConnection().withHostPort("localhost:5432").withUsername("test");
+
+    CreateDatabaseService serviceRequest =
+        new CreateDatabaseService()
+            .withName(serviceNameWithDot)
+            .withServiceType(DatabaseServiceType.Postgres)
+            .withConnection(new DatabaseConnection().withConfig(conn));
+
+    DatabaseService service = client.databaseServices().create(serviceRequest);
+    assertNotNull(service);
+
+    String expectedServiceFqn = FullyQualifiedName.quoteName(serviceNameWithDot);
+    assertEquals(expectedServiceFqn, service.getFullyQualifiedName());
+
+    CreateDatabase dbRequest =
+        new CreateDatabase()
+            .withName(ns.prefix("testdb"))
+            .withService(service.getFullyQualifiedName())
+            .withDescription("Database for CSV export/import test");
+
+    Database database = client.databases().create(dbRequest);
+    assertNotNull(database);
+
+    CreateDatabaseSchema schemaRequest =
+        new CreateDatabaseSchema()
+            .withName(ns.prefix("testschema"))
+            .withDatabase(database.getFullyQualifiedName())
+            .withDescription("Schema for CSV export/import test");
+
+    DatabaseSchema schema = client.databaseSchemas().create(schemaRequest);
+    assertNotNull(schema);
+
+    CreateTable tableRequest =
+        new CreateTable()
+            .withName(ns.prefix("testtable"))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withDescription("Table for CSV export/import test")
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("id")
+                        .withDataType(ColumnDataType.INT)
+                        .withDescription("Primary key"),
+                    new Column()
+                        .withName("name")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(100)
+                        .withDescription("Name field")));
+
+    Table table = client.tables().create(tableRequest);
+    assertNotNull(table);
+
+    try {
+      String exportedCsv = client.databases().exportCsv(database.getFullyQualifiedName());
+      assertNotNull(exportedCsv, "CSV export should succeed");
+      assertFalse(exportedCsv.isEmpty(), "Exported CSV should not be empty");
+
+      String importResult =
+          client.databases().importCsv(database.getFullyQualifiedName(), exportedCsv, true);
+      assertNotNull(importResult, "CSV import dry run should succeed");
+
+      assertFalse(
+          importResult.toLowerCase().contains("failure"),
+          "CSV import should not contain failures. Result: " + importResult);
+
+      String actualImportResult =
+          client.databases().importCsv(database.getFullyQualifiedName(), exportedCsv, false);
+      assertNotNull(actualImportResult, "CSV import should succeed");
+
+      assertFalse(
+          actualImportResult.toLowerCase().contains("failure"),
+          "CSV actual import should not contain failures. Result: " + actualImportResult);
+
+    } catch (Exception e) {
+      fail(
+          "CSV export/import failed with dot in service name. "
+              + "This reproduces issue #24401. Error: "
+              + e.getMessage());
+    }
+  }
+
+  /**
+   * Test: Full database hierarchy with dot in service name and verify FQN propagation.
+   *
+   * <p>Creates: "service.name" -> database -> schema -> table
+   * <p>Verifies that FQNs are correctly built with proper quoting throughout the hierarchy.
+   *
+   * @see <a href="https://github.com/open-metadata/OpenMetadata/issues/24401">Issue #24401</a>
+   */
+  @Test
+  void test_hierarchyWithDotInServiceName_fqnPropagation(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String serviceNameWithDot = ns.prefix("snowflake.prod");
+
+    PostgresConnection conn =
+        new PostgresConnection().withHostPort("localhost:5432").withUsername("test");
+
+    CreateDatabaseService serviceRequest =
+        new CreateDatabaseService()
+            .withName(serviceNameWithDot)
+            .withServiceType(DatabaseServiceType.Postgres)
+            .withConnection(new DatabaseConnection().withConfig(conn));
+
+    DatabaseService service = client.databaseServices().create(serviceRequest);
+    assertNotNull(service);
+
+    CreateDatabase dbRequest =
+        new CreateDatabase()
+            .withName(ns.prefix("customers"))
+            .withService(service.getFullyQualifiedName());
+
+    Database database = client.databases().create(dbRequest);
+    assertNotNull(database);
+
+    String expectedDbFqn =
+        FullyQualifiedName.add(service.getFullyQualifiedName(), database.getName());
+    assertEquals(expectedDbFqn, database.getFullyQualifiedName());
+
+    CreateDatabaseSchema schemaRequest =
+        new CreateDatabaseSchema()
+            .withName(ns.prefix("orders"))
+            .withDatabase(database.getFullyQualifiedName());
+
+    DatabaseSchema schema = client.databaseSchemas().create(schemaRequest);
+    assertNotNull(schema);
+
+    String expectedSchemaFqn =
+        FullyQualifiedName.add(database.getFullyQualifiedName(), schema.getName());
+    assertEquals(expectedSchemaFqn, schema.getFullyQualifiedName());
+
+    CreateTable tableRequest =
+        new CreateTable()
+            .withName(ns.prefix("history"))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("id")
+                        .withDataType(ColumnDataType.INT)
+                        .withDescription("Primary key")));
+
+    Table table = client.tables().create(tableRequest);
+    assertNotNull(table);
+
+    String expectedTableFqn =
+        FullyQualifiedName.add(schema.getFullyQualifiedName(), table.getName());
+    assertEquals(expectedTableFqn, table.getFullyQualifiedName());
+
+    String[] fqnParts = FullyQualifiedName.split(table.getFullyQualifiedName());
+    assertEquals(4, fqnParts.length);
+    assertEquals(FullyQualifiedName.quoteName(serviceNameWithDot), fqnParts[0]);
+
+    Database fetchedDb = client.databases().getByName(database.getFullyQualifiedName());
+    assertNotNull(fetchedDb);
+    assertEquals(database.getId(), fetchedDb.getId());
+
+    DatabaseSchema fetchedSchema =
+        client.databaseSchemas().getByName(schema.getFullyQualifiedName());
+    assertNotNull(fetchedSchema);
+    assertEquals(schema.getId(), fetchedSchema.getId());
+
+    Table fetchedTable = client.tables().getByName(table.getFullyQualifiedName());
+    assertNotNull(fetchedTable);
+    assertEquals(table.getId(), fetchedTable.getId());
+  }
+
+  /**
+   * Test: Comprehensive CSV export and import with dot in service name including stored procedures.
+   *
+   * <p>This test creates a full database hierarchy with:
+   * - Service with dot in name (e.g., "test.sample")
+   * - Database
+   * - Schema
+   * - Multiple tables with columns
+   * - Stored procedures
+   *
+   * <p>Then exports to CSV and imports back, verifying the CSV parsing handles
+   * quoted FQNs correctly without throwing:
+   * "Invalid character between encapsulated token and delimiter"
+   *
+   * @see <a href="https://github.com/open-metadata/OpenMetadata/issues/24401">Issue #24401</a>
+   */
+  @Test
+  void test_csvExportImportWithDotInServiceName_fullHierarchy(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String serviceNameWithDot = ns.prefix("test.sample");
+
+    PostgresConnection conn =
+        new PostgresConnection().withHostPort("localhost:5432").withUsername("test");
+
+    CreateDatabaseService serviceRequest =
+        new CreateDatabaseService()
+            .withName(serviceNameWithDot)
+            .withServiceType(DatabaseServiceType.Postgres)
+            .withConnection(new DatabaseConnection().withConfig(conn));
+
+    DatabaseService service = client.databaseServices().create(serviceRequest);
+    assertNotNull(service);
+
+    String expectedServiceFqn = FullyQualifiedName.quoteName(serviceNameWithDot);
+    assertEquals(
+        expectedServiceFqn,
+        service.getFullyQualifiedName(),
+        "Service FQN should be quoted when name contains dot");
+
+    CreateDatabase dbRequest =
+        new CreateDatabase()
+            .withName(ns.prefix("mydb"))
+            .withService(service.getFullyQualifiedName())
+            .withDescription("Database for comprehensive CSV export/import test");
+
+    Database database = client.databases().create(dbRequest);
+    assertNotNull(database);
+
+    CreateDatabaseSchema schemaRequest =
+        new CreateDatabaseSchema()
+            .withName(ns.prefix("myschema"))
+            .withDatabase(database.getFullyQualifiedName())
+            .withDescription("Schema for comprehensive CSV export/import test");
+
+    DatabaseSchema schema = client.databaseSchemas().create(schemaRequest);
+    assertNotNull(schema);
+
+    CreateTable usersTableRequest =
+        new CreateTable()
+            .withName(ns.prefix("users"))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withDescription("Users table for CSV test")
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("id")
+                        .withDataType(ColumnDataType.BIGINT)
+                        .withDescription("Primary key"),
+                    new Column()
+                        .withName("username")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(100)
+                        .withDescription("Username"),
+                    new Column()
+                        .withName("email")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(255)
+                        .withDescription("Email address"),
+                    new Column()
+                        .withName("created_at")
+                        .withDataType(ColumnDataType.TIMESTAMP)
+                        .withDescription("Creation timestamp")));
+
+    Table usersTable = client.tables().create(usersTableRequest);
+    assertNotNull(usersTable);
+
+    CreateTable ordersTableRequest =
+        new CreateTable()
+            .withName(ns.prefix("orders"))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withDescription("Orders table for CSV test")
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("order_id")
+                        .withDataType(ColumnDataType.BIGINT)
+                        .withDescription("Order ID"),
+                    new Column()
+                        .withName("user_id")
+                        .withDataType(ColumnDataType.BIGINT)
+                        .withDescription("Foreign key to users"),
+                    new Column()
+                        .withName("total_amount")
+                        .withDataType(ColumnDataType.DECIMAL)
+                        .withDescription("Total order amount"),
+                    new Column()
+                        .withName("status")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(50)
+                        .withDescription("Order status")));
+
+    Table ordersTable = client.tables().create(ordersTableRequest);
+    assertNotNull(ordersTable);
+
+    org.openmetadata.schema.api.data.StoredProcedureCode procCode1 =
+        new org.openmetadata.schema.api.data.StoredProcedureCode()
+            .withCode(
+                "CREATE OR REPLACE PROCEDURE get_user_orders(user_id BIGINT) "
+                    + "LANGUAGE plpgsql AS $$ "
+                    + "BEGIN "
+                    + "  SELECT * FROM orders WHERE user_id = user_id; "
+                    + "END; $$;")
+            .withLanguage(org.openmetadata.schema.type.StoredProcedureLanguage.SQL);
+
+    org.openmetadata.schema.api.data.CreateStoredProcedure proc1Request =
+        new org.openmetadata.schema.api.data.CreateStoredProcedure()
+            .withName(ns.prefix("get_user_orders"))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withDescription("Get orders for a user")
+            .withStoredProcedureCode(procCode1);
+
+    org.openmetadata.schema.entity.data.StoredProcedure proc1 =
+        client.storedProcedures().create(proc1Request);
+    assertNotNull(proc1);
+
+    org.openmetadata.schema.api.data.StoredProcedureCode procCode2 =
+        new org.openmetadata.schema.api.data.StoredProcedureCode()
+            .withCode(
+                "CREATE OR REPLACE PROCEDURE update_order_status(order_id BIGINT, new_status VARCHAR) "
+                    + "LANGUAGE plpgsql AS $$ "
+                    + "BEGIN "
+                    + "  UPDATE orders SET status = new_status WHERE order_id = order_id; "
+                    + "END; $$;")
+            .withLanguage(org.openmetadata.schema.type.StoredProcedureLanguage.SQL);
+
+    org.openmetadata.schema.api.data.CreateStoredProcedure proc2Request =
+        new org.openmetadata.schema.api.data.CreateStoredProcedure()
+            .withName(ns.prefix("update_order_status"))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withDescription("Update order status")
+            .withStoredProcedureCode(procCode2);
+
+    org.openmetadata.schema.entity.data.StoredProcedure proc2 =
+        client.storedProcedures().create(proc2Request);
+    assertNotNull(proc2);
+
+    assertTrue(
+        proc1.getFullyQualifiedName().startsWith(expectedServiceFqn),
+        "Stored procedure FQN should start with quoted service name");
+    assertTrue(
+        proc2.getFullyQualifiedName().startsWith(expectedServiceFqn),
+        "Stored procedure FQN should start with quoted service name");
+
+    try {
+      String exportedCsv = client.databases().exportCsv(database.getFullyQualifiedName(), true);
+      assertNotNull(exportedCsv, "CSV export should succeed");
+      assertFalse(exportedCsv.isEmpty(), "Exported CSV should not be empty");
+
+      assertTrue(
+          exportedCsv.contains(usersTable.getName()), "Exported CSV should contain users table");
+      assertTrue(
+          exportedCsv.contains(ordersTable.getName()), "Exported CSV should contain orders table");
+      assertTrue(
+          exportedCsv.contains(proc1.getName()), "Exported CSV should contain stored procedure 1");
+      assertTrue(
+          exportedCsv.contains(proc2.getName()), "Exported CSV should contain stored procedure 2");
+
+      String dryRunResult =
+          client.databases().importCsv(database.getFullyQualifiedName(), exportedCsv, true, true);
+      assertNotNull(dryRunResult, "CSV import dry run should succeed");
+
+      assertFalse(
+          dryRunResult.toLowerCase().contains("failure"),
+          "CSV import dry run should not contain failures. "
+              + "This could indicate issue #24401 - CSV parsing error with quoted FQNs. "
+              + "Result: "
+              + dryRunResult);
+
+      String actualImportResult =
+          client.databases().importCsv(database.getFullyQualifiedName(), exportedCsv, false, true);
+      assertNotNull(actualImportResult, "CSV actual import should succeed");
+
+      assertFalse(
+          actualImportResult.toLowerCase().contains("failure"),
+          "CSV actual import should not contain failures. "
+              + "This could indicate issue #24401 - CSV parsing error with quoted FQNs. "
+              + "Result: "
+              + actualImportResult);
+
+      Table refetchedUsersTable = client.tables().getByName(usersTable.getFullyQualifiedName());
+      assertNotNull(refetchedUsersTable, "Users table should exist after import");
+
+      Table refetchedOrdersTable = client.tables().getByName(ordersTable.getFullyQualifiedName());
+      assertNotNull(refetchedOrdersTable, "Orders table should exist after import");
+
+      org.openmetadata.schema.entity.data.StoredProcedure refetchedProc1 =
+          client.storedProcedures().getByName(proc1.getFullyQualifiedName());
+      assertNotNull(refetchedProc1, "Stored procedure 1 should exist after import");
+
+      org.openmetadata.schema.entity.data.StoredProcedure refetchedProc2 =
+          client.storedProcedures().getByName(proc2.getFullyQualifiedName());
+      assertNotNull(refetchedProc2, "Stored procedure 2 should exist after import");
+
+    } catch (Exception e) {
+      fail(
+          "CSV export/import failed with dot in service name (full hierarchy including stored procedures). "
+              + "This reproduces issue #24401: 'Invalid character between encapsulated token and delimiter'. "
+              + "Error: "
+              + e.getMessage());
+    }
+  }
+
+  /**
+   * Test: CSV export and import with multiple dots in service name.
+   *
+   * <p>Tests edge case where service name contains multiple dots (e.g., "prod.us.east.snowflake").
+   * This exercises the FQN quoting logic more extensively.
+   *
+   * @see <a href="https://github.com/open-metadata/OpenMetadata/issues/24401">Issue #24401</a>
+   */
+  @Test
+  void test_csvExportImportWithMultipleDotsInServiceName(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String serviceNameWithMultipleDots = ns.prefix("prod.us.east.db");
+
+    PostgresConnection conn =
+        new PostgresConnection().withHostPort("localhost:5432").withUsername("test");
+
+    CreateDatabaseService serviceRequest =
+        new CreateDatabaseService()
+            .withName(serviceNameWithMultipleDots)
+            .withServiceType(DatabaseServiceType.Postgres)
+            .withConnection(new DatabaseConnection().withConfig(conn));
+
+    DatabaseService service = client.databaseServices().create(serviceRequest);
+    assertNotNull(service);
+
+    String expectedServiceFqn = FullyQualifiedName.quoteName(serviceNameWithMultipleDots);
+    assertEquals(expectedServiceFqn, service.getFullyQualifiedName());
+
+    CreateDatabase dbRequest =
+        new CreateDatabase()
+            .withName(ns.prefix("analytics"))
+            .withService(service.getFullyQualifiedName())
+            .withDescription("Analytics database");
+
+    Database database = client.databases().create(dbRequest);
+    assertNotNull(database);
+
+    CreateDatabaseSchema schemaRequest =
+        new CreateDatabaseSchema()
+            .withName(ns.prefix("metrics"))
+            .withDatabase(database.getFullyQualifiedName())
+            .withDescription("Metrics schema");
+
+    DatabaseSchema schema = client.databaseSchemas().create(schemaRequest);
+    assertNotNull(schema);
+
+    CreateTable tableRequest =
+        new CreateTable()
+            .withName(ns.prefix("daily_metrics"))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withDescription("Daily metrics table")
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("date")
+                        .withDataType(ColumnDataType.DATE)
+                        .withDescription("Metric date"),
+                    new Column()
+                        .withName("metric_name")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(100)
+                        .withDescription("Name of the metric"),
+                    new Column()
+                        .withName("metric_value")
+                        .withDataType(ColumnDataType.DOUBLE)
+                        .withDescription("Value of the metric")));
+
+    Table table = client.tables().create(tableRequest);
+    assertNotNull(table);
+
+    org.openmetadata.schema.api.data.StoredProcedureCode procCode =
+        new org.openmetadata.schema.api.data.StoredProcedureCode()
+            .withCode(
+                "CREATE OR REPLACE PROCEDURE aggregate_daily_metrics() "
+                    + "LANGUAGE plpgsql AS $$ "
+                    + "BEGIN "
+                    + "  -- Aggregate metrics "
+                    + "  INSERT INTO daily_metrics SELECT date, metric_name, AVG(metric_value) "
+                    + "  FROM raw_metrics GROUP BY date, metric_name; "
+                    + "END; $$;")
+            .withLanguage(org.openmetadata.schema.type.StoredProcedureLanguage.SQL);
+
+    org.openmetadata.schema.api.data.CreateStoredProcedure procRequest =
+        new org.openmetadata.schema.api.data.CreateStoredProcedure()
+            .withName(ns.prefix("aggregate_daily_metrics"))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withDescription("Aggregate daily metrics")
+            .withStoredProcedureCode(procCode);
+
+    org.openmetadata.schema.entity.data.StoredProcedure proc =
+        client.storedProcedures().create(procRequest);
+    assertNotNull(proc);
+
+    try {
+      String exportedCsv = client.databases().exportCsv(database.getFullyQualifiedName(), true);
+      assertNotNull(exportedCsv, "CSV export should succeed");
+      assertFalse(exportedCsv.isEmpty(), "Exported CSV should not be empty");
+
+      assertTrue(exportedCsv.contains(table.getName()), "Exported CSV should contain table");
+      assertTrue(
+          exportedCsv.contains(proc.getName()), "Exported CSV should contain stored procedure");
+
+      String dryRunResult =
+          client.databases().importCsv(database.getFullyQualifiedName(), exportedCsv, true, true);
+      assertNotNull(dryRunResult, "CSV import dry run should succeed");
+
+      assertFalse(
+          dryRunResult.toLowerCase().contains("failure"),
+          "CSV import with multiple dots in service name should not fail. "
+              + "Result: "
+              + dryRunResult);
+
+      String actualImportResult =
+          client.databases().importCsv(database.getFullyQualifiedName(), exportedCsv, false, true);
+      assertNotNull(actualImportResult, "CSV actual import should succeed");
+
+      assertFalse(
+          actualImportResult.toLowerCase().contains("failure"),
+          "CSV actual import with multiple dots should not fail. "
+              + "Result: "
+              + actualImportResult);
+
+    } catch (Exception e) {
+      fail(
+          "CSV export/import failed with multiple dots in service name. "
+              + "Error: "
+              + e.getMessage());
+    }
+  }
 
   // ===================================================================
   // RDF TESTS - Run only with -Ppostgres-rdf-tests profile

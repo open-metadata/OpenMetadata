@@ -996,5 +996,126 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
           resultLines[i].contains("fieldsUpdated"),
           "Record " + i + " should have fieldsUpdated in changeDescription: " + resultLines[i]);
     }
+  // ===================================================================
+  // RENAME CONSOLIDATION TESTS
+  // These tests verify that child entities (glossary terms) are preserved
+  // when a glossary is renamed and then other fields are updated within
+  // the same session (which triggers change consolidation).
+  // ===================================================================
+
+  /**
+   * Test that glossary terms are preserved when a glossary is renamed and then the description is
+   * updated. This tests the consolidation logic to ensure it doesn't revert to a previous version
+   * with the old FQN.
+   */
+  @Test
+  void test_renameAndUpdateDescriptionPreservesTerms(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create a glossary with terms
+    CreateGlossary create =
+        new CreateGlossary()
+            .withName(ns.prefix("glossary_rename_consolidate"))
+            .withDescription("Initial description");
+    Glossary glossary = createEntity(create);
+
+    // Add a glossary term
+    org.openmetadata.schema.api.data.CreateGlossaryTerm createTerm =
+        new org.openmetadata.schema.api.data.CreateGlossaryTerm()
+            .withName(ns.prefix("term_for_rename"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Test term");
+    org.openmetadata.schema.entity.data.GlossaryTerm term =
+        client.glossaryTerms().create(createTerm);
+
+    // Verify term count before rename
+    Glossary beforeRename = client.glossaries().get(glossary.getId().toString(), "termCount");
+    assertTrue(beforeRename.getTermCount() >= 1, "Should have at least 1 term before rename");
+
+    // Rename the glossary
+    String newName = "renamed-" + glossary.getName();
+    glossary.setName(newName);
+    Glossary renamed = patchEntity(glossary.getId().toString(), glossary);
+    assertEquals(newName, renamed.getName());
+
+    // Verify terms after rename
+    Glossary afterRename = client.glossaries().get(renamed.getId().toString(), "termCount");
+    assertTrue(afterRename.getTermCount() >= 1, "Should have at least 1 term after rename");
+
+    // Update description (triggers consolidation logic)
+    renamed.setDescription("Updated description after rename");
+    Glossary afterDescUpdate = patchEntity(renamed.getId().toString(), renamed);
+    assertEquals("Updated description after rename", afterDescUpdate.getDescription());
+
+    // Verify terms are preserved after consolidation
+    Glossary afterConsolidation =
+        client.glossaries().get(afterDescUpdate.getId().toString(), "termCount");
+    assertTrue(
+        afterConsolidation.getTermCount() >= 1,
+        "CRITICAL: Terms should be preserved after rename + description update consolidation");
+
+    // Verify the term's glossary reference has the updated FQN
+    org.openmetadata.schema.entity.data.GlossaryTerm updatedTerm =
+        client.glossaryTerms().get(term.getId().toString(), "glossary");
+    assertEquals(
+        afterDescUpdate.getFullyQualifiedName(),
+        updatedTerm.getGlossary().getFullyQualifiedName(),
+        "Term's glossary reference should have updated FQN after consolidation");
+  }
+
+  /**
+   * Test multiple renames followed by updates within the same session. This is a more complex
+   * scenario that tests the robustness of the consolidation fix.
+   */
+  @Test
+  void test_multipleRenamesWithUpdatesPreservesTerms(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateGlossary create =
+        new CreateGlossary()
+            .withName(ns.prefix("glossary_multi_rename"))
+            .withDescription("Initial description");
+    Glossary glossary = createEntity(create);
+
+    // Add a glossary term
+    org.openmetadata.schema.api.data.CreateGlossaryTerm createTerm =
+        new org.openmetadata.schema.api.data.CreateGlossaryTerm()
+            .withName(ns.prefix("term_multi_rename"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Test term");
+    org.openmetadata.schema.entity.data.GlossaryTerm term =
+        client.glossaryTerms().create(createTerm);
+
+    Glossary fetched = client.glossaries().get(glossary.getId().toString(), "termCount");
+    assertTrue(fetched.getTermCount() >= 1);
+
+    String[] names = {"renamed-first", "renamed-second", "renamed-third"};
+
+    for (int i = 0; i < names.length; i++) {
+      String newName = names[i] + "-" + UUID.randomUUID().toString().substring(0, 8);
+
+      glossary.setName(newName);
+      glossary = patchEntity(glossary.getId().toString(), glossary);
+      assertEquals(newName, glossary.getName());
+
+      fetched = client.glossaries().get(glossary.getId().toString(), "termCount");
+      assertTrue(fetched.getTermCount() >= 1, "Terms should be preserved after rename " + (i + 1));
+
+      glossary.setDescription("Description after rename " + (i + 1));
+      glossary = patchEntity(glossary.getId().toString(), glossary);
+
+      fetched = client.glossaries().get(glossary.getId().toString(), "termCount");
+      assertTrue(
+          fetched.getTermCount() >= 1,
+          "Terms should be preserved after rename + update iteration " + (i + 1));
+    }
+
+    // Verify the term's glossary reference has the final updated FQN
+    org.openmetadata.schema.entity.data.GlossaryTerm updatedTerm =
+        client.glossaryTerms().get(term.getId().toString(), "glossary");
+    assertEquals(
+        glossary.getFullyQualifiedName(),
+        updatedTerm.getGlossary().getFullyQualifiedName(),
+        "Term's glossary reference should have final updated FQN");
   }
 }

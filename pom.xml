@@ -34,6 +34,7 @@
     <module>common</module>
     <module>openmetadata-shaded-deps</module>
     <module>openmetadata-service</module>
+    <module>openmetadata-k8s-operator</module>
     <module>openmetadata-integration-tests</module>
     <module>openmetadata-mcp</module>
     <module>openmetadata-ui-core-components</module>
@@ -73,10 +74,10 @@
     <!-- Upgrading slf4j causes dropwizard issues -->
     <slf4j.version>2.0.4</slf4j.version>
     <jackson.version>2.17.2</jackson.version>
-    <dropwizard.version>4.0.14</dropwizard.version>
-    <dropwizard-jdbi3.version>4.0.14</dropwizard-jdbi3.version>
+    <dropwizard.version>5.0.0</dropwizard.version>
+    <dropwizard-jdbi3.version>5.0.0</dropwizard-jdbi3.version>
     <diffMatch.version>1.0</diffMatch.version>
-    <jersey-bom.version>3.1.10</jersey-bom.version>
+    <jersey-bom.version>3.1.11</jersey-bom.version>
     <javax.ws.rs-api.version>2.1.1</javax.ws.rs-api.version>
     <!-- update from here -->
     <jakarta.servlet-api.version>6.0.0</jakarta.servlet-api.version>
@@ -109,7 +110,7 @@
     <spring.version>6.2.11</spring.version>
     <log4j.version>2.25.3</log4j.version>
     <org.junit.jupiter.version>5.9.3</org.junit.jupiter.version>
-    <dropwizard-health.version>4.0.14</dropwizard-health.version>
+    <dropwizard-health.version>5.0.0</dropwizard-health.version>
     <handlebars.version>4.5.0</handlebars.version>
     <fernet.version>1.5.0</fernet.version>
     <antlr.version>4.13.2</antlr.version>
@@ -148,9 +149,9 @@
     <jsonpath.version>2.9.0</jsonpath.version>
     <everit.version>1.14.4</everit.version>
     <json-patch.version>1.13</json-patch.version>
-    <jetty.version>11.0.25</jetty.version>
+    <jetty.version>12.1.1</jetty.version>
     <jakarta-el.version>5.0.0-M1</jakarta-el.version>
-    <mcp-sdk.version>0.17.0</mcp-sdk.version>
+    <mcp-sdk.version>0.17.1</mcp-sdk.version>
     <lettuce.version>6.7.1.RELEASE</lettuce.version>
     <flyway.version>9.22.3</flyway.version>
     <angus-mail.version>2.0.4</angus-mail.version>
@@ -170,12 +171,6 @@
         <groupId>org.antlr</groupId>
         <artifactId>antlr4-runtime</artifactId>
         <version>${antlr.version}</version>
-      </dependency>
-      <!-- Override grpc-netty-shaded globally to fix CVE-2024-1106 -->
-      <dependency>
-        <groupId>io.grpc</groupId>
-        <artifactId>grpc-netty-shaded</artifactId>
-        <version>1.76.0</version>
       </dependency>
       <dependency>
         <groupId>org.glassfish.jersey</groupId>
@@ -243,12 +238,22 @@
         <groupId>org.eclipse.jetty</groupId>
         <artifactId>jetty-server</artifactId>
         <version>${jetty.version}</version>
-        <exclusions>
-          <exclusion>
-            <groupId>javax.servlet</groupId>
-            <artifactId>javax.servlet-api</artifactId>
-          </exclusion>
-        </exclusions>
+      </dependency>
+      <!-- Jetty EE10 dependencies for Dropwizard 5.0 / Jakarta EE 10 -->
+      <dependency>
+        <groupId>org.eclipse.jetty.ee10</groupId>
+        <artifactId>jetty-ee10-servlet</artifactId>
+        <version>${jetty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.eclipse.jetty.ee10.websocket</groupId>
+        <artifactId>jetty-ee10-websocket-jetty-server</artifactId>
+        <version>${jetty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.eclipse.jetty.ee10.websocket</groupId>
+        <artifactId>jetty-ee10-websocket-jakarta-server</artifactId>
+        <version>${jetty.version}</version>
       </dependency>
       <dependency>
         <groupId>io.dropwizard</groupId>
@@ -304,10 +309,16 @@
         <artifactId>logback-classic</artifactId>
         <version>${logback-classic.version}</version>
       </dependency>
+      <!-- logback-access-jetty12 for Jetty 12 compatibility -->
       <dependency>
-        <groupId>ch.qos.logback</groupId>
-        <artifactId>logback-access</artifactId>
-        <version>${logback-classic.version}</version>
+        <groupId>ch.qos.logback.access</groupId>
+        <artifactId>logback-access-jetty12</artifactId>
+        <version>2.0.7</version>
+      </dependency>
+      <dependency>
+        <groupId>ch.qos.logback.access</groupId>
+        <artifactId>logback-access-common</artifactId>
+        <version>2.0.7</version>
       </dependency>
       <dependency>
         <groupId>io.dropwizard</groupId>
@@ -345,10 +356,12 @@
         <artifactId>jdbi3-sqlobject</artifactId>
         <version>${jdbi3.version}</version>
       </dependency>
+      <!-- Removed dropwizard-web dependency - not compatible with Dropwizard 5.0 -->
+      <!-- Using local web configuration classes in org.openmetadata.service.config.web -->
       <dependency>
-        <groupId>io.dropwizard.modules</groupId>
-        <artifactId>dropwizard-web</artifactId>
-        <version>${dropwizard-web.version}</version>
+        <groupId>org.eclipse.jetty.ee10</groupId>
+        <artifactId>jetty-ee10-servlets</artifactId>
+        <version>${jetty.version}</version>
       </dependency>
       <dependency>
         <groupId>commons-cli</groupId>

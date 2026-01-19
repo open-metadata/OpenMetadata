@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import {
   DATA_CONSUMER_RULES,
   DATA_STEWARD_RULES,
@@ -34,6 +34,7 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
+  getApiContext,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -213,6 +214,12 @@ test.describe('User with Admin Roles', () => {
       user2.responseData.displayName
     );
 
+    const fetchUsers = adminPage.waitForResponse(
+      '/api/v1/users?**include=non-deleted'
+    );
+    await adminPage.fill('[data-testid="searchbar"]', '');
+    await fetchUsers
+
     await restoreUser(
       adminPage,
       user2.responseData.name,
@@ -243,6 +250,97 @@ test.describe('User with Admin Roles', () => {
 
     await restoreUserProfilePage(adminPage, user.responseData.displayName);
     await hardDeleteUserProfilePage(adminPage, user.responseData.displayName);
+  });
+
+  test('User should be visible in right panel on table page when added as custom property', async ({
+    adminPage,
+  }) => {
+    const { apiContext } = await getApiContext(adminPage);
+
+    // await redirectToHomePage(adminPage);
+    // 1. Setup - Create Custom Property and assign to Table
+    const customPropertyName = `pwCustomUserList${uuid()}`;
+    const customPropertyDescription = 'test description';
+
+    // Get Entity Reference List Type ID
+    const typeResponse = await apiContext.get(
+      '/api/v1/metadata/types/name/entityReferenceList'
+    );
+    const typeData = await typeResponse.json();
+    const typeId = typeData.id;
+
+    // Get Table Entity ID
+    const tableTypeResponse = await apiContext.get(
+      '/api/v1/metadata/types/name/table'
+    );
+    const tableTypeData = await tableTypeResponse.json();
+    const tableTypeId = tableTypeData.id;
+
+    // Create Custom Property
+    await apiContext.put(`/api/v1/metadata/types/${tableTypeId}`, {
+      data: {
+        name: customPropertyName,
+        description: customPropertyDescription,
+        propertyType: {
+          id: typeId,
+          type: 'type',
+        },
+        customPropertyConfig: {
+          config: ['user'],
+        },
+      },
+    });
+
+    const upperCasedName = user.responseData.name.toUpperCase();
+    // Patch Table to add the user to the custom property
+    await tableEntity.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/extension',
+          value: {
+            [customPropertyName]: [
+              {
+                id: user.responseData.id,
+                type: 'user',
+                name: upperCasedName,
+                fullyQualifiedName: null,
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    // 2. UI Verification
+    await redirectToHomePage(adminPage);
+    await tableEntity.visitEntityPage(adminPage);
+    await adminPage.waitForLoadState('networkidle');
+
+    // Verify Custom Property in Right Panel
+    const rightPanelSection = adminPage.getByTestId(customPropertyName);
+
+    // Verify User Link
+    const userLink = rightPanelSection
+      .getByRole('button')
+      .locator('.ant-typography');
+
+    await expect(
+      adminPage.getByTestId(upperCasedName).getByRole('button')
+    ).toContainText(upperCasedName);
+
+    // Click User Link and Verify Navigation
+    const userDetailsResponse = adminPage.waitForResponse(
+      '/api/v1/users/name/*'
+    );
+    await userLink.click();
+    await userDetailsResponse;
+
+    await expect(adminPage).toHaveURL(new RegExp(`/users/${upperCasedName}`));
+    await expect(adminPage.getByTestId('user-display-name')).toHaveText(
+      user.responseData.displayName
+    );
   });
 });
 
@@ -1243,6 +1341,7 @@ test.describe('User Profile Persona Interactions', () => {
 base.describe(
   'Users Performance around application with multiple team inheriting roles and policy',
   () => {
+    base.slow(true);
     const policy = new PolicyClass();
     const policy2 = new PolicyClass();
     const policy3 = new PolicyClass();
@@ -1257,7 +1356,6 @@ base.describe(
     const user = new UserClass();
 
     base.beforeAll('Setup pre-requests', async ({ browser }) => {
-      base.slow(true);
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
 

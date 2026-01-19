@@ -5,7 +5,10 @@ import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_ENTITY_REL
 import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_LINEAGE;
 import static org.openmetadata.service.search.SearchClient.DELETE_COLUMN_LINEAGE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.FIELDS_TO_REMOVE_WHEN_NULL;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchClient.UPDATE_CLASSIFICATION_TAG_FQN_BY_PREFIX_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_COLUMN_LINEAGE_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.UPDATE_DATA_PRODUCT_FQN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_FQN_PREFIX_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_GLOSSARY_TERM_TAG_FQN_BY_PREFIX_SCRIPT;
 
@@ -896,6 +899,370 @@ public class OpenSearchEntityManager implements EntityManagementClient {
 
     } catch (Exception e) {
       LOG.error("Error while updating glossary term FQN: {}", e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void updateClassificationTagByFqnPrefix(
+      String indexName, String oldFqnPrefix, String newFqnPrefix, String prefixFieldCondition) {
+    if (!isClientAvailable) {
+      LOG.error(
+          "OpenSearch client is not available. Cannot update classification tag by FQN prefix.");
+      return;
+    }
+
+    try {
+      Query prefixQuery =
+          Query.of(q -> q.prefix(p -> p.field(prefixFieldCondition).value(oldFqnPrefix)));
+
+      Map<String, JsonData> params =
+          Map.of(
+              "oldParentFQN", JsonData.of(oldFqnPrefix),
+              "newParentFQN", JsonData.of(newFqnPrefix));
+
+      UpdateByQueryResponse updateResponse =
+          client.updateByQuery(
+              req ->
+                  req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
+                      .query(prefixQuery)
+                      .script(
+                          s ->
+                              s.inline(
+                                  i ->
+                                      i.lang(ScriptLanguage.Painless.jsonValue())
+                                          .source(UPDATE_CLASSIFICATION_TAG_FQN_BY_PREFIX_SCRIPT)
+                                          .params(params)))
+                      .refresh(true));
+
+      LOG.info(
+          "Successfully updated classification tag FQN for index: {}, updated: {}",
+          indexName,
+          updateResponse.updated());
+
+      if (!updateResponse.failures().isEmpty()) {
+        String errorMessage =
+            updateResponse.failures().stream()
+                .map(BulkIndexByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .collect(Collectors.joining(", "));
+        LOG.error("Failed to update classification tag FQN: {}", errorMessage);
+      }
+
+    } catch (Exception e) {
+      LOG.error("Error while updating classification tag FQN: {}", e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void updateDataProductReferences(String oldFqn, String newFqn) {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot update data product references.");
+      return;
+    }
+
+    try {
+      // Query for all documents that have this data product in their dataProducts array
+      // Note: dataProducts is not mapped as nested, so we use a simple term query
+      Query termQuery =
+          Query.of(
+              q ->
+                  q.term(
+                      t ->
+                          t.field("dataProducts.fullyQualifiedName").value(FieldValue.of(oldFqn))));
+
+      Map<String, JsonData> params =
+          Map.of(
+              "oldFqn", JsonData.of(oldFqn),
+              "newFqn", JsonData.of(newFqn));
+
+      UpdateByQueryResponse updateResponse =
+          client.updateByQuery(
+              req ->
+                  req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
+                      .query(termQuery)
+                      .script(
+                          s ->
+                              s.inline(
+                                  i ->
+                                      i.lang(ScriptLanguage.Painless.jsonValue())
+                                          .source(UPDATE_DATA_PRODUCT_FQN_SCRIPT)
+                                          .params(params)))
+                      .refresh(true));
+
+      LOG.info(
+          "Successfully updated data product references from {} to {}, updated: {}",
+          oldFqn,
+          newFqn,
+          updateResponse.updated());
+
+      if (!updateResponse.failures().isEmpty()) {
+        String errorMessage =
+            updateResponse.failures().stream()
+                .map(BulkIndexByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .collect(Collectors.joining(", "));
+        LOG.error("Failed to update data product references: {}", errorMessage);
+      }
+
+    } catch (Exception e) {
+      LOG.error("Error while updating data product references: {}", e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void updateAssetDomainsForDataProduct(
+      String dataProductFqn, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot update asset domains.");
+      return;
+    }
+
+    try {
+      // Query for all documents that have this data product in their dataProducts array
+      Query termQuery =
+          Query.of(
+              q ->
+                  q.term(
+                      t ->
+                          t.field("dataProducts.fullyQualifiedName")
+                              .value(FieldValue.of(dataProductFqn))));
+
+      // Convert new domains to a format suitable for the script
+      List<Map<String, Object>> newDomainsData = new ArrayList<>();
+      for (EntityReference domain : newDomains) {
+        Map<String, Object> domainMap = new HashMap<>();
+        domainMap.put("id", domain.getId().toString());
+        domainMap.put("type", domain.getType());
+        domainMap.put("name", domain.getName());
+        domainMap.put("fullyQualifiedName", domain.getFullyQualifiedName());
+        if (domain.getDisplayName() != null) {
+          domainMap.put("displayName", domain.getDisplayName());
+        }
+        newDomainsData.add(domainMap);
+      }
+
+      Map<String, JsonData> params =
+          Map.of(
+              "oldDomainFqns", JsonData.of(oldDomainFqns),
+              "newDomains", JsonData.of(newDomainsData));
+
+      UpdateByQueryResponse updateResponse =
+          client.updateByQuery(
+              req ->
+                  req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
+                      .query(termQuery)
+                      .script(
+                          s ->
+                              s.inline(
+                                  i ->
+                                      i.lang(ScriptLanguage.Painless.jsonValue())
+                                          .source(SearchClient.UPDATE_ASSET_DOMAIN_SCRIPT)
+                                          .params(params)))
+                      .refresh(true));
+
+      LOG.info(
+          "Successfully updated asset domains for data product {}: removed {}, added {}, updated {} documents",
+          dataProductFqn,
+          oldDomainFqns,
+          newDomains.stream().map(EntityReference::getFullyQualifiedName).toList(),
+          updateResponse.updated());
+
+      if (!updateResponse.failures().isEmpty()) {
+        String errorMessage =
+            updateResponse.failures().stream()
+                .map(BulkIndexByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .collect(Collectors.joining(", "));
+        LOG.error("Failed to update asset domains: {}", errorMessage);
+      }
+
+    } catch (Exception e) {
+      LOG.error("Error while updating asset domains for data product: {}", e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void updateAssetDomainsByIds(
+      List<UUID> assetIds, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot update asset domains.");
+      return;
+    }
+
+    if (assetIds == null || assetIds.isEmpty()) {
+      LOG.debug("No asset IDs provided for domain update.");
+      return;
+    }
+
+    try {
+      List<String> idValues = assetIds.stream().map(UUID::toString).toList();
+      Query idsQuery = Query.of(q -> q.ids(i -> i.values(idValues)));
+
+      List<Map<String, Object>> newDomainsData = new ArrayList<>();
+      for (EntityReference domain : newDomains) {
+        Map<String, Object> domainMap = new HashMap<>();
+        domainMap.put("id", domain.getId().toString());
+        domainMap.put("type", domain.getType());
+        domainMap.put("name", domain.getName());
+        domainMap.put("fullyQualifiedName", domain.getFullyQualifiedName());
+        if (domain.getDisplayName() != null) {
+          domainMap.put("displayName", domain.getDisplayName());
+        }
+        newDomainsData.add(domainMap);
+      }
+
+      Map<String, JsonData> params =
+          Map.of(
+              "oldDomainFqns", JsonData.of(oldDomainFqns),
+              "newDomains", JsonData.of(newDomainsData));
+
+      UpdateByQueryResponse updateResponse =
+          client.updateByQuery(
+              req ->
+                  req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
+                      .query(idsQuery)
+                      .script(
+                          s ->
+                              s.inline(
+                                  i ->
+                                      i.lang(ScriptLanguage.Painless.jsonValue())
+                                          .source(SearchClient.UPDATE_ASSET_DOMAIN_FQN_SCRIPT)
+                                          .params(params)))
+                      .refresh(true));
+
+      LOG.info(
+          "Successfully updated asset domain FQNs by IDs: {} assets, oldFqns={}, newFqns={}, updated {} documents",
+          assetIds.size(),
+          oldDomainFqns,
+          newDomains.stream().map(EntityReference::getFullyQualifiedName).toList(),
+          updateResponse.updated());
+
+      if (!updateResponse.failures().isEmpty()) {
+        String errorMessage =
+            updateResponse.failures().stream()
+                .map(BulkIndexByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .collect(Collectors.joining(", "));
+        LOG.error("Failed to update asset domains: {}", errorMessage);
+      }
+
+    } catch (Exception e) {
+      LOG.error("Error while updating asset domains by IDs: {}", e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void updateDomainFqnByPrefix(String oldFqn, String newFqn) {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot update domain FQNs.");
+      return;
+    }
+
+    try {
+      String domainIndexName = Entity.getSearchRepository().getIndexOrAliasName(Entity.DOMAIN);
+      LOG.info(
+          "Updating domain FQNs by prefix: index={}, oldFqn={}, newFqn={}",
+          domainIndexName,
+          oldFqn,
+          newFqn);
+
+      Query prefixQuery = Query.of(q -> q.prefix(p -> p.field("fullyQualifiedName").value(oldFqn)));
+      Query entityTypeQuery =
+          Query.of(q -> q.term(t -> t.field("entityType.keyword").value(FieldValue.of("domain"))));
+      Query combinedQuery = Query.of(q -> q.bool(b -> b.must(prefixQuery, entityTypeQuery)));
+
+      Map<String, JsonData> params =
+          Map.of(
+              "oldFqn", JsonData.of(oldFqn),
+              "newFqn", JsonData.of(newFqn));
+
+      UpdateByQueryResponse updateResponse =
+          client.updateByQuery(
+              req ->
+                  req.index(domainIndexName)
+                      .query(combinedQuery)
+                      .script(
+                          s ->
+                              s.inline(
+                                  i ->
+                                      i.lang(ScriptLanguage.Painless.jsonValue())
+                                          .source(SearchClient.UPDATE_DOMAIN_FQN_BY_PREFIX_SCRIPT)
+                                          .params(params)))
+                      .refresh(true));
+
+      LOG.info(
+          "Updated domain FQNs: total={}, updated={}, noops={}",
+          updateResponse.total(),
+          updateResponse.updated(),
+          updateResponse.noops());
+
+      if (!updateResponse.failures().isEmpty()) {
+        String errorMessage =
+            updateResponse.failures().stream()
+                .map(BulkIndexByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .collect(Collectors.joining(", "));
+        LOG.error("Failed to update domain FQNs: {}", errorMessage);
+      }
+    } catch (Exception e) {
+      LOG.error("Error while updating domain FQNs by prefix: {}", e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void updateAssetDomainFqnByPrefix(String oldFqn, String newFqn) {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot update asset domain FQNs.");
+      return;
+    }
+
+    try {
+      String indexName = Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS);
+      LOG.info(
+          "Updating asset domain FQNs by prefix in search index: index={}, oldFqn={}, newFqn={}",
+          indexName,
+          oldFqn,
+          newFqn);
+
+      // Use match_all query - the script will filter and update only matching documents
+      Query matchAllQuery = Query.of(q -> q.matchAll(m -> m));
+
+      Map<String, JsonData> params =
+          Map.of(
+              "oldFqn", JsonData.of(oldFqn),
+              "newFqn", JsonData.of(newFqn));
+
+      UpdateByQueryResponse updateResponse =
+          client.updateByQuery(
+              req ->
+                  req.index(indexName)
+                      .query(matchAllQuery)
+                      .script(
+                          s ->
+                              s.inline(
+                                  i ->
+                                      i.lang(ScriptLanguage.Painless.jsonValue())
+                                          .source(
+                                              SearchClient.UPDATE_ASSET_DOMAIN_FQN_BY_PREFIX_SCRIPT)
+                                          .params(params)))
+                      .refresh(true));
+
+      LOG.info(
+          "Updated asset domain FQNs in search: total={}, updated={}, noops={}",
+          updateResponse.total(),
+          updateResponse.updated(),
+          updateResponse.noops());
+
+      if (!updateResponse.failures().isEmpty()) {
+        String errorMessage =
+            updateResponse.failures().stream()
+                .map(BulkIndexByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .collect(Collectors.joining(", "));
+        LOG.error("Failed to update asset domain FQNs: {}", errorMessage);
+      }
+    } catch (Exception e) {
+      LOG.error("Error while updating asset domain FQNs by prefix: {}", e.getMessage(), e);
     }
   }
 

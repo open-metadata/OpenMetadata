@@ -19,6 +19,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.ai.AIGovernancePolicyResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 @Repository
@@ -38,7 +39,8 @@ public class AIGovernancePolicyRepository extends EntityRepository<AIGovernanceP
   }
 
   @Override
-  public void setFields(AIGovernancePolicy policy, Fields fields) {
+  public void setFields(
+      AIGovernancePolicy policy, Fields fields, RelationIncludes relationIncludes) {
     // No additional fields to set beyond base entity fields
   }
 
