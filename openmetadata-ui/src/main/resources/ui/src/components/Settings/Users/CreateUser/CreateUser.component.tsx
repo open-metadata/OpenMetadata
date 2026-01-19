@@ -57,6 +57,7 @@ import { handleSearchFilterOption } from '../../../../utils/CommonUtils';
 import { getEntityName, getEntityReferenceListFromEntities } from '../../../../utils/EntityUtils';
 import { getField } from '../../../../utils/formUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
 import CopyToClipboardButton from '../../../common/CopyToClipboardButton/CopyToClipboardButton';
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
@@ -85,8 +86,6 @@ const CreateUser = ({
   const [selectedTeams, setSelectedTeams] = useState<
     Array<EntityReference | undefined>
   >([]);
-  const [personaOptions, setPersonaOptions] = useState<EntityReference[]>([]);
-  const [isLoadingPersonas, setIsLoadingPersonas] = useState(false);
   const [isPasswordGenerating, setIsPasswordGenerating] = useState(false);
   const { activeDomainEntityRef } = useDomainStore();
   const selectedDomain =
@@ -137,12 +136,38 @@ const CreateUser = ({
     }));
   }, [roles]);
 
-  const personaOptionsMapped = useMemo(() => {
-    return personaOptions.map((persona) => ({
-      label: getEntityName(persona),
-      value: persona.id,
-    }));
-  }, [personaOptions]);
+  const fetchPersonaOptions = async (searchText: string, page?: number) => {
+    try {
+      const params: Record<string, unknown> = {
+        limit: PAGE_SIZE_LARGE,
+      };
+      
+      if (page && page > 1) {
+        params.after = String((page - 1) * PAGE_SIZE_LARGE);
+      }
+      
+      const response = await getAllPersonas(params);
+      const personaRefs = getEntityReferenceListFromEntities(
+        response.data,
+        EntityType.PERSONA
+      );
+      
+      return {
+        data: personaRefs.map((persona) => ({
+          label: getEntityName(persona),
+          value: persona.id,
+          data: persona,
+        })),
+        paging: response.paging,
+      };
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', { entity: t('label.persona-plural') })
+      );
+      return { data: [], paging: {} };
+    }
+  };
 
   const generatedPassword = Form.useWatch('generatedPassword', form);
   const passwordGenerator = Form.useWatch('passwordGenerator', form);
@@ -169,11 +194,10 @@ const CreateUser = ({
       const isPasswordGenerated =
         passwordGenerator === CreatePasswordGenerator.AutomaticGenerate;
       const validTeam = compact(selectedTeams).map((team) => team.id);
-      const validPersonas = selectedPersonas
-        ? personaOptions.filter((persona) =>
-            selectedPersonas.includes(persona.id)
-          )
-        : undefined;
+      const validPersonas = selectedPersonas?.map((personaId: string) => ({
+        id: personaId,
+        type: EntityType.PERSONA,
+      } as EntityReference));
 
       const { email, displayName, tokenExpiry, confirmPassword, description } =
         values;
@@ -226,30 +250,8 @@ const CreateUser = ({
     []
   );
 
-  const fetchPersonas = async () => {
-    setIsLoadingPersonas(true);
-    try {
-      const { data } = await getAllPersonas({
-        limit: PAGE_SIZE_LARGE,
-      });
-      const personaRefs = getEntityReferenceListFromEntities(
-        data,
-        EntityType.PERSONA
-      );
-      setPersonaOptions(personaRefs);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-fetch-error', { entity: t('label.persona-plural') })
-      );
-    } finally {
-      setIsLoadingPersonas(false);
-    }
-  };
-
   useEffect(() => {
     generateRandomPassword();
-    fetchPersonas();
   }, []);
 
   return (
@@ -441,17 +443,15 @@ const CreateUser = ({
                 />
               </Form.Item>
               <Form.Item label={t('label.persona-plural')} name="personas">
-                <Select
+                <AsyncSelect
+                  api={fetchPersonaOptions}
                   data-testid="personas-dropdown"
-                  disabled={isEmpty(personaOptions)}
-                  filterOption={handleSearchFilterOption}
-                  getPopupContainer={(triggerNode) => triggerNode.parentElement}
-                  loading={isLoadingPersonas}
+                  enableInfiniteScroll
                   mode="multiple"
-                  options={personaOptionsMapped}
                   placeholder={t('label.please-select-entity', {
                     entity: t('label.persona-plural'),
                   })}
+                  showSearch
                 />
               </Form.Item>
             </>

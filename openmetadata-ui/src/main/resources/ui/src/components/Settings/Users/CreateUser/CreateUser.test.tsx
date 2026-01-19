@@ -34,6 +34,7 @@ jest.mock('../../../../rest/PersonaAPI', () => ({
     data: [],
     paging: { total: 0 },
   }),
+}));
 
 jest.mock('../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
