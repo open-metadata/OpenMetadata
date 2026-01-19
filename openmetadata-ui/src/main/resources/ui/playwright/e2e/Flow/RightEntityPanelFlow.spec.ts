@@ -45,6 +45,7 @@ import {
   navigateToEntityPanelTab,
   navigateToExploreAndSelectTable,
   navigateToIncidentsTab,
+  removeOwnerFromPanel,
   verifyDeletedEntityNotVisible,
 } from '../../utils/entityPanel';
 import { connectEdgeBetweenNodesViaAPI } from '../../utils/lineage';
