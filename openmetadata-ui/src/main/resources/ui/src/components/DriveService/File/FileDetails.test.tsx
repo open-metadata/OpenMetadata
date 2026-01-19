@@ -35,7 +35,6 @@ jest.mock('../../../utils/useRequiredParams');
 jest.mock('../../../rest/driveAPI');
 const mockGetFeedCounts = jest.fn();
 
-
 jest.mock('../../../utils/CommonUtils', () => ({
   ...jest.requireActual('../../../utils/CommonUtils'),
   getEntityMissingError: jest.fn(),
@@ -325,13 +324,16 @@ describe('FileDetails', () => {
   it('should call getFeedCounts on component mount', async () => {
     renderFileDetails();
 
-    await waitFor(() => {
-      expect(mockGetFeedCounts).toHaveBeenCalledWith(
-        EntityType.FILE,
-        'test-service.test-file.txt',
-        expect.any(Function)
-      );
-    }, { timeout: 3000 });
+    await waitFor(
+      () => {
+        expect(mockGetFeedCounts).toHaveBeenCalledWith(
+          EntityType.FILE,
+          'test-service.test-file.txt',
+          expect.any(Function)
+        );
+      },
+      { timeout: 3000 }
+    );
   });
 
   it('should handle follow file action for non-following user', async () => {
