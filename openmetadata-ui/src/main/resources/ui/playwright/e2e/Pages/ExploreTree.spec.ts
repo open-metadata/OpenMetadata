@@ -39,6 +39,7 @@ import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { TagClass } from '../../support/tag/TagClass';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
 import {
+  copyAndGetClipboardText,
   testCopyLinkButton,
   updateDisplayNameForEntity,
   validateCopiedLinkFormat,
@@ -479,15 +480,8 @@ test.describe('Explore page', () => {
 
     const copyButton = page.getByTestId('copy-field-link-button').first();
     await expect(copyButton).toBeVisible();
-    await copyButton.click();
 
-    const clipboardText = await page.evaluate(async () => {
-      try {
-        return await navigator.clipboard.readText();
-      } catch (error) {
-        return `CLIPBOARD_ERROR: ${error}`;
-      }
-    });
+    const clipboardText = await copyAndGetClipboardText(page, copyButton);
 
     const validationResult = validateCopiedLinkFormat({
       clipboardText,
@@ -524,15 +518,8 @@ test.describe('Explore page', () => {
 
     const copyButton = page.getByTestId('copy-field-link-button').first();
     await expect(copyButton).toBeVisible();
-    await copyButton.click();
 
-    const clipboardText = await page.evaluate(async () => {
-      try {
-        return await navigator.clipboard.readText();
-      } catch (error) {
-        return `CLIPBOARD_ERROR: ${error}`;
-      }
-    });
+    const clipboardText = await copyAndGetClipboardText(page, copyButton);
 
     const validationResult = validateCopiedLinkFormat({
       clipboardText,
