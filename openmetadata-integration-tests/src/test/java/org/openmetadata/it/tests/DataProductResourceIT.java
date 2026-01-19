@@ -19,20 +19,28 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.factories.DashboardServiceTestFactory;
+import org.openmetadata.it.factories.MessagingServiceTestFactory;
 import org.openmetadata.it.util.EntityRulesUtil;
 import org.openmetadata.it.util.EntityValidation;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.data.CreateDashboard;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
 import org.openmetadata.schema.api.domains.DataProductPortsView;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
+import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
@@ -701,6 +709,29 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
             .withDatabaseSchema(schema.getFullyQualifiedName())
             .withDomains(List.of(domain.getFullyQualifiedName()));
     return SdkClients.adminClient().tables().create(createTable);
+  }
+
+  private Dashboard createTestDashboard(TestNamespace ns, String suffix, Domain domain) {
+    DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
+
+    CreateDashboard createDashboard =
+        new CreateDashboard()
+            .withName(ns.prefix(suffix))
+            .withService(service.getFullyQualifiedName())
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    return SdkClients.adminClient().dashboards().create(createDashboard);
+  }
+
+  private Topic createTestTopic(TestNamespace ns, String suffix, Domain domain) {
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    CreateTopic createTopic =
+        new CreateTopic()
+            .withName(ns.prefix(suffix))
+            .withService(service.getFullyQualifiedName())
+            .withPartitions(1)
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    return SdkClients.adminClient().topics().create(createTopic);
   }
 
   private org.openmetadata.schema.entity.data.DatabaseSchema getOrCreateDatabaseSchema(
@@ -2133,5 +2164,187 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     DataProductPortsView portsViewNoFields = getPortsView(dataProduct.getId(), 10, 0, 10, 0);
     assertNotNull(portsViewNoFields.getInputPorts());
     assertEquals(1, portsViewNoFields.getInputPorts().getPaging().getTotal());
+  }
+
+  @Test
+  void test_portsReturnEntityType(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_entity_type_test"))
+            .withDescription("Data product to verify entityType is returned")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table inputTable = createTestTable(ns, "entity_type_input", domain);
+    Table outputTable = createTestTable(ns, "entity_type_output", domain);
+
+    bulkAddInputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(inputTable.getEntityReference())));
+
+    bulkAddOutputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(outputTable.getEntityReference())));
+
+    // Verify entityType is returned in input ports response
+    ResultList<Map<String, Object>> inputPorts = getInputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(1, inputPorts.getPaging().getTotal());
+    Map<String, Object> inputPort = inputPorts.getData().get(0);
+    assertNotNull(
+        inputPort.get("entityType"), "entityType should be present in input port response");
+    assertEquals(
+        "table", inputPort.get("entityType"), "entityType should be 'table' for table entity");
+    assertEquals(inputTable.getId(), getEntityId(inputPort));
+
+    // Verify entityType is returned in output ports response
+    ResultList<Map<String, Object>> outputPorts = getOutputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(1, outputPorts.getPaging().getTotal());
+    Map<String, Object> outputPort = outputPorts.getData().get(0);
+    assertNotNull(
+        outputPort.get("entityType"), "entityType should be present in output port response");
+    assertEquals(
+        "table", outputPort.get("entityType"), "entityType should be 'table' for table entity");
+    assertEquals(outputTable.getId(), getEntityId(outputPort));
+
+    // Verify entityType is returned in portsView response
+    DataProductPortsView portsView = getPortsView(dataProduct.getId(), 10, 0, 10, 0);
+    assertNotNull(portsView.getInputPorts());
+    assertEquals(1, portsView.getInputPorts().getData().size());
+    Map<String, Object> portsViewInput =
+        portsView.getInputPorts().getData().get(0).getAdditionalProperties();
+    assertNotNull(
+        portsViewInput.get("entityType"), "entityType should be present in portsView input");
+    assertEquals("table", portsViewInput.get("entityType"));
+
+    assertNotNull(portsView.getOutputPorts());
+    assertEquals(1, portsView.getOutputPorts().getData().size());
+    Map<String, Object> portsViewOutput =
+        portsView.getOutputPorts().getData().get(0).getAdditionalProperties();
+    assertNotNull(
+        portsViewOutput.get("entityType"), "entityType should be present in portsView output");
+    assertEquals("table", portsViewOutput.get("entityType"));
+  }
+
+  @Test
+  void test_portsEntityTypeWithMultipleTables(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_multiple_tables_entity_type"))
+            .withDescription("Data product to verify entityType with multiple tables")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table1 = createTestTable(ns, "multi_table_1", domain);
+    Table table2 = createTestTable(ns, "multi_table_2", domain);
+    Table table3 = createTestTable(ns, "multi_table_3", domain);
+
+    bulkAddInputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets()
+            .withAssets(
+                List.of(
+                    table1.getEntityReference(),
+                    table2.getEntityReference(),
+                    table3.getEntityReference())));
+
+    // Verify all ports have entityType set correctly
+    ResultList<Map<String, Object>> inputPorts = getInputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(3, inputPorts.getPaging().getTotal());
+
+    for (Map<String, Object> port : inputPorts.getData()) {
+      assertNotNull(port.get("entityType"), "Each port should have entityType");
+      assertEquals("table", port.get("entityType"), "All ports should have entityType 'table'");
+      assertNotNull(port.get("id"), "Each port should have id");
+      assertNotNull(port.get("name"), "Each port should have name");
+    }
+  }
+
+  @Test
+  void test_portsEntityTypeAcrossDifferentEntityTypes(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_mixed_entity_types"))
+            .withDescription("Data product to verify entityType across different entity types")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    // Create different entity types
+    Table table = createTestTable(ns, "mixed_table", domain);
+    Dashboard dashboard = createTestDashboard(ns, "mixed_dashboard", domain);
+    Topic topic = createTestTopic(ns, "mixed_topic", domain);
+
+    // Add table and dashboard as input ports
+    bulkAddInputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets()
+            .withAssets(List.of(table.getEntityReference(), dashboard.getEntityReference())));
+
+    // Add topic as output port
+    bulkAddOutputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(topic.getEntityReference())));
+
+    // Verify input ports have correct entityType for each entity
+    ResultList<Map<String, Object>> inputPorts = getInputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(2, inputPorts.getPaging().getTotal());
+
+    boolean foundTable = false;
+    boolean foundDashboard = false;
+
+    for (Map<String, Object> port : inputPorts.getData()) {
+      assertNotNull(port.get("entityType"), "Each port should have entityType");
+      String entityType = (String) port.get("entityType");
+      UUID portId = getEntityId(port);
+
+      if (portId.equals(table.getId())) {
+        assertEquals("table", entityType, "Table entity should have entityType 'table'");
+        foundTable = true;
+      } else if (portId.equals(dashboard.getId())) {
+        assertEquals(
+            "dashboard", entityType, "Dashboard entity should have entityType 'dashboard'");
+        foundDashboard = true;
+      }
+    }
+
+    assertTrue(foundTable, "Table should be found in input ports");
+    assertTrue(foundDashboard, "Dashboard should be found in input ports");
+
+    // Verify output ports have correct entityType for topic
+    ResultList<Map<String, Object>> outputPorts = getOutputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(1, outputPorts.getPaging().getTotal());
+
+    Map<String, Object> outputPort = outputPorts.getData().get(0);
+    assertNotNull(outputPort.get("entityType"), "Output port should have entityType");
+    assertEquals(
+        "topic", outputPort.get("entityType"), "Topic entity should have entityType 'topic'");
+    assertEquals(topic.getId(), getEntityId(outputPort));
+
+    // Verify portsView also returns correct entityTypes
+    DataProductPortsView portsView = getPortsView(dataProduct.getId(), 10, 0, 10, 0);
+
+    // Verify input ports in portsView
+    assertEquals(2, portsView.getInputPorts().getData().size());
+    for (int i = 0; i < portsView.getInputPorts().getData().size(); i++) {
+      Map<String, Object> port =
+          portsView.getInputPorts().getData().get(i).getAdditionalProperties();
+      assertNotNull(port.get("entityType"), "PortsView input should have entityType");
+      String entityType = (String) port.get("entityType");
+      assertTrue(
+          entityType.equals("table") || entityType.equals("dashboard"),
+          "EntityType should be 'table' or 'dashboard', got: " + entityType);
+    }
+
+    // Verify output ports in portsView
+    assertEquals(1, portsView.getOutputPorts().getData().size());
+    Map<String, Object> portsViewOutput =
+        portsView.getOutputPorts().getData().get(0).getAdditionalProperties();
+    assertNotNull(portsViewOutput.get("entityType"), "PortsView output should have entityType");
+    assertEquals("topic", portsViewOutput.get("entityType"));
   }
 }
