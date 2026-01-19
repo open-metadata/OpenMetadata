@@ -12,7 +12,28 @@
  */
 import { expect } from '@playwright/test';
 import { test } from '../fixtures/pages';
-import { generateODCSContract } from '../../constant/dataContracts';
+import {
+  generateODCSContract,
+  ODCS_INVALID_EMPTY_FILE_YAML,
+  ODCS_INVALID_MALFORMED_JSON,
+  ODCS_INVALID_MALFORMED_YAML,
+  ODCS_INVALID_MISSING_APIVERSION_YAML,
+  ODCS_INVALID_MISSING_KIND_YAML,
+  ODCS_INVALID_MISSING_STATUS_YAML,
+  ODCS_INVALID_SCHEMA_FIELDS_YAML,
+  ODCS_INVALID_WRONG_APIVERSION_YAML,
+  ODCS_INVALID_WRONG_KIND_YAML,
+  ODCS_VALID_BASIC_JSON,
+  ODCS_VALID_BASIC_YAML,
+  ODCS_VALID_DRAFT_STATUS_YAML,
+  ODCS_VALID_FULL_YAML,
+  ODCS_VALID_MULTI_OBJECT_YAML,
+  ODCS_VALID_QUALITY_RULES_BETWEEN_YAML,
+  ODCS_WITH_QUALITY_RULES_YAML,
+  ODCS_VALID_WITH_TEAM_YAML,
+  ODCS_VALID_WITH_TIMESTAMPS_YAML,
+  ODCS_WITH_SLA_YAML,
+} from '../../constant/dataContracts';
 import { TableClass } from '../../support/entity/TableClass';
 import {
   getApiContext,
@@ -24,7 +45,6 @@ import {
   importODCSYaml,
   navigateToContractTab,
   openODCSImportDropdown,
-  ODCS_TEST_FILES
 } from '../../utils/odcsImportExport';
 
 test.describe('ODCS Import/Export', () => {
@@ -45,7 +65,7 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await importODCSYaml(
         page,
-        ODCS_TEST_FILES.VALID_BASIC_YAML,
+        ODCS_VALID_BASIC_YAML,
         'valid-basic.yaml'
       );
 
@@ -67,7 +87,7 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await importODCSYaml(
         page,
-        ODCS_TEST_FILES.VALID_FULL_YAML,
+        ODCS_VALID_FULL_YAML,
         'valid-full.yaml'
       );
 
@@ -90,7 +110,7 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await importODCSYaml(
         page,
-        ODCS_TEST_FILES.VALID_DRAFT_STATUS_YAML,
+        ODCS_VALID_DRAFT_STATUS_YAML,
         'valid-draft-status.yaml'
       );
 
@@ -112,7 +132,7 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await importODCSYaml(
         page,
-        ODCS_TEST_FILES.VALID_WITH_TIMESTAMPS_YAML,
+        ODCS_VALID_WITH_TIMESTAMPS_YAML,
         'valid-with-timestamps.yaml'
       );
 
@@ -135,7 +155,7 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await importODCSYaml(
         page,
-        ODCS_TEST_FILES.VALID_QUALITY_RULES_YAML,
+        ODCS_WITH_SLA_YAML,
         'valid-quality-rules.yaml'
       );
 
@@ -166,7 +186,7 @@ test.describe('ODCS Import/Export', () => {
       await fileInput.setInputFiles({
         name: 'invalid-malformed-yaml.yaml',
         mimeType: 'application/yaml',
-        buffer: Buffer.from(ODCS_TEST_FILES.INVALID_MALFORMED_YAML),
+        buffer: Buffer.from(ODCS_INVALID_MALFORMED_YAML),
       });
 
       // Should show error in validation panel for malformed YAML
@@ -196,7 +216,7 @@ test.describe('ODCS Import/Export', () => {
       await fileInput.setInputFiles({
         name: 'invalid-missing-apiversion.yaml',
         mimeType: 'application/yaml',
-        buffer: Buffer.from(ODCS_TEST_FILES.INVALID_MISSING_APIVERSION_YAML),
+        buffer: Buffer.from(ODCS_INVALID_MISSING_APIVERSION_YAML),
       });
 
       // Should show error in validation panel for missing apiVersion
@@ -226,7 +246,7 @@ test.describe('ODCS Import/Export', () => {
       await fileInput.setInputFiles({
         name: 'invalid-missing-status.yaml',
         mimeType: 'application/yaml',
-        buffer: Buffer.from(ODCS_TEST_FILES.INVALID_MISSING_STATUS_YAML),
+        buffer: Buffer.from(ODCS_INVALID_MISSING_STATUS_YAML),
       });
 
       // Should show error in validation panel for missing status
@@ -256,7 +276,7 @@ test.describe('ODCS Import/Export', () => {
       await fileInput.setInputFiles({
         name: 'invalid-empty-file.yaml',
         mimeType: 'application/yaml',
-        buffer: Buffer.from(ODCS_TEST_FILES.INVALID_EMPTY_FILE_YAML),
+        buffer: Buffer.from(ODCS_INVALID_EMPTY_FILE_YAML),
       });
 
       // Should show error in validation panel for empty/invalid file
@@ -286,7 +306,7 @@ test.describe('ODCS Import/Export', () => {
       await fileInput.setInputFiles({
         name: 'valid-basic.json',
         mimeType: 'application/json',
-        buffer: Buffer.from(ODCS_TEST_FILES.VALID_BASIC_JSON),
+        buffer: Buffer.from(ODCS_VALID_BASIC_JSON),
       });
 
       // Wait for file to be parsed
@@ -320,7 +340,7 @@ test.describe('ODCS Import/Export', () => {
       await fileInput.setInputFiles({
         name: 'invalid-malformed.json',
         mimeType: 'application/json',
-        buffer: Buffer.from(ODCS_TEST_FILES.INVALID_MALFORMED_JSON),
+        buffer: Buffer.from(ODCS_INVALID_MALFORMED_JSON),
       });
 
       // Should show error in validation panel for malformed JSON
@@ -350,7 +370,7 @@ test.describe('ODCS Import/Export', () => {
       await fileInput.setInputFiles({
         name: 'invalid-missing-kind.yaml',
         mimeType: 'application/yaml',
-        buffer: Buffer.from(ODCS_TEST_FILES.INVALID_MISSING_KIND_YAML),
+        buffer: Buffer.from(ODCS_INVALID_MISSING_KIND_YAML),
       });
 
       // Should show error for missing kind
@@ -378,7 +398,7 @@ test.describe('ODCS Import/Export', () => {
       await fileInput.setInputFiles({
         name: 'invalid-wrong-apiversion.yaml',
         mimeType: 'application/yaml',
-        buffer: Buffer.from(ODCS_TEST_FILES.INVALID_WRONG_APIVERSION_YAML),
+        buffer: Buffer.from(ODCS_INVALID_WRONG_APIVERSION_YAML),
       });
 
       // Should show error for wrong apiVersion
@@ -408,7 +428,7 @@ test.describe('ODCS Import/Export', () => {
       await fileInput.setInputFiles({
         name: 'invalid-wrong-kind.yaml',
         mimeType: 'application/yaml',
-        buffer: Buffer.from(ODCS_TEST_FILES.INVALID_WRONG_KIND_YAML),
+        buffer: Buffer.from(ODCS_INVALID_WRONG_KIND_YAML),
       });
 
       // Should show error for wrong kind
@@ -460,7 +480,7 @@ test.describe('ODCS Import/Export', () => {
       await fileInput.setInputFiles({
         name: 'malformed.yaml',
         mimeType: 'application/yaml',
-        buffer: Buffer.from(ODCS_TEST_FILES.INVALID_MALFORMED_YAML),
+        buffer: Buffer.from(ODCS_INVALID_MALFORMED_YAML),
       });
 
       // Should show error in validation panel for malformed YAML
@@ -483,7 +503,7 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await importODCSYaml(
         page,
-        ODCS_TEST_FILES.VALID_BASIC_YAML,
+        ODCS_VALID_BASIC_YAML,
         'export-test.yaml'
       );
 
@@ -567,7 +587,7 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await importODCSYaml(
         page,
-        ODCS_TEST_FILES.VALID_BASIC_YAML,
+        ODCS_VALID_BASIC_YAML,
         'initial.yaml'
       );
 
@@ -584,7 +604,7 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await importODCSYaml(
         page,
-        ODCS_TEST_FILES.VALID_FULL_YAML,
+        ODCS_VALID_FULL_YAML,
         'merge-with-sla.yaml',
         {
           hasExistingContract: true,
@@ -620,10 +640,11 @@ test.describe('ODCS Import/Export', () => {
 
       // Verify roles were merged from full contract
       expect(exportedYaml).toContain('roles');
-      expect(exportedYaml).toContain('data_admin');
+      expect(exportedYaml).toContain('data-consumer');
 
       // Verify original contract name is preserved (merge behavior)
       expect(exportedYaml).toContain('Orders Basic Contract');
+
 
       // Cleanup
       fsModule.unlinkSync(tempPath);
@@ -645,7 +666,7 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await importODCSYaml(
         page,
-        ODCS_TEST_FILES.VALID_FULL_YAML,
+        ODCS_VALID_FULL_YAML,
         'full-contract.yaml'
       );
 
@@ -665,7 +686,7 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await importODCSYaml(
         page,
-        ODCS_TEST_FILES.VALID_BASIC_YAML,
+        ODCS_VALID_BASIC_YAML,
         'replace-with-basic.yaml',
         {
           hasExistingContract: true,
@@ -727,7 +748,7 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await importODCSYaml(
         page,
-        ODCS_TEST_FILES.VALID_BASIC_YAML,
+        ODCS_VALID_BASIC_YAML,
         'initial.yaml'
       );
 
@@ -745,7 +766,7 @@ test.describe('ODCS Import/Export', () => {
       await fileInput.setInputFiles({
         name: 'test.yaml',
         mimeType: 'application/yaml',
-        buffer: Buffer.from(ODCS_TEST_FILES.VALID_FULL_YAML),
+        buffer: Buffer.from(ODCS_VALID_FULL_YAML),
       });
 
       // Wait for file to be parsed
@@ -795,7 +816,7 @@ test.describe('ODCS Import/Export', () => {
       await fileInput.setInputFiles({
         name: 'full-contract.yaml',
         mimeType: 'application/yaml',
-        buffer: Buffer.from(ODCS_TEST_FILES.VALID_FULL_YAML),
+        buffer: Buffer.from(ODCS_VALID_FULL_YAML),
       });
 
       // Wait for preview
@@ -834,7 +855,7 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await importODCSYaml(
         page,
-        ODCS_TEST_FILES.VALID_FULL_YAML,
+        ODCS_VALID_FULL_YAML,
         'odcs-to-om.yaml'
       );
 
@@ -889,7 +910,7 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await importODCSYaml(
         page,
-        ODCS_TEST_FILES.VALID_FULL_YAML,
+        ODCS_VALID_FULL_YAML,
         'odcs-schema.yaml'
       );
 
@@ -935,7 +956,7 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await importODCSYaml(
         page,
-        ODCS_TEST_FILES.VALID_FULL_YAML,
+        ODCS_VALID_FULL_YAML,
         'full-odcs.yaml'
       );
 
@@ -996,7 +1017,7 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await importODCSYaml(
         page,
-        ODCS_TEST_FILES.VALID_FULL_YAML,
+        ODCS_VALID_FULL_YAML,
         'sla-mapping.yaml'
       );
 
@@ -1041,7 +1062,7 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await importODCSYaml(
         page,
-        ODCS_TEST_FILES.VALID_WITH_TIMESTAMPS_YAML,
+        ODCS_VALID_WITH_TIMESTAMPS_YAML,
         'timestamp-contract.yaml'
       );
 
@@ -1086,7 +1107,7 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await importODCSYaml(
         page,
-        ODCS_TEST_FILES.VALID_FULL_YAML,
+        ODCS_VALID_FULL_YAML,
         'security-contract.yaml'
       );
 
@@ -1107,8 +1128,7 @@ test.describe('ODCS Import/Export', () => {
 
       // Verify roles are in the export
       expect(exportedYaml).toContain('roles');
-      expect(exportedYaml).toContain('data_admin');
-      expect(exportedYaml).toContain('analyst');
+      expect(exportedYaml).toContain('data-consumer');
 
       // Cleanup
       fsModule.unlinkSync(tempPath);
@@ -1130,7 +1150,7 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await importODCSYaml(
         page,
-        ODCS_TEST_FILES.VALID_QUALITY_RULES_YAML,
+        ODCS_WITH_QUALITY_RULES_YAML,
         'quality-contract.yaml'
       );
 
@@ -1169,7 +1189,7 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await importODCSYaml(
         page,
-        ODCS_TEST_FILES.VALID_QUALITY_RULES_BETWEEN_YAML,
+        ODCS_VALID_QUALITY_RULES_BETWEEN_YAML,
         'quality-between.yaml'
       );
 
@@ -1214,7 +1234,7 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await importODCSYaml(
         page,
-        ODCS_TEST_FILES.VALID_WITH_TEAM_YAML,
+        ODCS_VALID_WITH_TEAM_YAML,
         'team-owner.yaml'
       );
 
@@ -1262,7 +1282,7 @@ test.describe('ODCS Import/Export', () => {
       await openODCSImportDropdown(page);
       await importODCSYaml(
         page,
-        ODCS_TEST_FILES.VALID_WITH_TEAM_YAML,
+        ODCS_VALID_WITH_TEAM_YAML,
         'team-roles.yaml'
       );
 
@@ -1374,7 +1394,7 @@ version: "1.0.0"`;
       await fileInput.setInputFiles({
         name: 'invalid-schema-fields.yaml',
         mimeType: 'application/yaml',
-        buffer: Buffer.from(ODCS_TEST_FILES.INVALID_SCHEMA_FIELDS_YAML),
+        buffer: Buffer.from(ODCS_INVALID_SCHEMA_FIELDS_YAML),
       });
 
       // Wait for file to be parsed and preview to show
@@ -1422,7 +1442,7 @@ version: "1.0.0"`;
       await fileInput.setInputFiles({
         name: 'invalid-schema-fields.yaml',
         mimeType: 'application/yaml',
-        buffer: Buffer.from(ODCS_TEST_FILES.INVALID_SCHEMA_FIELDS_YAML),
+        buffer: Buffer.from(ODCS_INVALID_SCHEMA_FIELDS_YAML),
       });
 
       // Wait for server-side validation to complete - validation panel shows error
@@ -1466,7 +1486,7 @@ version: "1.0.0"`;
       await fileInput.setInputFiles({
         name: 'valid-basic.yaml',
         mimeType: 'application/yaml',
-        buffer: Buffer.from(ODCS_TEST_FILES.VALID_BASIC_YAML),
+        buffer: Buffer.from(ODCS_VALID_BASIC_YAML),
       });
 
       // Wait for file to be parsed and preview to show
@@ -1510,7 +1530,7 @@ version: "1.0.0"`;
       await fileInput.setInputFiles({
         name: 'valid-full.yaml',
         mimeType: 'application/yaml',
-        buffer: Buffer.from(ODCS_TEST_FILES.VALID_FULL_YAML),
+        buffer: Buffer.from(ODCS_VALID_FULL_YAML),
       });
 
       // Wait for file to be parsed and preview to show
@@ -1559,7 +1579,7 @@ version: "1.0.0"`;
       await fileInput.setInputFiles({
         name: 'valid-multi-object.yaml',
         mimeType: 'application/yaml',
-        buffer: Buffer.from(ODCS_TEST_FILES.VALID_MULTI_OBJECT_YAML),
+        buffer: Buffer.from(ODCS_VALID_MULTI_OBJECT_YAML),
       });
 
       // Wait for file to be parsed and object selector to show
@@ -1607,7 +1627,7 @@ version: "1.0.0"`;
       await fileInput.setInputFiles({
         name: 'valid-multi-object.yaml',
         mimeType: 'application/yaml',
-        buffer: Buffer.from(ODCS_TEST_FILES.VALID_MULTI_OBJECT_YAML),
+        buffer: Buffer.from(ODCS_VALID_MULTI_OBJECT_YAML),
       });
 
       // Wait for object selector to appear
@@ -1656,7 +1676,7 @@ version: "1.0.0"`;
       await fileInput.setInputFiles({
         name: 'valid-multi-object.yaml',
         mimeType: 'application/yaml',
-        buffer: Buffer.from(ODCS_TEST_FILES.VALID_MULTI_OBJECT_YAML),
+        buffer: Buffer.from(ODCS_VALID_MULTI_OBJECT_YAML),
       });
 
       // Wait for object selector to appear
@@ -1710,7 +1730,7 @@ version: "1.0.0"`;
       await fileInput.setInputFiles({
         name: 'valid-full.yaml',
         mimeType: 'application/yaml',
-        buffer: Buffer.from(ODCS_TEST_FILES.VALID_FULL_YAML),
+        buffer: Buffer.from(ODCS_VALID_FULL_YAML),
       });
 
       // Wait for file to be parsed

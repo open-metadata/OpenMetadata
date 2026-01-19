@@ -11,103 +11,8 @@
  *  limitations under the License.
  */
 import { Page, Response } from '@playwright/test';
-import * as fs from 'fs';
-import * as path from 'path';
 import { TableClass } from '../support/entity/TableClass';
 import { toastNotification } from './common';
-
-// Path to the ODCS test data files
-const ODCS_TEST_DATA_PATH = path.join(
-  __dirname,
-  '../test-data/odcs-examples'
-);
-
-// Helper function to load ODCS test data files
-export const loadODCSTestFile = (filename: string): string => {
-  const filePath = path.join(ODCS_TEST_DATA_PATH, filename);
-
-  return fs.readFileSync(filePath, 'utf-8');
-};
-
-// Lazy-loaded ODCS test data from files
-export const ODCS_TEST_FILES = {
-  // Valid files
-  get VALID_BASIC_YAML() {
-    return loadODCSTestFile('valid-basic.yaml');
-  },
-  get VALID_FULL_YAML() {
-    return loadODCSTestFile('valid-full.yaml');
-  },
-  get VALID_FULL_NO_SCHEMA_YAML() {
-    return loadODCSTestFile('valid-full-no-schema.yaml');
-  },
-  get VALID_DRAFT_STATUS_YAML() {
-    return loadODCSTestFile('valid-draft-status.yaml');
-  },
-  get VALID_WITH_TIMESTAMPS_YAML() {
-    return loadODCSTestFile('valid-with-timestamps.yaml');
-  },
-  get VALID_QUALITY_RULES_YAML() {
-    return loadODCSTestFile('valid-quality-rules.yaml');
-  },
-  get VALID_QUALITY_RULES_BETWEEN_YAML() {
-    return loadODCSTestFile('valid-quality-rules-between.yaml');
-  },
-  get VALID_WITH_TEAM_YAML() {
-    return loadODCSTestFile('valid-with-team.yaml');
-  },
-  get VALID_BASIC_JSON() {
-    return loadODCSTestFile('valid-basic.json');
-  },
-  get VALID_FULL_JSON() {
-    return loadODCSTestFile('valid-full.json');
-  },
-  // Invalid files
-  get INVALID_EMPTY_FILE_YAML() {
-    return loadODCSTestFile('invalid-empty-file.yaml');
-  },
-  get INVALID_MALFORMED_YAML() {
-    return loadODCSTestFile('invalid-malformed-yaml.yaml');
-  },
-  get INVALID_MALFORMED_JSON() {
-    return loadODCSTestFile('invalid-malformed.json');
-  },
-  get INVALID_MISSING_APIVERSION_YAML() {
-    return loadODCSTestFile('invalid-missing-apiversion.yaml');
-  },
-  get INVALID_MISSING_KIND_YAML() {
-    return loadODCSTestFile('invalid-missing-kind.yaml');
-  },
-  get INVALID_MISSING_STATUS_YAML() {
-    return loadODCSTestFile('invalid-missing-status.yaml');
-  },
-  get INVALID_NOT_YAML_TXT() {
-    return loadODCSTestFile('invalid-not-yaml.txt');
-  },
-  get INVALID_WRONG_APIVERSION_YAML() {
-    return loadODCSTestFile('invalid-wrong-apiversion.yaml');
-  },
-  get INVALID_WRONG_KIND_YAML() {
-    return loadODCSTestFile('invalid-wrong-kind.yaml');
-  },
-  get INVALID_SCHEMA_FIELDS_YAML() {
-    return loadODCSTestFile('invalid-schema-fields.yaml');
-  },
-  // Multi-object files
-  get VALID_MULTI_OBJECT_YAML() {
-    return loadODCSTestFile('valid-multi-object.yaml');
-  },
-  // Sample data compatible files (for testing with sample_data service)
-  get SAMPLE_DATA_DIM_ADDRESS_YAML() {
-    return loadODCSTestFile('sample-data-dim-address.yaml');
-  },
-  get SAMPLE_DATA_DIM_CUSTOMER_YAML() {
-    return loadODCSTestFile('sample-data-dim-customer.yaml');
-  },
-  get SAMPLE_DATA_MULTI_OBJECT_YAML() {
-    return loadODCSTestFile('sample-data-multi-object.yaml');
-  },
-};
 
 export const navigateToContractTab = async (page: Page, table: TableClass) => {
   await table.visitEntityPage(page);
@@ -193,8 +98,8 @@ export const importODCSYaml = async (
   });
 
   // Click Import button
-  const importButton = page.getByTestId('import-button');
-  await importButton.click();
+  const importButton = await page.getByTestId('import-button');
+  await importButton.click({delay: 100});
 
   await importResponse;
   await toastNotification(page, 'ODCS Contract imported successfully');

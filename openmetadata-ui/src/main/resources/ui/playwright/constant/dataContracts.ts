@@ -488,6 +488,330 @@ description:
   purpose: Completely replaced contract via replace mode
 `;
 
+// ODCS Test Data Constants - matching test-data/odcs-examples files
+// Valid YAML test data
+export const ODCS_VALID_BASIC_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: basic-contract
+name: Orders Basic Contract
+version: "1.0.0"
+status: active
+`;
+
+export const ODCS_VALID_FULL_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: full-contract
+name: Customer Analytics Full Contract
+version: "2.1.0"
+status: active
+description:
+  purpose: Comprehensive data contract for customer analytics.
+  limitations: Historical data only, no PII exposed.
+  usage: For internal analytics dashboards and ML models.
+slaProperties:
+  - property: freshness
+    value: "12"
+    unit: hour
+  - property: latency
+    value: "2"
+    unit: hour
+  - property: retention
+    value: "365"
+    unit: day
+roles:
+  - name: data_admin
+    description: Full access to all data
+    access: readWrite
+  - name: analyst
+    description: Read-only access for analysis
+    access: read
+`;
+
+export const ODCS_VALID_DRAFT_STATUS_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: draft-contract
+name: Draft ODCS Contract
+version: "0.1.0"
+status: draft
+description:
+  purpose: This is a draft contract under review.
+`;
+
+export const ODCS_VALID_WITH_TIMESTAMPS_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: timestamp-contract
+name: ODCS Contract with Timestamp Types
+version: "1.0.0"
+status: active
+description:
+  purpose: Contract testing v3.1.0 timestamp and time types
+slaProperties:
+  - property: freshness
+    value: "6"
+    unit: hour
+    timezone: GMT+00:00 UTC
+  - property: latency
+    value: "15"
+    unit: minute
+  - property: availability
+    value: "99.9"
+    unit: percent
+    timezone: GMT-05:00 America/New_York
+`;
+
+export const ODCS_VALID_QUALITY_RULES_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: product-inventory-contract
+name: Product Inventory Contract
+version: "1.5.0"
+status: active
+description:
+  purpose: Ensure product inventory data quality
+schema:
+  - name: products
+    logicalType: object
+    properties:
+      - name: sku
+        logicalType: string
+        primaryKey: true
+      - name: product_name
+        logicalType: string
+        required: true
+      - name: category
+        logicalType: string
+        required: true
+      - name: price
+        logicalType: decimal
+        logicalTypeOptions:
+          precision: 10
+          scale: 2
+      - name: stock_quantity
+        logicalType: integer
+      - name: last_updated
+        logicalType: timestamp
+quality:
+  - type: library
+    rule: rowCount
+    mustBeGreaterThan: 1000
+    description: Product catalog must have at least 1000 items
+  - type: library
+    rule: nullValues
+    column: sku
+    mustBe: 0
+    description: SKU cannot be null
+  - type: library
+    rule: nullValues
+    column: product_name
+    mustBe: 0
+    description: Product name is required
+  - type: library
+    rule: duplicateValues
+    column: sku
+    mustBe: 0
+    description: SKU must be unique
+  - type: custom
+    rule: "price > 0"
+    column: price
+    description: Price must be positive
+slaProperties:
+  - property: freshness
+    value: "6"
+    unit: hours
+  - property: availability
+    value: "99.5"
+    unit: percent
+`;
+
+export const ODCS_VALID_QUALITY_RULES_BETWEEN_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: quality-rules-between-contract
+name: Quality Rules Between Contract
+version: "1.0.0"
+status: active
+description:
+  purpose: Test quality rules with mustBeBetween and mustNotBeBetween assertions
+quality:
+  - type: library
+    metric: rowCount
+    description: Row count must be between 100 and 10000
+    mustBeBetween:
+      - 100
+      - 10000
+  - type: library
+    metric: nullValues
+    column: email
+    description: Null percentage must not be between 10 and 90
+    mustNotBeBetween:
+      - 10
+      - 90
+  - type: library
+    metric: uniqueValues
+    column: id
+    description: Unique values with multiple assertions
+    mustBeGreaterThan: 0
+    mustBeLessThan: 1000000
+`;
+
+export const ODCS_VALID_WITH_TEAM_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: team-owner-contract
+name: Team Owner Contract
+version: "1.0.0"
+status: active
+description:
+  purpose: Test team/owner resolution during import
+team:
+  - username: admin
+    name: Admin User
+    role: owner
+  - username: developer1
+    name: Developer One
+    role: developer
+  - username: reviewer1
+    name: Reviewer One
+    role: reviewer
+`;
+
+export const ODCS_VALID_MULTI_OBJECT_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: multi-object-contract
+name: Multi-Object Data Contract
+version: "1.0.0"
+status: active
+description:
+  purpose: Contract with multiple schema objects for testing multi-object import
+schema:
+  - name: customers
+    logicalType: object
+    physicalType: table
+    description: Customer records table
+    properties:
+      - name: customer_id
+        logicalType: integer
+        required: true
+        primaryKey: true
+      - name: customer_name
+        logicalType: string
+        required: true
+      - name: email
+        logicalType: string
+        required: false
+  - name: orders
+    logicalType: object
+    physicalType: table
+    description: Customer orders table
+    properties:
+      - name: order_id
+        logicalType: integer
+        required: true
+        primaryKey: true
+      - name: customer_id
+        logicalType: integer
+        required: true
+      - name: order_date
+        logicalType: timestamp
+      - name: total_amount
+        logicalType: number
+  - name: products
+    logicalType: object
+    physicalType: table
+    description: Product catalog table
+    properties:
+      - name: product_id
+        logicalType: integer
+        required: true
+        primaryKey: true
+      - name: product_name
+        logicalType: string
+        required: true
+      - name: price
+        logicalType: number
+slaProperties:
+  - property: freshness
+    value: "24"
+    unit: hours
+`;
+
+export const ODCS_INVALID_MISSING_APIVERSION_YAML = `kind: DataContract
+id: missing-apiversion
+name: Missing API Version Contract
+version: "1.0.0"
+status: active
+`;
+
+export const ODCS_INVALID_MISSING_STATUS_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: missing-status
+name: Missing Status Contract
+version: "1.0.0"
+`;
+
+export const ODCS_INVALID_EMPTY_FILE_YAML = `# this is a comment
+# no actual content
+`;
+
+export const ODCS_INVALID_MISSING_KIND_YAML = `apiVersion: v3.1.0
+id: missing-kind
+name: Missing Kind Contract
+version: "1.0.0"
+status: active
+`;
+
+export const ODCS_INVALID_WRONG_APIVERSION_YAML = `apiVersion: v1.0.0
+kind: DataContract
+id: wrong-version
+name: Wrong API Version Contract
+version: "1.0.0"
+status: active
+`;
+
+export const ODCS_INVALID_WRONG_KIND_YAML = `apiVersion: v3.1.0
+kind: WrongKind
+id: wrong-kind
+name: Wrong Kind Contract
+version: "1.0.0"
+status: active
+`;
+
+export const ODCS_INVALID_SCHEMA_FIELDS_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: invalid-schema-contract
+name: Contract with Invalid Schema Fields
+version: "1.0.0"
+status: active
+description:
+  purpose: Testing schema validation - these fields don't exist in the table
+schema:
+  - name: data
+    properties:
+      - name: customers
+        logicalType: string
+        description: This field does not exist in the table
+      - name: orders
+        logicalType: integer
+        description: This field does not exist in the table
+      - name: nonexistent_field
+        logicalType: string
+        description: Another field that does not exist
+`;
+
+// JSON format test data
+export const ODCS_VALID_BASIC_JSON = `{
+  "apiVersion": "v3.1.0",
+  "kind": "DataContract",
+  "id": "basic-contract-json",
+  "name": "Basic ODCS Contract JSON",
+  "version": "1.0.0",
+  "status": "active"
+}`;
+
+export const ODCS_INVALID_MALFORMED_JSON = `{
+  "apiVersion": "v3.1.0",
+  "kind": "DataContract",
+  "id": "malformed-json"
+  "name": "Missing comma"
+}`;
+
 // Helper function to generate unique ODCS contract
 export const generateODCSContract = (
   name: string,
