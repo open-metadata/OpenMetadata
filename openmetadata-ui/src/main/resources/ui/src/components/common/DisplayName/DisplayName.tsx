@@ -21,6 +21,7 @@ import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
+import CopyLinkButton from '../CopyLinkButton/CopyLinkButton';
 import { DisplayNameProps } from './DisplayName.interface';
 
 const DisplayName: React.FC<DisplayNameProps> = ({

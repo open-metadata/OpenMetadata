@@ -787,7 +787,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public Response importCsvInternalAsync(
-      SecurityContext securityContext, String name, String csv, boolean dryRun, boolean recursive) {
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      String csv,
+      boolean dryRun,
+      boolean recursive) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
@@ -801,7 +806,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
           try {
             WebsocketNotificationHandler.sendCsvImportStartedNotification(jobId, securityContext);
             CsvImportResult result =
-                importCsvInternal(securityContext, name, csv, dryRun, recursive);
+                importCsvInternal(uriInfo, securityContext, name, csv, dryRun, recursive);
             WebsocketNotificationHandler.sendCsvImportCompleteNotification(
                 jobId, securityContext, result);
           } catch (Exception e) {
@@ -823,13 +828,34 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected CsvImportResult importCsvInternal(
-      SecurityContext securityContext, String name, String csv, boolean dryRun, boolean recursive)
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      String csv,
+      boolean dryRun,
+      boolean recursive)
       throws IOException {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return repository.importFromCsv(
-        name, csv, dryRun, securityContext.getUserPrincipal().getName(), recursive);
+    CsvImportResult result =
+        repository.importFromCsv(
+            name, csv, dryRun, securityContext.getUserPrincipal().getName(), recursive);
+
+    // Create version history for bulk import (same logic as async import)
+    if (result.getStatus() != ApiStatus.ABORTED
+        && result.getNumberOfRowsProcessed() > 1
+        && !dryRun
+        && repository.supportsBulkImportVersioning()) {
+      // Only repositories that support versioning (indicated by flag) will execute this
+      repository.createChangeEventForBulkOperation(
+          repository.getByName(
+              uriInfo, name, new Fields(allowedFields, ""), Include.NON_DELETED, false),
+          result,
+          securityContext.getUserPrincipal().getName());
+    }
+
+    return result;
   }
 
   protected ResourceContext<T> getResourceContext() {

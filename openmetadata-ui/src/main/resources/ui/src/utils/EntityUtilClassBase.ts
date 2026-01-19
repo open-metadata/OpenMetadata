@@ -93,6 +93,7 @@ import {
   FormattedSearchServiceType,
   FormattedStorageServiceType,
 } from './EntityUtils.interface';
+import Fqn from './Fqn';
 import {
   getApplicationDetailsPath,
   getBotsPath,
