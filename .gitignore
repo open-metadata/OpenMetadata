@@ -147,9 +147,6 @@ ingestion/.nox/
 .env.local
 .env.*.local
 
-# Google OAuth test credentials (DO NOT COMMIT)
-conf/google-oauth-test.env
-
 # Temporary files
 *.tmp
 *.temp 
@@ -186,20 +183,3 @@ hive-mind-prompt-*.txt
 memory
 
 
-
-# Local test files for OAuth development
-register-claude-client-local.sh
-test-local-google-oauth.sh
-conf/google-oauth-test.env
-ingestion/redshift_simple.yaml
-
-# MCP OAuth Test Credentials (local only - do not commit)
-openmetadata-mcp/scripts/mcp-oauth-tests/create-*-service.json
-!openmetadata-mcp/scripts/mcp-oauth-tests/create-*-service.json.example
-openmetadata-mcp/scripts/mcp-oauth-tests/*.sh
-!openmetadata-mcp/scripts/mcp-oauth-tests/*.sh.example
-
-# MCP OAuth test scripts (contain hardcoded credentials for local testing)
-openmetadata-mcp/test-oauth-flow.sh
-test-mcp-with-token.sh
-verify-mcp-setup.sh
