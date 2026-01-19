@@ -58,6 +58,7 @@ import org.openmetadata.service.resources.searchindex.SearchIndexResource;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class SearchIndexRepository extends EntityRepository<SearchIndex> {
@@ -123,7 +124,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   }
 
   @Override
-  public void setFields(SearchIndex searchIndex, Fields fields) {
+  public void setFields(SearchIndex searchIndex, Fields fields, RelationIncludes relationIncludes) {
     searchIndex.setService(getContainer(searchIndex.getId()));
     searchIndex.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(searchIndex) : null);
     if (searchIndex.getFields() != null) {
