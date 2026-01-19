@@ -1,0 +1,376 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/ai/mcpExecution.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "McpExecution",
+  "$comment": "@om-entity-type",
+  "description": "MCP Execution entity representing a single execution session of an MCP server. Tracks tool calls, resource accesses, prompt uses, and data lineage for audit trails and governance. This is a time-series entity for observability and compliance.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.ai.McpExecution",
+  "javaInterfaces": ["org.openmetadata.schema.EntityTimeSeriesInterface"],
+  "definitions": {
+    "executionStatus": {
+      "type": "string",
+      "javaType": "org.openmetadata.schema.entity.ai.McpExecutionStatus",
+      "description": "Status of the MCP execution",
+      "enum": ["Running", "Success", "Failed", "Timeout", "Cancelled"],
+      "javaEnums": [
+        {"name": "Running"},
+        {"name": "Success"},
+        {"name": "Failed"},
+        {"name": "Timeout"},
+        {"name": "Cancelled"}
+      ]
+    },
+    "accessType": {
+      "type": "string",
+      "javaType": "org.openmetadata.schema.entity.ai.McpAccessType",
+      "description": "Type of data access",
+      "enum": ["Read", "Write", "Delete"],
+      "javaEnums": [
+        {"name": "Read"},
+        {"name": "Write"},
+        {"name": "Delete"}
+      ]
+    },
+    "sensitivityLevel": {
+      "type": "string",
+      "javaType": "org.openmetadata.schema.entity.ai.McpExecutionSensitivityLevel",
+      "description": "Sensitivity level of data accessed",
+      "enum": ["Public", "Internal", "Confidential", "Restricted"],
+      "javaEnums": [
+        {"name": "Public"},
+        {"name": "Internal"},
+        {"name": "Confidential"},
+        {"name": "Restricted"}
+      ]
+    },
+    "complianceSeverity": {
+      "type": "string",
+      "javaType": "org.openmetadata.schema.entity.ai.McpComplianceSeverity",
+      "description": "Severity level for compliance checks",
+      "enum": ["Info", "Warning", "Error", "Critical"],
+      "javaEnums": [
+        {"name": "Info"},
+        {"name": "Warning"},
+        {"name": "Error"},
+        {"name": "Critical"}
+      ]
+    },
+    "toolCallRecord": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.McpToolCallRecord",
+      "description": "Record of a tool invocation during execution",
+      "additionalProperties": false,
+      "properties": {
+        "tool": {
+          "$ref": "../../type/entityReference.json",
+          "description": "Reference to the McpTool that was called"
+        },
+        "toolName": {
+          "type": "string",
+          "description": "Name of the tool for quick reference"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Parameters passed to the tool"
+        },
+        "result": {
+          "type": "string",
+          "description": "Result returned by the tool"
+        },
+        "success": {
+          "type": "boolean",
+          "description": "Whether the tool call succeeded"
+        },
+        "latencyMs": {
+          "type": "number",
+          "description": "Latency in milliseconds"
+        },
+        "timestamp": {
+          "$ref": "../../type/basic.json#/definitions/timestamp",
+          "description": "When the tool was called"
+        },
+        "errorMessage": {
+          "type": "string",
+          "description": "Error message if failed"
+        },
+        "dataAccessed": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/dataAccessRecord"
+          },
+          "description": "Data accessed during this tool call"
+        }
+      }
+    },
+    "dataAccessRecord": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.McpDataAccessRecord",
+      "description": "Record of data accessed during execution",
+      "additionalProperties": false,
+      "properties": {
+        "dataSource": {
+          "$ref": "../../type/entityReference.json",
+          "description": "Reference to the data source accessed"
+        },
+        "accessType": {
+          "$ref": "#/definitions/accessType"
+        },
+        "recordCount": {
+          "type": "integer",
+          "description": "Number of records accessed"
+        },
+        "columns": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Columns accessed if applicable"
+        },
+        "piiAccessed": {
+          "type": "boolean",
+          "description": "Whether PII data was accessed"
+        },
+        "sensitivityLevel": {
+          "$ref": "#/definitions/sensitivityLevel"
+        },
+        "timestamp": {
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        }
+      }
+    },
+    "resourceAccessRecord": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.McpResourceAccessRecord",
+      "description": "Record of a resource access during execution",
+      "additionalProperties": false,
+      "properties": {
+        "resource": {
+          "$ref": "../../type/entityReference.json",
+          "description": "Reference to the McpResource accessed"
+        },
+        "resourceUri": {
+          "type": "string",
+          "description": "URI of the resource accessed"
+        },
+        "accessType": {
+          "$ref": "#/definitions/accessType"
+        },
+        "success": {
+          "type": "boolean",
+          "description": "Whether the access succeeded"
+        },
+        "timestamp": {
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "bytesTransferred": {
+          "type": "integer",
+          "description": "Bytes read or written"
+        }
+      }
+    },
+    "promptUseRecord": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.McpPromptUseRecord",
+      "description": "Record of a prompt use during execution",
+      "additionalProperties": false,
+      "properties": {
+        "prompt": {
+          "$ref": "../../type/entityReference.json",
+          "description": "Reference to the McpPrompt used"
+        },
+        "promptName": {
+          "type": "string",
+          "description": "Name of the prompt for quick reference"
+        },
+        "arguments": {
+          "type": "object",
+          "description": "Arguments passed to the prompt"
+        },
+        "timestamp": {
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "tokensGenerated": {
+          "type": "integer",
+          "description": "Number of tokens in the generated output"
+        }
+      }
+    },
+    "complianceCheckRecord": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.McpComplianceCheckRecord",
+      "description": "Record of a compliance check during execution",
+      "additionalProperties": false,
+      "properties": {
+        "checkName": {
+          "type": "string",
+          "description": "Name of the compliance check"
+        },
+        "passed": {
+          "type": "boolean",
+          "description": "Whether the check passed"
+        },
+        "details": {
+          "type": "string",
+          "description": "Details about the check result"
+        },
+        "severity": {
+          "$ref": "#/definitions/complianceSeverity"
+        },
+        "timestamp": {
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        }
+      }
+    },
+    "executionMetrics": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.McpExecutionMetrics",
+      "description": "Aggregated metrics for the execution",
+      "additionalProperties": false,
+      "properties": {
+        "totalToolCalls": {
+          "type": "integer",
+          "description": "Total number of tool calls"
+        },
+        "successfulToolCalls": {
+          "type": "integer",
+          "description": "Number of successful tool calls"
+        },
+        "totalResourceAccesses": {
+          "type": "integer",
+          "description": "Total number of resource accesses"
+        },
+        "totalPromptUses": {
+          "type": "integer",
+          "description": "Total number of prompt uses"
+        },
+        "piiDataAccessed": {
+          "type": "boolean",
+          "description": "Whether any PII data was accessed"
+        },
+        "highSensitivityDataAccessed": {
+          "type": "boolean",
+          "description": "Whether confidential or restricted data was accessed"
+        },
+        "highRiskOperations": {
+          "type": "integer",
+          "description": "Number of high-risk operations performed"
+        },
+        "complianceViolations": {
+          "type": "integer",
+          "description": "Number of compliance violations detected"
+        }
+      }
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of the MCP Execution",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "server": {
+      "description": "MCP Server that was executed",
+      "$ref": "../../type/entityReference.json"
+    },
+    "serverId": {
+      "description": "ID of the MCP Server (for indexing)",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "timestamp": {
+      "description": "Execution start timestamp",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "endTimestamp": {
+      "description": "Execution end timestamp",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "durationMs": {
+      "description": "Total execution duration in milliseconds",
+      "type": "number"
+    },
+    "status": {
+      "$ref": "#/definitions/executionStatus"
+    },
+    "executedBy": {
+      "description": "User or system that initiated the execution",
+      "type": "string"
+    },
+    "applicationContext": {
+      "description": "AI Application that triggered this execution, if applicable",
+      "$ref": "../../type/entityReference.json"
+    },
+    "sessionId": {
+      "description": "Session ID for grouping related executions",
+      "type": "string"
+    },
+    "toolCalls": {
+      "description": "Tool invocations during this execution",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/toolCallRecord"
+      }
+    },
+    "resourceAccesses": {
+      "description": "Resource accesses during this execution",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/resourceAccessRecord"
+      }
+    },
+    "promptUses": {
+      "description": "Prompt uses during this execution",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/promptUseRecord"
+      }
+    },
+    "dataAccessed": {
+      "description": "All data sources accessed during execution",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/dataAccessRecord"
+      }
+    },
+    "complianceChecks": {
+      "description": "Compliance checks performed during execution",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/complianceCheckRecord"
+      }
+    },
+    "metrics": {
+      "$ref": "#/definitions/executionMetrics"
+    },
+    "errorMessage": {
+      "description": "Error message if execution failed",
+      "type": "string"
+    },
+    "errorStack": {
+      "description": "Error stack trace if available",
+      "type": "string"
+    },
+    "environment": {
+      "description": "Environment where execution occurred",
+      "type": "string",
+      "enum": ["Development", "Testing", "Staging", "Production"]
+    },
+    "serverVersion": {
+      "description": "Version of the MCP server at execution time",
+      "type": "string"
+    },
+    "protocolVersion": {
+      "description": "MCP protocol version used",
+      "type": "string"
+    },
+    "metadata": {
+      "description": "Additional execution metadata",
+      "type": "object",
+      "additionalProperties": {"type": "string"}
+    },
+    "deleted": {
+      "description": "When true, indicates the entity has been soft deleted",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["server", "serverId", "timestamp", "status"],
+  "additionalProperties": false
+}

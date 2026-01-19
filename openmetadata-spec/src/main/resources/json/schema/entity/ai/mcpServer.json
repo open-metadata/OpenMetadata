@@ -1,0 +1,989 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/ai/mcpServer.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "McpServer",
+  "$comment": "@om-entity-type",
+  "description": "MCP (Model Context Protocol) Server entity representing an MCP server deployment for AI governance. MCP servers expose tools, resources, and prompts that can be used by AI applications. This entity enables comprehensive governance including risk assessment, compliance, shadow AI detection, and data access tracking.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.ai.McpServer",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "serverType": {
+      "javaType": "org.openmetadata.schema.entity.ai.McpServerType",
+      "description": "Type of MCP server based on its primary function",
+      "type": "string",
+      "enum": [
+        "DataAccess",
+        "FileSystem",
+        "WebAPI",
+        "Database",
+        "Cloud",
+        "Security",
+        "Development",
+        "Communication",
+        "Custom"
+      ],
+      "javaEnums": [
+        {"name": "DataAccess"},
+        {"name": "FileSystem"},
+        {"name": "WebAPI"},
+        {"name": "Database"},
+        {"name": "Cloud"},
+        {"name": "Security"},
+        {"name": "Development"},
+        {"name": "Communication"},
+        {"name": "Custom"}
+      ]
+    },
+    "transportType": {
+      "javaType": "org.openmetadata.schema.entity.ai.McpTransportType",
+      "description": "Transport protocol used by the MCP server",
+      "type": "string",
+      "enum": [
+        "Stdio",
+        "SSE",
+        "Streamable"
+      ],
+      "javaEnums": [
+        {"name": "Stdio"},
+        {"name": "SSE"},
+        {"name": "Streamable"}
+      ]
+    },
+    "developmentStage": {
+      "javaType": "org.openmetadata.schema.entity.ai.McpDevelopmentStage",
+      "description": "Development stage of the MCP server. 'Unauthorized' indicates Shadow AI that needs governance review.",
+      "type": "string",
+      "enum": [
+        "Proposal",
+        "Development",
+        "Testing",
+        "Staging",
+        "Production",
+        "Deprecated",
+        "Unauthorized"
+      ],
+      "javaEnums": [
+        {"name": "Proposal"},
+        {"name": "Development"},
+        {"name": "Testing"},
+        {"name": "Staging"},
+        {"name": "Production"},
+        {"name": "Deprecated"},
+        {"name": "Unauthorized"}
+      ]
+    },
+    "serverInfo": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.McpServerInfo",
+      "description": "Information about the MCP server software",
+      "additionalProperties": false,
+      "properties": {
+        "serverName": {
+          "type": "string",
+          "description": "Name of the MCP server software"
+        },
+        "serverVersion": {
+          "type": "string",
+          "description": "Version of the MCP server software"
+        },
+        "vendor": {
+          "type": "string",
+          "description": "Vendor or organization that provides the server"
+        },
+        "repositoryUrl": {
+          "type": "string",
+          "description": "URL to the server's source code repository"
+        },
+        "documentationUrl": {
+          "type": "string",
+          "description": "URL to the server's documentation"
+        }
+      }
+    },
+    "connectionConfig": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.McpConnectionConfig",
+      "description": "Connection configuration for the MCP server",
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "Command to start the MCP server"
+        },
+        "args": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Arguments to pass to the server command"
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": {"type": "string"},
+          "description": "Environment variables for the server"
+        },
+        "workingDirectory": {
+          "type": "string",
+          "description": "Working directory for the server process"
+        },
+        "url": {
+          "type": "string",
+          "description": "URL for SSE or Streamable transport servers"
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Connection timeout in milliseconds"
+        },
+        "retryAttempts": {
+          "type": "integer",
+          "description": "Number of retry attempts on connection failure"
+        }
+      }
+    },
+    "serverCapabilities": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.McpServerCapabilities",
+      "description": "Capabilities supported by the MCP server",
+      "additionalProperties": false,
+      "properties": {
+        "toolsSupported": {
+          "type": "boolean",
+          "description": "Whether the server supports tools"
+        },
+        "resourcesSupported": {
+          "type": "boolean",
+          "description": "Whether the server supports resources"
+        },
+        "promptsSupported": {
+          "type": "boolean",
+          "description": "Whether the server supports prompts"
+        },
+        "loggingSupported": {
+          "type": "boolean",
+          "description": "Whether the server supports logging"
+        },
+        "samplingSupported": {
+          "type": "boolean",
+          "description": "Whether the server supports sampling"
+        },
+        "rootsSupported": {
+          "type": "boolean",
+          "description": "Whether the server supports roots"
+        }
+      }
+    },
+    "governanceMetadata": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.McpGovernanceMetadata",
+      "description": "Governance metadata for compliance and risk management of the MCP server",
+      "additionalProperties": false,
+      "properties": {
+        "registrationStatus": {
+          "type": "string",
+          "description": "Registration status - used to track Shadow AI",
+          "enum": ["Registered", "Unregistered", "PendingApproval", "Approved", "Rejected"]
+        },
+        "registeredBy": {
+          "type": "string",
+          "description": "User who registered the server"
+        },
+        "registeredAt": {
+          "$ref": "../../type/basic.json#/definitions/timestamp",
+          "description": "Timestamp when the server was registered"
+        },
+        "approvedBy": {
+          "type": "string",
+          "description": "User who approved the server"
+        },
+        "approvedAt": {
+          "$ref": "../../type/basic.json#/definitions/timestamp",
+          "description": "Timestamp when the server was approved"
+        },
+        "riskAssessment": {
+          "type": "object",
+          "description": "Risk assessment for this MCP server",
+          "properties": {
+            "riskLevel": {
+              "type": "string",
+              "enum": ["Low", "Medium", "High", "Critical"]
+            },
+            "riskFactors": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Identified risk factors"
+            },
+            "mitigations": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Risk mitigation measures in place"
+            },
+            "assessedBy": {
+              "type": "string"
+            },
+            "assessedAt": {
+              "$ref": "../../type/basic.json#/definitions/timestamp"
+            }
+          }
+        },
+        "dataClassification": {
+          "type": "object",
+          "description": "Classification of data accessed by this server",
+          "properties": {
+            "accessesPII": {
+              "type": "boolean",
+              "description": "Whether this server accesses Personally Identifiable Information"
+            },
+            "accessesSensitiveData": {
+              "type": "boolean",
+              "description": "Whether this server accesses sensitive business data"
+            },
+            "dataCategories": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Categories of data accessed"
+            },
+            "dataRetentionPeriod": {
+              "type": "string",
+              "description": "Data retention period for server logs"
+            }
+          }
+        },
+        "governancePolicies": {
+          "$ref": "../../type/entityReferenceList.json",
+          "description": "Governance policies applied to this server"
+        },
+        "aiCompliance": {
+          "$ref": "../../type/aiCompliance.json",
+          "description": "AI compliance assessments for various regulatory frameworks (EU AI Act, NIST AI RMF, etc.)"
+        },
+        "intakeNotes": {
+          "type": "string",
+          "description": "Notes from AI governance intake form or review process"
+        },
+        "approvalComments": {
+          "type": "string",
+          "description": "Comments from governance council on approval/rejection decision"
+        }
+      }
+    },
+    "dataAccessSummary": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.McpDataAccessSummary",
+      "description": "Summary of data access patterns for this MCP server",
+      "additionalProperties": false,
+      "properties": {
+        "dataSources": {
+          "$ref": "../../type/entityReferenceList.json",
+          "description": "Data sources accessed by this server"
+        },
+        "accessPatterns": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["Read", "Write", "Execute"]
+          },
+          "description": "Types of access patterns"
+        },
+        "sensitivityLevel": {
+          "type": "string",
+          "enum": ["Public", "Internal", "Confidential", "Restricted"],
+          "description": "Highest sensitivity level of data accessed"
+        },
+        "piiAccess": {
+          "type": "boolean",
+          "description": "Whether this server accesses PII data"
+        },
+        "externalApiAccess": {
+          "type": "boolean",
+          "description": "Whether this server accesses external APIs"
+        },
+        "fileSystemAccess": {
+          "type": "boolean",
+          "description": "Whether this server accesses the file system"
+        },
+        "networkAccess": {
+          "type": "boolean",
+          "description": "Whether this server requires network access"
+        },
+        "databaseAccess": {
+          "type": "boolean",
+          "description": "Whether this server accesses databases"
+        }
+      }
+    },
+    "usageMetrics": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.McpUsageMetrics",
+      "description": "Usage metrics for the MCP server",
+      "additionalProperties": false,
+      "properties": {
+        "totalInvocations": {
+          "type": "integer",
+          "description": "Total number of invocations"
+        },
+        "successRate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Success rate (0-1)"
+        },
+        "averageLatencyMs": {
+          "type": "number",
+          "description": "Average latency in milliseconds"
+        },
+        "p95LatencyMs": {
+          "type": "number",
+          "description": "95th percentile latency in milliseconds"
+        },
+        "lastInvokedAt": {
+          "$ref": "../../type/basic.json#/definitions/timestamp",
+          "description": "Timestamp of last invocation"
+        },
+        "uniqueUsers": {
+          "type": "integer",
+          "description": "Number of unique users"
+        },
+        "dailyActiveUsers": {
+          "type": "integer",
+          "description": "Daily active users"
+        }
+      }
+    },
+    "securityMetrics": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.McpSecurityMetrics",
+      "description": "Security metrics and settings for the MCP server",
+      "additionalProperties": false,
+      "properties": {
+        "authenticationRequired": {
+          "type": "boolean",
+          "description": "Whether authentication is required"
+        },
+        "authorizationEnforced": {
+          "type": "boolean",
+          "description": "Whether authorization is enforced"
+        },
+        "auditLoggingEnabled": {
+          "type": "boolean",
+          "description": "Whether audit logging is enabled"
+        },
+        "encryptionInTransit": {
+          "type": "boolean",
+          "description": "Whether data is encrypted in transit"
+        },
+        "sandboxed": {
+          "type": "boolean",
+          "description": "Whether the server runs in a sandboxed environment"
+        },
+        "secretsManagement": {
+          "type": "string",
+          "description": "Method used for secrets management"
+        }
+      }
+    },
+    "toolCategory": {
+      "javaType": "org.openmetadata.schema.entity.ai.McpToolCategory",
+      "description": "Category of the MCP tool based on its primary function",
+      "type": "string",
+      "enum": [
+        "FileOperation",
+        "WebOperation",
+        "DataOperation",
+        "DatabaseOperation",
+        "SystemOperation",
+        "SecurityOperation",
+        "CommunicationOperation",
+        "CodeOperation",
+        "SearchOperation",
+        "Custom"
+      ],
+      "javaEnums": [
+        {"name": "FileOperation"},
+        {"name": "WebOperation"},
+        {"name": "DataOperation"},
+        {"name": "DatabaseOperation"},
+        {"name": "SystemOperation"},
+        {"name": "SecurityOperation"},
+        {"name": "CommunicationOperation"},
+        {"name": "CodeOperation"},
+        {"name": "SearchOperation"},
+        {"name": "Custom"}
+      ]
+    },
+    "riskLevel": {
+      "javaType": "org.openmetadata.schema.entity.ai.McpRiskLevel",
+      "description": "Risk level based on capabilities and data access",
+      "type": "string",
+      "enum": ["Low", "Medium", "High", "Critical"],
+      "javaEnums": [
+        {"name": "Low"},
+        {"name": "Medium"},
+        {"name": "High"},
+        {"name": "Critical"}
+      ]
+    },
+    "sensitivityLevel": {
+      "javaType": "org.openmetadata.schema.entity.ai.McpSensitivityLevel",
+      "description": "Sensitivity level of data",
+      "type": "string",
+      "enum": ["Public", "Internal", "Confidential", "Restricted"],
+      "javaEnums": [
+        {"name": "Public"},
+        {"name": "Internal"},
+        {"name": "Confidential"},
+        {"name": "Restricted"}
+      ]
+    },
+    "mcpTool": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.McpTool",
+      "description": "MCP Tool - a capability exposed by the server that can perform operations",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the tool"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name for the tool"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of what the tool does"
+        },
+        "toolCategory": {
+          "$ref": "#/definitions/toolCategory"
+        },
+        "inputSchema": {
+          "type": "object",
+          "description": "JSON Schema for tool input parameters"
+        },
+        "outputSchema": {
+          "type": "object",
+          "description": "JSON Schema for tool output"
+        },
+        "riskLevel": {
+          "$ref": "#/definitions/riskLevel"
+        },
+        "riskFactors": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Identified risk factors"
+        },
+        "dataAccess": {
+          "type": "object",
+          "description": "Data access patterns for the tool",
+          "properties": {
+            "readsData": {"type": "boolean"},
+            "writesData": {"type": "boolean"},
+            "deletesData": {"type": "boolean"},
+            "sensitivityLevel": {"$ref": "#/definitions/sensitivityLevel"},
+            "piiAccess": {"type": "boolean"},
+            "dataTypes": {
+              "type": "array",
+              "items": {"type": "string"}
+            }
+          }
+        },
+        "requiredPermissions": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Permissions required to use this tool"
+        },
+        "sideEffects": {
+          "type": "boolean",
+          "description": "Whether this tool causes side effects",
+          "default": false
+        },
+        "idempotent": {
+          "type": "boolean",
+          "description": "Whether this tool is idempotent",
+          "default": false
+        },
+        "reversible": {
+          "type": "boolean",
+          "description": "Whether this tool's action can be reversed",
+          "default": false
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Maximum execution time in milliseconds"
+        },
+        "rateLimitPerMinute": {
+          "type": "integer",
+          "description": "Rate limit for tool invocations per minute"
+        },
+        "annotations": {
+          "type": "object",
+          "description": "MCP tool annotations",
+          "properties": {
+            "title": {"type": "string"},
+            "readOnlyHint": {"type": "boolean"},
+            "destructiveHint": {"type": "boolean"},
+            "idempotentHint": {"type": "boolean"},
+            "openWorldHint": {"type": "boolean"}
+          }
+        },
+        "usageCount": {
+          "type": "integer",
+          "description": "Number of times this tool has been invoked"
+        },
+        "lastUsedAt": {
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "tags": {
+          "type": "array",
+          "items": {"$ref": "../../type/tagLabel.json"},
+          "default": null
+        }
+      },
+      "required": ["name"]
+    },
+    "resourceType": {
+      "javaType": "org.openmetadata.schema.entity.ai.McpResourceType",
+      "description": "Type of MCP resource",
+      "type": "string",
+      "enum": ["File", "Directory", "URL", "Database", "API", "Blob", "Stream", "Document", "Custom"],
+      "javaEnums": [
+        {"name": "File"},
+        {"name": "Directory"},
+        {"name": "URL"},
+        {"name": "Database"},
+        {"name": "API"},
+        {"name": "Blob"},
+        {"name": "Stream"},
+        {"name": "Document"},
+        {"name": "Custom"}
+      ]
+    },
+    "piiType": {
+      "javaType": "org.openmetadata.schema.entity.ai.McpPiiType",
+      "description": "Type of PII",
+      "type": "string",
+      "enum": ["Name", "Email", "Phone", "SSN", "Address", "DateOfBirth", "FinancialData", "HealthData", "BiometricData", "LocationData", "Other"],
+      "javaEnums": [
+        {"name": "Name"},
+        {"name": "Email"},
+        {"name": "Phone"},
+        {"name": "SSN"},
+        {"name": "Address"},
+        {"name": "DateOfBirth"},
+        {"name": "FinancialData"},
+        {"name": "HealthData"},
+        {"name": "BiometricData"},
+        {"name": "LocationData"},
+        {"name": "Other"}
+      ]
+    },
+    "mcpResource": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.McpResource",
+      "description": "MCP Resource - data exposed by the server that can be read by AI applications",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the resource"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name for the resource"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the resource"
+        },
+        "resourceType": {
+          "$ref": "#/definitions/resourceType"
+        },
+        "uri": {
+          "type": "string",
+          "description": "URI pattern for accessing this resource"
+        },
+        "uriTemplate": {
+          "type": "string",
+          "description": "URI template if the resource supports dynamic URIs"
+        },
+        "mimeType": {
+          "type": "string",
+          "description": "MIME type of the resource content"
+        },
+        "dataClassification": {
+          "type": "object",
+          "description": "Data classification for the resource",
+          "properties": {
+            "sensitivityLevel": {"$ref": "#/definitions/sensitivityLevel"},
+            "containsPII": {"type": "boolean"},
+            "piiTypes": {
+              "type": "array",
+              "items": {"$ref": "#/definitions/piiType"}
+            },
+            "dataCategories": {
+              "type": "array",
+              "items": {"type": "string"}
+            },
+            "retentionPeriod": {"type": "string"},
+            "complianceRequirements": {
+              "type": "array",
+              "items": {"type": "string"}
+            }
+          }
+        },
+        "accessLevel": {
+          "type": "string",
+          "enum": ["ReadOnly", "ReadWrite", "Full"]
+        },
+        "requiredPermissions": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "sourceEntity": {
+          "$ref": "../../type/entityReference.json",
+          "description": "Reference to the underlying data entity if known"
+        },
+        "annotations": {
+          "type": "object",
+          "properties": {
+            "audience": {
+              "type": "array",
+              "items": {"type": "string"}
+            },
+            "priority": {"type": "number"}
+          }
+        },
+        "size": {
+          "type": "integer",
+          "description": "Size in bytes"
+        },
+        "lastModified": {
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "accessCount": {
+          "type": "integer",
+          "description": "Number of times accessed"
+        },
+        "tags": {
+          "type": "array",
+          "items": {"$ref": "../../type/tagLabel.json"},
+          "default": null
+        }
+      },
+      "required": ["name", "uri"]
+    },
+    "promptType": {
+      "javaType": "org.openmetadata.schema.entity.ai.McpPromptType",
+      "description": "Type of MCP prompt",
+      "type": "string",
+      "enum": ["Analysis", "Generation", "Transformation", "Validation", "Query", "Summarization", "Extraction", "Classification", "Custom"],
+      "javaEnums": [
+        {"name": "Analysis"},
+        {"name": "Generation"},
+        {"name": "Transformation"},
+        {"name": "Validation"},
+        {"name": "Query"},
+        {"name": "Summarization"},
+        {"name": "Extraction"},
+        {"name": "Classification"},
+        {"name": "Custom"}
+      ]
+    },
+    "promptArgument": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.McpPromptArgument",
+      "description": "Argument definition for a prompt",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the argument"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["String", "Number", "Boolean", "Array", "Object"]
+        },
+        "description": {
+          "type": "string"
+        },
+        "required": {
+          "type": "boolean",
+          "default": false
+        },
+        "default": {
+          "description": "Default value"
+        },
+        "enum": {
+          "type": "array",
+          "description": "Allowed values"
+        },
+        "sensitive": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "required": ["name"]
+    },
+    "promptMessage": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.McpPromptMessage",
+      "description": "A message in the prompt template",
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": ["user", "assistant", "system"]
+        },
+        "content": {
+          "type": "string"
+        }
+      },
+      "required": ["role", "content"]
+    },
+    "mcpPrompt": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.McpPrompt",
+      "description": "MCP Prompt - a reusable prompt template exposed by the server",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the prompt"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name for the prompt"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the prompt"
+        },
+        "promptType": {
+          "$ref": "#/definitions/promptType"
+        },
+        "arguments": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/promptArgument"},
+          "description": "Arguments that can be passed to this prompt"
+        },
+        "messages": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/promptMessage"},
+          "description": "Message templates"
+        },
+        "examples": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "arguments": {"type": "object"},
+              "expectedOutput": {"type": "string"}
+            }
+          }
+        },
+        "dataAccessPatterns": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "outputClassification": {
+          "type": "object",
+          "properties": {
+            "sensitivityLevel": {"$ref": "#/definitions/sensitivityLevel"},
+            "mayContainPII": {"type": "boolean"},
+            "outputCategories": {
+              "type": "array",
+              "items": {"type": "string"}
+            }
+          }
+        },
+        "usageCount": {
+          "type": "integer"
+        },
+        "lastUsedAt": {
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "tags": {
+          "type": "array",
+          "items": {"$ref": "../../type/tagLabel.json"},
+          "default": null
+        }
+      },
+      "required": ["name"]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of the MCP Server.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this MCP Server.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of the MCP Server.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display name for the MCP Server.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the MCP Server, its purpose, and capabilities.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "serverType": {
+      "$ref": "#/definitions/serverType"
+    },
+    "transportType": {
+      "$ref": "#/definitions/transportType"
+    },
+    "protocolVersion": {
+      "type": "string",
+      "description": "MCP protocol version supported by this server"
+    },
+    "developmentStage": {
+      "$ref": "#/definitions/developmentStage"
+    },
+    "serverInfo": {
+      "$ref": "#/definitions/serverInfo"
+    },
+    "connectionConfig": {
+      "$ref": "#/definitions/connectionConfig"
+    },
+    "capabilities": {
+      "$ref": "#/definitions/serverCapabilities"
+    },
+    "tools": {
+      "description": "Tools exposed by this MCP Server",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/mcpTool"
+      },
+      "default": null
+    },
+    "resources": {
+      "description": "Resources exposed by this MCP Server",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/mcpResource"
+      },
+      "default": null
+    },
+    "prompts": {
+      "description": "Prompt templates exposed by this MCP Server",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/mcpPrompt"
+      },
+      "default": null
+    },
+    "governanceMetadata": {
+      "$ref": "#/definitions/governanceMetadata"
+    },
+    "dataAccessSummary": {
+      "$ref": "#/definitions/dataAccessSummary"
+    },
+    "usageMetrics": {
+      "$ref": "#/definitions/usageMetrics"
+    },
+    "securityMetrics": {
+      "$ref": "#/definitions/securityMetrics"
+    },
+    "usedByApplications": {
+      "description": "AI Applications that use this MCP Server",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "sourceCode": {
+      "description": "Link to source code repository",
+      "type": "string"
+    },
+    "deploymentUrl": {
+      "description": "Deployment endpoint URL",
+      "type": "string"
+    },
+    "documentation": {
+      "description": "Link to external documentation",
+      "type": "string"
+    },
+    "owners": {
+      "description": "Owners of this MCP Server",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "followers": {
+      "description": "Followers of this MCP Server",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "domain": {
+      "description": "Domain the MCP Server belongs to",
+      "$ref": "../../type/entityReference.json"
+    },
+    "dataProducts": {
+      "description": "Data products this MCP Server is part of",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "tags": {
+      "description": "Tags for this MCP Server",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "version": {
+      "description": "Metadata version of the entity",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time in Unix epoch milliseconds",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to this resource",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that led to this version",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Change that led to this version",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When true, indicates the entity has been soft deleted",
+      "type": "boolean",
+      "default": false
+    },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "domains": {
+      "description": "Domains the MCP Server belongs to",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "votes": {
+      "description": "Votes on the entity",
+      "$ref": "../../type/votes.json"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle properties of the entity",
+      "$ref": "../../type/lifeCycle.json"
+    },
+    "sourceHash": {
+      "description": "Source hash of the entity",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
+    }
+  },
+  "required": ["id", "name", "serverType"],
+  "additionalProperties": false
+}

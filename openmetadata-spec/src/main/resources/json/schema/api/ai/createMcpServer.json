@@ -1,0 +1,133 @@
+{
+  "$id": "https://open-metadata.org/schema/api/ai/createMcpServer.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateMcpServerRequest",
+  "description": "Create MCP Server entity request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.ai.CreateMcpServer",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+
+  "properties": {
+    "name": {
+      "description": "Name that identifies this MCP Server.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this MCP Server.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the MCP Server, its purpose, and capabilities.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "serverType": {
+      "description": "Type of MCP server based on its primary function",
+      "$ref": "../../entity/ai/mcpServer.json#/definitions/serverType"
+    },
+    "transportType": {
+      "description": "Transport protocol used by the MCP server",
+      "$ref": "../../entity/ai/mcpServer.json#/definitions/transportType"
+    },
+    "protocolVersion": {
+      "type": "string",
+      "description": "MCP protocol version supported by this server"
+    },
+    "developmentStage": {
+      "description": "Development stage of the MCP server",
+      "$ref": "../../entity/ai/mcpServer.json#/definitions/developmentStage"
+    },
+    "serverInfo": {
+      "description": "Information about the MCP server software",
+      "$ref": "../../entity/ai/mcpServer.json#/definitions/serverInfo"
+    },
+    "connectionConfig": {
+      "description": "Connection configuration for the MCP server",
+      "$ref": "../../entity/ai/mcpServer.json#/definitions/connectionConfig"
+    },
+    "capabilities": {
+      "description": "Capabilities supported by the MCP server",
+      "$ref": "../../entity/ai/mcpServer.json#/definitions/serverCapabilities"
+    },
+    "tools": {
+      "description": "Tools exposed by this MCP Server",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/ai/mcpServer.json#/definitions/mcpTool"
+      },
+      "default": null
+    },
+    "resources": {
+      "description": "Resources exposed by this MCP Server",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/ai/mcpServer.json#/definitions/mcpResource"
+      },
+      "default": null
+    },
+    "prompts": {
+      "description": "Prompt templates exposed by this MCP Server",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/ai/mcpServer.json#/definitions/mcpPrompt"
+      },
+      "default": null
+    },
+    "governanceMetadata": {
+      "description": "Governance and compliance metadata",
+      "$ref": "../../entity/ai/mcpServer.json#/definitions/governanceMetadata"
+    },
+    "dataAccessSummary": {
+      "description": "Summary of data access patterns",
+      "$ref": "../../entity/ai/mcpServer.json#/definitions/dataAccessSummary"
+    },
+    "securityMetrics": {
+      "description": "Security metrics and settings",
+      "$ref": "../../entity/ai/mcpServer.json#/definitions/securityMetrics"
+    },
+    "sourceCode": {
+      "description": "Link to source code repository",
+      "type": "string"
+    },
+    "deploymentUrl": {
+      "description": "Deployment endpoint URL",
+      "type": "string"
+    },
+    "documentation": {
+      "description": "Link to external documentation",
+      "type": "string"
+    },
+    "tags": {
+      "description": "Tags for this MCP Server",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "owners": {
+      "description": "Owners of this MCP Server",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "domains": {
+      "description": "Fully qualified names of the domains the MCP Server belongs to.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "dataProducts": {
+      "description": "List of fully qualified names of data products this entity is part of.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
+    }
+  },
+  "required": ["name", "serverType"],
+  "additionalProperties": false
+}

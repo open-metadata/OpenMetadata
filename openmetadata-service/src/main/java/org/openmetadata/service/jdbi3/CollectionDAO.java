@@ -457,6 +457,12 @@ public interface CollectionDAO {
   AIGovernancePolicyDAO aiGovernancePolicyDAO();
 
   @CreateSqlObject
+  McpServerDAO mcpServerDAO();
+
+  @CreateSqlObject
+  McpExecutionDAO mcpExecutionDAO();
+
+  @CreateSqlObject
   LLMServiceDAO llmServiceDAO();
 
   @CreateSqlObject
@@ -8925,6 +8931,84 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
+  }
+
+  interface McpServerDAO extends EntityDAO<org.openmetadata.schema.entity.ai.McpServer> {
+    @Override
+    default String getTableName() {
+      return "mcp_server_entity";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.ai.McpServer> getEntityClass() {
+      return org.openmetadata.schema.entity.ai.McpServer.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface McpExecutionDAO extends EntityTimeSeriesDAO {
+    @Override
+    default String getTimeSeriesTableName() {
+      return "mcp_execution_entity";
+    }
+
+    @Override
+    default String getPartitionFieldName() {
+      return "serverId";
+    }
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO mcp_execution_entity(json) VALUES (:json) AS new_data ON DUPLICATE KEY UPDATE json = new_data.json",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO mcp_execution_entity(json) VALUES (:json::jsonb) ON CONFLICT (id) DO UPDATE SET json = EXCLUDED.json",
+        connectionType = POSTGRES)
+    void insertWithoutExtension(
+        @Define("table") String table,
+        @BindFQN("entityFQNHash") String entityFQNHash,
+        @Bind("jsonSchema") String jsonSchema,
+        @Bind("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO mcp_execution_entity(json) VALUES (:json) AS new_data ON DUPLICATE KEY UPDATE json = new_data.json",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO mcp_execution_entity(json) VALUES (:json::jsonb) ON CONFLICT (id) DO UPDATE SET json = EXCLUDED.json",
+        connectionType = POSTGRES)
+    void insert(
+        @Define("table") String table,
+        @BindFQN("entityFQNHash") String entityFQNHash,
+        @Bind("extension") String extension,
+        @Bind("jsonSchema") String jsonSchema,
+        @Bind("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM mcp_execution_entity WHERE serverId = :serverId AND timestamp = :timestamp",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM mcp_execution_entity WHERE serverId = :serverId AND timestamp = :timestamp",
+        connectionType = POSTGRES)
+    void deleteAtTimestamp(
+        @Bind("serverId") String serverId,
+        @Bind("extension") String extension,
+        @Bind("timestamp") Long timestamp);
+
+    @SqlQuery(
+        "SELECT json FROM mcp_execution_entity WHERE serverId = :serverId ORDER BY timestamp DESC LIMIT :limit")
+    List<String> listByServerId(@Bind("serverId") String serverId, @Bind("limit") int limit);
+
+    @SqlQuery("SELECT count(*) FROM mcp_execution_entity <cond>")
+    int listCount(@Define("cond") String condition);
   }
 
   interface LLMServiceDAO extends EntityDAO<org.openmetadata.schema.entity.services.LLMService> {
