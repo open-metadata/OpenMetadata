@@ -2688,6 +2688,7 @@
     "team-member-management-description": "Optimieren Sie den Zugriff auf Benutzer und Teams in {{brandName}}.",
     "team-moved-success": "Team erfolgreich verschoben!",
     "team-no-asset": "Ihr Team hat keine Vermögenswerte.",
+    "test-case-count-info": "Zeigt die Anzahl der für diese Pipeline ausgewählten Testfälle an. 'Alle' bedeutet, dass alle verfügbaren Testfälle ausgeführt werden.",
     "test-case-insight-description": "Zugriff auf eine zentrale Ansicht der Gesundheit Ihres Datensatzes basierend auf konfigurierten Testvalidierungen.",
     "test-case-name-validation": "Der Name darf keine doppelten Doppelpunkte (::), Anführungszeichen (\") oder Größer-als-Symbole (>) enthalten.",
     "test-case-schedule-description": "Die Datenqualitätstests können mit der gewünschten Häufigkeit geplant werden. Die Zeitzone ist UTC.",
