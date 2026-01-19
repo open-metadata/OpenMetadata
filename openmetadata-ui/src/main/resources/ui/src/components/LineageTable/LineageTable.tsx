@@ -800,6 +800,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         { isFullScreen },
         'lineage-card lineage-card-table'
       )}
+      data-testid="lineage-card-table"
       title={cardHeader}>
       <Table
         bordered
