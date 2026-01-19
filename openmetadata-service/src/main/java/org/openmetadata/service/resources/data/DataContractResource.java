@@ -945,9 +945,10 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     DataContract contractForValidation;
     if (directContract == null && Boolean.TRUE.equals(effectiveContract.getInherited())) {
       // Materialize an empty contract for this entity to store validation results
+      // Use the Data Product contract name as prefix for the new contract name
       contractForValidation =
           repository.materializeInheritedContract(
-              entity, securityContext.getUserPrincipal().getName());
+              entity, effectiveContract.getName(), securityContext.getUserPrincipal().getName());
     } else {
       contractForValidation = directContract != null ? directContract : effectiveContract;
     }

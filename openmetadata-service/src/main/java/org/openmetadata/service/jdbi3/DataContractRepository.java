@@ -727,9 +727,15 @@ public class DataContractRepository extends EntityRepository<DataContract> {
    * Materialize an empty contract for an entity that currently only has an inherited contract.
    * This allows the entity to have its own contract to store validation results, while still
    * inheriting properties from the Data Product contract.
+   *
+   * @param entity The entity to create the contract for
+   * @param dataProductContractName The name of the Data Product contract being inherited from
+   * @param user The user creating the contract
    */
-  public DataContract materializeInheritedContract(EntityInterface entity, String user) {
-    String contractName = entity.getName() + "_contract";
+  public DataContract materializeInheritedContract(
+      EntityInterface entity, String dataProductContractName, String user) {
+    // Name format: "<Data Product Contract> - <entity name>"
+    String contractName = dataProductContractName + " - " + entity.getName();
     String contractFqn = entity.getFullyQualifiedName() + ".contract";
 
     DataContract newContract =
