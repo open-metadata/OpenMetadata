@@ -11,6 +11,7 @@ import org.openmetadata.service.resources.automations.WorkflowResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 public class WorkflowRepository extends EntityRepository<Workflow> {
   private static final String PATCH_FIELDS = "status,response";
@@ -27,7 +28,8 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
   }
 
   @Override
-  public void setFields(Workflow entity, EntityUtil.Fields fields) {
+  public void setFields(
+      Workflow entity, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     /* Nothing to do */
   }
 
