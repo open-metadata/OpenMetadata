@@ -478,7 +478,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
         LOG.info("Generated authorization code for user: {}", user.getName());
 
-        return displayAuthorizationCode(authCode, currentRequest.getSession(false));
+        return displayAuthorizationCode(authCode, currentRequest.get().getSession(false));
 
       } catch (AuthenticationException e) {
         LOG.warn("Basic Auth login failed for user: {}", email);
