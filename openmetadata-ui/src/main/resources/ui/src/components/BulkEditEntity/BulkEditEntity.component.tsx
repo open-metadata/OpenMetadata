@@ -12,7 +12,7 @@
  */
 import { Button, Col, Row } from 'antd';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import DataGrid, { ColumnOrColumnGroup } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
 import { useTranslation } from 'react-i18next';
@@ -126,22 +126,16 @@ const BulkEditEntity = ({
     );
   }, [columns, dataSource, handleCopy, handlePaste, handleOnRowsChange]);
 
-  const columnsUpdated = useCallback(() => {
-    if (!validateCSVData?.columns) {
-      return [];
-    }
+  const columnsUpdated = validateCSVData?.columns
+    .filter((col) => col.key !== 'changeDescription')
+    .map((col) => ({
+      ...col,
+      cellClass: (row: any) => {
+        const updatedFields = getUpdatedFields(row);
 
-    return validateCSVData.columns
-      .filter((col) => col.key !== 'changeDescription')
-      .map((col) => ({
-        ...col,
-        cellClass: (row: any) => {
-          const updatedFields = getUpdatedFields(row);
-
-          return updatedFields.has(col.key) ? 'cell-updated' : '';
-        },
-      }));
-  }, [validateCSVData]);
+        return updatedFields.has(col.key) ? 'cell-updated' : '';
+      },
+    }));
 
   return (
     <>
