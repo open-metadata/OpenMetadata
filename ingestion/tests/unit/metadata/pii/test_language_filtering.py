@@ -9,6 +9,13 @@ from metadata.generated.schema.entity.data.table import Column, ColumnName, Data
 from metadata.generated.schema.type.classificationLanguages import (
     ClassificationLanguage,
 )
+from metadata.generated.schema.type.predefinedRecognizer import Name as PredefinedName
+from metadata.generated.schema.type.predefinedRecognizer import PredefinedRecognizer
+from metadata.generated.schema.type.recognizer import (
+    Recognizer,
+    RecognizerConfig,
+    Target,
+)
 from metadata.pii.algorithms.tag_scoring import ScoreTagsForColumnService
 from metadata.pii.tag_analyzer import TagAnalysis, TagAnalyzer
 
@@ -133,3 +140,161 @@ class TestScoreTagsForColumnServiceLanguage:
             mock_tag_analyzer_class.assert_called_once()
             call_kwargs = mock_tag_analyzer_class.call_args[1]
             assert call_kwargs["language"] == ClassificationLanguage.de
+
+
+class TestLanguageBasedRecognizerSelection:
+    """Test language-based recognizer selection with Spanish DNI example."""
+
+    @pytest.fixture
+    def sample_dni_data(self):
+        return ["12345678Z", "87654321X", "11111111H"]
+
+    @pytest.fixture
+    def dni_column(self):
+        return Column(
+            name=ColumnName("dni_number"),
+            dataType=DataType.VARCHAR,
+            fullyQualifiedName="service.db.schema.table.dni_number",
+        )
+
+    @pytest.fixture
+    def spanish_dni_tag(self):
+        return Tag(
+            id=uuid.uuid4(),
+            name="DNI",
+            fullyQualifiedName="Personal.DNI",
+            description="Spanish DNI with Spanish language",
+            autoClassificationEnabled=True,
+            autoClassificationPriority=50,
+            recognizers=[
+                Recognizer(
+                    name="ES_NIF_Spanish",
+                    enabled=True,
+                    target=Target.content,
+                    recognizerConfig=RecognizerConfig(
+                        root=PredefinedRecognizer(
+                            type="predefined",
+                            name=PredefinedName.EsNifRecognizer,
+                            supportedLanguage=ClassificationLanguage.es,
+                        )
+                    ),
+                )
+            ],
+        )
+
+    @pytest.fixture
+    def english_dni_tag(self):
+        return Tag(
+            id=uuid.uuid4(),
+            name="SpanishID",
+            fullyQualifiedName="Personal.SpanishID",
+            description="Spanish DNI with English language",
+            autoClassificationEnabled=True,
+            autoClassificationPriority=50,
+            recognizers=[
+                Recognizer(
+                    name="ES_NIF_English",
+                    enabled=True,
+                    target=Target.content,
+                    recognizerConfig=RecognizerConfig(
+                        root=PredefinedRecognizer(
+                            type="predefined",
+                            name=PredefinedName.EsNifRecognizer,
+                            supportedLanguage=ClassificationLanguage.en,
+                        )
+                    ),
+                )
+            ],
+        )
+
+    def test_spanish_language_selects_spanish_dni_recognizer(
+        self,
+        dni_column,
+        spanish_dni_tag,
+        mock_nlp_engine,
+    ):
+        analyzer = TagAnalyzer(
+            tag=spanish_dni_tag,
+            column=dni_column,
+            nlp_engine=mock_nlp_engine,
+            language=ClassificationLanguage.es,
+        )
+
+        recognizers = analyzer.content_recognizers
+        assert len(recognizers) == 1
+        assert recognizers[0].supported_language == "es"
+
+    def test_english_language_filters_out_spanish_recognizer(
+        self,
+        dni_column,
+        spanish_dni_tag,
+        mock_nlp_engine,
+    ):
+        analyzer = TagAnalyzer(
+            tag=spanish_dni_tag,
+            column=dni_column,
+            nlp_engine=mock_nlp_engine,
+            language=ClassificationLanguage.en,
+        )
+
+        recognizers = analyzer.content_recognizers
+        assert (
+            len(recognizers) == 0
+        ), "Spanish-language recognizer should not be available for English analysis"
+
+    def test_language_mismatch_returns_no_recognizers(
+        self,
+        dni_column,
+        english_dni_tag,
+        mock_nlp_engine,
+    ):
+        analyzer = TagAnalyzer(
+            tag=english_dni_tag,
+            column=dni_column,
+            nlp_engine=mock_nlp_engine,
+            language=ClassificationLanguage.es,
+        )
+
+        recognizers = analyzer.content_recognizers
+        assert (
+            len(recognizers) == 0
+        ), "English-language recognizer should not be available for Spanish analysis"
+
+    def test_recognizer_language_filtering_in_analyzer(
+        self, dni_column, spanish_dni_tag, mock_nlp_engine
+    ):
+        analyzer = TagAnalyzer(
+            tag=spanish_dni_tag,
+            column=dni_column,
+            nlp_engine=mock_nlp_engine,
+            language=ClassificationLanguage.es,
+        )
+
+        recognizers = analyzer.content_recognizers
+        assert len(recognizers) == 1
+        assert recognizers[0].supported_language == "es"
+
+
+class TestLanguageModelMapping:
+    """Test language to spaCy model mapping with defaultdict."""
+
+    def test_supported_language_returns_specific_model(self):
+        from metadata.pii.algorithms.presidio_utils import get_model_for_language
+
+        model = get_model_for_language(ClassificationLanguage.es)
+        assert model == "es_core_news_md"
+
+    def test_unsupported_language_returns_multilang_model(self):
+        from metadata.pii.algorithms.presidio_utils import get_model_for_language
+        from metadata.pii.constants import SPACY_MULTILANG_MODEL
+
+        model = get_model_for_language(ClassificationLanguage.ar)
+        assert (
+            model == SPACY_MULTILANG_MODEL
+        ), f"Unsupported language should default to multilang model, got {model}"
+
+    def test_english_returns_english_model(self):
+        from metadata.pii.algorithms.presidio_utils import get_model_for_language
+
+        model = get_model_for_language(ClassificationLanguage.en)
+        assert model == "en_core_web_md"

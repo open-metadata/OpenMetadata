@@ -82,6 +82,8 @@ class TagAnalyzer:
 
             created = PresidioRecognizerFactory.create_recognizer(recognizer)
             if created is not None:
+                if created.supported_language != self._language.value:
+                    continue
                 recognizers.append(created)
 
         return recognizers

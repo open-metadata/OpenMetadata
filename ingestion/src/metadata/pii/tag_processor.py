@@ -78,7 +78,10 @@ class TagProcessor(AutoClassificationProcessor):
         # Service that runs analyzers
         if score_tags_for_column is None:
             score_tags_for_column = ScoreTagsForColumnService(
-                nlp_engine=load_nlp_engine(), language=self.classification_language
+                nlp_engine=load_nlp_engine(
+                    classification_language=self.classification_language
+                ),
+                language=self.classification_language,
             )
         self.score_tags_for_column = score_tags_for_column
 
