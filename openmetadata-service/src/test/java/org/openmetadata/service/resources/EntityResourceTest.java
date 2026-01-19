@@ -2153,6 +2153,69 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
+  void post_entityWithSoftDeletedOwner_4xx(TestInfo test) throws IOException {
+    if (!supportsOwners) {
+      return;
+    }
+    // Create a user to be used as owner
+    UserResourceTest userResourceTest = new UserResourceTest();
+    User user =
+        userResourceTest.createEntity(userResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
+
+    // Soft delete the user
+    userResourceTest.deleteEntity(user.getId(), ADMIN_AUTH_HEADERS);
+
+    try {
+      // Try to create entity with soft-deleted user as owner
+      EntityReference owner = new EntityReference().withId(user.getId()).withType("user");
+      K create = createRequest(getEntityName(test), "", "", Lists.newArrayList(owner));
+      assertResponseContains(
+          () -> createEntity(create, ADMIN_AUTH_HEADERS),
+          BAD_REQUEST,
+          "Cannot assign soft-deleted user");
+    } finally {
+      // Clean up by hard deleting the user
+      userResourceTest.deleteEntity(user.getId(), true, true, ADMIN_AUTH_HEADERS);
+    }
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void patch_entityWithSoftDeletedOwner_4xx(TestInfo test) throws IOException {
+    if (!supportsOwners || !supportsPatch) {
+      return;
+    }
+    // Create entity without owner
+    K request = createRequest(getEntityName(test), "description", "displayName", null);
+    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Create a user to be used as owner
+    UserResourceTest userResourceTest = new UserResourceTest();
+    User user =
+        userResourceTest.createEntity(userResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
+
+    // Soft delete the user
+    userResourceTest.deleteEntity(user.getId(), ADMIN_AUTH_HEADERS);
+
+    try {
+      // Try to add soft-deleted user as owner via PATCH
+      String originalJson = JsonUtils.pojoToJson(entity);
+      EntityReference owner = new EntityReference().withId(user.getId()).withType("user");
+      entity.setOwners(List.of(owner));
+
+      assertResponseContains(
+          () -> patchEntity(entity.getId(), originalJson, entity, ADMIN_AUTH_HEADERS),
+          BAD_REQUEST,
+          "Cannot assign soft-deleted user");
+    } finally {
+      // Clean up
+      deleteEntity(entity.getId(), ADMIN_AUTH_HEADERS);
+      userResourceTest.deleteEntity(user.getId(), true, true, ADMIN_AUTH_HEADERS);
+    }
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void post_delete_entity_as_admin_200(TestInfo test) throws IOException {
     K request = createRequest(getEntityName(test), "", "", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);

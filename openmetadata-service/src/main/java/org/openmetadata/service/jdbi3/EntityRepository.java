@@ -3724,6 +3724,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public final void updateOwners(
       T ownedEntity, List<EntityReference> originalOwners, List<EntityReference> newOwners) {
+    // Validate that none of the new owners are soft-deleted
+    validateOwnersNotDeleted(newOwners);
+
     List<EntityReference> addedOwners =
         diffLists(
             newOwners,
@@ -3743,6 +3746,31 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     removeOwners(ownedEntity, removedOwners);
     storeOwners(ownedEntity, newOwners);
+  }
+
+  private void validateOwnersNotDeleted(List<EntityReference> owners) {
+    if (nullOrEmpty(owners)) {
+      return;
+    }
+
+    for (EntityReference owner : owners) {
+      try {
+        // Get the full entity reference including deleted status
+        EntityReference fullRef = getEntityReferenceById(owner.getType(), owner.getId(), ALL);
+        if (fullRef != null && Boolean.TRUE.equals(fullRef.getDeleted())) {
+          throw new IllegalArgumentException(
+              String.format(
+                  "Cannot assign soft-deleted %s '%s' as owner",
+                  owner.getType(), fullRef.getFullyQualifiedName()));
+        }
+      } catch (Exception e) {
+        // If entity is not found, it might be hard-deleted or invalid
+        throw new IllegalArgumentException(
+            String.format(
+                "Cannot assign invalid %s with ID '%s' as owner: %s",
+                owner.getType(), owner.getId(), e.getMessage()));
+      }
+    }
   }
 
   public final Fields getFields(String fields) {
@@ -3798,7 +3826,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 throw new IllegalArgumentException(
                     CatalogExceptionMessage.invalidOwnerType(owner.getType()));
               }
-              return getEntityReferenceById(owner.getType(), owner.getId(), ALL);
+              EntityReference fullRef = getEntityReferenceById(owner.getType(), owner.getId(), ALL);
+              if (fullRef != null && Boolean.TRUE.equals(fullRef.getDeleted())) {
+                throw new IllegalArgumentException(
+                    String.format(
+                        "Cannot assign soft-deleted %s '%s' as owner",
+                        owner.getType(), fullRef.getFullyQualifiedName()));
+              }
+              return fullRef;
             })
         .collect(Collectors.toList());
   }
