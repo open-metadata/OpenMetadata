@@ -28,7 +28,6 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-settings-primery.svg';
-import { DEFAULT_RANGE_DATA } from '../../../../../constants/profiler.constant';
 import { useTourProvider } from '../../../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
@@ -62,12 +61,8 @@ const TabFilters = () => {
       param.startsWith('?') ? param.substring(1) : param
     );
 
-    const startTs = searchData.startTs
-      ? Number(searchData.startTs)
-      : DEFAULT_RANGE_DATA.startTs;
-    const endTs = searchData.endTs
-      ? Number(searchData.endTs)
-      : DEFAULT_RANGE_DATA.endTs;
+    const startTs = searchData.startTs ? Number(searchData.startTs) : undefined;
+    const endTs = searchData.endTs ? Number(searchData.endTs) : undefined;
 
     return {
       activeColumnFqn: searchData.activeColumnFqn as string,
