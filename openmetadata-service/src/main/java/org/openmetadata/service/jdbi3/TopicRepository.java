@@ -59,6 +59,7 @@ import org.openmetadata.service.resources.topics.TopicResource;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class TopicRepository extends EntityRepository<Topic> {
@@ -125,7 +126,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public void setFields(Topic topic, Fields fields) {
+  public void setFields(Topic topic, Fields fields, RelationIncludes relationIncludes) {
     // Set default service field
     topic.setService(getContainer(topic.getId()));
 
