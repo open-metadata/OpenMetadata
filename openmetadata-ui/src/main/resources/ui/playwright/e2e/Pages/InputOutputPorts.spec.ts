@@ -14,21 +14,16 @@
 import base, { expect, Page } from '@playwright/test';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
-import { PolicyClass } from '../../support/access-control/PoliciesClass';
-import { RolesClass } from '../../support/access-control/RolesClass';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
-import { TeamClass } from '../../support/team/TeamClass';
-import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   getApiContext,
   redirectToHomePage,
-  toastNotification,
-  uuid,
+  toastNotification
 } from '../../utils/common';
 import {
   addInputPortToDataProduct,
