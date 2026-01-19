@@ -222,6 +222,9 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       const ownersSection = summaryPanel.locator('.owners-section');
 
       await expect(ownersSection).toBeVisible();
+      await adminPage
+        .getByTestId('edit-owners')
+        .evaluate((el) => el.scrollIntoView({ block: 'center' }));
 
       await addOwnerWithoutValidation({
         page: adminPage,
@@ -277,6 +280,92 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
         });
       }
     } finally {
+      await afterAction();
+    }
+  });
+
+  test('Admin - Overview Tab - Owners Section - Remove Owner - User', async ({
+    adminPage,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+    const testUser = new UserClass();
+
+    try {
+      await testUser.create(apiContext);
+      const testUserDisplayName = testUser.getUserDisplayName();
+
+      await adminPage
+        .getByTestId('edit-owners')
+        .evaluate((el) => el.scrollIntoView({ block: 'center' }));
+
+      await addOwnerWithoutValidation({
+        page: adminPage,
+        owner: testUserDisplayName,
+        type: 'Users',
+        initiatorId: 'edit-owners',
+      });
+
+      await expect(
+        adminPage.getByText(/Owners updated successfully/i)
+      ).toBeVisible();
+
+      await removeOwnerFromPanel(adminPage, [testUserDisplayName], 'Users');
+
+      await expect(
+        adminPage.getByText(/Owners updated successfully/i)
+      ).toBeVisible();
+
+      const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+      const ownersSection = summaryPanel.locator('.owners-section');
+
+      await expect(
+        ownersSection.getByText('No Owners assigned ')
+      ).toBeVisible();
+    } finally {
+      await testUser.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Admin - Overview Tab - Owners Section - Remove Owner - Team', async ({
+    adminPage,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+    const testTeam = new TeamClass();
+
+    try {
+      await testTeam.create(apiContext);
+      const testTeamDisplayName = testTeam.getTeamDisplayName();
+
+      await adminPage
+        .getByTestId('edit-owners')
+        .evaluate((el) => el.scrollIntoView({ block: 'center' }));
+
+      await addOwnerWithoutValidation({
+        page: adminPage,
+        owner: testTeamDisplayName,
+        type: 'Teams',
+        initiatorId: 'edit-owners',
+      });
+
+      await expect(
+        adminPage.getByText(/Owners updated successfully/i)
+      ).toBeVisible();
+
+      await removeOwnerFromPanel(adminPage, [testTeamDisplayName], 'Teams');
+
+      await expect(
+        adminPage.getByText(/Owners updated successfully/i)
+      ).toBeVisible();
+
+      const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+      const ownersSection = summaryPanel.locator('.owners-section');
+
+      await expect(
+        ownersSection.getByText('No Owners assigned ')
+      ).toBeVisible();
+    } finally {
+      await testTeam.delete(apiContext);
       await afterAction();
     }
   });
@@ -483,7 +572,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     );
 
     // Wait for lineage section to be in stable state
-    await lineageSection.waitFor({ state: 'visible'});
+    await lineageSection.waitFor({ state: 'visible' });
 
     // Check if "no lineage connections found" text is present in the overview
     const noLineageText = summaryPanel.locator(

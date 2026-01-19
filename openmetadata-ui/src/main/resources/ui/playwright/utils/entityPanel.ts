@@ -12,6 +12,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { redirectToExplorePage } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 
 export const openEntitySummaryPanel = async (
   page: Page,
@@ -71,10 +72,16 @@ export const navigateToEntityPanelTab = async (page: Page, tabName: string) => {
   });
 };
 
-export const editTags = async (
-  page: Page,
-  tagName: string) => {
-  await page.locator('[data-testid="edit-icon-tags"]').click();
+export const editTags = async (page: Page, tagName: string) => {
+  const editIcon = page.locator('[data-testid="edit-icon-tags"]');
+  if (await editIcon.isVisible()) {
+    await editIcon.click();
+  } else {
+    // Fallback for ML Model which uses an 'Add' chip
+    await page
+      .locator('[data-testid="entity-tags"] [data-testid="add-tag"]')
+      .click();
+  }
 
   await page
     .locator('[data-testid="selectable-list"]')
@@ -102,7 +109,7 @@ export const editTags = async (
 
   const tagOption = page.getByTitle(tagName);
   // Wait for tag option to be visible before clicking
-  await tagOption.waitFor({ state: 'visible'});
+  await tagOption.waitFor({ state: 'visible' });
   await tagOption.click();
 
   const updateBtn = page.getByRole('button', { name: 'Update' });
@@ -113,18 +120,26 @@ export const editTags = async (
   await expect(page.getByText(/Tags updated successfully/i)).toBeVisible();
 };
 
-export const editGlossaryTerms = async (
-  page: Page,
-  termName?: string) => {
+export const editGlossaryTerms = async (page: Page, termName?: string) => {
   await page
     .locator('[data-testid="edit-glossary-terms"]')
     .scrollIntoViewIfNeeded();
-  await page.waitForSelector('[data-testid="edit-glossary-terms"]', {
-    state: 'visible',
-  });
+  await page.waitForSelector(
+    '[data-testid="edit-glossary-terms"], [data-testid="glossary-container"] [data-testid="add-tag"]',
+    {
+      state: 'visible',
+    }
+  );
 
-  await page.locator('[data-testid="edit-glossary-terms"]').click();
-
+  const editIcon = page.locator('[data-testid="edit-glossary-terms"]');
+  if (await editIcon.isVisible()) {
+    await editIcon.click();
+  } else {
+    // Fallback for ML Model which uses an 'Add' chip
+    await page
+      .locator('[data-testid="glossary-container"] [data-testid="add-tag"]')
+      .click();
+  }
 
   await page
     .locator('[data-testid="selectable-list"]')
@@ -153,7 +168,6 @@ export const editGlossaryTerms = async (
   await page.getByRole('button', { name: 'Update' }).click();
   await patchResp;
 };
-
 
 export const editDomain = async (page: Page, domainName: string) => {
   const summaryPanel = page.locator('.entity-summary-panel-container');
@@ -200,8 +214,6 @@ export const editDomain = async (page: Page, domainName: string) => {
     state: 'detached',
   });
 };
-
-
 
 export const verifyDeletedEntityNotVisible = async (
   page: Page,
@@ -279,9 +291,14 @@ export async function navigateToExploreAndSelectTable(
   const permissionsResponsePromise = page.waitForResponse((response) =>
     response.url().includes('/permissions')
   );
+  const entityDetailsResponse = page.waitForResponse('/api/v1/tables/name/*?*');
 
   await openEntitySummaryPanel(page, entityName);
 
   const permissionsResponse = await permissionsResponsePromise;
+  const entityDetailsResponseResolved = await entityDetailsResponse;
   expect(permissionsResponse.status()).toBe(200);
+  expect(entityDetailsResponseResolved.status()).toBe(200);
+
+  await waitForAllLoadersToDisappear(page);
 }

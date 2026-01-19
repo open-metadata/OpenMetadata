@@ -239,7 +239,7 @@ test.describe('Service Databases page pagination', () => {
     expect(response2.status()).toBe(200);
 
     await waitForAllLoadersToDisappear(page);
-    await page.waitForSelector('table', { state: 'visible' });
+    await page.waitForSelector('[data-testid="table-container"]', { state: 'visible' });
 
     const paginationText = page.locator('[data-testid="page-indicator"]');
 

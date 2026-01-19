@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
@@ -620,6 +620,30 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
       });
 
       await user.create(apiContext);
+
+      // Create a conversation thread via API so we can post replies in the tests
+      await apiContext.post('/api/v1/feed', {
+        data: {
+          from: adminUser.responseData.name,
+          message: 'Initial conversation for Chinese character encoding test',
+          about: `<#E::databaseSchema::${schemaFqn}>`,
+          type: 'Conversation',
+        },
+      });
+
+      await afterAction();
+    }
+  );
+
+  test.afterAll(
+    'Cleanup: delete database and apiEndpoint',
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      await database.delete(apiContext);
+      await apiEndpoint.delete(apiContext);
+      await adminUser.delete(apiContext);
+
       await afterAction();
     }
   );
@@ -632,8 +656,6 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
   test('Should allow mentioning a user with Chinese characters in the activity feed', async ({
     page,
   }) => {
-    test.slow();
-
     const feedPromise = page.waitForResponse((response) => {
       const url = response.url();
 
@@ -721,8 +743,6 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
   test('Should encode the chinese character while mentioning api endpoint', async ({
     page,
   }) => {
-    test.slow();
-
     const feedPromise = page.waitForResponse((response) => {
       const url = response.url();
 
