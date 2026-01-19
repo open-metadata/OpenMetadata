@@ -585,13 +585,6 @@ class DatabaseServiceSource(
     def is_stored_procedure_filtered(self, stored_procedure_name: str) -> bool:
         """
         Check if a stored procedure should be filtered based on the filter pattern.
-
-        Args:
-            stored_procedure_name: Name of the stored procedure
-            add_to_status: Whether to add filtered items to the status
-
-        Returns:
-            True if the stored procedure should be filtered out, False otherwise
         """
         stored_procedure_fqn = fqn.build(
             self.metadata,
