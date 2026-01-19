@@ -84,6 +84,7 @@ import org.openmetadata.service.resources.pipelines.PipelineResource;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
@@ -172,7 +173,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public void setFields(Pipeline pipeline, Fields fields) {
+  public void setFields(Pipeline pipeline, Fields fields, RelationIncludes relationIncludes) {
     pipeline.setService(getContainer(pipeline.getId()));
     getTaskTags(fields.contains(FIELD_TAGS), pipeline.getTasks());
     getTaskOwners(fields.contains(FIELD_OWNERS), pipeline.getTasks());
