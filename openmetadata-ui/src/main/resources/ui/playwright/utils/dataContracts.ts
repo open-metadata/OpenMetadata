@@ -387,6 +387,8 @@ export const clickAddContractButton = async (page: Page) => {
   await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
   await expect(page.getByTestId('add-contract-button')).toBeVisible();
   await page.getByTestId('add-contract-button').click();
+  await expect(page.getByTestId('add-contract-menu')).toBeVisible();
+  await page.getByTestId('create-contract-button').click();
   await expect(page.getByTestId('add-contract-card')).toBeVisible();
 };
 

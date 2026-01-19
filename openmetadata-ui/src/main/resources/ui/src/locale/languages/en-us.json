@@ -924,6 +924,7 @@
     "invalid": "Invalid",
     "invalid-condition": "Invalid condition",
     "invalid-name": "Invalid Name",
+    "invalid-odcs-contract-format-required-fields": "The following fields are required: APIVersion, Kind, Status",
     "is": "Is",
     "is-entity": "Is {{entity}}",
     "is-not": "Is Not",

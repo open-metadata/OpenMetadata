@@ -121,15 +121,10 @@ const entitySupportsQuality = (entityType: string): boolean => {
 
 test.describe('Data Contracts', () => {
   const user = new UserClass();
-
+  test.slow(true)
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { apiContext, afterAction, page } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
-    if (!process.env.PLAYWRIGHT_IS_OSS) {
-      // Todo: Remove this patch once the issue is fixed #19140
-      await resetTokenFromBotPage(page, 'testsuite-bot');
-    }
-
     await afterAction();
   });
 

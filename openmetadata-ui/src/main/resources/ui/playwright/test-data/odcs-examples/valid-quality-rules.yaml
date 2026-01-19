@@ -8,22 +8,108 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# ODCS Valid Example: Contract with Quality Rules
+# Tests various quality rule types and metrics
+
 apiVersion: v3.1.0
 kind: DataContract
-id: quality-contract
-name: ODCS Contract with Quality Rules
-version: "1.0.0"
+id: product-inventory-contract
+name: Product Inventory Contract
+version: "1.5.0"
 status: active
+
 description:
-  purpose: Contract testing quality rules
+  purpose: Ensure product inventory data quality
+
+schema:
+  - name: products
+    logicalType: object
+    properties:
+      - name: sku
+        logicalType: string
+        primaryKey: true
+      - name: product_name
+        logicalType: string
+        required: true
+      - name: category
+        logicalType: string
+        required: true
+      - name: price
+        logicalType: decimal
+        logicalTypeOptions:
+          precision: 10
+          scale: 2
+      - name: stock_quantity
+        logicalType: integer
+      - name: last_updated
+        logicalType: timestamp
+
+# Comprehensive quality rules
 quality:
+  # Library metrics (built-in)
+  - type: library
+    rule: rowCount
+    mustBeGreaterThan: 1000
+    description: Product catalog must have at least 1000 items
+
   - type: library
     rule: nullValues
-    column: id
+    column: sku
     mustBe: 0
-    description: ID column must not have null values
+    description: SKU cannot be null
+
+  - type: library
+    rule: nullValues
+    column: product_name
+    mustBe: 0
+    description: Product name is required
+
   - type: library
     rule: duplicateValues
-    column: email
+    column: sku
     mustBe: 0
-    description: Email must be unique
+    description: SKU must be unique
+
+  - type: library
+    rule: invalidValues
+    column: category
+    mustBeLessThan: 5
+    description: Invalid category values should be minimal
+
+  - type: library
+    rule: missingValues
+    column: price
+    mustBeLessThanOrEqualTo: 10
+    description: Allow up to 10 missing prices
+
+  # Custom SQL rules
+  - type: custom
+    rule: "price > 0"
+    column: price
+    description: Price must be positive
+
+  - type: custom
+    rule: "stock_quantity >= 0"
+    column: stock_quantity
+    description: Stock cannot be negative
+
+  - type: custom
+    rule: "LENGTH(sku) BETWEEN 8 AND 12"
+    column: sku
+    description: SKU must be 8-12 characters
+
+  # Scheduled quality checks
+  - type: library
+    rule: nullValues
+    column: last_updated
+    scheduler: cron
+    schedule: "0 6 * * *"
+    description: Daily check for update timestamps
+
+slaProperties:
+  - property: freshness
+    value: "6"
+    unit: hours
+  - property: availability
+    value: "99.5"
+    unit: percent
