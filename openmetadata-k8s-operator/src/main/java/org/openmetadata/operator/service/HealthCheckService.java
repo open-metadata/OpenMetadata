@@ -13,6 +13,7 @@
 
 package org.openmetadata.operator.service;
 
+import com.fasterxml.jackson.core.io.JsonStringEncoder;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
@@ -177,12 +178,7 @@ public class HealthCheckService {
   }
 
   private static String escapeJson(String value) {
-    return value
-        .replace("\\", "\\\\")
-        .replace("\"", "\\\"")
-        .replace("\n", "\\n")
-        .replace("\r", "\\r")
-        .replace("\t", "\\t");
+    return new String(JsonStringEncoder.getInstance().quoteAsString(value));
   }
 
   /**

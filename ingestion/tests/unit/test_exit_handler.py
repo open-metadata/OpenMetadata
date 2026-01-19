@@ -16,7 +16,6 @@ Tests the fault-tolerant diagnostics gathering for failed pipeline jobs.
 
 import sys
 from pathlib import Path
-from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
 # Add the operators/docker directory to the path for imports
@@ -34,46 +33,46 @@ from exit_handler import (
 )
 
 
-class TestFailureDiagnostics(TestCase):
+class TestFailureDiagnostics:
     """Test the FailureDiagnostics model."""
 
     def test_has_diagnostics_with_logs(self):
         """Test has_diagnostics returns True when logs are present."""
         diagnostics = FailureDiagnostics(pod_logs="some logs")
-        self.assertTrue(diagnostics.has_diagnostics)
+        assert diagnostics.has_diagnostics is True
 
     def test_has_diagnostics_with_description(self):
         """Test has_diagnostics returns True when description is present."""
         diagnostics = FailureDiagnostics(pod_description="pod info")
-        self.assertTrue(diagnostics.has_diagnostics)
+        assert diagnostics.has_diagnostics is True
 
     def test_has_diagnostics_with_both(self):
         """Test has_diagnostics returns True when both are present."""
         diagnostics = FailureDiagnostics(pod_logs="logs", pod_description="desc")
-        self.assertTrue(diagnostics.has_diagnostics)
+        assert diagnostics.has_diagnostics is True
 
     def test_has_diagnostics_empty(self):
         """Test has_diagnostics returns False when nothing is present."""
         diagnostics = FailureDiagnostics()
-        self.assertFalse(diagnostics.has_diagnostics)
+        assert diagnostics.has_diagnostics is False
 
     def test_summary_with_logs(self):
         """Test summary includes log line count."""
         diagnostics = FailureDiagnostics(pod_logs="line1\nline2\nline3")
-        self.assertIn("logs (3 lines)", diagnostics.summary)
+        assert "logs (3 lines)" in diagnostics.summary
 
     def test_summary_with_description(self):
         """Test summary includes pod description."""
         diagnostics = FailureDiagnostics(pod_description="pod info")
-        self.assertIn("pod description", diagnostics.summary)
+        assert "pod description" in diagnostics.summary
 
     def test_summary_empty(self):
         """Test summary when no diagnostics available."""
         diagnostics = FailureDiagnostics()
-        self.assertEqual("No diagnostics available", diagnostics.summary)
+        assert diagnostics.summary == "No diagnostics available"
 
 
-class TestGetKubernetesClient(TestCase):
+class TestGetKubernetesClient:
     """Test Kubernetes client initialization."""
 
     @patch("exit_handler.config")
@@ -86,7 +85,7 @@ class TestGetKubernetesClient(TestCase):
         result = get_kubernetes_client()
 
         mock_config.load_incluster_config.assert_called_once()
-        self.assertEqual(result, mock_api)
+        assert result == mock_api
 
     @patch("exit_handler.config")
     @patch("exit_handler.client")
@@ -99,7 +98,7 @@ class TestGetKubernetesClient(TestCase):
         result = get_kubernetes_client()
 
         mock_config.load_kube_config.assert_called_once()
-        self.assertEqual(result, mock_api)
+        assert result == mock_api
 
     @patch("exit_handler.config")
     def test_returns_none_on_failure(self, mock_config):
@@ -109,10 +108,10 @@ class TestGetKubernetesClient(TestCase):
 
         result = get_kubernetes_client()
 
-        self.assertIsNone(result)
+        assert result is None
 
 
-class TestFindMainPod(TestCase):
+class TestFindMainPod:
     """Test main pod discovery."""
 
     def test_returns_none_with_invalid_params(self):
@@ -120,10 +119,10 @@ class TestFindMainPod(TestCase):
         mock_client = MagicMock()
 
         result = find_main_pod(mock_client, None, "")
-        self.assertIsNone(result)
+        assert result is None
 
         result = find_main_pod(mock_client, "", "namespace")
-        self.assertIsNone(result)
+        assert result is None
 
     def test_finds_pod_by_job_name_label(self):
         """Test finding pod by job-name label."""
@@ -137,7 +136,7 @@ class TestFindMainPod(TestCase):
 
         result = find_main_pod(mock_client, "test-job", "test-namespace")
 
-        self.assertEqual(result, mock_pod)
+        assert result == mock_pod
         mock_client.list_namespaced_pod.assert_called()
 
     def test_returns_none_when_no_pods_found(self):
@@ -149,7 +148,7 @@ class TestFindMainPod(TestCase):
 
         result = find_main_pod(mock_client, "nonexistent-job", "test-namespace")
 
-        self.assertIsNone(result)
+        assert result is None
 
     def test_handles_api_exceptions_gracefully(self):
         """Test graceful handling of K8s API exceptions."""
@@ -158,10 +157,10 @@ class TestFindMainPod(TestCase):
 
         result = find_main_pod(mock_client, "test-job", "test-namespace")
 
-        self.assertIsNone(result)
+        assert result is None
 
 
-class TestGetMainPodLogs(TestCase):
+class TestGetMainPodLogs:
     """Test pod log retrieval."""
 
     def test_returns_logs_successfully(self):
@@ -174,7 +173,7 @@ class TestGetMainPodLogs(TestCase):
 
         result = get_main_pod_logs(mock_client, mock_pod, "test-namespace")
 
-        self.assertEqual(result, "log line 1\nlog line 2")
+        assert result == "log line 1\nlog line 2"
         mock_client.read_namespaced_pod_log.assert_called_once_with(
             name="test-pod",
             namespace="test-namespace",
@@ -187,12 +186,12 @@ class TestGetMainPodLogs(TestCase):
         mock_client = MagicMock()
 
         result = get_main_pod_logs(mock_client, None, "test-namespace")
-        self.assertIsNone(result)
+        assert result is None
 
         mock_pod = MagicMock()
         mock_pod.metadata = None
         result = get_main_pod_logs(mock_client, mock_pod, "test-namespace")
-        self.assertIsNone(result)
+        assert result is None
 
     def test_handles_api_exceptions_gracefully(self):
         """Test graceful handling of log fetch failures."""
@@ -204,10 +203,10 @@ class TestGetMainPodLogs(TestCase):
 
         result = get_main_pod_logs(mock_client, mock_pod, "test-namespace")
 
-        self.assertIsNone(result)
+        assert result is None
 
 
-class TestGetMainPodDescription(TestCase):
+class TestGetMainPodDescription:
     """Test pod description gathering."""
 
     def test_builds_description_with_status(self):
@@ -226,17 +225,17 @@ class TestGetMainPodDescription(TestCase):
 
         result = get_main_pod_description(mock_client, mock_pod, "test-namespace")
 
-        self.assertIsNotNone(result)
-        self.assertIn("test-pod", result)
-        self.assertIn("Failed", result)
-        self.assertIn("OOMKilled", result)
+        assert result is not None
+        assert "test-pod" in result
+        assert "Failed" in result
+        assert "OOMKilled" in result
 
     def test_returns_none_for_invalid_pod(self):
         """Test returns None for invalid pod object."""
         mock_client = MagicMock()
 
         result = get_main_pod_description(mock_client, None, "test-namespace")
-        self.assertIsNone(result)
+        assert result is None
 
     def test_handles_exceptions_gracefully(self):
         """Test graceful handling of description failures."""
@@ -247,13 +246,11 @@ class TestGetMainPodDescription(TestCase):
         mock_pod.metadata.name = "test-pod"
         mock_pod.status = None
 
-        # Should not raise, should return partial description
         result = get_main_pod_description(mock_client, mock_pod, "test-namespace")
-        # Even with failures, should return something
-        self.assertIsNotNone(result)
+        assert result is not None
 
 
-class TestGatherFailureDiagnostics(TestCase):
+class TestGatherFailureDiagnostics:
     """Test the main diagnostics gathering function."""
 
     @patch("exit_handler.get_kubernetes_client")
@@ -263,7 +260,7 @@ class TestGatherFailureDiagnostics(TestCase):
 
         result = gather_failure_diagnostics("test-job", "test-namespace")
 
-        self.assertFalse(result.has_diagnostics)
+        assert result.has_diagnostics is False
 
     @patch("exit_handler.get_kubernetes_client")
     @patch("exit_handler.find_main_pod")
@@ -274,7 +271,7 @@ class TestGatherFailureDiagnostics(TestCase):
 
         result = gather_failure_diagnostics("test-job", "test-namespace")
 
-        self.assertFalse(result.has_diagnostics)
+        assert result.has_diagnostics is False
 
     @patch("exit_handler.get_kubernetes_client")
     @patch("exit_handler.find_main_pod")
@@ -291,9 +288,9 @@ class TestGatherFailureDiagnostics(TestCase):
 
         result = gather_failure_diagnostics("test-job", "test-namespace")
 
-        self.assertTrue(result.has_diagnostics)
-        self.assertEqual(result.pod_logs, "error logs")
-        self.assertEqual(result.pod_description, "pod failed")
+        assert result.has_diagnostics is True
+        assert result.pod_logs == "error logs"
+        assert result.pod_description == "pod failed"
 
     @patch("exit_handler.get_kubernetes_client")
     @patch("exit_handler.find_main_pod")
@@ -310,42 +307,41 @@ class TestGatherFailureDiagnostics(TestCase):
 
         result = gather_failure_diagnostics("test-job", "test-namespace")
 
-        # Should still have description even though logs failed
-        self.assertTrue(result.has_diagnostics)
-        self.assertIsNone(result.pod_logs)
-        self.assertEqual(result.pod_description, "pod description")
+        assert result.has_diagnostics is True
+        assert result.pod_logs is None
+        assert result.pod_description == "pod description"
 
 
-class TestCreatePodDiagnostics(TestCase):
+class TestCreatePodDiagnostics:
     """Test StepSummary creation from diagnostics."""
 
     def test_creates_step_summary_with_logs(self):
         """Test creating StepSummary with logs."""
         result = create_pod_diagnostics("error log line", None)
 
-        self.assertEqual(result.name, "Pod Diagnostics")
-        self.assertEqual(result.errors, 1)
-        self.assertEqual(len(result.failures), 1)
-        self.assertIn("error log line", result.failures[0].stackTrace)
+        assert result.name == "Pod Diagnostics"
+        assert result.errors == 1
+        assert len(result.failures) == 1
+        assert "error log line" in result.failures[0].stackTrace
 
     def test_creates_step_summary_with_description(self):
         """Test creating StepSummary with description."""
         result = create_pod_diagnostics(None, "Pod: test-pod\nStatus: Failed")
 
-        self.assertEqual(result.name, "Pod Diagnostics")
-        self.assertIn("Pod: test-pod", result.failures[0].stackTrace)
+        assert result.name == "Pod Diagnostics"
+        assert "Pod: test-pod" in result.failures[0].stackTrace
 
     def test_creates_step_summary_with_both(self):
         """Test creating StepSummary with both logs and description."""
         result = create_pod_diagnostics("logs here", "description here")
 
         stack_trace = result.failures[0].stackTrace
-        self.assertIn("logs here", stack_trace)
-        self.assertIn("description here", stack_trace)
+        assert "logs here" in stack_trace
+        assert "description here" in stack_trace
 
     def test_handles_empty_diagnostics(self):
         """Test creating StepSummary when no diagnostics available."""
         result = create_pod_diagnostics(None, None)
 
-        self.assertEqual(result.name, "Pod Diagnostics")
-        self.assertIn("No diagnostics available", result.failures[0].stackTrace)
+        assert result.name == "Pod Diagnostics"
+        assert "No diagnostics available" in result.failures[0].stackTrace
