@@ -914,6 +914,78 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
+  void test_getAndListReturnSameFieldsData(TestInfo test) throws HttpResponseException {
+    if (!supportsFieldsQueryParam) {
+      return;
+    }
+
+    T entity = createEntity(createRequest(test, 0), ADMIN_AUTH_HEADERS);
+
+    try {
+      String allFields = getAllowedFields();
+      String[] fieldArray = allFields.split(",");
+
+      for (String fields : List.of("", allFields)) {
+        T getEntity = getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
+
+        Map<String, String> params = new HashMap<>();
+        params.put("fields", fields);
+        ResultList<T> listResult = listEntities(params, ADMIN_AUTH_HEADERS);
+
+        T listEntity =
+            listResult.getData().stream()
+                .filter(e -> e.getId().equals(entity.getId()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Created entity not found in list"));
+
+        assertEquals(
+            getEntity.getId(),
+            listEntity.getId(),
+            "Entity ID should match between GET and LIST APIs");
+        assertEquals(
+            getEntity.getFullyQualifiedName(),
+            listEntity.getFullyQualifiedName(),
+            "FQN should match between GET and LIST APIs");
+
+        if (!fields.isEmpty()) {
+          for (String field : fieldArray) {
+            field = field.trim();
+            if (field.equals("owners") && supportsOwners) {
+              assertEquals(
+                  listOrEmpty(getEntity.getOwners()).size(),
+                  listOrEmpty(listEntity.getOwners()).size(),
+                  "Owners count should match between GET and LIST APIs for fields=" + fields);
+            } else if (field.equals("tags") && supportsTags) {
+              assertEquals(
+                  listOrEmpty(getEntity.getTags()).size(),
+                  listOrEmpty(listEntity.getTags()).size(),
+                  "Tags count should match between GET and LIST APIs for fields=" + fields);
+            } else if (field.equals("followers") && supportsFollowers) {
+              assertEquals(
+                  listOrEmpty(getEntity.getFollowers()).size(),
+                  listOrEmpty(listEntity.getFollowers()).size(),
+                  "Followers count should match between GET and LIST APIs for fields=" + fields);
+            } else if (field.equals("domains") && supportsDomains) {
+              assertEquals(
+                  listOrEmpty(getEntity.getDomains()).size(),
+                  listOrEmpty(listEntity.getDomains()).size(),
+                  "Domains count should match between GET and LIST APIs for fields=" + fields);
+            } else if (field.equals("dataProducts") && supportsDataProducts) {
+              assertEquals(
+                  listOrEmpty(getEntity.getDataProducts()).size(),
+                  listOrEmpty(listEntity.getDataProducts()).size(),
+                  "DataProducts count should match between GET and LIST APIs for fields=" + fields);
+            }
+          }
+        }
+      }
+    } finally {
+      deleteEntity(entity.getId(), ADMIN_AUTH_HEADERS);
+    }
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void test_fieldFetchers(TestInfo test) throws HttpResponseException, IOException {
     if (!supportsFieldsQueryParam) {
       return;
