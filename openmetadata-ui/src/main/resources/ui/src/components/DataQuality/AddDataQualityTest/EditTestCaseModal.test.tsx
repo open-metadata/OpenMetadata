@@ -67,8 +67,7 @@ jest.mock('../../../rest/testAPI', () => {
       .mockImplementation(() =>
         Promise.resolve(MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_MATCH_REGEX)
       ),
-    updateTestCaseById: jest
-      .fn()
+    updateTestCaseById: jest.fn(),
   };
 });
 
