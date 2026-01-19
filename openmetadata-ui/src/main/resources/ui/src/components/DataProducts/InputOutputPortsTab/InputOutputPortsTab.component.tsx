@@ -389,7 +389,6 @@ export const InputOutputPortsTab = forwardRef<
                       permissions={permissions}
                       portType="input"
                       ref={inputPortsListRef}
-                      onAddPort={handleAddInputPort}
                       onRemovePort={refreshPorts}
                     />
                   )}
@@ -489,7 +488,6 @@ export const InputOutputPortsTab = forwardRef<
                       permissions={permissions}
                       portType="output"
                       ref={outputPortsListRef}
-                      onAddPort={handleAddOutputPort}
                       onRemovePort={refreshPorts}
                     />
                   )}

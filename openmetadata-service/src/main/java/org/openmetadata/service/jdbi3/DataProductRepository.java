@@ -42,7 +42,6 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.api.domains.DataProductPortsView;
 import org.openmetadata.schema.api.domains.PaginatedEntities;
 import org.openmetadata.schema.api.feed.CloseTask;

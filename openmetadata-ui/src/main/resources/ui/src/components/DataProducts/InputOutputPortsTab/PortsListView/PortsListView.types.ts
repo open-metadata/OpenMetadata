@@ -17,7 +17,6 @@ export interface PortsListViewProps {
   dataProductFqn: string;
   portType: 'input' | 'output';
   permissions: OperationPermission;
-  onAddPort: () => void;
   onRemovePort: () => void;
 }
 
