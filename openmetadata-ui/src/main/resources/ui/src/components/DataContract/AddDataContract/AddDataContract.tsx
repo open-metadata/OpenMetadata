@@ -87,46 +87,47 @@ const AddDataContract: React.FC<{
       return undefined;
     }
 
-    // Helper to check if a field is inherited (handles generated types not having inherited yet)
-    const isInherited = (
-      field: unknown
-    ): field is { inherited?: boolean; content?: string } => {
-      return (
-        typeof field === 'object' &&
-        field !== null &&
-        'inherited' in field &&
-        (field as { inherited?: boolean }).inherited === true
-      );
+    // Type guard to check if an object has the inherited flag
+    // This provides type-safe access to the inherited property
+    const hasInheritedFlag = (obj: unknown): obj is { inherited?: boolean } => {
+      return typeof obj === 'object' && obj !== null && 'inherited' in obj;
+    };
+
+    // Type guard to check if a field is inherited from Data Product
+    const isInheritedField = (field: unknown): boolean => {
+      return hasInheritedFlag(field) && field.inherited === true;
     };
 
     // Filter semantics to exclude inherited rules
-    const filteredSemantics = contract.semantics?.filter((rule) => {
-      const ruleWithInherited = rule as unknown as { inherited?: boolean };
+    const filteredSemantics = contract.semantics?.filter(
+      (rule) => !isInheritedField(rule)
+    );
 
-      return !ruleWithInherited.inherited;
-    });
+    // Get termsOfUse, excluding if inherited
+    // Handle three cases:
+    // 1. Object with inherited=true -> exclude (set undefined)
+    // 2. Object with inherited=false/undefined -> keep as object
+    // 3. String (legacy format) -> convert to object format for form consistency
+    // Note: isInheritedField() returns false for null/undefined/string, so those fall through
+    let filteredTermsOfUse: string | { content?: string } | undefined;
+    if (isInheritedField(contract.termsOfUse)) {
+      // Case 1: Inherited from Data Product - exclude from editable form
+      filteredTermsOfUse = undefined;
+    } else if (
+      typeof contract.termsOfUse === 'object' &&
+      contract.termsOfUse !== null
+    ) {
+      // Case 2: Non-inherited object format - keep as-is
+      filteredTermsOfUse = contract.termsOfUse as { content?: string };
+    } else if (typeof contract.termsOfUse === 'string') {
+      // Case 3: Legacy string format - convert to object for form consistency
+      filteredTermsOfUse = { content: contract.termsOfUse };
+    }
+    // If none match (null/undefined), filteredTermsOfUse remains undefined
 
-      // Get termsOfUse, excluding if inherited
-      // Keep the object format to maintain consistency with the API and form components
-      let filteredTermsOfUse: string | { content?: string } | undefined;
-      if (isInherited(contract.termsOfUse)) {
-        filteredTermsOfUse = undefined;
-      } else if (
-        typeof contract.termsOfUse === 'object' &&
-        contract.termsOfUse !== null
-      ) {
-        // Keep as object to maintain the new schema format
-        filteredTermsOfUse = contract.termsOfUse as unknown as { content?: string };
-      } else if (typeof contract.termsOfUse === 'string') {
-        // Convert old string format to new object format for consistency
-        filteredTermsOfUse = { content: contract.termsOfUse };
-      }
-
-    // Check security and SLA for inherited
-    const securityWithInherited = contract.security as unknown as {
-      inherited?: boolean;
-    };
-    const slaWithInherited = contract.sla as unknown as { inherited?: boolean };
+    // Check if security and SLA are inherited
+    const isSecurityInherited = isInheritedField(contract.security);
+    const isSlaInherited = isInheritedField(contract.sla);
 
     // Start with base contract fields, excluding potentially inherited fields
     // We destructure to exclude sla, security, termsOfUse, semantics, then add them back only if not inherited
@@ -155,30 +156,30 @@ const AddDataContract: React.FC<{
     }
 
     // Only add security if not inherited
-    if (!securityWithInherited?.inherited && contract.security) {
+    if (!isSecurityInherited && contract.security) {
       result.security = contract.security;
     }
 
     // Only add SLA if not inherited
-    if (!slaWithInherited?.inherited && contract.sla) {
+    if (!isSlaInherited && contract.sla) {
       result.sla = contract.sla;
     }
 
     return result as DataContract;
   }, [contract]);
 
-    const [formValues, setFormValues] = useState<DataContract>(
-      filteredContract || ({} as DataContract)
-    );
+  const [formValues, setFormValues] = useState<DataContract>(
+    filteredContract || ({} as DataContract)
+  );
 
-    useEffect(() => {
-      setFormValues(filteredContract || ({} as DataContract));
-    }, [filteredContract]);
+  useEffect(() => {
+    setFormValues(filteredContract || ({} as DataContract));
+  }, [filteredContract]);
 
-    const [activeTab, setActiveTab] = useState(
-      entityContractTabs[0]?.toString() ||
-        EDataContractTab.CONTRACT_DETAIL.toString()
-    );
+  const [activeTab, setActiveTab] = useState(
+    entityContractTabs[0]?.toString() ||
+      EDataContractTab.CONTRACT_DETAIL.toString()
+  );
 
   const handleTabChange = useCallback((key: string) => {
     setActiveTab(key);
@@ -236,6 +237,15 @@ const AddDataContract: React.FC<{
           })
         );
       } else {
+        // Extract termsOfUse content string for CreateDataContract API
+        // The form stores termsOfUse as { content: string } but the API expects just the string
+        const termsOfUseContent =
+          typeof formValues.termsOfUse === 'object' &&
+          formValues.termsOfUse !== null
+            ? (formValues.termsOfUse as unknown as { content?: string })
+                ?.content
+            : (formValues.termsOfUse as unknown as string);
+
         await createContract({
           ...formValues,
           displayName: formValues.name,
@@ -245,6 +255,7 @@ const AddDataContract: React.FC<{
           },
           semantics: validSemantics,
           security: validSecurity,
+          termsOfUse: termsOfUseContent,
           entityStatus: EntityStatus.Approved,
         });
       }

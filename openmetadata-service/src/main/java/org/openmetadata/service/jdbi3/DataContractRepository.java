@@ -1125,17 +1125,16 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
 
     DataContract dataProductContract = null;
-    for (EntityReference dataProductRef : dataProducts) {
-      try {
-        dataProductContract = loadEntityDataContract(dataProductRef);
-        if (dataProductContract != null
-            && dataProductContract.getEntityStatus() == EntityStatus.APPROVED) {
-          break;
-        }
-      } catch (Exception e) {
-        LOG.debug(
-            "No contract found for data product {}: {}", dataProductRef.getId(), e.getMessage());
+    EntityReference dataProductRef = dataProducts.get(0);
+    try {
+      dataProductContract = loadEntityDataContract(dataProductRef);
+      if (dataProductContract != null
+          && dataProductContract.getEntityStatus() != EntityStatus.APPROVED) {
+        dataProductContract = null;
       }
+    } catch (Exception e) {
+      LOG.debug(
+          "No contract found for data product {}: {}", dataProductRef.getId(), e.getMessage());
     }
 
     if (dataProductContract == null) {
