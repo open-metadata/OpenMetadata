@@ -39,17 +39,20 @@ import org.openmetadata.sdk.models.ListResponse;
 /**
  * Integration tests for Domain entity operations.
  *
- * <p>Extends BaseEntityIT to inherit all common entity tests. Adds domain-specific tests for
+ * <p>
+ * Extends BaseEntityIT to inherit all common entity tests. Adds domain-specific
+ * tests for
  * hierarchy, experts, domain types, and parent-child relationships.
  *
- * <p>Migrated from: org.openmetadata.service.resources.domains.DomainResourceTest
+ * <p>
+ * Migrated from: org.openmetadata.service.resources.domains.DomainResourceTest
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
 
   public DomainResourceIT() {
     supportsFollowers = false;
-    supportsTags = false;
+    supportsTags = true;
     supportsDomains = false;
     supportsDataProducts = false;
     supportsSoftDelete = false;
@@ -430,6 +433,58 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
   }
 
   // ===================================================================
+  // SEARCH VERIFICATION HELPER METHODS
+  // ===================================================================
+
+  /**
+   * Verify domain exists in search index with the expected FQN.
+   * Queries by domain ID to avoid complex FQN queries that can exceed
+   * Elasticsearch clause limits.
+   */
+  private void verifyDomainInSearch(String expectedFqn, String domainId) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Give search a moment to be updated (updates happen during rename but ES needs
+    // a moment)
+    Thread.sleep(500);
+
+    // Query search index by ID (simpler query, avoids "too many nested clauses"
+    // error)
+    String searchResponse =
+        client.search().query("id:" + domainId).index("domain_search_index").size(1).execute();
+
+    // Verify the response contains the expected domain with correct FQN
+    assertTrue(
+        searchResponse.contains("\"id\":\"" + domainId + "\""),
+        "Search index should contain domain with ID: " + domainId);
+    assertTrue(
+        searchResponse.contains("\"fullyQualifiedName\":\"" + expectedFqn + "\""),
+        "Search index should contain domain with FQN: " + expectedFqn);
+  }
+
+  /**
+   * Verify domain does NOT exist in search index with the given FQN.
+   * Searches by partial FQN match to verify old FQN is not in the index.
+   */
+  private void verifyDomainNotInSearch(String fqn) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Extract just the domain name from the FQN to search by name field (simpler
+    // query)
+    String domainName = fqn.contains(".") ? fqn.substring(fqn.lastIndexOf(".") + 1) : fqn;
+
+    // Query search index by name to find any matching domains
+    String searchResponse =
+        client.search().query("name:" + domainName).index("domain_search_index").size(10).execute();
+
+    // Verify the response does NOT contain the old FQN
+    // It might contain the renamed domain with a new FQN, but not the old one
+    assertFalse(
+        searchResponse.contains("\"fullyQualifiedName\":\"" + fqn + "\""),
+        "Search index should NOT contain domain with old FQN: " + fqn);
+  }
+
+  // ===================================================================
   // DOMAIN RENAME TESTS
   // Tests that verify domain rename works correctly including:
   // 1. Basic domain rename
@@ -440,7 +495,8 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
 
   @Test
   void test_renameDomain(TestNamespace ns) {
-    // Use simple name for rename test (avoid regex metacharacters in REGEXP_REPLACE)
+    // Use simple name for rename test (avoid regex metacharacters in
+    // REGEXP_REPLACE)
     String domainName = "domain_" + ns.shortPrefix();
     CreateDomain create =
         new CreateDomain()
@@ -633,7 +689,8 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
    * 1. Domain is renamed
    * 2. Another field (description) is updated within the same session
    *
-   * The consolidation logic would revert to the previous version which has the OLD name/FQN,
+   * The consolidation logic would revert to the previous version which has the
+   * OLD name/FQN,
    * potentially causing subdomain FQNs to become inconsistent.
    *
    * Fix: Skip consolidation when name has changed.
@@ -677,7 +734,8 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
 
   /**
    * Test multiple renames followed by updates within the same session.
-   * This is a more complex scenario that tests the robustness of the consolidation fix.
+   * This is a more complex scenario that tests the robustness of the
+   * consolidation fix.
    */
   @Test
   void test_multipleRenamesWithUpdatesConsolidation(TestNamespace ns) {
@@ -708,5 +766,346 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
       Domain fetched = getEntityByName(domain.getFullyQualifiedName());
       assertEquals(newName, fetched.getName());
     }
+  }
+
+  @Test
+  void test_renameDomainWithSamePrefixDataProduct(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String domainName = "analytics_" + ns.shortPrefix();
+    CreateDomain createDomain =
+        new CreateDomain()
+            .withName(domainName)
+            .withDomainType(DomainType.AGGREGATE)
+            .withDescription("Domain for testing rename with same prefix data product");
+    Domain domain = createEntity(createDomain);
+
+    String subdomainName = "marketing";
+    CreateDomain createSubdomain =
+        new CreateDomain()
+            .withName(subdomainName)
+            .withDomainType(DomainType.SOURCE_ALIGNED)
+            .withParent(domain.getFullyQualifiedName())
+            .withDescription("Subdomain under analytics");
+    Domain subdomain = createEntity(createSubdomain);
+
+    String dataProductName = "analytics_product_" + ns.shortPrefix();
+    org.openmetadata.schema.api.domains.CreateDataProduct createDp =
+        new org.openmetadata.schema.api.domains.CreateDataProduct()
+            .withName(dataProductName)
+            .withDescription("Data product with same prefix as domain")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    org.openmetadata.schema.entity.domains.DataProduct dataProduct =
+        client.dataProducts().create(createDp);
+
+    String oldDomainFqn = domain.getFullyQualifiedName();
+    String oldSubdomainFqn = subdomain.getFullyQualifiedName();
+    String oldDataProductFqn = dataProduct.getFullyQualifiedName();
+
+    String newDomainName = "insights_" + ns.shortPrefix();
+    domain.setName(newDomainName);
+    Domain renamedDomain = patchEntity(domain.getId().toString(), domain);
+
+    assertEquals(newDomainName, renamedDomain.getName());
+    assertEquals(newDomainName, renamedDomain.getFullyQualifiedName());
+
+    Domain fetchedSubdomain = getEntity(subdomain.getId().toString());
+    String expectedSubdomainFqn = newDomainName + "." + subdomainName;
+    assertEquals(expectedSubdomainFqn, fetchedSubdomain.getFullyQualifiedName());
+
+    org.openmetadata.schema.entity.domains.DataProduct fetchedDataProduct =
+        client.dataProducts().get(dataProduct.getId().toString());
+    assertEquals(
+        oldDataProductFqn,
+        fetchedDataProduct.getFullyQualifiedName(),
+        "Data product FQN should NOT change when domain is renamed");
+  }
+
+  @Test
+  void test_renameDomainDoesNotMatchSimilarNames(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String analyticsName = "analytics_" + ns.shortPrefix();
+    CreateDomain createAnalytics =
+        new CreateDomain()
+            .withName(analyticsName)
+            .withDomainType(DomainType.AGGREGATE)
+            .withDescription("Analytics domain");
+    Domain analytics = createEntity(createAnalytics);
+
+    String analyticsV2Name = "anav2" + ns.shortPrefix();
+    CreateDomain createAnalyticsV2 =
+        new CreateDomain()
+            .withName(analyticsV2Name)
+            .withDomainType(DomainType.AGGREGATE)
+            .withDescription("Analytics V2 - unrelated domain with similar prefix");
+    Domain analyticsV2 = createEntity(createAnalyticsV2);
+
+    String childName = "subdomain";
+    CreateDomain createChild =
+        new CreateDomain()
+            .withName(childName)
+            .withDomainType(DomainType.SOURCE_ALIGNED)
+            .withParent(analytics.getFullyQualifiedName())
+            .withDescription("Child of analytics domain");
+    Domain child = createEntity(createChild);
+
+    String analyticsV2OldFqn = analyticsV2.getFullyQualifiedName();
+    String childOldFqn = child.getFullyQualifiedName();
+
+    // Wait for initial indexing
+    Thread.sleep(2000);
+
+    String newAnalyticsName = "insights_" + ns.shortPrefix();
+    analytics.setName(newAnalyticsName);
+    Domain renamedAnalytics = patchEntity(analytics.getId().toString(), analytics);
+
+    assertEquals(newAnalyticsName, renamedAnalytics.getName());
+    assertEquals(newAnalyticsName, renamedAnalytics.getFullyQualifiedName());
+
+    // Verify database entities are correct
+    Domain updatedChild = getEntity(child.getId().toString());
+    String expectedChildFqn = newAnalyticsName + "." + childName;
+    assertEquals(
+        expectedChildFqn,
+        updatedChild.getFullyQualifiedName(),
+        "Child domain FQN should be updated to reflect parent rename");
+    assertNotEquals(childOldFqn, updatedChild.getFullyQualifiedName());
+
+    Domain unchangedV2 = getEntity(analyticsV2.getId().toString());
+    assertEquals(
+        analyticsV2OldFqn,
+        unchangedV2.getFullyQualifiedName(),
+        "Unrelated domain with similar prefix should NOT be updated - this verifies the fix for prefix matching bug");
+    assertEquals(
+        analyticsV2Name, unchangedV2.getName(), "Unrelated domain name should remain unchanged");
+
+    // === SEARCH VERIFICATION ===
+    // Verify renamed domain can be found by new FQN in search
+    verifyDomainInSearch(newAnalyticsName, analytics.getId().toString());
+
+    // Verify child domain can be found by new FQN in search
+    verifyDomainInSearch(expectedChildFqn, child.getId().toString());
+
+    // Verify analytics_v2 can still be found by its ORIGINAL FQN
+    // This proves the bug fix works - without it, this would fail!
+    verifyDomainInSearch(analyticsV2OldFqn, analyticsV2.getId().toString());
+
+    // Verify old FQNs no longer work
+    verifyDomainNotInSearch(analyticsName);
+    verifyDomainNotInSearch(childOldFqn);
+  }
+
+  @Test
+  void test_renameDomainWithTagsAndGlossaryTerms(TestNamespace ns) {
+    String domainName = "data_domain_" + ns.shortPrefix();
+    CreateDomain createDomain =
+        new CreateDomain()
+            .withName(domainName)
+            .withDomainType(DomainType.AGGREGATE)
+            .withDescription("Domain for testing tags and glossary terms on rename");
+    Domain domain = createEntity(createDomain);
+
+    domain.setTags(List.of(piiSensitiveTagLabel(), personalDataTagLabel()));
+    domain = patchEntity(domain.getId().toString(), domain);
+
+    String subdomainName = "customer_data";
+    CreateDomain createSubdomain =
+        new CreateDomain()
+            .withName(subdomainName)
+            .withDomainType(DomainType.SOURCE_ALIGNED)
+            .withParent(domain.getFullyQualifiedName())
+            .withDescription("Subdomain with tags");
+    Domain subdomain = createEntity(createSubdomain);
+
+    subdomain.setTags(List.of(glossaryTermLabel()));
+    subdomain = patchEntity(subdomain.getId().toString(), subdomain);
+
+    String oldDomainFqn = domain.getFullyQualifiedName();
+    String oldSubdomainFqn = subdomain.getFullyQualifiedName();
+
+    Domain domainWithTags = getEntityWithFields(domain.getId().toString(), "tags");
+    assertEquals(2, domainWithTags.getTags().size(), "Domain should have 2 tags before rename");
+
+    Domain subdomainWithTags = getEntityWithFields(subdomain.getId().toString(), "tags");
+    assertEquals(
+        1, subdomainWithTags.getTags().size(), "Subdomain should have 1 tag before rename");
+
+    String newDomainName = "analytics_domain_" + ns.shortPrefix();
+    domain.setName(newDomainName);
+    Domain renamedDomain = patchEntity(domain.getId().toString(), domain);
+
+    assertEquals(newDomainName, renamedDomain.getName());
+    assertEquals(newDomainName, renamedDomain.getFullyQualifiedName());
+
+    Domain fetchedDomainAfterRename = getEntityWithFields(domain.getId().toString(), "tags");
+    assertNotNull(
+        fetchedDomainAfterRename.getTags(), "Domain tags should not be null after rename");
+    assertEquals(
+        2,
+        fetchedDomainAfterRename.getTags().size(),
+        "Domain should still have 2 tags after rename");
+    assertTrue(
+        fetchedDomainAfterRename.getTags().stream()
+            .anyMatch(tag -> tag.getTagFQN().equals(piiSensitiveTagLabel().getTagFQN())),
+        "Domain should still have PII.Sensitive tag after rename");
+    assertTrue(
+        fetchedDomainAfterRename.getTags().stream()
+            .anyMatch(tag -> tag.getTagFQN().equals(personalDataTagLabel().getTagFQN())),
+        "Domain should still have PersonalData.Personal tag after rename");
+
+    Domain fetchedSubdomainAfterRename = getEntityWithFields(subdomain.getId().toString(), "tags");
+    String expectedSubdomainFqn = newDomainName + "." + subdomainName;
+    assertEquals(expectedSubdomainFqn, fetchedSubdomainAfterRename.getFullyQualifiedName());
+    assertNotNull(
+        fetchedSubdomainAfterRename.getTags(), "Subdomain tags should not be null after rename");
+    assertEquals(
+        1,
+        fetchedSubdomainAfterRename.getTags().size(),
+        "Subdomain should still have 1 tag after rename");
+    assertTrue(
+        fetchedSubdomainAfterRename.getTags().stream()
+            .anyMatch(tag -> tag.getTagFQN().equals(glossaryTermLabel().getTagFQN())),
+        "Subdomain should still have glossary term tag after rename");
+  }
+
+  /**
+   * Test that verifies the fix for the prefix matching bug where renaming a
+   * domain
+   * would incorrectly update unrelated domains with similar FQN prefixes.
+   *
+   * Bug scenario:
+   * - Renaming domain "analytics" to "insights"
+   * - Domain "analytics_v2" would incorrectly be matched because
+   * "analytics_v2".startsWith("analytics")
+   * - Result: "analytics_v2" would incorrectly become "insights_v2"
+   *
+   * This test verifies that:
+   * 1. Renaming "analytics" to "insights" does NOT affect "analytics_v2"
+   * 2. Renaming "analytics" to "insights" DOES correctly update child domain
+   * "analytics.child" to "insights.child"
+   * 3. Both database AND search index are correctly updated
+   */
+  @Test
+  void test_renameDomainDoesNotAffectSimilarPrefixDomains(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create parent domain "analytics"
+    String analyticsName = "analytics_" + ns.shortPrefix();
+    CreateDomain createAnalytics =
+        new CreateDomain()
+            .withName(analyticsName)
+            .withDomainType(DomainType.AGGREGATE)
+            .withDescription("Analytics domain for prefix bug test");
+    Domain analytics = createEntity(createAnalytics);
+
+    // Create a sibling domain with similar prefix "analytics_v2"
+    String analyticsV2Name = analyticsName + "v2";
+    CreateDomain createAnalyticsV2 =
+        new CreateDomain()
+            .withName(analyticsV2Name)
+            .withDomainType(DomainType.AGGREGATE)
+            .withDescription("Analytics V2 domain - should NOT be affected by analytics rename");
+    Domain analyticsV2 = createEntity(createAnalyticsV2);
+
+    // Create another sibling with similar prefix "analytics_prod"
+    String analyticsProdName = analyticsName + "pr";
+    CreateDomain createAnalyticsProd =
+        new CreateDomain()
+            .withName(analyticsProdName)
+            .withDomainType(DomainType.AGGREGATE)
+            .withDescription("Analytics Prod domain - should NOT be affected");
+    Domain analyticsProd = createEntity(createAnalyticsProd);
+
+    // Create a child domain under "analytics" - this SHOULD be updated
+    String childName = "marketing";
+    CreateDomain createChild =
+        new CreateDomain()
+            .withName(childName)
+            .withDomainType(DomainType.SOURCE_ALIGNED)
+            .withParent(analytics.getFullyQualifiedName())
+            .withDescription("Child domain under analytics - SHOULD be updated");
+    Domain child = createEntity(createChild);
+
+    String oldAnalyticsFqn = analytics.getFullyQualifiedName();
+    String oldAnalyticsV2Fqn = analyticsV2.getFullyQualifiedName();
+    String oldAnalyticsProdFqn = analyticsProd.getFullyQualifiedName();
+    String oldChildFqn = child.getFullyQualifiedName();
+
+    // Wait for initial indexing
+    Thread.sleep(2000);
+
+    // Rename "analytics" to "insights"
+    String newAnalyticsName = "insights_" + ns.shortPrefix();
+    analytics.setName(newAnalyticsName);
+    Domain renamedAnalytics = patchEntity(analytics.getId().toString(), analytics);
+
+    assertEquals(newAnalyticsName, renamedAnalytics.getName());
+    assertEquals(newAnalyticsName, renamedAnalytics.getFullyQualifiedName());
+
+    // === DATABASE VERIFICATION ===
+    // Verify "analytics_v2" FQN is UNCHANGED (bug fix verification)
+    Domain fetchedAnalyticsV2 = getEntity(analyticsV2.getId().toString());
+    assertEquals(
+        oldAnalyticsV2Fqn,
+        fetchedAnalyticsV2.getFullyQualifiedName(),
+        "analytics_v2 FQN should NOT change when analytics is renamed");
+    assertEquals(
+        analyticsV2Name, fetchedAnalyticsV2.getName(), "analytics_v2 name should NOT change");
+
+    // Verify "analytics_prod" FQN is UNCHANGED (bug fix verification)
+    Domain fetchedAnalyticsProd = getEntity(analyticsProd.getId().toString());
+    assertEquals(
+        oldAnalyticsProdFqn,
+        fetchedAnalyticsProd.getFullyQualifiedName(),
+        "analytics_prod FQN should NOT change when analytics is renamed");
+    assertEquals(
+        analyticsProdName, fetchedAnalyticsProd.getName(), "analytics_prod name should NOT change");
+
+    // Verify child domain FQN IS updated correctly
+    Domain fetchedChild = getEntity(child.getId().toString());
+    String expectedChildFqn = newAnalyticsName + "." + childName;
+    assertEquals(
+        expectedChildFqn,
+        fetchedChild.getFullyQualifiedName(),
+        "Child domain FQN should be updated to insights.marketing");
+    assertEquals(childName, fetchedChild.getName(), "Child domain name should remain unchanged");
+
+    // === SEARCH VERIFICATION ===
+
+    // Verify renamed domain can be found by new FQN
+    verifyDomainInSearch(newAnalyticsName, analytics.getId().toString());
+
+    // Verify analytics_v2 can still be found by its ORIGINAL FQN
+    verifyDomainInSearch(oldAnalyticsV2Fqn, analyticsV2.getId().toString());
+
+    // Verify analytics_prod can still be found by its ORIGINAL FQN
+    verifyDomainInSearch(oldAnalyticsProdFqn, analyticsProd.getId().toString());
+
+    // Verify child domain can be found by new FQN
+    verifyDomainInSearch(expectedChildFqn, child.getId().toString());
+
+    // Verify old FQNs no longer work
+    verifyDomainNotInSearch(oldAnalyticsFqn);
+    verifyDomainNotInSearch(oldChildFqn);
+
+    // Verify we can still access all domains by their correct FQNs
+    Domain verifyAnalytics = getEntityByName(newAnalyticsName);
+    assertEquals(analytics.getId(), verifyAnalytics.getId());
+
+    Domain verifyAnalyticsV2 = getEntityByName(oldAnalyticsV2Fqn);
+    assertEquals(analyticsV2.getId(), verifyAnalyticsV2.getId());
+
+    Domain verifyAnalyticsProd = getEntityByName(oldAnalyticsProdFqn);
+    assertEquals(analyticsProd.getId(), verifyAnalyticsProd.getId());
+
+    Domain verifyChild = getEntityByName(expectedChildFqn);
+    assertEquals(child.getId(), verifyChild.getId());
+
+    // Verify old analytics FQN no longer works
+    assertThrows(Exception.class, () -> getEntityByName(oldAnalyticsFqn));
+
+    // Verify old child FQN no longer works
+    assertThrows(Exception.class, () -> getEntityByName(oldChildFqn));
   }
 }
