@@ -98,6 +98,12 @@
       "type": "boolean",
       "default": false
     },
+    "includeStages": {
+      "title": "Include Stages",
+      "description": "Optional configuration for ingestion of Snowflake stages (internal and external). By default, stages are not ingested.",
+      "type": "boolean",
+      "default": false
+    },
     "clientSessionKeepAlive": {
       "title": "Client Session Keep Alive",
       "description": "Optional configuration for ingestion to keep the client session active in case the ingestion process runs for longer durations.",
