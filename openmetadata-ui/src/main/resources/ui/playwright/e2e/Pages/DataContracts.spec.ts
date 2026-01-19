@@ -120,7 +120,6 @@ const entitySupportsQuality = (entityType: string): boolean => {
 };
 
 test.describe('Data Contracts', () => {
-  test.slow(true)
   const user = new UserClass();
   test.slow(true)
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
@@ -350,7 +349,7 @@ test.describe('Data Contracts', () => {
 
         await page.reload();
 
-        await page.waitForLoadState('networkidle');
+        
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -454,7 +453,7 @@ test.describe('Data Contracts', () => {
 
             await expect(page.getByRole('dialog')).not.toBeVisible();
 
-            await page.waitForLoadState('networkidle');
+            
             await page.waitForSelector('[data-testid="loader"]', {
               state: 'detached',
             });
@@ -699,7 +698,7 @@ test.describe('Data Contracts', () => {
         await redirectToHomePage(page);
         await page.goto(`/table/${entityFQN}`);
 
-        await page.waitForLoadState('networkidle');
+        
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -914,7 +913,7 @@ test.describe('Data Contracts', () => {
         await redirectToHomePage(page);
         await page.goto(`/table/${entityFQN}`);
 
-        await page.waitForLoadState('networkidle');
+        
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -1094,7 +1093,7 @@ test.describe('Data Contracts', () => {
 
     await page.reload();
 
-    await page.waitForLoadState('networkidle');
+    
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -1267,7 +1266,7 @@ test.describe('Data Contracts', () => {
 
     await page.reload();
 
-    await page.waitForLoadState('networkidle');
+    
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -1432,7 +1431,7 @@ test.describe('Data Contracts', () => {
 
     await page.reload();
 
-    await page.waitForLoadState('networkidle');
+    
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -1977,7 +1976,7 @@ test.describe('Data Contracts', () => {
       await page.getByTestId('save-contract-btn').click();
       await saveContractResponse;
 
-      await page.waitForLoadState('networkidle');
+      
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -2079,9 +2078,6 @@ description:
 
           await toastNotification(page, 'imported successfully');
 
-          // Verify description was updated
-          await page.waitForLoadState('networkidle');
-
           // SLA should still be preserved from original import (merge mode preserves fields)
           await expect(page.getByTestId('contract-sla-card')).toBeVisible();
         }
@@ -2168,7 +2164,7 @@ description:
 
           await toastNotification(page, 'imported successfully');
 
-          await page.waitForLoadState('networkidle');
+          
           await page.waitForSelector('[data-testid="loader"]', {
             state: 'detached',
           });
@@ -2396,7 +2392,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
             async () => {
               await redirectToHomePage(page);
               await entity.visitEntityPage(page);
-              await page.waitForLoadState('networkidle');
+              
               await page.waitForSelector('[data-testid="loader"]', {
                 state: 'detached',
               });
@@ -2429,7 +2425,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
                 'Store Procedure': 'Stored Procedure',
               };
               await settingClick(page, GlobalSettingOptions.PERSONA);
-              await page.waitForLoadState('networkidle');
+              
               await page.waitForSelector('[data-testid="loader"]', {
                 state: 'detached',
               });
@@ -2441,7 +2437,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
                 true
               );
               await page.getByRole('tab', { name: 'Customize UI' }).click();
-              await page.waitForLoadState('networkidle');
+              
 
               // Navigate to Table customization
               await page
@@ -2480,7 +2476,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
 
               await redirectToHomePage(page);
               await entity.visitEntityPage(page);
-              await page.waitForLoadState('networkidle');
+              
               await page.waitForSelector('[data-testid="loader"]', {
                 state: 'detached',
               });
