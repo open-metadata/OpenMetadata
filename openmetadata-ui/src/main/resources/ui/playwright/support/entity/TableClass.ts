@@ -13,11 +13,11 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
+import { Table } from '../../../src/generated/entity/data/table';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { fullUuid, uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
-import { Table } from '../../../src/generated/entity/data/table';
 import {
   EntityTypeEndpoint,
   ResponseDataType,
@@ -27,7 +27,7 @@ import {
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
-interface TableColumn {
+export interface TableColumn {
   name: string;
   dataType: string;
   dataLength?: number;

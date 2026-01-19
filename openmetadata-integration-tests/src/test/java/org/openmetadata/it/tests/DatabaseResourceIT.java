@@ -67,9 +67,9 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Execution(ExecutionMode.CONCURRENT)
 public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
 
-  // Enable import/export for databases
   {
     supportsImportExport = true;
+    supportsLifeCycle = true;
   }
 
   // Store last created database for import/export tests
