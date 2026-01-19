@@ -2685,6 +2685,7 @@
     "team-member-management-description": "{{brandName}}에서 사용자와 팀에 대한 접근을 간소화하세요.",
     "team-moved-success": "팀이 성공적으로 이동되었습니다!",
     "team-no-asset": "귀하의 팀은 자산이 없습니다.",
+    "test-case-count-info": "이 파이프라인에 선택된 테스트 케이스 수를 표시합니다. '전체'는 사용 가능한 모든 테스트 케이스가 실행됨을 나타냅니다.",
     "test-case-insight-description": "구성된 테스트 검증을 기반으로 데이터셋 상태의 중앙 집중식 보기에 액세스합니다.",
     "test-case-name-validation": "이름에는 이중 콜론(::), 따옴표(\"), 또는 보다 큰 기호(>)를 포함할 수 없습니다.",
     "test-case-schedule-description": "데이터 품질 테스트는 원하는 빈도로 실행되도록 예약할 수 있습니다. 시간대는 UTC입니다.",

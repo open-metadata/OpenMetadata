@@ -2685,6 +2685,7 @@
     "team-member-management-description": "Stroomlijn toegang voor gebruikers en teams in {{brandName}}.",
     "team-moved-success": "Team succesvol verplaatst!",
     "team-no-asset": "Je team heeft geen assets.",
+    "test-case-count-info": "Toont het aantal testgevallen dat is geselecteerd voor deze pipeline. 'Alle' geeft aan dat alle beschikbare testgevallen worden uitgevoerd.",
     "test-case-insight-description": "Toegang tot een gecentraliseerde weergave van de gezondheid van uw dataset op basis van geconfigureerde testvalidaties.",
     "test-case-name-validation": "Naam mag geen dubbele dubbelpunten (::), aanhalingstekens (\") of groter-dan symbolen (>) bevatten.",
     "test-case-schedule-description": "De datakwaliteitstests kunnen worden gepland om op de gewenste frequentie te draaien. De tijdzone is UTC.",
