@@ -271,6 +271,10 @@ test.describe('Impact Analysis', () => {
     page,
   }) => {
     await page.getByRole('button', { name: 'Filters' }).click();
+
+    await page.getByRole('button', { name: 'Node depth' }).click();
+    await page.getByRole('menuitem', { name: '1' }).click();
+
     await page.getByTestId('search-dropdown-Owners').click();
 
     await expect(
@@ -329,6 +333,10 @@ test.describe('Impact Analysis', () => {
 
   test('verify tier for Asset level impact analysis', async ({ page }) => {
     await page.getByRole('button', { name: 'Filters' }).click();
+
+    await page.getByRole('button', { name: 'Node depth' }).click();
+    await page.getByRole('menuitem', { name: '1' }).click();
+
     await page.getByTestId('search-dropdown-Tier').click();
 
     await expect(
