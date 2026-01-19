@@ -85,6 +85,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   onNavigate,
   tableConstraints = [],
   entityType,
+  onColumnsUpdate,
 }: ColumnDetailPanelProps<T>) => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -196,6 +197,10 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
         if (latestColumn) {
           setActiveColumn((prev) => ({ ...prev, ...latestColumn } as T));
+        }
+
+        if (onColumnsUpdate) {
+          onColumnsUpdate(response.data);
         }
       } catch (error) {
         // Fallback to existing data if fetch fails
@@ -352,6 +357,10 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           'label.tag-plural'
         );
 
+        if (response) {
+          setActiveColumn((prev) => ({ ...prev, tags: response.tags } as T));
+        }
+
         return response?.tags;
       } catch (error) {
         showErrorToast(
@@ -385,6 +394,10 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           { tags: allTags },
           'label.glossary-term-plural'
         );
+
+        if (response) {
+          setActiveColumn((prev) => ({ ...prev, tags: response.tags } as T));
+        }
 
         return response?.tags;
       } catch (error) {

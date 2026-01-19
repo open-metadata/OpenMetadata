@@ -317,6 +317,25 @@ const SchemaTable = () => {
       return;
     }
 
+    const updatedColumns = table.columns;
+    setTableColumns((prev) => {
+      // Create a deep clone to avoid mutation of the previous state during updates
+      let newColumns = [...prev];
+      updatedColumns?.forEach((updatedCol) => {
+        // Recursively remove empty children from the update object
+        const [cleanUpdate] = pruneEmptyChildren([updatedCol]);
+
+        // Use the utility to recursively find and update the column in the nested structure
+        newColumns = updateColumnInNestedStructure(
+          newColumns,
+          updatedCol.fullyQualifiedName ?? '',
+          cleanUpdate as Column
+        );
+      });
+
+      return newColumns;
+    });
+
     setPrevTableColumns(table.columns);
   }, [table?.columns, hasInitialLoad]);
 
@@ -484,7 +503,6 @@ const SchemaTable = () => {
       </>
     );
   };
-
   const expandableConfig: ExpandableConfig<Column> = useMemo(
     () => ({
       ...getTableExpandableConfig<Column>(false, 'text-link-color'),

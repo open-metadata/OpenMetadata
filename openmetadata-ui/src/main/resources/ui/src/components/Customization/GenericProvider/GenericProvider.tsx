@@ -76,6 +76,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   customizedPage,
   muiTags = false,
   columnFqn,
+  onColumnsUpdate,
 }: GenericProviderProps<T>) => {
   const GenericContext = createGenericContext<T>();
   const [threadLink, setThreadLink] = useState<string>('');
@@ -450,6 +451,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
           tableFqn={data.fullyQualifiedName}
           onClose={closeColumnDetailPanel}
           onColumnFieldUpdate={handleColumnFieldUpdate}
+          onColumnsUpdate={onColumnsUpdate}
           onNavigate={openColumnDetailPanel}
         />
       )}

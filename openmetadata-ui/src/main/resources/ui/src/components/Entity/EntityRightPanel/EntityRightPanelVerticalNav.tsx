@@ -41,7 +41,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
     isColumnDetailPanel = false,
   }) => {
     const { t } = useTranslation();
-console.log(entityType)
+
     const getTabItems = () => {
       const items = [
         {

@@ -490,6 +490,15 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             ).toBeVisible();
 
             await closeColumnDetailPanel(page);
+
+            // Verify tag is visible in the main table row
+            await expect(
+              page
+                .locator(
+                  `[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`
+                )
+                .getByTestId('tag-PersonalData.SpecialCategory')
+            ).toBeVisible();
           }
         );
       });
@@ -601,6 +610,19 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             ).toBeVisible();
 
             await closeColumnDetailPanel(page);
+
+            // Verify both tag and glossary term are visible in the main table row
+            const rowLocator = page.locator(
+              `[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`
+            );
+            await expect(
+              rowLocator.getByTestId('tag-PersonalData.SpecialCategory')
+            ).toBeVisible();
+            await expect(
+              rowLocator.getByTestId(
+                `tag-${EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName}`
+              )
+            ).toBeVisible();
           }
         );
       });

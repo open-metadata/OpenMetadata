@@ -48,7 +48,7 @@ import {
   TabSpecificField,
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
-import { Table, TableType } from '../../generated/entity/data/table';
+import { Column, Table, TableType } from '../../generated/entity/data/table';
 import {
   Suggestion,
   SuggestionType,
@@ -68,6 +68,7 @@ import { getDataQualityLineage } from '../../rest/lineageAPI';
 import { getQueriesList } from '../../rest/queryAPI';
 import {
   addFollower,
+  getTableColumnsByFQN,
   getTableDetailsByFQN,
   patchTableDetails,
   removeFollower,
@@ -124,7 +125,7 @@ const TableDetailsPageV1: React.FC = () => {
     DEFAULT_ENTITY_PERMISSION
   );
   const [dqFailureCount, setDqFailureCount] = useState(0);
-  const { customizedPage, isLoading } = useCustomPages(PageType.Table);
+  const { customizedPage } = useCustomPages(PageType.Table);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const {
@@ -206,8 +207,32 @@ const TableDetailsPageV1: React.FC = () => {
           fields += `,${TabSpecificField.TESTSUITE}`;
         }
 
-        const details = await getTableDetailsByFQN(tableFqn, { fields });
-        setTableDetails(details);
+        const [details, columnsResponse] = await Promise.all([
+          getTableDetailsByFQN(tableFqn, { fields }),
+          getTableColumnsByFQN(tableFqn, {
+            fields: 'tags,customMetrics,extension',
+            limit: 50,
+          }).catch(() => null), // Fail silently for column fetch
+        ]);
+
+        const mergedDetails = {
+          ...details,
+          columns: columnsResponse?.data || details.columns,
+          updatedAt: Date.now(), // Treat this verified fetch as fresh
+        };
+
+        setTableDetails((current) => {
+          // Prevent stale server data from overwriting newer local state (optimistic updates)
+          if (
+            current?.updatedAt &&
+            mergedDetails.updatedAt &&
+            mergedDetails.updatedAt < current.updatedAt
+          ) {
+            return current;
+          }
+
+          return mergedDetails;
+        });
         addToRecentViewed({
           displayName: getEntityName(details),
           entityType: EntityType.TABLE,
@@ -600,6 +625,38 @@ const TableDetailsPageV1: React.FC = () => {
     setTableDetails(updatedTable);
   }, []);
 
+  const handleColumnsUpdate = useCallback((newColumns: Column[]) => {
+    if (isEmpty(newColumns)) {
+      return;
+    }
+
+    setTableDetails((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const newColumnsMap = new Map(
+        newColumns.map((c) => [c.fullyQualifiedName, c])
+      );
+      const updatedColumns = (current.columns || []).map((col) => {
+        if (
+          col.fullyQualifiedName &&
+          newColumnsMap.has(col.fullyQualifiedName)
+        ) {
+          return newColumnsMap.get(col.fullyQualifiedName) as Column;
+        }
+
+        return col;
+      });
+
+      return {
+        ...current,
+        columns: updatedColumns,
+        updatedAt: Date.now(), // Update timestamp to prevent stale overrides
+      };
+    });
+  }, []);
+
   const onTierUpdate = useCallback(
     async (newTier?: Tag) => {
       if (tableDetails) {
@@ -825,7 +882,7 @@ const TableDetailsPageV1: React.FC = () => {
     setIsTabExpanded((prev) => !prev);
   };
 
-  if (loading || isLoading) {
+  if (loading) {
     return <Loader />;
   }
 
@@ -842,18 +899,20 @@ const TableDetailsPageV1: React.FC = () => {
   }
 
   if (!tableDetails) {
-    return <ErrorPlaceHolder className="m-0" />;
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
 
   return (
     <PageLayoutV1 pageTitle={entityName} title="Table details">
       <GenericProvider<Table>
+        columnFqn={columnFqn}
         customizedPage={customizedPage}
         data={tableDetails}
         isTabExpanded={isTabExpanded}
         isVersionView={false}
         permissions={tablePermissions}
         type={EntityType.TABLE}
+        onColumnsUpdate={handleColumnsUpdate}
         onEntitySync={handleTableSync}
         onUpdate={onTableUpdate}>
         <Row gutter={[0, 12]}>
