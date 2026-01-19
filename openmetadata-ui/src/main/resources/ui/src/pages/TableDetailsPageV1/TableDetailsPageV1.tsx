@@ -910,7 +910,7 @@ const TableDetailsPageV1: React.FC = () => {
   }
 
   if (!tableDetails) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return <ErrorPlaceHolder className="m-0" />;
   }
 
   return (

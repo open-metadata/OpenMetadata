@@ -815,7 +815,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       open={isOpen}
       placement="right"
       title={columnTitle}
-      width={576}
+      width="40%"
       onClose={onClose}>
       <div className="column-detail-panel-container">
         <div className="d-flex gap-2">
