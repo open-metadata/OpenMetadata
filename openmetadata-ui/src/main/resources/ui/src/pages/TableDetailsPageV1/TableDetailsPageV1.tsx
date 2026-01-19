@@ -210,15 +210,26 @@ const TableDetailsPageV1: React.FC = () => {
         const [details, columnsResponse] = await Promise.all([
           getTableDetailsByFQN(tableFqn, { fields }),
           getTableColumnsByFQN(tableFqn, {
-            fields: 'tags,customMetrics,extension',
-            limit: 50,
-          }).catch(() => null), // Fail silently for column fetch
+            fields: 'tags,customMetrics,extension', 
+          }), 
         ]);
+
+        let finalColumns = details.columns || [];
+        if (columnsResponse?.data && columnsResponse.data.length > 0) {
+          // Merge fresh columns from /columns API into the full list from /tables API
+          // This ensures we keep the correct total count while having fresh data for visible columns
+          columnsResponse.data.forEach((freshCol) => {
+            finalColumns = updateColumnInNestedStructure(
+              finalColumns,
+              freshCol.fullyQualifiedName ?? '',
+              freshCol
+            );
+          });
+        }
 
         const mergedDetails = {
           ...details,
-          columns: columnsResponse?.data || details.columns,
-          updatedAt: Date.now(), // Treat this verified fetch as fresh
+          columns: finalColumns,
         };
 
         setTableDetails((current) => {
