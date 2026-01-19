@@ -120,6 +120,7 @@ public class OAuthTokenRepository {
     token.setToken(decryptedToken);
     token.setExpiresAt(record.expiresAt());
     token.setClientId(record.clientId());
+    token.setUserName(record.userName());
     token.setScopes(record.scopes());
 
     return token;
@@ -145,9 +146,10 @@ public class OAuthTokenRepository {
 
   /**
    * Delete all expired tokens.
+   * Note: Token expiry times are stored in milliseconds (System.currentTimeMillis())
    */
   public void deleteExpiredTokens() {
-    long currentTime = java.time.Instant.now().getEpochSecond();
+    long currentTime = System.currentTimeMillis();
     accessTokenDAO.deleteExpired(currentTime);
     refreshTokenDAO.deleteExpired(currentTime);
     LOG.info("Deleted expired access and refresh tokens");

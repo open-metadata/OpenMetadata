@@ -6,7 +6,6 @@ import static org.openmetadata.service.security.SecurityUtil.findUserNameFromCla
 
 import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.JWTParser;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,9 +18,11 @@ import java.util.TreeMap;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
 import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository;
+import org.openmetadata.mcp.server.auth.validators.IdTokenValidator;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.pac4j.oidc.credentials.OidcCredentials;
 
 /**
@@ -81,6 +82,7 @@ public class SSOCallbackServlet extends HttpServlet {
   private final Map<String, String> claimsMapping;
   private final String[] claimsOrder;
   private final String principalDomain;
+  private final IdTokenValidator idTokenValidator;
 
   public SSOCallbackServlet(
       UserSSOOAuthProvider userSSOProvider,
@@ -94,7 +96,30 @@ public class SSOCallbackServlet extends HttpServlet {
     this.claimsOrder = new String[] {"email", "preferred_username", "sub"};
     this.principalDomain = "";
 
-    LOG.info("Initialized SSOCallbackServlet for MCP OAuth with SSO provider: {}", ssoServiceType);
+    // Initialize ID token validator with JWKS endpoints from authentication configuration
+    var authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
+    String expectedIssuer;
+    try {
+      expectedIssuer =
+          ssoHandler.getClient().getConfiguration().getProviderMetadata().getIssuer().getValue();
+    } catch (Exception e) {
+      LOG.warn(
+          "Could not extract issuer from OIDC provider metadata, will use default: {}",
+          e.getMessage());
+      expectedIssuer = authConfig.getAuthority();
+    }
+
+    this.idTokenValidator =
+        new IdTokenValidator(
+            authConfig.getPublicKeyUrls(),
+            expectedIssuer,
+            null // Audience (client ID) validation is optional - some providers don't set it
+            );
+
+    LOG.info(
+        "Initialized SSOCallbackServlet for MCP OAuth with SSO provider: {}, expected issuer: {}",
+        ssoServiceType,
+        expectedIssuer);
   }
 
   @Override
@@ -259,46 +284,23 @@ public class SSOCallbackServlet extends HttpServlet {
           "Pending auth request not found or expired: " + authRequestId);
     }
 
-    // Parse and validate the ID token
-    // TODO: Add full signature validation using SSO provider's public keys (JWKS endpoint)
-    // Currently this is a SECURITY VULNERABILITY - ID tokens from query params are not validated
-    LOG.warn(
-        "SECURITY WARNING: Direct ID token flow does not validate JWT signature. "
-            + "This should be fixed by using pac4j's ID token validator or implementing JWKS validation.");
-
-    JWT idToken;
+    // Validate ID token signature using JWKS public keys (SECURITY FIX)
     JWTClaimsSet claimsSet;
     try {
-      idToken = JWTParser.parse(idTokenString);
-      claimsSet = idToken.getJWTClaimsSet();
-
-      if (claimsSet == null) {
-        LOG.error("ID token has null claims set");
-        throw new IllegalStateException(
-            "SSO provider returned invalid ID token (no claims). Please restart authentication.");
-      }
-
-      // Validate token expiration
-      java.util.Date expirationTime = claimsSet.getExpirationTime();
-      if (expirationTime != null && expirationTime.before(new java.util.Date())) {
-        LOG.error("ID token has expired: {}", expirationTime);
-        throw new IllegalStateException("SSO ID token has expired. Please restart authentication.");
-      }
-
-      // Validate issuer is present (actual issuer validation requires knowing expected issuer)
-      String issuer = claimsSet.getIssuer();
-      if (issuer == null || issuer.isEmpty()) {
-        LOG.error("ID token missing issuer claim");
-        throw new IllegalStateException(
-            "SSO provider returned invalid ID token (no issuer). Please restart authentication.");
-      }
-
-      LOG.debug("ID token basic validation passed - issuer: {}, exp: {}", issuer, expirationTime);
-
-    } catch (java.text.ParseException e) {
-      LOG.error("Failed to parse ID token", e);
+      claimsSet = idTokenValidator.validateAndDecode(idTokenString);
+      LOG.info(
+          "ID token signature validated successfully for auth request: {}. Issuer: {}, Subject: {}",
+          authRequestId,
+          claimsSet.getIssuer(),
+          claimsSet.getSubject());
+    } catch (IdTokenValidator.IdTokenValidationException e) {
+      LOG.error(
+          "SECURITY ALERT: ID token validation failed for auth request: {}. Reason: {}. IP: {}",
+          authRequestId,
+          e.getMessage(),
+          request.getRemoteAddr());
       throw new IllegalStateException(
-          "Invalid ID token received from SSO provider. Please restart authentication.", e);
+          "ID token validation failed: " + e.getMessage() + ". Please restart authentication.", e);
     }
 
     Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);

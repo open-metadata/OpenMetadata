@@ -11,6 +11,8 @@ public class RefreshToken {
 
   private String clientId;
 
+  private String userName;
+
   private List<String> scopes;
 
   private Long expiresAt;
@@ -20,6 +22,15 @@ public class RefreshToken {
   public RefreshToken(String token, String clientId, List<String> scopes, Long expiresAt) {
     this.token = token;
     this.clientId = clientId;
+    this.scopes = scopes;
+    this.expiresAt = expiresAt;
+  }
+
+  public RefreshToken(
+      String token, String clientId, String userName, List<String> scopes, Long expiresAt) {
+    this.token = token;
+    this.clientId = clientId;
+    this.userName = userName;
     this.scopes = scopes;
     this.expiresAt = expiresAt;
   }
@@ -38,6 +49,14 @@ public class RefreshToken {
 
   public void setClientId(String clientId) {
     this.clientId = clientId;
+  }
+
+  public String getUserName() {
+    return userName;
+  }
+
+  public void setUserName(String userName) {
+    this.userName = userName;
   }
 
   public List<String> getScopes() {

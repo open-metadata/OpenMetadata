@@ -89,6 +89,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
   private static final int AUTH_CODE_EXPIRY_SECONDS = 600;
   private static final long JWT_EXPIRY_SECONDS = 3600L;
+  private static final long REFRESH_TOKEN_EXPIRY_DAYS = 30L;
+  private static final long REFRESH_TOKEN_EXPIRY_SECONDS = REFRESH_TOKEN_EXPIRY_DAYS * 24 * 60 * 60;
 
   private final AuthenticationCodeFlowHandler ssoHandler;
   private final JWTTokenGenerator jwtGenerator;
@@ -228,6 +230,22 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
             client.getClientId());
       }
 
+      // Validate redirect URI against registered URIs (OAuth 2.0 security requirement)
+      URI validatedRedirectUri;
+      try {
+        validatedRedirectUri = client.validateRedirectUri(params.getRedirectUri());
+      } catch (Exception e) {
+        LOG.error(
+            "Redirect URI validation failed for client {}: {}",
+            client.getClientId(),
+            e.getMessage());
+        throw new AuthorizeException(
+            "invalid_request",
+            "Redirect URI '"
+                + params.getRedirectUri()
+                + "' is not registered for this client. Register this URI before using it.");
+      }
+
       // Store PKCE params in database (survives cross-domain redirect cookie loss)
       List<String> scopes =
           params.getScopes() != null ? params.getScopes() : List.of("openid", "profile", "email");
@@ -236,7 +254,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
               client.getClientId(),
               codeChallenge,
               "S256",
-              params.getRedirectUri().toString(),
+              validatedRedirectUri.toString(),
               params.getState(),
               scopes,
               null,
@@ -652,13 +670,37 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
           "Pending auth request not found or expired: " + authRequestId);
     }
 
+    // Load client to validate redirect URI (security: prevent open redirect)
+    OAuthClientInformation client = clientRepository.findByClientId(pendingRequest.clientId());
+    if (client == null) {
+      throw new IllegalStateException(
+          "Client not found for pending auth request: " + pendingRequest.clientId());
+    }
+
+    // Validate redirect URI against registered URIs to prevent open redirect attacks
+    URI requestedRedirectUri = URI.create(pendingRequest.redirectUri());
+    try {
+      client.validateRedirectUri(requestedRedirectUri);
+    } catch (Exception e) {
+      LOG.error(
+          "SECURITY ALERT: Redirect URI validation failed in SSO callback for client {}: {}. "
+              + "This may indicate an attack or configuration error.",
+          client.getClientId(),
+          e.getMessage());
+      throw new IllegalStateException(
+          "Redirect URI validation failed: "
+              + e.getMessage()
+              + ". The redirect URI may have been tampered with.",
+          e);
+    }
+
     // Generate MCP authorization code
     String authCode =
         generateAuthorizationCode(
             userName,
             pendingRequest.clientId(),
             pendingRequest.codeChallenge(),
-            URI.create(pendingRequest.redirectUri()),
+            requestedRedirectUri,
             pendingRequest.scopes());
 
     LOG.info("Generated MCP authorization code for user: {} via SSO", userName);
@@ -676,7 +718,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     // Cleanup pending request
     pendingAuthRepository.delete(authRequestId);
 
-    LOG.info("Redirecting to client with authorization code");
+    LOG.info("Redirecting to client with authorization code: {}", requestedRedirectUri);
     response.sendRedirect(redirectUrl);
   }
 
@@ -731,12 +773,32 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
               false,
               ServiceTokenType.OM_USER);
 
+      // Generate refresh token for long-lived sessions (OAuth 2.0 RFC 6749)
+      String refreshTokenValue = UUID.randomUUID().toString();
+      long refreshExpiresAt = System.currentTimeMillis() + (REFRESH_TOKEN_EXPIRY_SECONDS * 1000);
+
+      RefreshToken refreshToken =
+          new RefreshToken(
+              refreshTokenValue, client.getClientId(), codeRecord.scopes(), refreshExpiresAt);
+
+      // Store refresh token in database (hashed and encrypted)
+      tokenRepository.storeRefreshToken(
+          refreshToken, client.getClientId(), userName, codeRecord.scopes());
+
+      LOG.info(
+          "Generated refresh token for user: {} (expires in {} days)",
+          userName,
+          REFRESH_TOKEN_EXPIRY_DAYS);
+
+      // Prepare OAuth token response with both access token and refresh token
       OAuthToken token = new OAuthToken();
       token.setAccessToken(jwtAuth.getJWTToken());
       token.setTokenType("Bearer");
       token.setExpiresIn((int) JWT_EXPIRY_SECONDS);
+      token.setRefreshToken(refreshTokenValue); // Add refresh token to response
+      token.setScope(String.join(" ", codeRecord.scopes())); // Include granted scopes
 
-      LOG.info("Successfully issued JWT token for user: {}", userName);
+      LOG.info("Successfully issued JWT token and refresh token for user: {}", userName);
       return CompletableFuture.completedFuture(token);
 
     } catch (TokenException e) {
@@ -782,10 +844,115 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   public CompletableFuture<OAuthToken> exchangeRefreshToken(
       OAuthClientInformation client, RefreshToken refreshToken, List<String> scopes)
       throws TokenException {
-    LOG.info("Exchange refresh token requested");
-    throw new TokenException(
-        "unsupported_grant_type",
-        "Refresh token flow not yet implemented. See IMPLEMENTATION_TODO.md section #13.");
+    try {
+      LOG.info("Exchanging refresh token for new access token (client: {})", client.getClientId());
+
+      String refreshTokenValue = refreshToken.getToken();
+      if (refreshTokenValue == null || refreshTokenValue.isEmpty()) {
+        throw new TokenException("invalid_request", "Missing refresh token");
+      }
+
+      // Load refresh token from database
+      RefreshToken tokenRecord = tokenRepository.findRefreshToken(refreshTokenValue);
+      if (tokenRecord == null) {
+        LOG.warn("Refresh token not found - may have been revoked or expired");
+        throw new TokenException("invalid_grant", "Refresh token is invalid, revoked, or expired");
+      }
+
+      // Validate token is not expired
+      if (System.currentTimeMillis() > tokenRecord.getExpiresAt()) {
+        LOG.warn("Refresh token expired for user: {}", tokenRecord.getUserName());
+        throw new TokenException(
+            "invalid_grant",
+            "Refresh token has expired. Please re-authenticate to obtain a new token.");
+      }
+
+      // Validate client ID matches the original authorization
+      if (!client.getClientId().equals(tokenRecord.getClientId())) {
+        LOG.error(
+            "Client ID mismatch: token issued to {}, requested by {}",
+            tokenRecord.getClientId(),
+            client.getClientId());
+        throw new TokenException(
+            "invalid_grant",
+            "Refresh token was issued to a different client. Cross-client token use is not allowed.");
+      }
+
+      // Validate scope downgrading (cannot request more scopes than originally granted)
+      List<String> originalScopes = tokenRecord.getScopes();
+      List<String> requestedScopes =
+          (scopes != null && !scopes.isEmpty()) ? scopes : originalScopes;
+
+      if (!originalScopes.containsAll(requestedScopes)) {
+        LOG.warn(
+            "Scope expansion attempted: original={}, requested={}",
+            originalScopes,
+            requestedScopes);
+        throw new TokenException(
+            "invalid_scope",
+            "Requested scopes exceed originally granted scopes. Scope expansion is not allowed.");
+      }
+
+      String userName = tokenRecord.getUserName();
+      LOG.info("Refresh token validated successfully for user: {} (rotating token)", userName);
+
+      // Atomic token rotation: Revoke old token and generate new one
+      // This implements the refresh token rotation pattern (RFC 6749 Section 10.4)
+      tokenRepository.revokeRefreshToken(refreshTokenValue);
+      LOG.debug("Old refresh token revoked for user: {}", userName);
+
+      // Generate new refresh token
+      String newRefreshTokenValue = UUID.randomUUID().toString();
+      long newRefreshExpiresAt = System.currentTimeMillis() + (REFRESH_TOKEN_EXPIRY_SECONDS * 1000);
+
+      RefreshToken newRefreshToken =
+          new RefreshToken(
+              newRefreshTokenValue, client.getClientId(), requestedScopes, newRefreshExpiresAt);
+
+      // Store new refresh token
+      tokenRepository.storeRefreshToken(
+          newRefreshToken, client.getClientId(), userName, requestedScopes);
+
+      LOG.info(
+          "New refresh token generated for user: {} (expires in {} days)",
+          userName,
+          REFRESH_TOKEN_EXPIRY_DAYS);
+
+      // Generate new JWT access token (same logic as authorization code flow)
+      User user = Entity.getEntityByName(Entity.USER, userName, "roles,teams", Include.NON_DELETED);
+      if (user == null) {
+        LOG.error("User not found during refresh token exchange: {}", userName);
+        throw new TokenException(
+            "invalid_grant", "User account no longer exists. Please re-authenticate.");
+      }
+
+      JWTAuthMechanism jwtAuth =
+          jwtGenerator.generateJWTToken(
+              userName,
+              getRoleListFromUser(user),
+              !nullOrEmpty(user.getIsAdmin()) && user.getIsAdmin(),
+              user.getEmail(),
+              JWT_EXPIRY_SECONDS,
+              false,
+              ServiceTokenType.OM_USER);
+
+      // Prepare OAuth token response with both new access token and new refresh token
+      OAuthToken token = new OAuthToken();
+      token.setAccessToken(jwtAuth.getJWTToken());
+      token.setTokenType("Bearer");
+      token.setExpiresIn((int) JWT_EXPIRY_SECONDS);
+      token.setRefreshToken(newRefreshTokenValue); // Return NEW refresh token (rotation)
+      token.setScope(String.join(" ", requestedScopes));
+
+      LOG.info("Successfully refreshed tokens for user: {} (JWT + new refresh token)", userName);
+      return CompletableFuture.completedFuture(token);
+
+    } catch (TokenException e) {
+      throw e;
+    } catch (Exception e) {
+      LOG.error("Refresh token exchange failed unexpectedly", e);
+      throw new TokenException("server_error", "Token refresh failed: " + e.getMessage());
+    }
   }
 
   @Override
@@ -824,7 +991,9 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
   private boolean verifyPKCE(String codeVerifier, String codeChallenge) {
     try {
-      // Allow test values for local development/testing
+      // TODO(PRODUCTION): REMOVE THIS ENTIRE BLOCK BEFORE PRODUCTION DEPLOYMENT
+      // This is a development-only bypass for testing purposes
+      // SECURITY RISK: This allows bypassing PKCE validation entirely
       if ("TEST".equals(codeVerifier) && "TEST".equals(codeChallenge)) {
         LOG.warn(
             "SECURITY WARNING: Using test PKCE verifier/challenge 'TEST'. "
