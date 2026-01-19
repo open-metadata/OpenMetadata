@@ -2330,6 +2330,7 @@
     "ingestion-bot-cant-be-deleted": "Vous ne pouvez pas supprimer l'agent numérique d'ingestion.",
     "ingestion-pipeline-name-message": "Nom qui identifie de manière unique cette instance de pipeline.",
     "ingestion-pipeline-name-successfully-deployed-entity": "C'est bon! La pipeline d'ingestion a été déployée avec succès. {{entity}} s'exécutera à intervalles réguliers selon le calendrier.",
+    "inherited-contract-cannot-be-deleted": "Inherited contracts cannot be deleted. Remove the entity from the Data Product or create an entity-specific contract.",
     "input-placeholder": "Utilisez @mention pour taguer et commenter...",
     "instance-identifier": "Un nom qui identifie de manière unique cette instance de configuration.",
     "integration-description": "Configureez les applications et bots pour augmenter votre productivité.",

@@ -2330,6 +2330,7 @@
     "ingestion-bot-cant-be-deleted": "Non podes eliminar o bot de inxestión.",
     "ingestion-pipeline-name-message": "Nome que identifica de forma única esta instancia do pipeline.",
     "ingestion-pipeline-name-successfully-deployed-entity": "Todo listo! O <Nome do Pipeline de Inxestión> foi despregado correctamente. O {{entity}} executarse nun intervalo regular segundo o horario.",
+    "inherited-contract-cannot-be-deleted": "Inherited contracts cannot be deleted. Remove the entity from the Data Product or create an entity-specific contract.",
     "input-placeholder": "Usa @mention para etiquetar e comentar...",
     "instance-identifier": "Nome que identifica de forma única esta instancia de configuración.",
     "integration-description": "Configura aplicacións e bots para amplificar a produtividade.",

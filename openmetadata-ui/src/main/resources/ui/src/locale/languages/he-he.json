@@ -2330,6 +2330,7 @@
     "ingestion-bot-cant-be-deleted": "אין באפשרותך למחוק את תהליך הקליטה.",
     "ingestion-pipeline-name-message": "שם המזהה שמקצה ליחידת הצנרת הזו זיהוי ייחודי.",
     "ingestion-pipeline-name-successfully-deployed-entity": "כל הכבוד! <Ingestion Pipeline Name> נוצרה בהצלחה. ה{{entity}} ירוץ בפרק זמן קבוע כפי שנקבע בזמנים.",
+    "inherited-contract-cannot-be-deleted": "Inherited contracts cannot be deleted. Remove the entity from the Data Product or create an entity-specific contract.",
     "input-placeholder": "השתמש ב-@mention לתיוג והוספת תגובה...",
     "instance-identifier": "שם המזהה שמקצה למקרה הגדרה זו זיהוי ייחודי.",
     "integration-description": "הגדר יישומים ובוטים להגברת הפרודוקטיביות.",

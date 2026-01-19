@@ -2330,6 +2330,7 @@
     "ingestion-bot-cant-be-deleted": "您無法刪除擷取機器人。",
     "ingestion-pipeline-name-message": "唯一識別此管線執行個體的名稱。",
     "ingestion-pipeline-name-successfully-deployed-entity": "您已全部設定完成！<擷取管線名稱> 已成功部署。{{entity}} 將根據排程定期執行。",
+    "inherited-contract-cannot-be-deleted": "Inherited contracts cannot be deleted. Remove the entity from the Data Product or create an entity-specific contract.",
     "input-placeholder": "使用 @mention 標記並留言...",
     "instance-identifier": "唯一識別此組態執行個體的名稱。",
     "integration-description": "設定應用程式和機器人以提高生產力。",

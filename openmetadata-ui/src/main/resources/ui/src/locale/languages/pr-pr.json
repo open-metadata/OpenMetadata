@@ -2330,6 +2330,7 @@
     "ingestion-bot-cant-be-deleted": "نمی‌توانید بات Ingestion را حذف کنید.",
     "ingestion-pipeline-name-message": "نامی که این لوله داده را به‌طور یکتا شناسایی می‌کند.",
     "ingestion-pipeline-name-successfully-deployed-entity": "همه چیز آماده است! <Ingestion Pipeline Name> با موفقیت پیاده‌سازی شد. {{entity}} به‌طور منظم طبق برنامه اجرا خواهد شد.",
+    "inherited-contract-cannot-be-deleted": "Inherited contracts cannot be deleted. Remove the entity from the Data Product or create an entity-specific contract.",
     "input-placeholder": "Usa @mention para etiquetar y comentar...",
     "instance-identifier": "نامی که به صورت یکتا این پیکربندی را شناسایی می‌کند.",
     "integration-description": "برنامه‌ها و بات‌ها را پیکربندی کنید تا بهره‌وری را افزایش دهید.",

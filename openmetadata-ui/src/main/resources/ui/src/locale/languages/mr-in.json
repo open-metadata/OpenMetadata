@@ -2330,6 +2330,7 @@
     "ingestion-bot-cant-be-deleted": "तुम्ही अंतर्ग्रहण बॉट हटवू शकत नाही.",
     "ingestion-pipeline-name-message": "हे पाइपलाइन उदाहरण अद्वितीयपणे ओळखणारे नाव.",
     "ingestion-pipeline-name-successfully-deployed-entity": "तुम्ही सर्व सेट आहात! <Ingestion Pipeline Name> यशस्वीरित्या तैनात केले गेले आहे. {{entity}} वेळापत्रकानुसार नियमित अंतराने चालेल.",
+    "inherited-contract-cannot-be-deleted": "Inherited contracts cannot be deleted. Remove the entity from the Data Product or create an entity-specific contract.",
     "input-placeholder": "@mention वापरून टॅग करा आणि टिप्पणी करा...",
     "instance-identifier": "हे कॉन्फिगरेशन उदाहरण अद्वितीयपणे ओळखणारे नाव.",
     "integration-description": "उत्पादकता वाढवण्यासाठी अनुप्रयोग आणि बॉट्स कॉन्फिगर करा.",

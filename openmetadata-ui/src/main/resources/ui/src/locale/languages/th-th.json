@@ -2330,6 +2330,7 @@
     "ingestion-bot-cant-be-deleted": "คุณไม่สามารถลบบอทการนำเข้าได้",
     "ingestion-pipeline-name-message": "ชื่อที่ระบุรายละเอียดท่อให้นี้อย่างไม่ซ้ำ",
     "ingestion-pipeline-name-successfully-deployed-entity": "คุณพร้อมแล้ว! <ชื่อท่อการนำเข้า> ถูกเรียกใช้งานสำเร็จแล้ว {{entity}} จะทำงานตามช่วงเวลาที่กำหนด",
+    "inherited-contract-cannot-be-deleted": "Inherited contracts cannot be deleted. Remove the entity from the Data Product or create an entity-specific contract.",
     "input-placeholder": "ใช้ @mention เพื่อแท็กและแสดงความคิดเห็น...",
     "instance-identifier": "ชื่อที่ระบุรายละเอียดการกำหนดค่านี้อย่างไม่ซ้ำ",
     "integration-description": "กำหนดค่าแอปพลิเคชันและบอทเพื่อเพิ่มผลผลิต",

@@ -2330,6 +2330,7 @@
     "ingestion-bot-cant-be-deleted": "Вы не можете удалить бота приема.",
     "ingestion-pipeline-name-message": "Имя, которое однозначно идентифицирует этот экземпляр конвейера.",
     "ingestion-pipeline-name-successfully-deployed-entity": "У вас все настроено! <Ingestion Pipeline Name> развернут. Объект «{{entity}}» будет запускаться по расписанию.",
+    "inherited-contract-cannot-be-deleted": "Inherited contracts cannot be deleted. Remove the entity from the Data Product or create an entity-specific contract.",
     "input-placeholder": "Используйте @ для упоминания пользователя",
     "instance-identifier": "Имя, которое однозначно идентифицирует этот экземпляр конфигурации.",
     "integration-description": "Настройте приложения и ботов для повышения производительности.",

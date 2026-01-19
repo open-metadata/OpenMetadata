@@ -2330,6 +2330,7 @@
     "ingestion-bot-cant-be-deleted": "Alım botunu silemezsiniz.",
     "ingestion-pipeline-name-message": "Bu iş akışı örneğini benzersiz şekilde tanımlayan ad.",
     "ingestion-pipeline-name-successfully-deployed-entity": "Her şey hazır! <Alım İş Akışı Adı> başarıyla dağıtıldı. {{entity}} zamanlamaya göre düzenli aralıklarla çalışacaktır.",
+    "inherited-contract-cannot-be-deleted": "Inherited contracts cannot be deleted. Remove the entity from the Data Product or create an entity-specific contract.",
     "input-placeholder": "Etiketlemek ve yorum yapmak için @bahset kullanın...",
     "instance-identifier": "Bu yapılandırma örneğini benzersiz şekilde tanımlayan bir Ad.",
     "integration-description": "Üretkenliği artırmak için uygulamaları ve botları yapılandırın.",

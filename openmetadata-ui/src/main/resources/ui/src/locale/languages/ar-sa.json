@@ -2330,6 +2330,7 @@
     "ingestion-bot-cant-be-deleted": "لا يمكنك حذف روبوت الاستيعاب.",
     "ingestion-pipeline-name-message": "اسم يحدد مثيل سير العمل هذا بشكل فريد.",
     "ingestion-pipeline-name-successfully-deployed-entity": "أنت جاهز تمامًا! تم نشر <Ingestion Pipeline Name> بنجاح. سيتم تشغيل {{entity}} على فترات منتظمة وفقًا للجدول الزمني.",
+    "inherited-contract-cannot-be-deleted": "Inherited contracts cannot be deleted. Remove the entity from the Data Product or create an entity-specific contract.",
     "input-placeholder": "استخدم @mention للإشارة والتعليق...",
     "instance-identifier": "اسم يحدد مثيل التكوين هذا بشكل فريد.",
     "integration-description": "قم بتكوين التطبيقات والروبوتات لزيادة الإنتاجية.",
