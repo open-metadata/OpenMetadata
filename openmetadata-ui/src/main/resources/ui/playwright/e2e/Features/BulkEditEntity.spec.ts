@@ -786,7 +786,7 @@ test.describe('Bulk Edit Entity', () => {
       ).not.toBeVisible();
 
       // Click on first cell and edit
-      await page.click('.rdg-cell[role="gridcell"]');
+      await page.locator('.rdg-cell[role="gridcell"]').first().click();
 
       // Click on first cell and edit the nested glossary term
       await fillGlossaryRowDetails(
