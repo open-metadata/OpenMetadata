@@ -223,6 +223,8 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
             for row in results:
                 try:
                     stored_procedure = MssqlStoredProcedure.model_validate(dict(row))
+                    if self.is_stored_procedure_filtered(stored_procedure.name):
+                        continue
                     yield stored_procedure
                 except Exception as exc:
                     logger.error()

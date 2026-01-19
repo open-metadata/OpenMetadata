@@ -68,7 +68,7 @@ from metadata.ingestion.models.topology import (
 from metadata.ingestion.source.connections import test_connection_common
 from metadata.utils import fqn
 from metadata.utils.execution_time_tracker import calculate_execution_time
-from metadata.utils.filters import filter_by_schema
+from metadata.utils.filters import filter_by_schema, filter_by_stored_procedure
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.owner_utils import get_owner_from_config
 from metadata.utils.tag_utils import get_tag_label
@@ -94,49 +94,49 @@ class DatabaseServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root: Annotated[
-        TopologyNode, Field(description="Root node for the topology")
-    ] = TopologyNode(
-        producer="get_services",
-        stages=[
-            NodeStage(
-                type_=DatabaseService,
-                context="database_service",
-                processor="yield_create_request_database_service",
-                overwrite=False,
-                must_return=True,
-                cache_entities=True,
-            ),
-        ],
-        children=["database"],
-        post_process=[
-            "yield_external_table_lineage",
-            "yield_table_constraints",
-        ],
+    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = (
+        TopologyNode(
+            producer="get_services",
+            stages=[
+                NodeStage(
+                    type_=DatabaseService,
+                    context="database_service",
+                    processor="yield_create_request_database_service",
+                    overwrite=False,
+                    must_return=True,
+                    cache_entities=True,
+                ),
+            ],
+            children=["database"],
+            post_process=[
+                "yield_external_table_lineage",
+                "yield_table_constraints",
+            ],
+        )
     )
-    database: Annotated[
-        TopologyNode, Field(description="Database Node")
-    ] = TopologyNode(
-        producer="get_database_names",
-        stages=[
-            NodeStage(
-                type_=OMetaTagAndClassification,
-                context="tags",
-                processor="yield_database_tag_details",
-                nullable=True,
-                store_all_in_context=True,
-            ),
-            NodeStage(
-                type_=Database,
-                context="database",
-                processor="yield_database",
-                consumer=["database_service"],
-                cache_entities=True,
-                use_cache=True,
-            ),
-        ],
-        children=["databaseSchema"],
-        post_process=["mark_databases_as_deleted"],
+    database: Annotated[TopologyNode, Field(description="Database Node")] = (
+        TopologyNode(
+            producer="get_database_names",
+            stages=[
+                NodeStage(
+                    type_=OMetaTagAndClassification,
+                    context="tags",
+                    processor="yield_database_tag_details",
+                    nullable=True,
+                    store_all_in_context=True,
+                ),
+                NodeStage(
+                    type_=Database,
+                    context="database",
+                    processor="yield_database",
+                    consumer=["database_service"],
+                    cache_entities=True,
+                    use_cache=True,
+                ),
+            ],
+            children=["databaseSchema"],
+            post_process=["mark_databases_as_deleted"],
+        )
     )
     databaseSchema: Annotated[
         TopologyNode, Field(description="Database Schema Node")
@@ -167,31 +167,31 @@ class DatabaseServiceTopology(ServiceTopology):
         ],
         threads=True,
     )
-    table: Annotated[
-        TopologyNode, Field(description="Main table processing logic")
-    ] = TopologyNode(
-        producer="get_tables_name_and_type",
-        stages=[
-            NodeStage(
-                type_=OMetaTagAndClassification,
-                context="tags",
-                processor="yield_table_tag_details",
-                nullable=True,
-                store_all_in_context=True,
-            ),
-            NodeStage(
-                type_=Table,
-                context="table",
-                processor="yield_table",
-                consumer=["database_service", "database", "database_schema"],
-                use_cache=True,
-            ),
-            NodeStage(
-                type_=OMetaLifeCycleData,
-                processor="yield_life_cycle_data",
-                nullable=True,
-            ),
-        ],
+    table: Annotated[TopologyNode, Field(description="Main table processing logic")] = (
+        TopologyNode(
+            producer="get_tables_name_and_type",
+            stages=[
+                NodeStage(
+                    type_=OMetaTagAndClassification,
+                    context="tags",
+                    processor="yield_table_tag_details",
+                    nullable=True,
+                    store_all_in_context=True,
+                ),
+                NodeStage(
+                    type_=Table,
+                    context="table",
+                    processor="yield_table",
+                    consumer=["database_service", "database", "database_schema"],
+                    use_cache=True,
+                ),
+                NodeStage(
+                    type_=OMetaLifeCycleData,
+                    processor="yield_life_cycle_data",
+                    nullable=True,
+                ),
+            ],
+        )
     )
     stored_procedure: Annotated[
         TopologyNode, Field(description="Stored Procedure Node")
@@ -551,9 +551,11 @@ class DatabaseServiceSource(
             )
             if filter_by_schema(
                 self.source_config.databaseFilterPattern,
-                database_fqn
-                if self.source_config.useFqnForFiltering
-                else database_name,
+                (
+                    database_fqn
+                    if self.source_config.useFqnForFiltering
+                    else database_name
+                ),
             ):
                 if add_to_status:
                     self.status.filter(database_fqn, "Database Filtered Out")
@@ -579,6 +581,38 @@ class DatabaseServiceSource(
                     self.status.filter(schema_fqn, "Schema Filtered Out")
                 continue
             yield schema_fqn if return_fqn else schema_name
+
+    def is_stored_procedure_filtered(self, stored_procedure_name: str) -> bool:
+        """
+        Check if a stored procedure should be filtered based on the filter pattern.
+
+        Args:
+            stored_procedure_name: Name of the stored procedure
+            add_to_status: Whether to add filtered items to the status
+
+        Returns:
+            True if the stored procedure should be filtered out, False otherwise
+        """
+        stored_procedure_fqn = fqn.build(
+            self.metadata,
+            entity_type=StoredProcedure,
+            service_name=self.context.get().database_service,
+            database_name=self.context.get().database,
+            schema_name=self.context.get().database_schema,
+            procedure_name=stored_procedure_name,
+        )
+
+        if filter_by_stored_procedure(
+            getattr(self.source_config, "storedProcedureFilterPattern", None),
+            (
+                stored_procedure_fqn
+                if self.source_config.useFqnForFiltering
+                else stored_procedure_name
+            ),
+        ):
+            logger.debug(f"Stored Procedure {stored_procedure_fqn} filtered out")
+            return True
+        return False
 
     def get_database_owner_ref(
         self, database_name: str
