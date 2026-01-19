@@ -212,6 +212,15 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
   4. Asset imports (SVGs, styles)
   5. Type imports grouped separately when needed
 
+### Python Code Requirements
+- **Use pytest, not unittest** - write tests using pytest style with plain `assert` statements
+- Use pytest fixtures for test setup instead of `setUp`/`tearDown` methods
+- Use `unittest.mock` for mocking (MagicMock, patch) - this is compatible with pytest
+- Test classes should not inherit from `TestCase` - use plain classes prefixed with `Test`
+- Use `assert x == y` instead of `self.assertEqual(x, y)`
+- Use `assert x is None` instead of `self.assertIsNone(x)`
+- Use `assert "text" in string` instead of `self.assertIn("text", string)`
+
 ### Response Format
 - Provide clean code blocks without unnecessary explanations
 - Assume readers are experienced developers
