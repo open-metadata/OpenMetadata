@@ -796,7 +796,10 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
   return (
     <Card
-      className={classNames({ isFullScreen }, 'lineage-card')}
+      className={classNames(
+        { isFullScreen },
+        'lineage-card lineage-card-table'
+      )}
       title={cardHeader}>
       <Table
         bordered
