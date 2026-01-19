@@ -29,6 +29,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.teams.PersonaResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 public class PersonaRepository extends EntityRepository<Persona> {
@@ -49,7 +50,7 @@ public class PersonaRepository extends EntityRepository<Persona> {
   }
 
   @Override
-  public void setFields(Persona persona, Fields fields) {
+  public void setFields(Persona persona, Fields fields, RelationIncludes relationIncludes) {
     persona.setUsers(fields.contains(FIELD_USERS) ? getUsers(persona) : persona.getUsers());
   }
 
