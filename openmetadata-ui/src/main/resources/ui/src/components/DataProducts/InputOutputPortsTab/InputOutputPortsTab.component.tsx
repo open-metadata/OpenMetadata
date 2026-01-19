@@ -91,12 +91,7 @@ export const InputOutputPortsTab = forwardRef<
 
       setIsLoadingLineage(true);
       try {
-        const data = await getDataProductPortsView(dataProductFqn, {
-          inputLimit: 100,
-          inputOffset: 0,
-          outputLimit: 100,
-          outputOffset: 0,
-        });
+        const data = await getDataProductPortsView(dataProductFqn);
 
         const inputPortsSearchData = data.inputPorts.data.map((entity) => ({
           _id: entity.id,
@@ -129,12 +124,7 @@ export const InputOutputPortsTab = forwardRef<
       }
 
       try {
-        const data = await getDataProductPortsView(dataProductFqn, {
-          inputLimit: 1,
-          inputOffset: 0,
-          outputLimit: 1,
-          outputOffset: 0,
-        });
+        const data = await getDataProductPortsView(dataProductFqn);
         setInputPortsCount(data.inputPorts.paging.total);
         setOutputPortsCount(data.outputPorts.paging.total);
       } catch (error) {
