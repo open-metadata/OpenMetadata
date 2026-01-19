@@ -2685,6 +2685,7 @@
     "team-member-management-description": "Optimiza el acceso a usuarios y equipos en {{brandName}}.",
     "team-moved-success": "¡Equipo movido con éxito!",
     "team-no-asset": "Tu equipo no tiene ningún activo.",
+    "test-case-count-info": "Muestra el número de casos de prueba seleccionados para este pipeline. 'Todos' indica que se ejecutarán todos los casos de prueba disponibles.",
     "test-case-insight-description": "Accede a una vista centralizada de la salud de tu conjunto de datos basada en las validaciones de prueba configuradas.",
     "test-case-name-validation": "El nombre no puede contener dos puntos dobles (::), comillas (\") o símbolos de mayor que (>).",
     "test-case-schedule-description": "Los tests de calidad de datos pueden ser programados para ser ejecutados a la frecuencia deseada. El timezone es en UTC.",
