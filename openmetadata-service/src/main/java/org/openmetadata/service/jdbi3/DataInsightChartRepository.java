@@ -10,6 +10,7 @@ import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.datainsight.DataInsightChartResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 public class DataInsightChartRepository extends EntityRepository<DataInsightChart> {
   public static final String LAST_SESSION = "lastSession";
@@ -80,7 +81,8 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
   }
 
   @Override
-  public void setFields(DataInsightChart entity, EntityUtil.Fields fields) {
+  public void setFields(
+      DataInsightChart entity, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     /* Nothing to do */
   }
 
