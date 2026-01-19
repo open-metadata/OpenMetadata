@@ -117,6 +117,7 @@ import {
 import { ExtraTableDropdownOptions } from './TableUtils';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type PatchAPIFunction = (id: string, patch: Operation[]) => Promise<any>;
 
 class EntityUtilClassBase {
