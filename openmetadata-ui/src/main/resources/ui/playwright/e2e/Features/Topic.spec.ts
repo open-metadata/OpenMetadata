@@ -14,6 +14,7 @@ import test, { expect } from '@playwright/test';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import {
+  copyAndGetClipboardText,
   testCopyLinkButton,
   validateCopiedLinkFormat,
 } from '../../utils/entity';
@@ -81,15 +82,8 @@ test.describe('Topic entity specific tests ', () => {
 
     const copyButton = page.getByTestId('copy-field-link-button').first();
     await expect(copyButton).toBeVisible();
-    await copyButton.click();
 
-    const clipboardText = await page.evaluate(async () => {
-      try {
-        return await navigator.clipboard.readText();
-      } catch (error) {
-        return `CLIPBOARD_ERROR: ${error}`;
-      }
-    });
+    const clipboardText = await copyAndGetClipboardText(page, copyButton);
 
     const validationResult = validateCopiedLinkFormat({
       clipboardText,
@@ -140,17 +134,7 @@ test.describe('Topic entity specific tests ', () => {
         const nestedCopyButton = nestedCopyButtons.nth(1);
         await expect(nestedCopyButton).toBeVisible();
 
-        // Click the nested field's copy button
-        await nestedCopyButton.click();
-
-        // Read clipboard content
-        const clipboardText = await page.evaluate(async () => {
-          try {
-            return await navigator.clipboard.readText();
-          } catch (error) {
-            return `CLIPBOARD_ERROR: ${error}`;
-          }
-        });
+        const clipboardText = await copyAndGetClipboardText(page, nestedCopyButton);
 
         // Verify the URL contains the topic FQN
         expect(clipboardText).toContain('/topic/');
