@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { Table } from '../../../src/generated/entity/data/table';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { Glossary } from '../../support/glossary/Glossary';
@@ -18,11 +19,13 @@ import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage } from '../../utils/common';
+import { redirectToHomePage, uuid } from '../../utils/common';
 import {
   assignTagToChildren,
   getFirstRowColumnLink,
+  readClipboardText,
   removeTagsFromChildren,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { columnPaginationTable } from '../../utils/table';
@@ -147,7 +150,9 @@ test.describe('Table pagination sorting search scenarios ', () => {
 
     const count = table1.entity.columns.length;
 
-    await expect(page.getByRole('tab', { name: 'Columns' })).toContainText(`${count}`);
+    await expect(page.getByRole('tab', { name: 'Columns' })).toContainText(
+      `${count}`
+    );
   });
 
   test('should persist current page', async ({ dataConsumerPage: page }) => {
@@ -745,3 +750,137 @@ test.describe(
     });
   }
 );
+
+test.describe('Large Table Column Search & Copy Link', () => {
+  test.use({
+    contextOptions: {
+      permissions: ['clipboard-read', 'clipboard-write'],
+    },
+  });
+
+  const largeTable = new TableClass();
+  const largeTableName = `large_table_${uuid()}`;
+  const targetColumnName = 'test_col_071';
+  let createdTable: Table;
+
+  test.beforeAll('Setup large table', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    // Create base hierarchy (service, db, schema) - assuming create() does this
+    await largeTable.create(apiContext);
+
+    // Generate columns
+    const columns = [];
+    // Create modest number of columns to ensure pagination/search is active
+    for (let i = 0; i < 50; i++) {
+      columns.push({
+        name: `extra_col_${i}`,
+        dataType: 'VARCHAR',
+        dataLength: 100,
+        dataTypeDisplay: 'varchar',
+        description: `Extra column ${i}`,
+      });
+    }
+    // Add the target column
+    columns.push({
+      name: targetColumnName,
+      dataType: 'VARCHAR',
+      dataLength: 100,
+      dataTypeDisplay: 'varchar',
+      description: 'Target column for search test',
+    });
+
+    // Create table with these columns using createAdditionalTable
+    // Note: TableClass.createAdditionalTable merges provided data with default entity structure
+    createdTable = await largeTable.createAdditionalTable(
+      {
+        name: largeTableName,
+        displayName: largeTableName,
+        columns: columns,
+      },
+      apiContext
+    );
+
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup large table', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    // We need to delete the specific table we created
+    if (createdTable && createdTable.id) {
+      await apiContext.delete(
+        `/api/v1/tables/${createdTable.id}?hardDelete=true&recursive=true`
+      );
+    }
+    // Clean up the rest (service/db/schema)
+    await largeTable.delete(apiContext);
+    await afterAction();
+  });
+
+  test('Search for column, copy link, and verify side panel behavior', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+
+    const columnsResponse = page.waitForResponse(
+      `/api/v1/tables/name/${createdTable.fullyQualifiedName}/columns?*`
+    );
+    // 1. Visit the table page directly
+    await page.goto(`/table/${createdTable.fullyQualifiedName}`);
+    await columnsResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    // Ensure entity table is visible
+    await expect(page.getByTestId('entity-table')).toBeVisible();
+
+    // 2. Search for the specific column
+    const searchBar = page.getByTestId('searchbar');
+    await searchBar.waitFor({ state: 'visible' });
+    const columnSearchResponse = page.waitForResponse(
+      `/api/v1/tables/name/${createdTable.fullyQualifiedName}/columns/search?*${targetColumnName}*`
+    );
+    await searchBar.fill(targetColumnName);
+    await columnSearchResponse;
+
+    // Wait for search results filters the rows
+    // We look for the row with our target column key
+    const rowSelector = page.locator(
+      `[data-row-key="${createdTable.fullyQualifiedName}.${targetColumnName}"]`
+    );
+    await rowSelector.waitFor({ state: 'visible' });
+
+    // 3. Click "Copy Link" for that column
+    const copyButton = rowSelector.getByTestId('copy-column-link-button');
+    await copyButton.click();
+
+    // 4. Read clipboard
+    const clipboardText = await readClipboardText(page);
+
+    // Verify URL format structure
+    expect(clipboardText).toContain(
+      `/table/${createdTable.fullyQualifiedName}`
+    );
+    expect(clipboardText).toContain(targetColumnName);
+
+    // 5. Visit the copied Link
+    await page.goto(clipboardText);
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    // 6. Verify Side Panel is open
+    const sidePanel = page.locator('.column-detail-panel');
+    await expect(sidePanel).toBeVisible();
+
+    // Verify title in side panel matches column name
+    await expect(sidePanel).toContainText(targetColumnName);
+
+    // 7. Verify URL Cleanup on Close
+    await page.getByTestId('close-button').click();
+    await expect(sidePanel).not.toBeVisible();
+
+    // Verify URL reverts to base table URL
+    await expect(page).toHaveURL(
+      new RegExp(`/table/${createdTable.fullyQualifiedName}$`)
+    );
+  });
+});

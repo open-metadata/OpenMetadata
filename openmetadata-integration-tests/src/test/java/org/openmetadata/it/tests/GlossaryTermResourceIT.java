@@ -14,15 +14,23 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.TermReference;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 
@@ -2144,5 +2152,307 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertNotNull(updated.getOwners());
     assertEquals(1, updated.getOwners().size());
     assertEquals(testUser2().getId(), updated.getOwners().get(0).getId());
+  }
+
+  @Test
+  void test_glossaryLevelMutualExclusivity(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable tableRequest = new CreateTable();
+    tableRequest.setName(ns.prefix("mutex_table"));
+    tableRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    tableRequest.setColumns(
+        List.of(
+            ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build(),
+            ColumnBuilder.of("name", "VARCHAR").dataLength(255).build()));
+    Table table = client.tables().create(tableRequest);
+
+    CreateGlossary glossaryRequest =
+        new CreateGlossary()
+            .withName(ns.prefix("g1"))
+            .withDescription("Mutually exclusive glossary")
+            .withMutuallyExclusive(true);
+    Glossary glossary = client.glossaries().create(glossaryRequest);
+    assertTrue(glossary.getMutuallyExclusive());
+
+    CreateGlossaryTerm term1Request =
+        new CreateGlossaryTerm()
+            .withName("t1")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("First top-level term");
+    GlossaryTerm term1 = createEntity(term1Request);
+
+    CreateGlossaryTerm term1_1Request =
+        new CreateGlossaryTerm()
+            .withName("t1_1")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(term1.getFullyQualifiedName())
+            .withDescription("Child of Term1");
+    GlossaryTerm term1_1 = createEntity(term1_1Request);
+
+    CreateGlossaryTerm term1_2Request =
+        new CreateGlossaryTerm()
+            .withName("t1_2")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(term1.getFullyQualifiedName())
+            .withDescription("Second child of Term1");
+    GlossaryTerm term1_2 = createEntity(term1_2Request);
+
+    CreateGlossaryTerm term2Request =
+        new CreateGlossaryTerm()
+            .withName("t2")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Second top-level term");
+    GlossaryTerm term2 = createEntity(term2Request);
+
+    CreateGlossaryTerm term2_1Request =
+        new CreateGlossaryTerm()
+            .withName("t2_1")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(term2.getFullyQualifiedName())
+            .withDescription("Child of Term2");
+    GlossaryTerm term2_1 = createEntity(term2_1Request);
+
+    CreateGlossaryTerm term2_2Request =
+        new CreateGlossaryTerm()
+            .withName("t2_2")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(term2.getFullyQualifiedName())
+            .withDescription("Second child of Term2");
+    GlossaryTerm term2_2 = createEntity(term2_2Request);
+
+    TagLabel term1Label =
+        new TagLabel()
+            .withTagFQN(term1.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+
+    table.setTags(List.of(term1Label));
+    Table updatedTable = client.tables().update(table.getId().toString(), table);
+    assertNotNull(updatedTable.getTags());
+    assertEquals(1, updatedTable.getTags().size());
+
+    TagLabel term2Label =
+        new TagLabel()
+            .withTagFQN(term2.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+
+    Table fetchedTable = client.tables().get(updatedTable.getId().toString(), "tags");
+    fetchedTable.setTags(List.of(term1Label, term2Label));
+
+    Exception exception =
+        assertThrows(
+            Exception.class,
+            () -> client.tables().update(fetchedTable.getId().toString(), fetchedTable),
+            "Should fail when applying two top-level terms from mutually exclusive glossary");
+
+    String errorMessage = exception.getMessage();
+    assertTrue(
+        errorMessage.contains("Glossary terms") && errorMessage.contains("mutually exclusive"),
+        "Error message should mention 'Glossary terms' and 'mutually exclusive', got: "
+            + errorMessage);
+
+    Table freshTable = client.tables().get(updatedTable.getId().toString(), "tags");
+    TagLabel term1_1Label =
+        new TagLabel()
+            .withTagFQN(term1_1.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    TagLabel term1_2Label =
+        new TagLabel()
+            .withTagFQN(term1_2.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+
+    freshTable.setTags(List.of(term1_1Label, term1_2Label));
+    Table withChildTerms = client.tables().update(freshTable.getId().toString(), freshTable);
+    assertNotNull(withChildTerms.getTags());
+    assertEquals(2, withChildTerms.getTags().size());
+
+    Table anotherFreshTable = client.tables().get(updatedTable.getId().toString(), "tags");
+    TagLabel term2_1Label =
+        new TagLabel()
+            .withTagFQN(term2_1.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+
+    anotherFreshTable.setTags(List.of(term1_1Label, term2_1Label));
+    Table withCrossTerms =
+        client.tables().update(anotherFreshTable.getId().toString(), anotherFreshTable);
+    assertNotNull(withCrossTerms.getTags());
+    assertEquals(2, withCrossTerms.getTags().size());
+  }
+
+  @Test
+  void test_termLevelMutualExclusivity(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable tableRequest = new CreateTable();
+    tableRequest.setName(ns.prefix("term_mutex_table"));
+    tableRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    tableRequest.setColumns(
+        List.of(
+            ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build(),
+            ColumnBuilder.of("name", "VARCHAR").dataLength(255).build()));
+    Table table = client.tables().create(tableRequest);
+
+    CreateGlossary glossaryRequest =
+        new CreateGlossary()
+            .withName(ns.prefix("g2"))
+            .withDescription("Glossary for term-level mutual exclusivity")
+            .withMutuallyExclusive(false);
+    Glossary glossary = client.glossaries().create(glossaryRequest);
+    assertFalse(glossary.getMutuallyExclusive());
+
+    CreateGlossaryTerm term1Request =
+        new CreateGlossaryTerm()
+            .withName("t1")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term1 with mutually exclusive children")
+            .withMutuallyExclusive(true);
+    GlossaryTerm term1 = createEntity(term1Request);
+    assertTrue(term1.getMutuallyExclusive());
+
+    CreateGlossaryTerm term1_1Request =
+        new CreateGlossaryTerm()
+            .withName("t1_1")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(term1.getFullyQualifiedName())
+            .withDescription("First child of mutually exclusive Term1");
+    GlossaryTerm term1_1 = createEntity(term1_1Request);
+
+    CreateGlossaryTerm term1_1_1Request =
+        new CreateGlossaryTerm()
+            .withName("t1_1_1")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(term1_1.getFullyQualifiedName())
+            .withDescription("Grandchild of Term1");
+    GlossaryTerm term1_1_1 = createEntity(term1_1_1Request);
+
+    CreateGlossaryTerm term1_1_2Request =
+        new CreateGlossaryTerm()
+            .withName("t1_1_2")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(term1_1.getFullyQualifiedName())
+            .withDescription("Second grandchild of Term1");
+    GlossaryTerm term1_1_2 = createEntity(term1_1_2Request);
+
+    CreateGlossaryTerm term1_2Request =
+        new CreateGlossaryTerm()
+            .withName("t1_2")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(term1.getFullyQualifiedName())
+            .withDescription("Second child of mutually exclusive Term1");
+    GlossaryTerm term1_2 = createEntity(term1_2Request);
+
+    CreateGlossaryTerm term2Request =
+        new CreateGlossaryTerm()
+            .withName("t2")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term2 without mutual exclusivity");
+    GlossaryTerm term2 = createEntity(term2Request);
+
+    CreateGlossaryTerm term2_1Request =
+        new CreateGlossaryTerm()
+            .withName("t2_1")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(term2.getFullyQualifiedName())
+            .withDescription("Child of Term2");
+    GlossaryTerm term2_1 = createEntity(term2_1Request);
+
+    CreateGlossaryTerm term2_2Request =
+        new CreateGlossaryTerm()
+            .withName("t2_2")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(term2.getFullyQualifiedName())
+            .withDescription("Second child of Term2");
+    GlossaryTerm term2_2 = createEntity(term2_2Request);
+
+    TagLabel term1_1Label =
+        new TagLabel()
+            .withTagFQN(term1_1.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+
+    table.setTags(List.of(term1_1Label));
+    Table updatedTable = client.tables().update(table.getId().toString(), table);
+    assertNotNull(updatedTable.getTags());
+    assertEquals(1, updatedTable.getTags().size());
+
+    TagLabel term1_2Label =
+        new TagLabel()
+            .withTagFQN(term1_2.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+
+    Table fetchedTable = client.tables().get(updatedTable.getId().toString(), "tags");
+    fetchedTable.setTags(List.of(term1_1Label, term1_2Label));
+
+    Exception exception =
+        assertThrows(
+            Exception.class,
+            () -> client.tables().update(fetchedTable.getId().toString(), fetchedTable),
+            "Should fail when applying two sibling terms under mutually exclusive parent");
+
+    String errorMessage = exception.getMessage();
+    assertTrue(
+        errorMessage.contains("Glossary terms") && errorMessage.contains("mutually exclusive"),
+        "Error message should mention 'Glossary terms' and 'mutually exclusive', got: "
+            + errorMessage);
+
+    Table freshTable = client.tables().get(updatedTable.getId().toString(), "tags");
+    TagLabel term1_1_1Label =
+        new TagLabel()
+            .withTagFQN(term1_1_1.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    TagLabel term1_1_2Label =
+        new TagLabel()
+            .withTagFQN(term1_1_2.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+
+    freshTable.setTags(List.of(term1_1_1Label, term1_1_2Label));
+    Table withGrandchildren = client.tables().update(freshTable.getId().toString(), freshTable);
+    assertNotNull(withGrandchildren.getTags());
+    assertEquals(2, withGrandchildren.getTags().size());
+
+    Table anotherFreshTable = client.tables().get(updatedTable.getId().toString(), "tags");
+    TagLabel term2_1Label =
+        new TagLabel()
+            .withTagFQN(term2_1.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+
+    anotherFreshTable.setTags(List.of(term1_1Label, term2_1Label));
+    Table withDifferentBranches =
+        client.tables().update(anotherFreshTable.getId().toString(), anotherFreshTable);
+    assertNotNull(withDifferentBranches.getTags());
+    assertEquals(2, withDifferentBranches.getTags().size());
+
+    Table yetAnotherFreshTable = client.tables().get(updatedTable.getId().toString(), "tags");
+    TagLabel term1Label =
+        new TagLabel()
+            .withTagFQN(term1.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    TagLabel term2Label =
+        new TagLabel()
+            .withTagFQN(term2.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+
+    yetAnotherFreshTable.setTags(List.of(term1Label, term2Label));
+    Table withTopLevelTerms =
+        client.tables().update(yetAnotherFreshTable.getId().toString(), yetAnotherFreshTable);
+    assertNotNull(withTopLevelTerms.getTags());
+    assertEquals(2, withTopLevelTerms.getTags().size());
   }
 }
