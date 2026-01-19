@@ -23,8 +23,8 @@
       "description": "Optional value to indicate if the query should be transpiled.",
       "type": "boolean"
     },
-    "ingestionRunner": {
-      "description": "Optional value of the ingestion runner name responsible for running the test",
+    "workflowName": {
+      "description": "Optional value of the workflow name responsible for running the test",
       "type": "string"
     },
     "userId": {

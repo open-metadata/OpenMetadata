@@ -13,6 +13,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Directory } from '../../../generated/entity/data/directory';
 import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
@@ -21,18 +22,27 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import DirectoryDetails from './DirectoryDetails';
 import { DirectoryDetailsProps } from './DirectoryDetails.interface';
+import { FeedCounts } from '../../../interface/feed.interface';
 
 jest.mock('../../../hooks/useApplicationStore');
 jest.mock('../../../hooks/useCustomPages');
 jest.mock('../../../hooks/useFqn');
 jest.mock('../../../utils/useRequiredParams');
 jest.mock('../../../rest/driveAPI');
-jest.mock('../../../utils/CommonUtils');
+const mockGetFeedCounts = jest.fn();
+
+
+jest.mock('../../../utils/CommonUtils', () => ({
+  ...jest.requireActual('../../../utils/CommonUtils'),
+  getEntityMissingError: jest.fn(),
+  getFeedCounts: (...args: [EntityType, string, (data: FeedCounts) => void]) =>
+    mockGetFeedCounts(...args),
+}));
 jest.mock('../../../utils/RouterUtils');
 jest.mock('../../../utils/ToastUtils');
 jest.mock('../../../utils/DirectoryClassBase', () => ({
@@ -92,14 +102,14 @@ jest.mock('../../Lineage/EntityLineageTab/EntityLineageTab', () => ({
   )),
 }));
 
-jest.mock('../../PageLayoutV1/PageLayoutV1', () =>
-  jest.fn(({ children, pageTitle }) => (
+jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
+  return jest.fn(({ children, pageTitle }) => (
     <div data-testid="page-layout">
       <h1>{pageTitle}</h1>
       {children}
     </div>
-  ))
-);
+  ));
+});
 
 jest.mock('../../../hoc/LimitWrapper', () =>
   jest.fn(({ children }) => <div>{children}</div>)
@@ -118,7 +128,6 @@ const mockUseCustomPages = useCustomPages as jest.Mock;
 const mockUseFqn = useFqn as jest.Mock;
 const mockUseRequiredParams = useRequiredParams as jest.Mock;
 const mockRestoreDriveAsset = restoreDriveAsset as jest.Mock;
-const mockGetFeedCounts = getFeedCounts as jest.Mock;
 const mockGetEntityDetailsPath = getEntityDetailsPath as jest.Mock;
 
 const mockDirectoryDetails: Directory = {
@@ -173,7 +182,7 @@ const mockDirectoryDetails: Directory = {
     fieldsAdded: [],
     fieldsUpdated: [],
     fieldsDeleted: [],
-    previousVersion: 1.0,
+    previousVersion: 1,
   },
   service: {
     id: 'service-1',
@@ -229,6 +238,8 @@ describe('DirectoryDetails', () => {
 
     mockUseFqn.mockReturnValue({
       fqn: 'test-service.test-directory',
+      entityFqn: 'test-service.test-directory',
+      columnPart: undefined,
     });
 
     mockUseRequiredParams.mockReturnValue({
@@ -616,17 +627,31 @@ describe('DirectoryDetails', () => {
     it('should handle undefined ViewCustomFields permission', async () => {
       const permissionsWithUndefinedViewCustomFields = {
         ...ENTITY_PERMISSIONS,
+        ViewCustomFields: undefined,
       };
-      delete (permissionsWithUndefinedViewCustomFields as any).ViewCustomFields;
 
       renderDirectoryDetails({
-        directoryPermissions: permissionsWithUndefinedViewCustomFields,
+        directoryPermissions:
+          permissionsWithUndefinedViewCustomFields as unknown as OperationPermission,
       });
 
       await waitFor(() => {
         expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
         expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
       });
+    });
+  });
+
+  it('should pass entity name as pageTitle to PageLayoutV1', async () => {
+    renderDirectoryDetails();
+
+    await waitFor(() => {
+      expect(PageLayoutV1).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pageTitle: 'Test Directory',
+        }),
+        expect.anything()
+      );
     });
   });
 });

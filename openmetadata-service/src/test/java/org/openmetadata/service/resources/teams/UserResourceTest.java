@@ -3053,8 +3053,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     long minCacheHitTime = cacheHitTimes.stream().mapToLong(Long::longValue).min().orElse(0);
 
     LOG.info(
-        "Cache HIT times - Avg: {:.2f}ms, Min: {}ms, Max: {}ms",
-        avgCacheHitTime,
+        "Cache HIT times - Avg: {}ms, Min: {}ms, Max: {}ms",
+        String.format("%.2f", avgCacheHitTime),
         minCacheHitTime,
         maxCacheHitTime);
 
@@ -3062,8 +3062,10 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     double performanceImprovement =
         ((double) cacheMissTime - avgCacheHitTime) / cacheMissTime * 100;
     LOG.info(
-        "Performance improvement: {:.1f}% ({}ms → {:.1f}ms)",
-        performanceImprovement, cacheMissTime, avgCacheHitTime);
+        "Performance improvement: {}% ({}ms → {}ms)",
+        String.format("%.1f", performanceImprovement),
+        cacheMissTime,
+        String.format("%.1f", avgCacheHitTime));
 
     // Assert significant performance improvement
     assertTrue(
@@ -3135,8 +3137,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     LOG.info("Concurrent test results:");
     LOG.info("  Total calls: {} across {} threads", totalCalls, threadCount);
     LOG.info("  Total time: {}ms", totalConcurrentTime);
-    LOG.info("  Calls per second: {:.1f}", callsPerSecond);
-    LOG.info("  Avg concurrent call time: {:.2f}ms", avgConcurrentTime);
+    LOG.info("  Calls per second: {}", String.format("%.1f", callsPerSecond));
+    LOG.info("  Avg concurrent call time: {}ms", String.format("%.2f", avgConcurrentTime));
 
     // Performance assertions for concurrent access
     assertTrue(

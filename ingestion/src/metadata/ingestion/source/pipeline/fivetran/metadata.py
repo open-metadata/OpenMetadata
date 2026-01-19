@@ -253,6 +253,15 @@ class FivetranSource(PipelineServiceSource):
                     )
                     continue
 
+                # Prevent self-lineage loops (table -> same table)
+                if from_entity.id == to_entity.id:
+                    logger.debug(
+                        f"Lineage skipped for pipeline [{pipeline_name}]"
+                        f" - source and destination are the same table [{from_fqn}]."
+                        f" Self-referencing lineage is not allowed."
+                    )
+                    continue
+
                 col_lineage_arr = self.fetch_column_lineage(
                     pipeline_details=pipeline_details,
                     schema_name=schema_name,

@@ -15,14 +15,14 @@ import {
   argbFromHex,
   hexFromArgb,
   themeFromSourceColor,
-} from '@material/material-color-utilities';
-import { normalizeHexColor } from './colorValidation';
+} from "@material/material-color-utilities";
+import { normalizeHexColor } from "./colorValidation";
 import type {
   ColorPalette,
   CustomColors,
   DynamicPalettes,
   ThemeColors,
-} from '../types';
+} from "../types";
 
 // No conversion needed - return hex directly
 function normalizeHex(hex: string): string {
@@ -51,7 +51,9 @@ export const generateMaterialPalette = (baseColor: string): ColorPalette => {
       (result as any)[key] = normalizeHex(baseColor);
     } else {
       // Generate other shades using Material Design
-      (result as any)[key] = normalizeHex(hexFromArgb(palette.tone(tones[index])));
+      (result as any)[key] = normalizeHex(
+        hexFromArgb(palette.tone(tones[index]))
+      );
     }
   });
 
@@ -104,6 +106,8 @@ export const generateMuiPalette = (baseColor: string): ColorPalette => {
  */
 const DEFAULT_THEME_FALLBACK = {
   primaryColor: '#1570ef',
+  hoverColor: '#d1e9ff',
+  selectedColor: '#175cd3',
   infoColor: '#84caff',
   successColor: '#039855',
   warningColor: '#DC6803',
@@ -119,13 +123,40 @@ export const generateAllMuiPalettes = (
   staticColors?: ThemeColors,
   defaultTheme = DEFAULT_THEME_FALLBACK
 ): DynamicPalettes => {
-  const result = {
-    brand:
-      defaultTheme.primaryColor !== customColors?.primaryColor
-        ? generateMuiPalette(
-            customColors?.primaryColor || defaultTheme.primaryColor
-          )
-        : staticColors?.brand,
+  let brandPalette: ColorPalette | undefined;
+
+  if (defaultTheme.primaryColor !== customColors?.primaryColor) {
+    brandPalette = generateMuiPalette(
+      customColors?.primaryColor || defaultTheme.primaryColor
+    );
+  } else {
+    brandPalette = staticColors?.brand;
+  }
+
+  if (
+    brandPalette &&
+    customColors?.hoverColor &&
+    defaultTheme.hoverColor !== customColors.hoverColor
+  ) {
+    brandPalette = {
+      ...brandPalette,
+      100: normalizeHex(customColors.hoverColor),
+    };
+  }
+
+  if (
+    brandPalette &&
+    customColors?.selectedColor &&
+    defaultTheme.selectedColor !== customColors.selectedColor
+  ) {
+    brandPalette = {
+      ...brandPalette,
+      700: normalizeHex(customColors.selectedColor),
+    };
+  }
+
+  const result: DynamicPalettes = {
+    brand: brandPalette,
 
     info:
       defaultTheme.infoColor !== customColors?.infoColor

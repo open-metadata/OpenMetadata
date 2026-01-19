@@ -11,8 +11,8 @@ import jakarta.servlet.DispatcherType;
 import java.util.EnumSet;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.jetty.servlet.FilterHolder;
-import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.ee10.servlet.FilterHolder;
+import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.openmetadata.mcp.prompts.DefaultPromptsContext;
 import org.openmetadata.mcp.tools.DefaultToolContext;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -96,7 +96,7 @@ public class McpServer implements McpServerProvider {
 
     McpStatelessSyncServer server =
         io.modelcontextprotocol.server.McpServer.sync(statelessTransport)
-            .serverInfo("openmetadata-mcp-stateless", "0.14.0")
+            .serverInfo("openmetadata-mcp-stateless", "0.17.1")
             .capabilities(serverCapabilities)
             .build();
     addToolsToServer(server, tools);

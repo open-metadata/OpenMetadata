@@ -16,6 +16,16 @@ import { render, screen } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityTitleSection } from './EntityTitleSection';
 
+// Mock react-router-dom
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  Link: jest.fn().mockImplementation(({ children, to, ...props }) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
+  )),
+}));
+
 const mockGetEntityIcon = jest.fn();
 
 jest.mock('../../../utils/SearchClassBase', () => ({

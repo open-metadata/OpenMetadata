@@ -158,6 +158,14 @@ export interface AssetCertification {
  */
 export interface TagLabel {
     /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
+    /**
      * Description for the tag label.
      */
     description?: string;
@@ -374,7 +382,11 @@ export interface Column {
     /**
      * Display Name that identifies this column name.
      */
-    displayName?:        string;
+    displayName?: string;
+    /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?:          any;
     fullyQualifiedName?: string;
     /**
      * Json schema only if the dataType is JSON else null.

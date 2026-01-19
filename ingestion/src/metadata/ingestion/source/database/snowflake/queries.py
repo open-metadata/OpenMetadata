@@ -19,12 +19,8 @@ SNOWFLAKE_GET_TABLE_NAMES = """
         TABLE_NAME,
         NULL as DELETED,
         CASE
-            WHEN TABLE_TYPE = 'EXTERNAL TABLE' THEN 'EXTERNAL TABLE'
-            WHEN TABLE_TYPE = 'VIEW' THEN 'VIEW'
-            WHEN TABLE_TYPE = 'MATERIALIZED VIEW' THEN 'MATERIALIZED VIEW'
             WHEN IS_TRANSIENT = 'YES' THEN 'TRANSIENT TABLE'
             WHEN IS_DYNAMIC = 'YES' THEN 'DYNAMIC TABLE'
-            WHEN TABLE_TYPE = 'BASE TABLE' THEN 'BASE TABLE'
             ELSE TABLE_TYPE
         END as TABLE_TYPE
     from information_schema.tables
@@ -40,12 +36,8 @@ from (
         TABLE_NAME,
         DELETED,
         CASE
-            WHEN TABLE_TYPE = 'EXTERNAL TABLE' THEN 'EXTERNAL TABLE'
-            WHEN TABLE_TYPE = 'VIEW' THEN 'VIEW'
-            WHEN TABLE_TYPE = 'MATERIALIZED VIEW' THEN 'MATERIALIZED VIEW'
             WHEN IS_TRANSIENT = 'YES' THEN 'TRANSIENT TABLE'
             WHEN IS_DYNAMIC = 'YES' THEN 'DYNAMIC TABLE'
-            WHEN TABLE_TYPE = 'BASE TABLE' THEN 'BASE TABLE'
             ELSE TABLE_TYPE
         END as COMPUTED_TABLE_TYPE,
         ROW_NUMBER() over (
@@ -344,7 +336,8 @@ SELECT /* sqlalchemy:_get_schema_columns */
         ic.is_identity,
         ic.comment,
         ic.identity_start,
-        ic.identity_increment
+        ic.identity_increment,
+        ic.ordinal_position
     FROM information_schema.columns ic
     WHERE ic.table_schema=:table_schema
     ORDER BY ic.ordinal_position
@@ -504,4 +497,18 @@ SNOWFLAKE_QUERY_LOG_QUERY = """
         '{merge}'
     )
     AND EXECUTION_STATUS = 'SUCCESS';
+"""
+
+SNOWFLAKE_DYNAMIC_TABLE_REFRESH_HISTORY_QUERY = """
+    SELECT
+        name AS TABLE_NAME,
+        refresh_start_time AS START_TIME,
+        statistics:numInsertedRows::INT AS ROWS_INSERTED,
+        statistics:numDeletedRows::INT AS ROWS_DELETED
+    FROM
+        {account_usage_schema}.DYNAMIC_TABLE_REFRESH_HISTORY
+    WHERE
+        state = 'SUCCEEDED'
+        AND name ILIKE '%{tablename}%'
+        AND refresh_start_time >= DATEADD('DAY', -1, CURRENT_TIMESTAMP);
 """
