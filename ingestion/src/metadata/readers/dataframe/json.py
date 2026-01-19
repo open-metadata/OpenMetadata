@@ -79,13 +79,18 @@ class JSONDataFrameReader(DataFrameReader):
         from pandas import DataFrame
 
         batch = []
-        for line in file_obj:
+        while True:
+            line = file_obj.readline()
+            if not line:
+                break
+
             line = (
                 line.decode(UTF_8, errors="ignore") if isinstance(line, bytes) else line
             )
             line = line.strip()
             if not line:
                 logger.debug("Skipping empty line while reading JSON Lines.")
+                continue
             try:
                 batch.append(json.loads(line))
                 if len(batch) >= batch_size:
