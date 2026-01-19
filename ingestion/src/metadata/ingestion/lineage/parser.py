@@ -518,9 +518,12 @@ class LineageParser:
                 replace_by="",  # remove it as LineageRunner is not able to perform the lineage
             )
 
-        # We remove queries of the type 'COPY table FROM path' since they are data manipulation statement and do not
-        # provide value for user
-        if insensitive_match(clean_query, "^COPY.*"):
+        # We remove queries of the type 'COPY table FROM path' since they are data manipulation statements
+        # that do not provide value for user. However, we keep Snowflake 'COPY INTO table FROM @stage'
+        # statements as they provide lineage from stages to tables.
+        if insensitive_match(clean_query, r"^COPY\s+") and not insensitive_match(
+            clean_query, r"^COPY\s+INTO\s+.*\s+FROM\s+@"
+        ):
             return None
 
         return clean_query.strip()
