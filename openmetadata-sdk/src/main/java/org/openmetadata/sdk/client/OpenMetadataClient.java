@@ -31,6 +31,7 @@ import org.openmetadata.sdk.services.databases.StoredProcedureService;
 import org.openmetadata.sdk.services.domains.DataProductService;
 import org.openmetadata.sdk.services.domains.DomainService;
 import org.openmetadata.sdk.services.events.EventSubscriptionService;
+import org.openmetadata.sdk.services.feed.FeedService;
 import org.openmetadata.sdk.services.glossary.GlossaryService;
 import org.openmetadata.sdk.services.glossary.GlossaryTermService;
 import org.openmetadata.sdk.services.importexport.ImportExportAPI;
@@ -58,6 +59,9 @@ public class OpenMetadataClient {
   private final OpenMetadataConfig config;
   private final HttpClient httpClient;
   private UUID cachedUserId = null;
+
+  // Feeds
+  private final FeedService feed;
 
   // Data Assets
   private final TableService tables;
@@ -212,6 +216,14 @@ public class OpenMetadataClient {
 
     // Initialize ingestion services
     this.ingestionPipelines = new IngestionPipelineService(httpClient);
+
+    // Initialize feed service
+    this.feed = new FeedService(httpClient);
+  }
+
+  // Feed Service Getter
+  public FeedService feed() {
+    return feed;
   }
 
   public OpenMetadataConfig getConfig() {
