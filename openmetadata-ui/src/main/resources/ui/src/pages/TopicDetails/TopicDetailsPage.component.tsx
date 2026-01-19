@@ -63,7 +63,6 @@ const TopicDetailsPage: FunctionComponent = () => {
 
   const { entityFqn: topicFQN } = useFqn({ type: EntityType.TOPIC });
 
-
   const [topicDetails, setTopicDetails] = useState<Topic>({} as Topic);
   const [isLoading, setLoading] = useState<boolean>(true);
   const [isError, setIsError] = useState(false);
