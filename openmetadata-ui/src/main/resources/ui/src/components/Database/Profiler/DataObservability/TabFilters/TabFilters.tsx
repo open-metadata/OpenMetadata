@@ -21,7 +21,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { isEmpty, isEqual, pick } from 'lodash';
+import { isEmpty, isEqual, omit, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
 import QueryString from 'qs';
 import React, { useMemo, useState } from 'react';
@@ -55,12 +55,15 @@ const TabFilters = () => {
   const { subTab: activeTab = profilerClassBase.getDefaultTabKey(isTourOpen) } =
     useParams<{ subTab: ProfilerTabPath }>();
 
-  const { formType, activeColumnFqn, dateRangeObject } = useMemo(() => {
+  const searchData = useMemo(() => {
     const param = location.search;
-    const searchData = QueryString.parse(
+
+    return QueryString.parse(
       param.startsWith('?') ? param.substring(1) : param
     );
+  }, [location.search]);
 
+  const { formType, activeColumnFqn, dateRangeObject } = useMemo(() => {
     const startTs = searchData.startTs ? Number(searchData.startTs) : undefined;
     const endTs = searchData.endTs ? Number(searchData.endTs) : undefined;
 
@@ -81,7 +84,7 @@ const TabFilters = () => {
       formType: TestLevel | ProfilerDashboardType;
       dateRangeObject: DateRangeObject;
     };
-  }, [location.search, activeTab, isTourOpen]);
+  }, [searchData, activeTab, isTourOpen]);
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -126,11 +129,6 @@ const TabFilters = () => {
     const existingFilters = pick(dateRangeObject, ['startTs', 'endTs']);
 
     if (!isEqual(existingFilters, pick(updatedFilter, ['startTs', 'endTs']))) {
-      const param = location.search;
-      const searchData = QueryString.parse(
-        param.startsWith('?') ? param.substring(1) : param
-      );
-
       navigate(
         {
           pathname: getEntityDetailsPath(
@@ -151,12 +149,26 @@ const TabFilters = () => {
     }
   };
 
-  const updateActiveColumnFqn = (key: string) => {
-    const param = location.search;
-    const searchData = QueryString.parse(
-      param.startsWith('?') ? param.substring(1) : param
+  const handleDateRangeClear = () => {
+    navigate(
+      {
+        pathname: getEntityDetailsPath(
+          EntityType.TABLE,
+          datasetFQN,
+          EntityTabs.PROFILER,
+          activeTab
+        ),
+        search: QueryString.stringify(
+          omit(searchData, ['startTs', 'endTs', 'key', 'title'])
+        ),
+      },
+      {
+        replace: true,
+      }
     );
+  };
 
+  const updateActiveColumnFqn = (key: string) => {
     navigate({
       pathname: getEntityDetailsPath(
         EntityType.TABLE,
@@ -210,10 +222,12 @@ const TabFilters = () => {
             {`${t('label.date')}:`}
           </Typography>
           <MuiDatePickerMenu
+            allowClear
             showSelectedCustomRange
             defaultDateRange={dateRangeObject}
             handleDateRangeChange={handleDateRangeChange}
             size="small"
+            onClear={handleDateRangeClear}
           />
         </Box>
       )}

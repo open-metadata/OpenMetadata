@@ -11,16 +11,21 @@
  *  limitations under the License.
  */
 import { CloseCircleOutlined } from '@ant-design/icons';
-import { KeyboardArrowDown } from '@mui/icons-material';
-import { Box, Button, Divider, Menu, MenuItem, useTheme } from '@mui/material';
-import { isUndefined, pick } from 'lodash';
+import { Close, KeyboardArrowDown } from '@mui/icons-material';
+import {
+  Box,
+  Button,
+  Divider,
+  IconButton,
+  Menu,
+  MenuItem,
+  useTheme,
+} from '@mui/material';
+import { isUndefined } from 'lodash';
 import { DateTime } from 'luxon';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  DEFAULT_SELECTED_RANGE,
-  PROFILER_FILTER_RANGE,
-} from '../../../constants/profiler.constant';
+import { PROFILER_FILTER_RANGE } from '../../../constants/profiler.constant';
 import {
   getCurrentDayEndGMTinMillis,
   getDayAgoStartGMTinMillis,
@@ -46,6 +51,8 @@ const MuiDatePickerMenu = ({
   handleSelectedTimeRange,
   options,
   allowCustomRange = true,
+  allowClear = false,
+  onClear,
   size = 'medium',
 }: MuiDatePickerMenuProps) => {
   const theme = useTheme();
@@ -63,17 +70,11 @@ const MuiDatePickerMenu = ({
       ])
     );
   }, [t]);
-  const translatedDefaultRange = useMemo(() => {
-    return {
-      ...DEFAULT_SELECTED_RANGE,
-      title: translateWithNestedKeys(
-        DEFAULT_SELECTED_RANGE.title,
-        DEFAULT_SELECTED_RANGE.titleData
-      ),
-    };
-  }, [t]);
   const { menuOptions, defaultOptions } = useMemo(() => {
-    const defaultOpts = pick(translatedDefaultRange, ['title', 'key']);
+    const defaultOpts = {
+      key: '',
+      title: t('label.select-entity', { entity: t('label.date') }),
+    };
 
     if (defaultDateRange?.key) {
       defaultOpts.key = defaultDateRange.key;
@@ -96,7 +97,7 @@ const MuiDatePickerMenu = ({
       menuOptions: options ?? translatedProfileFilterRange,
       defaultOptions: defaultOpts,
     };
-  }, [options]);
+  }, [options, defaultDateRange?.key, t]);
 
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>(
     defaultOptions.title
@@ -158,6 +159,19 @@ const MuiDatePickerMenu = ({
   const handleMenuClose = useCallback(() => {
     setAnchorEl(null);
   }, []);
+
+  const handleClear = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setSelectedTimeRange(
+        t('label.select-entity', { entity: t('label.date') })
+      );
+      setSelectedTimeRangeKey('');
+      setCustomDateValue(null);
+      onClear?.();
+    },
+    [onClear, t]
+  );
 
   const handlePresetRangeClick = useCallback(
     (key: string) => {
@@ -223,7 +237,20 @@ const MuiDatePickerMenu = ({
     <>
       <Button
         data-testid="mui-date-picker-menu"
-        endIcon={<KeyboardArrowDown />}
+        endIcon={
+          <>
+            {allowClear && selectedTimeRangeKey && (
+              <IconButton
+                data-testid="clear-date-picker"
+                size="small"
+                sx={{ p: 0.25, ml: -0.5 }}
+                onClick={handleClear}>
+                <Close sx={{ fontSize: 16 }} />
+              </IconButton>
+            )}
+            <KeyboardArrowDown />
+          </>
+        }
         size={size}
         sx={{
           height: BUTTON_HEIGHTS[size],
