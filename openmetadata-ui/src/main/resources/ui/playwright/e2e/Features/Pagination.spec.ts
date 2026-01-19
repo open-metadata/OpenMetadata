@@ -227,7 +227,7 @@ test.describe('Service Databases page pagination', () => {
     const response = await responsePromise;
     expect(response.status()).toBe(200);
     await page.waitForSelector('.ant-skeleton-active', {
-          state: 'detached',
+      state: 'detached',
     });
 
     const databaseResponsePromise = page.waitForResponse((response) =>
@@ -237,7 +237,7 @@ test.describe('Service Databases page pagination', () => {
     const response2 = await databaseResponsePromise;
     expect(response2.status()).toBe(200);
     await waitForAllLoadersToDisappear(page);
-    await page.waitForSelector('table', { state: 'visible' });
+    await page.waitForSelector('[data-testid="table-container"]', { state: 'visible' });
 
     const paginationText = page.locator('[data-testid="page-indicator"]');
     await expect(paginationText).toBeVisible();
