@@ -291,7 +291,9 @@ jest.mock('../../../utils/TableColumn.util', () => ({
 
 jest.mock('../../../utils/EntityUtilClassBase', () => ({
   getEntityByFqn: jest.fn(),
-  getFqnParts: jest.fn().mockImplementation((fqn) => ({ entityFqn: fqn, columnFqn: '' })),
+  getFqnParts: jest
+    .fn()
+    .mockImplementation((fqn) => ({ entityFqn: fqn, columnFqn: '' })),
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({

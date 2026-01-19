@@ -20,6 +20,7 @@ import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
+import { FeedCounts } from '../../../interface/feed.interface';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
@@ -27,7 +28,6 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import DirectoryDetails from './DirectoryDetails';
 import { DirectoryDetailsProps } from './DirectoryDetails.interface';
-import { FeedCounts } from '../../../interface/feed.interface';
 
 jest.mock('../../../hooks/useApplicationStore');
 jest.mock('../../../hooks/useCustomPages');
@@ -35,7 +35,6 @@ jest.mock('../../../hooks/useFqn');
 jest.mock('../../../utils/useRequiredParams');
 jest.mock('../../../rest/driveAPI');
 const mockGetFeedCounts = jest.fn();
-
 
 jest.mock('../../../utils/CommonUtils', () => ({
   ...jest.requireActual('../../../utils/CommonUtils'),
