@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Base64;
@@ -99,8 +100,9 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   private final OAuthTokenRepository tokenRepository;
   private final McpPendingAuthRequestRepository pendingAuthRepository;
 
-  private HttpServletRequest currentRequest;
-  private HttpServletResponse currentResponse;
+  // Thread-safe storage for request/response to prevent race conditions in concurrent requests
+  private final ThreadLocal<HttpServletRequest> currentRequest = new ThreadLocal<>();
+  private final ThreadLocal<HttpServletResponse> currentResponse = new ThreadLocal<>();
 
   public UserSSOOAuthProvider(
       AuthenticationCodeFlowHandler ssoHandler,
@@ -122,9 +124,21 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
         baseUrl);
   }
 
+  /**
+   * Sets the request context for the current thread.
+   *
+   * <p>IMPORTANT: Must call {@link #clearRequestContext()} after request processing to prevent
+   * memory leaks.
+   */
   public void setRequestContext(HttpServletRequest request, HttpServletResponse response) {
-    this.currentRequest = request;
-    this.currentResponse = response;
+    this.currentRequest.set(request);
+    this.currentResponse.set(response);
+  }
+
+  /** Clears the request context from the current thread to prevent memory leaks. */
+  public void clearRequestContext() {
+    this.currentRequest.remove();
+    this.currentResponse.remove();
   }
 
   @Override
@@ -145,7 +159,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   public CompletableFuture<String> authorize(
       OAuthClientInformation client, AuthorizationParams params) throws AuthorizeException {
     try {
-      if (currentRequest == null || currentResponse == null) {
+      if (currentRequest.get() == null || currentResponse.get() == null) {
         throw new AuthorizeException(
             "server_error", "Request context not set. Cannot proceed with authorization.");
       }
@@ -182,13 +196,34 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
           "Starting SSO authorization flow for client: {} with PKCE challenge",
           client.getClientId());
 
+      // Validate PKCE code challenge before storage
+      String codeChallenge = params.getCodeChallenge();
+      if (codeChallenge == null || codeChallenge.trim().isEmpty()) {
+        LOG.error(
+            "Missing PKCE code challenge in authorization request for client: {}",
+            client.getClientId());
+        throw new AuthorizeException(
+            "invalid_request", "PKCE code_challenge is required but was not provided");
+      }
+
+      // Validate code challenge format: base64url encoded, 43-128 characters (per RFC 7636)
+      if (!codeChallenge.matches("^[A-Za-z0-9_-]{43,128}$")) {
+        LOG.error(
+            "Invalid PKCE code challenge format for client: {}: {}",
+            client.getClientId(),
+            codeChallenge);
+        throw new AuthorizeException(
+            "invalid_request",
+            "PKCE code_challenge has invalid format (must be base64url encoded, 43-128 characters)");
+      }
+
       // Store PKCE params in database (survives cross-domain redirect cookie loss)
       List<String> scopes =
           params.getScopes() != null ? params.getScopes() : List.of("openid", "profile", "email");
       String authRequestId =
           pendingAuthRepository.createPendingRequest(
               client.getClientId(),
-              params.getCodeChallenge(),
+              codeChallenge,
               "S256",
               params.getRedirectUri().toString(),
               params.getState(),
@@ -205,7 +240,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
           mcpCallbackUrl);
 
       HttpServletRequest wrappedRequest =
-          new HttpServletRequestWrapper(currentRequest) {
+          new HttpServletRequestWrapper(currentRequest.get()) {
             @Override
             public String getParameter(String name) {
               if ("redirectUri".equals(name)) {
@@ -222,10 +257,10 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
             }
           };
 
-      HttpSession session = getHttpSession(currentRequest, true);
+      HttpSession session = getHttpSession(currentRequest.get(), true);
       session.setAttribute("mcp.auth.request.id", authRequestId);
 
-      ssoHandler.handleLogin(wrappedRequest, currentResponse);
+      ssoHandler.handleLogin(wrappedRequest, currentResponse.get());
 
       // After handleLogin(), pac4j has stored its state in the session
       // Extract pac4j session attributes and store in database
@@ -294,7 +329,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     try {
       LOG.info("Starting Basic Auth authorization flow for client: {}", client.getClientId());
 
-      HttpSession session = getHttpSession(currentRequest, true);
+      HttpSession session = getHttpSession(currentRequest.get(), true);
 
       session.setAttribute(SESSION_MCP_PKCE_CHALLENGE, params.getCodeChallenge());
       session.setAttribute(SESSION_MCP_PKCE_METHOD, "S256");
@@ -308,7 +343,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
       LOG.debug("Stored PKCE parameters in session for Basic Auth: {}", session.getId());
 
-      if ("POST".equalsIgnoreCase(currentRequest.getMethod())) {
+      if ("POST".equalsIgnoreCase(currentRequest.get().getMethod())) {
         return handleBasicAuthLogin(client, params, session);
       } else {
         return displayLoginForm(session, client);
@@ -348,9 +383,9 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
               scopes,
               csrfToken);
 
-      currentResponse.setContentType("text/html; charset=UTF-8");
-      currentResponse.setStatus(HttpServletResponse.SC_OK);
-      currentResponse.getWriter().write(html);
+      currentResponse.get().setContentType("text/html; charset=UTF-8");
+      currentResponse.get().setStatus(HttpServletResponse.SC_OK);
+      currentResponse.get().getWriter().write(html);
 
       LOG.debug("Displayed login form for client: {}", client.getClientId());
       return CompletableFuture.completedFuture("LOGIN_FORM_DISPLAYED");
@@ -366,7 +401,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       throws AuthorizeException {
     String password = null;
     try {
-      String submittedCsrfToken = currentRequest.getParameter("csrf_token");
+      String submittedCsrfToken = currentRequest.get().getParameter("csrf_token");
       String sessionCsrfToken = (String) session.getAttribute(SESSION_MCP_CSRF_TOKEN);
 
       session.removeAttribute(SESSION_MCP_CSRF_TOKEN);
@@ -376,8 +411,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
         throw new AuthorizeException("invalid_request", "CSRF token validation failed");
       }
 
-      String usernameOrEmail = currentRequest.getParameter("username");
-      password = currentRequest.getParameter("password");
+      String usernameOrEmail = currentRequest.get().getParameter("username");
+      password = currentRequest.get().getParameter("password");
 
       if (usernameOrEmail == null
           || usernameOrEmail.isEmpty()
@@ -480,9 +515,9 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       session.removeAttribute(SESSION_MCP_AUTH_METHOD);
       session.removeAttribute(SESSION_MCP_CSRF_TOKEN);
 
-      currentResponse.setContentType("text/html; charset=UTF-8");
-      currentResponse.setStatus(HttpServletResponse.SC_OK);
-      currentResponse.getWriter().write(html);
+      currentResponse.get().setContentType("text/html; charset=UTF-8");
+      currentResponse.get().setStatus(HttpServletResponse.SC_OK);
+      currentResponse.get().getWriter().write(html);
 
       LOG.debug("Displayed authorization code to user");
       return CompletableFuture.completedFuture("CODE_DISPLAYED");
@@ -497,7 +532,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     String oldSessionId = oldSession.getId();
 
     try {
-      String newSessionId = currentRequest.changeSessionId();
+      String newSessionId = currentRequest.get().changeSessionId();
       LOG.info("Session regenerated after authentication: {} -> {}", oldSessionId, newSessionId);
     } catch (UnsupportedOperationException | IllegalStateException e) {
       LOG.warn(
@@ -516,7 +551,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
       oldSession.invalidate();
 
-      HttpSession newSession = currentRequest.getSession(true);
+      HttpSession newSession = currentRequest.get().getSession(true);
       sessionData.forEach(newSession::setAttribute);
 
       LOG.debug("Regenerated session using invalidate/recreate fallback");
@@ -554,8 +589,12 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
     LOG.info("Generated MCP authorization code for user: {} via SSO", userName);
 
+    // Build redirect URL with properly encoded query parameters to prevent injection attacks
     String redirectUrl =
-        redirectUri + "?code=" + authCode + (state != null ? "&state=" + state : "");
+        redirectUri
+            + "?code="
+            + URLEncoder.encode(authCode, StandardCharsets.UTF_8)
+            + (state != null ? "&state=" + URLEncoder.encode(state, StandardCharsets.UTF_8) : "");
 
     session.removeAttribute(SESSION_MCP_PKCE_CHALLENGE);
     session.removeAttribute(SESSION_MCP_PKCE_METHOD);
@@ -614,11 +653,14 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     LOG.info("Generated MCP authorization code for user: {} via SSO", userName);
 
     // Build redirect URL with MCP state (original client state, not SSO state)
+    // Properly encode query parameters to prevent injection attacks
     String redirectUrl =
         pendingRequest.redirectUri()
             + "?code="
-            + authCode
-            + (pendingRequest.mcpState() != null ? "&state=" + pendingRequest.mcpState() : "");
+            + URLEncoder.encode(authCode, StandardCharsets.UTF_8)
+            + (pendingRequest.mcpState() != null
+                ? "&state=" + URLEncoder.encode(pendingRequest.mcpState(), StandardCharsets.UTF_8)
+                : "");
 
     // Cleanup pending request
     pendingAuthRepository.delete(authRequestId);

@@ -259,9 +259,47 @@ public class SSOCallbackServlet extends HttpServlet {
           "Pending auth request not found or expired: " + authRequestId);
     }
 
-    // Parse the ID token to extract user info
-    JWT idToken = JWTParser.parse(idTokenString);
-    JWTClaimsSet claimsSet = idToken.getJWTClaimsSet();
+    // Parse and validate the ID token
+    // TODO: Add full signature validation using SSO provider's public keys (JWKS endpoint)
+    // Currently this is a SECURITY VULNERABILITY - ID tokens from query params are not validated
+    LOG.warn(
+        "SECURITY WARNING: Direct ID token flow does not validate JWT signature. "
+            + "This should be fixed by using pac4j's ID token validator or implementing JWKS validation.");
+
+    JWT idToken;
+    JWTClaimsSet claimsSet;
+    try {
+      idToken = JWTParser.parse(idTokenString);
+      claimsSet = idToken.getJWTClaimsSet();
+
+      if (claimsSet == null) {
+        LOG.error("ID token has null claims set");
+        throw new IllegalStateException(
+            "SSO provider returned invalid ID token (no claims). Please restart authentication.");
+      }
+
+      // Validate token expiration
+      java.util.Date expirationTime = claimsSet.getExpirationTime();
+      if (expirationTime != null && expirationTime.before(new java.util.Date())) {
+        LOG.error("ID token has expired: {}", expirationTime);
+        throw new IllegalStateException("SSO ID token has expired. Please restart authentication.");
+      }
+
+      // Validate issuer is present (actual issuer validation requires knowing expected issuer)
+      String issuer = claimsSet.getIssuer();
+      if (issuer == null || issuer.isEmpty()) {
+        LOG.error("ID token missing issuer claim");
+        throw new IllegalStateException(
+            "SSO provider returned invalid ID token (no issuer). Please restart authentication.");
+      }
+
+      LOG.debug("ID token basic validation passed - issuer: {}, exp: {}", issuer, expirationTime);
+
+    } catch (java.text.ParseException e) {
+      LOG.error("Failed to parse ID token", e);
+      throw new IllegalStateException(
+          "Invalid ID token received from SSO provider. Please restart authentication.", e);
+    }
 
     Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     claims.putAll(claimsSet.getClaims());
@@ -271,6 +309,23 @@ public class SSOCallbackServlet extends HttpServlet {
     String email =
         findEmailFromClaims(
             claimsMapping, java.util.Arrays.asList(claimsOrder), claims, principalDomain);
+
+    // Validate required user information was extracted
+    if (userName == null || userName.trim().isEmpty()) {
+      LOG.error(
+          "Could not extract username from SSO claims. Available claims: {}", claims.keySet());
+      throw new IllegalStateException(
+          "SSO provider did not provide required user information (username). "
+              + "Please contact your administrator.");
+    }
+
+    if (email == null || email.trim().isEmpty()) {
+      LOG.warn(
+          "Could not extract email from SSO claims for user: {}. Available claims: {}",
+          userName,
+          claims.keySet());
+      // Email is optional - continue with just username
+    }
 
     LOG.info(
         "Extracted user identity from direct ID token: username={}, email={}", userName, email);
