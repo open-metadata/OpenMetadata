@@ -1065,6 +1065,9 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
       assertTrue(
           resultLines[i].contains("fieldsAdded"),
           "Record " + i + " should have changeDescription: " + resultLines[i]);
+    }
+  }
+
   @Test
   void test_importCsv_circularDependency_dryRun(TestNamespace ns) {
     String parentName = ns.prefix("ParentTeam");
@@ -1136,6 +1139,10 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
       assertTrue(
           resultLines[i].contains("fieldsUpdated"),
           "Record " + i + " should have fieldsUpdated in changeDescription: " + resultLines[i]);
+    }
+  }
+
+  @Test
   void test_importCsv_circularDependency_trueRun(TestNamespace ns) {
     String parentName = ns.prefix("ParentTeamTrue");
     String childName = ns.prefix("ChildTeamTrue");

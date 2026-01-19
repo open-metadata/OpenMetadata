@@ -996,6 +996,8 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
           resultLines[i].contains("fieldsUpdated"),
           "Record " + i + " should have fieldsUpdated in changeDescription: " + resultLines[i]);
     }
+  }
+
   // ===================================================================
   // RENAME CONSOLIDATION TESTS
   // These tests verify that child entities (glossary terms) are preserved

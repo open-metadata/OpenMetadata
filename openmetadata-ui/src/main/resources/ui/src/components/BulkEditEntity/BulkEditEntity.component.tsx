@@ -12,7 +12,7 @@
  */
 import { Button, Col, Row } from 'antd';
 import { isEmpty } from 'lodash';
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import DataGrid, { ColumnOrColumnGroup } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
 import { useTranslation } from 'react-i18next';
@@ -25,6 +25,7 @@ import { useFqn } from '../../hooks/useFqn';
 import {
   getBulkEditCSVExportEntityApi,
   getBulkEntityNavigationPath,
+  getUpdatedFields,
 } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import Banner from '../common/Banner/Banner';
@@ -125,6 +126,23 @@ const BulkEditEntity = ({
     );
   }, [columns, dataSource, handleCopy, handlePaste, handleOnRowsChange]);
 
+  const columnsUpdated = useCallback(() => {
+    if (!validateCSVData?.columns) {
+      return [];
+    }
+
+    return validateCSVData.columns
+      .filter((col) => col.key !== 'changeDescription')
+      .map((col) => ({
+        ...col,
+        cellClass: (row: any) => {
+          const updatedFields = getUpdatedFields(row);
+
+          return updatedFields.has(col.key) ? 'cell-updated' : '';
+        },
+      }));
+  }, [validateCSVData]);
+
   return (
     <>
       <Col span={24}>
@@ -169,7 +187,12 @@ const BulkEditEntity = ({
                     <div className="om-rdg">
                       <DataGrid
                         className="rdg-light"
-                        columns={validateCSVData.columns}
+                        columns={
+                          columnsUpdated as unknown as ColumnOrColumnGroup<
+                            NoInfer<Record<string, string>>,
+                            unknown
+                          >[]
+                        }
                         rows={validateCSVData.dataSource}
                       />
                     </div>

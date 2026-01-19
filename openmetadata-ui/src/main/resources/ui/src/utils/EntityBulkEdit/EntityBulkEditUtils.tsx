@@ -105,3 +105,19 @@ export const getBulkEntityNavigationPath = (
 
   return entityUtilClassBase.getEntityLink(entityType, fqn);
 };
+
+export const getUpdatedFields = (row: any): Set<string> => {
+  if (!row.changeDescription) {
+    return new Set();
+  }
+
+  try {
+    const parsed = JSON.parse(row.changeDescription);
+
+    return new Set(
+      (parsed.fieldsUpdated || []).map((f: any) => `column.${f.name}`)
+    );
+  } catch {
+    return new Set();
+  }
+};
