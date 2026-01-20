@@ -158,16 +158,16 @@ def test_interim_target_view_temp_lineage(
     oracle_lineage_service_name,
 ):
     """
-    Check temp table lineage: interim_target_view_1 should have lineage from source_table_1
-    even though interim_table_1 (intermediate) was deleted.
-    This test validates enableTempTableLineage functionality for views.
+    interim_target_view_1 is expected to not have lineage from interim_table_1 as it is deleted.
+    also since enableTempTableLineage doesn't affect views, it will also not have lineage from
+    source_table_1 (source of interim_table_1).
     """
     table_fqn = f"{oracle_lineage_service_name}.default.test.interim_target_view_1"
     lineage = metadata.get_lineage_by_name(Table, table_fqn)
 
     assert_lineage(
         lineage,
-        {"SOURCE_TABLE_1"},  # Should show source even though interim_table_1 is deleted
+        set(),
         set(),
         None,
     )
