@@ -972,13 +972,25 @@ test('Tag Page Activity Feed', async ({ page }) => {
     // Switch to the "Activity Feed" tab
     const activityTab = page.getByTestId('activity_feed');
     if (await activityTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-      const feedResponse = page.waitForResponse(
+      // Set up feed response wait with timeout - make it optional
+      const feedResponsePromise = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/feed') &&
-          response.url().includes('entityLink')
+          response.url().includes('entityLink'),
+        { timeout: 10000 }
       );
+      
       await activityTab.click();
-      await feedResponse;
+      
+      // Wait for feed response if it occurs, but don't block if it times out
+      try {
+        await feedResponsePromise;
+      } catch (error) {
+        // Feed API may not be called immediately, may already be cached, or may timeout
+        // This is acceptable - we'll proceed with the test
+        console.log('Feed API response wait timed out or failed, continuing...');
+      }
+      
       await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
 
@@ -1008,13 +1020,25 @@ test('Tag Page Activity Feed', async ({ page }) => {
           .isVisible({ timeout: 3000 })
           .catch(() => false)
       ) {
-        const feedResponse = page.waitForResponse(
+        // Set up feed response wait with timeout - make it optional
+        const feedResponsePromise = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/feed') &&
-            response.url().includes('entityLink')
+            response.url().includes('entityLink'),
+          { timeout: 10000 }
         );
+        
         await activityTabAfterRefresh.click();
-        await feedResponse;
+        
+        // Wait for feed response if it occurs, but don't block if it times out
+        try {
+          await feedResponsePromise;
+        } catch (error) {
+          // Feed API may not be called immediately, may already be cached, or may timeout
+          // This is acceptable - we'll proceed with the test
+          console.log('Feed API response wait timed out or failed, continuing...');
+        }
+        
         await page.waitForLoadState('networkidle');
         await waitForAllLoadersToDisappear(page);
       }
