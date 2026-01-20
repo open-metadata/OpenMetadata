@@ -95,6 +95,10 @@ export interface SearchIndex {
      */
     owners?: EntityReference[];
     /**
+     * Reviewers of this searchIndex.
+     */
+    reviewers?: EntityReference[];
+    /**
      * Sample data for a searchIndex.
      */
     sampleData?: SearchIndexSampleData;

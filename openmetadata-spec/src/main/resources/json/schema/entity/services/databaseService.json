@@ -457,6 +457,10 @@
       "description": "Owners of this database service.",
       "$ref": "../../type/entityReferenceList.json"
     },
+    "reviewers": {
+      "description": "Reviewers of this database service.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "href": {
       "description": "Link to the resource corresponding to this database service.",
       "$ref": "../../type/basic.json#/definitions/href"

@@ -93,6 +93,10 @@
       "description": "Owners of this dashboard.",
       "$ref": "../../type/entityReferenceList.json"
     },
+    "reviewers": {
+      "description": "Reviewers of this dashboard.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "followers": {
       "description": "Followers of this dashboard.",
       "$ref": "../../type/entityReferenceList.json"

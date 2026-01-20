@@ -127,6 +127,10 @@
       "description": "Owners of this container.",
       "$ref": "../../type/entityReferenceList.json"
     },
+    "reviewers": {
+      "description": "Reviewers of this container.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "service": {
       "description": "Link to the storage service where this container is hosted in.",
       "$ref": "../../type/entityReference.json"

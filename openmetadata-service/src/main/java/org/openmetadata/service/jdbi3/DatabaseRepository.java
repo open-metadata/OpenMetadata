@@ -131,6 +131,55 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Override
+  public void setInheritedFields(Database database, Fields fields) {
+    if (database.getService() != null) {
+      DatabaseService service =
+          Entity.getEntity(database.getService(), "owners,domains,reviewers", Include.ALL);
+      inheritOwners(database, fields, service);
+      inheritReviewers(database, fields, service);
+      inheritDomains(database, fields, service);
+    }
+  }
+
+  @Override
+  protected void setInheritedFields(List<Database> databases, Fields fields) {
+    if (databases == null || databases.isEmpty()) {
+      return;
+    }
+
+    // Collect all unique database service IDs
+    Set<UUID> serviceIds =
+        databases.stream()
+            .map(database -> database.getService().getId())
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+
+    // Bulk fetch all database services with required fields
+    DatabaseServiceRepository serviceRepository =
+        (DatabaseServiceRepository) Entity.getEntityRepository(Entity.DATABASE_SERVICE);
+    List<DatabaseService> services =
+        serviceRepository.getDao().findEntitiesByIds(new ArrayList<>(serviceIds), Include.ALL);
+
+    // Set owners, reviewers and domain fields on all services
+    serviceRepository.setFieldsInBulk(
+        new Fields(Set.of("owners", "reviewers", "domains")), services);
+
+    // Create a map for O(1) lookup
+    Map<UUID, DatabaseService> serviceMap =
+        services.stream().collect(Collectors.toMap(DatabaseService::getId, service -> service));
+
+    // Apply inherited fields to all databases
+    for (Database database : databases) {
+      DatabaseService service = serviceMap.get(database.getService().getId());
+      if (service != null) {
+        inheritOwners(database, fields, service);
+        inheritReviewers(database, fields, service);
+        inheritDomains(database, fields, service);
+      }
+    }
+  }
+
+  @Override
   public void entityRelationshipReindex(Database original, Database updated) {
     super.entityRelationshipReindex(original, updated);
 

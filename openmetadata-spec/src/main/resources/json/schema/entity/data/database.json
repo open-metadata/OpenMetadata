@@ -66,6 +66,10 @@
       "description": "Owners of this database.",
       "$ref": "../../type/entityReferenceList.json"
     },
+    "reviewers": {
+      "description": "Reviewers of this database.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "service": {
       "description": "Link to the database cluster/service where this database is hosted in.",
       "$ref": "../../type/entityReference.json"

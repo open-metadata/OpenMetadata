@@ -60,6 +60,10 @@
       "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
+    "reviewers": {
+      "description": "Reviewers of this Query.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "duration": {
       "description": "How long did the query took to run in milliseconds.",
       "type": "number"

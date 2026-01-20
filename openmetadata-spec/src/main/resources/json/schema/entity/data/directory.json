@@ -107,6 +107,10 @@
       "description": "Owners of this directory.",
       "$ref": "../../type/entityReferenceList.json"
     },
+    "reviewers": {
+      "description": "Reviewers of this directory.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "followers": {
       "description": "Followers of this entity.",
       "$ref": "../../type/entityReferenceList.json"

@@ -130,6 +130,10 @@ export interface File {
      */
     path?: string;
     /**
+     * Reviewers of this file.
+     */
+    reviewers?: EntityReference[];
+    /**
      * Link to the drive service
      */
     service: EntityReference;

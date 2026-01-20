@@ -215,6 +215,10 @@
       "description": "Owners of this ML Model.",
       "$ref": "../../type/entityReferenceList.json"
     },
+    "reviewers": {
+      "description": "Reviewers of this ML Model.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "followers": {
       "description": "Followers of this ML Model.",
       "$ref": "../../type/entityReferenceList.json"

@@ -463,6 +463,10 @@
       "description": "Owners of this pipeline.",
       "$ref": "../../type/entityReferenceList.json"
     },
+    "reviewers": {
+      "description": "Reviewers of this pipeline.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "service": {
       "description": "Link to service where this pipeline is hosted in.",
       "$ref": "../../type/entityReference.json"

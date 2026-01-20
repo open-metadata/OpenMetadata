@@ -107,6 +107,10 @@ export interface APIEndpoint {
      */
     responseSchema?: APISchema;
     /**
+     * Reviewers of this API Collection.
+     */
+    reviewers?: EntityReference[];
+    /**
      * Link to service where this API Collection is hosted in.
      */
     service: EntityReference;

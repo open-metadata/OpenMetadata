@@ -124,6 +124,10 @@
       "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
+    "reviewers": {
+      "description": "Reviewers of this data model.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "dataProducts": {
       "description": "List of data products this entity is part of.",
       "$ref": "../../type/entityReferenceList.json"

@@ -118,6 +118,10 @@ export interface Spreadsheet {
      */
     path?: string;
     /**
+     * Reviewers of this spreadsheet.
+     */
+    reviewers?: EntityReference[];
+    /**
      * Link to the drive service where this spreadsheet is hosted.
      */
     service: EntityReference;

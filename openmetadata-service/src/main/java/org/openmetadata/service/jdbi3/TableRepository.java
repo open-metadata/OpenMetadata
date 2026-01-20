@@ -25,6 +25,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
+import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
@@ -312,8 +313,10 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public void setInheritedFields(Table table, Fields fields) {
     DatabaseSchema schema =
-        Entity.getEntity(DATABASE_SCHEMA, table.getDatabaseSchema().getId(), "owners,domains", ALL);
+        Entity.getEntity(
+            DATABASE_SCHEMA, table.getDatabaseSchema().getId(), "owners,domains,reviewers", ALL);
     inheritOwners(table, fields, schema);
+    inheritReviewers(table, fields, schema);
     inheritDomains(table, fields, schema);
     // If table does not have retention period, then inherit it from parent databaseSchema
     table.withRetentionPeriod(
@@ -1040,7 +1043,12 @@ public class TableRepository extends EntityRepository<Table> {
 
   public Table addDataModel(UUID tableId, DataModel dataModel) {
     Table table =
-        get(null, tableId, getFields(Set.of(FIELD_OWNERS, FIELD_TAGS)), NON_DELETED, false);
+        get(
+            null,
+            tableId,
+            getFields(Set.of(FIELD_OWNERS, FIELD_REVIEWERS, FIELD_TAGS)),
+            NON_DELETED,
+            false);
 
     // Update the sql fields only if correct value is present
     if (dataModel.getRawSql() == null || dataModel.getRawSql().isBlank()) {
@@ -1082,6 +1090,7 @@ public class TableRepository extends EntityRepository<Table> {
     applyColumnTags(table.getColumns());
     dao.update(table.getId(), table.getFullyQualifiedName(), JsonUtils.pojoToJson(table));
     setFieldsInternal(table, new Fields(Set.of(FIELD_OWNERS), FIELD_OWNERS));
+    setFieldsInternal(table, new Fields(Set.of(FIELD_REVIEWERS), FIELD_REVIEWERS));
     setFieldsInternal(table, new Fields(Set.of(FIELD_TAGS), FIELD_TAGS));
     return table;
   }

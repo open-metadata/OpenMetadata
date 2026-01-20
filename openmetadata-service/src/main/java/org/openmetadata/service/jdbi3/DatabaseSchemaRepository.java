@@ -366,8 +366,10 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   @Override
   public void setInheritedFields(DatabaseSchema schema, Fields fields) {
     Database database =
-        Entity.getEntity(Entity.DATABASE, schema.getDatabase().getId(), "owners,domains", ALL);
+        Entity.getEntity(
+            Entity.DATABASE, schema.getDatabase().getId(), "owners,domains,reviewers", ALL);
     inheritOwners(schema, fields, database);
+    inheritReviewers(schema, fields, database);
     inheritDomains(schema, fields, database);
     schema.withRetentionPeriod(
         schema.getRetentionPeriod() == null
@@ -394,8 +396,9 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     List<Database> databases =
         databaseRepository.getDao().findEntitiesByIds(new ArrayList<>(databaseIds), ALL);
 
-    // Set owners and domain fields on all databases
-    databaseRepository.setFieldsInBulk(new Fields(Set.of("owners", "domains")), databases);
+    // Set owners, reviewers and domain fields on all databases
+    databaseRepository.setFieldsInBulk(
+        new Fields(Set.of("owners", "reviewers", "domains")), databases);
 
     // Create a map for O(1) lookup
     Map<UUID, Database> databaseMap =
@@ -406,6 +409,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       Database database = databaseMap.get(schema.getDatabase().getId());
       if (database != null) {
         inheritOwners(schema, fields, database);
+        inheritReviewers(schema, fields, database);
         inheritDomains(schema, fields, database);
         schema.withRetentionPeriod(
             schema.getRetentionPeriod() == null

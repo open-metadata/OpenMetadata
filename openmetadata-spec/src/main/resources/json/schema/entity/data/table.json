@@ -1133,6 +1133,10 @@
       "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
+    "reviewers": {
+      "description": "Reviewers of this table.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "databaseSchema": {
       "description": "Reference to database schema that contains this table.",
       "$ref": "../../type/entityReference.json"

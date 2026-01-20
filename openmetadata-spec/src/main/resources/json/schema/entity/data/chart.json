@@ -134,6 +134,10 @@
       "description": "Owners of this chart.",
       "$ref": "../../type/entityReferenceList.json"
     },
+    "reviewers": {
+      "description": "Reviewers of this chart.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "followers": {
       "description": "Followers of this chart.",
       "$ref": "../../type/entityReferenceList.json"

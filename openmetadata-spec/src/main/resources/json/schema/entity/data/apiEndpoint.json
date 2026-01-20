@@ -122,6 +122,10 @@
       "description": "Owners of this API Collection.",
       "$ref": "../../type/entityReferenceList.json"
     },
+    "reviewers": {
+      "description": "Reviewers of this API Collection.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "followers": {
       "description": "Followers of this API Collection.",
       "$ref": "../../type/entityReferenceList.json"
