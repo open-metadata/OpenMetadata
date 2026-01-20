@@ -3,7 +3,9 @@ package org.openmetadata.sdk.fluent;
 import java.util.*;
 import org.openmetadata.schema.api.data.CreateFile;
 import org.openmetadata.schema.entity.data.File;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FileType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 
 public final class Files {
@@ -81,6 +83,21 @@ public final class Files {
 
     public FileCreator withOwners(List<EntityReference> owners) {
       request.setOwners(owners);
+      return this;
+    }
+
+    public FileCreator withFileType(FileType fileType) {
+      request.setFileType(fileType);
+      return this;
+    }
+
+    public FileCreator withMimeType(String mimeType) {
+      request.setMimeType(mimeType);
+      return this;
+    }
+
+    public FileCreator withColumns(List<Column> columns) {
+      request.setColumns(columns);
       return this;
     }
 
