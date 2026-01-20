@@ -281,3 +281,57 @@ class SqlLineageTest(TestCase):
         self.assertEqual(len(target_tables), 1)
         # LineageTable will add <default> back even after we remove it
         self.assertEqual(str(target_tables[0]), "<default>.actual_table")
+
+    def test_copy_into_from_stage_not_filtered(self):
+        """
+        Test that Snowflake COPY INTO table FROM @stage statements are NOT filtered out
+        as they provide valuable lineage information from stages to tables.
+        """
+        snowflake_copy_queries = [
+            "COPY INTO wine_quality FROM @demo FILE_FORMAT = wine_csv_format;",
+            "COPY INTO my_table FROM @my_stage",
+            "COPY INTO db.schema.table FROM @external_stage FILE_FORMAT = (TYPE = CSV)",
+            "copy into target_table from @s3_stage/path/to/files",
+        ]
+
+        for query in snowflake_copy_queries:
+            result = LineageParser.clean_raw_query(query)
+            self.assertIsNotNone(
+                result,
+                f"Query should NOT be filtered: {query}",
+            )
+
+    def test_generic_copy_statements_filtered(self):
+        """
+        Test that generic COPY statements (like PostgreSQL COPY FROM path)
+        are still filtered out as they don't provide lineage value.
+        """
+        generic_copy_queries = [
+            "COPY my_table FROM '/path/to/file.csv'",
+            "COPY users FROM '/tmp/data.csv' WITH CSV HEADER",
+            "COPY table_name FROM STDIN",
+            "COPY orders FROM 's3://bucket/file.csv'",
+        ]
+
+        for query in generic_copy_queries:
+            result = LineageParser.clean_raw_query(query)
+            self.assertIsNone(
+                result,
+                f"Query should be filtered: {query}",
+            )
+
+    def test_copy_to_statements_filtered(self):
+        """
+        Test that COPY TO statements are filtered out as they are export operations.
+        """
+        copy_to_queries = [
+            "COPY my_table TO '/path/to/file.csv'",
+            "COPY (SELECT * FROM users) TO '/tmp/output.csv'",
+        ]
+
+        for query in copy_to_queries:
+            result = LineageParser.clean_raw_query(query)
+            self.assertIsNone(
+                result,
+                f"Query should be filtered: {query}",
+            )

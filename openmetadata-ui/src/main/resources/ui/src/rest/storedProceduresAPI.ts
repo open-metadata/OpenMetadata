@@ -55,6 +55,8 @@ export const getStoredProceduresByFqn = async (
       params: {
         ...params,
         include: params?.include ?? Include.NonDeleted,
+        includeRelations:
+          params?.includeRelations ?? 'owners:non-deleted,experts:non-deleted',
       },
     }
   );

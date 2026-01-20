@@ -644,15 +644,19 @@ const DomainDetails = ({
       name: newName?.trim(),
     };
 
-    await onUpdate(updatedDetails);
-    setIsNameEditing(false);
+    try {
+      await onUpdate(updatedDetails);
+      setIsNameEditing(false);
 
-    // If name changed, navigate to the new URL
-    if (newName && newName.trim() !== domain.name) {
-      const newFqn = domain.parent
-        ? `${domain.parent.fullyQualifiedName}.${newName.trim()}`
-        : newName.trim();
-      navigate(getDomainDetailsPath(newFqn, activeTab));
+      // If name changed, navigate to the new URL
+      if (newName && newName.trim() !== domain.name) {
+        const newFqn = domain.parent
+          ? `${domain.parent.fullyQualifiedName}.${newName.trim()}`
+          : newName.trim();
+        navigate(getDomainDetailsPath(newFqn, activeTab));
+      }
+    } catch (error) {
+      setIsNameEditing(false);
     }
   };
 
@@ -1067,6 +1071,7 @@ const DomainDetails = ({
         />
       )}
       <EntityNameModal<Domain>
+        allowRename
         entity={domain}
         title={t('label.edit-entity', {
           entity: t('label.name'),
