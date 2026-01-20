@@ -36,6 +36,7 @@ import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.socket.messages.ChartDataStreamMessage;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -637,7 +638,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   }
 
   @Override
-  public void setFields(DataInsightCustomChart entity, EntityUtil.Fields fields) {
+  public void setFields(
+      DataInsightCustomChart entity, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     /* Nothing to do */
   }
 

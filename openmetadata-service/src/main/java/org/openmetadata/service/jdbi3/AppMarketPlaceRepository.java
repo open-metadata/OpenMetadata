@@ -6,6 +6,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.apps.AppMarketPlaceResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 public class AppMarketPlaceRepository extends EntityRepository<AppMarketPlaceDefinition> {
 
@@ -22,7 +23,10 @@ public class AppMarketPlaceRepository extends EntityRepository<AppMarketPlaceDef
   }
 
   @Override
-  public void setFields(AppMarketPlaceDefinition entity, EntityUtil.Fields fields) {
+  public void setFields(
+      AppMarketPlaceDefinition entity,
+      EntityUtil.Fields fields,
+      RelationIncludes relationIncludes) {
     /* Nothing to do */
   }
 

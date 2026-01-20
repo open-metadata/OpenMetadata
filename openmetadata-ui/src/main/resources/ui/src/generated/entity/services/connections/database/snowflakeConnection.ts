@@ -45,6 +45,11 @@ export interface SnowflakeConnection {
      */
     databaseFilterPattern?: FilterPattern;
     /**
+     * Optional configuration for ingestion of Snowflake stages (internal and external). By
+     * default, stages are not ingested.
+     */
+    includeStages?: boolean;
+    /**
      * Optional configuration for ingestion of streams, By default, it will skip the streams.
      */
     includeStreams?: boolean;
@@ -86,7 +91,11 @@ export interface SnowflakeConnection {
     /**
      * Snowflake source host for the Snowflake account.
      */
-    snowflakeSourceHost?:                   string;
+    snowflakeSourceHost?: string;
+    /**
+     * Regex to only include/exclude stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?:          FilterPattern;
     supportsDatabase?:                      boolean;
     supportsDataDiff?:                      boolean;
     supportsDBTExtraction?:                 boolean;
@@ -122,6 +131,8 @@ export interface SnowflakeConnection {
  * Regex to only fetch entities that matches the pattern.
  *
  * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude stored procedures that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
  */
