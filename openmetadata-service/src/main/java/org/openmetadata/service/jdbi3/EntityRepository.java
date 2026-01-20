@@ -292,7 +292,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private static final LoadingCache<String, Integer> COUNT_CACHE =
       CacheBuilder.newBuilder()
           .maximumSize(500)
-          .expireAfterWrite(1, TimeUnit.MINUTES)
+          .expireAfterWrite(5, TimeUnit.MINUTES)
           .recordStats()
           .build(
               new CacheLoader<String, Integer>() {
