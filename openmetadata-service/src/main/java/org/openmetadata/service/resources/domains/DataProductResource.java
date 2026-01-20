@@ -28,6 +28,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -81,7 +82,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   private final DataProductMapper mapper = new DataProductMapper();
   static final String FIELDS = "domains,owners,reviewers,experts,extension,tags,followers";
   static final String PORT_FIELDS =
-      "owners,tags,followers,domain,votes,extension"; // Common fields across all entity types
+      "owners,tags,followers,domains,votes,extension"; // Common fields across all entity types
 
   public DataProductResource(Authorizer authorizer, Limits limits) {
     super(Entity.DATA_PRODUCT, authorizer, limits);
@@ -91,6 +92,22 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   public DataProduct addHref(UriInfo uriInfo, DataProduct dataProduct) {
     super.addHref(uriInfo, dataProduct);
     return dataProduct;
+  }
+
+  private static final java.util.Set<String> ALLOWED_PORT_FIELDS =
+      java.util.Set.of(PORT_FIELDS.split(","));
+
+  private void validatePortFields(String fieldsParam) {
+    if (nullOrEmpty(fieldsParam)) {
+      return;
+    }
+    for (String field : fieldsParam.split(",")) {
+      String trimmedField = field.trim();
+      if (!trimmedField.isEmpty() && !ALLOWED_PORT_FIELDS.contains(trimmedField)) {
+        throw new BadRequestException(
+            String.format("Invalid field '%s'. Allowed fields are: %s", trimmedField, PORT_FIELDS));
+      }
+    }
   }
 
   public static class DataProductList extends ResultList<DataProduct> {
@@ -986,6 +1003,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @DefaultValue("0")
           @Min(0)
           int offset) {
+    validatePortFields(fieldsParam);
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
@@ -1037,6 +1055,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @DefaultValue("0")
           @Min(0)
           int offset) {
+    validatePortFields(fieldsParam);
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
@@ -1089,6 +1108,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @DefaultValue("0")
           @Min(0)
           int offset) {
+    validatePortFields(fieldsParam);
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
@@ -1140,6 +1160,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @DefaultValue("0")
           @Min(0)
           int offset) {
+    validatePortFields(fieldsParam);
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
@@ -1208,6 +1229,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @DefaultValue("0")
           @Min(0)
           int outputOffset) {
+    validatePortFields(fieldsParam);
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
@@ -1278,6 +1300,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @DefaultValue("0")
           @Min(0)
           int outputOffset) {
+    validatePortFields(fieldsParam);
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
