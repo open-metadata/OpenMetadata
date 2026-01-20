@@ -16,6 +16,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -43,13 +44,18 @@ public class PatchEntityTool implements McpTool {
         securityContext, operationContext, new ResourceContext<>(entityType, null, fqn));
 
     EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+
+    // Get impersonatedBy from thread-local context set by McpAuthFilter
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+
     RestUtil.PatchResponse<? extends EntityInterface> response =
         repository.patch(
             null,
             fqn,
             securityContext.getUserPrincipal().getName(),
             jsonPatch,
-            ChangeSource.MANUAL);
+            ChangeSource.MANUAL,
+            impersonatedBy);
     return JsonUtils.convertValue(response, Map.class);
   }
 

@@ -1,7 +1,8 @@
 package org.openmetadata.mcp;
 
-import static org.openmetadata.service.socket.SocketAddressFilter.validatePrefixedTokenRequest;
+import static org.openmetadata.service.socket.SocketAddressFilter.checkForUsernameAndImpersonationValidation;
 
+import com.auth0.jwt.interfaces.Claim;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -14,13 +15,15 @@ import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.apps.ApplicationContext;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.JwtFilter;
 
 /**
  * Authentication filter for MCP endpoints.
  *
  * <p>This filter validates JWT tokens for all MCP requests to ensure only authenticated users can
- * access MCP features. It uses the same JWT validation as the rest of OpenMetadata.
+ * access MCP features. Supports OAuth endpoints and user impersonation.
  */
 @Slf4j
 public class McpAuthFilter implements Filter {
@@ -54,8 +57,16 @@ public class McpAuthFilter implements Filter {
       return;
     }
 
+    // Check if MCP application is installed
+    if (ApplicationContext.getInstance().getAppIfExists("McpApplication") == null) {
+      sendError(
+          httpServletResponse,
+          "McpApplication is not installed. Please install it to use MCP features.",
+          HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+      return;
+    }
+
     try {
-      // Extract Authorization header
       String tokenWithType = httpServletRequest.getHeader("Authorization");
 
       if (tokenWithType == null || tokenWithType.isEmpty()) {
@@ -66,14 +77,27 @@ public class McpAuthFilter implements Filter {
         return;
       }
 
-      // Validate JWT token using OpenMetadata's standard validation
-      validatePrefixedTokenRequest(jwtFilter, tokenWithType);
+      // Validate token once and extract claims
+      String token = JwtFilter.extractToken(tokenWithType);
+      Map<String, Claim> claims = jwtFilter.validateJwtAndGetClaims(token);
+
+      // Extract impersonatedBy claim if present
+      String impersonatedBy =
+          claims.containsKey(JwtFilter.IMPERSONATED_USER_CLAIM)
+              ? claims.get(JwtFilter.IMPERSONATED_USER_CLAIM).asString()
+              : null;
+
+      // Set impersonatedBy in thread-local context for MCP tools to use
+      if (impersonatedBy != null) {
+        ImpersonationContext.setImpersonatedBy(impersonatedBy);
+      }
+
+      checkForUsernameAndImpersonationValidation(token, claims, jwtFilter);
 
       LOG.debug("MCP request authenticated successfully");
 
       // Continue with the filter chain
       filterChain.doFilter(servletRequest, servletResponse);
-
     } catch (Exception e) {
       LOG.error("MCP authentication failed", e);
       String message = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
@@ -81,6 +105,9 @@ public class McpAuthFilter implements Filter {
           httpServletResponse,
           "Authentication failed: " + message,
           HttpServletResponse.SC_UNAUTHORIZED);
+    } finally {
+      // Always clear the impersonation context after request processing
+      ImpersonationContext.clear();
     }
   }
 
