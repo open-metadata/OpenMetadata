@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tag, Typography } from 'antd';
+import { Box, Chip, Typography, useTheme } from '@mui/material';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   FeedbackType,
@@ -22,9 +23,8 @@ import {
   TaskDetails,
 } from '../../../generated/entity/feed/thread';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
-import { getEntityLinkFromType } from '../../../utils/EntityUtils';
-import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
-import { getUserPath } from '../../../utils/RouterUtils';
+import EntityLink from '../../../utils/EntityLink';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 
 interface FeedbackApprovalTaskProps {
   task: TaskDetails;
@@ -32,6 +32,7 @@ interface FeedbackApprovalTaskProps {
 
 const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
   const { t } = useTranslation();
+  const theme = useTheme();
   const feedback: RecognizerFeedback | undefined = task?.feedback;
 
   const feedbackTypeLabel = useMemo(() => {
@@ -51,90 +52,112 @@ const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
     return typeMap[feedback.feedbackType] || feedback.feedbackType;
   }, [feedback?.feedbackType, t]);
 
-  const entityLinkUrl = useMemo(() => {
+  const entityLinkData = useMemo(() => {
     if (!feedback?.entityLink) {
       return null;
     }
 
-    const entityType = getEntityType(feedback.entityLink);
-    const entityFqn = getEntityFQN(feedback.entityLink);
+    const entityType = EntityLink.getEntityType(feedback.entityLink);
+    const entityFqn = EntityLink.getEntityFqn(feedback.entityLink);
 
     if (!entityType || !entityFqn) {
       return null;
     }
 
-    return getEntityLinkFromType(entityFqn, entityType as EntityType);
+    return {
+      entityPath: getEntityDetailsPath(entityType as EntityType, entityFqn),
+      entityName: EntityLink.getEntityColumnFqn(feedback.entityLink),
+    };
   }, [feedback?.entityLink]);
 
   if (!feedback) {
     return <div />;
   }
 
+  const labelStyle = {
+    color: theme.palette.grey[700],
+    px: 2,
+    flex: '0 0 33%',
+  };
+
+  const valueStyle = {
+    color: theme.palette.grey[900],
+  };
+
   return (
-    <div
+    <Box
       className="feedback-approval-task"
-      data-testid="feedback-approval-task">
-      <Row gutter={[16, 16]}>
-        <Col span={24}>
-          <Space direction="vertical" size="small">
-            <div>
-              <Typography.Text strong>
-                {t('label.feedback-type')}:{' '}
-              </Typography.Text>
-              <Tag>{feedbackTypeLabel}</Tag>
-            </div>
+      data-testid="feedback-approval-task"
+      sx={{ display: 'flex', rowGap: 4, flexDirection: 'column', mt: -1.5 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 3.5 }}>
+        <Typography sx={labelStyle} variant="body2">
+          {t('label.feedback-type')}
+        </Typography>
+        <Chip
+          label={feedbackTypeLabel}
+          size="small"
+          sx={{
+            background: theme.palette.background.paper,
+            borderRadius: '6px',
+            border: `1px solid ${theme.palette.grey[300]}`,
+          }}
+        />
+      </Box>
 
-            {feedback.userComments && (
-              <div>
-                <Typography.Text strong>
-                  {t('label.comment-plural')}:{' '}
-                </Typography.Text>
-                <Typography.Text>{feedback.userComments}</Typography.Text>
-              </div>
-            )}
+      {feedback.userComments && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3.5 }}>
+          <Typography sx={labelStyle} variant="body2">
+            {t('label.comment-plural')}
+          </Typography>
+          <Typography sx={valueStyle} variant="body2">
+            {feedback.userComments}
+          </Typography>
+        </Box>
+      )}
 
-            {feedback.createdBy && (
-              <div>
-                <Typography.Text strong>
-                  {t('label.submitted-by')}:{' '}
-                </Typography.Text>
-                <Link to={getUserPath(feedback.createdBy.name ?? '')}>
-                  {feedback.createdBy.displayName || feedback.createdBy.name}
-                </Link>
-              </div>
-            )}
+      {feedback.createdBy && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3.5 }}>
+          <Typography sx={labelStyle} variant="body2">
+            {t('label.submitted-by')}
+          </Typography>
+          <UserPopOverCard
+            showUserName
+            profileWidth={22}
+            userName={
+              feedback.createdBy.displayName || feedback.createdBy.name || '-'
+            }
+          />
+        </Box>
+      )}
 
-            {feedback.createdAt && (
-              <div>
-                <Typography.Text strong>
-                  {t('label.submitted-on')}:{' '}
-                </Typography.Text>
-                <Typography.Text>
-                  {formatDateTime(feedback.createdAt)}
-                </Typography.Text>
-              </div>
-            )}
+      {feedback.createdAt && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3.5 }}>
+          <Typography sx={labelStyle} variant="body2">
+            {t('label.submitted-on')}
+          </Typography>
+          <Typography sx={valueStyle} variant="body2">
+            {formatDateTime(feedback.createdAt)}
+          </Typography>
+        </Box>
+      )}
 
-            {feedback.entityLink && (
-              <div>
-                <Typography.Text strong>
-                  {t('label.entity-link')}:{' '}
-                </Typography.Text>
-                {entityLinkUrl ? (
-                  <Link target="_blank" to={entityLinkUrl}>
-                    <Typography.Text code>
-                      {feedback.entityLink}
-                    </Typography.Text>
-                  </Link>
-                ) : (
-                  <Typography.Text code>{feedback.entityLink}</Typography.Text>
-                )}
-              </div>
-            )}
-          </Space>
-        </Col>
-      </Row>
-    </div>
+      {entityLinkData && (
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 3.5 }}>
+          <Typography sx={labelStyle} variant="body2">
+            {t('label.entity-link')}
+          </Typography>
+          <Link to={entityLinkData.entityPath}>
+            <Typography
+              color={theme.palette.primary.main}
+              fontWeight={theme.typography.subtitle2.fontWeight}
+              sx={{ lineBreak: 'anywhere' }}
+              variant="body2">
+              {entityLinkData.entityName}
+            </Typography>
+          </Link>
+        </Box>
+      )}
+    </Box>
   );
 };
 
