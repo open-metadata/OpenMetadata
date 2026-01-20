@@ -22,7 +22,7 @@ from airflow.models.dag import DagModel
 from airflow.models.serialized_dag import SerializedDagModel
 from airflow.serialization.serialized_objects import SerializedDAG
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import and_, func, join
+from sqlalchemy import and_, func, inspect, join
 from sqlalchemy.orm import Session
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -128,8 +128,33 @@ class AirflowSource(PipelineServiceSource):
         super().__init__(config, metadata)
         self.today = datetime.now().strftime("%Y-%m-%d")
         self._session = None
-        # Cache for observability data: {(dag_id, run_id): {pipeline_entity, table_fqns, dag_run}}
         self.observability_cache: Dict[Tuple[str, str], Dict[str, Any]] = {}
+
+        self._execution_date_column = None
+
+    @property
+    def execution_date_column(self):
+        """
+        Dynamically check which column to use for execution date.
+        """
+        if self._execution_date_column:
+            return self._execution_date_column
+
+        try:
+            inspector = inspect(self.session.bind)
+            columns = [col["name"] for col in inspector.get_columns("dag_run")]
+            if "logical_date" in columns:
+                self._execution_date_column = "logical_date"
+            else:
+                self._execution_date_column = "execution_date"
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed to inspect dag_run table columns - {exc}. Fallback to execution_date"
+            )
+            self._execution_date_column = "execution_date"
+
+        return self._execution_date_column
 
     @classmethod
     def create(
@@ -194,9 +219,10 @@ class AirflowSource(PipelineServiceSource):
         """
         try:
             # In Airflow 3.x, execution_date was renamed to logical_date
+            # We check the database schema to verify which column to use
             execution_date_column = (
                 DagRun.logical_date
-                if hasattr(DagRun, "logical_date")
+                if self.execution_date_column == "logical_date"
                 else DagRun.execution_date
             )
 
@@ -238,7 +264,7 @@ class AirflowSource(PipelineServiceSource):
                 }
 
                 # Use logical_date for Airflow 3.x, execution_date for Airflow 2.x
-                if hasattr(DagRun, "logical_date"):
+                if self.execution_date_column == "logical_date":
                     kwargs["logical_date"] = date_value
                 else:
                     kwargs["execution_date"] = date_value
@@ -340,7 +366,7 @@ class AirflowSource(PipelineServiceSource):
                     # In Airflow 3.x, execution_date was renamed to logical_date
                     execution_date = (
                         dag_run.logical_date
-                        if hasattr(dag_run, "logical_date")
+                        if self.execution_date_column == "logical_date"
                         and dag_run.logical_date is not None
                         else dag_run.execution_date
                     )

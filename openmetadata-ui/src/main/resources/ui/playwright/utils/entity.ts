@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 import { JSDOM } from 'jsdom';
 import { isEmpty, lowerCase } from 'lodash';
 import {
@@ -23,6 +23,7 @@ import { ES_RESERVED_CHARACTERS } from '../constant/entity';
 import { SidebarItem } from '../constant/sidebar';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
+import { EntityType } from '../support/entity/EntityDataClass.interface';
 import { TableClass } from '../support/entity/TableClass';
 import { TagClass } from '../support/tag/TagClass';
 import {
@@ -40,7 +41,6 @@ import {
 } from './dateTime';
 import { searchAndClickOnOption } from './explore';
 import { sidebarClick } from './sidebar';
-import { EntityType } from '../support/entity/EntityDataClass.interface';
 
 export const waitForAllLoadersToDisappear = async (
   page: Page,
@@ -620,14 +620,19 @@ export const updateDescriptionForChildren = async (
 ) => {
   await page
     .locator(`[${rowSelector}="${rowId}"]`)
+    .getByTestId('description')
+    .first()
     .getByTestId('edit-button')
     .click();
 
   await page.waitForSelector('[role="dialog"]', { state: 'visible' });
 
-  await page.locator(descriptionBox).first().click();
-  await page.locator(descriptionBox).first().clear();
-  await page.locator(descriptionBox).first().fill(description);
+  const modalEditor = page.locator('[role="dialog"]').locator(descriptionBox);
+  await modalEditor.click();
+  await modalEditor.clear();
+  await modalEditor.fill(description);
+  await expect(modalEditor).toHaveText(description);
+
   let updateRequest;
   if (
     entityEndpoint === 'tables' ||
@@ -701,6 +706,11 @@ export const assignTag = async (
   await page.getByTestId('saveAssociatedTag').click();
 
   await patchRequest;
+  await page.waitForSelector(
+    '[data-testid="saveAssociatedTag"] [data-icon="loading"]',
+    { state: 'detached' }
+  );
+  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
   await expect(
     page
@@ -760,6 +770,12 @@ export const assignTagToChildren = async ({
   await page.getByTestId('saveAssociatedTag').click();
 
   await patchRequest;
+
+  await page.waitForSelector(
+    '[data-testid="saveAssociatedTag"] [data-icon="loading"]',
+    { state: 'detached' }
+  );
+  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
   await expect(
     page
@@ -2170,4 +2186,145 @@ export const getEntityDataTypeDisplayPatch = (entity: EntityClass) => {
     default:
       return undefined;
   }
+};
+/**
+ * Test utility for verifying copy link button functionality across different entity types.
+ * Follows Playwright Developer Handbook guidelines for user-centric testing.
+ *
+ * This function tests the copy link feature by:
+ * 1. Clicking the copy button
+ * 2. Reading clipboard content via navigator.clipboard API
+ * 3. Verifying the clipboard URL contains expected values
+ *
+ * Note: This requires the test to run in a secure context (HTTPS or localhost)
+ *
+ * @param page - Playwright Page object
+ * @param buttonTestId - Test ID of the copy button ('copy-column-link-button' or 'copy-field-link-button')
+ * @param containerTestId - Test ID of the container element to wait for
+ * @param expectedUrlPath - Expected URL path segment (e.g., '/table/', '/container/')
+ * @param entityFqn - Fully qualified name of the entity to verify in clipboard
+ */
+export const testCopyLinkButton = async ({
+  page,
+  buttonTestId,
+  containerTestId,
+  expectedUrlPath,
+  entityFqn,
+}: {
+  page: Page;
+  buttonTestId: 'copy-column-link-button' | 'copy-field-link-button';
+  containerTestId: string;
+  expectedUrlPath: string;
+  entityFqn: string;
+}) => {
+  await expect(page.getByTestId(containerTestId)).toBeVisible();
+
+  // Find the first copy button and verify it's visible
+  const copyButton = page.getByTestId(buttonTestId).first();
+  await expect(copyButton).toBeVisible();
+
+  // Click copy button and get clipboard text
+  const clipboardText = await copyAndGetClipboardText(page, copyButton);
+
+  // Verify the clipboard text contains expected URL path and entity FQN
+  expect(clipboardText).toContain(expectedUrlPath);
+  expect(clipboardText).toContain(entityFqn);
+};
+
+/**
+ * Clicks a copy button and returns the copied text from clipboard.
+ * Handles clipboard interception internally - works across all environments.
+ *
+ * @param page - Playwright Page object
+ * @param locator - Locator for the copy button to click
+ * @returns The clipboard text content
+ */
+export const copyAndGetClipboardText = async (
+  page: Page,
+  locator: Locator
+): Promise<string> => {
+  // Hover and click the copy button
+  await locator.hover();
+  await locator.click({ force: true });
+
+  // Small delay to allow clipboard write to complete
+  await page.waitForTimeout(300);
+
+  // Read clipboard using paste method (works reliably in all environments)
+  const textareaId = '__clipboard_reader__';
+
+  await page.evaluate((id) => {
+    const textarea = document.createElement('textarea');
+    textarea.id = id;
+    textarea.style.cssText = 'position:fixed;left:-9999px;top:0;';
+    document.body.appendChild(textarea);
+  }, textareaId);
+
+  await page.locator(`#${textareaId}`).focus();
+  await page.keyboard.press('ControlOrMeta+V');
+
+  const clipboardText = await page.locator(`#${textareaId}`).inputValue();
+
+  await page.evaluate((id) => {
+    document.getElementById(id)?.remove();
+  }, textareaId);
+
+  return clipboardText;
+};
+
+/**
+ * Validates the format and structure of a copied link URL.
+ * Ensures URLs are properly formatted, contain all required components, and follow expected patterns.
+ *
+ * @param clipboardText - The text copied to clipboard
+ * @param expectedEntityType - Expected entity type in URL (e.g., 'table', 'topic', 'container')
+ * @param entityFqn - Fully qualified name of the entity
+ * @param options - Optional validation options
+ * @returns Validation result with details
+ */
+export const validateCopiedLinkFormat = ({
+  clipboardText,
+  expectedEntityType,
+  entityFqn,
+  options = {},
+}: {
+  clipboardText: string;
+  expectedEntityType: string;
+  entityFqn: string;
+  options?: {
+    allowedProtocols?: string[]; // Allowed protocols (default: ['http:', 'https:'])
+  };
+}) => {
+  const { allowedProtocols = ['http:', 'https:'] } = options;
+
+  // Parse the URL
+  let url: URL;
+  try {
+    url = new URL(clipboardText);
+  } catch (error) {
+    throw new Error(`Invalid URL format: ${clipboardText}. Error: ${error}`);
+  }
+
+  // Validate protocol
+  expect(allowedProtocols).toContain(url.protocol);
+
+  // Validate hostname exists
+  expect(url.hostname).toBeTruthy();
+
+  // Validate path structure: should contain /{entityType}/{fqn}
+  const pathPattern = new RegExp(`^/${expectedEntityType}/`);
+  expect(url.pathname).toMatch(pathPattern);
+
+  // Validate FQN is in the path
+  expect(url.pathname).toContain(entityFqn);
+
+  // Return parsed URL for additional assertions if needed
+  return {
+    url,
+    protocol: url.protocol,
+    hostname: url.hostname,
+    pathname: url.pathname,
+    fragment: url.hash,
+    isValid: true,
+  };
 };

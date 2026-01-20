@@ -31,7 +31,6 @@ import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHead
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
@@ -46,7 +45,6 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
-  FqnPart,
   TabSpecificField,
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
@@ -76,11 +74,7 @@ import {
   restoreTable,
   updateTablesVotes,
 } from '../../rest/tableAPI';
-import {
-  addToRecentViewed,
-  getFeedCounts,
-  getPartialNameFromTableFQN,
-} from '../../utils/CommonUtils';
+import { addToRecentViewed, getFeedCounts } from '../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -115,7 +109,6 @@ const TableDetailsPageV1: React.FC = () => {
   const { setDqLineageData } = useTestCaseStore();
   const [tableDetails, setTableDetails] = useState<Table>();
   const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: datasetFQN } = useFqn();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const USERId = currentUser?.id ?? '';
@@ -134,14 +127,15 @@ const TableDetailsPageV1: React.FC = () => {
   const { customizedPage, isLoading } = useCustomPages(PageType.Table);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
-  const tableFqn = useMemo(
-    () =>
-      getPartialNameFromTableFQN(
-        datasetFQN,
-        [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
-        FQN_SEPARATOR_CHAR
-      ),
-    [datasetFQN]
+  const {
+    fqn: datasetFQN,
+    entityFqn: tableFqn,
+    columnFqn: columnPart,
+  } = useFqn({ type: EntityType.TABLE });
+
+  const columnFqn = useMemo(
+    () => (columnPart ? datasetFQN : undefined),
+    [columnPart, datasetFQN]
   );
 
   const alertBadge = useMemo(() => {
@@ -553,6 +547,8 @@ const TableDetailsPageV1: React.FC = () => {
       fetchTableDetails,
       isViewTableType,
       labelMap: tabLabelMap,
+      columnFqn,
+      columnPart,
     });
 
     const updatedTabs = getDetailsTabWithNewLabel(
@@ -582,6 +578,8 @@ const TableDetailsPageV1: React.FC = () => {
     editLineagePermission,
     fetchTableDetails,
     isViewTableType,
+    columnFqn,
+    columnPart,
   ]);
 
   const isExpandViewSupported = useMemo(

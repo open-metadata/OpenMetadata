@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.elasticsearch;
 
+import static org.openmetadata.service.search.SearchUtils.buildHttpHosts;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
 
@@ -217,6 +218,11 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public void deleteIndex(String indexName) {
     indexManager.deleteIndex(indexName);
+  }
+
+  @Override
+  public void deleteIndexWithBackoff(String indexName) {
+    indexManager.deleteIndexWithBackoff(indexName);
   }
 
   @Override
@@ -638,14 +644,11 @@ public class ElasticSearchClient implements SearchClient {
   public RestClient getLowLevelRestClient(ElasticSearchConfiguration esConfig) {
     if (esConfig != null) {
       try {
-        RestClientBuilder restClientBuilder =
-            RestClient.builder(
-                new HttpHost(esConfig.getHost(), esConfig.getPort(), esConfig.getScheme()));
+        HttpHost[] httpHosts = buildHttpHosts(esConfig, "Elasticsearch");
+        RestClientBuilder restClientBuilder = RestClient.builder(httpHosts);
 
-        // Configure connection pooling
         restClientBuilder.setHttpClientConfigCallback(
             httpAsyncClientBuilder -> {
-              // Set connection pool sizes
               if (esConfig.getMaxConnTotal() != null && esConfig.getMaxConnTotal() > 0) {
                 httpAsyncClientBuilder.setMaxConnTotal(esConfig.getMaxConnTotal());
               }
@@ -653,7 +656,6 @@ public class ElasticSearchClient implements SearchClient {
                 httpAsyncClientBuilder.setMaxConnPerRoute(esConfig.getMaxConnPerRoute());
               }
 
-              // Configure authentication if provided
               if (StringUtils.isNotEmpty(esConfig.getUsername())
                   && StringUtils.isNotEmpty(esConfig.getPassword())) {
                 CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
@@ -664,7 +666,6 @@ public class ElasticSearchClient implements SearchClient {
                 httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
               }
 
-              // Configure SSL if needed
               SSLContext sslContext = null;
               try {
                 sslContext = createElasticSearchSSLContext(esConfig);
@@ -675,7 +676,6 @@ public class ElasticSearchClient implements SearchClient {
                 httpAsyncClientBuilder.setSSLContext(sslContext);
               }
 
-              // Enable TCP keep alive strategy
               if (esConfig.getKeepAliveTimeoutSecs() != null
                   && esConfig.getKeepAliveTimeoutSecs() > 0) {
                 httpAsyncClientBuilder.setKeepAliveStrategy(
@@ -685,22 +685,18 @@ public class ElasticSearchClient implements SearchClient {
               return httpAsyncClientBuilder;
             });
 
-        // Configure request timeouts
         restClientBuilder.setRequestConfigCallback(
             requestConfigBuilder ->
                 requestConfigBuilder
                     .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
 
-        // Enable compression for better network efficiency
         restClientBuilder.setCompressionEnabled(true);
 
-        // Build client without default headers first to check version
         RestClient tempClient = restClientBuilder.build();
         boolean isElasticsearch7 = isElasticsearch7Version(tempClient);
         tempClient.close();
 
-        // Only set default headers for ES 7.x server
         if (isElasticsearch7) {
           restClientBuilder.setDefaultHeaders(defaultHeaders);
         }
@@ -809,6 +805,16 @@ public class ElasticSearchClient implements SearchClient {
   public void updateAssetDomainsByIds(
       List<UUID> assetIds, List<String> oldDomainFqns, List<EntityReference> newDomains) {
     entityManager.updateAssetDomainsByIds(assetIds, oldDomainFqns, newDomains);
+  }
+
+  @Override
+  public void updateDomainFqnByPrefix(String oldFqn, String newFqn) {
+    entityManager.updateDomainFqnByPrefix(oldFqn, newFqn);
+  }
+
+  @Override
+  public void updateAssetDomainFqnByPrefix(String oldFqn, String newFqn) {
+    entityManager.updateAssetDomainFqnByPrefix(oldFqn, newFqn);
   }
 
   @Override
