@@ -1453,6 +1453,11 @@ export interface ConfigObject {
      */
     creditCost?: number;
     /**
+     * Optional configuration for ingestion of Snowflake stages (internal and external). By
+     * default, stages are not ingested.
+     */
+    includeStages?: boolean;
+    /**
      * Optional configuration for ingestion of streams, By default, it will skip the streams.
      */
     includeStreams?: boolean;
@@ -4679,10 +4684,6 @@ export interface Pipeline {
      */
     markDeletedTables?: boolean;
     /**
-     * Set the 'Override Lineage' toggle to control whether to override the existing lineage.
-     */
-    overrideLineage?: boolean;
-    /**
      * Set the 'Override Metadata' toggle to control whether to override the existing metadata
      * in the OpenMetadata server with the metadata fetched from the source. If the toggle is
      * set to true, the metadata fetched from the source will override the existing metadata in
@@ -4847,6 +4848,10 @@ export interface Pipeline {
      * lineage, etc., with that data models will be deleted
      */
     markDeletedDataModels?: boolean;
+    /**
+     * Set the 'Override Lineage' toggle to control whether to override the existing lineage.
+     */
+    overrideLineage?: boolean;
     /**
      * Regex to exclude or include projects that matches the pattern.
      */
