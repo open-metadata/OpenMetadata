@@ -1192,9 +1192,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
           () ->
               daoCollection
                   .entityExtensionDAO()
-                  .getEntityHistoryByTimestampRangeCount(tableName, startTs, endTs, extensionPrefix));
+                  .getEntityHistoryByTimestampRangeCount(
+                      tableName, startTs, endTs, extensionPrefix));
     } catch (ExecutionException e) {
-        throw new RuntimeException("Failed to get version count from cache", e);
+      throw new RuntimeException("Failed to get version count from cache", e);
     }
   }
 
@@ -1285,10 +1286,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     String[] parts = decodedCursor.split(":");
     try {
-        Long.parseLong(parts[0]);
-        UUID.fromString(parts[1]);
+      Long.parseLong(parts[0]);
+      UUID.fromString(parts[1]);
     } catch (IllegalArgumentException e) {
-        throw new IllegalArgumentException("Cursor is not a valid cursor: " + cursor);
+      throw new IllegalArgumentException("Cursor is not a valid cursor: " + cursor);
     }
     return decodedCursor;
   }
