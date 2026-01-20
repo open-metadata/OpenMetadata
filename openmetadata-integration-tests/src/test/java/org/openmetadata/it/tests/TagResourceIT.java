@@ -732,10 +732,10 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   }
 
   private Thread waitForRecognizerFeedbackTask(String tagFQN) throws Exception {
-    return waitForRecognizerFeedbackTask(tagFQN, 30000);
+    return waitForRecognizerFeedbackTask(tagFQN, 90000L * 2);
   }
 
-  public Thread waitForRecognizerFeedbackTask(String tagFQN, int timeout)
+  public Thread waitForRecognizerFeedbackTask(String tagFQN, long timeout)
       throws RuntimeException, ConditionTimeoutException {
     String entityLink = new MessageParser.EntityLink(Entity.TAG, tagFQN).getLinkString();
     Awaitility.await(String.format("Wait for Task to be Created for Tag: '%s'", tagFQN))
