@@ -288,6 +288,17 @@ EXPTECTED_TABLE = [
 ]
 
 
+MOCK_DELTA_UNIFORM_ICEBERG_COLUMNS = [
+    ("id", "bigint", "unique identifier"),
+    ("name", "string", "user name"),
+    ("amount", "decimal(10,2)", "transaction amount"),
+    ("# Delta Uniform Iceberg", "", ""),
+    ("metadata_col", "string", "should not be included"),
+]
+
+EXPECTED_DELTA_UNIFORM_ICEBERG_COLUMNS = 3
+
+
 class DatabricksUnitTest(TestCase):
     """
     Databricks unit tests
@@ -370,6 +381,30 @@ class DatabricksUnitTest(TestCase):
 
         for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE_2, table_list)):
             self.assertEqual(expected, original)
+
+    @patch("metadata.ingestion.source.database.databricks.metadata._get_column_rows")
+    def test_get_columns_delta_uniform_iceberg(self, mock_get_column_rows):
+        from metadata.ingestion.source.database.databricks.metadata import get_columns
+
+        mock_connection = Mock()
+        mock_dialect = Mock()
+        mock_get_column_rows.return_value = MOCK_DELTA_UNIFORM_ICEBERG_COLUMNS
+
+        result = get_columns(
+            mock_dialect,
+            mock_connection,
+            table_name="delta_iceberg_table",
+            schema="test_schema",
+            db_name="test_catalog",
+        )
+
+        self.assertEqual(len(result), EXPECTED_DELTA_UNIFORM_ICEBERG_COLUMNS)
+        self.assertEqual(result[0]["name"], "id")
+        self.assertEqual(result[1]["name"], "name")
+        self.assertEqual(result[2]["name"], "amount")
+
+        for col in result:
+            self.assertNotEqual(col["name"], "metadata_col")
 
 
 class DatabricksConnectionTest(TestCase):

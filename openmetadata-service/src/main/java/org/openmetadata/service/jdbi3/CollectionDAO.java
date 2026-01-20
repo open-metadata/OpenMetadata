@@ -3363,6 +3363,28 @@ public interface CollectionDAO {
         @Bind("json") String json,
         @Bind("timestamp") long timestamp);
 
+    // Batch insert for successful events - reduces connection pool contention
+    // from N connections to 1 when processing multiple events
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO successful_sent_change_events (change_event_id, event_subscription_id, json, timestamp) "
+                + "VALUES (:change_event_id, :event_subscription_id, :json, :timestamp) "
+                + "ON DUPLICATE KEY UPDATE json = VALUES(json), timestamp = VALUES(timestamp)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO successful_sent_change_events (change_event_id, event_subscription_id, json, timestamp) "
+                + "VALUES (:change_event_id, :event_subscription_id, CAST(:json AS jsonb), :timestamp) "
+                + "ON CONFLICT (change_event_id, event_subscription_id) "
+                + "DO UPDATE SET json = EXCLUDED.json, timestamp = EXCLUDED.timestamp",
+        connectionType = POSTGRES)
+    void batchUpsertSuccessfulChangeEvents(
+        @Bind("change_event_id") List<String> changeEventIds,
+        @Bind("event_subscription_id") List<String> eventSubscriptionIds,
+        @Bind("json") List<String> jsonList,
+        @Bind("timestamp") List<Long> timestamps);
+
     @SqlQuery(
         "SELECT COUNT(*) FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId")
     long getSuccessfulRecordCount(@Bind("eventSubscriptionId") String eventSubscriptionId);
@@ -8929,9 +8951,9 @@ public interface CollectionDAO {
             "INSERT INTO audit_log_event(change_event_id, event_ts, event_type, user_name, "
                 + "actor_type, impersonated_by, service_name, "
                 + "entity_type, entity_id, entity_fqn, entity_fqn_hash, event_json, created_at) "
-                + "VALUES (:changeEventId, :eventTs, :eventType, :userName, "
+                + "VALUES (:changeEventId::uuid, :eventTs, :eventType, :userName, "
                 + ":actorType, :impersonatedBy, :serviceName, "
-                + ":entityType, :entityId, :entityFQN, :entityFQNHash, :eventJson, :createdAt) "
+                + ":entityType, :entityId::uuid, :entityFQN, :entityFQNHash, :eventJson, :createdAt) "
                 + "ON CONFLICT (change_event_id) DO NOTHING",
         connectionType = POSTGRES)
     @ConnectionAwareSqlUpdate(

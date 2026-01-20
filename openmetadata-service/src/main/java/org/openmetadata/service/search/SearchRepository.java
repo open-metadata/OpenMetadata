@@ -669,6 +669,14 @@ public class SearchRepository {
     getSearchClient().updateAssetDomainsByIds(assetIds, oldDomainFqns, newDomains);
   }
 
+  public void updateDomainFqnByPrefix(String oldFqn, String newFqn) {
+    getSearchClient().updateDomainFqnByPrefix(oldFqn, newFqn);
+  }
+
+  public void updateAssetDomainFqnByPrefix(String oldFqn, String newFqn) {
+    getSearchClient().updateAssetDomainFqnByPrefix(oldFqn, newFqn);
+  }
+
   public boolean checkIfIndexingIsSupported(String entityType) {
     IndexMapping indexMapping = entityIndexMap.get(entityType);
     if (indexMapping == null) {

@@ -85,6 +85,7 @@ import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityWithType;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.LineageUtil;
 import org.openmetadata.service.util.RestUtil;
@@ -118,7 +119,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   @Override
-  public void setFields(DataProduct entity, Fields fields) {
+  public void setFields(DataProduct entity, Fields fields, RelationIncludes relationIncludes) {
     // Assets, inputPorts, outputPorts are accessed via dedicated paginated APIs:
     // GET /v1/dataProducts/{id}/assets
     // GET /v1/dataProducts/{id}/inputPorts
