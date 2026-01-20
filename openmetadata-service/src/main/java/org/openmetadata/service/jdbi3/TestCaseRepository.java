@@ -1665,11 +1665,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
               "Failed to attach test cases to Bundle Suite '{}': {}",
               targetBundleSuite.getFullyQualifiedName(),
               e.getMessage());
-          importResult.withStatus(ApiStatus.PARTIAL_SUCCESS);
-          importResult.withAbortReason(
+          throw new IllegalStateException(
               String.format(
-                  "Test cases imported but failed to attach to Bundle Suite '%s': %s",
-                  targetBundleSuite.getFullyQualifiedName(), e.getMessage()));
+                  "%d test cases were imported successfully, but failed to attach them to Bundle suite '%s': %s. "
+                      + "The test cases exist and can be manually added to the Bundle Suite.",
+                  importedTestCaseIds.size(), targetBundleSuite.getName(), e.getMessage()),
+              e);
         }
       }
     }
