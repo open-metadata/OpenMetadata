@@ -89,7 +89,7 @@ const DataModelTable = ({
     if (currentPage !== urlPage) {
       handlePageChange(urlPage);
     }
-  }, [pagingCursor.currentPage]);
+  }, [pagingCursor.currentPage, currentPage, handlePageChange]);
 
   const searchValue = useMemo(() => {
     const param = location.search;

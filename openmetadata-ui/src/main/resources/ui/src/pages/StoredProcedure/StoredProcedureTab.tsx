@@ -64,7 +64,7 @@ const StoredProcedureTab = () => {
     if (currentPage !== urlPage) {
       handlePageChange(urlPage);
     }
-  }, [pagingCursor.currentPage]);
+  }, [pagingCursor.currentPage, currentPage, handlePageChange]);
 
   const { filters: tableFilters, setFilters } = useTableFilters(
     INITIAL_TABLE_FILTERS
