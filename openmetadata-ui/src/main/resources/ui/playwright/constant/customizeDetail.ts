@@ -227,6 +227,7 @@ export const DOMAIN_DEFAULT_TABS = [
 export const DATA_PRODUCT_DEFAULT_TABS = [
   EntityTabs.DOCUMENTATION,
   EntityTabs.ASSETS,
+  EntityTabs.CONTRACT,
   EntityTabs.ACTIVITY_FEED,
   EntityTabs.CUSTOM_PROPERTIES,
 ];
