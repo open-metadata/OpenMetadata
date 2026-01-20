@@ -3054,6 +3054,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     if (supportsSoftDelete) {
       Map<String, String> queryParams = new HashMap<>();
       queryParams.put("include", "deleted");
+      queryParams.put("includeRelations", "followers:all");
       entity = getEntity(entityId, queryParams, FIELD_FOLLOWERS, ADMIN_AUTH_HEADERS);
       TestUtils.existsInEntityReferenceList(entity.getFollowers(), user1.getId(), true);
     }
@@ -4936,6 +4937,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Just use WebTarget directly
     WebTarget target = getResource(id);
     target = target.queryParam("fields", fields);
+    target = target.queryParam("includeRelations", "owners:all,followers:all");
     return TestUtils.get(target, entityClass, authHeaders);
   }
 
