@@ -132,7 +132,7 @@ public class EventSubscriptionResource
       @Context SecurityContext securityContext,
       @QueryParam("startTs") long startTs,
       @QueryParam("endTs") long endTs,
-      @DefaultValue("10") @Min(1) @Max(1000000) @QueryParam("limit") int limitParam,
+      @QueryParam("limit") int limitParam,
       @QueryParam("before") String before,
       @QueryParam("after") String after) {
     throw new WebApplicationException(
