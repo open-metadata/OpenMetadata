@@ -198,15 +198,9 @@ class TestProcessSequence:
     def test_process_sequence_with_fqns(self):
         """Test processing a sequence where nodes have FQNs"""
         graph = nx.DiGraph()
-        graph.add_node(
-            "source_table", fqns=["service.db.schema.source_table"]
-        )
-        graph.add_node(
-            "temp_table", fqns=[]  # temp table has no FQN
-        )
-        graph.add_node(
-            "target_table", fqns=["service.db.schema.target_table"]
-        )
+        graph.add_node("source_table", fqns=["service.db.schema.source_table"])
+        graph.add_node("temp_table", fqns=[])  # temp table has no FQN
+        graph.add_node("target_table", fqns=["service.db.schema.target_table"])
         graph.add_edges_from(
             [("source_table", "temp_table"), ("temp_table", "target_table")]
         )
