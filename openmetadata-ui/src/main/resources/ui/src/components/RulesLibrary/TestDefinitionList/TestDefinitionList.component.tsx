@@ -359,17 +359,23 @@ const TestDefinitionList = () => {
             );
           }
 
-          const editTooltip = isSystemProvider
-            ? t('message.system-test-definition-edit-warning')
-            : !hasEditPermission
-            ? t('message.no-permission-for-action')
-            : t('label.edit');
+          let editTooltip;
+          if (isSystemProvider) {
+            editTooltip = t('message.system-test-definition-edit-warning');
+          } else if (hasEditPermission) {
+            editTooltip = t('label.edit');
+          } else {
+            editTooltip = t('message.no-permission-for-action');
+          }
 
-          const deleteTooltip = isSystemProvider
-            ? t('message.system-test-definition-delete-warning')
-            : !hasDeletePermission
-            ? t('message.no-permission-for-action')
-            : t('label.delete');
+          let deleteTooltip;
+          if (isSystemProvider) {
+            deleteTooltip = t('message.system-test-definition-delete-warning');
+          } else if (hasDeletePermission) {
+            deleteTooltip = t('label.delete');
+          } else {
+            deleteTooltip = t('message.no-permission-for-action');
+          }
 
           return (
             <Space size={0}>
