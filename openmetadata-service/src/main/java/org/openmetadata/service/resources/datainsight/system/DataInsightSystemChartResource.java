@@ -7,8 +7,11 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -28,6 +31,7 @@ import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
@@ -51,6 +55,10 @@ public class DataInsightSystemChartResource
     extends EntityResource<DataInsightCustomChart, DataInsightSystemChartRepository> {
   public static final String COLLECTION_PATH = "/v1/analytics/dataInsights/system/charts";
   private static final Logger LOG = LoggerFactory.getLogger(DataInsightSystemChartResource.class);
+
+  public static class DataInsightCustomChartList extends ResultList<DataInsightCustomChart> {
+    /* Required for serde */
+  }
 
   public DataInsightSystemChartResource(Authorizer authorizer, Limits limit) {
     super(Entity.DATA_INSIGHT_CUSTOM_CHART, authorizer, limit);
@@ -304,5 +312,52 @@ public class DataInsightSystemChartResource
       errorResponse.put("error", "Failed to stop streaming: " + e.getMessage());
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(errorResponse).build();
     }
+  }
+
+  @GET
+  @Path("/versions")
+  @Operation(
+      operationId = "listAllDataInsightSystemChartVersionsByTimestamp",
+      summary = "List all data insight system chart versions within a time range",
+      description =
+          "Get a paginated list of all data insight system chart entity versions within a given time range "
+              + "specified by `startTs` and `endTs` in milliseconds since epoch. "
+              + "This endpoint requires admin privileges.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of data insight system chart versions",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataInsightCustomChartList.class)))
+      })
+  public ResultList<DataInsightCustomChart> listAllVersionsByTimestamp(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Start timestamp in milliseconds since epoch", required = true)
+          @QueryParam("startTs")
+          long startTs,
+      @Parameter(description = "End timestamp in milliseconds since epoch", required = true)
+          @QueryParam("endTs")
+          long endTs,
+      @Parameter(
+              description =
+                  "Limit the number of data insight system charts returned (1 to 1000000, default = 10)")
+          @DefaultValue("10")
+          @Min(value = 1, message = "must be greater than or equal to 1")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(
+              description = "Returns list of data insight system chart versions before this cursor")
+          @QueryParam("before")
+          String before,
+      @Parameter(
+              description = "Returns list of data insight system chart versions after this cursor")
+          @QueryParam("after")
+          String after) {
+    return super.listAllVersionsByTimestampInternal(
+        securityContext, startTs, endTs, before, after, limitParam);
   }
 }

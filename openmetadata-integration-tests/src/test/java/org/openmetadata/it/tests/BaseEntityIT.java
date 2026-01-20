@@ -18,6 +18,7 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.EntityValidation;
@@ -4269,7 +4270,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
         patchEntity(entity.getId().toString(), entity);
       }
 
-      long endTs = System.currentTimeMillis() + 1000;
+      long endTs = System.currentTimeMillis();
       String basePath = getResourcePath() + "/versions";
 
       String response =
@@ -4394,6 +4395,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     }
 
     @Test
+    @Timeout(60)
     void test_listAllVersionsByTimestamp_completePaginationCycle(TestNamespace ns)
         throws Exception {
       Assumptions.assumeTrue(
@@ -4412,13 +4414,14 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
         patchEntity(entity.getId().toString(), entity);
       }
 
-      long endTs = System.currentTimeMillis() + 1000;
+      long endTs = System.currentTimeMillis();
       String basePath = getResourcePath() + "/versions";
       int limit = 3;
 
       List<String> allIds = new ArrayList<>();
       List<String> afterCursors = new ArrayList<>();
       String afterCursor = null;
+      String lastPageBeforeCursor = null;
       int forwardPageCount = 0;
 
       do {
@@ -4445,45 +4448,20 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
             afterCursor = paging.get("after").asText();
             afterCursors.add(afterCursor);
           }
+          if (paging.has("before") && !paging.get("before").isNull()) {
+            lastPageBeforeCursor = paging.get("before").asText();
+          }
         }
-      } while (afterCursor != null && forwardPageCount < 20);
+      } while (afterCursor != null);
 
       assertTrue(forwardPageCount > 1, "Should have paginated through multiple pages forward");
       assertFalse(allIds.isEmpty(), "Should have collected entity version IDs");
 
-      if (!afterCursors.isEmpty()) {
-        String lastAfterCursor = afterCursors.get(afterCursors.size() - 1);
-        String lastPageUrl =
-            basePath
-                + "?startTs="
-                + startTs
-                + "&endTs="
-                + endTs
-                + "&limit="
-                + limit
-                + "&after="
-                + lastAfterCursor;
-        String lastPageResponse =
-            client.getHttpClient().executeForString(HttpMethod.GET, lastPageUrl, null);
-        JsonNode lastPageResult = MAPPER.readTree(lastPageResponse);
-
-        boolean hasAfterOnLastPage = false;
-        if (lastPageResult.has("paging") && !lastPageResult.get("paging").isNull()) {
-          JsonNode paging = lastPageResult.get("paging");
-          hasAfterOnLastPage = paging.has("after") && !paging.get("after").isNull();
-        }
-        assertFalse(hasAfterOnLastPage, "Last page should not have 'after' cursor");
-
-        String beforeCursor = null;
-        if (lastPageResult.has("paging") && !lastPageResult.get("paging").isNull()) {
-          JsonNode paging = lastPageResult.get("paging");
-          if (paging.has("before") && !paging.get("before").isNull()) {
-            beforeCursor = paging.get("before").asText();
-          }
-        }
+      if (!afterCursors.isEmpty() && lastPageBeforeCursor != null) {
+        String beforeCursor = lastPageBeforeCursor;
 
         int backwardPageCount = 0;
-        while (beforeCursor != null && backwardPageCount < 20) {
+        while (beforeCursor != null) {
           String backUrl =
               basePath
                   + "?startTs="
