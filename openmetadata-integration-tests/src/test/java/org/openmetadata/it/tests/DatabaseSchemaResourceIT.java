@@ -35,6 +35,8 @@ import org.openmetadata.sdk.models.ListResponse;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, CreateDatabaseSchema> {
+  private static final org.slf4j.Logger log =
+      org.slf4j.LoggerFactory.getLogger(DatabaseSchemaResourceIT.class);
 
   // Enable import/export for database schemas
   {
@@ -1290,5 +1292,200 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
         adminDescription,
         updatedEntity.getDescription(),
         "Admin should be able to update description via bulk");
+  }
+
+  /**
+   * Test that importing a table with unapproved (IN_REVIEW) glossary terms as tags fails with
+   * appropriate error message.
+   */
+  @Test
+  void test_importCsv_withUnapprovedGlossaryTerm_fails(TestNamespace ns)
+      throws InterruptedException, com.fasterxml.jackson.core.JsonProcessingException {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database = createDatabase(ns, service);
+
+    CreateDatabaseSchema createSchema = new CreateDatabaseSchema();
+    createSchema.setName(ns.prefix("schemaForGlossaryValidation"));
+    createSchema.setDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema = createEntity(createSchema);
+
+    // Create a table to be updated via CSV
+    CreateTable createTable = new CreateTable();
+    createTable.setName(ns.prefix("testTable"));
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setColumns(
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("id")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.BIGINT)));
+    createTable.setTableConstraints(null);
+    client.tables().create(createTable);
+
+    // Create a glossary with an IN_REVIEW term
+    org.openmetadata.schema.api.data.CreateGlossary createGlossary =
+        new org.openmetadata.schema.api.data.CreateGlossary()
+            .withName(ns.prefix("glossaryForValidation"))
+            .withDescription("Glossary for validation");
+    org.openmetadata.schema.entity.data.Glossary glossary =
+        client.glossaries().create(createGlossary);
+
+    // Create an IN_REVIEW glossary term by creating it first, then patching the status
+    // (You cannot create a term with IN_REVIEW status directly)
+    org.openmetadata.schema.type.EntityReference reviewerRef =
+        org.openmetadata.it.factories.UserTestFactory.createUser(ns, "reviewer1")
+            .getEntityReference();
+    org.openmetadata.schema.api.data.CreateGlossaryTerm createInReviewTerm =
+        new org.openmetadata.schema.api.data.CreateGlossaryTerm()
+            .withName(ns.prefix("inReviewGlossaryTerm"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term in review status")
+            .withReviewers(List.of(reviewerRef));
+    org.openmetadata.schema.entity.data.GlossaryTerm inReviewTerm =
+        client.glossaryTerms().create(createInReviewTerm);
+
+    // Now update the term to set it to IN_REVIEW status
+    inReviewTerm.setEntityStatus(org.openmetadata.schema.type.EntityStatus.IN_REVIEW);
+    inReviewTerm = client.glossaryTerms().update(inReviewTerm.getId(), inReviewTerm);
+
+    java.lang.Thread.sleep(5000);
+
+    log.info("TEST: Creating CSV for unapproved glossary term import");
+    log.info("TEST: IN_REVIEW term FQN: {}", inReviewTerm.getFullyQualifiedName());
+    log.info("TEST: Schema FQN: {}", schema.getFullyQualifiedName());
+
+    // Create CSV with the unapproved glossary term
+    String csv =
+        "name*,displayName,description,owner,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension\n"
+            + ns.prefix("testTable")
+            + ",Test Table,Updated description,,,\""
+            + inReviewTerm.getFullyQualifiedName()
+            + "\",,,,,,";
+
+    log.info("TEST: CSV to import:\n{}", csv);
+    log.info("TEST: CSV header field count: {}", csv.split("\n")[0].split(",").length);
+    log.info("TEST: CSV data field count: {}", csv.split("\n")[1].split(",", -1).length);
+
+    // Attempt to import - should fail
+    log.info("TEST: Attempting CSV import for schema: {}", schema.getFullyQualifiedName());
+    String resultCsv =
+        client.databaseSchemas().importCsv(schema.getFullyQualifiedName(), csv, false, false);
+
+    // Log the result for debugging
+    log.info("TEST: CSV Import completed");
+    log.info("TEST: Result CSV: {}", resultCsv);
+    log.info("TEST: Result contains 'failure': {}", resultCsv.contains("failure"));
+    log.info("TEST: Result contains 'aborted': {}", resultCsv.contains("aborted"));
+    log.info("TEST: Result contains 'APPROVED status': {}", resultCsv.contains("APPROVED status"));
+
+    assertNotNull(resultCsv);
+    // Verify error message contains status information
+    assertTrue(
+        resultCsv.contains("must have APPROVED status")
+            || resultCsv.contains("IN_REVIEW")
+            || resultCsv.contains("failure"),
+        "Error message should mention the unapproved term and status requirement. Result: "
+            + resultCsv);
+  }
+
+  /**
+   * Test that importing a table with APPROVED glossary terms as tags succeeds.
+   */
+  @Test
+  void test_importCsv_withApprovedGlossaryTerm_succeeds(TestNamespace ns)
+      throws com.fasterxml.jackson.core.JsonProcessingException {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database = createDatabase(ns, service);
+
+    CreateDatabaseSchema createSchema = new CreateDatabaseSchema();
+    createSchema.setName(ns.prefix("sch"));
+    createSchema.setDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema = createEntity(createSchema);
+
+    // Create a table to be updated via CSV
+    CreateTable createTable = new CreateTable();
+    createTable.setName(ns.prefix("tbl"));
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setColumns(
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("id")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.BIGINT)));
+    org.openmetadata.schema.entity.data.Table table = client.tables().create(createTable);
+
+    // Create a glossary with an APPROVED term
+    org.openmetadata.schema.api.data.CreateGlossary createGlossary =
+        new org.openmetadata.schema.api.data.CreateGlossary()
+            .withName(ns.prefix("glos"))
+            .withDescription("Glossary with approved term");
+    org.openmetadata.schema.entity.data.Glossary glossary =
+        client.glossaries().create(createGlossary);
+
+    org.openmetadata.schema.api.data.CreateGlossaryTerm createApprovedTerm =
+        new org.openmetadata.schema.api.data.CreateGlossaryTerm()
+            .withName(ns.prefix("agt"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term with approved status");
+    org.openmetadata.schema.entity.data.GlossaryTerm approvedTerm =
+        client.glossaryTerms().create(createApprovedTerm);
+
+    // Verify the term is APPROVED
+    org.openmetadata.schema.entity.data.GlossaryTerm fetchedTerm =
+        client.glossaryTerms().get(approvedTerm.getId().toString());
+    assertEquals(org.openmetadata.schema.type.EntityStatus.APPROVED, fetchedTerm.getEntityStatus());
+
+    log.info("TEST [APPROVED]: Creating CSV for approved glossary term import on table");
+    log.info("TEST [APPROVED]: APPROVED term FQN: {}", approvedTerm.getFullyQualifiedName());
+    log.info("TEST [APPROVED]: Schema FQN: {}", schema.getFullyQualifiedName());
+
+    // Create CSV with the approved glossary term
+    String csv =
+        "name*,displayName,description,owner,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension\n"
+            + ns.prefix("tbl")
+            + ",Test Table,Updated description,,,\""
+            + approvedTerm.getFullyQualifiedName()
+            + "\",,,,,,";
+
+    log.info("TEST [APPROVED]: CSV to import:\n{}", csv);
+    log.info("TEST [APPROVED]: CSV header field count: {}", csv.split("\n")[0].split(",").length);
+    log.info("TEST [APPROVED]: CSV data field count: {}", csv.split("\n")[1].split(",", -1).length);
+
+    // Attempt to import - should succeed
+    log.info(
+        "TEST [APPROVED]: Attempting CSV import for schema: {}", schema.getFullyQualifiedName());
+    String resultCsv =
+        client.databaseSchemas().importCsv(schema.getFullyQualifiedName(), csv, false, false);
+
+    // Log the result for debugging
+    log.info("TEST [APPROVED]: CSV Import completed");
+    log.info("TEST [APPROVED]: Result CSV: {}", resultCsv);
+    log.info("TEST [APPROVED]: Result contains 'success': {}", resultCsv.contains("success"));
+    log.info("TEST [APPROVED]: Result contains 'failure': {}", resultCsv.contains("failure"));
+
+    assertNotNull(resultCsv);
+    // Verify import succeeded
+    assertFalse(
+        resultCsv.contains("failure"),
+        "Import should succeed with APPROVED glossary term. Result: " + resultCsv);
+
+    // Verify the table was updated with the glossary term
+    // Verify the table was updated with the glossary term
+    org.openmetadata.schema.entity.data.Table updatedTable =
+        client.tables().get(table.getId().toString(), "tags");
+    assertNotNull(updatedTable.getTags());
+
+    // Log tags for debugging
+    log.info("TEST [APPROVED]: Table tags: {}", updatedTable.getTags());
+
+    assertTrue(
+        updatedTable.getTags().stream()
+            .anyMatch(
+                tag ->
+                    tag.getTagFQN().equals(approvedTerm.getFullyQualifiedName())
+                        && tag.getSource()
+                            == org.openmetadata.schema.type.TagLabel.TagSource.GLOSSARY),
+        "Table should have the approved glossary term as a tag. Found tags: "
+            + updatedTable.getTags());
   }
 }
