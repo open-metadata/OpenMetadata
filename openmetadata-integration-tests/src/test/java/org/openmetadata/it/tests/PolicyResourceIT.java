@@ -35,6 +35,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.resources.policies.PolicyResource;
 
 /**
  * Integration tests for Policy entity operations.
@@ -67,6 +68,11 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
         .withResources(List.of(ALL_RESOURCES))
         .withOperations(List.of(MetadataOperation.EDIT_DESCRIPTION))
         .withEffect(Effect.ALLOW);
+  }
+
+  @Override
+  protected String getResourcePath() {
+    return PolicyResource.COLLECTION_PATH;
   }
 
   @Override

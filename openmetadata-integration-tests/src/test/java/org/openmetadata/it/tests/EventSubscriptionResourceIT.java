@@ -32,6 +32,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
 
 /**
  * Integration tests for EventSubscription entity operations.
@@ -56,7 +57,12 @@ public class EventSubscriptionResourceIT
     supportsDomains = false;
     supportsDataProducts = false;
     supportsSearchIndex = false; // EventSubscription doesn't have a search index
-    supportsListHistoryByTimestamp = true;
+    supportsListHistoryByTimestamp = false; // History endpoint not supported for EventSubscription
+  }
+
+  @Override
+  protected String getResourcePath() {
+    return EventSubscriptionResource.COLLECTION_PATH;
   }
 
   // ===================================================================

@@ -37,6 +37,11 @@ public abstract class BaseServiceIT<T extends EntityInterface, K extends CreateE
     supportsTags = false; // Skip tag tests for services to avoid deadlocks in parallel execution
   }
 
+  @Override
+  protected String getResourcePath() {
+    return "/v1/services/" + getEntityType() + "s/";
+  }
+
   @Test
   void test_listWithDomainFilter(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();

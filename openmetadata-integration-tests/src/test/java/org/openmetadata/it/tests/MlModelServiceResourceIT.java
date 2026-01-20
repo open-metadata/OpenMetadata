@@ -20,6 +20,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.MlModelConnection;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.resources.services.mlmodel.MlModelServiceResource;
 
 /**
  * Integration tests for MlModelService entity operations.
@@ -31,6 +32,11 @@ public class MlModelServiceResourceIT extends BaseServiceIT<MlModelService, Crea
 
   {
     supportsListHistoryByTimestamp = true;
+  }
+
+  @Override
+  protected String getResourcePath() {
+    return MlModelServiceResource.COLLECTION_PATH;
   }
 
   @Override

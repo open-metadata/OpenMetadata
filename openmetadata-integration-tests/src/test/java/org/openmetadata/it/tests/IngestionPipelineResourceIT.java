@@ -54,6 +54,7 @@ import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,6 +86,11 @@ public class IngestionPipelineResourceIT
     supportsDomains = false;
     supportsDataProducts = false;
     supportsListHistoryByTimestamp = true;
+  }
+
+  @Override
+  protected String getResourcePath() {
+    return IngestionPipelineResource.COLLECTION_PATH;
   }
 
   @BeforeAll

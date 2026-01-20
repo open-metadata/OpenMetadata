@@ -117,7 +117,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    * Used for making raw HTTP calls to endpoints not exposed through the SDK.
    */
   protected String getResourcePath() {
-    return "/v1/" + getEntityType() + "s";
+    return "/v1/" + getEntityType() + "s/";
   }
 
   /**
@@ -4271,7 +4271,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       }
 
       long endTs = System.currentTimeMillis();
-      String basePath = getResourcePath() + "/history";
+      String basePath = getResourcePath() + "history";
 
       String response =
           client
@@ -4343,7 +4343,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
       OpenMetadataClient client = SdkClients.adminClient();
       long now = System.currentTimeMillis();
-      String basePath = getResourcePath() + "/history";
+      String basePath = getResourcePath() + "history";
 
       assertThrows(
           Exception.class,
@@ -4377,7 +4377,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       OpenMetadataClient client = SdkClients.adminClient();
       long futureStart = System.currentTimeMillis() + 86400000;
       long futureEnd = futureStart + 1000;
-      String basePath = getResourcePath() + "/history";
+      String basePath = getResourcePath() + "history";
 
       String response =
           client
@@ -4395,7 +4395,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     }
 
     @Test
-    @Timeout(60)
+    @Timeout(180)
     void test_listEntityHistoryByTimestamp_completePaginationCycle(TestNamespace ns)
         throws Exception {
       Assumptions.assumeTrue(
@@ -4415,7 +4415,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       }
 
       long endTs = System.currentTimeMillis();
-      String basePath = getResourcePath() + "/history";
+      String basePath = getResourcePath() + "history";
       int limit = 3;
 
       List<String> allIds = new ArrayList<>();

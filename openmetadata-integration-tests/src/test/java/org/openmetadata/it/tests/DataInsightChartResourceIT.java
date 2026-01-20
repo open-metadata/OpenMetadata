@@ -23,6 +23,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.services.datainsight.DataInsightChartService;
+import org.openmetadata.service.resources.datainsight.DataInsightChartResource;
 
 /**
  * Integration tests for DataInsightChart entity operations.
@@ -44,6 +45,11 @@ public class DataInsightChartResourceIT
     supportsDomains = false;
     supportsSearchIndex = false; // DataInsightChart doesn't have a search index
     supportsListHistoryByTimestamp = true;
+  }
+
+  @Override
+  protected String getResourcePath() {
+    return DataInsightChartResource.COLLECTION_PATH;
   }
 
   @Override

@@ -36,6 +36,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.resources.glossary.GlossaryResource;
 
 /**
  * Integration tests for Glossary entity operations.
@@ -63,6 +64,11 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     supportsPatch = true;
     supportsOwners = true;
     supportsListHistoryByTimestamp = true;
+  }
+
+  @Override
+  protected String getResourcePath() {
+    return GlossaryResource.COLLECTION_PATH;
   }
 
   @Override
