@@ -1,7 +1,9 @@
 package org.openmetadata.service.search.indexes;
 
 import java.util.Map;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 
 public class GlossaryTermIndex implements SearchIndex {

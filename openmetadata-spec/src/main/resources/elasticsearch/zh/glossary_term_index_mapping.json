@@ -491,6 +491,9 @@
       },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "mutuallyExclusive": {
+        "type": "boolean"
       }
     }
   }

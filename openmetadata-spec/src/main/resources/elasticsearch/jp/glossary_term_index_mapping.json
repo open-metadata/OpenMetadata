@@ -519,6 +519,9 @@
       },
       "childrenCount": {
         "type": "integer"
+      },
+      "mutuallyExclusive": {
+        "type": "boolean"
       }
     }
   }
