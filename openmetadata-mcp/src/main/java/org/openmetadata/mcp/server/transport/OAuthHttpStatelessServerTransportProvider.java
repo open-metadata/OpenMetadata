@@ -30,10 +30,12 @@ import org.openmetadata.mcp.server.auth.handlers.AuthorizationHandler;
 import org.openmetadata.mcp.server.auth.handlers.MetadataHandler;
 import org.openmetadata.mcp.server.auth.handlers.ProtectedResourceMetadataHandler;
 import org.openmetadata.mcp.server.auth.handlers.RegistrationHandler;
+import org.openmetadata.mcp.server.auth.handlers.RevocationHandler;
 import org.openmetadata.mcp.server.auth.middleware.AuthContext;
 import org.openmetadata.mcp.server.auth.middleware.BearerAuthenticator;
 import org.openmetadata.mcp.server.auth.middleware.ClientAuthenticator;
 import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
+import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.slf4j.Logger;
@@ -57,6 +59,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   private final AuthorizationHandler authorizationHandler;
 
   private final RegistrationHandler registrationHandler;
+
+  private final RevocationHandler revocationHandler;
 
   private final ClientAuthenticator clientAuthenticator;
 
@@ -129,6 +133,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
         new ProtectedResourceMetadataHandler(protectedResourceMetadata);
     this.authorizationHandler = new AuthorizationHandler(authProvider);
     this.registrationHandler = new RegistrationHandler(new OAuthClientRepository());
+    this.revocationHandler = new RevocationHandler(new OAuthTokenRepository());
 
     this.jwtFilter =
         new JwtFilter(
@@ -318,6 +323,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
         handleAuthorizeRequest(request, response);
       } else if (path.endsWith("/register")) {
         handleRegistrationRequest(request, response);
+      } else if (path.endsWith("/revoke")) {
+        handleRevocationRequest(request, response);
       } else {
         // Handle other POST requests using the parent class
         super.doPost(request, response);
@@ -577,6 +584,56 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       error.put("error", "server_error");
       error.put("error_description", "Internal server error during client registration");
       getObjectMapper().writeValue(response.getOutputStream(), error);
+    }
+  }
+
+  private void handleRevocationRequest(HttpServletRequest request, HttpServletResponse response)
+      throws IOException {
+    try {
+      logger.info("Token revocation request received");
+
+      Map<String, String> params = new HashMap<>();
+      request
+          .getParameterMap()
+          .forEach(
+              (key, values) -> {
+                if (values.length > 0) {
+                  params.put(key, values[0]);
+                }
+              });
+
+      String token = params.get("token");
+      String tokenTypeHint = params.get("token_type_hint");
+
+      if (token == null || token.trim().isEmpty()) {
+        logger.warn("Revocation request missing token parameter");
+        setCorsHeaders(request, response);
+        response.setContentType("application/json");
+        response.setStatus(400);
+
+        Map<String, String> error = new HashMap<>();
+        error.put("error", "invalid_request");
+        error.put("error_description", "token parameter is required");
+        getObjectMapper().writeValue(response.getOutputStream(), error);
+        return;
+      }
+
+      revocationHandler.revokeToken(token, tokenTypeHint).join();
+
+      setCorsHeaders(request, response);
+      response.setStatus(200);
+      logger.info("Token revocation completed successfully");
+
+    } catch (CompletionException ex) {
+      logger.error("Token revocation failed", ex);
+      setCorsHeaders(request, response);
+      response.setContentType("application/json");
+      response.setStatus(200);
+    } catch (Exception ex) {
+      logger.error("Unexpected error during token revocation", ex);
+      setCorsHeaders(request, response);
+      response.setContentType("application/json");
+      response.setStatus(200);
     }
   }
 }

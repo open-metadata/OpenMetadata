@@ -30,6 +30,7 @@ import org.openmetadata.mcp.auth.RefreshToken;
 import org.openmetadata.mcp.auth.exception.AuthorizeException;
 import org.openmetadata.mcp.auth.exception.RegistrationException;
 import org.openmetadata.mcp.auth.exception.TokenException;
+import org.openmetadata.mcp.server.auth.handlers.RevocationHandler;
 import org.openmetadata.mcp.server.auth.html.HtmlTemplates;
 import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthAuthorizationCodeRepository;
@@ -101,6 +102,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   private final OAuthAuthorizationCodeRepository codeRepository;
   private final OAuthTokenRepository tokenRepository;
   private final McpPendingAuthRequestRepository pendingAuthRepository;
+  private final RevocationHandler revocationHandler;
 
   // Thread-safe storage for request/response to prevent race conditions in concurrent requests
   private final ThreadLocal<HttpServletRequest> currentRequest = new ThreadLocal<>();
@@ -123,6 +125,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     this.codeRepository = new OAuthAuthorizationCodeRepository();
     this.tokenRepository = new OAuthTokenRepository();
     this.pendingAuthRepository = new McpPendingAuthRequestRepository();
+    this.revocationHandler = new RevocationHandler(tokenRepository);
 
     LOG.info(
         "Initialized UserSSOOAuthProvider with unified auth (SSO + Basic Auth) and baseUrl: {}",
@@ -1078,10 +1081,13 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   @Override
   public CompletableFuture<Void> revokeToken(Object token) {
     LOG.info("Token revocation requested");
-    return CompletableFuture.failedFuture(
-        new TokenException(
-            "unsupported_token_type",
-            "Token revocation not yet implemented. See IMPLEMENTATION_TODO.md section #14."));
+    if (token == null) {
+      return CompletableFuture.failedFuture(
+          new TokenException("invalid_request", "Token cannot be null"));
+    }
+
+    String tokenString = token.toString();
+    return revocationHandler.revokeToken(tokenString, null);
   }
 
   private String generateAuthorizationCode(
