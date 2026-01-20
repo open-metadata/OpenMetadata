@@ -11,6 +11,7 @@ SERVER_URL="http://localhost:8585"
 RECREATE_INDEX=false
 ENTITY_TYPES=""
 BATCH_SIZE=100
+PARTITION_SIZE=10000
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -31,21 +32,28 @@ while [[ $# -gt 0 ]]; do
             BATCH_SIZE="$2"
             shift 2
             ;;
+        --partition-size)
+            PARTITION_SIZE="$2"
+            shift 2
+            ;;
         -h|--help)
             echo "Usage: $0 [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  --server URL       Target server URL (default: http://localhost:8585)"
-            echo "  --recreate         Drop and recreate indices before reindexing"
-            echo "  --entities TYPES   Comma-separated entity types to reindex (default: all)"
-            echo "  --batch-size NUM   Batch size for indexing (default: 100)"
-            echo "  -h, --help         Show this help message"
+            echo "  --server URL          Target server URL (default: http://localhost:8585)"
+            echo "  --recreate            Drop and recreate indices before reindexing"
+            echo "  --entities TYPES      Comma-separated entity types to reindex (default: all)"
+            echo "  --batch-size NUM      Batch size for indexing (default: 100)"
+            echo "  --partition-size NUM  Partition size for distributed indexing (default: 10000, range: 1000-50000)"
+            echo "                        Smaller values = more partitions = better distribution across servers"
+            echo "  -h, --help            Show this help message"
             echo ""
             echo "Examples:"
             echo "  $0                                    # Reindex all on server 1"
             echo "  $0 --server http://localhost:8587    # Trigger on server 2"
             echo "  $0 --recreate                        # Drop and recreate indices"
             echo "  $0 --entities table,dashboard        # Reindex only tables and dashboards"
+            echo "  $0 --partition-size 2000             # Use smaller partitions for better distribution"
             exit 0
             ;;
         *)
@@ -61,6 +69,7 @@ echo "======================================"
 echo "Server: $SERVER_URL"
 echo "Recreate indices: $RECREATE_INDEX"
 echo "Batch size: $BATCH_SIZE"
+echo "Partition size: $PARTITION_SIZE"
 if [ -n "$ENTITY_TYPES" ]; then
     echo "Entity types: $ENTITY_TYPES"
 else
@@ -107,6 +116,8 @@ REQUEST_BODY=$(cat <<EOF
   "recreateIndex": $RECREATE_FLAG,
   "entities": $ENTITIES_JSON,
   "batchSize": $BATCH_SIZE,
+  "partitionSize": $PARTITION_SIZE,
+  "useDistributedIndexing": true,
   "runMode": "BATCH"
 }
 EOF

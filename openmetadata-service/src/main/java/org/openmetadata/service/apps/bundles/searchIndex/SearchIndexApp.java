@@ -262,7 +262,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
     Stats stats = initializeTotalRecords(jobData.getEntities());
     jobData.setStats(stats);
 
-    distributedExecutor = new DistributedSearchIndexExecutor(collectionDAO);
+    int partitionSize = jobData.getPartitionSize() != null ? jobData.getPartitionSize() : 10000;
+    distributedExecutor = new DistributedSearchIndexExecutor(collectionDAO, partitionSize);
     distributedExecutor.performStartupRecovery();
 
     // Add listeners for distributed mode (same as single-server mode)

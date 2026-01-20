@@ -92,9 +92,14 @@ public class DistributedSearchIndexExecutor {
   private ReindexingJobContext jobContext;
 
   public DistributedSearchIndexExecutor(CollectionDAO collectionDAO) {
+    this(collectionDAO, 10000); // Default partition size
+  }
+
+  public DistributedSearchIndexExecutor(CollectionDAO collectionDAO, int partitionSize) {
     this.collectionDAO = collectionDAO;
-    this.coordinator = new DistributedSearchIndexCoordinator(collectionDAO);
-    this.recoveryManager = new JobRecoveryManager(collectionDAO);
+    PartitionCalculator calculator = new PartitionCalculator(partitionSize);
+    this.coordinator = new DistributedSearchIndexCoordinator(collectionDAO, calculator);
+    this.recoveryManager = new JobRecoveryManager(collectionDAO, partitionSize);
     this.serverId = ServerIdentityResolver.getInstance().getServerId();
   }
 

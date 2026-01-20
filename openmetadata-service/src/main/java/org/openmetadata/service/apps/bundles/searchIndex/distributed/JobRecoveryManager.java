@@ -47,8 +47,13 @@ public class JobRecoveryManager {
   private final String serverId;
 
   public JobRecoveryManager(CollectionDAO collectionDAO) {
+    this(collectionDAO, 10000); // Default partition size
+  }
+
+  public JobRecoveryManager(CollectionDAO collectionDAO, int partitionSize) {
     this.collectionDAO = collectionDAO;
-    this.coordinator = new DistributedSearchIndexCoordinator(collectionDAO);
+    PartitionCalculator calculator = new PartitionCalculator(partitionSize);
+    this.coordinator = new DistributedSearchIndexCoordinator(collectionDAO, calculator);
     this.serverId = ServerIdentityResolver.getInstance().getServerId();
   }
 
