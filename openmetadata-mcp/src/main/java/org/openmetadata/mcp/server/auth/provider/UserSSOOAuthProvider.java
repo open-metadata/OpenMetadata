@@ -13,11 +13,11 @@ import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.auth.AccessToken;
@@ -105,6 +105,9 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   // Thread-safe storage for request/response to prevent race conditions in concurrent requests
   private final ThreadLocal<HttpServletRequest> currentRequest = new ThreadLocal<>();
   private final ThreadLocal<HttpServletResponse> currentResponse = new ThreadLocal<>();
+
+  // Cryptographically secure random number generator for authorization codes and tokens
+  private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
   public UserSSOOAuthProvider(
       AuthenticationCodeFlowHandler ssoHandler,
@@ -209,10 +212,12 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       }
 
       // Validate code challenge format: base64url encoded, 43-128 characters (per RFC 7636)
-      // Allow test values for local development/testing
-      boolean isTestValue = "TEST".equals(codeChallenge) || "test".equalsIgnoreCase(codeChallenge);
+      // COMMENTED FOR PRODUCTION - Uncomment only for local testing, then re-comment before
+      // committing
+      // boolean isTestValue = "TEST".equals(codeChallenge) ||
+      // "test".equalsIgnoreCase(codeChallenge);
 
-      if (!isTestValue && !codeChallenge.matches("^[A-Za-z0-9_-]{43,128}$")) {
+      if (!codeChallenge.matches("^[A-Za-z0-9_-]{43,128}$")) {
         LOG.error(
             "Invalid PKCE code challenge format for client: {}: {}",
             client.getClientId(),
@@ -222,13 +227,14 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
             "PKCE code_challenge has invalid format (must be base64url encoded, 43-128 characters)");
       }
 
-      if (isTestValue) {
-        LOG.warn(
-            "SECURITY WARNING: Using test PKCE challenge '{}' for client: {}. "
-                + "This should NEVER be used in production!",
-            codeChallenge,
-            client.getClientId());
-      }
+      // COMMENTED FOR PRODUCTION - Test value warning
+      // if (isTestValue) {
+      //   LOG.warn(
+      //       "SECURITY WARNING: Using test PKCE challenge '{}' for client: {}. "
+      //           + "This should NEVER be used in production!",
+      //       codeChallenge,
+      //       client.getClientId());
+      // }
 
       // Validate redirect URI against registered URIs (OAuth 2.0 security requirement)
       URI validatedRedirectUri;
@@ -392,7 +398,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       String errorMessage = (String) session.getAttribute(SESSION_MCP_LOGIN_ERROR);
       session.removeAttribute(SESSION_MCP_LOGIN_ERROR);
 
-      String csrfToken = UUID.randomUUID().toString();
+      // Generate cryptographically secure CSRF token (32 bytes = 256 bits)
+      String csrfToken = generateSecureToken(32);
       session.setAttribute(SESSION_MCP_CSRF_TOKEN, csrfToken);
 
       String clientId = (String) session.getAttribute(SESSION_MCP_CLIENT_ID);
@@ -867,8 +874,9 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
               false,
               ServiceTokenType.OM_USER);
 
-      // Generate refresh token for long-lived sessions (OAuth 2.0 RFC 6749)
-      String refreshTokenValue = UUID.randomUUID().toString();
+      // Generate cryptographically secure refresh token (32 bytes = 256 bits) for long-lived
+      // sessions (OAuth 2.0 RFC 6749)
+      String refreshTokenValue = generateSecureToken(32);
       long refreshExpiresAt = System.currentTimeMillis() + (REFRESH_TOKEN_EXPIRY_SECONDS * 1000);
 
       RefreshToken refreshToken =
@@ -1015,8 +1023,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       tokenRepository.revokeRefreshToken(refreshTokenValue);
       LOG.debug("Old refresh token revoked for user: {}", userName);
 
-      // Generate new refresh token
-      String newRefreshTokenValue = UUID.randomUUID().toString();
+      // Generate cryptographically secure new refresh token (32 bytes = 256 bits)
+      String newRefreshTokenValue = generateSecureToken(32);
       long newRefreshExpiresAt = System.currentTimeMillis() + (REFRESH_TOKEN_EXPIRY_SECONDS * 1000);
 
       RefreshToken newRefreshToken =
@@ -1082,7 +1090,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       String codeChallenge,
       URI redirectUri,
       List<String> scopes) {
-    String code = UUID.randomUUID().toString();
+    // Generate cryptographically secure authorization code (32 bytes = 256 bits)
+    String code = generateSecureToken(32);
     long expiresAt = System.currentTimeMillis() + (AUTH_CODE_EXPIRY_SECONDS * 1000);
 
     codeRepository.store(
@@ -1095,17 +1104,30 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     return code;
   }
 
+  /**
+   * Generates a cryptographically secure random token using SecureRandom.
+   * Used for authorization codes, refresh tokens, and CSRF tokens.
+   *
+   * @param numBytes Number of random bytes to generate (e.g., 32 for 256 bits of entropy)
+   * @return URL-safe base64-encoded random string
+   */
+  private static String generateSecureToken(int numBytes) {
+    byte[] tokenBytes = new byte[numBytes];
+    SECURE_RANDOM.nextBytes(tokenBytes);
+    return Base64.getUrlEncoder().withoutPadding().encodeToString(tokenBytes);
+  }
+
   private boolean verifyPKCE(String codeVerifier, String codeChallenge) {
     try {
-      // TODO(PRODUCTION): REMOVE THIS ENTIRE BLOCK BEFORE PRODUCTION DEPLOYMENT
-      // This is a development-only bypass for testing purposes
+      // COMMENTED FOR PRODUCTION - Uncomment only for local testing, then re-comment before
+      // committing
       // SECURITY RISK: This allows bypassing PKCE validation entirely
-      if ("TEST".equals(codeVerifier) && "TEST".equals(codeChallenge)) {
-        LOG.warn(
-            "SECURITY WARNING: Using test PKCE verifier/challenge 'TEST'. "
-                + "This should NEVER be used in production!");
-        return true;
-      }
+      // if ("TEST".equals(codeVerifier) && "TEST".equals(codeChallenge)) {
+      //   LOG.warn(
+      //       "SECURITY WARNING: Using test PKCE verifier/challenge 'TEST'. "
+      //           + "This should NEVER be used in production!");
+      //   return true;
+      // }
 
       MessageDigest digest = MessageDigest.getInstance("SHA-256");
       byte[] hash = digest.digest(codeVerifier.getBytes(StandardCharsets.US_ASCII));

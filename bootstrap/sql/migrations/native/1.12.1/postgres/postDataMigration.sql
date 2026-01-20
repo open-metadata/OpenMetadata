@@ -13,3 +13,10 @@ VALUES (
   redirect_uris = EXCLUDED.redirect_uris,
   grant_types = EXCLUDED.grant_types,
   scopes = EXCLUDED.scopes;
+
+-- Set authType to 'basic' for existing Snowflake connections that don't have it
+-- This ensures backward compatibility after adding OAuth support to Snowflake connector
+UPDATE database_service
+SET json = jsonb_set(json, '{connection,config,authType}', '"basic"'::jsonb, true)
+WHERE serviceType = 'Snowflake'
+  AND json->'connection'->'config'->>'authType' IS NULL;

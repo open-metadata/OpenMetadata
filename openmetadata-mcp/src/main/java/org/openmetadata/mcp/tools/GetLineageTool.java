@@ -1,6 +1,7 @@
 package org.openmetadata.mcp.tools;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.MetadataOperation.VIEW_ALL;
 
 import java.io.IOException;
 import java.util.Map;
@@ -11,6 +12,8 @@ import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 @Slf4j
 @RequireScope({"metadata:read"})
@@ -30,6 +33,12 @@ public class GetLineageTool implements McpTool {
       }
       String entityType = (String) params.get("entityType");
       String fqn = (String) params.get("fqn");
+
+      // Perform resource-level authorization check
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityType, VIEW_ALL),
+          new ResourceContext<>(entityType));
 
       // Parse and validate upstream depth with default and max limits
       int upstreamDepth = parseDepthParameter(params.get("upstreamDepth"), DEFAULT_DEPTH);

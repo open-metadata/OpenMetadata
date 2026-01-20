@@ -209,30 +209,53 @@
   },
   "additionalProperties": false,
   "required": ["account", "warehouse"],
-  "oneOf": [
+  "allOf": [
     {
-      "properties": {
-        "authType": {
-          "const": "basic"
-        }
+      "if": {
+        "properties": {
+          "authType": {
+            "const": "oauth2"
+          }
+        },
+        "required": ["authType"]
       },
-      "required": ["username", "password"]
+      "then": {
+        "required": ["oauth"]
+      }
     },
     {
-      "properties": {
-        "authType": {
-          "const": "oauth2"
-        }
+      "if": {
+        "properties": {
+          "authType": {
+            "const": "keyPair"
+          }
+        },
+        "required": ["authType"]
       },
-      "required": ["oauth"]
+      "then": {
+        "required": ["username", "privateKey"]
+      }
     },
     {
-      "properties": {
-        "authType": {
-          "const": "keyPair"
-        }
+      "if": {
+        "anyOf": [
+          {
+            "properties": {
+              "authType": {
+                "const": "basic"
+              }
+            }
+          },
+          {
+            "not": {
+              "required": ["authType"]
+            }
+          }
+        ]
       },
-      "required": ["username", "privateKey"]
+      "then": {
+        "required": ["username"]
+      }
     }
   ]
 }
