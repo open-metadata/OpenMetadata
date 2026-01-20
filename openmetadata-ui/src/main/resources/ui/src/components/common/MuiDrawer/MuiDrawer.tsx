@@ -60,6 +60,9 @@ const MuiDrawer: FC<MuiDrawerProps> = ({
       }}
       anchor="right"
       open={open}
+      sx={{
+        zIndex: 1000,
+      }}
       onClose={onClose}>
       <Box
         ref={drawerContentRef}

@@ -13,7 +13,7 @@
 import { test } from '../../support/fixtures/userPages';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import { TableClass } from '../../support/entity/TableClass';
-import { redirectToHomePage, uuid } from '../../utils/common';
+import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import {
   addCustomPropertiesForEntity,
   deleteCreatedProperty,
@@ -22,7 +22,6 @@ import {
   verifyTableColumnCustomPropertyPersistence,
 } from '../../utils/customProperty';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
-import { performAdminLogin } from '../../utils/admin';
 
 const propertiesList = [
   'Integer',
@@ -45,13 +44,13 @@ const adminTestEntity = new TableClass();
 
 test.describe('Custom properties without custom property config', () => {
   test.beforeAll('Setup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
     await adminTestEntity.create(apiContext);
     await afterAction();
   });
 
   test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
     await adminTestEntity.delete(apiContext);
     await afterAction();
   });
