@@ -274,7 +274,7 @@ const TestDefinitionList = () => {
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        width: 250,
+        width: '30%',
         render: (name: string, record: TestDefinition) => (
           <Typography.Text data-testid={name}>
             {getEntityName(record)}
@@ -285,6 +285,7 @@ const TestDefinitionList = () => {
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
+        width: '45%',
         ellipsis: true,
         render: (description: string) => (
           <RichTextEditorPreviewerNew markdown={description} />
@@ -328,13 +329,15 @@ const TestDefinitionList = () => {
               title={
                 !hasEditPermission && t('message.no-permission-for-action')
               }>
-              <Switch
-                checked={enabled ?? true}
-                data-testid={`enable-switch-${record.name}`}
-                disabled={!hasEditPermission}
-                size="small"
-                onChange={(checked) => handleEnableToggle(record, checked)}
-              />
+              <div className="new-form-style d-inline-flex">
+                <Switch
+                  checked={enabled ?? true}
+                  data-testid={`enable-switch-${record.name}`}
+                  disabled={!hasEditPermission}
+                  size="small"
+                  onChange={(checked) => handleEnableToggle(record, checked)}
+                />
+              </div>
             </Tooltip>
           );
         },
@@ -448,7 +451,7 @@ const TestDefinitionList = () => {
             <Row justify="space-between">
               <Col>
                 <Typography.Title level={5}>
-                  {t('label.test-definition-plural')}
+                  {t('label.data-quality-rule-plural')}
                 </Typography.Title>
                 <Typography.Text type="secondary">
                   {t('message.page-sub-header-for-test-definitions')}
