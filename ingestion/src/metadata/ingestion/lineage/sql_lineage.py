@@ -1036,6 +1036,7 @@ def get_lineage_via_table_entity(
         )
 
 
+@calculate_execution_time(context="GetLineageForPath")
 def _get_lineage_for_path(
     from_fqn: str,
     to_fqn: str,
@@ -1080,6 +1081,7 @@ def _get_lineage_for_path(
     return None
 
 
+@calculate_execution_time_generator(context="ProcessSequence")
 def _process_sequence(
     sequence: List[Any], graph: DiGraph, metadata: OpenMetadata
 ) -> Iterable[Either[AddLineageRequest]]:
@@ -1117,6 +1119,7 @@ def _process_sequence(
             logger.error(f"Error creating lineage for node [{node}]: {exc}")
 
 
+@calculate_execution_time(context="GetPathsFromSubtree")
 def _get_paths_from_subtree(subtree: DiGraph) -> List[List[Any]]:
     """
     Get all paths from root nodes to leaf nodes in a subtree
@@ -1127,6 +1130,7 @@ def _get_paths_from_subtree(subtree: DiGraph) -> List[List[Any]]:
     # Find all leaf nodes (nodes with no outgoing edges)
     leaf_nodes = [node for node in subtree if subtree.out_degree(node) == 0]
 
+    @calculate_execution_time(context="ProcessRootNode")
     @timeout(seconds=NODE_PROCESSING_TIMEOUT)
     def process_root_node(root, leaf_nodes):
         """Process a single root node and return all paths to leaf nodes."""
@@ -1150,6 +1154,7 @@ def _get_paths_from_subtree(subtree: DiGraph) -> List[List[Any]]:
     return paths
 
 
+@calculate_execution_time_generator(context="GetLineageByGraph")
 def get_lineage_by_graph(
     graph: Optional[DiGraph],
     metadata: OpenMetadata,
@@ -1181,6 +1186,7 @@ def get_lineage_by_graph(
             yield from _process_sequence(path, subtree, metadata)
 
 
+@calculate_execution_time_generator(context="GetLineageByProcedureGraph")
 def get_lineage_by_procedure_graph(
     procedure_graph_map: Optional[Dict],
     metadata: OpenMetadata,
