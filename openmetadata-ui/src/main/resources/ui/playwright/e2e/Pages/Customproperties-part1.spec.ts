@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test } from '../../support/fixtures/userPages'; // Removed expect
+import { test } from '../../support/fixtures/userPages';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import { TableClass } from '../../support/entity/TableClass';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
@@ -125,9 +125,7 @@ test.describe('Custom properties without custom property config', () => {
             true
           );
 
-          // if (entity.name !== 'tableColumn') {
           await deleteCreatedProperty(page, propertyName);
-          // }
         });
       });
     });

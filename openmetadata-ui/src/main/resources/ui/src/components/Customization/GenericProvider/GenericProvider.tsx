@@ -136,8 +136,6 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   }, [extractedColumns, columnFqn, cleanColumn]);
 
   // Sync selected column when extractedColumns change (e.g., after updates)
-  // Don't overwrite selectedColumn with extractedColumns data as it may lack extension
-  // The selectedColumn from SchemaTable already has the full data including extension
   useEffect(() => {
     if (!selectedColumn?.fullyQualifiedName || extractedColumns.length === 0) {
       return;
