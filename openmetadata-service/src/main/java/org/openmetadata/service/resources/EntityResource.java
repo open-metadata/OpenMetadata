@@ -345,7 +345,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return repository.listVersions(id);
   }
 
-  protected ResultList<T> listAllVersionsByTimestampInternal(
+  protected ResultList<T> listEntityHistoryByTimestampInternal(
       SecurityContext securityContext,
       long startTs,
       long endTs,
@@ -356,7 +356,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     ResourceContext resourceContext = getResourceContext();
     OperationContext operationContext = new OperationContext(entityType, VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.listAllVersionsByTimestamp(startTs, endTs, after, before, limit);
+    return repository.listEntityHistoryByTimestamp(startTs, endTs, after, before, limit);
   }
 
   public T getByNameInternal(
@@ -1068,7 +1068,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   @GET
-  @Path("/versions")
+  @Path("/history")
   @Operation(
       operationId = "listAllEntityVersionsByTimestamp",
       summary = "List all entity versions within a time range",
@@ -1078,13 +1078,13 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of table versions",
+            description = "List of all versions",
             content =
                 @Content(
                     mediaType = "application/json",
                     schema = @Schema(implementation = ResultList.class)))
       })
-  public ResultList<T> listAllVersionsByTimestamp(
+  public ResultList<T> listEntityHistoryByTimestamp(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Start timestamp in milliseconds since epoch", required = true)
@@ -1093,19 +1093,19 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       @Parameter(description = "End timestamp in milliseconds since epoch", required = true)
           @QueryParam("endTs")
           long endTs,
-      @Parameter(description = "Limit the number of tables returned (1 to 1000000, default = 10)")
+      @Parameter(description = "Limit the number of entity returned (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(value = 1, message = "must be greater than or equal to 1")
           @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
           int limitParam,
-      @Parameter(description = "Returns list of table versions before this cursor")
+      @Parameter(description = "Returns list of entity versions before this cursor")
           @QueryParam("before")
           String before,
-      @Parameter(description = "Returns list of table versions after this cursor")
+      @Parameter(description = "Returns list of entity versions after this cursor")
           @QueryParam("after")
           String after) {
-    return listAllVersionsByTimestampInternal(
+    return listEntityHistoryByTimestampInternal(
         securityContext, startTs, endTs, before, after, limitParam);
   }
 }

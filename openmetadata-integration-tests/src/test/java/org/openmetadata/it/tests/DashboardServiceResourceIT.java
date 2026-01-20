@@ -34,7 +34,7 @@ public class DashboardServiceResourceIT
     extends BaseServiceIT<DashboardService, CreateDashboardService> {
 
   {
-    supportsListAllVersionsByTimestamp = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   @Override

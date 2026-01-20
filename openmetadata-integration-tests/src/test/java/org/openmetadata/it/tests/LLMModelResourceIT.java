@@ -26,7 +26,7 @@ public class LLMModelResourceIT extends BaseEntityIT<LLMModel, CreateLLMModel> {
 
   {
     supportsSearchIndex = false; // LLMModel doesn't have a search index
-    supportsListAllVersionsByTimestamp = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   @Override

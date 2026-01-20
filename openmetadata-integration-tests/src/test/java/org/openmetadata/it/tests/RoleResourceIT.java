@@ -54,7 +54,7 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
     supportsPatch = true;
     supportsOwners = false;
     supportsSearchIndex = false; // Role does not have search index
-    supportsListAllVersionsByTimestamp = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   @Override

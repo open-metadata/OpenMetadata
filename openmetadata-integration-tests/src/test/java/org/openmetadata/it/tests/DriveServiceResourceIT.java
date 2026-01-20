@@ -30,7 +30,7 @@ import org.openmetadata.sdk.models.ListResponse;
 public class DriveServiceResourceIT extends BaseServiceIT<DriveService, CreateDriveService> {
 
   {
-    supportsListAllVersionsByTimestamp = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   @Override

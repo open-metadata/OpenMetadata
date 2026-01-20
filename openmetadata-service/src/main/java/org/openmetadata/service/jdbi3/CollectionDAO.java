@@ -1343,7 +1343,7 @@ public interface CollectionDAO {
                 + "ORDER BY updatedAt DESC, id DESC "
                 + "LIMIT :limit")
     @RegisterRowMapper(ExtensionMapper.class)
-    List<String> getExtensionsByTimestampRange(
+    List<String> getEntityHistoryByTimestampRange(
         @Define("table") String table,
         @Bind("startTs") long startTs,
         @Bind("endTs") long endTs,
@@ -1365,7 +1365,7 @@ public interface CollectionDAO {
                 + "WHERE updatedAt >= :startTs AND "
                 + "updatedAt <= :endTs"
                 + ") total_counts")
-    int getExtensionsByTimestampRangeCount(
+    int getEntityHistoryByTimestampRangeCount(
         @Define("table") String table,
         @Bind("startTs") long startTs,
         @Bind("endTs") long endTs,

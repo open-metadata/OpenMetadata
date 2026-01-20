@@ -291,7 +291,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private static final LoadingCache<String, Integer> COUNT_CACHE =
       CacheBuilder.newBuilder()
-          .maximumSize(100)
+          .maximumSize(500)
           .expireAfterWrite(1, TimeUnit.MINUTES)
           .recordStats()
           .build(
@@ -1192,13 +1192,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
           () ->
               daoCollection
                   .entityExtensionDAO()
-                  .getExtensionsByTimestampRangeCount(tableName, startTs, endTs, extensionPrefix));
+                  .getEntityHistoryByTimestampRangeCount(tableName, startTs, endTs, extensionPrefix));
     } catch (ExecutionException e) {
         throw new RuntimeException("Failed to get version count from cache", e);
     }
   }
 
-  public final ResultList<T> listAllVersionsByTimestamp(
+  public final ResultList<T> listEntityHistoryByTimestamp(
       long startTs, long endTs, String afterCursor, String beforeCursor, int limit) {
     String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityType);
     String tableName = dao.getTableName();
@@ -1227,7 +1227,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<String> jsons =
         daoCollection
             .entityExtensionDAO()
-            .getExtensionsByTimestampRange(
+            .getEntityHistoryByTimestampRange(
                 tableName,
                 startTs,
                 endTs,
@@ -1282,6 +1282,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     String decodedCursor = RestUtil.decodeCursor(cursor);
     if (!decodedCursor.contains(":")) {
       throw new RuntimeException("Cursor is not a valid cursor: " + cursor);
+    }
+    String[] parts = decodedCursor.split(":");
+    try {
+        Long.parseLong(parts[0]);
+        UUID.fromString(parts[1]);
+    } catch (IllegalArgumentException e) {
+        throw new IllegalArgumentException("Cursor is not a valid cursor: " + cursor);
     }
     return decodedCursor;
   }

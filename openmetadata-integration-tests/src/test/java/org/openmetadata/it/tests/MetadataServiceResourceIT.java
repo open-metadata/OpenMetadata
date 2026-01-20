@@ -30,7 +30,7 @@ public class MetadataServiceResourceIT
     extends BaseServiceIT<MetadataService, CreateMetadataService> {
 
   {
-    supportsListAllVersionsByTimestamp = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   @Override

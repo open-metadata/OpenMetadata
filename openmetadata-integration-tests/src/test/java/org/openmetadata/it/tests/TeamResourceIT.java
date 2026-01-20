@@ -69,7 +69,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
     supportsSoftDelete = true;
     supportsPatch = true;
     supportsOwners = true;
-    supportsListAllVersionsByTimestamp = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   @Override

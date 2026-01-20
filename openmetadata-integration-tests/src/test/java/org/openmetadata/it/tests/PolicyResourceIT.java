@@ -58,7 +58,7 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
     supportsPatch = true;
     supportsOwners = true;
     supportsSearchIndex = false; // Policy does not have search index
-    supportsListAllVersionsByTimestamp = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   private Rule createBasicRule(String name) {

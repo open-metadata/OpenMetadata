@@ -37,7 +37,7 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
 
   {
     supportsLifeCycle = true;
-    supportsListAllVersionsByTimestamp = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   // ===================================================================

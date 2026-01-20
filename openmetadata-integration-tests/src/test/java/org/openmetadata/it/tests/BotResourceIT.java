@@ -41,7 +41,7 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
     supportsDomains = false; // Bot doesn't support domains
     supportsDataProducts = false;
     supportsSearchIndex = false; // Bot doesn't have a search index
-    supportsListAllVersionsByTimestamp = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   // ===================================================================

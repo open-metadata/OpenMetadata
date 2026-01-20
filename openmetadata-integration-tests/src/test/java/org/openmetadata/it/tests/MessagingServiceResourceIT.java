@@ -33,7 +33,7 @@ public class MessagingServiceResourceIT
     extends BaseServiceIT<MessagingService, CreateMessagingService> {
 
   {
-    supportsListAllVersionsByTimestamp = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   @Override

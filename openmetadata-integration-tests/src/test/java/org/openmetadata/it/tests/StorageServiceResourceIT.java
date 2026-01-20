@@ -26,7 +26,7 @@ import org.openmetadata.sdk.models.ListResponse;
 public class StorageServiceResourceIT extends BaseServiceIT<StorageService, CreateStorageService> {
 
   {
-    supportsListAllVersionsByTimestamp = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   @Override

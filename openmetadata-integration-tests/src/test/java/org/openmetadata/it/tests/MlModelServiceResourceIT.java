@@ -30,7 +30,7 @@ import org.openmetadata.sdk.models.ListResponse;
 public class MlModelServiceResourceIT extends BaseServiceIT<MlModelService, CreateMlModelService> {
 
   {
-    supportsListAllVersionsByTimestamp = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   @Override

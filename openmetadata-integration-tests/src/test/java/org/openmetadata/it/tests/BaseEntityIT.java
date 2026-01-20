@@ -152,7 +152,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       true; // Override if include=deleted query param not supported
   protected boolean supportsImportExport =
       false; // Override in subclasses that support CSV import/export
-  protected boolean supportsListAllVersionsByTimestamp =
+  protected boolean supportsListHistoryByTimestamp =
       false; // Override in subclasses that support listing all versions by timestamp
 
   // ===================================================================
@@ -4246,12 +4246,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   @Nested
-  class ListAllVersionsByTimestampPaginationTest {
+  class ListEntityHistoryByTimestampPaginationTest {
     @Test
-    void test_listAllVersionsByTimestamp_pagination(TestNamespace ns) throws Exception {
+    void test_listEntityHistoryByTimestamp_pagination(TestNamespace ns) throws Exception {
       Assumptions.assumeTrue(
-          supportsListAllVersionsByTimestamp,
-          "Entity does not support listAllVersionsByTimestamp endpoint");
+          supportsListHistoryByTimestamp,
+          "Entity does not support listEntityHistoryByTimestamp endpoint");
       Assumptions.assumeTrue(supportsPatch, "Entity does not support patch operations");
 
       OpenMetadataClient client = SdkClients.adminClient();
@@ -4271,7 +4271,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       }
 
       long endTs = System.currentTimeMillis();
-      String basePath = getResourcePath() + "/versions";
+      String basePath = getResourcePath() + "/history";
 
       String response =
           client
@@ -4336,14 +4336,14 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     }
 
     @Test
-    void test_listAllVersionsByTimestamp_withInvalidLimit(TestNamespace ns) throws Exception {
+    void test_listEntityHistoryByTimestamp_withInvalidLimit(TestNamespace ns) throws Exception {
       Assumptions.assumeTrue(
-          supportsListAllVersionsByTimestamp,
-          "Entity does not support listAllVersionsByTimestamp endpoint");
+          supportsListHistoryByTimestamp,
+          "Entity does not support listEntityHistoryByTimestamp endpoint");
 
       OpenMetadataClient client = SdkClients.adminClient();
       long now = System.currentTimeMillis();
-      String basePath = getResourcePath() + "/versions";
+      String basePath = getResourcePath() + "/history";
 
       assertThrows(
           Exception.class,
@@ -4369,15 +4369,15 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     }
 
     @Test
-    void test_listAllVersionsByTimestamp_emptyTimeRange(TestNamespace ns) throws Exception {
+    void test_listEntityHistoryByTimestamp_emptyTimeRange(TestNamespace ns) throws Exception {
       Assumptions.assumeTrue(
-          supportsListAllVersionsByTimestamp,
-          "Entity does not support listAllVersionsByTimestamp endpoint");
+          supportsListHistoryByTimestamp,
+          "Entity does not support listEntityHistoryByTimestamp endpoint");
 
       OpenMetadataClient client = SdkClients.adminClient();
       long futureStart = System.currentTimeMillis() + 86400000;
       long futureEnd = futureStart + 1000;
-      String basePath = getResourcePath() + "/versions";
+      String basePath = getResourcePath() + "/history";
 
       String response =
           client
@@ -4396,11 +4396,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
     @Test
     @Timeout(60)
-    void test_listAllVersionsByTimestamp_completePaginationCycle(TestNamespace ns)
+    void test_listEntityHistoryByTimestamp_completePaginationCycle(TestNamespace ns)
         throws Exception {
       Assumptions.assumeTrue(
-          supportsListAllVersionsByTimestamp,
-          "Entity does not support listAllVersionsByTimestamp endpoint");
+          supportsListHistoryByTimestamp,
+          "Entity does not support listEntityHistoryByTimestamp endpoint");
       Assumptions.assumeTrue(supportsPatch, "Entity does not support patch operations");
 
       OpenMetadataClient client = SdkClients.adminClient();
@@ -4415,7 +4415,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       }
 
       long endTs = System.currentTimeMillis();
-      String basePath = getResourcePath() + "/versions";
+      String basePath = getResourcePath() + "/history";
       int limit = 3;
 
       List<String> allIds = new ArrayList<>();

@@ -40,7 +40,7 @@ public class DatabaseServiceResourceIT
     extends BaseServiceIT<DatabaseService, CreateDatabaseService> {
 
   {
-    supportsListAllVersionsByTimestamp = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   @Override

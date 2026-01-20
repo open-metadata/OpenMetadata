@@ -30,7 +30,7 @@ import org.openmetadata.sdk.models.ListResponse;
 public class SearchServiceResourceIT extends BaseServiceIT<SearchService, CreateSearchService> {
 
   {
-    supportsListAllVersionsByTimestamp = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   @Override

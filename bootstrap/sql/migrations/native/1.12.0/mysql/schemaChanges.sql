@@ -52,7 +52,7 @@ UPDATE test_definition
   WHERE json_extract(json, '$.enabled') IS NULL;
 
 -- Add updatedAt generated column to entity_extension table for efficient timestamp-based queries
--- This supports the listAllVersionsByTimestamp API endpoint for retrieving entity versions within a time range
+-- This supports the listEntityHistoryByTimestamp API endpoint for retrieving entity versions within a time range
 ALTER TABLE entity_extension
   ADD COLUMN updatedAt BIGINT UNSIGNED
   GENERATED ALWAYS AS (CAST(json_unquote(json_extract(json, '$.updatedAt')) AS UNSIGNED))

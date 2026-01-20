@@ -32,7 +32,7 @@ public class PipelineServiceResourceIT
     extends BaseServiceIT<PipelineService, CreatePipelineService> {
 
   {
-    supportsListAllVersionsByTimestamp = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   @Override

@@ -68,7 +68,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_log_created_at
 ON audit_log_event (created_at);
 
 -- Add updatedAt generated column to entity_extension table for efficient timestamp-based queries
--- This supports the listAllVersionsByTimestamp API endpoint for retrieving entity versions within a time range
+-- This supports the listEntityHistoryByTimestamp API endpoint for retrieving entity versions within a time range
 ALTER TABLE entity_extension
   ADD COLUMN IF NOT EXISTS updatedAt BIGINT GENERATED ALWAYS AS (
     (json ->> 'updatedAt')::BIGINT

@@ -40,7 +40,7 @@ import org.openmetadata.sdk.network.HttpMethod;
 public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
 
   {
-    supportsListAllVersionsByTimestamp = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   // ===================================================================

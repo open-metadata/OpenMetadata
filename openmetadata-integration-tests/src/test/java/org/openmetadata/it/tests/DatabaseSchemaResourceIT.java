@@ -39,7 +39,7 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
   {
     supportsImportExport = true;
     supportsLifeCycle = true;
-    supportsListAllVersionsByTimestamp = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   // Store last created schema for import/export tests

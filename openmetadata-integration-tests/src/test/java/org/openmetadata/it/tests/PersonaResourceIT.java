@@ -42,7 +42,7 @@ public class PersonaResourceIT extends BaseEntityIT<Persona, CreatePersona> {
     supportsDomains = false;
     supportsDataProducts = false;
     supportsSearchIndex = false; // Persona doesn't have a search index
-    supportsListAllVersionsByTimestamp = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   // ===================================================================

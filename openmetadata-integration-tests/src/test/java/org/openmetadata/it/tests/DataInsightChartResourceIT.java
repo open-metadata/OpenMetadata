@@ -43,7 +43,7 @@ public class DataInsightChartResourceIT
     supportsCustomExtension = false;
     supportsDomains = false;
     supportsSearchIndex = false; // DataInsightChart doesn't have a search index
-    supportsListAllVersionsByTimestamp = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   @Override

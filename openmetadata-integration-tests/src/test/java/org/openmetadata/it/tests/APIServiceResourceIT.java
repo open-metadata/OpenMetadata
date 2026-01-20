@@ -31,7 +31,7 @@ import org.openmetadata.sdk.models.ListResponse;
 public class APIServiceResourceIT extends BaseServiceIT<ApiService, CreateApiService> {
 
   {
-    supportsListAllVersionsByTimestamp = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   @Override

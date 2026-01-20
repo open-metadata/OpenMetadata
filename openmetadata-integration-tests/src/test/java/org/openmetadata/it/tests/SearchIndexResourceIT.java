@@ -44,7 +44,7 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
     supportsSearchIndex = false;
     supportsDomains = false;
     supportsLifeCycle = true;
-    supportsListAllVersionsByTimestamp = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   // ===================================================================

@@ -27,7 +27,7 @@ import org.openmetadata.sdk.models.ListResponse;
 public class LLMServiceResourceIT extends BaseServiceIT<LLMService, CreateLLMService> {
 
   {
-    supportsListAllVersionsByTimestamp = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   @BeforeAll
