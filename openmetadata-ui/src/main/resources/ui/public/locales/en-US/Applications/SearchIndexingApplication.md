@@ -95,3 +95,10 @@ $$section
 Enable distributed indexing to scale reindexing across multiple servers with fault tolerance and parallel processing
 
 $$
+
+$$section
+### Partition Size $(id="partitionSize")
+
+Number of entities per partition for distributed indexing. Smaller values create more partitions for better distribution across servers. Range: 1000-50000.
+
+$$
