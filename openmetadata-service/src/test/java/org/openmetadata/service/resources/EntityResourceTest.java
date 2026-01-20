@@ -520,6 +520,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static Type ENUM_TYPE;
   public static Type TABLE_TYPE;
+  public static Type TABLE_COLUMN_TYPE;
+  public static Type DASHBOARD_DATA_MODEL_COLUMN_TYPE;
 
   // Run webhook related tests randomly. This will ensure these tests are not run for every entity
   // evey time junit tests are run to save time. But over the course of development of a release,
@@ -3051,6 +3053,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     if (supportsSoftDelete) {
       Map<String, String> queryParams = new HashMap<>();
       queryParams.put("include", "deleted");
+      queryParams.put("includeRelations", "followers:all");
       entity = getEntity(entityId, queryParams, FIELD_FOLLOWERS, ADMIN_AUTH_HEADERS);
       TestUtils.existsInEntityReferenceList(entity.getFollowers(), user1.getId(), true);
     }
@@ -4933,6 +4936,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Just use WebTarget directly
     WebTarget target = getResource(id);
     target = target.queryParam("fields", fields);
+    target = target.queryParam("includeRelations", "owners:all,followers:all");
     return TestUtils.get(target, entityClass, authHeaders);
   }
 
@@ -5867,7 +5871,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
               ? (List<TagLabel>) expected
               : JsonUtils.readObjects(expected.toString(), TagLabel.class);
       List<TagLabel> actualTags = JsonUtils.readObjects(actual.toString(), TagLabel.class);
-      assertTrue(actualTags.containsAll(expectedTags));
+      assertTrue(TestUtils.isTagsSuperSet(actualTags, expectedTags));
       actualTags.forEach(tagLabel -> assertNotNull(tagLabel.getDescription()));
     } else if (fieldName.startsWith(
         "extension")) { // Custom properties related extension field changes

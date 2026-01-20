@@ -53,7 +53,7 @@ export interface ApplicationPipeline {
 export interface CollateAIAppConfig {
     /**
      * Query filter to be passed to ES. E.g.,
-     * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domain.displayName.keyword":"DG
+     * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domains.displayName.keyword":"DG
      * Anim"}}]}}]}}}`. This is the same payload as in the Explore page.
      */
     filter?: string;
@@ -563,6 +563,14 @@ export enum MetadataAttribute {
  */
 export interface TagLabel {
     /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
+    /**
      * Description for the tag label.
      *
      * Optional description of entity.
@@ -710,6 +718,14 @@ export interface CoverImage {
  * tier to apply
  */
 export interface TierElement {
+    /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
     /**
      * Description for the tag label.
      */
@@ -964,7 +980,7 @@ export interface Resource {
     filterJsonTree?: string;
     /**
      * Query filter to be passed to ES. E.g.,
-     * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domain.displayName.keyword":"DG
+     * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domains.displayName.keyword":"DG
      * Anim"}}]}}]}}}`. This is the same payload as in the Explore page.
      */
     queryFilter?: string;

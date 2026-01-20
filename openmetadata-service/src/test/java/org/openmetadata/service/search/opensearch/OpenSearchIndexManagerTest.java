@@ -452,4 +452,66 @@ class OpenSearchIndexManagerTest {
     assertTrue(result.isEmpty());
     verifyNoInteractions(indicesClient);
   }
+
+  @Test
+  void testDeleteIndexWithBackoff_SuccessfulOnFirstAttempt() throws IOException {
+    when(indicesClient.delete(any(DeleteIndexRequest.class))).thenReturn(deleteIndexResponse);
+    when(deleteIndexResponse.acknowledged()).thenReturn(true);
+
+    assertDoesNotThrow(() -> indexManager.deleteIndexWithBackoff(TEST_INDEX));
+    verify(indicesClient).delete(any(DeleteIndexRequest.class));
+  }
+
+  @Test
+  void testDeleteIndexWithBackoff_SuccessfulAfterRetry() throws IOException {
+    os.org.opensearch.client.opensearch._types.OpenSearchException snapshotException =
+        new os.org.opensearch.client.opensearch._types.OpenSearchException(
+            new os.org.opensearch.client.opensearch._types.ErrorResponse.Builder()
+                .status(503)
+                .build());
+
+    when(indicesClient.delete(any(DeleteIndexRequest.class)))
+        .thenThrow(snapshotException)
+        .thenReturn(deleteIndexResponse);
+    when(deleteIndexResponse.acknowledged()).thenReturn(true);
+
+    assertDoesNotThrow(() -> indexManager.deleteIndexWithBackoff(TEST_INDEX));
+    verify(indicesClient, org.mockito.Mockito.times(2)).delete(any(DeleteIndexRequest.class));
+  }
+
+  @Test
+  void testDeleteIndexWithBackoff_FailsAfterMaxRetries() throws IOException {
+    os.org.opensearch.client.opensearch._types.OpenSearchException snapshotException =
+        new os.org.opensearch.client.opensearch._types.OpenSearchException(
+            new os.org.opensearch.client.opensearch._types.ErrorResponse.Builder()
+                .status(400)
+                .build());
+
+    when(indicesClient.delete(any(DeleteIndexRequest.class))).thenThrow(snapshotException);
+
+    assertDoesNotThrow(() -> indexManager.deleteIndexWithBackoff(TEST_INDEX));
+    verify(indicesClient, org.mockito.Mockito.times(6)).delete(any(DeleteIndexRequest.class));
+  }
+
+  @Test
+  void testDeleteIndexWithBackoff_NonRetryableError() throws IOException {
+    os.org.opensearch.client.opensearch._types.OpenSearchException nonRetryableException =
+        new os.org.opensearch.client.opensearch._types.OpenSearchException(
+            new os.org.opensearch.client.opensearch._types.ErrorResponse.Builder()
+                .status(404)
+                .build());
+
+    when(indicesClient.delete(any(DeleteIndexRequest.class))).thenThrow(nonRetryableException);
+
+    assertDoesNotThrow(() -> indexManager.deleteIndexWithBackoff(TEST_INDEX));
+    verify(indicesClient, org.mockito.Mockito.times(1)).delete(any(DeleteIndexRequest.class));
+  }
+
+  @Test
+  void testDeleteIndexWithBackoff_ClientNotAvailable() {
+    OpenSearchIndexManager managerWithNullClient = new OpenSearchIndexManager(null, CLUSTER_ALIAS);
+
+    assertDoesNotThrow(() -> managerWithNullClient.deleteIndexWithBackoff(TEST_INDEX));
+    verifyNoInteractions(indicesClient);
+  }
 }

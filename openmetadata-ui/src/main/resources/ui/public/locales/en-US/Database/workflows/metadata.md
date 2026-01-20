@@ -52,6 +52,21 @@ For example, to exclude all tables with the name containing the word `demo`, add
 Checkout <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/database#table-filter-pattern" target="_blank">this</a> document for further examples on table filter patterns.
 $$
 
+
+$$section
+### Stored Procedure Filter Pattern $(id="storedProcedureFilterPattern")
+
+Stored procedure filter patterns are used to control whether to include stored procedures as part of metadata ingestion.
+
+**Include**: Explicitly include stored procedures by adding a list of regular expressions to the `Include` field. OpenMetadata will include all stored procedures with names matching one or more of the supplied regular expressions. All other stored procedures will be excluded.
+
+For example, to include only those stored procedures whose name starts with the word `sp_`, add the regex pattern in the include field as `^sp_.*`.
+
+**Exclude**: Explicitly exclude stored procedures by adding a list of regular expressions to the `Exclude` field. OpenMetadata will exclude all stored procedures with names matching one or more of the supplied regular expressions. All other stored procedures will be included.
+
+For example, to exclude all stored procedures with the name containing the word `temp`, add the regex pattern in the exclude field as `.*temp.*`.
+$$
+
 $$section
 ### Use FQN For Filtering $(id="useFqnForFiltering")
 
