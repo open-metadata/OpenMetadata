@@ -123,7 +123,12 @@ export const getDataModelColumnsByFQN = async (
   const response = await APIClient.get<PagingResponse<Column[]>>(
     `${URL}/name/${getEncodedFqn(fqn)}/columns`,
     {
-      params: { ...params, include: params?.include ?? Include.All },
+      params: {
+        ...params,
+        include: params?.include ?? Include.All,
+        includeRelations:
+          params?.includeRelations ?? 'owners:non-deleted,experts:non-deleted',
+      },
     }
   );
 
@@ -137,7 +142,12 @@ export const searchDataModelColumnsByFQN = async (
   const response = await APIClient.get<PagingResponse<Column[]>>(
     `${URL}/name/${getEncodedFqn(fqn)}/columns/search`,
     {
-      params: { ...params, include: params?.include ?? Include.All },
+      params: {
+        ...params,
+        include: params?.include ?? Include.All,
+        includeRelations:
+          params?.includeRelations ?? 'owners:non-deleted,experts:non-deleted',
+      },
     }
   );
 

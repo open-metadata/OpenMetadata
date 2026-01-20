@@ -341,10 +341,10 @@ describe('TestDetailsPageV1 component', () => {
 
     await act(async () => {
       render(
-      <MemoryRouter>
-        <TableDetailsPageV1 />
-      </MemoryRouter>
-    );
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', {
@@ -363,10 +363,10 @@ describe('TestDetailsPageV1 component', () => {
 
     await act(async () => {
       render(
-      <MemoryRouter>
-        <TableDetailsPageV1 />
-      </MemoryRouter>
-    );
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', {
@@ -383,10 +383,10 @@ describe('TestDetailsPageV1 component', () => {
 
     await act(async () => {
       render(
-      <MemoryRouter>
-        <TableDetailsPageV1 />
-      </MemoryRouter>
-    );
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', {
@@ -429,10 +429,10 @@ describe('TestDetailsPageV1 component', () => {
 
     await act(async () => {
       render(
-      <MemoryRouter>
-        <TableDetailsPageV1 />
-      </MemoryRouter>
-    );
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(await screen.findByText('label.dbt-lowercase')).toBeInTheDocument();
@@ -458,10 +458,10 @@ describe('TestDetailsPageV1 component', () => {
 
     await act(async () => {
       render(
-      <MemoryRouter>
-        <TableDetailsPageV1 />
-      </MemoryRouter>
-    );
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(await screen.findByText('label.dbt-lowercase')).toBeInTheDocument();
@@ -487,10 +487,10 @@ describe('TestDetailsPageV1 component', () => {
 
     await act(async () => {
       render(
-      <MemoryRouter>
-        <TableDetailsPageV1 />
-      </MemoryRouter>
-    );
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(await screen.findByText('label.dbt-lowercase')).toBeInTheDocument();
@@ -515,10 +515,10 @@ describe('TestDetailsPageV1 component', () => {
 
     await act(async () => {
       render(
-      <MemoryRouter>
-        <TableDetailsPageV1 />
-      </MemoryRouter>
-    );
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(screen.getByText('label.schema-definition')).toBeInTheDocument();
@@ -544,10 +544,10 @@ describe('TestDetailsPageV1 component', () => {
 
     await act(async () => {
       render(
-      <MemoryRouter>
-        <TableDetailsPageV1 />
-      </MemoryRouter>
-    );
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(screen.getByText('label.view-definition')).toBeInTheDocument();
@@ -562,10 +562,10 @@ describe('TestDetailsPageV1 component', () => {
 
     await act(async () => {
       render(
-      <MemoryRouter>
-        <TableDetailsPageV1 />
-      </MemoryRouter>
-    );
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', {
@@ -595,10 +595,10 @@ describe('TestDetailsPageV1 component', () => {
 
     await act(async () => {
       render(
-      <MemoryRouter>
-        <TableDetailsPageV1 />
-      </MemoryRouter>
-    );
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(PageLayoutV1).toHaveBeenCalledWith(

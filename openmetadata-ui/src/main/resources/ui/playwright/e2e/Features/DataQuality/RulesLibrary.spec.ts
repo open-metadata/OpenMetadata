@@ -11,18 +11,19 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { DOMAIN_TAGS } from '../../../constant/config';
 import { redirectToHomePage, uuid } from '../../../utils/common';
+import { findSystemTestDefinition } from '../../../utils/testCases';
 
-
-const TEST_DEFINITION_NAME = `aCustomTestDefinition${uuid()}`;
-const TEST_DEFINITION_DISPLAY_NAME = `Custom Test Definition ${uuid()}`;
-const UPDATE_TEST_DEFINITION_DISPLAY_NAME = `Updated Custom Test Definition ${uuid()}`;
+const TEST_DEFINITION_NAME = `AaroCustomTestDefinition${uuid()}`;
+const TEST_DEFINITION_DISPLAY_NAME = `Aaro Custom Test Definition ${uuid()}`;
+const UPDATE_TEST_DEFINITION_DISPLAY_NAME = `Aaro Updated Custom Test Definition ${uuid()}`;
 const TEST_DEFINITION_DESCRIPTION =
-  'A This is a custom test definition for E2E testing';
+  'Aaro This is a custom test definition for E2E testing';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe('Rules Library', () => {
+test.describe('Rules Library', { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Rules_Library` }, () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -78,7 +79,6 @@ test.describe('Rules Library', () => {
   });
 
   test('should create, edit, and delete a test definition', async ({ page }) => {
-
     await test.step('Create a new test definition', async () => {
       // Navigate to Rules Library
       await page.goto('/rules-library');
@@ -136,14 +136,15 @@ test.describe('Rules Library', () => {
     });
 
     await test.step('Edit Test Definition', async () => {
-
       // Wait for table to load
       await page.waitForSelector('[data-testid="test-definition-table"]', {
         state: 'visible',
       });
 
       // Find and click edit button on first row
-      const firstEditButton = page.getByTestId(`edit-test-definition-${TEST_DEFINITION_NAME}`).first();
+      const firstEditButton = page
+        .getByTestId(`edit-test-definition-${TEST_DEFINITION_NAME}`)
+        .first();
       await firstEditButton.click();
 
       // Wait for drawer to open
@@ -183,14 +184,15 @@ test.describe('Rules Library', () => {
     });
 
     await test.step('should enable/disable test definition', async () => {
-
       // Wait for table to load
       await page.waitForSelector('[data-testid="test-definition-table"]', {
         state: 'visible',
       });
 
       // Find first enabled switch
-      const firstSwitch = page.getByTestId(`enable-switch-${TEST_DEFINITION_NAME}`)
+      const firstSwitch = page.getByTestId(
+        `enable-switch-${TEST_DEFINITION_NAME}`
+      );
 
       // Wait for API call
       const testDefinitionResponse = page.waitForResponse(
@@ -210,30 +212,30 @@ test.describe('Rules Library', () => {
       await expect(page.getByText(/updated successfully/i)).toBeVisible();
 
       // Verify switch state changed
-      await expect(firstSwitch).toHaveAttribute(
-        'aria-checked',
-        String("false")
-      );
+      await expect(firstSwitch).toHaveAttribute('aria-checked', String('false'));
     });
 
     await test.step('should delete a test definition', async () => {
-
       // Wait for table to load
       await page.waitForSelector('[data-testid="test-definition-table"]', {
         state: 'visible',
       });
 
       // Find and click delete button
-      const deleteButton = page.getByTestId(`delete-test-definition-${TEST_DEFINITION_NAME}`);
+      const deleteButton = page.getByTestId(
+        `delete-test-definition-${TEST_DEFINITION_NAME}`
+      );
       await deleteButton.click();
 
       // Wait for confirmation modal
       await page.waitForSelector('.ant-modal', { state: 'visible' });
 
       // Verify modal content
-      await expect(page.getByText(`Delete ${UPDATE_TEST_DEFINITION_DISPLAY_NAME}`)).toBeVisible();
+      await expect(
+        page.getByText(`Delete ${UPDATE_TEST_DEFINITION_DISPLAY_NAME}`)
+      ).toBeVisible();
 
-      await page.getByTestId("confirmation-text-input").fill("DELETE");
+      await page.getByTestId('confirmation-text-input').fill('DELETE');
 
       // Wait for API call
       const deleteTestDefinitionResponse = page.waitForResponse(
@@ -243,7 +245,7 @@ test.describe('Rules Library', () => {
       );
 
       // Click confirm delete
-      await page.getByTestId("confirm-button").click();
+      await page.getByTestId('confirm-button').click();
 
       const response = await deleteTestDefinitionResponse;
       expect(response.status()).toBe(200);
@@ -255,8 +257,6 @@ test.describe('Rules Library', () => {
       await expect(page.getByText(TEST_DEFINITION_NAME)).not.toBeVisible();
     });
   });
-
-
 
   test('should validate required fields in create form', async ({ page }) => {
     // Navigate to Rules Library
@@ -320,14 +320,8 @@ test.describe('Rules Library', () => {
     }
 
     // Pagination uses NextPrevious component, not ant-pagination
-    await expect(
-      page
-        .getByTestId('next')
-    ).toBeVisible();
-    await expect(
-      page
-        .getByTestId('previous')
-    ).toBeVisible();
+    await expect(page.getByTestId('next')).toBeVisible();
+    await expect(page.getByTestId('previous')).toBeVisible();
   });
 
   test('should search and filter test definitions', async ({ page }) => {
@@ -381,22 +375,7 @@ test.describe('Rules Library', () => {
   test('should not show edit and delete buttons for system test definitions', async ({
     page,
   }) => {
-    // Wait for API response before navigation
-    const responsePromise = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-        response.request().method() === 'GET'
-    );
-
-    await page.goto('/rules-library');
-    const response = await responsePromise;
-    const data = await response.json();
-
-    // Find a system test definition (e.g., columnValueLengthsToBeBetween)
-    const systemTestDef = data.data.find(
-      (def: { provider: string; name: string }) =>
-        def.provider === 'system'
-    );
+    const systemTestDef = await findSystemTestDefinition(page);
 
     // Verify edit button does not exist for system test definition
     const editButton = page.getByTestId(
@@ -417,35 +396,16 @@ test.describe('Rules Library', () => {
     const enabledSwitch = row.getByRole('switch');
 
     await expect(enabledSwitch).toBeVisible();
-
   });
 
   test('should allow enabling/disabling system test definitions', async ({
     page,
   }) => {
-    // Wait for API response before navigation
-    const responsePromise = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-        response.request().method() === 'GET'
+    const systemTestDef = await findSystemTestDefinition(page);
+
+    const enabledSwitch = page.getByTestId(
+      `enable-switch-${systemTestDef.name}`
     );
-
-    await page.goto('/rules-library');
-    const response = await responsePromise;
-    const data = await response.json();
-
-    // Wait for table to load
-    await page.waitForSelector('[data-testid="test-definition-table"]', {
-      state: 'visible',
-    });
-
-    // Find a system test definition
-    const systemTestDef = data.data.findLast(
-      (def: { provider: string }) => def.provider === 'system'
-    );
-
-
-    const enabledSwitch = page.getByTestId(`enable-switch-${systemTestDef.name}`);
 
     // Wait for API call and verify success
     const patchResponse = page.waitForResponse(
@@ -461,10 +421,7 @@ test.describe('Rules Library', () => {
     expect(disableResponse.status()).toBe(200);
 
     // Verify switch state changed
-    await expect(enabledSwitch).toHaveAttribute(
-      'aria-checked',
-      String("false")
-    );
+    await expect(enabledSwitch).toHaveAttribute('aria-checked', String('false'));
 
     const patchResponse2 = page.waitForResponse(
       (response) =>
@@ -477,38 +434,27 @@ test.describe('Rules Library', () => {
     const enableResponse = await patchResponse2;
 
     expect(enableResponse.status()).toBe(200);
-
   });
 
   test('should display correct provider type for test definitions', async ({
     page,
   }) => {
-    // Wait for API response before navigation
+    // Verify system definition provider
+    const systemTest = await findSystemTestDefinition(page);
+    expect(systemTest.provider).toBe('system');
+
+    // Verify user definition provider (check page 1)
     const responsePromise = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/dataQuality/testDefinitions') &&
         response.request().method() === 'GET'
     );
-
     await page.goto('/rules-library');
     const response = await responsePromise;
     const data = await response.json();
-
-    // Verify we have both system and user test definitions (if user ones exist)
-    const systemDefs = data.data.filter(
-      (def: { provider: string }) => def.provider === 'system'
-    );
     const userDefs = data.data.filter(
       (def: { provider: string }) => def.provider === 'user'
     );
-
-    // Should have system test definitions
-    expect(systemDefs.length).toBeGreaterThan(0);
-
-    // Verify system definitions have provider = 'system'
-    systemDefs.forEach((def: { provider: string }) => {
-      expect(def.provider).toBe('system');
-    });
 
     // If user definitions exist, verify they have provider = 'user'
     if (userDefs.length > 0) {
