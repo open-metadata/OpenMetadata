@@ -239,7 +239,9 @@ test.describe('Service Databases page pagination', () => {
     expect(response2.status()).toBe(200);
 
     await waitForAllLoadersToDisappear(page);
-    await page.waitForSelector('[data-testid="table-container"]', { state: 'visible' });
+    await page.waitForSelector('[data-testid="table-container"]', {
+      state: 'visible',
+    });
 
     const paginationText = page.locator('[data-testid="page-indicator"]');
 
@@ -777,14 +779,11 @@ test.describe('Pagination tests for Drive Service Files page', () => {
 
     expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
 
-    await page.getByTestId('files').click();
-    await page.waitForSelector('table', { state: 'visible' });
-
-    await nextButton.click();
-    const filesPage2Response = await page.waitForResponse((response) =>
+    const filesPage2Promise = page.waitForResponse((response) =>
       response.url().includes('/api/v1/drives/files')
     );
-
+    await nextButton.click();
+    const filesPage2Response = await filesPage2Promise;
     expect(filesPage2Response.status()).toBe(200);
 
     await page.waitForSelector('table', { state: 'visible' });
