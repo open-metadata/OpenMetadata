@@ -64,7 +64,10 @@
         "CreateScim",
         "DeleteScim",
         "ViewScim",
-        "Impersonate"
+        "Impersonate",
+        "AuditLogs",
+        "ViewTestDefinitionLibrary",
+        "EditTestDefinitionLibrary"
       ]
     }
   },

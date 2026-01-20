@@ -285,6 +285,7 @@ public class IngestionPipelineResourceTest
         updateIngestionPipeline(
             request
                 .withSourceConfig(DATABASE_METADATA_CONFIG)
+                .withLoggerLevel(LogLevels.INFO)
                 .withAirflowConfig(
                     new AirflowConfig()
                         .withConcurrency(pipelineConcurrency)
@@ -819,6 +820,145 @@ public class IngestionPipelineResourceTest
   }
 
   @Test
+  void delete_pipelineStatusByRunId_success_204(TestInfo test) throws IOException {
+    CreateIngestionPipeline requestPipeline =
+        createRequest(test)
+            .withName("ingestion_testDeleteByRunId")
+            .withPipelineType(PipelineType.METADATA)
+            .withService(BIGQUERY_REFERENCE)
+            .withAirflowConfig(
+                new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate(START_DATE));
+    IngestionPipeline ingestionPipeline = createAndCheckEntity(requestPipeline, ADMIN_AUTH_HEADERS);
+
+    String runId1 = UUID.randomUUID().toString();
+    String runId2 = UUID.randomUUID().toString();
+
+    // Create first pipeline status
+    TestUtils.put(
+        getPipelineStatusTarget(ingestionPipeline.getFullyQualifiedName()),
+        new PipelineStatus()
+            .withPipelineState(PipelineStatusType.RUNNING)
+            .withRunId(runId1)
+            .withTimestamp(3L),
+        Response.Status.CREATED,
+        ADMIN_AUTH_HEADERS);
+
+    // Create second pipeline status
+    TestUtils.put(
+        getPipelineStatusTarget(ingestionPipeline.getFullyQualifiedName()),
+        new PipelineStatus()
+            .withPipelineState(PipelineStatusType.SUCCESS)
+            .withRunId(runId2)
+            .withTimestamp(4L),
+        Response.Status.CREATED,
+        ADMIN_AUTH_HEADERS);
+
+    // Verify both statuses exist
+    PipelineStatus status1 =
+        TestUtils.get(
+            getPipelineStatusByRunId(ingestionPipeline.getFullyQualifiedName(), runId1),
+            PipelineStatus.class,
+            ADMIN_AUTH_HEADERS);
+    assertEquals(PipelineStatusType.RUNNING, status1.getPipelineState());
+
+    PipelineStatus status2 =
+        TestUtils.get(
+            getPipelineStatusByRunId(ingestionPipeline.getFullyQualifiedName(), runId2),
+            PipelineStatus.class,
+            ADMIN_AUTH_HEADERS);
+    assertEquals(PipelineStatusType.SUCCESS, status2.getPipelineState());
+
+    // Delete first status by runId (should return 204 No Content)
+    Response deleteResponse =
+        SecurityUtil.addHeaders(
+                getDeletePipelineStatusByRunId(ingestionPipeline.getId().toString(), runId1),
+                ADMIN_AUTH_HEADERS)
+            .delete();
+    assertEquals(Status.NO_CONTENT.getStatusCode(), deleteResponse.getStatus());
+
+    // Verify first status is deleted (should return 204 No Content)
+    Response response1 =
+        SecurityUtil.addHeaders(
+                getPipelineStatusByRunId(ingestionPipeline.getFullyQualifiedName(), runId1),
+                ADMIN_AUTH_HEADERS)
+            .get();
+    TestUtils.readResponse(response1, PipelineStatus.class, Status.NO_CONTENT.getStatusCode());
+
+    // Verify second status still exists
+    status2 =
+        TestUtils.get(
+            getPipelineStatusByRunId(ingestionPipeline.getFullyQualifiedName(), runId2),
+            PipelineStatus.class,
+            ADMIN_AUTH_HEADERS);
+    assertEquals(PipelineStatusType.SUCCESS, status2.getPipelineState());
+  }
+
+  @Test
+  void delete_pipelineStatusByRunId_nonExistentPipeline_404(TestInfo test) throws IOException {
+    UUID nonExistentPipelineId = UUID.randomUUID();
+    UUID runId = UUID.randomUUID();
+
+    // Try to delete status from non-existent pipeline
+    assertResponse(
+        () ->
+            TestUtils.delete(
+                getDeletePipelineStatusByRunId(nonExistentPipelineId.toString(), runId.toString()),
+                ADMIN_AUTH_HEADERS),
+        Response.Status.NOT_FOUND,
+        String.format("ingestionPipeline instance for %s not found", nonExistentPipelineId));
+  }
+
+  @Test
+  void delete_pipelineStatusByRunId_nonExistentRunId_204(TestInfo test) throws IOException {
+    CreateIngestionPipeline requestPipeline =
+        createRequest(test)
+            .withName("ingestion_testDeleteNonExistentRunId")
+            .withPipelineType(PipelineType.METADATA)
+            .withService(BIGQUERY_REFERENCE)
+            .withAirflowConfig(
+                new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate(START_DATE));
+    IngestionPipeline ingestionPipeline = createAndCheckEntity(requestPipeline, ADMIN_AUTH_HEADERS);
+
+    UUID nonExistentRunId = UUID.randomUUID();
+
+    // Delete non-existent runId (should succeed with 204 as no records to delete)
+    Response deleteResponse =
+        SecurityUtil.addHeaders(
+                getDeletePipelineStatusByRunId(
+                    ingestionPipeline.getId().toString(), nonExistentRunId.toString()),
+                ADMIN_AUTH_HEADERS)
+            .delete();
+    assertEquals(Status.NO_CONTENT.getStatusCode(), deleteResponse.getStatus());
+  }
+
+  @Test
+  void delete_pipelineStatusByRunId_unauthorized_403(TestInfo test) throws IOException {
+    CreateIngestionPipeline requestPipeline = createRequest(getEntityName(test));
+    IngestionPipeline ingestionPipeline = createAndCheckEntity(requestPipeline, ADMIN_AUTH_HEADERS);
+
+    String runId = UUID.randomUUID().toString();
+
+    // Create pipeline status
+    TestUtils.put(
+        getPipelineStatusTarget(ingestionPipeline.getFullyQualifiedName()),
+        new PipelineStatus()
+            .withPipelineState(PipelineStatusType.RUNNING)
+            .withRunId(runId)
+            .withTimestamp(3L),
+        Response.Status.CREATED,
+        ADMIN_AUTH_HEADERS);
+
+    // Try to delete with unauthorized user
+    assertResponse(
+        () ->
+            TestUtils.delete(
+                getDeletePipelineStatusByRunId(ingestionPipeline.getId().toString(), runId),
+                authHeaders(USER2.getName())),
+        FORBIDDEN,
+        permissionNotAllowed(USER2.getName(), List.of(MetadataOperation.DELETE)));
+  }
+
+  @Test
   void post_ingestionPipeline_403(TestInfo test) throws HttpResponseException {
     CreateIngestionPipeline create = createRequest(getEntityName(test));
     create
@@ -901,6 +1041,10 @@ public class IngestionPipelineResourceTest
 
   protected final WebTarget getDeletePipelineStatus(String id) {
     return getCollection().path("/" + id + "/pipelineStatus");
+  }
+
+  protected final WebTarget getDeletePipelineStatusByRunId(String id, String runId) {
+    return getCollection().path("/" + id + "/pipelineStatus/" + runId);
   }
 
   @Override

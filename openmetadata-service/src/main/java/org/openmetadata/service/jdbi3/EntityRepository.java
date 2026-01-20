@@ -53,11 +53,13 @@ import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkDisabledTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.populateTagLabel;
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceListMatch;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
@@ -89,14 +91,19 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.google.gson.Gson;
-import com.networknt.schema.JsonSchema;
-import com.networknt.schema.ValidationMessage;
+import com.networknt.schema.Error;
+import com.networknt.schema.Schema;
+import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.Timer;
 import jakarta.json.JsonPatch;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.core.Response.Status;
+import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.net.URI;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -123,8 +130,6 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
@@ -136,6 +141,10 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -149,6 +158,7 @@ import org.openmetadata.schema.api.VoteRequest.VoteType;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.entity.teams.Team;
@@ -204,6 +214,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.lock.HierarchicalLockManager;
+import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.resources.teams.RoleResource;
@@ -212,9 +223,12 @@ import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityETag;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.ListWithOffsetFunction;
 import org.openmetadata.service.util.RestUtil;
@@ -257,6 +271,9 @@ import software.amazon.awssdk.utils.Either;
 @Slf4j
 @Repository()
 public abstract class EntityRepository<T extends EntityInterface> {
+
+  public static final String BULK_IMPORT = "bulkImport";
+
   public record EntityHistoryWithOffset(EntityHistory entityHistory, int nextOffset) {}
 
   public static final LoadingCache<Pair<String, String>, EntityInterface> CACHE_WITH_NAME =
@@ -279,6 +296,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final CollectionDAO daoCollection;
   @Getter protected final JobDAO jobDao;
   @Getter protected final SearchRepository searchRepository;
+  @Getter protected final EntityRelationshipRepository relationshipRepository;
   @Getter protected final Set<String> allowedFields;
   public final boolean supportsSoftDelete;
   @Getter protected final boolean supportsTags;
@@ -351,6 +369,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     this.daoCollection = Entity.getCollectionDAO();
     this.jobDao = Entity.getJobDAO();
     this.searchRepository = Entity.getSearchRepository();
+    this.relationshipRepository = new EntityRelationshipRepository(this.daoCollection);
     this.entityType = entityType;
     this.patchFields = getFields(patchFields);
     this.putFields = getFields(putFields);
@@ -458,8 +477,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /**
    * Set the requested fields in an entity. This is used for requesting specific fields in the object during GET
    * operations. It is also used during PUT and PATCH operations to set up fields that can be updated.
+   *
+   * @param entity The entity to set fields on
+   * @param fields The fields to set
+   * @param relationIncludes Per-relation include filter for handling soft-deleted related entities
    */
-  protected abstract void setFields(T entity, Fields fields);
+  protected abstract void setFields(T entity, Fields fields, RelationIncludes relationIncludes);
 
   /**
    * Set the requested fields in an entity. This is used for requesting specific fields in the object during GET
@@ -708,19 +731,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Used for getting an entity with a set of requested fields
    */
   public final T get(UriInfo uriInfo, UUID id, Fields fields, Include include, boolean fromCache) {
+    return get(uriInfo, id, fields, RelationIncludes.fromInclude(include), fromCache);
+  }
+
+  /**
+   * Used for getting an entity with a set of requested fields with per-relation include control
+   */
+  public final T get(
+      UriInfo uriInfo,
+      UUID id,
+      Fields fields,
+      RelationIncludes relationIncludes,
+      boolean fromCache) {
     if (!fromCache) {
-      // Clear the cache and always get the entity from the database to ensure read-after-write
-      // consistency
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
     }
-    // Find the entity from the cache. Set all the fields that are not already set
-    T entity = find(id, include);
-    setFieldsInternal(entity, fields);
+    T entity = find(id, relationIncludes.getDefaultInclude());
+    setFieldsInternal(entity, fields, relationIncludes);
     setInheritedFields(entity, fields);
 
-    // Clone the entity from the cache and reset all the fields that are not already set
-    // Cloning is necessary to ensure different threads making a call to this method don't
-    // overwrite the fields of the entity being returned
     T entityClone = JsonUtils.deepCopy(entity, entityClass);
     clearFieldsInternal(entityClone, fields);
     return withHref(uriInfo, entityClone);
@@ -796,20 +825,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final T getByName(
       UriInfo uriInfo, String fqn, Fields fields, Include include, boolean fromCache) {
+    return getByName(uriInfo, fqn, fields, RelationIncludes.fromInclude(include), fromCache);
+  }
+
+  public final T getByName(
+      UriInfo uriInfo,
+      String fqn,
+      Fields fields,
+      RelationIncludes relationIncludes,
+      boolean fromCache) {
     fqn = quoteFqn ? quoteName(fqn) : fqn;
     if (!fromCache) {
-      // Clear the cache and always get the entity from the database to ensure read-after-write
-      // consistency
       CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, fqn));
     }
-    // Find the entity from the cache. Set all the fields that are not already set
-    T entity = findByName(fqn, include);
-    setFieldsInternal(entity, fields);
+    T entity = findByName(fqn, relationIncludes.getDefaultInclude());
+    setFieldsInternal(entity, fields, relationIncludes);
     setInheritedFields(entity, fields);
 
-    // Clone the entity from the cache and reset all the fields that are not already set
-    // Cloning is necessary to ensure different threads making a call to this method don't
-    // overwrite the fields of the entity being returned
     T entityClone = JsonUtils.deepCopy(entity, entityClass);
     clearFieldsInternal(entityClone, fields);
     return withHref(uriInfo, entityClone);
@@ -1206,8 +1238,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final T setFieldsInternal(T entity, Fields fields) {
-    // Revert to original implementation without optimization logic
-    entity.setOwners(fields.contains(FIELD_OWNERS) ? getOwners(entity) : entity.getOwners());
+    return setFieldsInternal(entity, fields, NON_DELETED);
+  }
+
+  public final T setFieldsInternal(T entity, Fields fields, Include include) {
+    return setFieldsInternal(entity, fields, RelationIncludes.fromInclude(include));
+  }
+
+  public final T setFieldsInternal(T entity, Fields fields, RelationIncludes relationIncludes) {
+    entity.setOwners(
+        fields.contains(FIELD_OWNERS)
+            ? getOwners(entity, relationIncludes.getIncludeFor(FIELD_OWNERS))
+            : entity.getOwners());
     entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity) : entity.getTags());
     entity.setCertification(
         fields.contains(FIELD_TAGS) || fields.contains(FIELD_CERTIFICATION)
@@ -1215,145 +1257,32 @@ public abstract class EntityRepository<T extends EntityInterface> {
             : null);
     entity.setExtension(
         fields.contains(FIELD_EXTENSION) ? getExtension(entity) : entity.getExtension());
-    // Always return domains of entity
-    entity.setDomains(getDomains(entity));
+    entity.setDomains(getDomains(entity, relationIncludes.getIncludeFor(FIELD_DOMAINS)));
     entity.setDataProducts(
-        fields.contains(FIELD_DATA_PRODUCTS) ? getDataProducts(entity) : entity.getDataProducts());
+        fields.contains(FIELD_DATA_PRODUCTS)
+            ? getDataProducts(entity, relationIncludes.getIncludeFor(FIELD_DATA_PRODUCTS))
+            : entity.getDataProducts());
     entity.setFollowers(
-        fields.contains(FIELD_FOLLOWERS) ? getFollowers(entity) : entity.getFollowers());
+        fields.contains(FIELD_FOLLOWERS)
+            ? getFollowers(entity, relationIncludes.getIncludeFor(FIELD_FOLLOWERS))
+            : entity.getFollowers());
     entity.setChildren(
-        fields.contains(FIELD_CHILDREN) ? getChildren(entity) : entity.getChildren());
-    entity.setExperts(fields.contains(FIELD_EXPERTS) ? getExperts(entity) : entity.getExperts());
+        fields.contains(FIELD_CHILDREN)
+            ? getChildren(entity, relationIncludes.getIncludeFor(FIELD_CHILDREN))
+            : entity.getChildren());
+    entity.setExperts(
+        fields.contains(FIELD_EXPERTS)
+            ? getExperts(entity, relationIncludes.getIncludeFor(FIELD_EXPERTS))
+            : entity.getExperts());
     entity.setReviewers(
-        fields.contains(FIELD_REVIEWERS) ? getReviewers(entity) : entity.getReviewers());
+        fields.contains(FIELD_REVIEWERS)
+            ? getReviewers(entity, relationIncludes.getIncludeFor(FIELD_REVIEWERS))
+            : entity.getReviewers());
     entity.setVotes(fields.contains(FIELD_VOTES) ? getVotes(entity) : entity.getVotes());
 
-    setFields(entity, fields);
+    setFields(entity, fields, relationIncludes);
     return entity;
   }
-
-  /**
-   * Optimized version that fetches ALL relationships in a SINGLE database query
-   * and then filters them in memory. This completely solves the N+1 query problem.
-   */
-  // Commented out - using original setFieldsInternal instead to fix test failures
-  // TODO: Investigate why optimized version causes test failures with dataProducts field
-  /*
-  private void setFieldsInternalOptimized(T entity, Fields fields) {
-    // Fetch ALL relationships for this entity in ONE query
-    List<CollectionDAO.EntityRelationshipObject> allRelationships =
-        daoCollection.relationshipDAO().findAllRelationshipsForEntity(entity.getId(), entityType);
-    LOG.debug(
-        "Retrieved {} total relationships for entity {}:{}",
-        allRelationships.size(),
-        entityType,
-        entity.getId());
-
-    // Group relationships by type and direction for efficient processing
-    Map<Integer, List<EntityReference>> fromRelationships = new HashMap<>();
-    Map<Integer, List<EntityReference>> toRelationships = new HashMap<>();
-
-    // Process all relationships and group them
-    for (CollectionDAO.EntityRelationshipObject rel : allRelationships) {
-      int relationOrdinal = rel.getRelation();
-
-      // Check if this is a FROM relationship (entity -> other)
-      if (rel.getFromId().equals(entity.getId().toString())) {
-        // This entity points TO another entity
-        UUID targetId = UUID.fromString(rel.getToId());
-        EntityReference ref = Entity.getEntityReferenceById(rel.getToEntity(), targetId, ALL);
-        if (ref != null) {
-          fromRelationships.computeIfAbsent(relationOrdinal, k -> new ArrayList<>()).add(ref);
-        }
-      } else {
-        // Another entity points TO this entity
-        UUID sourceId = UUID.fromString(rel.getFromId());
-        EntityReference ref = Entity.getEntityReferenceById(rel.getFromEntity(), sourceId, ALL);
-        if (ref != null) {
-          toRelationships.computeIfAbsent(relationOrdinal, k -> new ArrayList<>()).add(ref);
-        }
-      }
-    }
-
-    // Now set all the fields from the grouped relationships - NO additional queries!
-    // IMPORTANT: Only set fields that are requested to avoid overwriting existing values
-    if (fields.contains(FIELD_OWNERS)) {
-      entity.setOwners(
-          toRelationships.getOrDefault(Relationship.OWNS.ordinal(), Collections.emptyList()));
-    }
-
-    if (fields.contains(FIELD_FOLLOWERS)) {
-      entity.setFollowers(
-          toRelationships.getOrDefault(Relationship.FOLLOWS.ordinal(), Collections.emptyList()));
-    }
-
-    // Handle domains and data products - both use HAS relationship but are stored as
-    // "domain/dataProduct HAS entity"
-    // So we need to look in toRelationships (where this entity is the target of HAS)
-    List<EntityReference> hasRelationships =
-        toRelationships.getOrDefault(Relationship.HAS.ordinal(), Collections.emptyList());
-
-    if (fields.contains(FIELD_DOMAINS)) {
-      // Filter HAS relationships for DOMAIN type
-      List<EntityReference> domains =
-          hasRelationships.stream()
-              .filter(ref -> Entity.DOMAIN.equals(ref.getType()))
-              .collect(Collectors.toList());
-      entity.setDomains(domains);
-    }
-    // Don't set domains if not requested - leave existing value
-
-    if (fields.contains(FIELD_DATA_PRODUCTS)) {
-      // Filter HAS relationships for DATA_PRODUCT type
-      List<EntityReference> dataProducts =
-          hasRelationships.stream()
-              .filter(ref -> Entity.DATA_PRODUCT.equals(ref.getType()))
-              .collect(Collectors.toList());
-      entity.setDataProducts(dataProducts);
-    }
-    // Don't set dataProducts if not requested - leave existing value
-
-    if (fields.contains(FIELD_CHILDREN)) {
-      List<EntityReference> children = new ArrayList<>();
-      children.addAll(
-          fromRelationships.getOrDefault(Relationship.CONTAINS.ordinal(), Collections.emptyList()));
-      children.addAll(
-          fromRelationships.getOrDefault(
-              Relationship.PARENT_OF.ordinal(), Collections.emptyList()));
-      entity.setChildren(children);
-    }
-
-    if (fields.contains(FIELD_EXPERTS)) {
-      entity.setExperts(
-          fromRelationships.getOrDefault(Relationship.EXPERT.ordinal(), Collections.emptyList()));
-    }
-
-    if (fields.contains(FIELD_REVIEWERS)) {
-      entity.setReviewers(
-          toRelationships.getOrDefault(Relationship.REVIEWS.ordinal(), Collections.emptyList()));
-    }
-
-    // Handle votes separately as it needs special processing
-    if (fields.contains(FIELD_VOTES)) {
-      entity.setVotes(getVotes(entity)); // This one still needs special handling
-    }
-
-    // Handle tags separately as they come from tag_usage table
-    if (fields.contains(FIELD_TAGS)) {
-      entity.setTags(getTags(entity));
-    }
-
-    // Handle certification
-    if (fields.contains(FIELD_TAGS) || fields.contains(FIELD_CERTIFICATION)) {
-      entity.setCertification(getCertification(entity));
-    }
-
-    // Handle extension if needed
-    if (fields.contains(FIELD_EXTENSION)) {
-      entity.setExtension(getExtension(entity));
-    }
-  }
-  */
 
   /**
    * Invalidate cache entries when entity is deleted
@@ -1990,30 +1919,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
       SearchListFilter searchListFilter,
       int limit,
       int offset,
-      String q,
-      String queryString)
-      throws IOException {
-    return listFromSearchWithOffset(
-        uriInfo, fields, searchListFilter, limit, offset, null, q, queryString);
-  }
-
-  public ResultList<T> listFromSearchWithOffset(
-      UriInfo uriInfo,
-      Fields fields,
-      SearchListFilter searchListFilter,
-      int limit,
-      int offset,
       SearchSortFilter searchSortFilter,
       String q,
-      String queryString)
+      String queryString,
+      SecurityContext securityContext)
       throws IOException {
     List<T> entityList = new ArrayList<>();
     Long total;
+    SubjectContext subjectContext = getSubjectContext(securityContext);
 
     if (limit > 0) {
       SearchResultListMapper results =
           searchRepository.listWithOffset(
-              searchListFilter, limit, offset, entityType, searchSortFilter, q, queryString);
+              searchListFilter,
+              limit,
+              offset,
+              entityType,
+              searchSortFilter,
+              q,
+              queryString,
+              subjectContext);
       total = results.getTotal();
       for (Map<String, Object> json : results.getResults()) {
         T entity = JsonUtils.readOrConvertValueLenient(json, entityClass);
@@ -2023,7 +1948,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     } else {
       SearchResultListMapper results =
           searchRepository.listWithOffset(
-              searchListFilter, limit, offset, entityType, searchSortFilter, q, queryString);
+              searchListFilter,
+              limit,
+              offset,
+              entityType,
+              searchSortFilter,
+              q,
+              queryString,
+              subjectContext);
       total = results.getTotal();
       return new ResultList<>(entityList, null, limit, total.intValue());
     }
@@ -2206,18 +2138,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     LOG.debug("Processing batch of {} {} entities", entityIds.size(), entityType);
 
-    // First, collect all grandchildren that need to be deleted
-    List<EntityRelationshipRecord> allGrandchildren = new ArrayList<>();
-    for (UUID entityId : entityIds) {
-      List<EntityRelationshipRecord> grandchildren =
-          daoCollection
-              .relationshipDAO()
-              .findTo(
-                  entityId,
-                  entityType,
-                  List.of(Relationship.CONTAINS.ordinal(), Relationship.PARENT_OF.ordinal()));
-      allGrandchildren.addAll(grandchildren);
-    }
+    // First, collect all grandchildren that need to be deleted in a SINGLE batch query
+    List<String> stringIds = entityIds.stream().map(UUID::toString).collect(Collectors.toList());
+    List<CollectionDAO.EntityRelationshipObject> grandchildRecords =
+        daoCollection
+            .relationshipDAO()
+            .findToBatchWithRelations(
+                stringIds,
+                entityType,
+                List.of(Relationship.CONTAINS.ordinal(), Relationship.PARENT_OF.ordinal()));
+
+    // Convert to EntityRelationshipRecord format
+    List<EntityRelationshipRecord> allGrandchildren =
+        grandchildRecords.stream()
+            .map(
+                rec ->
+                    new EntityRelationshipRecord(
+                        UUID.fromString(rec.getToId()), rec.getToEntity(), rec.getJson()))
+            .collect(Collectors.toList());
 
     // Recursively delete grandchildren first
     if (!allGrandchildren.isEmpty()) {
@@ -2225,9 +2163,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       deleteChildren(allGrandchildren, hardDelete, updatedBy);
     }
 
-    // Now batch delete the entities at this level
-    List<String> stringIds = entityIds.stream().map(UUID::toString).collect(Collectors.toList());
-
+    // Now batch delete the entities at this level (reuse stringIds from above)
     // Only delete relationships for hard delete
     // For soft delete, relationships must be preserved for restoration
     if (hardDelete) {
@@ -2554,29 +2490,81 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection.entityExtensionTimeSeriesDao().deleteBeforeTimestamp(fqn, extension, timestamp);
   }
 
-  private void validateExtension(T entity, Entry<String, JsonNode> field) {
-    if (entity.getExtension() == null) {
+  /**
+   * Public utility method to validate custom properties extension for any entity type.
+   * This method can be used by other repositories that need to validate extensions
+   * without extending EntityRepository.
+   */
+  public static void validateExtension(Object extension, String entityTypeName) {
+    if (extension == null) {
       return;
     }
 
-    // Validate single extension field
-    JsonNode jsonNode = JsonUtils.valueToTree(entity.getExtension());
-    String fieldName = field.getKey();
-    JsonNode fieldValue = field.getValue();
+    JsonNode jsonNode = JsonUtils.valueToTree(extension);
+    Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
 
-    JsonSchema jsonSchema = TypeRegistry.instance().getSchema(entityType, fieldName);
-    if (jsonSchema == null) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.unknownCustomField(fieldName));
+    while (customFields.hasNext()) {
+      Entry<String, JsonNode> entry = customFields.next();
+      String fieldName = entry.getKey();
+      JsonNode fieldValue = entry.getValue();
+
+      // Validate that the custom property exists for this entity type
+      Schema jsonSchema = TypeRegistry.instance().getSchema(entityTypeName, fieldName);
+      if (jsonSchema == null) {
+        throw new IllegalArgumentException(CatalogExceptionMessage.unknownCustomField(fieldName));
+      }
+
+      // Validate against JSON schema - this handles all validation including type-specific rules
+      List<Error> validationMessages = jsonSchema.validate(fieldValue);
+      if (!validationMessages.isEmpty()) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.jsonValidationError(fieldName, validationMessages.toString()));
+      }
     }
-    String customPropertyType = TypeRegistry.getCustomPropertyType(entityType, fieldName);
-    String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityType, fieldName);
-    validateAndUpdateExtensionBasedOnPropertyType(
-        entity, (ObjectNode) jsonNode, fieldName, fieldValue, customPropertyType, propertyConfig);
-    Set<ValidationMessage> validationMessages = jsonSchema.validate(fieldValue);
-    if (!validationMessages.isEmpty()) {
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.jsonValidationError(fieldName, validationMessages.toString()));
+  }
+
+  public static Object validateAndTransformExtension(Object extension, String entityTypeName) {
+    if (extension == null) {
+      return null;
     }
+
+    // Validate custom properties existence and schema compliance
+    validateExtension(extension, entityTypeName);
+
+    // Apply property type-specific transformations (date formatting, enum sorting, etc.)
+    ObjectNode jsonNode = (ObjectNode) JsonUtils.valueToTree(extension);
+    Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
+
+    while (customFields.hasNext()) {
+      Entry<String, JsonNode> entry = customFields.next();
+      String fieldName = entry.getKey();
+      JsonNode fieldValue = entry.getValue();
+
+      String customPropertyType = TypeRegistry.getCustomPropertyType(entityTypeName, fieldName);
+      String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityTypeName, fieldName);
+
+      switch (customPropertyType) {
+        case "date-cp", "dateTime-cp", "time-cp" -> {
+          String formattedValue =
+              getFormattedDateTimeField(
+                  fieldValue.textValue(), customPropertyType, propertyConfig, fieldName);
+          jsonNode.put(fieldName, formattedValue);
+        }
+        case "table-cp" -> validateTableType(fieldValue, propertyConfig, fieldName);
+        case "enum" -> {
+          validateEnumKeys(fieldName, fieldValue, propertyConfig);
+          List<String> enumValues =
+              StreamSupport.stream(fieldValue.spliterator(), false)
+                  .map(JsonNode::asText)
+                  .sorted()
+                  .collect(Collectors.toList());
+          jsonNode.set(fieldName, JsonUtils.valueToTree(enumValues));
+        }
+        default -> {}
+      }
+    }
+
+    return JsonUtils.treeToValue(jsonNode, Object.class);
   }
 
   private void validateExtension(T entity, boolean update) {
@@ -2585,62 +2573,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return;
     }
 
-    JsonNode jsonNode = JsonUtils.valueToTree(entity.getExtension());
-    Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
-    while (customFields.hasNext()) {
-      Entry<String, JsonNode> entry = customFields.next();
-      String fieldName = entry.getKey();
-      JsonNode fieldValue = entry.getValue();
-
-      // Validate the customFields using jsonSchema
-      JsonSchema jsonSchema = TypeRegistry.instance().getSchema(entityType, fieldName);
-      if (jsonSchema == null) {
-        throw new IllegalArgumentException(CatalogExceptionMessage.unknownCustomField(fieldName));
-      }
-      String customPropertyType = TypeRegistry.getCustomPropertyType(entityType, fieldName);
-      String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityType, fieldName);
-
-      validateAndUpdateExtensionBasedOnPropertyType(
-          entity, (ObjectNode) jsonNode, fieldName, fieldValue, customPropertyType, propertyConfig);
-      Set<ValidationMessage> validationMessages = jsonSchema.validate(entry.getValue());
-      if (!validationMessages.isEmpty()) {
-        throw new IllegalArgumentException(
-            CatalogExceptionMessage.jsonValidationError(fieldName, validationMessages.toString()));
-      }
-    }
+    Object transformedExtension = validateAndTransformExtension(entity.getExtension(), entityType);
+    entity.setExtension(transformedExtension);
   }
 
-  private void validateAndUpdateExtensionBasedOnPropertyType(
-      T entity,
-      ObjectNode jsonNode,
-      String fieldName,
-      JsonNode fieldValue,
-      String customPropertyType,
-      String propertyConfig) {
-
-    switch (customPropertyType) {
-      case "date-cp", "dateTime-cp", "time-cp" -> {
-        String formattedValue =
-            getFormattedDateTimeField(
-                fieldValue.textValue(), customPropertyType, propertyConfig, fieldName);
-        jsonNode.put(fieldName, formattedValue);
-      }
-      case "table-cp" -> validateTableType(fieldValue, propertyConfig, fieldName);
-      case "enum" -> {
-        validateEnumKeys(fieldName, fieldValue, propertyConfig);
-        List<String> enumValues =
-            StreamSupport.stream(fieldValue.spliterator(), false)
-                .map(JsonNode::asText)
-                .sorted()
-                .collect(Collectors.toList());
-        jsonNode.set(fieldName, JsonUtils.valueToTree(enumValues));
-        entity.setExtension(jsonNode);
-      }
-      default -> {}
-    }
-  }
-
-  private String getFormattedDateTimeField(
+  private static String getFormattedDateTimeField(
       String fieldValue, String customPropertyType, String propertyConfig, String fieldName) {
     DateTimeFormatter formatter;
 
@@ -2673,7 +2610,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private void validateTableType(JsonNode fieldValue, String propertyConfig, String fieldName) {
+  private static void validateTableType(
+      JsonNode fieldValue, String propertyConfig, String fieldName) {
     TableConfig tableConfig =
         JsonUtils.convertValue(JsonUtils.readTree(propertyConfig), TableConfig.class);
     org.openmetadata.schema.type.customProperties.Table tableValue =
@@ -2854,7 +2792,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 targetFQN,
                 tagLabel.getLabelType().ordinal(),
                 tagLabel.getState().ordinal(),
-                tagLabel.getReason());
+                tagLabel.getReason(),
+                tagLabel.getAppliedBy());
 
         // Update RDF store
         org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
@@ -2969,9 +2908,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected List<EntityReference> getFollowers(T entity) {
+    return getFollowers(entity, NON_DELETED);
+  }
+
+  protected List<EntityReference> getFollowers(T entity, Include include) {
     return !supportsFollower || entity == null
         ? Collections.emptyList()
-        : findFrom(entity.getId(), entityType, Relationship.FOLLOWS, USER);
+        : findFrom(entity.getId(), entityType, Relationship.FOLLOWS, USER, include);
   }
 
   protected Votes getVotes(T entity) {
@@ -3136,9 +3079,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final List<EntityReference> findFrom(
       UUID toId, String toEntityType, Relationship relationship, String fromEntityType) {
+    return findFrom(toId, toEntityType, relationship, fromEntityType, NON_DELETED);
+  }
+
+  public final List<EntityReference> findFrom(
+      UUID toId,
+      String toEntityType,
+      Relationship relationship,
+      String fromEntityType,
+      Include include) {
     List<EntityRelationshipRecord> records =
         findFromRecords(toId, toEntityType, relationship, fromEntityType);
-    return getEntityReferences(records);
+    return Entity.getEntityRelationshipRepository().getEntityReferences(records, include);
   }
 
   public final List<CollectionDAO.EntityRelationshipObject> findFromRecordsBatch(
@@ -3224,18 +3176,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final List<EntityReference> getFromEntityRefs(
       UUID toId, Relationship relationship, String fromEntityType) {
+    return getFromEntityRefs(toId, relationship, fromEntityType, NON_DELETED);
+  }
+
+  public final List<EntityReference> getFromEntityRefs(
+      UUID toId, Relationship relationship, String fromEntityType, Include include) {
     List<EntityRelationshipRecord> records =
         findFromRecords(toId, entityType, relationship, fromEntityType);
     if (!records.isEmpty()) {
-      List<EntityReference> refs = new ArrayList<>();
-      for (EntityRelationshipRecord record : records) {
-        try {
-          refs.add(Entity.getEntityReferenceById(record.getType(), record.getId(), ALL));
-        } catch (EntityNotFoundException e) {
-          // Skip deleted entities
-          LOG.debug("Skipping deleted entity reference: {} {}", record.getType(), record.getId());
-        }
-      }
+      List<EntityReference> refs =
+          Entity.getEntityRelationshipRepository().getEntityReferences(records, include);
       return refs.isEmpty() ? null : refs;
     }
     return null;
@@ -3289,10 +3239,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final List<EntityReference> findTo(
       UUID fromId, String fromEntityType, Relationship relationship, String toEntityType) {
+    return findTo(fromId, fromEntityType, relationship, toEntityType, NON_DELETED);
+  }
+
+  public final List<EntityReference> findTo(
+      UUID fromId,
+      String fromEntityType,
+      Relationship relationship,
+      String toEntityType,
+      Include include) {
     // When toEntityType is null, all the relationships to any entity is returned
     List<EntityRelationshipRecord> records =
         findToRecords(fromId, fromEntityType, relationship, toEntityType);
-    return getEntityReferences(records);
+    return Entity.getEntityRelationshipRepository().getEntityReferences(records, include);
   }
 
   public final List<EntityRelationshipRecord> findToRecords(
@@ -3418,13 +3377,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final List<EntityReference> getOwners(T entity) {
+    return getOwners(entity, NON_DELETED);
+  }
+
+  public final List<EntityReference> getOwners(T entity, Include include) {
     if (!supportsOwners) {
       return Collections.emptyList();
     }
 
-    // Try to get from cache first
+    // Try to get from cache first (only for NON_DELETED as cache stores non-deleted data)
     var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
-    if (cachedRelationshipDao != null) {
+    if (include == NON_DELETED && cachedRelationshipDao != null) {
       List<EntityReference> cached = cachedRelationshipDao.getOwners(entityType, entity.getId());
       if (cached != null) {
         LOG.debug("CACHE HIT: Retrieved owners from cache for {} {}", entityType, entity.getId());
@@ -3433,10 +3396,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     // Fall back to database
-    List<EntityReference> owners = findFrom(entity.getId(), entityType, Relationship.OWNS, null);
+    List<EntityReference> owners =
+        findFrom(entity.getId(), entityType, Relationship.OWNS, null, include);
 
-    // Cache the result for next time
-    if (cachedRelationshipDao != null && owners != null) {
+    // Cache the result for next time (only for NON_DELETED)
+    if (include == NON_DELETED && cachedRelationshipDao != null && owners != null) {
       String ownersJson = JsonUtils.pojoToJson(owners);
       cachedRelationshipDao.putOwners(entityType, entity.getId(), ownersJson);
     }
@@ -3445,10 +3409,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final List<EntityReference> getOwners(EntityReference ref) {
-    return supportsOwners ? getFromEntityRefs(ref.getId(), Relationship.OWNS, null) : null;
+    return getOwners(ref, NON_DELETED);
+  }
+
+  public final List<EntityReference> getOwners(EntityReference ref, Include include) {
+    return supportsOwners ? getFromEntityRefs(ref.getId(), Relationship.OWNS, null, include) : null;
   }
 
   protected List<EntityReference> getDomains(T entity) {
+    return getDomains(entity, NON_DELETED);
+  }
+
+  protected List<EntityReference> getDomains(T entity, Include include) {
     if (!supportsDomains) {
       return null;
     }
@@ -3460,9 +3432,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return null;
     }
 
-    // Try to get from cache first
+    // Try to get from cache first (only for NON_DELETED as cache stores non-deleted data)
     var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
-    if (cachedRelationshipDao != null) {
+    if (include == NON_DELETED && cachedRelationshipDao != null) {
       List<EntityReference> cached = cachedRelationshipDao.getDomains(entityType, entity.getId());
       if (cached != null) {
         LOG.debug("CACHE HIT: Retrieved domains from cache for {} {}", entityType, entity.getId());
@@ -3471,10 +3443,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     // Fall back to database
-    List<EntityReference> domains = getFromEntityRefs(entity.getId(), Relationship.HAS, DOMAIN);
+    List<EntityReference> domains =
+        getFromEntityRefs(entity.getId(), Relationship.HAS, DOMAIN, include);
 
-    // Cache the result for next time
-    if (cachedRelationshipDao != null && domains != null) {
+    // Cache the result for next time (only for NON_DELETED)
+    if (include == NON_DELETED && cachedRelationshipDao != null && domains != null) {
       String domainsJson = JsonUtils.pojoToJson(domains);
       cachedRelationshipDao.putDomains(entityType, entity.getId(), domainsJson);
     }
@@ -3483,13 +3456,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private List<EntityReference> getDataProducts(T entity) {
+    return getDataProducts(entity, NON_DELETED);
+  }
+
+  private List<EntityReference> getDataProducts(T entity, Include include) {
     return !supportsDataProducts
         ? null
-        : findFrom(entity.getId(), entityType, Relationship.HAS, DATA_PRODUCT);
+        : findFrom(entity.getId(), entityType, Relationship.HAS, DATA_PRODUCT, include);
   }
 
   protected List<EntityReference> getDataProducts(UUID entityId, String entityType) {
-    return findFrom(entityId, entityType, Relationship.HAS, DATA_PRODUCT);
+    return getDataProducts(entityId, entityType, NON_DELETED);
+  }
+
+  protected List<EntityReference> getDataProducts(
+      UUID entityId, String entityType, Include include) {
+    return findFrom(entityId, entityType, Relationship.HAS, DATA_PRODUCT, include);
   }
 
   public EntityInterface getParentEntity(T entity, String fields) {
@@ -3501,17 +3483,31 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected List<EntityReference> getChildren(T entity) {
-    return findTo(entity.getId(), entityType, Relationship.CONTAINS, entityType);
+    return getChildren(entity, NON_DELETED);
+  }
+
+  protected List<EntityReference> getChildren(T entity, Include include) {
+    return findTo(entity.getId(), entityType, Relationship.CONTAINS, entityType, include);
   }
 
   protected List<EntityReference> getReviewers(T entity) {
+    return getReviewers(entity, NON_DELETED);
+  }
+
+  protected List<EntityReference> getReviewers(T entity, Include include) {
     return supportsReviewers
-        ? findFrom(entity.getId(), entityType, Relationship.REVIEWS, null)
+        ? findFrom(entity.getId(), entityType, Relationship.REVIEWS, null, include)
         : null;
   }
 
   protected List<EntityReference> getExperts(T entity) {
-    return supportsExperts ? findTo(entity.getId(), entityType, Relationship.EXPERT, USER) : null;
+    return getExperts(entity, NON_DELETED);
+  }
+
+  protected List<EntityReference> getExperts(T entity, Include include) {
+    return supportsExperts
+        ? findTo(entity.getId(), entityType, Relationship.EXPERT, USER, include)
+        : null;
   }
 
   public final void inheritDomains(T entity, Fields fields, EntityInterface parent) {
@@ -3895,7 +3891,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         .map(
             owner -> {
               if (owner.getType().equals(TEAM)) {
-                Team team = Entity.getEntity(TEAM, owner.getId(), "", ALL);
+                // Use NON_DELETED to throw EntityNotFoundException if team is deleted
+                Team team = Entity.getEntity(TEAM, owner.getId(), "", NON_DELETED);
                 if (!team.getTeamType().equals(CreateTeam.TeamType.GROUP)) {
                   throw new IllegalArgumentException(
                       CatalogExceptionMessage.invalidTeamOwner(team.getTeamType()));
@@ -3904,7 +3901,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 throw new IllegalArgumentException(
                     CatalogExceptionMessage.invalidOwnerType(owner.getType()));
               }
-              return getEntityReferenceById(owner.getType(), owner.getId(), ALL);
+              // Use NON_DELETED to throw EntityNotFoundException if entity is deleted
+              return getEntityReferenceById(owner.getType(), owner.getId(), NON_DELETED);
             })
         .collect(Collectors.toList());
   }
@@ -3973,6 +3971,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     Set<ID> b = l2.stream().map(bID).collect(Collectors.toSet());
     return l1.stream().filter(a -> !b.contains(aID.apply(a))).map(r).collect(Collectors.toList());
+  }
+
+  /**
+   * Indicates whether this repository's bulk CSV import should create version history.
+   * Most repositories import entities into a parent entity (e.g., Glossary, Team, Table)
+   * and should version that parent. Some repositories (e.g., User) import entities without
+   * a versionable parent entity and should return false.
+   *
+   * @return true if bulk import should create version history (default), false otherwise
+   */
+  public boolean supportsBulkImportVersioning() {
+    return true; // Default: most repositories version the parent entity during bulk import
   }
 
   /**
@@ -4115,6 +4125,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private ChangeSource changeSource;
     private final boolean useOptimisticLocking;
 
+    // Store the original FQN at construction time, before any modifications or revert.
+    // This is needed because during change consolidation, revert() reassigns 'original' to
+    // 'previous',
+    // which would cause original.getFullyQualifiedName() to return an outdated value.
+    @Getter private final String originalFqn;
+
     public EntityUpdater(T original, T updated, Operation operation) {
       this(original, updated, operation, null);
     }
@@ -4132,6 +4148,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.original = original;
       this.updated = updated;
       this.operation = operation;
+      this.originalFqn = original.getFullyQualifiedName();
       User updatingUser =
           updated.getUpdatedBy().equalsIgnoreCase(ADMIN_USER_NAME)
               ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
@@ -4331,7 +4348,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateDeleted();
         updateDescription();
         updateDisplayName();
-        updateEntityStatus();
+        updateEntityStatus(consolidatingChanges);
         updateOwners();
         updateExtension(consolidatingChanges);
         updateTags(
@@ -4357,7 +4374,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateDeleted();
         updateDescription();
         updateDisplayName();
-        updateEntityStatus();
+        updateEntityStatus(consolidatingChanges);
         updateOwnersForImport();
         updateExtension(consolidatingChanges);
         updateTagsForImport(
@@ -4414,9 +4431,47 @@ public abstract class EntityRepository<T extends EntityInterface> {
       recordChange(FIELD_DISPLAY_NAME, original.getDisplayName(), updated.getDisplayName());
     }
 
-    private void updateEntityStatus() {
+    private void updateEntityStatus(boolean consolidatingChanges) {
       if (supportsEntityStatus) {
-        recordChange(FIELD_ENTITY_STATUS, original.getEntityStatus(), updated.getEntityStatus());
+        if (original.getEntityStatus() == updated.getEntityStatus()) {
+          return;
+        }
+        // Only reviewers can change from IN_REVIEW status to APPROVED/REJECTED status
+        if (!consolidatingChanges
+            && original.getEntityStatus() == EntityStatus.IN_REVIEW
+            && (updated.getEntityStatus() == EntityStatus.APPROVED
+                || updated.getEntityStatus() == EntityStatus.REJECTED)) {
+          checkUpdatedByReviewer(original, updated.getUpdatedBy());
+        }
+        recordChange("entityStatus", original.getEntityStatus(), updated.getEntityStatus());
+      }
+    }
+
+    public static void checkUpdatedByReviewer(EntityInterface entity, String updatedBy) {
+      // Only list of allowed reviewers can change the status from DRAFT to APPROVED
+      List<EntityReference> reviewers = entity.getReviewers();
+      if (!nullOrEmpty(reviewers)) {
+        // Updating user must be one of the reviewers
+        boolean isReviewer =
+            reviewers.stream()
+                .anyMatch(
+                    e -> {
+                      if (e.getType().equals(TEAM)) {
+                        Team team =
+                            Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
+                        return team.getUsers().stream()
+                            .anyMatch(
+                                u ->
+                                    u.getName().equals(updatedBy)
+                                        || u.getFullyQualifiedName().equals(updatedBy));
+                      } else {
+                        return e.getName().equals(updatedBy)
+                            || e.getFullyQualifiedName().equals(updatedBy);
+                      }
+                    });
+        if (!isReviewer) {
+          throw new AuthorizationException(notReviewer(updatedBy));
+        }
       }
     }
 
@@ -4514,7 +4569,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         applyTagsDelete(deletedTags, fqn);
       }
       if (!addedTags.isEmpty()) {
-        applyTagsAdd(addedTags, fqn);
+        applyTagsAdd(
+            addedTags.stream().map(tag -> tag.withAppliedBy(updatingUser.getName())).toList(), fqn);
       }
 
       // Record changes for audit trail
@@ -4590,10 +4646,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       if (!consolidatingChanges) {
-        for (JsonNode node :
-            Stream.of(addedFields, updatedFields, deletedFields).flatMap(List::stream).toList()) {
-          node.fields().forEachRemaining(field -> validateExtension(updated, field));
+        ObjectNode extensionNode = (ObjectNode) JsonUtils.valueToTree(updated.getExtension());
+        for (JsonNode node : Stream.of(addedFields, updatedFields).flatMap(List::stream).toList()) {
+          node.fields()
+              .forEachRemaining(
+                  field -> {
+                    Map<String, Object> singleField = new HashMap<>();
+                    singleField.put(
+                        field.getKey(), JsonUtils.treeToValue(field.getValue(), Object.class));
+                    Object transformedField =
+                        validateAndTransformExtension(singleField, entityType);
+                    JsonNode transformedNode = JsonUtils.valueToTree(transformedField);
+                    extensionNode.set(field.getKey(), transformedNode.get(field.getKey()));
+                  });
         }
+        updated.setExtension(JsonUtils.treeToValue(extensionNode, Object.class));
       }
       if (!addedFields.isEmpty()) {
         fieldAdded(changeDescription, FIELD_EXTENSION, JsonUtils.pojoToJson(addedFields));
@@ -4855,7 +4922,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
           updatedLifeCycle.setUpdated(origLifeCycle.getUpdated());
         }
       }
-      recordChange(FIELD_LIFE_CYCLE, origLifeCycle, updatedLifeCycle, true);
+      // Use updateVersion=false to prevent version pollution from lifecycle-only changes
+      // See: https://github.com/open-metadata/OpenMetadata/issues/21326
+      recordChange(FIELD_LIFE_CYCLE, origLifeCycle, updatedLifeCycle, true, objectMatch, false);
     }
 
     private void updateCertification() {
@@ -5345,7 +5414,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void storeNewVersion() {
-      LOG.info("storeNewVersion called for entity: {} {}", entityType, updated.getId());
+      LOG.info(
+          "storeNewVersion called for entity: {} {}, changeDescription={}",
+          entityType,
+          updated.getId(),
+          updated.getChangeDescription());
       EntityRepository.this.storeEntity(updated, true);
       // Write-through cache after update
       EntityRepository.this.writeThroughCache(updated, true);
@@ -5379,6 +5452,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return false;
       }
 
+      // Skip consolidation if the name is being changed in this update.
+      // Renaming updates FQN and related entity references (assets, relationships).
+      // Consolidation would revert to a previous version with the old name/FQN,
+      // causing inconsistencies with already-updated references.
+      if (!original.getName().equals(updated.getName())) {
+        LOG.debug("Skipping consolidation for {} - name change detected", original.getId());
+        return false;
+      }
+
+      // Skip consolidation if a previous change in the session was a name change.
+      // The previous version would have the old name/FQN, and reverting to it
+      // would cause the same issues as above.
+      if (wasRenamedInSession(original)) {
+        LOG.debug(
+            "Skipping consolidation for {} - entity was renamed in session", original.getId());
+        return false;
+      }
+
       // If user is the same and the new update is with in the user session timeout
       return original.getVersion() > 0.1 // First update on an entity that
           && operation == Operation.PATCH
@@ -5391,6 +5482,32 @@ public abstract class EntityRepository<T extends EntityInterface> {
               <= sessionTimeoutMillis // With in session timeout
           && diffChangeSource();
       // changes to children
+    }
+
+    /**
+     * Check if the entity was renamed in a previous update within the consolidation window.
+     * This is detected by checking if the changeDescription contains a 'name' field update.
+     */
+    private boolean wasRenamedInSession(T original) {
+      ChangeDescription changeDesc = original.getChangeDescription();
+      ChangeDescription incChangeDesc = original.getIncrementalChangeDescription();
+
+      // Check main changeDescription first
+      if (changeDesc != null && changeDesc.getFieldsUpdated() != null) {
+        if (changeDesc.getFieldsUpdated().stream().anyMatch(fc -> "name".equals(fc.getName()))) {
+          return true;
+        }
+      }
+
+      // Also check incrementalChangeDescription - this captures the name change
+      // even when renameProcessed prevents it from being in the main changeDescription
+      if (incChangeDesc != null && incChangeDesc.getFieldsUpdated() != null) {
+        if (incChangeDesc.getFieldsUpdated().stream().anyMatch(fc -> "name".equals(fc.getName()))) {
+          return true;
+        }
+      }
+
+      return false;
     }
 
     /**
@@ -5482,7 +5599,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Add tags related to newly added columns
       for (Column added : addedColumns) {
-        applyTags(added.getTags(), added.getFullyQualifiedName());
+        applyTags(
+            added.getTags().stream().map(tag -> tag.withAppliedBy(updatingUser.getName())).toList(),
+            added.getFullyQualifiedName());
       }
 
       // Carry forward the user generated metadata from existing columns to new columns
@@ -5863,10 +5982,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
 
+    // Batch fetch all derived tags in ONE query instead of N queries
+    List<TagLabel> allTags =
+        tagsMap.values().stream().flatMap(List::stream).collect(Collectors.toList());
+    Map<String, List<TagLabel>> derivedTagsMap = TagLabelUtil.batchFetchDerivedTags(allTags);
+
     for (T entity : entities) {
-      entity.setTags(
-          addDerivedTags(
-              tagsMap.getOrDefault(entity.getFullyQualifiedName(), Collections.emptyList())));
+      List<TagLabel> entityTags =
+          tagsMap.getOrDefault(entity.getFullyQualifiedName(), Collections.emptyList());
+      entity.setTags(TagLabelUtil.addDerivedTagsWithPreFetched(entityTags, derivedTagsMap));
     }
   }
 
@@ -5986,40 +6110,48 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .relationshipDAO()
             .findFromBatch(entityListToStrings(entities), Relationship.OWNS.ordinal(), ALL);
 
-    LOG.info(
+    LOG.debug(
         "batchFetchOwners: Found {} owner relationships for {} entities",
         records.size(),
         entities.size());
 
-    // Group records by entity type to batch fetch entity references
-    var ownerIdsByType = new HashMap<String, List<UUID>>();
+    // Cache UUID conversions to avoid repeated parsing
+    Map<String, UUID> uuidCache = new HashMap<>();
+
+    // Group records by entity type to batch fetch entity references (with deduplication)
+    var ownerIdsByType = new HashMap<String, Set<UUID>>();
     records.forEach(
         rec -> {
           var fromEntity = rec.getFromEntity();
-          var fromId = UUID.fromString(rec.getFromId());
-          ownerIdsByType.computeIfAbsent(fromEntity, k -> new ArrayList<>()).add(fromId);
+          var fromId = uuidCache.computeIfAbsent(rec.getFromId(), UUID::fromString);
+          ownerIdsByType.computeIfAbsent(fromEntity, k -> new HashSet<>()).add(fromId);
         });
 
     // Batch fetch entity references for each entity type
     var ownerRefsByType = new HashMap<String, Map<UUID, EntityReference>>();
     ownerIdsByType.forEach(
         (entityType, ownerIds) -> {
-          var ownerRefs = Entity.getEntityReferencesByIds(entityType, ownerIds, ALL);
+          var ownerRefs =
+              Entity.getEntityReferencesByIds(entityType, new ArrayList<>(ownerIds), ALL);
           var refMap =
-              ownerRefs.stream().collect(Collectors.toMap(EntityReference::getId, ref -> ref));
+              ownerRefs.stream()
+                  .collect(Collectors.toMap(EntityReference::getId, ref -> ref, (a, b) -> a));
           ownerRefsByType.put(entityType, refMap);
         });
 
-    // Map owners to entities
+    // Map owners to entities (reuse cached UUIDs)
     records.forEach(
         rec -> {
-          var toId = UUID.fromString(rec.getToId());
-          var fromId = UUID.fromString(rec.getFromId());
+          var toId = uuidCache.computeIfAbsent(rec.getToId(), UUID::fromString);
+          var fromId = uuidCache.get(rec.getFromId()); // Already cached
           var fromEntity = rec.getFromEntity();
 
-          var ownerRef = ownerRefsByType.get(fromEntity).get(fromId);
-          if (ownerRef != null) {
-            ownersMap.computeIfAbsent(toId, k -> new ArrayList<>()).add(ownerRef);
+          var refMap = ownerRefsByType.get(fromEntity);
+          if (refMap != null) {
+            var ownerRef = refMap.get(fromId);
+            if (ownerRef != null) {
+              ownersMap.computeIfAbsent(toId, k -> new ArrayList<>()).add(ownerRef);
+            }
           }
         });
 
@@ -6121,12 +6253,76 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private Map<UUID, AssetCertification> batchFetchCertification(List<T> entities) {
     var result = new HashMap<UUID, AssetCertification>();
-    if (entities == null || entities.isEmpty()) {
+    if (entities == null || entities.isEmpty() || !supportsCertification) {
       return result;
     }
+
+    long startTime = System.currentTimeMillis();
+
+    // Collect all certification tag FQNs and map to entity IDs
+    Map<String, List<UUID>> entityIdsByTagFqn = new HashMap<>();
+    Map<UUID, AssetCertification> entityCertifications = new HashMap<>();
+
     for (T entity : entities) {
-      result.put(entity.getId(), getCertification(entity));
+      AssetCertification cert = entity.getCertification();
+      if (cert != null && cert.getTagLabel() != null && cert.getTagLabel().getTagFQN() != null) {
+        String tagFqn = cert.getTagLabel().getTagFQN();
+        entityIdsByTagFqn.computeIfAbsent(tagFqn, k -> new ArrayList<>()).add(entity.getId());
+        entityCertifications.put(entity.getId(), cert);
+      }
     }
+
+    if (entityIdsByTagFqn.isEmpty()) {
+      LOG.debug(
+          "batchFetchCertification: {} entities, 0 certifications in {}ms",
+          entities.size(),
+          System.currentTimeMillis() - startTime);
+      return result;
+    }
+
+    // Batch fetch all certification tags at once
+    List<String> tagFqns = new ArrayList<>(entityIdsByTagFqn.keySet());
+    Map<String, Tag> tagsByFqn = new HashMap<>();
+
+    try {
+      List<Tag> tags = TagLabelUtil.getTags(tagFqns);
+      for (Tag tag : tags) {
+        tagsByFqn.put(tag.getFullyQualifiedName(), tag);
+      }
+    } catch (Exception e) {
+      LOG.warn(
+          "Batch fetch of certification tags failed, falling back to individual fetch: {}",
+          e.getMessage());
+      // Fallback to original behavior
+      for (T entity : entities) {
+        result.put(entity.getId(), getCertification(entity));
+      }
+      return result;
+    }
+
+    // Map tags back to entities
+    for (Map.Entry<String, List<UUID>> entry : entityIdsByTagFqn.entrySet()) {
+      String tagFqn = entry.getKey();
+      Tag tag = tagsByFqn.get(tagFqn);
+
+      if (tag != null) {
+        TagLabel tagLabel = EntityUtil.toTagLabel(tag);
+        for (UUID entityId : entry.getValue()) {
+          AssetCertification cert = entityCertifications.get(entityId);
+          if (cert != null) {
+            cert.setTagLabel(tagLabel);
+            result.put(entityId, cert);
+          }
+        }
+      }
+    }
+
+    LOG.debug(
+        "batchFetchCertification: {} entities, {} cert tags, 1 batch query in {}ms",
+        entities.size(),
+        tagFqns.size(),
+        System.currentTimeMillis() - startTime);
+
     return result;
   }
 
@@ -6207,35 +6403,43 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     var reviewersMap = new HashMap<UUID, List<EntityReference>>();
 
-    // Group records by entity type to batch fetch entity references
-    var reviewerIdsByType = new HashMap<String, List<UUID>>();
+    // Cache UUID conversions to avoid repeated parsing
+    Map<String, UUID> uuidCache = new HashMap<>();
+
+    // Group records by entity type to batch fetch entity references (with deduplication)
+    var reviewerIdsByType = new HashMap<String, Set<UUID>>();
     records.forEach(
         rec -> {
           var fromEntity = rec.getFromEntity();
-          var fromId = UUID.fromString(rec.getFromId());
-          reviewerIdsByType.computeIfAbsent(fromEntity, k -> new ArrayList<>()).add(fromId);
+          var fromId = uuidCache.computeIfAbsent(rec.getFromId(), UUID::fromString);
+          reviewerIdsByType.computeIfAbsent(fromEntity, k -> new HashSet<>()).add(fromId);
         });
 
     // Batch fetch entity references for each entity type
     var reviewerRefsByType = new HashMap<String, Map<UUID, EntityReference>>();
     reviewerIdsByType.forEach(
         (entityType, reviewerIds) -> {
-          var reviewerRefs = Entity.getEntityReferencesByIds(entityType, reviewerIds, ALL);
+          var reviewerRefs =
+              Entity.getEntityReferencesByIds(entityType, new ArrayList<>(reviewerIds), ALL);
           var refMap =
-              reviewerRefs.stream().collect(Collectors.toMap(EntityReference::getId, ref -> ref));
+              reviewerRefs.stream()
+                  .collect(Collectors.toMap(EntityReference::getId, ref -> ref, (a, b) -> a));
           reviewerRefsByType.put(entityType, refMap);
         });
 
-    // Map reviewers to entities
+    // Map reviewers to entities (reuse cached UUIDs)
     records.forEach(
         rec -> {
-          var entityId = UUID.fromString(rec.getToId());
-          var fromId = UUID.fromString(rec.getFromId());
+          var entityId = uuidCache.computeIfAbsent(rec.getToId(), UUID::fromString);
+          var fromId = uuidCache.get(rec.getFromId()); // Already cached
           var fromEntity = rec.getFromEntity();
 
-          var reviewerRef = reviewerRefsByType.get(fromEntity).get(fromId);
-          if (reviewerRef != null) {
-            reviewersMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(reviewerRef);
+          var refMap = reviewerRefsByType.get(fromEntity);
+          if (refMap != null) {
+            var reviewerRef = refMap.get(fromId);
+            if (reviewerRef != null) {
+              reviewersMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(reviewerRef);
+            }
           }
         });
 
@@ -6288,22 +6492,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     Map<UUID, List<EntityReference>> expertsMap = new HashMap<>();
 
-    // Collect all expert user IDs
+    // Cache UUID conversions to avoid repeated parsing
+    Map<String, UUID> uuidCache = new HashMap<>();
+
+    // Collect all unique expert user IDs (with .distinct() to avoid duplicate fetches)
     List<UUID> expertIds =
         records.stream()
-            .map(record -> UUID.fromString(record.getFromId()))
+            .map(record -> uuidCache.computeIfAbsent(record.getFromId(), UUID::fromString))
+            .distinct()
             .collect(Collectors.toList());
 
     // Batch fetch all expert references
     Map<UUID, EntityReference> expertRefs =
         Entity.getEntityReferencesByIds(USER, expertIds, ALL).stream()
-            .collect(Collectors.toMap(EntityReference::getId, Function.identity()));
+            .collect(Collectors.toMap(EntityReference::getId, Function.identity(), (a, b) -> a));
 
-    // Group experts by entity
+    // Group experts by entity (reuse cached UUIDs)
     records.forEach(
         record -> {
-          UUID entityId = UUID.fromString(record.getToId());
-          UUID expertId = UUID.fromString(record.getFromId());
+          UUID entityId = uuidCache.computeIfAbsent(record.getToId(), UUID::fromString);
+          UUID expertId = uuidCache.get(record.getFromId()); // Already cached above
           EntityReference expertRef = expertRefs.get(expertId);
           if (expertRef != null) {
             expertsMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(expertRef);
@@ -6612,13 +6820,100 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null;
   }
 
-  private static final ExecutorService BULK_PROCESSING_EXECUTOR =
-      Executors.newVirtualThreadPerTaskExecutor();
+  @Transaction
+  public void createChangeEventForBulkOperation(
+      T original, CsvImportResult result, String updatedBy) {
+    // Get a complete view of the entity for history
+    setFieldsInternal(original, getPutFields());
+    setInheritedFields(original, getPutFields());
 
-  private static final ExecutorService BOUNDED_BULK_EXECUTOR =
-      Executors.newFixedThreadPool(20, Thread.ofVirtual().factory());
+    T updated = JsonUtils.deepCopy(original, entityClass);
+
+    // Create a lean version of the CsvImportResult for storage in ChangeDescription
+    CsvImportResult leanResult = createLeanCsvImportResult(result);
+
+    ChangeDescription change = new ChangeDescription().withPreviousVersion(original.getVersion());
+    FieldChange fieldChange = new FieldChange().withName(BULK_IMPORT).withNewValue(leanResult);
+    change.getFieldsUpdated().add(fieldChange);
+
+    updated.setChangeDescription(change);
+    updated.setVersion(EntityUtil.nextVersion(original.getVersion())); // Manually bump version ONCE
+    updated.setUpdatedBy(updatedBy);
+    updated.setUpdatedAt(System.currentTimeMillis());
+
+    // Store history of the previous version
+    String extensionName = EntityUtil.getVersionExtension(entityType, original.getVersion());
+    daoCollection
+        .entityExtensionDAO()
+        .insert(original.getId(), extensionName, entityType, JsonUtils.pojoToJson(original));
+
+    // Directly update the entity in the database without calling other versioning methods
+    dao.update(updated.getId(), updated.getFullyQualifiedName(), JsonUtils.pojoToJson(updated));
+    invalidate(updated); // Invalidate cache
+
+    // Create a ChangeEvent for the feed
+    ChangeEvent changeEvent =
+        getChangeEvent(updated, change, entityType, change.getPreviousVersion());
+    daoCollection.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+  }
+
+  private CsvImportResult createLeanCsvImportResult(CsvImportResult fullResult) {
+    CsvImportResult leanResult =
+        new CsvImportResult()
+            .withDryRun(fullResult.getDryRun())
+            .withStatus(fullResult.getStatus())
+            .withNumberOfRowsProcessed(fullResult.getNumberOfRowsProcessed())
+            .withNumberOfRowsPassed(fullResult.getNumberOfRowsPassed())
+            .withNumberOfRowsFailed(fullResult.getNumberOfRowsFailed())
+            .withAbortReason(fullResult.getAbortReason());
+
+    if (nullOrEmpty(fullResult.getImportResultsCsv())) {
+      return leanResult;
+    }
+
+    StringWriter stringWriter = new StringWriter();
+    try (CSVParser parser =
+        CSVParser.parse(
+            fullResult.getImportResultsCsv(), CSVFormat.DEFAULT.withFirstRecordAsHeader())) {
+      int nameIndex = -1;
+      List<String> headerNames = parser.getHeaderNames();
+      for (int i = 0; i < headerNames.size(); i++) {
+        if (headerNames.get(i).toLowerCase().contains("name")) {
+          nameIndex = i;
+          break;
+        }
+      }
+
+      String[] leanHeaders = {"status", "details", "name"};
+      try (CSVPrinter printer =
+          new CSVPrinter(stringWriter, CSVFormat.DEFAULT.withHeader(leanHeaders))) {
+        for (CSVRecord record : parser) {
+          String name = (nameIndex != -1 && nameIndex < record.size()) ? record.get(nameIndex) : "";
+          printer.printRecord(record.get("status"), record.get("details"), name);
+        }
+      }
+      leanResult.setImportResultsCsv(stringWriter.toString());
+    } catch (IOException | IllegalArgumentException e) {
+      // If parsing fails, just return the original CSV to avoid losing data
+      LOG.warn("Failed to create lean CSV for change description, returning full CSV", e);
+      leanResult.setImportResultsCsv(fullResult.getImportResultsCsv());
+    }
+    return leanResult;
+  }
 
   private static final ConcurrentHashMap<String, CompletableFuture<BulkOperationResult>> BULK_JOBS =
+      new ConcurrentHashMap<>();
+
+  // Cached metrics to avoid Timer.builder overhead on every call
+  private static final ConcurrentHashMap<String, Timer> ENTITY_LATENCY_TIMERS =
+      new ConcurrentHashMap<>();
+  private static final ConcurrentHashMap<String, Timer> ENTITY_QUEUE_WAIT_TIMERS =
+      new ConcurrentHashMap<>();
+  private static final ConcurrentHashMap<String, Timer> BULK_OPERATION_TIMERS =
+      new ConcurrentHashMap<>();
+  private static final ConcurrentHashMap<String, DistributionSummary> BATCH_SIZE_SUMMARIES =
+      new ConcurrentHashMap<>();
+  private static final ConcurrentHashMap<String, DistributionSummary> SUCCESS_RATE_SUMMARIES =
       new ConcurrentHashMap<>();
 
   public CompletableFuture<BulkOperationResult> submitAsyncBulkOperation(
@@ -6628,6 +6923,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     LOG.info(
         "Submitting async bulk operation with jobId: {} for {} entities", jobId, entities.size());
 
+    // Use BulkExecutor for async operations too
     CompletableFuture<BulkOperationResult> job =
         CompletableFuture.supplyAsync(
             () -> {
@@ -6642,7 +6938,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 return errorResult;
               }
             },
-            BULK_PROCESSING_EXECUTOR);
+            BulkExecutor.getInstance().getExecutor());
 
     BULK_JOBS.put(jobId, job);
 
@@ -6664,14 +6960,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<BulkResponse> successRequests = new ArrayList<>();
     List<BulkResponse> failedRequests = new ArrayList<>();
 
+    long bulkStartTime = System.nanoTime();
+    List<Long> entityLatenciesNanos = new ArrayList<>();
+
     for (T entity : entities) {
+      long entityStartTime = System.nanoTime();
       try {
         createOrUpdate(uriInfo, entity, userName);
+        long entityDuration = System.nanoTime() - entityStartTime;
+        entityLatenciesNanos.add(entityDuration);
+        recordEntityMetrics(entityType, entityDuration, 0, true);
         successRequests.add(
             new BulkResponse()
                 .withRequest(entity.getFullyQualifiedName())
                 .withStatus(Status.OK.getStatusCode()));
       } catch (Exception e) {
+        long entityDuration = System.nanoTime() - entityStartTime;
+        entityLatenciesNanos.add(entityDuration);
+        recordEntityMetrics(entityType, entityDuration, 0, false);
         LOG.warn("Failed to process entity in bulk operation", e);
         failedRequests.add(
             new BulkResponse()
@@ -6681,21 +6987,44 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
+    long totalDurationNanos = System.nanoTime() - bulkStartTime;
+
     result.setNumberOfRowsProcessed(entities.size());
     result.setNumberOfRowsPassed(successRequests.size());
     result.setNumberOfRowsFailed(failedRequests.size());
     result.setSuccessRequest(successRequests);
     result.setFailedRequest(failedRequests);
 
-    if (failedRequests.size() > 0) {
-      result.setStatus(ApiStatus.PARTIAL_SUCCESS);
+    if (!failedRequests.isEmpty()) {
+      result.setStatus(successRequests.isEmpty() ? ApiStatus.FAILURE : ApiStatus.PARTIAL_SUCCESS);
     }
 
+    // Calculate metrics
+    long avgEntityLatencyMs = 0;
+    long maxEntityLatencyMs = 0;
+    if (!entityLatenciesNanos.isEmpty()) {
+      avgEntityLatencyMs =
+          entityLatenciesNanos.stream().mapToLong(Long::longValue).sum()
+              / entityLatenciesNanos.size()
+              / 1_000_000;
+      maxEntityLatencyMs =
+          entityLatenciesNanos.stream().mapToLong(Long::longValue).max().orElse(0) / 1_000_000;
+    }
+
+    recordBulkMetrics(
+        entityType,
+        entities.size(),
+        successRequests.size(),
+        totalDurationNanos,
+        avgEntityLatencyMs,
+        maxEntityLatencyMs);
+
     LOG.info(
-        "Async bulk operation completed: {} succeeded, {} failed out of {} total",
+        "Async bulk operation completed: {} succeeded, {} failed out of {} total, took {}ms",
         successRequests.size(),
         failedRequests.size(),
-        entities.size());
+        entities.size(),
+        totalDurationNanos / 1_000_000);
 
     return result;
   }
@@ -6783,35 +7112,142 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<BulkResponse> successRequests = Collections.synchronizedList(new ArrayList<>());
     List<BulkResponse> failedRequests = Collections.synchronizedList(new ArrayList<>());
 
+    BulkExecutor bulkExecutor = BulkExecutor.getInstance();
+
+    // Track overall wall-clock time
+    long bulkStartTime = System.nanoTime();
+
+    // Check if system can accept more work
+    if (!bulkExecutor.hasCapacity()) {
+      LOG.warn(
+          "Bulk operation rejected: queue full (depth={}, max={})",
+          bulkExecutor.getQueueDepth(),
+          bulkExecutor.getQueueSize());
+      result.setStatus(ApiStatus.FAILURE);
+      result.setNumberOfRowsProcessed(0);
+      result.setNumberOfRowsFailed(entities.size());
+      for (T entity : entities) {
+        failedRequests.add(
+            new BulkResponse()
+                .withRequest(entity.getFullyQualifiedName())
+                .withStatus(Status.SERVICE_UNAVAILABLE.getStatusCode())
+                .withMessage("System overloaded, please retry later"));
+      }
+      result.setFailedRequest(failedRequests);
+      recordBulkMetrics(entityType, entities.size(), 0, System.nanoTime() - bulkStartTime, 0, 0);
+      return result;
+    }
+
+    LOG.info(
+        "Starting bulk operation for {} {} entities (active={}, queued={})",
+        entities.size(),
+        entityType,
+        bulkExecutor.getActiveCount(),
+        bulkExecutor.getQueueDepth());
+
     List<CompletableFuture<Void>> futures = new ArrayList<>();
 
+    // Track per-entity latencies for accurate metrics
+    List<Long> entityLatenciesNanos = Collections.synchronizedList(new ArrayList<>());
+
+    // Capture parent thread's latency context for propagation to worker threads
+    final RequestLatencyContext.RequestContext parentLatencyContext =
+        RequestLatencyContext.getContext();
+
     for (T entity : entities) {
-      CompletableFuture<Void> future =
-          CompletableFuture.runAsync(
-              () -> {
+      CompletableFuture<Void> future = new CompletableFuture<>();
+      futures.add(future);
+
+      final long submitTime = System.nanoTime();
+
+      try {
+        bulkExecutor.submit(
+            () -> {
+              // Propagate latency context to worker thread for accurate DB/Search tracking
+              if (parentLatencyContext != null) {
+                RequestLatencyContext.setContext(parentLatencyContext);
+              }
+              try {
+                long entityStartTime = System.nanoTime();
+                long queueWaitTime = entityStartTime - submitTime;
                 try {
                   PutResponse<T> putResponse = bulkCreateOrUpdateEntity(uriInfo, entity, userName);
+                  long entityDuration = System.nanoTime() - entityStartTime;
+                  entityLatenciesNanos.add(entityDuration);
+
                   successRequests.add(
                       new BulkResponse()
                           .withRequest(entity.getFullyQualifiedName())
                           .withStatus(Status.OK.getStatusCode()));
                   createChangeEventForBulkOperation(
                       putResponse.getEntity(), putResponse.getChangeType(), userName);
-                } catch (Exception e) {
-                  LOG.warn("Failed to process entity in bulk operation", e);
-                  failedRequests.add(
-                      new BulkResponse()
-                          .withRequest(entity.getFullyQualifiedName())
-                          .withStatus(Status.BAD_REQUEST.getStatusCode())
-                          .withMessage(e.getMessage()));
-                }
-              },
-              BOUNDED_BULK_EXECUTOR);
 
-      futures.add(future);
+                  // Record per-entity metrics
+                  recordEntityMetrics(entityType, entityDuration, queueWaitTime, true);
+                  future.complete(null);
+                } catch (Exception e) {
+                  long entityDuration = System.nanoTime() - entityStartTime;
+                  entityLatenciesNanos.add(entityDuration);
+                  recordEntityMetrics(entityType, entityDuration, queueWaitTime, false);
+                  handleBulkOperationError(entity, e, failedRequests);
+                  future.complete(null); // Complete even on error so we don't hang
+                }
+              } finally {
+                // Clear context from worker thread to prevent memory leaks in pooled threads
+                if (parentLatencyContext != null) {
+                  RequestLatencyContext.clearContext();
+                }
+              }
+            });
+      } catch (java.util.concurrent.RejectedExecutionException e) {
+        // Queue became full between check and submit
+        LOG.warn("Task rejected for entity: {}", entity.getFullyQualifiedName());
+        failedRequests.add(
+            new BulkResponse()
+                .withRequest(entity.getFullyQualifiedName())
+                .withStatus(Status.SERVICE_UNAVAILABLE.getStatusCode())
+                .withMessage("System overloaded, please retry later"));
+        future.complete(null);
+      }
     }
 
-    CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+    // Wait with timeout
+    boolean timedOut = false;
+    try {
+      CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+          .get(bulkExecutor.getTimeoutSeconds(), TimeUnit.SECONDS);
+    } catch (java.util.concurrent.TimeoutException e) {
+      timedOut = true;
+      LOG.error(
+          "Bulk operation timed out after {}s. Completed: {}, Failed: {}, Total: {}",
+          bulkExecutor.getTimeoutSeconds(),
+          successRequests.size(),
+          failedRequests.size(),
+          entities.size());
+
+      // Check each future to find which entities actually timed out
+      // futures[i] corresponds to entities[i]
+      for (int i = 0; i < futures.size(); i++) {
+        CompletableFuture<Void> future = futures.get(i);
+        if (!future.isDone()) {
+          T entity = entities.get(i);
+          failedRequests.add(
+              new BulkResponse()
+                  .withRequest(entity.getFullyQualifiedName())
+                  .withStatus(Status.REQUEST_TIMEOUT.getStatusCode())
+                  .withMessage("Operation timed out"));
+          // Cancel the future to signal we're no longer interested
+          future.cancel(false);
+        }
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOG.warn("Bulk operation interrupted");
+    } catch (ExecutionException e) {
+      LOG.error("Unexpected error in bulk operation", e.getCause());
+    }
+
+    long totalDurationNanos = System.nanoTime() - bulkStartTime;
 
     result.setNumberOfRowsProcessed(entities.size());
     result.setNumberOfRowsPassed(successRequests.size());
@@ -6819,16 +7255,148 @@ public abstract class EntityRepository<T extends EntityInterface> {
     result.setSuccessRequest(successRequests);
     result.setFailedRequest(failedRequests);
 
-    if (failedRequests.size() > 0) {
-      result.setStatus(ApiStatus.PARTIAL_SUCCESS);
+    if (!failedRequests.isEmpty()) {
+      result.setStatus(successRequests.isEmpty() ? ApiStatus.FAILURE : ApiStatus.PARTIAL_SUCCESS);
     }
 
+    // Calculate and log detailed metrics
+    long avgEntityLatencyMs = 0;
+    long maxEntityLatencyMs = 0;
+    if (!entityLatenciesNanos.isEmpty()) {
+      avgEntityLatencyMs =
+          entityLatenciesNanos.stream().mapToLong(Long::longValue).sum()
+              / entityLatenciesNanos.size()
+              / 1_000_000;
+      maxEntityLatencyMs =
+          entityLatenciesNanos.stream().mapToLong(Long::longValue).max().orElse(0) / 1_000_000;
+    }
+
+    long totalDurationMs = totalDurationNanos / 1_000_000;
+    double throughput = entities.size() * 1000.0 / Math.max(1, totalDurationMs);
+
+    // Record bulk operation metrics
+    recordBulkMetrics(
+        entityType,
+        entities.size(),
+        successRequests.size(),
+        totalDurationNanos,
+        avgEntityLatencyMs,
+        maxEntityLatencyMs);
+
     LOG.info(
-        "Bulk operation completed: {} succeeded, {} failed out of {} total",
+        "Bulk operation completed: entity={}, total={}, succeeded={}, failed={}, "
+            + "wallClockMs={}, avgEntityMs={}, maxEntityMs={}, throughput={}/s",
+        entityType,
+        entities.size(),
         successRequests.size(),
         failedRequests.size(),
-        entities.size());
+        totalDurationMs,
+        avgEntityLatencyMs,
+        maxEntityLatencyMs,
+        String.format("%.1f", throughput));
 
     return result;
+  }
+
+  private void recordEntityMetrics(
+      String entityType, long durationNanos, long queueWaitNanos, boolean success) {
+    // Per-entity processing time (cached, no histogram to reduce Prometheus cardinality)
+    // This fires for EVERY entity in a bulk operation, so we use simple timers.
+    // The bulk.operation.latency metric has histograms for percentile analysis.
+    String latencyKey = entityType + "|" + success;
+    Timer latencyTimer =
+        ENTITY_LATENCY_TIMERS.computeIfAbsent(
+            latencyKey,
+            k ->
+                Timer.builder("bulk.entity.latency")
+                    .tag("entity", entityType)
+                    .tag("success", String.valueOf(success))
+                    .register(Metrics.globalRegistry));
+    latencyTimer.record(durationNanos, TimeUnit.NANOSECONDS);
+
+    // Queue wait time (cached, simple timer)
+    Timer queueTimer =
+        ENTITY_QUEUE_WAIT_TIMERS.computeIfAbsent(
+            entityType,
+            k ->
+                Timer.builder("bulk.entity.queue_wait")
+                    .tag("entity", entityType)
+                    .register(Metrics.globalRegistry));
+    queueTimer.record(queueWaitNanos, TimeUnit.NANOSECONDS);
+  }
+
+  private void recordBulkMetrics(
+      String entityType,
+      int totalEntities,
+      int successCount,
+      long durationNanos,
+      long avgEntityMs,
+      long maxEntityMs) {
+    // Total bulk operation time (cached)
+    Timer operationTimer =
+        BULK_OPERATION_TIMERS.computeIfAbsent(
+            entityType,
+            k ->
+                Timer.builder("bulk.operation.latency")
+                    .tag("entity", entityType)
+                    .publishPercentileHistogram(true)
+                    .register(Metrics.globalRegistry));
+    operationTimer.record(durationNanos, TimeUnit.NANOSECONDS);
+
+    // Batch size distribution (cached)
+    DistributionSummary batchSizeSummary =
+        BATCH_SIZE_SUMMARIES.computeIfAbsent(
+            entityType,
+            k ->
+                DistributionSummary.builder("bulk.operation.batch_size")
+                    .tag("entity", entityType)
+                    .register(Metrics.globalRegistry));
+    batchSizeSummary.record(totalEntities);
+
+    // Success rate as distribution (cached, avoids gauge memory leak)
+    if (totalEntities > 0) {
+      DistributionSummary successRateSummary =
+          SUCCESS_RATE_SUMMARIES.computeIfAbsent(
+              entityType,
+              k ->
+                  DistributionSummary.builder("bulk.operation.success_rate")
+                      .tag("entity", entityType)
+                      .register(Metrics.globalRegistry));
+      successRateSummary.record(successCount * 100.0 / totalEntities);
+    }
+
+    // Record success and failure counts for alerting (Micrometer caches counters internally)
+    Metrics.counter("bulk.operation.entities.success", "entity", entityType)
+        .increment(successCount);
+    Metrics.counter("bulk.operation.entities.failed", "entity", entityType)
+        .increment(totalEntities - successCount);
+  }
+
+  private void handleBulkOperationError(T entity, Exception e, List<BulkResponse> failedRequests) {
+    String fqn = entity.getFullyQualifiedName();
+    int statusCode;
+    String message;
+
+    // Categorize errors properly
+    if (e instanceof jakarta.ws.rs.WebApplicationException wae) {
+      statusCode = wae.getResponse().getStatus();
+      message = e.getMessage();
+      LOG.warn("Entity {} failed with status {}: {}", fqn, statusCode, message);
+    } else if (e instanceof java.sql.SQLException) {
+      statusCode = Status.INTERNAL_SERVER_ERROR.getStatusCode();
+      message = "Database error: " + e.getMessage();
+      LOG.error("Database error processing entity {}", fqn, e);
+    } else if (e instanceof IllegalArgumentException || e instanceof IllegalStateException) {
+      statusCode = Status.BAD_REQUEST.getStatusCode();
+      message = e.getMessage();
+      LOG.warn("Validation error for entity {}: {}", fqn, message);
+    } else {
+      statusCode = Status.INTERNAL_SERVER_ERROR.getStatusCode();
+      message = "Unexpected error: " + e.getMessage();
+      LOG.error("Unexpected error processing entity {}", fqn, e);
+    }
+
+    failedRequests.add(
+        new BulkResponse().withRequest(fqn).withStatus(statusCode).withMessage(message));
   }
 }

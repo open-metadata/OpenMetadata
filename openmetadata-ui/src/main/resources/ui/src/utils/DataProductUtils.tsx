@@ -22,9 +22,11 @@ import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/Acti
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import ResizablePanels from '../components/common/ResizablePanels/ResizablePanels';
+import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import { DataProductDomainWidget } from '../components/DataProducts/DataProductDomainWidget/DataProductDomainWidget';
 import EntitySummaryPanel from '../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../components/Explore/ExplorePage.interface';
 import AssetsTabs, {
@@ -32,6 +34,7 @@ import AssetsTabs, {
 } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
+import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { EntityReference } from '../generated/entity/data/table';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
@@ -88,6 +91,10 @@ export const getDataProductIconByUrl = (iconURL?: string) => {
 };
 
 export const getDataProductWidgetsFromKey = (widgetConfig: WidgetConfig) => {
+  if (widgetConfig.i === DetailPageWidgetKeys.DOMAIN) {
+    return <DataProductDomainWidget />;
+  }
+
   return (
     <CommonWidgets
       entityType={EntityType.DATA_PRODUCT}
@@ -126,8 +133,9 @@ export const getDataProductDetailTabs = ({
       key: EntityTabs.DOCUMENTATION,
       children: <GenericTab type={PageType.DataProduct} />,
     },
-    ...(!isVersionsView
-      ? [
+    ...(isVersionsView
+      ? []
+      : [
           {
             label: (
               <TabsLabel
@@ -176,7 +184,7 @@ export const getDataProductDetailTabs = ({
                     <AssetsTabs
                       assetCount={assetCount}
                       entityFqn={dataProduct.fullyQualifiedName}
-                      isSummaryPanelOpen={false}
+                      isSummaryPanelOpen={Boolean(previewAsset)}
                       permissions={dataProductPermission}
                       ref={assetTabRef}
                       type={AssetsOfEntity.DATA_PRODUCT}
@@ -186,7 +194,7 @@ export const getDataProductDetailTabs = ({
                     />
                   ),
                   minWidth: 800,
-                  flex: 0.87,
+                  flex: 0.67,
                 }}
                 hideSecondPanel={!previewAsset}
                 pageTitle={t('label.data-product')}
@@ -196,18 +204,21 @@ export const getDataProductDetailTabs = ({
                     <EntitySummaryPanel
                       entityDetails={previewAsset}
                       handleClosePanel={() => setPreviewAsset(undefined)}
+                      key={
+                        previewAsset.details.id ??
+                        previewAsset.details.fullyQualifiedName
+                      }
                     />
                   ),
                   minWidth: 400,
-                  flex: 0.13,
+                  flex: 0.33,
                   className:
                     'entity-summary-resizable-right-panel-container domain-resizable-panel-container',
                 }}
               />
             ),
           },
-        ]
-      : []),
+        ]),
     {
       label: (
         <TabsLabel
@@ -247,9 +258,14 @@ export const DataProductListItemRenderer = (props: EntityReference) => {
         <Typography.Text>{getEntityName(props)}</Typography.Text>
       </Space>
       {props.description && (
-        <Typography.Text className="text-xs text-grey-muted">
-          {props.description}
-        </Typography.Text>
+        <Typography.Paragraph
+          className="data-product-list-description"
+          ellipsis={{
+            tooltip: props.description,
+            rows: 2,
+          }}>
+          <RichTextEditorPreviewerV1 markdown={props.description} />
+        </Typography.Paragraph>
       )}
     </Space>
   );

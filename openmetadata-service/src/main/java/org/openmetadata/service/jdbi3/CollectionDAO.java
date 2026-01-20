@@ -30,6 +30,7 @@ import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -76,6 +77,7 @@ import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.auth.collate.SupportToken;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
+import org.openmetadata.schema.configuration.OpenLineageSettings;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -139,6 +141,7 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
+import org.openmetadata.schema.service.configuration.teamsApp.TeamsAppConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.TestCase;
@@ -157,6 +160,8 @@ import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.audit.AuditLogRecord;
+import org.openmetadata.service.audit.AuditLogRecordMapper;
 import org.openmetadata.service.jdbi3.CollectionDAO.TagUsageDAO.TagLabelMapper;
 import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
@@ -435,6 +440,27 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   RecognizerFeedbackDAO recognizerFeedbackDAO();
+
+  @CreateSqlObject
+  AIApplicationDAO aiApplicationDAO();
+
+  @CreateSqlObject
+  LLMModelDAO llmModelDAO();
+
+  @CreateSqlObject
+  PromptTemplateDAO promptTemplateDAO();
+
+  @CreateSqlObject
+  AgentExecutionDAO agentExecutionDAO();
+
+  @CreateSqlObject
+  AIGovernancePolicyDAO aiGovernancePolicyDAO();
+
+  @CreateSqlObject
+  LLMServiceDAO llmServiceDAO();
+
+  @CreateSqlObject
+  AuditLogDAO auditLogDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -1516,6 +1542,22 @@ public interface CollectionDAO {
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
 
+    @SqlUpdate(
+        "UPDATE entity_relationship "
+            + "SET fromId = :newFromId "
+            + "WHERE fromId = :oldFromId "
+            + "AND fromEntity = :fromEntity "
+            + "AND toEntity = :toEntity "
+            + "AND relation = :relation "
+            + "AND toId IN (<toIds>)")
+    void bulkUpdateFromId(
+        @BindUUID("oldFromId") UUID oldFromId,
+        @BindUUID("newFromId") UUID newFromId,
+        @BindList("toIds") List<String> toIds,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation);
+
     //
     // Find to operations
     //
@@ -1642,6 +1684,18 @@ public interface CollectionDAO {
       }
       return findToBatchAllTypesWithCondition(fromIds, relation, condition);
     }
+
+    @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
+            + "FROM entity_relationship "
+            + "WHERE fromId IN (<fromIds>) "
+            + "AND fromEntity = :fromEntity "
+            + "AND relation IN (<relations>)")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findToBatchWithRelations(
+        @BindList("fromIds") List<String> fromIds,
+        @Bind("fromEntity") String fromEntity,
+        @BindList("relations") List<Integer> relations);
 
     @SqlQuery(
         "SELECT toId, toEntity, json FROM entity_relationship "
@@ -1816,18 +1870,31 @@ public interface CollectionDAO {
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
 
-    // Fetch ALL relationships for a single entity (both FROM and TO) - fixes N+1 problem
+    // Fetch relationships for specific relation types (TO direction: others -> entity)
+    // Used for owners, followers, domains, dataProducts, reviewers
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema, 'from' as direction "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
-            + "WHERE fromId = :entityId AND fromEntity = :entityType AND deleted = FALSE "
-            + "UNION ALL "
-            + "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema, 'to' as direction "
-            + "FROM entity_relationship "
-            + "WHERE toId = :entityId AND toEntity = :entityType AND deleted = FALSE")
+            + "WHERE toId = :entityId AND toEntity = :entityType "
+            + "AND relation IN (<relations>)")
     @UseRowMapper(RelationshipObjectMapper.class)
-    List<EntityRelationshipObject> findAllRelationshipsForEntity(
-        @BindUUID("entityId") UUID entityId, @Bind("entityType") String entityType);
+    List<EntityRelationshipObject> findToRelationshipsForEntity(
+        @BindUUID("entityId") UUID entityId,
+        @Bind("entityType") String entityType,
+        @BindList("relations") List<Integer> relations);
+
+    // Fetch relationships for specific relation types (FROM direction: entity -> others)
+    // Used for children, experts
+    @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
+            + "FROM entity_relationship "
+            + "WHERE fromId = :entityId AND fromEntity = :entityType "
+            + "AND relation IN (<relations>)")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findFromRelationshipsForEntity(
+        @BindUUID("entityId") UUID entityId,
+        @Bind("entityType") String entityType,
+        @BindList("relations") List<Integer> relations);
 
     @SqlQuery(
         "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
@@ -2142,7 +2209,10 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     void updateTaskId();
 
-    @SqlQuery("SELECT id FROM task_sequence LIMIT 1")
+    @ConnectionAwareSqlQuery(value = "SELECT LAST_INSERT_ID()", connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT id FROM task_sequence LIMIT 1",
+        connectionType = POSTGRES)
     int getTaskId();
 
     @SqlQuery("SELECT json FROM thread_entity WHERE taskId = :id")
@@ -3062,6 +3132,7 @@ public interface CollectionDAO {
     default int listCount(ListFilter filter) {
       String condition = filter.getCondition();
       String directChildrenOf = filter.getQueryParam("directChildrenOf");
+      String hierarchyFilter = filter.getQueryParam("hierarchyFilter");
 
       if (!nullOrEmpty(directChildrenOf)) {
         String parentFqnHash = FullyQualifiedName.buildHash(directChildrenOf);
@@ -3070,7 +3141,8 @@ public interface CollectionDAO {
 
         condition +=
             " AND fqnHash LIKE :fqnHashSingleLevel AND fqnHash NOT LIKE :fqnHashNestedLevel";
-      } else {
+      } else if (Boolean.TRUE.toString().equals(hierarchyFilter)) {
+        // For hierarchy API, when directChildrenOf is null, show only root domains
         condition +=
             " AND NOT EXISTS (SELECT 1 FROM entity_relationship er WHERE er.toId = domain_entity.id AND er.fromEntity = 'domain' AND er.toEntity = 'domain' AND er.relation = "
                 + Relationship.CONTAINS.ordinal()
@@ -3085,6 +3157,7 @@ public interface CollectionDAO {
         ListFilter filter, int limit, String beforeName, String beforeId) {
       String condition = filter.getCondition();
       String directChildrenOf = filter.getQueryParam("directChildrenOf");
+      String hierarchyFilter = filter.getQueryParam("hierarchyFilter");
 
       if (!nullOrEmpty(directChildrenOf)) {
         String parentFqnHash = FullyQualifiedName.buildHash(directChildrenOf);
@@ -3093,7 +3166,8 @@ public interface CollectionDAO {
 
         condition +=
             " AND fqnHash LIKE :fqnHashSingleLevel AND fqnHash NOT LIKE :fqnHashNestedLevel";
-      } else {
+      } else if (Boolean.TRUE.toString().equals(hierarchyFilter)) {
+        // For hierarchy API, when directChildrenOf is null, show only root domains
         condition +=
             " AND NOT EXISTS (SELECT 1 FROM entity_relationship er WHERE er.toId = domain_entity.id AND er.fromEntity = 'domain' AND er.toEntity = 'domain' AND er.relation = "
                 + Relationship.CONTAINS.ordinal()
@@ -3108,6 +3182,7 @@ public interface CollectionDAO {
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
       String condition = filter.getCondition();
       String directChildrenOf = filter.getQueryParam("directChildrenOf");
+      String hierarchyFilter = filter.getQueryParam("hierarchyFilter");
       String offsetParam = filter.getQueryParam("offset");
 
       if (!nullOrEmpty(directChildrenOf)) {
@@ -3117,7 +3192,8 @@ public interface CollectionDAO {
 
         condition +=
             " AND fqnHash LIKE :fqnHashSingleLevel AND fqnHash NOT LIKE :fqnHashNestedLevel";
-      } else {
+      } else if (Boolean.TRUE.toString().equals(hierarchyFilter)) {
+        // For hierarchy API, when directChildrenOf is null, show only root domains
         condition +=
             " AND NOT EXISTS (SELECT 1 FROM entity_relationship er WHERE er.toId = domain_entity.id AND er.fromEntity = 'domain' AND er.toEntity = 'domain' AND er.relation = "
                 + Relationship.CONTAINS.ordinal()
@@ -3136,6 +3212,14 @@ public interface CollectionDAO {
       return listAfter(
           getTableName(), filter.getQueryParams(), condition, limit, afterName, afterId);
     }
+
+    @SqlQuery("SELECT json FROM domain_entity WHERE fqnHash LIKE :concatFqnhash ")
+    List<String> getNestedDomains(
+        @BindConcat(
+                value = "concatFqnhash",
+                parts = {":fqnhash", ".%"},
+                hash = true)
+            String fqnhash);
 
     @SqlQuery("SELECT COUNT(*) FROM domain_entity WHERE fqnHash LIKE :concatFqnhash ")
     int countNestedDomains(
@@ -3278,6 +3362,28 @@ public interface CollectionDAO {
         @Bind("event_subscription_id") String eventSubscriptionId,
         @Bind("json") String json,
         @Bind("timestamp") long timestamp);
+
+    // Batch insert for successful events - reduces connection pool contention
+    // from N connections to 1 when processing multiple events
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO successful_sent_change_events (change_event_id, event_subscription_id, json, timestamp) "
+                + "VALUES (:change_event_id, :event_subscription_id, :json, :timestamp) "
+                + "ON DUPLICATE KEY UPDATE json = VALUES(json), timestamp = VALUES(timestamp)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO successful_sent_change_events (change_event_id, event_subscription_id, json, timestamp) "
+                + "VALUES (:change_event_id, :event_subscription_id, CAST(:json AS jsonb), :timestamp) "
+                + "ON CONFLICT (change_event_id, event_subscription_id) "
+                + "DO UPDATE SET json = EXCLUDED.json, timestamp = EXCLUDED.timestamp",
+        connectionType = POSTGRES)
+    void batchUpsertSuccessfulChangeEvents(
+        @Bind("change_event_id") List<String> changeEventIds,
+        @Bind("event_subscription_id") List<String> eventSubscriptionIds,
+        @Bind("json") List<String> jsonList,
+        @Bind("timestamp") List<Long> timestamps);
 
     @SqlQuery(
         "SELECT COUNT(*) FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId")
@@ -3661,6 +3767,17 @@ public interface CollectionDAO {
                 hash = true)
             String fqnhash,
         @Bind("termName") String termName);
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM glossary_term_entity WHERE fqnHash LIKE :glossaryHash AND LOWER(name) = LOWER(:termName) AND id != :excludeId")
+    int getGlossaryTermCountIgnoreCaseExcludingId(
+        @BindConcat(
+                value = "glossaryHash",
+                parts = {":fqnhash", ".%"},
+                hash = true)
+            String fqnhash,
+        @Bind("termName") String termName,
+        @Bind("excludeId") String excludeId);
 
     @SqlQuery(
         "SELECT json FROM glossary_term_entity WHERE fqnHash LIKE :glossaryHash AND LOWER(name) = LOWER(:termName)")
@@ -4195,6 +4312,148 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
+
+    @Override
+    default List<String> listBefore(
+        ListFilter filter, int limit, String beforeName, String beforeId) {
+      String status = filter.getQueryParam("status");
+      if (status != null && !status.isEmpty()) {
+        // Remove status from filter to avoid SQL error
+        Map<String, String> params = new HashMap<>(filter.getQueryParams());
+        params.remove("status");
+        ListFilter cleanFilter = new ListFilter(filter.getInclude());
+        params.forEach(cleanFilter::addQueryParam);
+
+        // Build condition with status JOIN
+        String condition = cleanFilter.getCondition();
+        String statusCondition =
+            buildStatusJoinCondition(getTableName(), condition, status, beforeName, beforeId, true);
+        return listBeforeWithStatus(
+            statusCondition, getBindMap(cleanFilter, status, limit, beforeName, beforeId));
+      }
+      return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
+    }
+
+    @Override
+    default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
+      String status = filter.getQueryParam("status");
+      if (status != null && !status.isEmpty()) {
+        // Remove status from filter to avoid SQL error
+        Map<String, String> params = new HashMap<>(filter.getQueryParams());
+        params.remove("status");
+        ListFilter cleanFilter = new ListFilter(filter.getInclude());
+        params.forEach(cleanFilter::addQueryParam);
+
+        // Build condition with status JOIN
+        String condition = cleanFilter.getCondition();
+        String statusCondition =
+            buildStatusJoinCondition(getTableName(), condition, status, afterName, afterId, false);
+        return listAfterWithStatus(
+            statusCondition, getBindMap(cleanFilter, status, limit, afterName, afterId));
+      }
+      return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
+    }
+
+    @Override
+    default int listCount(ListFilter filter) {
+      String status = filter.getQueryParam("status");
+      if (status != null && !status.isEmpty()) {
+        // Remove status from filter to avoid SQL error
+        Map<String, String> params = new HashMap<>(filter.getQueryParams());
+        params.remove("status");
+        ListFilter cleanFilter = new ListFilter(filter.getInclude());
+        params.forEach(cleanFilter::addQueryParam);
+
+        // Build condition with status JOIN
+        String condition = cleanFilter.getCondition();
+        String statusCondition = buildStatusCountCondition(getTableName(), condition, status);
+        return listCountWithStatus(statusCondition, getBindMap(cleanFilter, status, 0, null, null));
+      }
+      return EntityDAO.super.listCount(filter);
+    }
+
+    default String buildStatusJoinCondition(
+        String tableName,
+        String baseCondition,
+        String status,
+        String name,
+        String id,
+        boolean isBefore) {
+      String orderDirection = isBefore ? "DESC" : "ASC";
+      String nameComparison = isBefore ? "<" : ">";
+      String idComparison = isBefore ? "<" : ">";
+
+      return String.format(
+          "INNER JOIN ("
+              + "  SELECT entityFQNHash, JSON_UNQUOTE(JSON_EXTRACT(json, '$.executionStatus')) as execStatus "
+              + "  FROM entity_extension_time_series "
+              + "  WHERE extension = 'pipeline.pipelineStatus' "
+              + "    AND timestamp = (SELECT MAX(timestamp) FROM entity_extension_time_series eets2 "
+              + "                      WHERE eets2.entityFQNHash = entity_extension_time_series.entityFQNHash "
+              + "                      AND eets2.extension = 'pipeline.pipelineStatus') "
+              + ") latest_status ON %s.fqnHash = latest_status.entityFQNHash "
+              + "%s AND latest_status.execStatus = :status "
+              + "AND (%s.name %s :beforeAfterName OR (%s.name = :beforeAfterName AND %s.id %s :beforeAfterId)) "
+              + "ORDER BY %s.name %s, %s.id %s LIMIT :limit",
+          tableName,
+          baseCondition,
+          tableName,
+          nameComparison,
+          tableName,
+          tableName,
+          idComparison,
+          tableName,
+          orderDirection,
+          tableName,
+          orderDirection);
+    }
+
+    default String buildStatusCountCondition(
+        String tableName, String baseCondition, String status) {
+      return String.format(
+          "INNER JOIN ("
+              + "  SELECT entityFQNHash, JSON_UNQUOTE(JSON_EXTRACT(json, '$.executionStatus')) as execStatus "
+              + "  FROM entity_extension_time_series "
+              + "  WHERE extension = 'pipeline.pipelineStatus' "
+              + "    AND timestamp = (SELECT MAX(timestamp) FROM entity_extension_time_series eets2 "
+              + "                      WHERE eets2.entityFQNHash = entity_extension_time_series.entityFQNHash "
+              + "                      AND eets2.extension = 'pipeline.pipelineStatus') "
+              + ") latest_status ON %s.fqnHash = latest_status.entityFQNHash "
+              + "%s AND latest_status.execStatus = :status",
+          tableName, baseCondition);
+    }
+
+    default Map<String, Object> getBindMap(
+        ListFilter filter, String status, int limit, String name, String id) {
+      Map<String, Object> bindMap = new HashMap<>();
+      if (status != null) {
+        bindMap.put("status", status);
+      }
+      if (limit > 0) {
+        bindMap.put("limit", limit);
+      }
+      if (name != null) {
+        bindMap.put("beforeAfterName", name);
+      }
+      if (id != null) {
+        bindMap.put("beforeAfterId", id);
+      }
+      // Add filter params
+      filter.getQueryParams().forEach(bindMap::put);
+      return bindMap;
+    }
+
+    @SqlQuery("SELECT json FROM pipeline_entity <cond>")
+    List<String> listAfterWithStatus(
+        @Define("cond") String cond, @BindMap Map<String, Object> bindings);
+
+    @SqlQuery(
+        "SELECT json FROM (SELECT name, id, json FROM pipeline_entity <cond>) last_rows_subquery ORDER BY name, id")
+    List<String> listBeforeWithStatus(
+        @Define("cond") String cond, @BindMap Map<String, Object> bindings);
+
+    @SqlQuery("SELECT count(*) FROM pipeline_entity <cond>")
+    int listCountWithStatus(@Define("cond") String cond, @BindMap Map<String, Object> bindings);
   }
 
   interface ClassificationDAO extends EntityDAO<Classification> {
@@ -4247,128 +4506,67 @@ public interface CollectionDAO {
       return "fqnHash";
     }
 
-    @Override
-    default int listCount(ListFilter filter) {
+    private Pair<String, String> buildTagQueryConditions(ListFilter filter) {
       String parent = filter.getQueryParam("parent");
+      boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
 
-      // If parent parameter is provided, filter tags by parent classification FQN
+      String baseJoin =
+          String.format(
+              "INNER JOIN entity_relationship er ON tag.id=er.toId AND er.relation=%s AND er.fromEntity='%s' "
+                  + "INNER JOIN classification c ON er.fromId=c.id",
+              CONTAINS.ordinal(), Entity.CLASSIFICATION);
+
+      StringBuilder mySqlCondition = new StringBuilder(baseJoin);
+      StringBuilder postgresCondition = new StringBuilder(baseJoin);
+
       if (parent != null) {
         String parentFqnHash = FullyQualifiedName.buildHash(parent);
         filter.queryParams.put("parentFqnPrefix", parentFqnHash + ".%");
-        String condition = filter.getCondition("tag");
-        if (!condition.isEmpty()) {
-          condition = String.format("%s AND fqnHash LIKE :parentFqnPrefix", condition);
-        } else {
-          condition = "WHERE fqnHash LIKE :parentFqnPrefix";
-        }
-        return listCount(
-            getTableName(), getNameHashColumn(), filter.getQueryParams(), condition, condition);
+        mySqlCondition.append(" AND tag.fqnHash LIKE :parentFqnPrefix");
+        postgresCondition.append(" AND tag.fqnHash LIKE :parentFqnPrefix");
       }
-
-      // Original behavior for classification.disabled parameter
-      boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
-      String condition =
-          String.format(
-              "INNER JOIN entity_relationship er ON tag.id=er.toId AND er.relation=%s AND er.fromEntity='%s'  "
-                  + "INNER JOIN classification c on er.fromId=c.id",
-              CONTAINS.ordinal(), Entity.CLASSIFICATION);
-      String mySqlCondition = condition;
-      String postgresCondition = condition;
 
       if (disabled) {
-        mySqlCondition =
-            String.format(
-                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = TRUE)",
-                mySqlCondition);
-        postgresCondition =
-            String.format(
-                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean)  = TRUE)",
-                postgresCondition);
-      } else {
-        mySqlCondition =
-            String.format(
-                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = FALSE)",
-                mySqlCondition);
-        postgresCondition =
-            String.format(
-                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean)  = FALSE)",
-                postgresCondition);
+        mySqlCondition.append(
+            " AND (JSON_EXTRACT(c.json, '$.disabled') = TRUE OR JSON_EXTRACT(tag.json, '$.disabled') = TRUE)");
+        postgresCondition.append(
+            " AND (COALESCE((c.json#>'{disabled}')::boolean, FALSE) = TRUE OR COALESCE((tag.json#>'{disabled}')::boolean, FALSE) = TRUE)");
+      } else if (filter.getQueryParam("classification.disabled") != null) {
+        mySqlCondition.append(
+            " AND (JSON_EXTRACT(c.json, '$.disabled') = FALSE AND JSON_EXTRACT(tag.json, '$.disabled') = FALSE)");
+        postgresCondition.append(
+            " AND (COALESCE((c.json#>'{disabled}')::boolean, FALSE) = FALSE AND COALESCE((tag.json#>'{disabled}')::boolean, FALSE) = FALSE)");
       }
 
-      mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition("tag"));
-      postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition("tag"));
+      String tagCondition = filter.getCondition("tag");
+      if (!tagCondition.isEmpty()) {
+        mySqlCondition.append(" ").append(tagCondition);
+        postgresCondition.append(" ").append(tagCondition);
+      }
+
+      return Pair.of(mySqlCondition.toString(), postgresCondition.toString());
+    }
+
+    @Override
+    default int listCount(ListFilter filter) {
+      Pair<String, String> conditions = buildTagQueryConditions(filter);
       return listCount(
           getTableName(),
           getNameHashColumn(),
           filter.getQueryParams(),
-          mySqlCondition,
-          postgresCondition);
+          conditions.getLeft(),
+          conditions.getRight());
     }
 
     @Override
     default List<String> listBefore(
         ListFilter filter, int limit, String beforeName, String beforeId) {
-      String parent = filter.getQueryParam("parent");
-
-      // If parent parameter is provided, filter tags by parent classification FQN
-      if (parent != null) {
-        String parentFqnHash = FullyQualifiedName.buildHash(parent);
-        filter.queryParams.put("parentFqnPrefix", parentFqnHash + ".%");
-        String condition = filter.getCondition("tag");
-        if (!condition.isEmpty()) {
-          condition = String.format("%s AND fqnHash LIKE :parentFqnPrefix", condition);
-        } else {
-          condition = "WHERE fqnHash LIKE :parentFqnPrefix";
-        }
-        return listBefore(
-            getTableName(),
-            filter.getQueryParams(),
-            condition,
-            condition,
-            limit,
-            beforeName,
-            beforeId);
-      }
-
-      // Original behavior for classification.disabled parameter
-      boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
-      String condition =
-          String.format(
-              "INNER JOIN entity_relationship er ON tag.id=er.toId AND er.relation=%s AND er.fromEntity='%s'  "
-                  + "INNER JOIN classification c on er.fromId=c.id",
-              CONTAINS.ordinal(), Entity.CLASSIFICATION);
-
-      String mySqlCondition = condition;
-      String postgresCondition = condition;
-
-      if (disabled) {
-        mySqlCondition =
-            String.format(
-                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = TRUE)",
-                mySqlCondition);
-        postgresCondition =
-            String.format(
-                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean) = TRUE)",
-                postgresCondition);
-      } else {
-        mySqlCondition =
-            String.format(
-                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = FALSE)",
-                mySqlCondition);
-        postgresCondition =
-            String.format(
-                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean)  = FALSE)",
-                postgresCondition);
-      }
-
-      mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition("tag"));
-      postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition("tag"));
-
+      Pair<String, String> conditions = buildTagQueryConditions(filter);
       return listBefore(
           getTableName(),
           filter.getQueryParams(),
-          mySqlCondition,
-          postgresCondition,
+          conditions.getLeft(),
+          conditions.getRight(),
           limit,
           beforeName,
           beforeId);
@@ -4376,66 +4574,12 @@ public interface CollectionDAO {
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
-      String parent = filter.getQueryParam("parent");
-
-      // If parent parameter is provided, filter tags by parent classification FQN
-      if (parent != null) {
-        String parentFqnHash = FullyQualifiedName.buildHash(parent);
-        filter.queryParams.put("parentFqnPrefix", parentFqnHash + ".%");
-        String condition = filter.getCondition("tag");
-        if (!condition.isEmpty()) {
-          condition = String.format("%s AND fqnHash LIKE :parentFqnPrefix", condition);
-        } else {
-          condition = "WHERE fqnHash LIKE :parentFqnPrefix";
-        }
-        return listAfter(
-            getTableName(),
-            filter.getQueryParams(),
-            condition,
-            condition,
-            limit,
-            afterName,
-            afterId);
-      }
-
-      // Original behavior for classification.disabled parameter
-      boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
-      String condition =
-          String.format(
-              "INNER JOIN entity_relationship er ON tag.id=er.toId AND er.relation=%s AND er.fromEntity='%s'  "
-                  + "INNER JOIN classification c on er.fromId=c.id",
-              CONTAINS.ordinal(), Entity.CLASSIFICATION);
-
-      String mySqlCondition = condition;
-      String postgresCondition = condition;
-
-      if (disabled) {
-        mySqlCondition =
-            String.format(
-                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = TRUE)",
-                mySqlCondition);
-        postgresCondition =
-            String.format(
-                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean) = TRUE)",
-                postgresCondition);
-      } else {
-        mySqlCondition =
-            String.format(
-                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = FALSE)",
-                mySqlCondition);
-        postgresCondition =
-            String.format(
-                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean)  = FALSE)",
-                postgresCondition);
-      }
-
-      mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition("tag"));
-      postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition("tag"));
+      Pair<String, String> conditions = buildTagQueryConditions(filter);
       return listAfter(
           getTableName(),
           filter.getQueryParams(),
-          mySqlCondition,
-          postgresCondition,
+          conditions.getLeft(),
+          conditions.getRight(),
           limit,
           afterName,
           afterId);
@@ -4454,11 +4598,11 @@ public interface CollectionDAO {
   interface TagUsageDAO {
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT IGNORE INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason)",
+            "INSERT IGNORE INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason) ON CONFLICT (source, tagFQNHash, targetFQNHash) DO NOTHING",
+            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy) ON CONFLICT (source, tagFQNHash, targetFQNHash) DO NOTHING",
         connectionType = POSTGRES)
     void applyTag(
         @Bind("source") int source,
@@ -4467,7 +4611,8 @@ public interface CollectionDAO {
         @BindFQN("targetFQNHash") String targetFQNHash,
         @Bind("labelType") int labelType,
         @Bind("state") int state,
-        @Bind("reason") String reason);
+        @Bind("reason") String reason,
+        @Bind("appliedBy") String appliedBy);
 
     default List<TagLabel> getTags(String targetFQN) {
       List<TagLabel> tags = getTagsInternal(targetFQN);
@@ -4499,11 +4644,11 @@ public interface CollectionDAO {
     }
 
     @SqlQuery(
-        "SELECT source, tagFQN,  labelType, state, reason FROM tag_usage WHERE targetFQNHash = :targetFQNHash ORDER BY tagFQN")
+        "SELECT source, tagFQN,  labelType, state, reason, appliedAt, appliedBy FROM tag_usage WHERE targetFQNHash = :targetFQNHash ORDER BY tagFQN")
     List<TagLabel> getTagsInternal(@BindFQN("targetFQNHash") String targetFQNHash);
 
     @SqlQuery(
-        "SELECT targetFQNHash, source, tagFQN, labelType, state, reason "
+        "SELECT targetFQNHash, source, tagFQN, labelType, state, reason, appliedAt, appliedBy "
             + "FROM tag_usage "
             + "WHERE targetFQNHash IN (<targetFQNHashes>) "
             + "ORDER BY targetFQNHash, tagFQN")
@@ -4511,9 +4656,39 @@ public interface CollectionDAO {
     List<TagLabelWithFQNHash> getTagsInternalBatch(
         @BindListFQN("targetFQNHashes") List<String> targetFQNHashes);
 
+    /**
+     * Batch fetch derived tags for multiple glossary term FQNs. Returns a map from glossary term
+     * FQN to its derived tags (tags that target that glossary term).
+     */
+    default Map<String, List<TagLabel>> getDerivedTagsBatch(List<String> glossaryTermFqns) {
+      if (glossaryTermFqns == null || glossaryTermFqns.isEmpty()) {
+        return Collections.emptyMap();
+      }
+      List<TagLabelWithFQNHash> tagUsages = getTagsInternalBatch(glossaryTermFqns);
+      Map<String, List<TagLabel>> result = new HashMap<>();
+
+      for (TagLabelWithFQNHash usage : tagUsages) {
+        String targetFqn = usage.getTargetFQNHash();
+        TagLabel tagLabel =
+            new TagLabel()
+                .withSource(TagLabel.TagSource.values()[usage.getSource()])
+                .withTagFQN(usage.getTagFQN())
+                .withLabelType(TagLabel.LabelType.DERIVED)
+                .withState(TagLabel.State.values()[usage.getState()])
+                .withReason(usage.getReason())
+                .withAppliedAt(usage.toTagLabel().getAppliedAt());
+        if (usage.getReason() != null) {
+          tagLabel.withReason(usage.getReason());
+        }
+        TagLabelUtil.applyTagCommonFieldsGracefully(tagLabel);
+        result.computeIfAbsent(targetFqn, k -> new ArrayList<>()).add(tagLabel);
+      }
+      return result;
+    }
+
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, tu.reason, "
+            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, tu.reason, tu.appliedAt, tu.appliedBy, "
                 + "CASE "
                 + "  WHEN tu.source = 1 THEN gterm.json "
                 + "  WHEN tu.source = 0 THEN ta.json "
@@ -4525,7 +4700,7 @@ public interface CollectionDAO {
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, tu.reason, "
+            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, tu.reason, tu.appliedAt, tu.appliedBy, "
                 + "CASE "
                 + "  WHEN tu.source = 1 THEN gterm.json "
                 + "  WHEN tu.source = 0 THEN ta.json "
@@ -4728,6 +4903,12 @@ public interface CollectionDAO {
         @Bind("newFQN") String newFQN,
         @BindFQN("newFQNHash") String newFQNHash);
 
+    @SqlUpdate(
+        "UPDATE tag_usage SET targetFQNHash = :newTargetFQNHash WHERE targetFQNHash = :oldTargetFQNHash")
+    void updateTargetFQNHash(
+        @BindFQN("oldTargetFQNHash") String oldTargetFQNHash,
+        @BindFQN("newTargetFQNHash") String newTargetFQNHash);
+
     @SqlUpdate("<update>")
     void updateTagPrefixInternal(@Define("update") String update);
 
@@ -4752,7 +4933,9 @@ public interface CollectionDAO {
             .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
             .withState(TagLabel.State.values()[r.getInt("state")])
             .withTagFQN(r.getString("tagFQN"))
-            .withReason(r.getString("reason"));
+            .withReason(r.getString("reason"))
+            .withAppliedAt(r.getTimestamp("appliedAt"))
+            .withAppliedBy(r.getString("appliedBy"));
       }
     }
 
@@ -4774,7 +4957,9 @@ public interface CollectionDAO {
                 .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
                 .withState(TagLabel.State.values()[r.getInt("state")])
                 .withTagFQN(r.getString("tagFQN"))
-                .withReason(r.getString("reason"));
+                .withReason(r.getString("reason"))
+                .withAppliedAt(r.getTimestamp("appliedAt"))
+                .withAppliedBy(r.getString("appliedBy"));
         TagLabel.TagSource source = TagLabel.TagSource.values()[r.getInt("source")];
         if (source == TagLabel.TagSource.CLASSIFICATION) {
           Tag tag = JsonUtils.readValue(r.getString("json"), Tag.class);
@@ -4805,6 +4990,8 @@ public interface CollectionDAO {
         tag.setLabelType(rs.getInt("labelType"));
         tag.setState(rs.getInt("state"));
         tag.setReason(rs.getString("reason"));
+        tag.setAppliedAt(rs.getTimestamp("appliedAt"));
+        tag.setAppliedBy(rs.getString("appliedBy"));
         return tag;
       }
     }
@@ -4818,6 +5005,8 @@ public interface CollectionDAO {
       private int labelType;
       private int state;
       private String reason;
+      private Date appliedAt;
+      private String appliedBy;
 
       // Getters and Setters
 
@@ -4828,6 +5017,8 @@ public interface CollectionDAO {
         tagLabel.setLabelType(TagLabel.LabelType.values()[this.labelType]);
         tagLabel.setState(TagLabel.State.values()[this.state]);
         tagLabel.setReason(this.reason);
+        tagLabel.setAppliedAt(this.appliedAt);
+        tagLabel.setAppliedBy(this.appliedBy);
         return tagLabel;
       }
     }
@@ -4892,6 +5083,7 @@ public interface CollectionDAO {
       List<Integer> labelTypes = new ArrayList<>();
       List<Integer> states = new ArrayList<>();
       List<String> reasons = new ArrayList<>();
+      List<String> appliedBys = new ArrayList<>();
 
       for (TagLabel tagLabel : tagLabels) {
         sources.add(tagLabel.getSource().ordinal());
@@ -4901,20 +5093,25 @@ public interface CollectionDAO {
         labelTypes.add(tagLabel.getLabelType().ordinal());
         states.add(tagLabel.getState().ordinal());
         reasons.add(tagLabel.getReason());
+        appliedBys.add(tagLabel.getAppliedBy());
       }
 
       applyTagsBatchInternal(
-          sources, tagFQNs, tagFQNHashes, targetFQNHashes, labelTypes, states, reasons);
+          sources, tagFQNs, tagFQNHashes, targetFQNHashes, labelTypes, states, reasons, appliedBys);
     }
 
     @Transaction
     @ConnectionAwareSqlBatch(
         value =
-            "INSERT IGNORE INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason)",
+            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy) "
+                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy) "
+                + "ON DUPLICATE KEY UPDATE labelType = VALUES(labelType), state = VALUES(state), reason = VALUES(reason)",
         connectionType = MYSQL)
     @ConnectionAwareSqlBatch(
         value =
-            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason) ON CONFLICT (source, tagFQNHash, targetFQNHash) DO NOTHING",
+            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy) "
+                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy) "
+                + "ON CONFLICT (source, tagFQNHash, targetFQNHash) DO NOTHING",
         connectionType = POSTGRES)
     void applyTagsBatchInternal(
         @Bind("source") List<Integer> sources,
@@ -4923,7 +5120,8 @@ public interface CollectionDAO {
         @Bind("targetFQNHash") List<String> targetFQNHashes,
         @Bind("labelType") List<Integer> labelTypes,
         @Bind("state") List<Integer> states,
-        @Bind("reason") List<String> reasons);
+        @Bind("reason") List<String> reasons,
+        @Bind("appliedBy") List<String> appliedBys);
 
     /**
      * Delete multiple tags in batch to improve performance
@@ -4965,7 +5163,7 @@ public interface CollectionDAO {
     long getTotalTagUsageCount();
 
     @SqlQuery(
-        "SELECT source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason FROM tag_usage ORDER BY source, tagFQNHash LIMIT :limit OFFSET :offset")
+        "SELECT source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedAt, appliedBy FROM tag_usage ORDER BY source, tagFQNHash LIMIT :limit OFFSET :offset")
     @RegisterRowMapper(TagUsageObjectMapper.class)
     List<TagUsageObject> getAllTagUsagesPaginated(
         @Bind("offset") long offset, @Bind("limit") int limit);
@@ -4988,6 +5186,8 @@ public interface CollectionDAO {
     private int labelType;
     private int state;
     private String reason;
+    private Date appliedAt;
+    private String appliedBy;
   }
 
   class TagUsageObjectMapper implements RowMapper<TagUsageObject> {
@@ -5001,6 +5201,8 @@ public interface CollectionDAO {
           .labelType(r.getInt("labelType"))
           .state(r.getInt("state"))
           .reason(r.getString("reason"))
+          .appliedAt(r.getTimestamp("appliedAt"))
+          .appliedBy(r.getString("appliedBy"))
           .build();
     }
   }
@@ -5086,7 +5288,7 @@ public interface CollectionDAO {
       String condition = filter.getCondition();
       if (parentTeam != null) {
         // validate parent team
-        Team team = findEntityByName(parentTeam, filter.getInclude());
+        Team team = findEntityByName(parentTeam, Include.ALL);
         if (ORGANIZATION_NAME.equals(team.getName())) {
           // All the teams without parents should come under "organization" team
           condition =
@@ -5127,7 +5329,7 @@ public interface CollectionDAO {
       String condition = filter.getCondition();
       if (parentTeam != null) {
         // validate parent team
-        Team team = findEntityByName(parentTeam);
+        Team team = findEntityByName(parentTeam, Include.ALL);
         if (ORGANIZATION_NAME.equals(team.getName())) {
           // All the parentless teams should come under "organization" team
           condition =
@@ -5172,7 +5374,7 @@ public interface CollectionDAO {
       String condition = filter.getCondition();
       if (parentTeam != null) {
         // validate parent team
-        Team team = findEntityByName(parentTeam, filter.getInclude());
+        Team team = findEntityByName(parentTeam, Include.ALL);
         if (ORGANIZATION_NAME.equals(team.getName())) {
           // All the parentless teams should come under "organization" team
           condition =
@@ -5999,6 +6201,30 @@ public interface CollectionDAO {
 
     @SqlQuery("SELECT count(*) FROM change_event")
     long listCount();
+
+    /** Record holding change event offset and JSON for cursor-based pagination. */
+    record ChangeEventRecord(long offset, String json) {}
+
+    /** Returns change events with their offset values for accurate cursor tracking. */
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT `offset`, json FROM change_event WHERE `offset` > :afterOffset ORDER BY `offset` ASC LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT \"offset\", json FROM change_event WHERE \"offset\" > :afterOffset ORDER BY \"offset\" ASC LIMIT :limit",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ChangeEventRecordMapper.class)
+    List<ChangeEventRecord> listWithOffset(
+        @Bind("limit") int limit, @Bind("afterOffset") long afterOffset);
+  }
+
+  class ChangeEventRecordMapper implements RowMapper<ChangeEventDAO.ChangeEventRecord> {
+    @Override
+    public ChangeEventDAO.ChangeEventRecord map(ResultSet rs, StatementContext ctx)
+        throws SQLException {
+      return new ChangeEventDAO.ChangeEventRecord(rs.getLong("offset"), rs.getString("json"));
+    }
   }
 
   class FailedEventResponseMapper implements RowMapper<FailedEventResponse> {
@@ -6081,9 +6307,15 @@ public interface CollectionDAO {
       String entityType = filter.getQueryParam("entityType");
       String testPlatform = filter.getQueryParam("testPlatform");
       String supportedDataType = filter.getQueryParam("supportedDataType");
+      String supportedService = filter.getQueryParam("supportedService");
+      String enabled = filter.getQueryParam("enabled");
       String condition = filter.getCondition();
 
-      if (entityType == null && testPlatform == null && supportedDataType == null) {
+      if (entityType == null
+          && testPlatform == null
+          && supportedDataType == null
+          && supportedService == null
+          && enabled == null) {
         return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
       }
 
@@ -6111,6 +6343,24 @@ public interface CollectionDAO {
         psqlCondition.append("AND json->>'supportedDataTypes' LIKE :supportedDataTypeLike ");
       }
 
+      if (supportedService != null) {
+        filter.queryParams.put("supportedServiceLike", String.format("%%%s%%", supportedService));
+        mysqlCondition.append(
+            "AND (json_extract(json, '$.supportedServices') = JSON_ARRAY() "
+                + "OR json_extract(json, '$.supportedServices') IS NULL "
+                + "OR json_extract(json, '$.supportedServices') LIKE :supportedServiceLike) ");
+        psqlCondition.append(
+            "AND (json->>'supportedServices' = '[]' "
+                + "OR json->>'supportedServices' IS NULL "
+                + "OR json->>'supportedServices' LIKE :supportedServiceLike) ");
+      }
+
+      if (enabled != null) {
+        String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
+        mysqlCondition.append("AND enabled=" + enabledValue + " ");
+        psqlCondition.append("AND enabled=" + enabledValue + " ");
+      }
+
       return listBefore(
           getTableName(),
           filter.getQueryParams(),
@@ -6126,9 +6376,15 @@ public interface CollectionDAO {
       String entityType = filter.getQueryParam("entityType");
       String testPlatform = filter.getQueryParam("testPlatform");
       String supportedDataType = filter.getQueryParam("supportedDataType");
+      String supportedService = filter.getQueryParam("supportedService");
+      String enabled = filter.getQueryParam("enabled");
       String condition = filter.getCondition();
 
-      if (entityType == null && testPlatform == null && supportedDataType == null) {
+      if (entityType == null
+          && testPlatform == null
+          && supportedDataType == null
+          && supportedService == null
+          && enabled == null) {
         return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
       }
 
@@ -6156,6 +6412,24 @@ public interface CollectionDAO {
         psqlCondition.append("AND json->>'supportedDataTypes' LIKE :supportedDataTypeLike ");
       }
 
+      if (supportedService != null) {
+        filter.queryParams.put("supportedServiceLike", String.format("%%%s%%", supportedService));
+        mysqlCondition.append(
+            "AND (json_extract(json, '$.supportedServices') = JSON_ARRAY() "
+                + "OR json_extract(json, '$.supportedServices') IS NULL "
+                + "OR json_extract(json, '$.supportedServices') LIKE :supportedServiceLike) ");
+        psqlCondition.append(
+            "AND (json->>'supportedServices' = '[]' "
+                + "OR json->>'supportedServices' IS NULL "
+                + "OR json->>'supportedServices' LIKE :supportedServiceLike) ");
+      }
+
+      if (enabled != null) {
+        String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
+        mysqlCondition.append("AND enabled=" + enabledValue + " ");
+        psqlCondition.append("AND enabled=" + enabledValue + " ");
+      }
+
       return listAfter(
           getTableName(),
           filter.getQueryParams(),
@@ -6171,9 +6445,15 @@ public interface CollectionDAO {
       String entityType = filter.getQueryParam("entityType");
       String testPlatform = filter.getQueryParam("testPlatform");
       String supportedDataType = filter.getQueryParam("supportedDataType");
+      String supportedService = filter.getQueryParam("supportedService");
+      String enabled = filter.getQueryParam("enabled");
       String condition = filter.getCondition();
 
-      if (entityType == null && testPlatform == null && supportedDataType == null) {
+      if (entityType == null
+          && testPlatform == null
+          && supportedDataType == null
+          && supportedService == null
+          && enabled == null) {
         return EntityDAO.super.listCount(filter);
       }
 
@@ -6200,6 +6480,25 @@ public interface CollectionDAO {
             "AND json_extract(json, '$.supportedDataTypes') LIKE :supportedDataTypeLike ");
         psqlCondition.append("AND json->>'supportedDataTypes' LIKE :supportedDataTypeLike ");
       }
+
+      if (supportedService != null) {
+        filter.queryParams.put("supportedServiceLike", String.format("%%%s%%", supportedService));
+        mysqlCondition.append(
+            "AND (json_extract(json, '$.supportedServices') = JSON_ARRAY() "
+                + "OR json_extract(json, '$.supportedServices') IS NULL "
+                + "OR json_extract(json, '$.supportedServices') LIKE :supportedServiceLike) ");
+        psqlCondition.append(
+            "AND (json->>'supportedServices' = '[]' "
+                + "OR json->>'supportedServices' IS NULL "
+                + "OR json->>'supportedServices' LIKE :supportedServiceLike) ");
+      }
+
+      if (enabled != null) {
+        String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
+        mysqlCondition.append("AND enabled=").append(enabledValue).append(" ");
+        psqlCondition.append("AND enabled=").append(enabledValue).append(" ");
+      }
+
       return listCount(
           getTableName(),
           filter.getQueryParams(),
@@ -6492,6 +6791,371 @@ public interface CollectionDAO {
     default String getTimeSeriesTableName() {
       return "entity_extension_time_series";
     }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT "
+                + "  DATE(FROM_UNIXTIME(eets.timestamp / 1000)) as date_key, "
+                + "  JSON_UNQUOTE(JSON_EXTRACT(eets.json, '$.executionStatus')) as status, "
+                + "  COUNT(*) as count "
+                + "FROM entity_extension_time_series eets "
+                + "INNER JOIN pipeline_entity pe ON eets.entityFQNHash = pe.fqnHash "
+                + "WHERE eets.extension = 'pipeline.pipelineStatus' "
+                + "  AND pe.deleted = 0 "
+                + "  AND eets.timestamp >= :startTs "
+                + "  AND eets.timestamp <= :endTs "
+                + "  <pipelineFqnFilter> "
+                + "  <serviceTypeFilter> "
+                + "  <serviceFilter> "
+                + "  <mysqlStatusFilter> "
+                + "  <domainFilter> "
+                + "  <ownerFilter> "
+                + "  <tierFilter> "
+                + "GROUP BY date_key, status "
+                + "ORDER BY date_key ASC",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT "
+                + "  DATE(TO_TIMESTAMP(eets.timestamp / 1000)) as date_key, "
+                + "  eets.json->>'executionStatus' as status, "
+                + "  COUNT(*) as count "
+                + "FROM entity_extension_time_series eets "
+                + "INNER JOIN pipeline_entity pe ON eets.entityFQNHash = pe.fqnHash "
+                + "WHERE eets.extension = 'pipeline.pipelineStatus' "
+                + "  AND pe.deleted = false "
+                + "  AND eets.timestamp >= :startTs "
+                + "  AND eets.timestamp <= :endTs "
+                + "  <pipelineFqnFilter> "
+                + "  <serviceTypeFilter> "
+                + "  <serviceFilter> "
+                + "  <postgresStatusFilter> "
+                + "  <domainFilter> "
+                + "  <ownerFilter> "
+                + "  <tierFilter> "
+                + "GROUP BY date_key, status "
+                + "ORDER BY date_key ASC",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ExecutionTrendRowMapper.class)
+    List<ExecutionTrendRow> getExecutionTrendData(
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs,
+        @Define("pipelineFqnFilter") String pipelineFqnFilter,
+        @Define("serviceTypeFilter") String serviceTypeFilter,
+        @Define("serviceFilter") String serviceFilter,
+        @Define("mysqlStatusFilter") String mysqlStatusFilter,
+        @Define("postgresStatusFilter") String postgresStatusFilter,
+        @Define("domainFilter") String domainFilter,
+        @Define("ownerFilter") String ownerFilter,
+        @Define("tierFilter") String tierFilter);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "WITH runtime_calc AS ( "
+                + "  SELECT "
+                + "    eets.*, "
+                + "    pe.fqnHash, "
+                + "    CASE "
+                + "      WHEN JSON_LENGTH(JSON_EXTRACT(eets.json, '$.taskStatus')) > 0 "
+                + "        AND JSON_EXTRACT(eets.json, '$.taskStatus[0].endTime') IS NOT NULL THEN "
+                + "        ( "
+                + "          SELECT MAX(CAST(JSON_EXTRACT(task.value, '$.endTime') AS UNSIGNED)) "
+                + "          FROM JSON_TABLE(eets.json, '$.taskStatus[*]' COLUMNS(value JSON PATH '$')) AS task "
+                + "          WHERE JSON_EXTRACT(task.value, '$.endTime') IS NOT NULL "
+                + "        ) - ( "
+                + "          SELECT MIN(CAST(JSON_EXTRACT(task.value, '$.startTime') AS UNSIGNED)) "
+                + "          FROM JSON_TABLE(eets.json, '$.taskStatus[*]' COLUMNS(value JSON PATH '$')) AS task "
+                + "          WHERE JSON_EXTRACT(task.value, '$.startTime') IS NOT NULL "
+                + "        ) "
+                + "      WHEN JSON_EXTRACT(eets.json, '$.endTime') IS NOT NULL THEN "
+                + "        JSON_EXTRACT(eets.json, '$.endTime') - eets.timestamp "
+                + "      ELSE NULL "
+                + "    END AS runtime "
+                + "  FROM entity_extension_time_series eets "
+                + "  INNER JOIN pipeline_entity pe ON eets.entityFQNHash = pe.fqnHash "
+                + "  WHERE eets.extension = 'pipeline.pipelineStatus' "
+                + "    AND pe.deleted = 0 "
+                + "    AND eets.timestamp >= :startTs "
+                + "    AND eets.timestamp <= :endTs "
+                + "    <pipelineFqnFilter> "
+                + "    <serviceTypeFilter> "
+                + "    <serviceFilter> "
+                + "    <mysqlStatusFilter> "
+                + "    <domainFilter> "
+                + "    <ownerFilter> "
+                + "    <tierFilter> "
+                + ") "
+                + "SELECT "
+                + "  DATE(FROM_UNIXTIME(timestamp / 1000)) as date_key, "
+                + "  MIN(timestamp) as first_timestamp, "
+                + "  MAX(runtime) as max_runtime, "
+                + "  MIN(runtime) as min_runtime, "
+                + "  AVG(runtime) as avg_runtime, "
+                + "  COUNT(DISTINCT fqnHash) as total_pipelines "
+                + "FROM runtime_calc "
+                + "WHERE runtime IS NOT NULL "
+                + "GROUP BY date_key "
+                + "ORDER BY date_key ASC",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "WITH runtime_calc AS ( "
+                + "  SELECT "
+                + "    eets.timestamp, "
+                + "    eets.json, "
+                + "    pe.fqnHash, "
+                + "    CASE "
+                + "      WHEN jsonb_array_length(COALESCE(eets.json->'taskStatus', '[]'::jsonb)) > 0 "
+                + "        AND EXISTS ( "
+                + "          SELECT 1 FROM jsonb_array_elements(eets.json->'taskStatus') AS task "
+                + "          WHERE task->>'endTime' IS NOT NULL "
+                + "        ) THEN "
+                + "        ( "
+                + "          SELECT MAX((task->>'endTime')::bigint) "
+                + "          FROM jsonb_array_elements(eets.json->'taskStatus') AS task "
+                + "          WHERE task->>'endTime' IS NOT NULL "
+                + "        ) - ( "
+                + "          SELECT MIN((task->>'startTime')::bigint) "
+                + "          FROM jsonb_array_elements(eets.json->'taskStatus') AS task "
+                + "          WHERE task->>'startTime' IS NOT NULL "
+                + "        ) "
+                + "      WHEN eets.json->>'endTime' IS NOT NULL THEN "
+                + "        (eets.json->>'endTime')::bigint - eets.timestamp "
+                + "      ELSE NULL "
+                + "    END AS runtime "
+                + "  FROM entity_extension_time_series eets "
+                + "  INNER JOIN pipeline_entity pe ON eets.entityFQNHash = pe.fqnHash "
+                + "  WHERE eets.extension = 'pipeline.pipelineStatus' "
+                + "    AND pe.deleted = false "
+                + "    AND eets.timestamp >= :startTs "
+                + "    AND eets.timestamp <= :endTs "
+                + "    <pipelineFqnFilter> "
+                + "    <serviceTypeFilter> "
+                + "    <serviceFilter> "
+                + "    <postgresStatusFilter> "
+                + "    <domainFilter> "
+                + "    <ownerFilter> "
+                + "    <tierFilter> "
+                + ") "
+                + "SELECT "
+                + "  DATE(TO_TIMESTAMP(timestamp / 1000)) as date_key, "
+                + "  MIN(timestamp) as first_timestamp, "
+                + "  MAX(runtime) as max_runtime, "
+                + "  MIN(runtime) as min_runtime, "
+                + "  AVG(runtime) as avg_runtime, "
+                + "  COUNT(DISTINCT fqnHash) as total_pipelines "
+                + "FROM runtime_calc "
+                + "WHERE runtime IS NOT NULL "
+                + "GROUP BY date_key "
+                + "ORDER BY date_key ASC",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(RuntimeTrendRowMapper.class)
+    List<RuntimeTrendRow> getRuntimeTrendData(
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs,
+        @Define("pipelineFqnFilter") String pipelineFqnFilter,
+        @Define("serviceTypeFilter") String serviceTypeFilter,
+        @Define("serviceFilter") String serviceFilter,
+        @Define("mysqlStatusFilter") String mysqlStatusFilter,
+        @Define("postgresStatusFilter") String postgresStatusFilter,
+        @Define("domainFilter") String domainFilter,
+        @Define("ownerFilter") String ownerFilter,
+        @Define("tierFilter") String tierFilter);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT "
+                + "  JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.serviceType')) as service_type, "
+                + "  COUNT(*) as pipeline_count "
+                + "FROM pipeline_entity pe "
+                + "LEFT JOIN entity_extension_time_series eets "
+                + "  ON pe.fqnHash = eets.entityFQNHash "
+                + "  AND eets.extension = 'pipeline.pipelineStatus' "
+                + "WHERE pe.deleted = 0 "
+                + "  <serviceTypeFilter> "
+                + "  <serviceFilter> "
+                + "  <mysqlStatusFilter> "
+                + "  <domainFilter> "
+                + "  <ownerFilter> "
+                + "  <tierFilter> "
+                + "  <startTsFilter> "
+                + "  <endTsFilter> "
+                + "GROUP BY service_type",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT "
+                + "  pe.json->>'serviceType' as service_type, "
+                + "  COUNT(*) as pipeline_count "
+                + "FROM pipeline_entity pe "
+                + "LEFT JOIN entity_extension_time_series eets "
+                + "  ON pe.fqnHash = eets.entityFQNHash "
+                + "  AND eets.extension = 'pipeline.pipelineStatus' "
+                + "WHERE pe.deleted = false "
+                + "  <serviceTypeFilter> "
+                + "  <serviceFilter> "
+                + "  <postgresStatusFilter> "
+                + "  <domainFilter> "
+                + "  <ownerFilter> "
+                + "  <tierFilter> "
+                + "  <startTsFilter> "
+                + "  <endTsFilter> "
+                + "GROUP BY service_type",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ServiceBreakdownRowMapper.class)
+    List<ServiceBreakdownRow> getServiceBreakdown(
+        @Define("serviceTypeFilter") String serviceTypeFilter,
+        @Define("serviceFilter") String serviceFilter,
+        @Define("mysqlStatusFilter") String mysqlStatusFilter,
+        @Define("postgresStatusFilter") String postgresStatusFilter,
+        @Define("domainFilter") String domainFilter,
+        @Define("ownerFilter") String ownerFilter,
+        @Define("tierFilter") String tierFilter,
+        @Define("startTsFilter") String startTsFilter,
+        @Define("endTsFilter") String endTsFilter);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT "
+                + "  COUNT(DISTINCT pe.fqnHash) as total_pipelines, "
+                + "  COUNT(DISTINCT CASE WHEN eets.entityFQNHash IS NOT NULL THEN pe.fqnHash END) as active_pipelines, "
+                + "  COUNT(DISTINCT CASE WHEN JSON_UNQUOTE(JSON_EXTRACT(eets.json, '$.executionStatus')) = 'Successful' THEN pe.fqnHash END) as successful_pipelines, "
+                + "  COUNT(DISTINCT CASE WHEN JSON_UNQUOTE(JSON_EXTRACT(eets.json, '$.executionStatus')) = 'Failed' THEN pe.fqnHash END) as failed_pipelines "
+                + "FROM pipeline_entity pe "
+                + "LEFT JOIN entity_extension_time_series eets "
+                + "  ON pe.fqnHash = eets.entityFQNHash "
+                + "  AND eets.extension = 'pipeline.pipelineStatus' "
+                + "WHERE pe.deleted = 0 "
+                + "  <serviceTypeFilter> "
+                + "  <serviceFilter> "
+                + "  <mysqlStatusFilter> "
+                + "  <domainFilter> "
+                + "  <ownerFilter> "
+                + "  <tierFilter> "
+                + "  <startTsFilter> "
+                + "  <endTsFilter>",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT "
+                + "  COUNT(DISTINCT pe.fqnHash) as total_pipelines, "
+                + "  COUNT(DISTINCT CASE WHEN eets.entityFQNHash IS NOT NULL THEN pe.fqnHash END) as active_pipelines, "
+                + "  COUNT(DISTINCT CASE WHEN eets.json->>'executionStatus' = 'Successful' THEN pe.fqnHash END) as successful_pipelines, "
+                + "  COUNT(DISTINCT CASE WHEN eets.json->>'executionStatus' = 'Failed' THEN pe.fqnHash END) as failed_pipelines "
+                + "FROM pipeline_entity pe "
+                + "LEFT JOIN entity_extension_time_series eets "
+                + "  ON pe.fqnHash = eets.entityFQNHash "
+                + "  AND eets.extension = 'pipeline.pipelineStatus' "
+                + "WHERE pe.deleted = false "
+                + "  <serviceTypeFilter> "
+                + "  <serviceFilter> "
+                + "  <postgresStatusFilter> "
+                + "  <domainFilter> "
+                + "  <ownerFilter> "
+                + "  <tierFilter> "
+                + "  <startTsFilter> "
+                + "  <endTsFilter>",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(PipelineMetricsRowMapper.class)
+    PipelineMetricsRow getPipelineMetricsData(
+        @Define("serviceTypeFilter") String serviceTypeFilter,
+        @Define("serviceFilter") String serviceFilter,
+        @Define("mysqlStatusFilter") String mysqlStatusFilter,
+        @Define("postgresStatusFilter") String postgresStatusFilter,
+        @Define("domainFilter") String domainFilter,
+        @Define("ownerFilter") String ownerFilter,
+        @Define("tierFilter") String tierFilter,
+        @Define("startTsFilter") String startTsFilter,
+        @Define("endTsFilter") String endTsFilter);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT pe.id, pe.json, "
+                + "(SELECT eets_inner.json FROM entity_extension_time_series eets_inner "
+                + " WHERE eets_inner.entityFQNHash = pe.fqnHash "
+                + " AND eets_inner.extension = 'pipeline.pipelineStatus' "
+                + " ORDER BY eets_inner.timestamp DESC LIMIT 1) as latest_status "
+                + "FROM pipeline_entity pe "
+                + "WHERE pe.deleted = 0 "
+                + "  <serviceFilter> "
+                + "  <mysqlServiceTypeFilter> "
+                + "  <domainFilter> "
+                + "  <ownerFilter> "
+                + "  <tierFilter> "
+                + "  AND (:search IS NULL OR pe.name LIKE CONCAT('%', :search, '%') OR JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.fullyQualifiedName')) LIKE CONCAT('%', :search, '%')) "
+                + "  <mysqlStatusFilter> "
+                + "ORDER BY pe.name "
+                + "LIMIT :limit OFFSET :offset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT pe.id, pe.json, "
+                + "(SELECT eets_inner.json FROM entity_extension_time_series eets_inner "
+                + " WHERE eets_inner.entityFQNHash = pe.fqnHash "
+                + " AND eets_inner.extension = 'pipeline.pipelineStatus' "
+                + " ORDER BY eets_inner.timestamp DESC LIMIT 1) as latest_status "
+                + "FROM pipeline_entity pe "
+                + "WHERE pe.deleted = false "
+                + "  <serviceFilter> "
+                + "  <postgresServiceTypeFilter> "
+                + "  <domainFilter> "
+                + "  <ownerFilter> "
+                + "  <tierFilter> "
+                + "  AND (:search IS NULL OR pe.name LIKE '%' || :search || '%' OR pe.json->>'fullyQualifiedName' LIKE '%' || :search || '%') "
+                + "  <postgresStatusFilter> "
+                + "ORDER BY pe.name "
+                + "LIMIT :limit OFFSET :offset",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(PipelineSummaryRowMapper.class)
+    List<PipelineSummaryRow> listPipelineSummariesFiltered(
+        @Define("serviceFilter") String serviceFilter,
+        @Define("mysqlServiceTypeFilter") String mysqlServiceTypeFilter,
+        @Define("postgresServiceTypeFilter") String postgresServiceTypeFilter,
+        @Define("domainFilter") String domainFilter,
+        @Define("ownerFilter") String ownerFilter,
+        @Define("tierFilter") String tierFilter,
+        @Define("mysqlStatusFilter") String mysqlStatusFilter,
+        @Define("postgresStatusFilter") String postgresStatusFilter,
+        @Bind("search") String search,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(DISTINCT pe.id) "
+                + "FROM pipeline_entity pe "
+                + "WHERE pe.deleted = 0 "
+                + "  <serviceFilter> "
+                + "  <mysqlServiceTypeFilter> "
+                + "  <domainFilter> "
+                + "  <ownerFilter> "
+                + "  <tierFilter> "
+                + "  AND (:search IS NULL OR pe.name LIKE CONCAT('%', :search, '%') OR JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.fullyQualifiedName')) LIKE CONCAT('%', :search, '%')) "
+                + "  <mysqlStatusFilter>",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(DISTINCT pe.id) "
+                + "FROM pipeline_entity pe "
+                + "WHERE pe.deleted = false "
+                + "  <serviceFilter> "
+                + "  <postgresServiceTypeFilter> "
+                + "  <domainFilter> "
+                + "  <ownerFilter> "
+                + "  <tierFilter> "
+                + "  AND (:search IS NULL OR pe.name LIKE '%' || :search || '%' OR pe.json->>'fullyQualifiedName' LIKE '%' || :search || '%') "
+                + "  <postgresStatusFilter>",
+        connectionType = POSTGRES)
+    int countPipelineSummariesFiltered(
+        @Define("serviceFilter") String serviceFilter,
+        @Define("mysqlServiceTypeFilter") String mysqlServiceTypeFilter,
+        @Define("postgresServiceTypeFilter") String postgresServiceTypeFilter,
+        @Define("domainFilter") String domainFilter,
+        @Define("ownerFilter") String ownerFilter,
+        @Define("tierFilter") String tierFilter,
+        @Define("mysqlStatusFilter") String mysqlStatusFilter,
+        @Define("postgresStatusFilter") String postgresStatusFilter,
+        @Bind("search") String search);
   }
 
   interface AppsDataStore {
@@ -7222,6 +7886,8 @@ public interface CollectionDAO {
                 json, AuthorizerConfiguration.class);
             case ENTITY_RULES_SETTINGS -> JsonUtils.readValue(json, EntityRulesSettings.class);
             case SCIM_CONFIGURATION -> JsonUtils.readValue(json, ScimConfiguration.class);
+            case OPEN_LINEAGE_SETTINGS -> JsonUtils.readValue(json, OpenLineageSettings.class);
+            case TEAMS_APP_CONFIGURATION -> JsonUtils.readValue(json, TeamsAppConfiguration.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);
@@ -7845,5 +8511,511 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM recognizer_feedback_entity WHERE id = :id")
     void delete(@BindUUID("id") UUID id);
+  }
+
+  class ExecutionTrendRow {
+    private String dateKey;
+    private String status;
+    private Integer count;
+
+    public ExecutionTrendRow() {}
+
+    public ExecutionTrendRow(String dateKey, String status, Integer count) {
+      this.dateKey = dateKey;
+      this.status = status;
+      this.count = count;
+    }
+
+    public String getDateKey() {
+      return dateKey;
+    }
+
+    public void setDateKey(String dateKey) {
+      this.dateKey = dateKey;
+    }
+
+    public String getStatus() {
+      return status;
+    }
+
+    public void setStatus(String status) {
+      this.status = status;
+    }
+
+    public Integer getCount() {
+      return count;
+    }
+
+    public void setCount(Integer count) {
+      this.count = count;
+    }
+  }
+
+  class ExecutionTrendRowMapper implements RowMapper<ExecutionTrendRow> {
+    @Override
+    public ExecutionTrendRow map(ResultSet rs, StatementContext ctx) throws SQLException {
+      ExecutionTrendRow row = new ExecutionTrendRow();
+      row.setDateKey(rs.getString("date_key"));
+      row.setStatus(rs.getString("status"));
+      row.setCount(rs.getInt("count"));
+      return row;
+    }
+  }
+
+  class RuntimeTrendRow {
+    private String dateKey;
+    private Long firstTimestamp;
+    private Double maxRuntime;
+    private Double minRuntime;
+    private Double avgRuntime;
+    private Integer totalPipelines;
+
+    public RuntimeTrendRow() {}
+
+    public RuntimeTrendRow(
+        String dateKey,
+        Long firstTimestamp,
+        Double maxRuntime,
+        Double minRuntime,
+        Double avgRuntime,
+        Integer totalPipelines) {
+      this.dateKey = dateKey;
+      this.firstTimestamp = firstTimestamp;
+      this.maxRuntime = maxRuntime;
+      this.minRuntime = minRuntime;
+      this.avgRuntime = avgRuntime;
+      this.totalPipelines = totalPipelines;
+    }
+
+    public String getDateKey() {
+      return dateKey;
+    }
+
+    public void setDateKey(String dateKey) {
+      this.dateKey = dateKey;
+    }
+
+    public Long getFirstTimestamp() {
+      return firstTimestamp;
+    }
+
+    public void setFirstTimestamp(Long firstTimestamp) {
+      this.firstTimestamp = firstTimestamp;
+    }
+
+    public Double getMaxRuntime() {
+      return maxRuntime;
+    }
+
+    public void setMaxRuntime(Double maxRuntime) {
+      this.maxRuntime = maxRuntime;
+    }
+
+    public Double getMinRuntime() {
+      return minRuntime;
+    }
+
+    public void setMinRuntime(Double minRuntime) {
+      this.minRuntime = minRuntime;
+    }
+
+    public Double getAvgRuntime() {
+      return avgRuntime;
+    }
+
+    public void setAvgRuntime(Double avgRuntime) {
+      this.avgRuntime = avgRuntime;
+    }
+
+    public Integer getTotalPipelines() {
+      return totalPipelines;
+    }
+
+    public void setTotalPipelines(Integer totalPipelines) {
+      this.totalPipelines = totalPipelines;
+    }
+  }
+
+  class RuntimeTrendRowMapper implements RowMapper<RuntimeTrendRow> {
+    @Override
+    public RuntimeTrendRow map(ResultSet rs, StatementContext ctx) throws SQLException {
+      RuntimeTrendRow row = new RuntimeTrendRow();
+      row.setDateKey(rs.getString("date_key"));
+      row.setFirstTimestamp(rs.getLong("first_timestamp"));
+      row.setMaxRuntime(rs.getDouble("max_runtime"));
+      row.setMinRuntime(rs.getDouble("min_runtime"));
+      row.setAvgRuntime(rs.getDouble("avg_runtime"));
+      row.setTotalPipelines(rs.getInt("total_pipelines"));
+      return row;
+    }
+  }
+
+  class ServiceBreakdownRow {
+    private String serviceType;
+    private Integer pipelineCount;
+
+    public ServiceBreakdownRow() {}
+
+    public ServiceBreakdownRow(String serviceType, Integer pipelineCount) {
+      this.serviceType = serviceType;
+      this.pipelineCount = pipelineCount;
+    }
+
+    public String getServiceType() {
+      return serviceType;
+    }
+
+    public void setServiceType(String serviceType) {
+      this.serviceType = serviceType;
+    }
+
+    public Integer getPipelineCount() {
+      return pipelineCount;
+    }
+
+    public void setPipelineCount(Integer pipelineCount) {
+      this.pipelineCount = pipelineCount;
+    }
+  }
+
+  class ServiceBreakdownRowMapper implements RowMapper<ServiceBreakdownRow> {
+    @Override
+    public ServiceBreakdownRow map(ResultSet rs, StatementContext ctx) throws SQLException {
+      ServiceBreakdownRow row = new ServiceBreakdownRow();
+      row.setServiceType(rs.getString("service_type"));
+      row.setPipelineCount(rs.getInt("pipeline_count"));
+      return row;
+    }
+  }
+
+  class PipelineMetricsRow {
+    private Integer totalPipelines;
+    private Integer activePipelines;
+    private Integer successfulPipelines;
+    private Integer failedPipelines;
+
+    public PipelineMetricsRow() {}
+
+    public PipelineMetricsRow(
+        Integer totalPipelines,
+        Integer activePipelines,
+        Integer successfulPipelines,
+        Integer failedPipelines) {
+      this.totalPipelines = totalPipelines;
+      this.activePipelines = activePipelines;
+      this.successfulPipelines = successfulPipelines;
+      this.failedPipelines = failedPipelines;
+    }
+
+    public Integer getTotalPipelines() {
+      return totalPipelines;
+    }
+
+    public void setTotalPipelines(Integer totalPipelines) {
+      this.totalPipelines = totalPipelines;
+    }
+
+    public Integer getActivePipelines() {
+      return activePipelines;
+    }
+
+    public void setActivePipelines(Integer activePipelines) {
+      this.activePipelines = activePipelines;
+    }
+
+    public Integer getSuccessfulPipelines() {
+      return successfulPipelines;
+    }
+
+    public void setSuccessfulPipelines(Integer successfulPipelines) {
+      this.successfulPipelines = successfulPipelines;
+    }
+
+    public Integer getFailedPipelines() {
+      return failedPipelines;
+    }
+
+    public void setFailedPipelines(Integer failedPipelines) {
+      this.failedPipelines = failedPipelines;
+    }
+  }
+
+  class PipelineMetricsRowMapper implements RowMapper<PipelineMetricsRow> {
+    @Override
+    public PipelineMetricsRow map(ResultSet rs, StatementContext ctx) throws SQLException {
+      PipelineMetricsRow row = new PipelineMetricsRow();
+      row.setTotalPipelines(rs.getInt("total_pipelines"));
+      row.setActivePipelines(rs.getInt("active_pipelines"));
+      row.setSuccessfulPipelines(rs.getInt("successful_pipelines"));
+      row.setFailedPipelines(rs.getInt("failed_pipelines"));
+      return row;
+    }
+  }
+
+  class PipelineSummaryRow {
+    private String id;
+    private String json;
+    private String latestStatus;
+
+    public PipelineSummaryRow() {}
+
+    public PipelineSummaryRow(String id, String json, String latestStatus) {
+      this.id = id;
+      this.json = json;
+      this.latestStatus = latestStatus;
+    }
+
+    public String getId() {
+      return id;
+    }
+
+    public void setId(String id) {
+      this.id = id;
+    }
+
+    public String getJson() {
+      return json;
+    }
+
+    public void setJson(String json) {
+      this.json = json;
+    }
+
+    public String getLatestStatus() {
+      return latestStatus;
+    }
+
+    public void setLatestStatus(String latestStatus) {
+      this.latestStatus = latestStatus;
+    }
+  }
+
+  class PipelineSummaryRowMapper implements RowMapper<PipelineSummaryRow> {
+    @Override
+    public PipelineSummaryRow map(ResultSet rs, StatementContext ctx) throws SQLException {
+      PipelineSummaryRow row = new PipelineSummaryRow();
+      row.setId(rs.getString("id"));
+      row.setJson(rs.getString("json"));
+      row.setLatestStatus(rs.getString("latest_status"));
+      return row;
+    }
+  }
+
+  interface AIApplicationDAO extends EntityDAO<org.openmetadata.schema.entity.ai.AIApplication> {
+    @Override
+    default String getTableName() {
+      return "ai_application_entity";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.ai.AIApplication> getEntityClass() {
+      return org.openmetadata.schema.entity.ai.AIApplication.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface LLMModelDAO extends EntityDAO<org.openmetadata.schema.entity.ai.LLMModel> {
+    @Override
+    default String getTableName() {
+      return "llm_model_entity";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.ai.LLMModel> getEntityClass() {
+      return org.openmetadata.schema.entity.ai.LLMModel.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface PromptTemplateDAO extends EntityDAO<org.openmetadata.schema.entity.ai.PromptTemplate> {
+    @Override
+    default String getTableName() {
+      return "prompt_template_entity";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.ai.PromptTemplate> getEntityClass() {
+      return org.openmetadata.schema.entity.ai.PromptTemplate.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface AgentExecutionDAO extends EntityTimeSeriesDAO {
+    @Override
+    default String getTimeSeriesTableName() {
+      return "agent_execution_entity";
+    }
+
+    @Override
+    default String getPartitionFieldName() {
+      return "agentId";
+    }
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO agent_execution_entity(json) VALUES (:json) AS new_data ON DUPLICATE KEY UPDATE json = new_data.json",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO agent_execution_entity(json) VALUES (:json::jsonb) ON CONFLICT (id) DO UPDATE SET json = EXCLUDED.json",
+        connectionType = POSTGRES)
+    void insertWithoutExtension(
+        @Define("table") String table,
+        @BindFQN("entityFQNHash") String entityFQNHash,
+        @Bind("jsonSchema") String jsonSchema,
+        @Bind("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO agent_execution_entity(json) VALUES (:json) AS new_data ON DUPLICATE KEY UPDATE json = new_data.json",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO agent_execution_entity(json) VALUES (:json::jsonb) ON CONFLICT (id) DO UPDATE SET json = EXCLUDED.json",
+        connectionType = POSTGRES)
+    void insert(
+        @Define("table") String table,
+        @BindFQN("entityFQNHash") String entityFQNHash,
+        @Bind("extension") String extension,
+        @Bind("jsonSchema") String jsonSchema,
+        @Bind("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM agent_execution_entity WHERE agentId = :agentId AND timestamp = :timestamp",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM agent_execution_entity WHERE agentId = :agentId AND timestamp = :timestamp",
+        connectionType = POSTGRES)
+    void deleteAtTimestamp(
+        @BindFQN("agentId") String agentId,
+        @Bind("extension") String extension,
+        @Bind("timestamp") Long timestamp);
+
+    @SqlQuery("SELECT count(*) FROM agent_execution_entity <cond>")
+    int listCount(@Define("cond") String condition);
+  }
+
+  interface AIGovernancePolicyDAO
+      extends EntityDAO<org.openmetadata.schema.entity.ai.AIGovernancePolicy> {
+    @Override
+    default String getTableName() {
+      return "ai_governance_policy_entity";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.ai.AIGovernancePolicy> getEntityClass() {
+      return org.openmetadata.schema.entity.ai.AIGovernancePolicy.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface LLMServiceDAO extends EntityDAO<org.openmetadata.schema.entity.services.LLMService> {
+    @Override
+    default String getTableName() {
+      return "llm_service_entity";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.services.LLMService> getEntityClass() {
+      return org.openmetadata.schema.entity.services.LLMService.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
+    }
+  }
+
+  @RegisterRowMapper(AuditLogRecordMapper.class)
+  interface AuditLogDAO {
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO audit_log_event(change_event_id, event_ts, event_type, user_name, "
+                + "actor_type, impersonated_by, service_name, "
+                + "entity_type, entity_id, entity_fqn, entity_fqn_hash, event_json, created_at) "
+                + "VALUES (:changeEventId, :eventTs, :eventType, :userName, "
+                + ":actorType, :impersonatedBy, :serviceName, "
+                + ":entityType, :entityId, :entityFQN, :entityFQNHash, :eventJson, :createdAt) "
+                + "ON CONFLICT (change_event_id) DO NOTHING",
+        connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT IGNORE INTO audit_log_event(change_event_id, event_ts, event_type, user_name, "
+                + "actor_type, impersonated_by, service_name, "
+                + "entity_type, entity_id, entity_fqn, entity_fqn_hash, event_json, created_at) "
+                + "VALUES (:changeEventId, :eventTs, :eventType, :userName, "
+                + ":actorType, :impersonatedBy, :serviceName, "
+                + ":entityType, :entityId, :entityFQN, :entityFQNHash, :eventJson, :createdAt)",
+        connectionType = MYSQL)
+    void insert(@BindBean AuditLogRecord record);
+
+    @SqlQuery(
+        "SELECT id, change_event_id, event_ts, event_type, user_name, "
+            + "actor_type, impersonated_by, service_name, "
+            + "entity_type, entity_id, entity_fqn, entity_fqn_hash, event_json, created_at "
+            + "FROM audit_log_event <condition> <orderClause> LIMIT :limit")
+    List<AuditLogRecord> list(
+        @Define("condition") String condition,
+        @Define("orderClause") String orderClause,
+        @Bind("userName") String userName,
+        @Bind("actorType") String actorType,
+        @Bind("serviceName") String serviceName,
+        @Bind("entityType") String entityType,
+        @Bind("entityFQN") String entityFQN,
+        @Bind("entityFQNHASH") String entityFqnHash,
+        @Bind("eventType") String eventType,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs,
+        @Bind("searchPattern") String searchPattern,
+        @Bind("afterEventTs") Long afterEventTs,
+        @Bind("afterId") Long afterId,
+        @Bind("limit") int limit);
+
+    @SqlQuery("SELECT COUNT(id) FROM audit_log_event <condition>")
+    int count(
+        @Define("condition") String condition,
+        @Bind("userName") String userName,
+        @Bind("actorType") String actorType,
+        @Bind("serviceName") String serviceName,
+        @Bind("entityType") String entityType,
+        @Bind("entityFQN") String entityFQN,
+        @Bind("entityFQNHASH") String entityFqnHash,
+        @Bind("eventType") String eventType,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs,
+        @Bind("searchPattern") String searchPattern);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM audit_log_event "
+                + "WHERE created_at < :cutoffTs ORDER BY created_at LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM audit_log_event "
+                + "WHERE ctid IN ( "
+                + "  SELECT ctid FROM audit_log_event "
+                + "  WHERE created_at < :cutoffTs ORDER BY created_at LIMIT :limit "
+                + ")",
+        connectionType = POSTGRES)
+    int deleteInBatches(@Bind("cutoffTs") long cutoffTs, @Bind("limit") int limit);
   }
 }

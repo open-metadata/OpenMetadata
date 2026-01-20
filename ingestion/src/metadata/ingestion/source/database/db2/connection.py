@@ -39,6 +39,7 @@ from metadata.ingestion.source.database.db2.utils import (
 )
 from metadata.utils.constants import THREE_MIN, UTF_8
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.ssl_manager import check_ssl_and_init
 
 logger = ingestion_logger()
 
@@ -66,6 +67,10 @@ def get_connection(connection: Db2Connection) -> Engine:
             encoding=UTF_8,
         ) as file:
             file.write(connection.license.encode(UTF_8).decode("unicode-escape"))
+
+    ssl_manager = check_ssl_and_init(connection)
+    if ssl_manager:
+        connection = ssl_manager.setup_ssl(connection)
 
     return create_generic_db_connection(
         connection=connection,

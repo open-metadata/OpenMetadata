@@ -112,7 +112,7 @@ import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 public class IngestionPipelineResource
     extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
   private IngestionPipelineMapper mapper;
-  public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
+  public static final String COLLECTION_PATH = "/v1/services/ingestionPipelines/";
   private PipelineServiceClientInterface pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   static final String FIELDS = "owners,followers";
@@ -1212,6 +1212,34 @@ public class IngestionPipelineResource
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return repository.getPipelineStatus(fqn, runId);
+  }
+
+  @DELETE
+  @Path("/{id}/pipelineStatus/{runId}")
+  @Operation(
+      operationId = "deletePipelineStatusByRunId",
+      summary = "Delete pipeline status by run ID",
+      description =
+          "Delete a specific pipeline status by its run ID for the given ingestion pipeline.",
+      responses = {
+        @ApiResponse(responseCode = "204", description = "Pipeline status deleted successfully"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Ingestion Pipeline or Pipeline Status not found")
+      })
+  public Response deletePipelineStatusByRunId(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Ingestion Pipeline", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(description = "Run ID of the pipeline status", schema = @Schema(type = "UUID"))
+          @PathParam("runId")
+          UUID runId) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    repository.deletePipelineStatusByRunId(id, runId);
+    return Response.noContent().build();
   }
 
   @DELETE

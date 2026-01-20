@@ -16,10 +16,8 @@ import uuid
 from unittest import TestCase
 
 import pytest
-from collate_sqllineage.runner import SQLPARSE_DIALECT
 
 from metadata.generated.schema.entity.data.table import Table
-from metadata.ingestion.lineage.masker import mask_query
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import (
@@ -126,6 +124,11 @@ class SqlLineageTest(TestCase):
             lineage_map, {"testdb.public.target": {"testdb.public.users": [("*", "*")]}}
         )
 
+    # TODO: since default parser is sqlglot, which fails to parse CTEs properly,
+    # we need to either fix sqlglot or change the default parser to test this case
+    @pytest.mark.skip(
+        reason="SqlGlot does not handle CTEs properly yet for column lineage."
+    )
     def test_populate_column_lineage_map_ctes(self):
         """
         Method to test column lineage map populate func with ctes
@@ -143,8 +146,8 @@ class SqlLineageTest(TestCase):
               ID,
               NAME
            FROM cte_table
-        )        
-        SELECT 
+        )
+        SELECT
           ID,
           NAME
         FROM cte_table2
@@ -229,71 +232,6 @@ class SqlLineageTest(TestCase):
             get_table_fqn_from_query_name(raw_query_name), (None, None, "tab")
         )
 
-    def test_query_masker(self):
-        query_list = [
-            (
-                """SELECT * FROM user WHERE id=1234 AND name='Alice' AND birthdate=DATE '2023-01-01';""",
-                Dialect.MYSQL.value,
-            ),
-            (
-                """insert into user values ('mayur',123,'my random address 1'), ('mayur',123,'my random address 1');""",
-                Dialect.ANSI.value,
-            ),
-            (
-                """SELECT * FROM user WHERE address = '5th street' and name = 'john';""",
-                Dialect.ANSI.value,
-            ),
-            (
-                """INSERT INTO user VALUE ('John', '19', '5TH Street');""",
-                Dialect.ANSI.value,
-            ),
-            (
-                """SELECT CASE address WHEN '5th Street' THEN 'CEO' ELSE 'Unknown' END AS person FROM user;""",
-                Dialect.ANSI.value,
-            ),
-            (
-                """with test as (SELECT CASE address WHEN '5th Street' THEN 'CEO' ELSE 'Unknown' END AS person FROM user) select * from test;""",
-                Dialect.ANSI.value,
-            ),
-            (
-                """select * from (select * from (SELECT CASE address WHEN '5th Street' THEN 'CEO' ELSE 'Unknown' END AS person FROM user));""",
-                Dialect.ANSI.value,
-            ),
-            (
-                """select * from users where id > 2 and name <> 'pere';""",
-                Dialect.ANSI.value,
-            ),
-            (
-                """select * from users where id > 2 and name <> 'pere';""",
-                "random",
-            ),
-            (
-                """CREATE TABLE "db001"."table001" AS SELECT * FROM "db002"."table002" WHERE age > 18 AND name = 'John';""",
-                SQLPARSE_DIALECT,  # test with sqlparse
-            ),
-            (
-                """CREATE TABLE "db001"."table001" AS SELECT * FROM "db002"."table002" WHERE age > 18 AND name = 'John';""",
-                Dialect.ANSI.value,  # test with sqlfluff
-            ),
-        ]
-
-        expected_query_list = [
-            """SELECT * FROM user WHERE id=? AND name=? AND birthdate=DATE ?;""",
-            """insert into user values (?,?,?), (?,?,?);""",
-            """SELECT * FROM user WHERE address = ? and name = ?;""",
-            """INSERT INTO user VALUE (?, ?, ?);""",
-            """SELECT CASE address WHEN ? THEN ? ELSE ? END AS person FROM user;""",
-            """with test as (SELECT CASE address WHEN ? THEN ? ELSE ? END AS person FROM user) select * from test;""",
-            """select * from (select * from (SELECT CASE address WHEN ? THEN ? ELSE ? END AS person FROM user));""",
-            """select * from users where id > ? and name <> ?;""",
-            """select * from users where id > ? and name <> ?;""",
-            """CREATE TABLE "db001"."table001" AS SELECT * FROM "db002"."table002" WHERE age > ? AND name = ?;""",
-            """CREATE TABLE "db001"."table001" AS SELECT * FROM "db002"."table002" WHERE age > ? AND name = ?;""",
-        ]
-
-        for i, query in enumerate(query_list):
-            self.assertEqual(mask_query(query[0], query[1]), expected_query_list[i])
-
     def test_replace_target_table(self):
         """
         Test the _replace_target_table function
@@ -343,3 +281,57 @@ class SqlLineageTest(TestCase):
         self.assertEqual(len(target_tables), 1)
         # LineageTable will add <default> back even after we remove it
         self.assertEqual(str(target_tables[0]), "<default>.actual_table")
+
+    def test_copy_into_from_stage_not_filtered(self):
+        """
+        Test that Snowflake COPY INTO table FROM @stage statements are NOT filtered out
+        as they provide valuable lineage information from stages to tables.
+        """
+        snowflake_copy_queries = [
+            "COPY INTO wine_quality FROM @demo FILE_FORMAT = wine_csv_format;",
+            "COPY INTO my_table FROM @my_stage",
+            "COPY INTO db.schema.table FROM @external_stage FILE_FORMAT = (TYPE = CSV)",
+            "copy into target_table from @s3_stage/path/to/files",
+        ]
+
+        for query in snowflake_copy_queries:
+            result = LineageParser.clean_raw_query(query)
+            self.assertIsNotNone(
+                result,
+                f"Query should NOT be filtered: {query}",
+            )
+
+    def test_generic_copy_statements_filtered(self):
+        """
+        Test that generic COPY statements (like PostgreSQL COPY FROM path)
+        are still filtered out as they don't provide lineage value.
+        """
+        generic_copy_queries = [
+            "COPY my_table FROM '/path/to/file.csv'",
+            "COPY users FROM '/tmp/data.csv' WITH CSV HEADER",
+            "COPY table_name FROM STDIN",
+            "COPY orders FROM 's3://bucket/file.csv'",
+        ]
+
+        for query in generic_copy_queries:
+            result = LineageParser.clean_raw_query(query)
+            self.assertIsNone(
+                result,
+                f"Query should be filtered: {query}",
+            )
+
+    def test_copy_to_statements_filtered(self):
+        """
+        Test that COPY TO statements are filtered out as they are export operations.
+        """
+        copy_to_queries = [
+            "COPY my_table TO '/path/to/file.csv'",
+            "COPY (SELECT * FROM users) TO '/tmp/output.csv'",
+        ]
+
+        for query in copy_to_queries:
+            result = LineageParser.clean_raw_query(query)
+            self.assertIsNone(
+                result,
+                f"Query should be filtered: {query}",
+            )

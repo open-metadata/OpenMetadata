@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -50,6 +50,10 @@ export interface ManifestMetadataEntry {
      * What's the schema format for the container, eg. avro, parquet, csv.
      */
     structureFormat?: string;
+    /**
+     * What's the schema formats for the container, eg. avro, parquet, csv.
+     */
+    unstructuredFormats?: string[];
     [property: string]: any;
 }
 
@@ -95,7 +99,11 @@ export interface Column {
     /**
      * Display Name that identifies this column name.
      */
-    displayName?:        string;
+    displayName?: string;
+    /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?:          any;
     fullyQualifiedName?: string;
     /**
      * Json schema only if the dataType is JSON else null.
@@ -513,6 +521,14 @@ export interface HistogramClass {
  * This schema defines the type for labeling an entity with a Tag.
  */
 export interface TagLabel {
+    /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
     /**
      * Description for the tag label.
      */

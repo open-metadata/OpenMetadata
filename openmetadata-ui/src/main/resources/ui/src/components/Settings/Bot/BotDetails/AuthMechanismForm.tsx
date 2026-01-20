@@ -106,7 +106,6 @@ const AuthMechanismForm: FC<Props> = ({
           config_value: scimConfig,
         });
       } catch (error) {
-        // eslint-disable-next-line no-console
         showErrorToast(error as AxiosError);
       }
     }
@@ -114,7 +113,8 @@ const AuthMechanismForm: FC<Props> = ({
     onSave({
       authType: AuthType.Jwt,
       config: {
-        JWTTokenExpiry: JWTTokenExpiry.OneHour,
+        // For SCIM we only want token with Unlimited expiry
+        JWTTokenExpiry: JWTTokenExpiry.Unlimited,
       },
     });
   }, [onSave, isSCIMBot]);

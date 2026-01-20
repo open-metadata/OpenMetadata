@@ -31,6 +31,9 @@ from metadata.generated.schema.entity.services.connections.dashboard.qlikSenseCo
 from metadata.generated.schema.entity.services.connections.database.cassandraConnection import (
     CassandraConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.db2Connection import (
+    Db2Connection,
+)
 from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
     DorisConnection,
 )
@@ -43,6 +46,9 @@ from metadata.generated.schema.entity.services.connections.database.hiveConnecti
 from metadata.generated.schema.entity.services.connections.database.mongoDBConnection import (
     MongoDBConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+    MssqlConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -54,6 +60,9 @@ from metadata.generated.schema.entity.services.connections.database.redshiftConn
 )
 from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
     SalesforceConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.starrocksConnection import (
+    StarRocksConnection,
 )
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
@@ -117,9 +126,12 @@ class SSLManager:
 
     @setup_ssl.register(MysqlConnection)
     @setup_ssl.register(DorisConnection)
+    @setup_ssl.register(StarRocksConnection)
     def _(self, connection):
         # Use the temporary file paths for SSL configuration
-        connection = cast(Union[MysqlConnection, DorisConnection], connection)
+        connection = cast(
+            Union[MysqlConnection, DorisConnection, StarRocksConnection], connection
+        )
         connection.connectionArguments = (
             connection.connectionArguments or init_empty_connection_arguments()
         )
@@ -275,6 +287,56 @@ class SSLManager:
 
         return connection
 
+    @setup_ssl.register(MssqlConnection)
+    def _(self, connection):
+        connection = cast(MssqlConnection, connection)
+
+        if not connection.connectionArguments:
+            connection.connectionArguments = init_empty_connection_arguments()
+
+        # Handle driver-specific SSL configuration
+        if connection.scheme.value == "mssql+pyodbc":
+            # ODBC Driver SSL parameters
+            if connection.encrypt:
+                connection.connectionArguments.root["Encrypt"] = "yes"
+
+            if connection.trustServerCertificate:
+                connection.connectionArguments.root["TrustServerCertificate"] = "yes"
+
+        elif connection.scheme.value == "mssql+pytds":
+            # pytds driver SSL parameters
+            if self.ca_file_path:
+                connection.connectionArguments.root["cafile"] = self.ca_file_path
+
+        return connection
+
+    @setup_ssl.register(Db2Connection)
+    def _(self, connection):
+        connection = cast(Db2Connection, connection)
+
+        if not connection.connectionArguments:
+            connection.connectionArguments = init_empty_connection_arguments()
+
+        if connection.sslMode and connection.sslMode != SslMode.disable:
+            connection.connectionArguments.root["SECURITY"] = "SSL"
+
+            if self.ca_file_path:
+                connection.connectionArguments.root[
+                    "SSLServerCertificate"
+                ] = self.ca_file_path
+
+            if self.cert_file_path:
+                connection.connectionArguments.root[
+                    "SSLClientKeystoredb"
+                ] = self.cert_file_path
+
+            if self.key_file_path:
+                connection.connectionArguments.root[
+                    "SSLClientKeystash"
+                ] = self.key_file_path
+
+        return connection
+
 
 @singledispatch
 def check_ssl_and_init(
@@ -315,8 +377,11 @@ def _(connection) -> Union[SSLManager, None]:
 
 @check_ssl_and_init.register(MysqlConnection)
 @check_ssl_and_init.register(DorisConnection)
+@check_ssl_and_init.register(StarRocksConnection)
 def _(connection):
-    service_connection = cast(Union[MysqlConnection, DorisConnection], connection)
+    service_connection = cast(
+        Union[MysqlConnection, DorisConnection, StarRocksConnection], connection
+    )
     ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig
     if ssl and (ssl.root.caCertificate or ssl.root.sslCertificate or ssl.root.sslKey):
         return SSLManager(
@@ -325,6 +390,21 @@ def _(connection):
             key=ssl.root.sslKey,
         )
     return None
+
+
+@check_ssl_and_init.register(MssqlConnection)
+def _(connection):
+    service_connection = cast(MssqlConnection, connection)
+    ssl: Optional[
+        verifySSLConfig.SslConfig
+    ] = service_connection.sslConfig or verifySSLConfig.SslConfig(
+        **{"caCertificate": None}
+    )
+    return SSLManager(
+        ca=ssl.root.caCertificate,
+        cert=ssl.root.sslCertificate,
+        key=ssl.root.sslKey,
+    )
 
 
 @check_ssl_and_init.register(MongoDBConnection)
@@ -419,6 +499,22 @@ def _(connection):
                     cert=service_connection.sslConfig.root.sslCertificate,
                     key=service_connection.sslConfig.root.sslKey,
                 )
+    return None
+
+
+@check_ssl_and_init.register(Db2Connection)
+def _(connection):
+    service_connection = cast(Db2Connection, connection)
+    if service_connection.sslMode and service_connection.sslMode != SslMode.disable:
+        ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig
+        if ssl and (
+            ssl.root.caCertificate or ssl.root.sslCertificate or ssl.root.sslKey
+        ):
+            return SSLManager(
+                ca=ssl.root.caCertificate,
+                cert=ssl.root.sslCertificate,
+                key=ssl.root.sslKey,
+            )
     return None
 
 

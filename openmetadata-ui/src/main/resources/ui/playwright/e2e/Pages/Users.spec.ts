@@ -10,18 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
-import { DATA_STEWARD_RULES } from '../../constant/permission';
+import { test as base, expect, Page } from '@playwright/test';
+import {
+  DATA_CONSUMER_RULES,
+  DATA_STEWARD_RULES,
+  EDIT_DESCRIPTION_RULE,
+  EDIT_GLOSSARY_TERM_RULE,
+  EDIT_TAGS_RULE,
+  EDIT_USER_FOR_TEAM_RULES,
+  OWNER_TEAM_RULES,
+  VIEW_ALL_RULE,
+  VIEW_ALL_WITH_MATCH_TAG_CONDITION,
+} from '../../constant/permission';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
+import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
+import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
+  getApiContext,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -79,6 +92,25 @@ const role = new RolesClass();
 const persona1 = new PersonaClass();
 const persona2 = new PersonaClass();
 
+const entities = [
+  EntityDataClass.table1,
+  EntityDataClass.topic1,
+  EntityDataClass.dashboard1,
+  EntityDataClass.pipeline1,
+  EntityDataClass.mlModel1,
+  EntityDataClass.metric1,
+  EntityDataClass.chart1,
+  EntityDataClass.storedProcedure1,
+  EntityDataClass.apiEndpoint1,
+  EntityDataClass.container1,
+  EntityDataClass.searchIndex1,
+  EntityDataClass.dashboardDataModel1,
+  EntityDataClass.directory1,
+  EntityDataClass.file1,
+  EntityDataClass.spreadsheet1,
+  EntityDataClass.worksheet1,
+];
+
 const test = base.extend<{
   adminPage: Page;
   dataConsumerPage: Page;
@@ -125,16 +157,6 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await persona1.create(apiContext, [adminUser.responseData.id]);
   await persona2.create(apiContext, [adminUser.responseData.id]);
 
-  await afterAction();
-});
-
-test.afterAll('Cleanup', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-  await dataStewardUser.delete(apiContext);
-  await policy.delete(apiContext);
-  await role.delete(apiContext);
-  await persona1.delete(apiContext);
-  await persona2.delete(apiContext);
   await afterAction();
 });
 
@@ -192,6 +214,12 @@ test.describe('User with Admin Roles', () => {
       user2.responseData.displayName
     );
 
+    const fetchUsers = adminPage.waitForResponse(
+      '/api/v1/users?**include=non-deleted'
+    );
+    await adminPage.fill('[data-testid="searchbar"]', '');
+    await fetchUsers
+
     await restoreUser(
       adminPage,
       user2.responseData.name,
@@ -222,6 +250,97 @@ test.describe('User with Admin Roles', () => {
 
     await restoreUserProfilePage(adminPage, user.responseData.displayName);
     await hardDeleteUserProfilePage(adminPage, user.responseData.displayName);
+  });
+
+  test('User should be visible in right panel on table page when added as custom property', async ({
+    adminPage,
+  }) => {
+    const { apiContext } = await getApiContext(adminPage);
+
+    // await redirectToHomePage(adminPage);
+    // 1. Setup - Create Custom Property and assign to Table
+    const customPropertyName = `pwCustomUserList${uuid()}`;
+    const customPropertyDescription = 'test description';
+
+    // Get Entity Reference List Type ID
+    const typeResponse = await apiContext.get(
+      '/api/v1/metadata/types/name/entityReferenceList'
+    );
+    const typeData = await typeResponse.json();
+    const typeId = typeData.id;
+
+    // Get Table Entity ID
+    const tableTypeResponse = await apiContext.get(
+      '/api/v1/metadata/types/name/table'
+    );
+    const tableTypeData = await tableTypeResponse.json();
+    const tableTypeId = tableTypeData.id;
+
+    // Create Custom Property
+    await apiContext.put(`/api/v1/metadata/types/${tableTypeId}`, {
+      data: {
+        name: customPropertyName,
+        description: customPropertyDescription,
+        propertyType: {
+          id: typeId,
+          type: 'type',
+        },
+        customPropertyConfig: {
+          config: ['user'],
+        },
+      },
+    });
+
+    const upperCasedName = user.responseData.name.toUpperCase();
+    // Patch Table to add the user to the custom property
+    await tableEntity.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/extension',
+          value: {
+            [customPropertyName]: [
+              {
+                id: user.responseData.id,
+                type: 'user',
+                name: upperCasedName,
+                fullyQualifiedName: null,
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    // 2. UI Verification
+    await redirectToHomePage(adminPage);
+    await tableEntity.visitEntityPage(adminPage);
+    await adminPage.waitForLoadState('networkidle');
+
+    // Verify Custom Property in Right Panel
+    const rightPanelSection = adminPage.getByTestId(customPropertyName);
+
+    // Verify User Link
+    const userLink = rightPanelSection
+      .getByRole('button')
+      .locator('.ant-typography');
+
+    await expect(
+      adminPage.getByTestId(upperCasedName).getByRole('button')
+    ).toContainText(upperCasedName);
+
+    // Click User Link and Verify Navigation
+    const userDetailsResponse = adminPage.waitForResponse(
+      '/api/v1/users/name/*'
+    );
+    await userLink.click();
+    await userDetailsResponse;
+
+    await expect(adminPage).toHaveURL(new RegExp(`/users/${upperCasedName}`));
+    await expect(adminPage.getByTestId('user-display-name')).toHaveText(
+      user.responseData.displayName
+    );
   });
 });
 
@@ -873,15 +992,13 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
     await adminPage.waitForSelector(
       '[data-testid="default-persona-select-list"]'
     );
-    await adminPage
-      .locator('[data-testid="default-persona-select-list"]')
-      .click();
+    
     await adminPage.waitForSelector('.ant-select-dropdown', {
       state: 'visible',
     });
 
     // Select the second persona as default
-    await adminPage.getByTestId(`${persona2.data.displayName}-option`).click();
+    await adminPage.getByTitle(persona2.data.displayName).click();
 
     const defaultPersonaChangeResponse =
       adminPage.waitForResponse('/api/v1/users/*');
@@ -1036,7 +1153,10 @@ test.describe('User Profile Persona Interactions', () => {
     await test.step(
       'Navigate to persona page by clicking on persona chip',
       async () => {
-        const personaChip = adminPage
+        const personaCard = adminPage.locator(
+          '[data-testid="persona-details-card"]'
+        );
+        const personaChip = personaCard
           .locator('[data-testid="chip-container"] [data-testid="tag-chip"]')
           .first();
         const personaLink = personaChip.locator('a').first();
@@ -1116,11 +1236,6 @@ test.describe('User Profile Persona Interactions', () => {
         '[data-testid="default-persona-select-list"]'
       );
 
-      // Open the default persona select dropdown
-      await adminPage
-        .locator('[data-testid="default-persona-select-list"]')
-        .click();
-
       // Wait for dropdown to open and options to load
       await adminPage.waitForSelector('.ant-select-dropdown', {
         state: 'visible',
@@ -1128,8 +1243,8 @@ test.describe('User Profile Persona Interactions', () => {
       await adminPage.waitForLoadState('networkidle');
 
       // Select specific persona for default - try test ID first, fallback to role selector
-      const defaultPersonaOptionTestId = adminPage.getByTestId(
-        `${persona1.responseData.displayName}-option`
+      const defaultPersonaOptionTestId = adminPage.getByTitle(
+        persona1.responseData.displayName
       );
 
       await defaultPersonaOptionTestId.click();
@@ -1222,3 +1337,151 @@ test.describe('User Profile Persona Interactions', () => {
     });
   });
 });
+
+base.describe(
+  'Users Performance around application with multiple team inheriting roles and policy',
+  () => {
+    base.slow(true);
+    const policy = new PolicyClass();
+    const policy2 = new PolicyClass();
+    const policy3 = new PolicyClass();
+    const policy4 = new PolicyClass();
+    const policy5 = new PolicyClass();
+    const role = new RolesClass();
+    const role2 = new RolesClass();
+    const role3 = new RolesClass();
+    const role4 = new RolesClass();
+    const role5 = new RolesClass();
+
+    const user = new UserClass();
+
+    base.beforeAll('Setup pre-requests', async ({ browser }) => {
+
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      await user.create(apiContext);
+
+      await Promise.all([
+        policy.create(apiContext, DATA_STEWARD_RULES),
+        policy2.create(apiContext, DATA_CONSUMER_RULES),
+        policy3.create(apiContext, VIEW_ALL_RULE),
+        policy4.create(apiContext, VIEW_ALL_WITH_MATCH_TAG_CONDITION),
+        policy5.create(apiContext, [
+          ...OWNER_TEAM_RULES,
+          ...EDIT_TAGS_RULE,
+          ...EDIT_USER_FOR_TEAM_RULES,
+          ...EDIT_DESCRIPTION_RULE,
+          ...EDIT_GLOSSARY_TERM_RULE,
+        ]),
+      ]);
+
+      await Promise.all([
+        role.create(apiContext, [policy.responseData.name]),
+        role2.create(apiContext, [policy2.responseData.name]),
+        role3.create(apiContext, [policy3.responseData.name]),
+        role4.create(apiContext, [policy4.responseData.name]),
+        role5.create(apiContext, [policy5.responseData.name]),
+      ]);
+
+      const createTeam = (roleId: string) =>
+        new TeamClass({
+          name: `PW%data_consumer_team-${uuid()}`,
+          displayName: `PW Data Consumer Team ${uuid()}`,
+          description: 'playwright data consumer team description',
+          teamType: 'Group',
+          users: [user.responseData.id],
+          defaultRoles: [roleId],
+        });
+
+      const team = createTeam(role.responseData.id ?? '');
+      const team2 = createTeam(role2.responseData.id ?? '');
+      const team3 = createTeam(role3.responseData.id ?? '');
+      const team4 = createTeam(role4.responseData.id ?? '');
+      const team5 = createTeam(role5.responseData.id ?? '');
+
+      await Promise.all([
+        team.create(apiContext),
+        team2.create(apiContext),
+        team3.create(apiContext),
+        team4.create(apiContext),
+        team5.create(apiContext),
+      ]);
+
+      await afterAction();
+    });
+
+    base.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await Promise.all([
+        policy.delete(apiContext),
+        role.delete(apiContext),
+        policy2.delete(apiContext),
+        role2.delete(apiContext),
+        policy3.delete(apiContext),
+        role3.delete(apiContext),
+        policy4.delete(apiContext),
+        role4.delete(apiContext),
+        policy5.delete(apiContext),
+        role5.delete(apiContext),
+      ]);
+      await afterAction();
+    });
+
+    base(
+      'User Performance across different entities pages',
+      async ({ browser }) => {
+        const { page, afterAction } = await performUserLogin(browser, user);
+
+        for (const entity of entities) {
+          await entity.visitEntityPage(page);
+          await page.waitForLoadState('networkidle');
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+
+          await expect(page.getByTestId('entity-header-name')).toHaveText(
+            entity.entityResponseData.name
+          );
+
+          const feedResponse = page.waitForResponse(
+            '/api/v1/feed?entityLink=*&type=Conversation'
+          );
+
+          await page.getByTestId('activity_feed').click();
+          await feedResponse;
+
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+
+          await expect(
+            page.getByTestId('global-setting-left-panel').getByText('All')
+          ).toBeVisible();
+
+          await expect(
+            page.getByTestId('global-setting-left-panel').getByText('Tasks')
+          ).toBeVisible();
+
+          const lineageResponse = page.waitForResponse(
+            `/api/v1/lineage/getLineage?fqn=${entity.entityResponseData.fullyQualifiedName}&type=**`
+          );
+
+          await page.getByTestId('lineage').click();
+          await lineageResponse;
+
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+
+          await expect(
+            page.getByTestId(
+              `lineage-node-${entity.entityResponseData.fullyQualifiedName}`
+            )
+          ).toBeVisible();
+        }
+
+        await afterAction();
+      }
+    );
+  }
+);

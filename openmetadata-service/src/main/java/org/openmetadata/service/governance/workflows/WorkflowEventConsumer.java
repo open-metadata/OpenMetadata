@@ -73,13 +73,7 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
           Entity.INGESTION_PIPELINE,
           Entity.TEST_SUITE,
           Entity.TEST_CASE,
-          Entity.TEST_DEFINITION,
-          Entity.WEB_ANALYTIC_EVENT,
-          Entity.KPI,
-          Entity.TYPE,
-          Entity.THREAD,
           Entity.QUERY,
-          Entity.REPORT,
           Entity.METRIC,
           Entity.DATA_INSIGHT_CHART,
           Entity.DATA_CONTRACT,
@@ -106,6 +100,12 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
       EventType eventType = event.getEventType();
       String entityType = event.getEntityType();
 
+      LOG.debug(
+          "WorkflowEventConsumer - Received event for entityType: {}, eventType: {}, entityId: {}",
+          entityType,
+          eventType,
+          event.getEntityId());
+
       // Skip events from governance-bot to prevent infinite loops
       // These are system-initiated workflow changes that shouldn't trigger new workflows
       if (GOVERNANCE_BOT.equals(event.getUserName())
@@ -119,7 +119,14 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
       }
 
       if (validEventTypes.contains(eventType) && validEntityTypes.contains(entityType)) {
-        String signal = String.format("%s-%s", entityType, eventType.toString());
+        LOG.debug(
+            "WorkflowEventConsumer - Generating signal for entityType: {}, eventType: {}",
+            entityType,
+            eventType);
+        String eventTypeStr =
+            eventType.equals(EventType.ENTITY_CREATED) ? "entityCreated" : "entityUpdated";
+        String signal = String.format("%s-%s", entityType, eventTypeStr);
+        LOG.debug("WorkflowEventConsumer - Generated Signal: {}", signal);
 
         EntityReference entityReference =
             Entity.getEntityReferenceById(entityType, event.getEntityId(), Include.ALL);
@@ -139,9 +146,11 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
               event.getUserName());
         }
 
+        LOG.debug("WorkflowEventConsumer - Triggering with signal: {}", signal);
         WorkflowHandler.getInstance().triggerWithSignal(signal, variables);
       }
     } catch (Exception exc) {
+      LOG.error("WorkflowEventConsumer - Error processing event", exc);
       String message =
           CatalogExceptionMessage.eventPublisherFailedToPublish(
               GOVERNANCE_WORKFLOW_CHANGE_EVENT, event, exc.getMessage());

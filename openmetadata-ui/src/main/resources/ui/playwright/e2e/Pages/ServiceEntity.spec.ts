@@ -39,20 +39,20 @@ import {
 } from '../../utils/common';
 import { CustomPropertyTypeByName } from '../../utils/customProperty';
 
-const entities = [
-  ApiServiceClass,
-  ApiCollectionClass,
-  DatabaseServiceClass,
-  DashboardServiceClass,
-  MessagingServiceClass,
-  MlmodelServiceClass,
-  PipelineServiceClass,
-  SearchIndexServiceClass,
-  StorageServiceClass,
-  DatabaseClass,
-  DatabaseSchemaClass,
-  DriveServiceClass,
-] as const;
+const entities = {
+  'Api Service': ApiServiceClass,
+  'Api Collection': ApiCollectionClass,
+  'Database Service': DatabaseServiceClass,
+  'Dashboard Service': DashboardServiceClass,
+  'Messaging Service': MessagingServiceClass,
+  'Mlmodel Service': MlmodelServiceClass,
+  'Pipeline Service': PipelineServiceClass,
+  'Search Index Service': SearchIndexServiceClass,
+  'Storage Service': StorageServiceClass,
+  Database: DatabaseClass,
+  'Database Schema': DatabaseSchemaClass,
+  'Drive Service': DriveServiceClass,
+} as const;
 
 const adminUser = new UserClass();
 
@@ -72,11 +72,11 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
-entities.forEach((EntityClass) => {
+Object.entries(entities).forEach(([key, EntityClass]) => {
   const entity = new EntityClass();
   const deleteEntity = new EntityClass();
 
-  test.describe(entity.getType(), () => {
+  test.describe(key, () => {
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -89,6 +89,10 @@ entities.forEach((EntityClass) => {
       await entity.visitEntityPage(page);
     });
 
+    /**
+     * Tests domain management on services
+     * @description Adds a domain, switches to another, then removes it from the service
+     */
     test('Domain Add, Update and Remove', async ({ page }) => {
       test.slow(true);
 
@@ -102,6 +106,10 @@ entities.forEach((EntityClass) => {
       );
     });
 
+    /**
+     * Tests user ownership management
+     * @description Adds user owners, updates the owner list, and removes owners from the service
+     */
     test('User as Owner Add, Update and Remove', async ({ page }) => {
       test.slow(true);
 
@@ -111,17 +119,29 @@ entities.forEach((EntityClass) => {
       await entity.owner(page, [OWNER1, OWNER3], [OWNER2]);
     });
 
+    /**
+     * Tests team ownership management
+     * @description Adds team owners, updates the list, and removes teams from the service
+     */
     test('Team as Owner Add, Update and Remove', async ({ page }) => {
       const OWNER1 = EntityDataClass.team1.responseData.displayName;
       const OWNER2 = EntityDataClass.team2.responseData.displayName;
       await entity.owner(page, [OWNER1], [OWNER2], 'Teams');
     });
 
+    /**
+     * Tests tier management
+     * @description Assigns a tier to the service, updates it, and removes it
+     */
     test('Tier Add, Update and Remove', async ({ page }) => {
       await entity.tier(page, 'Tier1', 'Tier5');
     });
 
     if (CertificationSupportedServices.includes(entity.endpoint)) {
+      /**
+       * Tests certification lifecycle
+       * @description Adds a certification to the service, updates it, and removes it
+       */
       test('Certification Add Remove', async ({ page }) => {
         await entity.certification(
           page,
@@ -131,14 +151,26 @@ entities.forEach((EntityClass) => {
       });
     }
 
+    /**
+     * Tests description updates
+     * @description Edits the service description
+     */
     test('Update description', async ({ page }) => {
       await entity.descriptionUpdate(page);
     });
 
+    /**
+     * Tests tag management
+     * @description Adds tags to the service, updates them, and removes them
+     */
     test('Tag Add, Update and Remove', async ({ page }) => {
       await entity.tag(page, 'PersonalData.Personal', 'PII.None', entity);
     });
 
+    /**
+     * Tests glossary term management
+     * @description Assigns glossary terms to the service, updates them, and removes them
+     */
     test('Glossary Term Add, Update and Remove', async ({ page }) => {
       await entity.glossaryTerm(
         page,
@@ -147,13 +179,23 @@ entities.forEach((EntityClass) => {
       );
     });
 
+    /**
+     * Tests announcement lifecycle
+     * @description Creates, edits, and deletes an announcement on the service
+     */
     test(`Announcement create, edit & delete`, async ({ page }) => {
       test.slow();
 
       await entity.announcement(page);
     });
 
+    /**
+     * Tests inactive announcements
+     * @description Creates an inactive announcement and then deletes it
+     */
     test(`Inactive Announcement create & delete`, async ({ page }) => {
+      // used slow as test contain page reload which might lead to timeout
+      test.slow(true);
       await entity.inactiveAnnouncement(page);
     });
 
@@ -162,6 +204,10 @@ entities.forEach((EntityClass) => {
       const properties = Object.values(CustomPropertyTypeByName);
       const titleText = properties.join(', ');
 
+      /**
+       * Tests custom property management
+       * @description Sets and updates supported custom property types on the service
+       */
       test(`Set & Update ${titleText} Custom Property `, async ({ page }) => {
         // increase timeout as it using single test for multiple steps
         test.slow(true);
@@ -194,6 +240,10 @@ entities.forEach((EntityClass) => {
       });
     }
     if (FollowSupportedServices.includes(entity.endpoint)) {
+      /**
+       * Tests follow and unfollow actions
+       * @description Follows the service and then unfollows it to verify state changes
+       */
       test(`Follow & Un-follow entity for Database Entity`, async ({
         page,
       }) => {
@@ -204,6 +254,10 @@ entities.forEach((EntityClass) => {
       });
     }
 
+    /**
+     * Tests display name updates
+     * @description Renames the service by updating its display name
+     */
     test(`Update displayName`, async ({ page }) => {
       await entity.renameEntity(page, entity.entity.name);
     });
@@ -215,7 +269,11 @@ entities.forEach((EntityClass) => {
     });
   });
 
-  test(`Delete ${deleteEntity.getType()}`, async ({ page }) => {
+  /**
+   * Tests service deletion
+   * @description Soft deletes the service and then hard deletes it to remove it permanently
+   */
+  test(`Delete ${key}`, async ({ page }) => {
     // increase timeout as it using single test for multiple steps
     test.slow(true);
 

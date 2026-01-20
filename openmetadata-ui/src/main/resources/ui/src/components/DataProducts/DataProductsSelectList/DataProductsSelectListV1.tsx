@@ -23,6 +23,7 @@ import {
 import { EntitySelectableList } from '../../common/EntitySelectableList/EntitySelectableList.component';
 import { EntitySelectableListConfig } from '../../common/EntitySelectableList/EntitySelectableList.interface';
 import { DataProductsSelectListV1Props } from './DataProductsSelectListV1.interface';
+import './DataProductsSelectListV1.less';
 
 export const DataProductsSelectListV1 = ({
   selectedDataProducts = [],
@@ -32,6 +33,7 @@ export const DataProductsSelectListV1 = ({
   popoverProps,
   listHeight = ADD_USER_CONTAINER_HEIGHT,
   fetchOptions,
+  multiSelect = true,
 }: DataProductsSelectListV1Props) => {
   const { t } = useTranslation();
 
@@ -88,6 +90,7 @@ export const DataProductsSelectListV1 = ({
     <EntitySelectableList
       config={config}
       listHeight={listHeight}
+      multiSelect={multiSelect}
       popoverProps={popoverProps}
       selectedItems={selectedDataProducts}
       onCancel={onCancel}

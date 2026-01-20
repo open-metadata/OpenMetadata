@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { get } from 'lodash';
 import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../support/entity/ContainerClass';
@@ -90,6 +90,17 @@ export const verifyColumnLayerInactive = async (page: Page) => {
 
 export const activateColumnLayer = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-btn"]');
+
+  const isColumnLayerSelected = await page
+    .locator('[data-testid="lineage-layer-column-btn"]')
+    .evaluate((el) => el.classList.contains('Mui-selected'));
+
+  if (isColumnLayerSelected) {
+    await clickOutside(page);
+
+    return;
+  }
+
   await page.click('[data-testid="lineage-layer-column-btn"]');
   await clickOutside(page);
 };
@@ -129,12 +140,12 @@ export const deleteEdge = async (
   const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
 
   await page
-    .locator(`[data-testid="edge-${fromNodeFqn}-${toNodeFqn}"]`)
+    .getByTestId(`edge-${fromNodeFqn}-${toNodeFqn}`)
     .dispatchEvent('click');
 
-  await page.locator('[data-testid="add-pipeline"]').dispatchEvent('click');
+  await page.getByTestId('add-pipeline').dispatchEvent('click');
 
-  await expect(page.locator('[role="dialog"]').first()).toBeVisible();
+  await expect(page.getByRole('dialog').first()).toBeVisible();
 
   await page
     .locator(
@@ -162,7 +173,7 @@ export const dragAndDropNode = async (
   await page.mouse.down();
   const box = (await destinationElement.boundingBox()) as DOMRect;
   const x = box.x + 250;
-  const y = box.y + box.height / 2;
+  const y = box.y + box.height / 2 + 100;
   await page.mouse.move(x, y, { steps: 20 });
   await page.mouse.up();
 };
@@ -259,7 +270,7 @@ export const performExpand = async (
     .getByTestId('plus-icon');
 
   if (newNode) {
-    const expandRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+    const expandRes = page.waitForResponse('/api/v1/lineage/getLineage/*?*');
     await expandBtn.click();
     await expandRes;
     await verifyNodePresent(page, newNode);
@@ -288,6 +299,35 @@ export const performCollapse = async (
     );
 
     await expect(hiddenNode).not.toBeVisible();
+  }
+};
+
+export const verifyExpandHandleHover = async (
+  page: Page,
+  node: EntityClass,
+  upstream: boolean
+) => {
+  const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
+  const handleDirection = upstream ? 'left' : 'right';
+  const handle = page
+    .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
+    .locator(
+      `.react-flow__handle-${handleDirection}.lineage-node-handle-expand-all`
+    );
+
+  await handle.hover();
+
+  const expandBtn = handle.getByTestId('lineage-expand-all-btn');
+  await expect(expandBtn).toBeVisible();
+
+  const plusIcon = handle.getByTestId('plus-icon');
+  const plusBox = await plusIcon.boundingBox();
+  const expandBox = await expandBtn.boundingBox();
+
+  if (upstream) {
+    expect(expandBox?.x).toBeLessThan(plusBox?.x ?? Number.MAX_VALUE);
+  } else {
+    expect(expandBox?.x).toBeGreaterThan(plusBox?.x ?? 0);
   }
 };
 
@@ -385,10 +425,20 @@ const verifyPipelineDataInDrawer = async (
     .filter({ hasText: pipelineName });
 
   if (bVisitPipelinePageFromDrawer) {
-    await page.locator('.edge-info-drawer [data-testid="Edge"] a').click();
-    await page.click('[data-testid="lineage"]');
+    await expect(page.getByTestId('edge-header-title')).toHaveText(
+      'Edge Information'
+    );
+    await expect(
+      page.locator('.overview-section').getByTestId('Source-value')
+    ).toHaveText(fromNode.entity.displayName);
+    await expect(
+      page.locator('.overview-section').getByTestId('Target-value')
+    ).toHaveText(toNode.entity.displayName);
+    await expect(
+      page.locator('.overview-section').getByTestId('Edge-value')
+    ).toHaveText(pipelineName);
+
     await fromNode.visitEntityPage(page);
-    await page.click('[data-testid="lineage"]');
   } else {
     await page.click('.edge-info-drawer .ant-drawer-header .anticon-close');
   }
@@ -409,10 +459,9 @@ export const applyPipelineFromModal = async (
   );
 
   await page
-    .locator(`[data-testid="edge-${fromNodeFqn}-${toNodeFqn}"]`)
-    .click({ force: true });
-
-  await page.locator('[data-testid="add-pipeline"]').dispatchEvent('click');
+    .getByTestId(`edge-${fromNodeFqn}-${toNodeFqn}`)
+    .dispatchEvent('click');
+  await page.getByTestId('add-pipeline').dispatchEvent('click');
 
   const waitForSearchResponse = page.waitForResponse(
     `/api/v1/search/query?q=*`
@@ -464,6 +513,8 @@ export const addColumnLineage = async (
     true
   );
   await lineageRes;
+
+  await page.getByTestId(`column-${toColumnNode}`).click();
 
   if (exitEditMode) {
     await editLineageClick(page);
@@ -773,4 +824,38 @@ export const verifyLineageConfig = async (page: Page) => {
   const saveRes = page.waitForResponse('/api/v1/lineage/getLineage?**');
   await page.getByText('OK').click();
   await saveRes;
+};
+
+export const connectEdgeBetweenNodesViaAPI = (
+  apiContext: APIRequestContext,
+  fromEntity: { id: string; type: string },
+  toEntity: { id: string; type: string },
+  columnsLineage: Array<{ fromColumns: string[]; toColumn: string }>
+) => {
+  return apiContext.put('/api/v1/lineage/', {
+    data: {
+      edge: {
+        fromEntity,
+        toEntity,
+        lineageDetails: { columnsLineage, description: '' },
+      },
+    },
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+};
+
+export const toggleLineageFilters = async (page: Page, tableFqn: string) => {
+  await page
+    .getByTestId(`lineage-node-${tableFqn}`)
+    .getByTestId('lineage-filter-button')
+    .click();
+};
+
+export const clickLineageNode = async (page: Page, nodeFqn: string) => {
+  await page
+    .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
+    .locator(`[data-testid="entity-header-display-name"]`)
+    .click();
 };

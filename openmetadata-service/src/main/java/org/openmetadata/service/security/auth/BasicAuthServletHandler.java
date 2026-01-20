@@ -13,10 +13,15 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.TokenRefreshRequest;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.security.AuthServeletHandler;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 
 @Slf4j
 public class BasicAuthServletHandler implements AuthServeletHandler {
@@ -175,6 +180,22 @@ public class BasicAuthServletHandler implements AuthServeletHandler {
     try {
       HttpSession session = req.getSession(false);
       if (session != null) {
+        // Invalidate policy cache for the user before invalidating session
+        String userId = (String) session.getAttribute(SESSION_USER_ID);
+        if (userId != null) {
+          SubjectCache.invalidateUser(userId);
+          // Write logout audit event
+          if (Entity.getAuditLogRepository() != null) {
+            try {
+              User user = Entity.getEntityByName(Entity.USER, userId, "", Include.NON_DELETED);
+              Entity.getAuditLogRepository()
+                  .writeAuthEvent(
+                      AuditLogRepository.AUTH_EVENT_LOGOUT, user.getName(), user.getId());
+            } catch (Exception e) {
+              LOG.debug("Could not write logout audit event for user {}", userId, e);
+            }
+          }
+        }
         session.invalidate();
       }
 

@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.elasticsearch;
 
+import static org.openmetadata.service.search.SearchUtils.buildHttpHosts;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
 
@@ -147,7 +148,7 @@ public class ElasticSearchClient implements SearchClient {
     indexManager = new ElasticSearchIndexManager(newClient, clusterAlias);
     entityManager = new ElasticSearchEntityManager(newClient);
     genericManager = new ElasticSearchGenericManager(newClient);
-    aggregationManager = new ElasticSearchAggregationManager(newClient);
+    aggregationManager = new ElasticSearchAggregationManager(newClient, rbacConditionEvaluator);
     dataInsightAggregatorManager = new ElasticSearchDataInsightAggregatorManager(newClient);
     searchManager =
         new ElasticSearchSearchManager(newClient, rbacConditionEvaluator, clusterAlias, nlqService);
@@ -286,6 +287,21 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public SearchResultListMapper listWithOffset(
+      String filter,
+      int limit,
+      int offset,
+      String index,
+      SearchSortFilter searchSortFilter,
+      String q,
+      String queryString,
+      SubjectContext subjectContext)
+      throws IOException {
+    return searchManager.listWithOffset(
+        filter, limit, offset, index, searchSortFilter, q, queryString, subjectContext);
+  }
+
+  @Override
   public SearchResultListMapper listWithDeepPagination(
       String index,
       String query,
@@ -393,6 +409,16 @@ public class ElasticSearchClient implements SearchClient {
   public DataQualityReport genericAggregation(
       String query, String index, SearchAggregation aggregationMetadata) throws IOException {
     return aggregationManager.genericAggregation(query, index, aggregationMetadata);
+  }
+
+  @Override
+  public DataQualityReport genericAggregation(
+      String query,
+      String index,
+      SearchAggregation aggregationMetadata,
+      SubjectContext subjectContext)
+      throws IOException {
+    return aggregationManager.genericAggregation(query, index, aggregationMetadata, subjectContext);
   }
 
   @Override
@@ -613,14 +639,11 @@ public class ElasticSearchClient implements SearchClient {
   public RestClient getLowLevelRestClient(ElasticSearchConfiguration esConfig) {
     if (esConfig != null) {
       try {
-        RestClientBuilder restClientBuilder =
-            RestClient.builder(
-                new HttpHost(esConfig.getHost(), esConfig.getPort(), esConfig.getScheme()));
+        HttpHost[] httpHosts = buildHttpHosts(esConfig, "Elasticsearch");
+        RestClientBuilder restClientBuilder = RestClient.builder(httpHosts);
 
-        // Configure connection pooling
         restClientBuilder.setHttpClientConfigCallback(
             httpAsyncClientBuilder -> {
-              // Set connection pool sizes
               if (esConfig.getMaxConnTotal() != null && esConfig.getMaxConnTotal() > 0) {
                 httpAsyncClientBuilder.setMaxConnTotal(esConfig.getMaxConnTotal());
               }
@@ -628,7 +651,6 @@ public class ElasticSearchClient implements SearchClient {
                 httpAsyncClientBuilder.setMaxConnPerRoute(esConfig.getMaxConnPerRoute());
               }
 
-              // Configure authentication if provided
               if (StringUtils.isNotEmpty(esConfig.getUsername())
                   && StringUtils.isNotEmpty(esConfig.getPassword())) {
                 CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
@@ -639,7 +661,6 @@ public class ElasticSearchClient implements SearchClient {
                 httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
               }
 
-              // Configure SSL if needed
               SSLContext sslContext = null;
               try {
                 sslContext = createElasticSearchSSLContext(esConfig);
@@ -650,7 +671,6 @@ public class ElasticSearchClient implements SearchClient {
                 httpAsyncClientBuilder.setSSLContext(sslContext);
               }
 
-              // Enable TCP keep alive strategy
               if (esConfig.getKeepAliveTimeoutSecs() != null
                   && esConfig.getKeepAliveTimeoutSecs() > 0) {
                 httpAsyncClientBuilder.setKeepAliveStrategy(
@@ -660,22 +680,18 @@ public class ElasticSearchClient implements SearchClient {
               return httpAsyncClientBuilder;
             });
 
-        // Configure request timeouts
         restClientBuilder.setRequestConfigCallback(
             requestConfigBuilder ->
                 requestConfigBuilder
                     .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
 
-        // Enable compression for better network efficiency
         restClientBuilder.setCompressionEnabled(true);
 
-        // Build client without default headers first to check version
         RestClient tempClient = restClientBuilder.build();
         boolean isElasticsearch7 = isElasticsearch7Version(tempClient);
         tempClient.close();
 
-        // Only set default headers for ES 7.x server
         if (isElasticsearch7) {
           restClientBuilder.setDefaultHeaders(defaultHeaders);
         }
@@ -760,6 +776,40 @@ public class ElasticSearchClient implements SearchClient {
       String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
     entityManager.updateGlossaryTermByFqnPrefix(
         indexName, oldParentFQN, newParentFQN, prefixFieldCondition);
+  }
+
+  @Override
+  public void updateClassificationTagByFqnPrefix(
+      String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
+    entityManager.updateClassificationTagByFqnPrefix(
+        indexName, oldParentFQN, newParentFQN, prefixFieldCondition);
+  }
+
+  @Override
+  public void updateDataProductReferences(String oldFqn, String newFqn) {
+    entityManager.updateDataProductReferences(oldFqn, newFqn);
+  }
+
+  @Override
+  public void updateAssetDomainsForDataProduct(
+      String dataProductFqn, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    entityManager.updateAssetDomainsForDataProduct(dataProductFqn, oldDomainFqns, newDomains);
+  }
+
+  @Override
+  public void updateAssetDomainsByIds(
+      List<UUID> assetIds, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    entityManager.updateAssetDomainsByIds(assetIds, oldDomainFqns, newDomains);
+  }
+
+  @Override
+  public void updateDomainFqnByPrefix(String oldFqn, String newFqn) {
+    entityManager.updateDomainFqnByPrefix(oldFqn, newFqn);
+  }
+
+  @Override
+  public void updateAssetDomainFqnByPrefix(String oldFqn, String newFqn) {
+    entityManager.updateAssetDomainFqnByPrefix(oldFqn, newFqn);
   }
 
   @Override

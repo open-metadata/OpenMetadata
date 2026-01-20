@@ -109,6 +109,7 @@ import {
   SPARK,
   SPLINE,
   SQLITE,
+  STARROCKS,
   SUPERSET,
   SYNAPSE,
   TABLEAU,
@@ -188,7 +189,9 @@ class ServiceUtilClassBase {
     DriveServiceType.GoogleDrive,
     DriveServiceType.SharePoint,
     DatabaseServiceType.ServiceNow,
+    DatabaseServiceType.Dremio,
     MetadataServiceType.Collibra,
+    PipelineServiceType.Mulesoft,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -264,6 +267,24 @@ class ServiceUtilClassBase {
     return this.serviceDetails;
   }
 
+  public getAddWorkflowData(
+    connectionType: string,
+    serviceType: ServiceType,
+    serviceName?: string,
+    configData?: ConfigData
+  ) {
+    return {
+      name: getTestConnectionName(connectionType),
+      workflowType: WorkflowType.TestConnection,
+      request: {
+        connection: { config: configData as ConfigObject },
+        serviceType,
+        connectionType,
+        serviceName,
+      },
+    };
+  }
+
   public getServiceConfigData(data: {
     serviceName: string;
     serviceType: string;
@@ -289,7 +310,6 @@ class ServiceUtilClassBase {
     };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public getServiceExtraInfo(_data?: ServicesType): ExtraInfoType | null {
     return null;
   }
@@ -453,6 +473,9 @@ class ServiceUtilClassBase {
 
       case this.DatabaseServiceTypeSmallCase.Doris:
         return DORIS;
+
+      case this.DatabaseServiceTypeSmallCase.StarRocks:
+        return STARROCKS;
 
       case this.DatabaseServiceTypeSmallCase.Druid:
         return DRUID;
@@ -832,8 +855,8 @@ class ServiceUtilClassBase {
     return getDriveConfig(type);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public getInsightsTabWidgets(_: ServiceTypes) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const widgets: Record<string, React.ComponentType<any>> = {
       AgentsStatusWidget,
       PlatformInsightsWidget,
@@ -880,6 +903,7 @@ class ServiceUtilClassBase {
   }
 
   public getAgentsTabWidgets() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const widgets: Record<string, React.ComponentType<any>> = {
       MetadataAgentsWidget,
     };

@@ -71,6 +71,7 @@ import {
 import domainClassBase from '../../../utils/Domain/DomainClassBase';
 import { getDomainContainerStyles } from '../../../utils/DomainPageStyles';
 import {
+  getQueryFilterForDataProducts,
   getQueryFilterForDomain,
   getQueryFilterToExcludeDomainTerms,
 } from '../../../utils/DomainUtils';
@@ -130,6 +131,7 @@ const DomainDetails = ({
   domainFqnOverride,
   onNavigate,
   refreshDomains,
+  isTreeView = false,
 }: DomainDetailsProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -193,6 +195,7 @@ const DomainDetails = ({
   const encodedFqn = getEncodedFqn(
     escapeESReservedCharacters(domain.fullyQualifiedName)
   );
+  const urlEncodedFqn = getEncodedFqn(domain.fullyQualifiedName ?? '');
   const { customizedPage, isLoading } = useCustomPages(PageType.Domain);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
   const isSubDomain = useMemo(() => !isEmpty(domain.parent), [domain]);
@@ -241,9 +244,7 @@ const DomainDetails = ({
           query: '',
           pageNumber: 1,
           pageSize: 0,
-          queryFilter: getTermQuery({
-            'domains.fullyQualifiedName': domain.fullyQualifiedName ?? '',
-          }),
+          queryFilter: getQueryFilterForDataProducts(domainFqn),
           searchIndex: SearchIndex.DATA_PRODUCT,
         });
 
@@ -632,17 +633,30 @@ const DomainDetails = ({
     openDataProductDrawer();
   }, [openDataProductDrawer]);
 
-  const onNameSave = (obj: { name: string; displayName?: string }) => {
-    const { displayName } = obj;
+  const onNameSave = async (obj: { name: string; displayName?: string }) => {
+    const { name: newName, displayName } = obj;
     let updatedDetails = cloneDeep(domain);
 
     updatedDetails = {
       ...domain,
       displayName: displayName?.trim(),
+      name: newName?.trim(),
     };
 
-    onUpdate(updatedDetails);
-    setIsNameEditing(false);
+    try {
+      await onUpdate(updatedDetails);
+      setIsNameEditing(false);
+
+      // If name changed, navigate to the new URL
+      if (newName && newName.trim() !== domain.name) {
+        const newFqn = domain.parent
+          ? `${domain.parent.fullyQualifiedName}.${newName.trim()}`
+          : newName.trim();
+        navigate(getDomainDetailsPath(newFqn, activeTab));
+      }
+    } catch (error) {
+      setIsNameEditing(false);
+    }
   };
 
   const onStyleSave = async (data: Style) => {
@@ -829,22 +843,23 @@ const DomainDetails = ({
   const iconData = useMemo(() => {
     return (
       <EntityAvatar
+        className="entity-header-avatar"
         entity={{
           ...domain,
           entityType: 'domain',
           parent: isSubDomain ? { type: 'domain' } : undefined,
         }}
-        size={91}
+        size={isTreeView ? 60 : 91}
         sx={{
           borderRadius: '5px',
           border: '2px solid',
           borderColor: theme.palette.allShades.white,
-          marginTop: '-25px',
+          marginTop: isTreeView ? 0 : '-25px',
           marginRight: 2,
         }}
       />
     );
-  }, [domain, isSubDomain, theme]);
+  }, [domain, isSubDomain, theme, isTreeView]);
 
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);
@@ -868,16 +883,25 @@ const DomainDetails = ({
           flexDirection: 'column',
           gap: 1.5,
         }}>
-        <CoverImage
-          imageUrl={domain.style?.coverImage?.url}
-          position={{ y: domain.style?.coverImage?.position }}
-        />
-        <Box sx={{ display: 'flex', mx: 5, alignItems: 'flex-end' }}>
+        {!isTreeView && (
+          <CoverImage
+            imageUrl={domain.style?.coverImage?.url}
+            position={{ y: domain.style?.coverImage?.position }}
+          />
+        )}
+        <Box
+          className="entity-header"
+          sx={{
+            display: 'flex',
+            mx: 5,
+            alignItems: 'flex-end',
+          }}>
           <Box sx={{ flex: 1 }}>
             <EntityHeader
               breadcrumb={[]}
               entityData={{ ...domain, displayName, name }}
               entityType={EntityType.DOMAIN}
+              entityUrl={`${globalThis.location.origin}/domain/${urlEncodedFqn}`}
               handleFollowingClick={handleFollowingClick}
               icon={iconData}
               isFollowing={isFollowing}
@@ -888,6 +912,7 @@ const DomainDetails = ({
           </Box>
           <Box>
             <Box
+              className="domain-header-action-container"
               sx={{
                 display: 'flex',
                 gap: 3,
@@ -991,7 +1016,7 @@ const DomainDetails = ({
           type={EntityType.DOMAIN}
           onUpdate={onUpdate}>
           <Box className="domain-details-page-tabs" sx={{ width: '100%' }}>
-            <Box sx={{ padding: 5 }}>
+            <Box sx={{ px: isTreeView ? 0 : 5, py: 5 }}>
               <Tabs
                 destroyInactiveTabPane
                 activeKey={activeTab}
@@ -1044,9 +1069,10 @@ const DomainDetails = ({
         />
       )}
       <EntityNameModal<Domain>
+        allowRename
         entity={domain}
         title={t('label.edit-entity', {
-          entity: t('label.display-name'),
+          entity: t('label.name'),
         })}
         visible={isNameEditing}
         onCancel={() => setIsNameEditing(false)}
@@ -1074,7 +1100,14 @@ const DomainDetails = ({
   return (
     <>
       {breadcrumbs}
-      <Box sx={getDomainContainerStyles(theme)}>{content}</Box>
+      <Box
+        className={isTreeView ? 'domain-tree-view-variant' : ''}
+        sx={{
+          ...getDomainContainerStyles(theme),
+          ...(isTreeView && { border: 'none' }),
+        }}>
+        {content}
+      </Box>
     </>
   );
 };

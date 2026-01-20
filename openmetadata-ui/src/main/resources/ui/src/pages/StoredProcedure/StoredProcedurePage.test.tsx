@@ -12,7 +12,9 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { getStoredProceduresByFqn } from '../../rest/storedProceduresAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -78,9 +80,9 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
-  return jest.fn().mockImplementation(({ children }) => <p>{children}</p>);
-});
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children }) => <p>{children}</p>)
+);
 
 jest.mock(
   '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
@@ -121,8 +123,10 @@ jest.mock(
 );
 
 jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
   useParams: jest.fn().mockImplementation(() => ({ fqn: 'fqn', tab: 'code' })),
   useNavigate: jest.fn().mockImplementation(() => jest.fn()),
+  useLocation: jest.fn().mockImplementation(() => ({ pathname: 'mockPath' })),
 }));
 
 jest.mock('../../components/common/Loader/Loader', () => {
@@ -135,10 +139,6 @@ jest.mock('../../hoc/LimitWrapper', () => {
 
 jest.mock('../../components/Customization/GenericTab/GenericTab', () => ({
   GenericTab: jest.fn().mockImplementation(() => <p>GenericTab</p>),
-}));
-
-jest.mock('../../utils/TableColumn.util', () => ({
-  ownerTableObject: jest.fn().mockReturnValue([{}]),
 }));
 
 jest.mock(
@@ -163,7 +163,11 @@ jest.mock('../../hooks/useEntityRules', () => ({
 
 describe('StoredProcedure component', () => {
   it('StoredProcedurePage should fetch permissions', () => {
-    render(<StoredProcedurePage />);
+    render(
+      <MemoryRouter>
+        <StoredProcedurePage />
+      </MemoryRouter>
+    );
 
     expect(mockEntityPermissionByFqn).toHaveBeenCalledWith(
       'storedProcedure',
@@ -172,7 +176,11 @@ describe('StoredProcedure component', () => {
   });
 
   it('StoredProcedurePage should not fetch details if permission is there', () => {
-    render(<StoredProcedurePage />);
+    render(
+      <MemoryRouter>
+        <StoredProcedurePage />
+      </MemoryRouter>
+    );
 
     expect(getStoredProceduresByFqn).not.toHaveBeenCalled();
   });
@@ -185,7 +193,11 @@ describe('StoredProcedure component', () => {
     }));
 
     await act(async () => {
-      render(<StoredProcedurePage />);
+      render(
+        <MemoryRouter>
+          <StoredProcedurePage />
+        </MemoryRouter>
+      );
     });
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
@@ -204,7 +216,11 @@ describe('StoredProcedure component', () => {
     }));
 
     await act(async () => {
-      render(<StoredProcedurePage />);
+      render(
+        <MemoryRouter>
+          <StoredProcedurePage />
+        </MemoryRouter>
+      );
     });
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
@@ -221,7 +237,11 @@ describe('StoredProcedure component', () => {
     }));
 
     await act(async () => {
-      render(<StoredProcedurePage />);
+      render(
+        <MemoryRouter>
+          <StoredProcedurePage />
+        </MemoryRouter>
+      );
     });
 
     expect(await screen.findByText('testErrorPlaceHolder')).toBeInTheDocument();
@@ -235,7 +255,11 @@ describe('StoredProcedure component', () => {
     }));
 
     await act(async () => {
-      render(<StoredProcedurePage />);
+      render(
+        <MemoryRouter>
+          <StoredProcedurePage />
+        </MemoryRouter>
+      );
     });
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
@@ -262,7 +286,11 @@ describe('StoredProcedure component', () => {
     }));
 
     await act(async () => {
-      render(<StoredProcedurePage />);
+      render(
+        <MemoryRouter>
+          <StoredProcedurePage />
+        </MemoryRouter>
+      );
     });
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
@@ -272,5 +300,37 @@ describe('StoredProcedure component', () => {
 
     expect(await screen.findByText('GenericTab')).toBeInTheDocument();
     expect(GenericTab).toHaveBeenCalledWith({ type: 'StoredProcedure' }, {});
+  });
+
+  it('should pass entity name as pageTitle to PageLayoutV1', async () => {
+    const mockStoredProcedureData = {
+      name: 'test-stored-procedure',
+      id: '123',
+    };
+
+    (getStoredProceduresByFqn as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(mockStoredProcedureData)
+    );
+
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: true,
+      })),
+    }));
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <StoredProcedurePage />
+        </MemoryRouter>
+      );
+    });
+
+    expect(PageLayoutV1).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pageTitle: 'test-stored-procedure',
+      }),
+      expect.anything()
+    );
   });
 });

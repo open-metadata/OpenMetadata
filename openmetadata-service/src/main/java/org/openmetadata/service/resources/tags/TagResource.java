@@ -183,7 +183,6 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
               description = "Filter Disabled Classifications",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("disabled")
-          @DefaultValue("false")
           Boolean disabled,
       @Parameter(description = "Limit the number tags returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
@@ -207,10 +206,10 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    ListFilter filter =
-        new ListFilter(include)
-            .addQueryParam("parent", parent)
-            .addQueryParam("classification.disabled", disabled);
+    ListFilter filter = new ListFilter(include).addQueryParam("parent", parent);
+    if (disabled != null) {
+      filter.addQueryParam("classification.disabled", disabled);
+    }
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -246,8 +245,17 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
   }
 
   @GET
@@ -282,8 +290,17 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include, includeRelations);
   }
 
   @GET
@@ -765,5 +782,24 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
 
     return feedbackRepository.getPendingFeedback();
+  }
+
+  @GET
+  @Path("/assets/counts")
+  @Operation(
+      operationId = "getAllTagsWithAssetsCount",
+      summary = "Get all tags with their asset counts",
+      description =
+          "Get a map of tag fully qualified names to their asset counts using search aggregation.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Map of tag FQN to asset count",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response getAllTagsWithAssetsCount(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    java.util.Map<String, Integer> result = repository.getAllTagsWithAssetsCount();
+    return Response.ok(result).build();
   }
 }

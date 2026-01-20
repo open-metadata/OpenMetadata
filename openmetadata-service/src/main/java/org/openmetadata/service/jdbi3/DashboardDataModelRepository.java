@@ -48,6 +48,7 @@ import org.openmetadata.service.resources.datamodels.DashboardDataModelResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -68,9 +69,11 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
   @Override
   public void setFullyQualifiedName(DashboardDataModel dashboardDataModel) {
+    // Use getFullyQualifiedName() instead of getName() to properly handle service names with dots
+    // Service FQN is already properly quoted (e.g., "service.with.dots" for names containing dots)
+    String serviceFqn = dashboardDataModel.getService().getFullyQualifiedName();
     dashboardDataModel.setFullyQualifiedName(
-        FullyQualifiedName.add(
-            dashboardDataModel.getService().getName() + ".model", dashboardDataModel.getName()));
+        FullyQualifiedName.add(serviceFqn + ".model", dashboardDataModel.getName()));
     ColumnUtil.setColumnFQN(
         dashboardDataModel.getFullyQualifiedName(), dashboardDataModel.getColumns());
   }
@@ -165,7 +168,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
-  public void setFields(DashboardDataModel dashboardDataModel, Fields fields) {
+  public void setFields(
+      DashboardDataModel dashboardDataModel, Fields fields, RelationIncludes relationIncludes) {
     setDefaultFields(dashboardDataModel);
     populateEntityFieldTags(
         entityType,

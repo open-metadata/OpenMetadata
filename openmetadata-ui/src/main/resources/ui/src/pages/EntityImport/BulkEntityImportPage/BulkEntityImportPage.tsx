@@ -12,7 +12,7 @@
  */
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { capitalize, isEmpty } from 'lodash';
+import { capitalize, isEmpty, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DataGrid, { Column, ColumnOrColumnGroup } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
@@ -25,6 +25,7 @@ import { ImportStatus } from '../../../components/common/EntityImport/ImportStat
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { DataAssetsHeaderProps } from '../../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import { ProfilerTabPath } from '../../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import Stepper from '../../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import UploadFile from '../../../components/UploadFile/UploadFile';
@@ -32,10 +33,12 @@ import {
   ENTITY_IMPORT_STEPS,
   VALIDATION_STEP,
 } from '../../../constants/BulkImport.constant';
+import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { SOCKET_EVENTS } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { useGridEditController } from '../../../hooks/useGridEditController';
 import {
@@ -43,7 +46,10 @@ import {
   getEntityColumnsAndDataSourceFromCSV,
 } from '../../../utils/CSV/CSV.utils';
 import csvUtilsClassBase from '../../../utils/CSV/CSVUtilsClassBase';
-import { isBulkEditRoute } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
+import {
+  getBulkEntityNavigationPath,
+  isBulkEditRoute,
+} from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
   getBulkEntityBreadcrumbList,
   getImportedEntityType,
@@ -51,8 +57,14 @@ import {
   validateCsvString,
 } from '../../../utils/EntityImport/EntityImportUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import {
+  getDataQualityPagePath,
+  getEntityDetailsPath,
+  getTestSuitePath,
+} from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import { DataQualityPageTabs } from '../../DataQuality/DataQualityPage.interface';
 import './bulk-entity-import-page.less';
 import {
   CSVImportAsyncWebsocketResponse,
@@ -60,6 +72,7 @@ import {
 } from './BulkEntityImportPage.interface';
 
 const BulkEntityImportPage = () => {
+  const location = useLocation();
   const { socket } = useWebSocketConnector();
   const [activeAsyncImportJob, setActiveAsyncImportJob] =
     useState<CSVImportJobType>();
@@ -73,16 +86,34 @@ const BulkEntityImportPage = () => {
     entityType: undefined,
   });
 
+  const sourceEntityTypeFromURL = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const sourceType = params.get('sourceEntityType');
+
+    return sourceType === EntityType.TABLE ||
+      sourceType === EntityType.TEST_SUITE
+      ? sourceType
+      : undefined;
+  }, [location.search]);
+
   const [activeStep, setActiveStep] = useState<VALIDATION_STEP>(
     VALIDATION_STEP.UPLOAD
   );
   const activeStepRef = useRef<VALIDATION_STEP>(VALIDATION_STEP.UPLOAD);
-
-  const location = useLocation();
   const { t } = useTranslation();
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { fqn } = useFqn();
   const [isValidating, setIsValidating] = useState(false);
+  const { entityRules } = useEntityRules(entityType);
+
+  const translatedSteps = useMemo(
+    () =>
+      ENTITY_IMPORT_STEPS.map((step) => ({
+        ...step,
+        name: startCase(t(step.name)),
+      })),
+    [t]
+  );
   const [validationData, setValidationData] = useState<CSVImportResult>();
   const [columns, setColumns] = useState<Column<Record<string, string>[]>[]>(
     []
@@ -96,6 +127,11 @@ const BulkEntityImportPage = () => {
   }>();
 
   const [entity, setEntity] = useState<DataAssetsHeaderProps['dataAsset']>();
+  const [sourceEntityType, setSourceEntityType] = useState<EntityType>();
+
+  const effectiveSourceEntityType = useMemo(() => {
+    return sourceEntityType ?? sourceEntityTypeFromURL;
+  }, [sourceEntityType, sourceEntityTypeFromURL]);
 
   const filterColumns = useMemo(
     () =>
@@ -125,27 +161,113 @@ const BulkEntityImportPage = () => {
   >;
 
   const fetchEntityData = useCallback(async () => {
-    try {
-      const response = await entityUtilClassBase.getEntityByFqn(
-        entityType,
-        fqn
-      );
-      setEntity(response as DataAssetsHeaderProps['dataAsset']);
-    } catch {
-      // not show error here
+    if (fqn === WILD_CARD_CHAR) {
+      setEntity(undefined);
+      setSourceEntityType(undefined);
+
+      return;
     }
-  }, [entityType, fqn]);
+
+    if (entityType === EntityType.TEST_CASE) {
+      if (sourceEntityTypeFromURL) {
+        try {
+          const response = await entityUtilClassBase.getEntityByFqn(
+            sourceEntityTypeFromURL,
+            fqn
+          );
+          setEntity(response as DataAssetsHeaderProps['dataAsset']);
+          setSourceEntityType(sourceEntityTypeFromURL);
+        } catch (error) {
+          showErrorToast(
+            error as AxiosError,
+            t('message.entity-fetch-error', { entity: entityType })
+          );
+        }
+      }
+    } else {
+      try {
+        const response = await entityUtilClassBase.getEntityByFqn(
+          entityType,
+          fqn
+        );
+        setEntity(response as DataAssetsHeaderProps['dataAsset']);
+        setSourceEntityType(entityType);
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('message.entity-fetch-error', { entity: entityType })
+        );
+      }
+    }
+  }, [entityType, fqn, t, sourceEntityTypeFromURL]);
 
   const isBulkEdit = useMemo(
     () => isBulkEditRoute(location.pathname),
     [location]
   );
 
-  const breadcrumbList: TitleBreadcrumbProps['titleLinks'] = useMemo(
-    () =>
-      entity ? getBulkEntityBreadcrumbList(entityType, entity, isBulkEdit) : [],
-    [entityType, entity, isBulkEdit]
-  );
+  const breadcrumbList: TitleBreadcrumbProps['titleLinks'] = useMemo(() => {
+    if (fqn === WILD_CARD_CHAR) {
+      return [
+        {
+          name: t('label.data-quality'),
+          url: getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
+        },
+      ];
+    }
+
+    if (!entity) {
+      return [];
+    }
+
+    const breadcrumbEntityType = sourceEntityType ?? entityType;
+
+    if (
+      entityType === EntityType.TEST_CASE &&
+      breadcrumbEntityType === EntityType.TABLE
+    ) {
+      const baseBreadcrumb = getBulkEntityBreadcrumbList(
+        EntityType.TABLE,
+        entity,
+        isBulkEdit,
+        [
+          {
+            name: t('label.data-quality'),
+            url: getEntityDetailsPath(
+              EntityType.TABLE,
+              entity.fullyQualifiedName ?? '',
+              EntityTabs.PROFILER,
+              ProfilerTabPath.DATA_QUALITY
+            ),
+          },
+        ]
+      );
+
+      return baseBreadcrumb;
+    }
+
+    if (
+      entityType === EntityType.TEST_CASE &&
+      breadcrumbEntityType === EntityType.TEST_SUITE
+    ) {
+      return [
+        {
+          name: t('label.test-suite-plural'),
+          url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
+        },
+        {
+          name: entity.displayName ?? entity.name ?? '',
+          url: getTestSuitePath(entity.fullyQualifiedName ?? ''),
+        },
+      ];
+    }
+
+    return getBulkEntityBreadcrumbList(
+      breadcrumbEntityType,
+      entity,
+      isBulkEdit
+    );
+  }, [entityType, entity, isBulkEdit, fqn, sourceEntityType, t]);
 
   const importedEntityType = useMemo(
     () => getImportedEntityType(entityType),
@@ -172,14 +294,19 @@ const BulkEntityImportPage = () => {
       const { columns, dataSource } = getEntityColumnsAndDataSourceFromCSV(
         results.data as string[][],
         importedEntityType,
-        cellEditable
+        {
+          user: entityRules.canAddMultipleUserOwners,
+          team: entityRules.canAddMultipleTeamOwner,
+        },
+        cellEditable,
+        isBulkEdit
       );
       setDataSource(dataSource);
       setColumns(columns);
 
       handleActiveStepChange(VALIDATION_STEP.EDIT_VALIDATE);
     },
-    [setDataSource, setColumns, handleActiveStepChange]
+    [isBulkEdit, entityRules, setDataSource, setColumns, handleActiveStepChange]
   );
 
   const handleLoadData = useCallback(
@@ -271,7 +398,12 @@ const BulkEntityImportPage = () => {
                 getEntityColumnsAndDataSourceFromCSV(
                   results.data as string[][],
                   importedEntityType,
-                  false
+                  {
+                    user: entityRules.canAddMultipleUserOwners,
+                    team: entityRules.canAddMultipleTeamOwner,
+                  },
+                  false,
+                  isBulkEdit
                 )
               );
             },
@@ -285,7 +417,15 @@ const BulkEntityImportPage = () => {
               fqn,
             })
           );
-          navigate(entityUtilClassBase.getEntityLink(entityType, fqn));
+
+          navigate(
+            getBulkEntityNavigationPath(
+              entityType,
+              fqn,
+              effectiveSourceEntityType
+            )
+          );
+
           handleResetImportJob();
           setIsValidating(false);
         }
@@ -301,7 +441,12 @@ const BulkEntityImportPage = () => {
               getEntityColumnsAndDataSourceFromCSV(
                 results.data as string[][],
                 importedEntityType,
-                false
+                {
+                  user: entityRules.canAddMultipleUserOwners,
+                  team: entityRules.canAddMultipleTeamOwner,
+                },
+                false,
+                isBulkEdit
               )
             );
           },
@@ -314,9 +459,12 @@ const BulkEntityImportPage = () => {
       activeStepRef,
       entityType,
       fqn,
+      isBulkEdit,
+      entityRules,
       importedEntityType,
       handleResetImportJob,
       handleActiveStepChange,
+      effectiveSourceEntityType,
     ]
   );
 
@@ -503,6 +651,7 @@ const BulkEntityImportPage = () => {
             isValidating={isValidating}
             pushToUndoStack={pushToUndoStack}
             setGridContainer={setGridContainer}
+            sourceEntityType={effectiveSourceEntityType}
             validateCSVData={validateCSVData}
             validationData={validationData}
             onCSVReadComplete={onCSVReadComplete}
@@ -513,7 +662,7 @@ const BulkEntityImportPage = () => {
               <TitleBreadcrumb titleLinks={breadcrumbList} />
             </Col>
             <Col span={24}>
-              <Stepper activeStep={activeStep} steps={ENTITY_IMPORT_STEPS} />
+              <Stepper activeStep={activeStep} steps={translatedSteps} />
             </Col>
             <Col span={24}>
               {activeAsyncImportJob?.jobId && (
@@ -526,7 +675,7 @@ const BulkEntityImportPage = () => {
                     ''
                   }
                   type={
-                    !isEmpty(activeAsyncImportJob.error) ? 'error' : 'success'
+                    isEmpty(activeAsyncImportJob.error) ? 'success' : 'error'
                   }
                 />
               )}

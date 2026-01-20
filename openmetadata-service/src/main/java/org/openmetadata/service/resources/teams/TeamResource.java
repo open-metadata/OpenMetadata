@@ -287,8 +287,17 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
   }
 
   @GET
@@ -760,6 +769,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public CsvImportResult importCsv(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("name") String name,
       @Parameter(
@@ -771,7 +781,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           boolean dryRun,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun, false);
+    return importCsvInternal(uriInfo, securityContext, name, csv, dryRun, false);
   }
 
   @PUT
@@ -853,6 +863,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public Response importCsvAsync(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("name") String name,
       @Parameter(
@@ -863,6 +874,25 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("dryRun")
           boolean dryRun,
       String csv) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun, false);
+    return importCsvInternalAsync(uriInfo, securityContext, name, csv, dryRun, false);
+  }
+
+  @GET
+  @Path("/assets/counts")
+  @Operation(
+      operationId = "getAllTeamsWithAssetsCount",
+      summary = "Get all teams with their asset counts",
+      description =
+          "Get a map of team fully qualified names to their asset counts using search aggregation.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Map of team FQN to asset count",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response getAllTeamsWithAssetsCount(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    java.util.Map<String, Integer> result = repository.getAllTeamsWithAssetsCount();
+    return Response.ok(result).build();
   }
 }

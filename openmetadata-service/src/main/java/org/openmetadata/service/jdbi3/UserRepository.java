@@ -90,10 +90,12 @@ import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.UserActivityTracker;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.UserUtil;
 
@@ -359,7 +361,7 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  public void setFields(User user, Fields fields) {
+  public void setFields(User user, Fields fields, RelationIncludes relationIncludes) {
     user.setTeams(fields.contains(TEAMS_FIELD) ? getTeams(user) : user.getTeams());
     user.setOwns(fields.contains("owns") ? getOwns(user) : user.getOwns());
     user.setFollows(fields.contains("follows") ? getFollows(user) : user.getFollows());
@@ -404,6 +406,13 @@ public class UserRepository extends EntityRepository<User> {
     Team team = daoCollection.teamDAO().findEntityByName(importingTeam);
     UserCsv userCsv = new UserCsv(team, user);
     return userCsv.importCsv(csv, dryRun);
+  }
+
+  @Override
+  public boolean supportsBulkImportVersioning() {
+    // User bulk imports don't version a parent entity - they import users TO a team
+    // The 'name' parameter in importFromCsv is the team name, not a user entity name
+    return false;
   }
 
   public boolean isTeamJoinable(String teamId) {
@@ -1167,6 +1176,8 @@ public class UserRepository extends EntityRepository<User> {
           "allowImpersonation", original.getAllowImpersonation(), updated.getAllowImpersonation());
       updatePersonaPreferences(original, updated);
       updateAuthenticationMechanism(original, updated);
+      // Invalidate policy cache for this user when roles/teams change
+      SubjectCache.invalidateUser(updated.getName());
     }
 
     private void updateRoles(User original, User updated) {

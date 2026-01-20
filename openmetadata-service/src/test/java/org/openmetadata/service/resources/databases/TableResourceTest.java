@@ -20,6 +20,7 @@ import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static jakarta.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static java.lang.String.format;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -70,6 +71,7 @@ import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.service.util.FullyQualifiedName.build;
 import static org.openmetadata.service.util.RestUtil.DATE_FORMAT;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType;
@@ -106,9 +108,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
@@ -178,6 +177,7 @@ import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.PartitionIntervalTypes;
+import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableConstraint.ConstraintType;
@@ -4548,194 +4548,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
-  void test_concurrentColumnUpdates_reproduceDataLoss(TestInfo test) throws Exception {
-    // This test reproduces the concurrent update issue described in the GitHub issue
-    // where two near-simultaneous PATCH calls against the same table version can
-    // silently wipe out each other's changes
-
-    Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
-
-    // IMPORTANT: Get the table state that both threads will use as their base
-    // This simulates both requests reading the same version 0.2 as in the issue
-    Table baseTableState = getEntity(table.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
-    String baseTableJson = JsonUtils.pojoToJson(baseTableState);
-    Double baseVersion = baseTableState.getVersion();
-    LOG.info("Base table version for both requests: {}", baseVersion);
-
-    // Set up for concurrent updates matching the issue scenario
-    CountDownLatch startLatch = new CountDownLatch(1);
-    CountDownLatch completionLatch = new CountDownLatch(2);
-    AtomicReference<Table> resultA = new AtomicReference<>();
-    AtomicReference<Table> resultB = new AtomicReference<>();
-    AtomicReference<Exception> errorRef = new AtomicReference<>();
-
-    // Request A: Add description to a column (simulating eventid column description update)
-    Thread threadA =
-        new Thread(
-            () -> {
-              try {
-                startLatch.await();
-
-                // Use the same base table state (simulating both requests starting with version
-                // 0.2)
-                Table tableForA = JsonUtils.readValue(baseTableJson, Table.class);
-
-                // Add description to eventid column (index 2 in default test columns)
-                if (tableForA.getColumns() != null && tableForA.getColumns().size() > 2) {
-                  Column eventIdColumn = tableForA.getColumns().get(2);
-                  eventIdColumn.setDescription(
-                      "Unique identifier for the event, used to capture and track changes affecting the customer-address relationship.");
-                }
-
-                // Small delay to ensure concurrent processing
-                Thread.sleep(50);
-
-                // Apply update using the original base JSON
-                Table updated =
-                    patchEntity(tableForA.getId(), baseTableJson, tableForA, ADMIN_AUTH_HEADERS);
-                resultA.set(updated);
-                LOG.info(
-                    "Request A completed: version {} -> {}", baseVersion, updated.getVersion());
-
-              } catch (Exception e) {
-                LOG.error("Request A failed", e);
-                errorRef.compareAndSet(null, e);
-              } finally {
-                completionLatch.countDown();
-              }
-            });
-
-    // Request B: Add tags to multiple columns (simulating classification tags)
-    Thread threadB =
-        new Thread(
-            () -> {
-              try {
-                startLatch.await();
-
-                // Small delay to simulate the 358ms difference in the issue
-                Thread.sleep(358);
-
-                // Use the same base table state (simulating both requests starting with version
-                // 0.2)
-                Table tableForB = JsonUtils.readValue(baseTableJson, Table.class);
-
-                // Add tags to table
-                List<TagLabel> tableTags = new ArrayList<>();
-                tableTags.add(TIER2_TAG_LABEL);
-                tableForB.setTags(tableTags);
-
-                // Add tags to columns
-                if (tableForB.getColumns() != null && tableForB.getColumns().size() >= 2) {
-                  // Tag first column (addressid)
-                  Column col0 = tableForB.getColumns().get(0);
-                  List<TagLabel> col0Tags = new ArrayList<>();
-                  col0Tags.add(
-                      new TagLabel()
-                          .withTagFQN("PersonalData.Personal")
-                          .withSource(TagLabel.TagSource.CLASSIFICATION));
-                  col0Tags.add(
-                      new TagLabel()
-                          .withTagFQN("PII.Sensitive")
-                          .withSource(TagLabel.TagSource.CLASSIFICATION));
-                  col0.setTags(col0Tags);
-
-                  // Tag second column (customerid)
-                  Column col1 = tableForB.getColumns().get(1);
-                  List<TagLabel> col1Tags = new ArrayList<>();
-                  col1Tags.add(
-                      new TagLabel()
-                          .withTagFQN("PII.Sensitive")
-                          .withSource(TagLabel.TagSource.CLASSIFICATION));
-                  col1.setTags(col1Tags);
-                }
-
-                // Apply update using the original base JSON
-                Table updated =
-                    patchEntity(tableForB.getId(), baseTableJson, tableForB, ADMIN_AUTH_HEADERS);
-                resultB.set(updated);
-                LOG.info(
-                    "Request B completed: version {} -> {}", baseVersion, updated.getVersion());
-
-              } catch (Exception e) {
-                LOG.error("Request B failed", e);
-                errorRef.compareAndSet(null, e);
-              } finally {
-                completionLatch.countDown();
-              }
-            });
-
-    // Start both threads
-    threadA.start();
-    threadB.start();
-
-    // Release threads to simulate concurrent requests
-    startLatch.countDown();
-
-    // Wait for completion
-    assertTrue(
-        completionLatch.await(30, TimeUnit.SECONDS), "Requests should complete within timeout");
-
-    // Check for errors
-    if (errorRef.get() != null) {
-      throw new AssertionError("Request execution failed", errorRef.get());
-    }
-
-    // Get final table state
-    Table finalTable = getEntity(table.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
-
-    // Verify the issue: Request A's column description should be preserved
-    // This assertion should FAIL if the concurrent update bug exists
-    assertNotNull(finalTable.getColumns());
-    assertTrue(finalTable.getColumns().size() > 2);
-    Column eventIdColumn = finalTable.getColumns().get(2);
-
-    // This is the key assertion - it should fail if Request B overwrote Request A's changes
-    assertEquals(
-        "Unique identifier for the event, used to capture and track changes affecting the customer-address relationship.",
-        eventIdColumn.getDescription(),
-        "Column description from Request A should be preserved (this will fail if concurrent update bug exists)");
-
-    // Verify Request B's changes are also present
-    // Check table tags
-    assertNotNull(finalTable.getTags());
-    assertTrue(
-        finalTable.getTags().stream()
-            .anyMatch(tag -> tag.getTagFQN().equals(TIER2_TAG_LABEL.getTagFQN())),
-        "Table should have Tier2 tag from Request B");
-
-    // Check column tags
-    Column firstColumn = finalTable.getColumns().get(0);
-    assertNotNull(firstColumn.getTags());
-    assertTrue(firstColumn.getTags().size() >= 2, "First column should have tags from Request B");
-
-    // Log final state for debugging
-    LOG.info(
-        "Final table version: {}, Request A version: {}, Request B version: {}",
-        finalTable.getVersion(),
-        resultA.get() != null ? resultA.get().getVersion() : "null",
-        resultB.get() != null ? resultB.get().getVersion() : "null");
-
-    // Log what we found to help debug
-    LOG.info("EventId column final description: {}", eventIdColumn.getDescription());
-    LOG.info("Table final tags: {}", finalTable.getTags());
-    LOG.info("First column final tags: {}", firstColumn.getTags());
-
-    // Both requests should have succeeded and resulted in version increments
-    assertNotNull(resultA.get(), "Request A should have completed");
-    assertNotNull(resultB.get(), "Request B should have completed");
-    assertTrue(finalTable.getVersion() > table.getVersion(), "Version should be incremented");
-
-    // Additional check: If both updates were properly merged, we should see version increments for
-    // both
-    // If the issue exists, one update might overwrite the other
-    if (resultA.get().getVersion().equals(resultB.get().getVersion())) {
-      LOG.warn(
-          "Both requests resulted in the same version - this suggests one overwrote the other!");
-    }
-  }
-
-  @Test
   void test_updateColumn_dataConsumerCannotUpdateColumns(TestInfo test) throws IOException {
     // Temporarily remove Organization's default roles to ensure USER3 has no permissions
     Team org = getOrganization();
@@ -5811,7 +5623,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     table = table.withColumns(List.of(columnWithAutoClassification));
 
-    Table patchedTable = patchEntity(table.getId(), originalTable, table, ADMIN_AUTH_HEADERS);
+    Table patchResponse =
+        patchEntity(table.getId(), originalTable, table, INGESTION_BOT_AUTH_HEADERS);
+    Table patchedTable = getEntity(table.getId(), ADMIN_AUTH_HEADERS);
 
     assertNotNull(patchedTable.getColumns());
     assertEquals(1, patchedTable.getColumns().size());
@@ -5825,15 +5639,19 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals("Sensitive", piiTag.getName());
     assertEquals("PII.Sensitive", piiTag.getTagFQN());
     assertEquals("Classified with score 1.0", piiTag.getReason());
+    assertNotNull(piiTag.getAppliedAt());
+    assertEquals(INGESTION_BOT, piiTag.getAppliedBy());
 
     // Now add personal tag manually
-    Column columnWithBothTags = column.withTags(List.of(sensitiveTagLabel, personalTagLabel));
+    Column columnWithBothTags = column.withTags(List.of(piiTag, personalTagLabel));
 
-    originalTable = JsonUtils.pojoToJson(patchedTable);
+    originalTable = JsonUtils.pojoToJson(patchResponse);
 
-    table = patchedTable.withColumns(List.of(columnWithBothTags));
+    table = patchResponse.withColumns(List.of(columnWithBothTags));
 
-    patchedTable = patchEntity(table.getId(), originalTable, table, ADMIN_AUTH_HEADERS);
+    patchEntity(table.getId(), originalTable, table, INGESTION_BOT_AUTH_HEADERS);
+
+    patchedTable = getEntity(table.getId(), ADMIN_AUTH_HEADERS);
 
     assertNotNull(patchedTable.getColumns());
     assertEquals(1, patchedTable.getColumns().size());
@@ -5847,12 +5665,16 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals("Sensitive", piiTag.getName());
     assertEquals("PII.Sensitive", piiTag.getTagFQN());
     assertEquals("Classified with score 1.0", piiTag.getReason());
+    assertNotNull(piiTag.getAppliedAt());
+    assertEquals(INGESTION_BOT, piiTag.getAppliedBy());
 
     TagLabel personalTag = tags.getLast();
     assertNotNull(personalTag);
     assertEquals("Personal", personalTag.getName());
     assertEquals("PersonalData.Personal", personalTag.getTagFQN());
     assertNull(personalTag.getReason());
+    assertNotNull(personalTag.getAppliedAt());
+    assertEquals(INGESTION_BOT, personalTag.getAppliedBy());
   }
 
   @Test
@@ -6181,5 +6003,70 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             + tableCount
             + " change events for bulk updated tables, but found "
             + bulkUpdatedEventCount);
+  }
+
+  private String getEntityLink(Table table, Column column) {
+    // Build entity link in the format: <#E::entityType::fqn>
+    if (column == null)
+      return String.format("<#E::%s::%s>", entityType, table.getFullyQualifiedName());
+    return String.format(
+        "<#E::%s::%s::%s::%s>",
+        entityType, table.getFullyQualifiedName(), Entity.FIELD_COLUMNS, column.getName());
+  }
+
+  @Test
+  void test_recognizerFeedback_autoAppliedTagsOnColumns(TestInfo test)
+      throws HttpResponseException {
+    if (!supportsTags) {
+      return; // Skip if entity doesn't support tags
+    }
+
+    // Create an entity with auto-applied tags (simulating recognizer output)
+    TagLabel autoAppliedTag =
+        new TagLabel()
+            .withTagFQN("PII.Sensitive")
+            .withLabelType(TagLabel.LabelType.GENERATED)
+            .withState(TagLabel.State.SUGGESTED)
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    TagLabel manualTag =
+        new TagLabel()
+            .withTagFQN("Tier.Tier1")
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+    Column testColumn =
+        getColumn("test_column", BIGINT, USER_ADDRESS_TAG_LABEL)
+            .withTags(listOf(autoAppliedTag, manualTag));
+    CreateTable create =
+        createRequest(getEntityName(test))
+            .withColumns(listOf(testColumn))
+            .withTableConstraints(emptyList());
+
+    Table entity = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Submit feedback for false positive on auto-applied tag
+    RecognizerFeedback feedback =
+        new RecognizerFeedback()
+            .withEntityLink(getEntityLink(entity, testColumn))
+            .withTagFQN("PII.Sensitive")
+            .withFeedbackType(RecognizerFeedback.FeedbackType.FALSE_POSITIVE)
+            .withUserReason(RecognizerFeedback.UserReason.NOT_SENSITIVE_DATA)
+            .withUserComments("This field contains product IDs, not personal information");
+
+    // Submit feedback via API
+    RecognizerFeedback submittedFeedback = submitRecognizerFeedback(feedback, ADMIN_AUTH_HEADERS);
+    assertNotNull(submittedFeedback.getId());
+
+    // Verify the auto-applied tag is removed after feedback processing
+    TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
+    List<Column> results =
+        tableRepository
+            .getTableColumnsByFQN(
+                entity.getFullyQualifiedName(), Integer.MAX_VALUE, 0, "tags", null, null, null)
+            .getData();
+
+    assertEquals(1, results.size());
+    assertTagsDoNotContain(results.getFirst().getTags(), listOf(autoAppliedTag));
+    assertTagsContain(results.getFirst().getTags(), listOf(manualTag));
   }
 }

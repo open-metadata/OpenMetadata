@@ -22,6 +22,7 @@ import { useEditableSection } from '../../../hooks/useEditableSection';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import { EditIconButton } from '../IconButtons/EditIconButton';
+import Loader from '../Loader/Loader';
 import TierCard from '../TierCard/TierCard';
 import { TierSectionProps } from './TierSection.interface';
 import './TierSection.less';
@@ -90,7 +91,14 @@ const TierSection: React.FC<TierSectionProps> = ({
         t,
       });
 
-      if (!result.success) {
+      if (result.success && result.data === tags) {
+        const newTier = result.data.find((tag) =>
+          tag.tagFQN.startsWith('Tier.')
+        );
+        setDisplayTier(newTier);
+        onTierUpdate?.(newTier);
+        completeEditing();
+      } else if (!result.success) {
         setIsLoading(false);
       }
     },
@@ -117,9 +125,7 @@ const TierSection: React.FC<TierSectionProps> = ({
   const loadingState = useMemo(
     () => (
       <div className="tier-loading-container">
-        <div className="tier-loading-spinner">
-          <div className="loading-spinner" />
-        </div>
+        <Loader size="small" />
       </div>
     ),
     []
@@ -193,8 +199,7 @@ const TierSection: React.FC<TierSectionProps> = ({
     return tierDisplay;
   }, [isLoading, isEditing, loadingState, editingState, tierDisplay]);
 
-  const canShowEditButton =
-    showEditButton && hasPermission && !isEditing && !isLoading;
+  const canShowEditButton = showEditButton && hasPermission && !isLoading;
 
   return (
     <div className="tier-section">

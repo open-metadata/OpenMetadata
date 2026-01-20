@@ -102,7 +102,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const { setFilters, filters } = useTableFilters(INITIAL_TABLE_FILTERS);
   const { tab: activeTab = EntityTabs.TABLE } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedDatabaseSchemaFQN } = useFqn();
+  const { entityFqn: decodedDatabaseSchemaFQN } = useFqn({
+    type: EntityType.DATABASE_SCHEMA,
+  });
   const navigate = useNavigate();
 
   const [isPermissionsLoading, setIsPermissionsLoading] = useState(true);
@@ -643,10 +645,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: getEntityName(databaseSchema),
-      })}>
+    <PageLayoutV1 pageTitle={getEntityName(databaseSchema)}>
       {isEmpty(databaseSchema) && !isSchemaDetailsLoading ? (
         <ErrorPlaceHolder className="m-0">
           {getEntityMissingError(

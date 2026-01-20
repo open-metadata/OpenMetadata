@@ -291,7 +291,9 @@ class QuicksightSource(DashboardServiceSource):
                     if db_service_entity
                     else Dialect.ANSI
                 ),
+                parser_type=self.get_query_parser_type(),
             )
+            query_hash = lineage_parser.query_hash
             lineage_details = LineageDetails(
                 source=LineageSource.DashboardLineage, sqlQuery=sql_query
             )
@@ -302,7 +304,7 @@ class QuicksightSource(DashboardServiceSource):
                     and prefix_database_name.lower() != str(db_name).lower()
                 ):
                     logger.debug(
-                        f"Database {db_name} does not match prefix {prefix_database_name}"
+                        f"[{query_hash}] Database {db_name} does not match prefix {prefix_database_name}"
                     )
                     continue
                 for table in lineage_parser.source_tables:
@@ -317,7 +319,7 @@ class QuicksightSource(DashboardServiceSource):
                         and prefix_schema_name.lower() != database_schema_name.lower()
                     ):
                         logger.debug(
-                            f"Schema {database_schema_name} does not match prefix {prefix_schema_name}"
+                            f"[{query_hash}] Schema {database_schema_name} does not match prefix {prefix_schema_name}"
                         )
                         continue
 
@@ -327,7 +329,7 @@ class QuicksightSource(DashboardServiceSource):
                         and prefix_table_name.lower() != table.lower()
                     ):
                         logger.debug(
-                            f"Table {table} does not match prefix {prefix_table_name}"
+                            f"[{query_hash}] Table {table} does not match prefix {prefix_table_name}"
                         )
                         continue
 

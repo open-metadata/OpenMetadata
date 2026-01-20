@@ -14,6 +14,7 @@
 import { AxiosError } from 'axios';
 import parse from 'html-react-parser';
 import { get, isString } from 'lodash';
+import i18n from './i18next/LocalUtil';
 
 export const stringToSlug = (dataString: string, slugString = '') => {
   return dataString.toLowerCase().replace(/ /g, slugString);
@@ -46,19 +47,19 @@ export const stringToDOMElement = function (strHTML: string): HTMLElement {
 export const ordinalize = (num: number): string => {
   const mod10 = num % 10;
   const mod100 = num % 100;
-  let ordinalSuffix: string;
+  let ordinalSuffixKey: string;
 
   if (mod10 === 1 && mod100 !== 11) {
-    ordinalSuffix = 'st';
+    ordinalSuffixKey = 'ordinal-suffix-st';
   } else if (mod10 === 2 && mod100 !== 12) {
-    ordinalSuffix = 'nd';
+    ordinalSuffixKey = 'ordinal-suffix-nd';
   } else if (mod10 === 3 && mod100 !== 13) {
-    ordinalSuffix = 'rd';
+    ordinalSuffixKey = 'ordinal-suffix-rd';
   } else {
-    ordinalSuffix = 'th';
+    ordinalSuffixKey = 'ordinal-suffix-th';
   }
 
-  return num + ordinalSuffix;
+  return num + i18n.t(`label.${ordinalSuffixKey}`);
 };
 
 export const getJSONFromString = (data: string): string | null => {

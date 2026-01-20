@@ -53,6 +53,11 @@ base.beforeAll(async ({ browser }) => {
 });
 
 test.describe('Profiler Configuration Page', () => {
+  /**
+   * Admin user profiler configuration
+   * @description Validates form validation, profiler config creation, updates, and removal for admin users.
+   * Verifies metric selection, data type filtering, and API interactions.
+   */
   test('Admin user', async ({ adminPage }) => {
     const profilerConfigurationRes = adminPage.waitForResponse(
       '/api/v1/system/settings/profilerConfiguration'
@@ -62,6 +67,10 @@ test.describe('Profiler Configuration Page', () => {
     await adminPage.click('[data-testid="preferences.profiler-configuration"]');
     await profilerConfigurationRes;
 
+    /**
+     * Step: Validation
+     * @description Verifies form validation for required Data Type field.
+     */
     await test.step('Verify validation', async () => {
       await adminPage.click('[data-testid="save-button"]');
       await adminPage.waitForSelector('#metricConfiguration_0_dataType_help');
@@ -74,12 +83,18 @@ test.describe('Profiler Configuration Page', () => {
       await adminPage.waitForURL('**/settings/preferences');
     });
 
+    /**
+     * Step: Add configurations
+     * @description Adds multiple metric configurations with different data types and metrics.
+     * Validates disabled state for previously selected data types.
+     */
     await test.step('Update profiler configuration', async () => {
       await adminPage.click(
         '[data-testid="preferences.profiler-configuration"]'
       );
       await profilerConfigurationRes;
       await adminPage.click('#metricConfiguration_0_dataType');
+      await adminPage.fill('#metricConfiguration_0_dataType', 'AGG_STATE');
       await adminPage.click(`[title="AGG_STATE"]`);
       await adminPage.click('#metricConfiguration_0_metrics');
       await adminPage.fill('#metricConfiguration_0_metrics', 'All');
@@ -93,6 +108,10 @@ test.describe('Profiler Configuration Page', () => {
         adminPage.locator(`[title="AGG_STATE"]:has(:visible)`)
       ).toHaveClass(/ant-select-item-option-disabled/);
 
+      await adminPage.fill(
+        '#metricConfiguration_1_dataType',
+        'AGGREGATEFUNCTION'
+      );
       await adminPage.click(`[title="AGGREGATEFUNCTION"]:has(:visible)`);
 
       await adminPage.click('#metricConfiguration_1_metrics');
@@ -133,6 +152,10 @@ test.describe('Profiler Configuration Page', () => {
       );
     });
 
+    /**
+     * Step: Remove configurations
+     * @description Deletes all metric configurations and verifies empty state.
+     */
     await test.step('Remove Configuration', async () => {
       await adminPage.click('[data-testid="remove-filter-2"]');
       await adminPage.click('[data-testid="remove-filter-1"]');
@@ -150,6 +173,10 @@ test.describe('Profiler Configuration Page', () => {
     });
   });
 
+  /**
+   * Non-admin user access restriction
+   * @description Verifies that non-admin users cannot access profiler configuration preferences.
+   */
   test('Non admin user', async ({ userPage }) => {
     await redirectToHomePage(userPage);
     await sidebarClick(userPage, SidebarItem.SETTINGS);

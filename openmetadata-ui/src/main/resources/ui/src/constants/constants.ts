@@ -51,9 +51,12 @@ export const TABLE_CARD_PAGE_SIZE = 9;
 export const PAGE_SIZE_BASE = 15;
 export const PAGE_SIZE_MEDIUM = 25;
 export const PAGE_SIZE_LARGE = 50;
+export const PAGE_SIZE_EXTRA_LARGE = 100;
+export const AGGREGATE_PAGE_SIZE_LARGE = 1000;
 export const ES_MAX_PAGE_SIZE = 10000;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
+export const LINEAGE_CHILD_ITEMS_PER_PAGE = 5;
 export const TAG_LIST_SIZE = 3;
 export const ADD_USER_CONTAINER_HEIGHT = 250;
 export const MAX_NAME_LENGTH = 256;
@@ -66,6 +69,13 @@ export const TEST_CASE_FEED_GRAPH_HEIGHT = 250;
 export const ONE_MINUTE_IN_MILLISECOND = 60000;
 export const TWO_MINUTE_IN_MILLISECOND = 120000;
 export const ONE_HOUR_MS = 3600000; // 1 hour in milliseconds
+export const SCROLL_TRIGGER_THRESHOLD = 200;
+export const INITIAL_PAGING_STATE = {
+  offset: 0,
+  limit: PAGE_SIZE_BASE,
+  total: 0,
+};
+
 export const LAST_VERSION_FETCH_TIME_KEY = 'versionFetchTime';
 export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData`;
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData`;
@@ -129,7 +139,6 @@ export const CHART_WIDGET_DAYS_DURATION = 14;
 export const ROUTES = {
   HOME: '/',
   CALLBACK: '/callback',
-  SAML_CALLBACK: '/saml/callback',
   SILENT_CALLBACK: '/silent-callback',
   NOT_FOUND: '/404',
   FORBIDDEN: '/403',
@@ -184,7 +193,6 @@ export const ROUTES = {
   ENTITY_DETAILS: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
   ENTITY_DETAILS_WITH_TAB: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ENTITY_DETAILS_WITH_SUB_TAB: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
-
   ENTITY_VERSION_DETAILS: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   ENTITY_VERSION_DETAILS_WITH_TAB: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}/${PLACEHOLDER_ROUTE_TAB}`,
 
@@ -249,6 +257,7 @@ export const ROUTES = {
   ADD_POLICY: '/settings/access/policies/add-policy',
   ADD_POLICY_RULE: `/settings/access/policies/${PLACEHOLDER_ROUTE_FQN}/add-rule`,
   EDIT_POLICY_RULE: `/settings/access/policies/${PLACEHOLDER_ROUTE_FQN}/edit-rule/${PLACEHOLDER_RULE_NAME}`,
+  AUDIT_LOGS: '/settings/access/audit-logs',
 
   // test suites
   TEST_SUITES_WITH_FQN: `/test-suites/${PLACEHOLDER_ROUTE_FQN}`,
@@ -294,6 +303,7 @@ export const ROUTES = {
   OBSERVABILITY_ALERT_DETAILS_WITH_TAB: `/observability/alert/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ADD_OBSERVABILITY_ALERTS: '/observability/alerts/add',
   EDIT_OBSERVABILITY_ALERTS: `/observability/alerts/edit/${PLACEHOLDER_ROUTE_FQN}`,
+  RULES_LIBRARY: '/rules-library',
 
   // Notification Alerts
   NOTIFICATIONS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}`,
@@ -368,6 +378,7 @@ export const ENTITY_PATH = {
   files: 'file',
   spreadsheets: 'spreadsheet',
   worksheets: 'worksheet',
+  dataProductsTab: 'dataProductsTab',
 };
 
 export const VALIDATION_MESSAGES = {

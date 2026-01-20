@@ -29,7 +29,7 @@ from typing import (
 )
 from urllib.parse import quote_plus
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from typing_extensions import Annotated
 
 from metadata.generated.schema.entity.data.container import Container
@@ -78,6 +78,22 @@ class HitsModel(BaseModel):
         ),
     ]
 
+    @field_validator("sort", mode="before")
+    def normalize_sort(cls, sort_value: list[str] | None):
+        """
+        Return sort as a list of strings, regardless of the actual type.
+        if sort_field is set to `_score`, sort is a list of the score and the sort value.
+
+        Input examples from ES:
+        - ["metric"]
+        - [1.234, "metric"]
+
+        """
+        if sort_value is None:
+            return None
+
+        return [str(v) for v in sort_value]
+
 
 class ESHits(BaseModel):
     """Elasticsearch hits model"""
@@ -109,7 +125,7 @@ class ESMixin(Generic[T]):
     # sort_field needs to be unique for the pagination to work, so we can use the FQN
     paginate_query = (
         "/search/query?q=&size={size}&deleted=false{filter}&index={index}{include_fields}"
-        "&sort_field=fullyQualifiedName{after}"
+        "&sort_field={sort_field}&sort_order={sort_order}{after}"
     )
 
     @functools.lru_cache(maxsize=512)
@@ -337,8 +353,30 @@ class ESMixin(Generic[T]):
         query_filter: Optional[str] = None,
         size: int = 100,
         include_fields: Optional[List[str]] = None,
+        sort_field: str = "fullyQualifiedName",
+        sort_order: str = "desc",
     ) -> Iterator[ESResponse]:
-        """Paginate through the ES results, ignoring individual errors"""
+        """
+        Paginate through the ES results, ignoring individual errors.
+
+        Args:
+            entity: The entity type to paginate
+            query_filter: Optional ES query filter in JSON format
+            size: Number of results per page (default: 100)
+            include_fields: Optional list of fields to include in ES response (optimization)
+            sort_field: Field to sort by (default: "fullyQualifiedName").
+                       Special field "_score" is supported for relevance sorting.
+            sort_order: Sort order, either "asc" or "desc" (default: "desc")
+
+        Yields:
+            ESResponse objects containing paginated results
+
+        Raises:
+            ValueError: If sort_order is not "asc" or "desc"
+        """
+        if sort_order not in ("asc", "desc"):
+            raise ValueError(f"sort_order must be 'asc' or 'desc', got '{sort_order}'")
+
         after: Optional[str] = None
         error_pages = 0
         query = functools.partial(
@@ -347,6 +385,8 @@ class ESMixin(Generic[T]):
             filter="&query_filter=" + quote_plus(query_filter) if query_filter else "",
             size=size,
             include_fields=self._get_include_fields_query(include_fields),
+            sort_field=sort_field,
+            sort_order=sort_order,
         )
         while True:
             query_string = query(
@@ -377,8 +417,28 @@ class ESMixin(Generic[T]):
         query_filter: Optional[str] = None,
         size: int = 100,
         fields: Optional[List[str]] = None,
+        sort_field: str = "fullyQualifiedName",
+        sort_order: str = "desc",
     ) -> Iterator[T]:
-        for response in self._paginate_es_internal(entity, query_filter, size):
+        """
+        Paginate through Elasticsearch results and fetch full entities from the API.
+
+        Args:
+            entity: The entity type to paginate
+            query_filter: Optional ES query filter in JSON format
+            size: Number of results per page (default: 100)
+            fields: Optional list of fields to fetch from the API for each entity
+            sort_field: Field to sort by (default: "fullyQualifiedName").
+                       Must be an indexed ES field. Special field "_score" is supported
+                       for relevance-based sorting.
+            sort_order: Sort order, either "asc" or "desc" (default: "desc")
+
+        Yields:
+            Full entity objects fetched from the OpenMetadata API
+        """
+        for response in self._paginate_es_internal(
+            entity, query_filter, size, sort_order=sort_order, sort_field=sort_field
+        ):
             yield from self._yield_hits_from_api(
                 response=response, entity=entity, fields=fields
             )
@@ -387,10 +447,19 @@ class ESMixin(Generic[T]):
         """Get the Elasticsearch response"""
         try:
             response = self.client.get(query_string)
+            if response is None:
+                logger.warning(
+                    f"Received null response from Elasticsearch for query: {query_string}"
+                )
+                return None
             return ESResponse.model_validate(response)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error while getting ES response: {exc}")
+            logger.error(
+                f"Elasticsearch query failed: {exc}. Query: {query_string}. "
+                "This may indicate issues with the Elasticsearch cluster, broken indexes, "
+                "or connectivity problems. Please check Elasticsearch cluster health and logs."
+            )
         return None
 
     def _yield_hits_from_api(

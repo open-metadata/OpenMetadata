@@ -1452,6 +1452,84 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
     assertTrue(hasTableNames, "Should find fallback table names with test prefix in DESC");
   }
 
+  @Test
+  void testSearchWithIncludeAggregationsParameter() throws IOException {
+    // Wait for indexing
+    TestUtils.simulateWork(2);
+
+    String query = "*";
+    String index = "table_search_index";
+
+    // Test search WITH aggregations (default behavior)
+    WebTarget targetWithAggs =
+        getResource("search/query")
+            .queryParam("q", query)
+            .queryParam("index", index)
+            .queryParam("from", 0)
+            .queryParam("size", 10)
+            .queryParam("include_aggregations", "true");
+
+    String resultWithAggs = TestUtils.get(targetWithAggs, String.class, ADMIN_AUTH_HEADERS);
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode responseWithAggs = mapper.readTree(resultWithAggs);
+
+    // Verify aggregations are present
+    assertTrue(
+        responseWithAggs.has("aggregations"),
+        "Response should contain aggregations when include_aggregations=true");
+    JsonNode aggregations = responseWithAggs.get("aggregations");
+    assertNotNull(aggregations, "Aggregations should not be null");
+    assertTrue(
+        aggregations.size() > 0, "Aggregations should contain at least one aggregation field");
+
+    // Test search WITHOUT aggregations
+    WebTarget targetWithoutAggs =
+        getResource("search/query")
+            .queryParam("q", query)
+            .queryParam("index", index)
+            .queryParam("from", 0)
+            .queryParam("size", 10)
+            .queryParam("include_aggregations", "false");
+
+    String resultWithoutAggs = TestUtils.get(targetWithoutAggs, String.class, ADMIN_AUTH_HEADERS);
+    JsonNode responseWithoutAggs = mapper.readTree(resultWithoutAggs);
+
+    // Verify aggregations are either absent or empty
+    if (responseWithoutAggs.has("aggregations")) {
+      JsonNode aggsWithout = responseWithoutAggs.get("aggregations");
+      assertEquals(
+          0, aggsWithout.size(), "Aggregations should be empty when include_aggregations=false");
+    }
+
+    // Verify both responses have hits
+    assertTrue(
+        responseWithAggs.has("hits") && responseWithAggs.get("hits").has("hits"),
+        "Response with aggregations should have hits");
+    assertTrue(
+        responseWithoutAggs.has("hits") && responseWithoutAggs.get("hits").has("hits"),
+        "Response without aggregations should have hits");
+
+    // Verify the same number of search results
+    int hitsWithAggs = responseWithAggs.get("hits").get("hits").size();
+    int hitsWithoutAggs = responseWithoutAggs.get("hits").get("hits").size();
+    assertEquals(
+        hitsWithAggs,
+        hitsWithoutAggs,
+        "Both responses should return the same number of search results");
+
+    // Verify response size is smaller without aggregations
+    int sizeWithAggs = resultWithAggs.length();
+    int sizeWithoutAggs = resultWithoutAggs.length();
+    assertTrue(
+        sizeWithoutAggs < sizeWithAggs,
+        "Response without aggregations should be smaller than response with aggregations");
+
+    LOG.info(
+        "Response size comparison: with aggregations={}KB, without aggregations={}KB",
+        sizeWithAggs / 1024,
+        sizeWithoutAggs / 1024);
+  }
+
   private void cleanupTestTables(List<Table> tables) {
     for (Table table : tables) {
       try {
@@ -1934,6 +2012,106 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
           assertEquals(0, totalHits, "Should have zero hits for non-existent query");
           LOG.info("Empty results test passed");
         });
+  }
+
+  @Test
+  void testGlossaryTermHierarchySearchRelevanceScoring() throws IOException {
+    GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
+    GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
+
+    try {
+      glossaryResourceTest.setup(null);
+      glossaryTermResourceTest.setup(null);
+    } catch (Exception e) {
+      LOG.warn("Some entities already exist - continuing with test execution");
+    }
+
+    String testPrefix = "hierarchy_relevance_test_" + System.currentTimeMillis();
+    List<Glossary> createdGlossaries = new ArrayList<>();
+    List<org.openmetadata.schema.entity.data.GlossaryTerm> createdTerms = new ArrayList<>();
+
+    try {
+      CreateGlossary createGlossary1 =
+          glossaryResourceTest.createRequest(testPrefix + "_glossary_low_score");
+      Glossary glossary1 = glossaryResourceTest.createEntity(createGlossary1, ADMIN_AUTH_HEADERS);
+      createdGlossaries.add(glossary1);
+
+      org.openmetadata.schema.api.data.CreateGlossaryTerm createTerm1 =
+          glossaryTermResourceTest
+              .createRequest(testPrefix + "_term_description_match")
+              .withGlossary(glossary1.getFullyQualifiedName())
+              .withDisplayName("Product Feature")
+              .withDescription("This term describes Venta metrics and related analytics");
+      org.openmetadata.schema.entity.data.GlossaryTerm term1 =
+          glossaryTermResourceTest.createEntity(createTerm1, ADMIN_AUTH_HEADERS);
+      createdTerms.add(term1);
+
+      CreateGlossary createGlossary2 =
+          glossaryResourceTest.createRequest(testPrefix + "_glossary_high_score");
+      Glossary glossary2 = glossaryResourceTest.createEntity(createGlossary2, ADMIN_AUTH_HEADERS);
+      createdGlossaries.add(glossary2);
+
+      org.openmetadata.schema.api.data.CreateGlossaryTerm createTerm2 =
+          glossaryTermResourceTest
+              .createRequest("Venta_Neta_" + testPrefix)
+              .withGlossary(glossary2.getFullyQualifiedName())
+              .withDisplayName("Venta Neta LW")
+              .withDescription("Last week net sales metric");
+      org.openmetadata.schema.entity.data.GlossaryTerm term2 =
+          glossaryTermResourceTest.createEntity(createTerm2, ADMIN_AUTH_HEADERS);
+      createdTerms.add(term2);
+
+      TestUtils.simulateWork(5);
+
+      String searchQuery = "Venta";
+
+      WebTarget target =
+          getResource("search/query")
+              .queryParam("q", searchQuery)
+              .queryParam("index", "glossary_term_search_index")
+              .queryParam("from", 0)
+              .queryParam("size", 25)
+              .queryParam("deleted", false)
+              .queryParam("track_total_hits", true)
+              .queryParam("getHierarchy", true);
+
+      String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+      assertNotNull(result);
+      assertFalse(result.isEmpty());
+
+      ObjectMapper mapper = new ObjectMapper();
+      JsonNode responseArray = mapper.readTree(result);
+      assertTrue(
+          responseArray.isArray(), "Response should be an array of glossaries with hierarchy");
+      assertTrue(responseArray.size() >= 2, "Should return at least 2 glossaries");
+
+      JsonNode firstGlossary = responseArray.get(0);
+      String firstGlossaryFqn = firstGlossary.get("fullyQualifiedName").asText();
+
+      assertEquals(
+          glossary2.getFullyQualifiedName(),
+          firstGlossaryFqn,
+          "Glossary with term having 'Venta' in name should appear first (higher relevance score)");
+
+      LOG.info(
+          "Hierarchy search relevance test passed - glossaries correctly sorted by highest-scoring child term");
+
+    } finally {
+      for (org.openmetadata.schema.entity.data.GlossaryTerm term : createdTerms) {
+        try {
+          glossaryTermResourceTest.deleteEntity(term.getId(), true, true, ADMIN_AUTH_HEADERS);
+        } catch (Exception e) {
+          LOG.warn("Failed to cleanup test glossary term {}: {}", term.getName(), e.getMessage());
+        }
+      }
+      for (Glossary glossary : createdGlossaries) {
+        try {
+          glossaryResourceTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+        } catch (Exception e) {
+          LOG.warn("Failed to cleanup test glossary {}: {}", glossary.getName(), e.getMessage());
+        }
+      }
+    }
   }
 
   private Response getEntityTypeCountsWithParams(

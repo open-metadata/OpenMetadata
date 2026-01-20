@@ -153,6 +153,7 @@ from metadata.generated.schema.type.entityLineage import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
+from metadata.generated.schema.type.pipelineObservability import PipelineObservability
 from metadata.generated.schema.type.schema import Topic as TopicSchema
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.models import Either
@@ -479,6 +480,18 @@ class SampleDataSource(
         self.pipeline_service = self.metadata.get_service_or_create(
             entity=PipelineService, config=WorkflowSource(**self.pipeline_service_json)
         )
+
+        # Load DBT Cloud service
+        self.dbtcloud_service_json = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/pipelines/dbtcloud_service.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.dbtcloud_service = self.metadata.get_service_or_create(
+            entity=PipelineService, config=WorkflowSource(**self.dbtcloud_service_json)
+        )
         self.lineage = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/lineage/lineage.json",
@@ -572,6 +585,13 @@ class SampleDataSource(
         self.pipeline_status = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/pipelines/pipelineStatus.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.table_pipeline_observability = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/pipelines/tablePipelineObservability.json",
                 "r",
                 encoding=UTF_8,
             )
@@ -821,6 +841,7 @@ class SampleDataSource(
         yield from self.ingest_teams()
         yield from self.ingest_users()
         yield from self.ingest_drives()
+
         yield from self.ingest_tables()
         self.ingest_tables_sample_data()
         yield from self.ingest_glue()
@@ -834,6 +855,7 @@ class SampleDataSource(
         yield from self.ingest_pipelines()
         yield from self.ingest_lineage()
         yield from self.ingest_pipeline_status()
+        yield from self.ingest_table_pipeline_observability()
         yield from self.ingest_mlmodels()
         yield from self.ingest_containers()
         yield from self.ingest_search_indexes()
@@ -1469,6 +1491,29 @@ class SampleDataSource(
                             table_entity.id.root,
                         )
 
+            # Patch certification if present in the sample data
+            if table.get("certification"):
+                try:
+                    from metadata.generated.schema.type.assetCertification import (
+                        AssetCertification,
+                    )
+
+                    destination = table_entity.model_copy(deep=True)
+                    destination.certification = AssetCertification.model_validate(
+                        table["certification"]
+                    )
+
+                    self.metadata.patch(
+                        entity=Table, source=table_entity, destination=destination
+                    )
+                    logger.debug(
+                        f"Patched certification for {table_entity.fullyQualifiedName.root}"
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        f"Failed to patch certification for {table.get('name')}: {exc}"
+                    )
+
     def ingest_stored_procedures(self) -> Iterable[Either[Entity]]:
         """Ingest Sample Stored Procedures"""
 
@@ -1787,13 +1832,22 @@ class SampleDataSource(
                 owners = self.metadata.get_reference_by_email(
                     email=pipeline.get("owners")
                 )
+
+            # Determine which service to use
+            service_name = pipeline.get("service")
+            service_fqn = (
+                self.dbtcloud_service.fullyQualifiedName
+                if service_name == "sample_dbtcloud"
+                else self.pipeline_service.fullyQualifiedName
+            )
+
             pipeline_ev = CreatePipelineRequest(
                 name=pipeline["name"],
                 displayName=pipeline["displayName"],
                 description=pipeline["description"],
                 sourceUrl=pipeline["sourceUrl"],
                 tasks=pipeline["tasks"],
-                service=self.pipeline_service.fullyQualifiedName,
+                service=service_fqn,
                 owners=owners,
                 scheduleInterval=pipeline.get("scheduleInterval"),
             )
@@ -1819,16 +1873,121 @@ class SampleDataSource(
             yield Either(right=lineage)
 
     def ingest_pipeline_status(self) -> Iterable[Either[OMetaPipelineStatus]]:
-        """Ingest sample pipeline status"""
-
+        """
+        Ingest sample pipeline status records with timestamps evenly distributed across 15 days.
+        Maintains original execution durations and ensures valid runtime calculations.
+        Generates executionId if not present in the sample data.
+        """
+        all_statuses = []
         for status_data in self.pipeline_status:
             pipeline_fqn = status_data["pipeline"]
             for status in status_data["pipelineStatus"]:
-                status["timestamp"] = time.time_ns() // 1_000_000
+                all_statuses.append(
+                    {
+                        "pipeline_fqn": pipeline_fqn,
+                        "status": status,
+                        "original_timestamp": status.get("timestamp", 0),
+                    }
+                )
+
+        all_statuses.sort(key=lambda x: x["original_timestamp"])
+
+        target_span_ms = 15 * 24 * 60 * 60 * 1000
+        current_time_ms = time.time_ns() // 1_000_000
+        target_start_time = current_time_ms - target_span_ms
+
+        total_records = len(all_statuses)
+        if total_records > 1:
+            interval = target_span_ms / (total_records - 1)
+        else:
+            interval = 0
+
+        for index, status_item in enumerate(all_statuses):
+            status = status_item["status"]
+            pipeline_fqn = status_item["pipeline_fqn"]
+            original_timestamp = status_item["original_timestamp"]
+            original_end_time = status.get("endTime")
+
+            new_timestamp = int(target_start_time + (index * interval))
+            status["timestamp"] = new_timestamp
+
+            if original_end_time is not None and original_timestamp > 0:
+                duration = original_end_time - original_timestamp
+                if duration > 0:
+                    status["endTime"] = new_timestamp + duration
+                else:
+                    status["endTime"] = new_timestamp + random.randint(600000, 16200000)
+            elif original_end_time is None and status.get("executionStatus") not in [
+                "Pending",
+                "Skipped",
+            ]:
+                status["endTime"] = new_timestamp + random.randint(600000, 16200000)
+
+            if not status.get("executionId"):
+                random_suffix = "".join(
+                    random.choices(string.ascii_lowercase + string.digits, k=6)
+                )
+                status["executionId"] = f"run_{index + 1:03d}_{random_suffix}"
+
+            yield Either(
+                right=OMetaPipelineStatus(
+                    pipeline_fqn=pipeline_fqn,
+                    pipeline_status=PipelineStatus(**status),
+                )
+            )
+
+    def ingest_table_pipeline_observability(self) -> Iterable[Either]:
+        """Ingest table pipeline observability data"""
+
+        for table_data in self.table_pipeline_observability.get("tables", []):
+            table_fqn = table_data["tableFqn"]
+
+            try:
+                table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+                if not table:
+                    continue
+
+                pipeline_observability_list = []
+                for obs_data in table_data.get("pipelineObservability", []):
+                    pipeline_fqn = obs_data.get("pipeline")
+                    if isinstance(pipeline_fqn, str):
+                        pipeline = self.metadata.get_by_name(
+                            entity=Pipeline, fqn=pipeline_fqn
+                        )
+                        if pipeline:
+                            pipeline_obs = PipelineObservability(
+                                pipeline=EntityReference(
+                                    id=(
+                                        pipeline.id.root
+                                        if hasattr(pipeline.id, "root")
+                                        else pipeline.id
+                                    ),
+                                    type="pipeline",
+                                    fullyQualifiedName=(
+                                        pipeline.fullyQualifiedName.root
+                                        if hasattr(pipeline.fullyQualifiedName, "root")
+                                        else str(pipeline.fullyQualifiedName)
+                                    ),
+                                ),
+                                scheduleInterval=obs_data.get("scheduleInterval"),
+                                startTime=obs_data.get("startTime"),
+                                endTime=obs_data.get("endTime"),
+                                lastRunTime=obs_data.get("lastRunTime"),
+                                lastRunStatus=obs_data.get("lastRunStatus"),
+                            )
+                            pipeline_observability_list.append(pipeline_obs)
+
+                if pipeline_observability_list:
+                    self.metadata.add_pipeline_observability(
+                        table.id, pipeline_observability_list
+                    )
+
+            except Exception as exc:
                 yield Either(
-                    right=OMetaPipelineStatus(
-                        pipeline_fqn=pipeline_fqn,
-                        pipeline_status=PipelineStatus(**status),
+                    left=StackTraceError(
+                        name=table_fqn,
+                        error=f"Failed to ingest pipeline observability: {exc}",
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -2082,24 +2241,16 @@ class SampleDataSource(
                 fqn=table_profile["fqn"],
             )
             for days, profile in enumerate(table_profile["profile"]):
-                table_profile = OMetaTableProfileSampleData(
-                    table=table,
-                    profile=CreateTableProfileRequest(
-                        tableProfile=TableProfile(
-                            columnCount=profile["columnCount"],
-                            rowCount=profile["rowCount"],
-                            createDateTime=profile.get("createDateTime"),
-                            sizeInByte=profile.get("sizeInByte"),
-                            customMetrics=profile.get("customMetrics"),
-                            timestamp=Timestamp(
-                                int(
-                                    (datetime.now() - timedelta(days=days)).timestamp()
-                                    * 1000
-                                )
-                            ),
-                        ),
-                        columnProfile=[
-                            ColumnProfile(
+                try:
+                    table_profile = OMetaTableProfileSampleData(
+                        table=table,
+                        profile=CreateTableProfileRequest(
+                            tableProfile=TableProfile(
+                                columnCount=profile["columnCount"],
+                                rowCount=profile["rowCount"],
+                                createDateTime=profile.get("createDateTime"),
+                                sizeInByte=profile.get("sizeInByte"),
+                                customMetrics=profile.get("customMetrics"),
                                 timestamp=Timestamp(
                                     int(
                                         (
@@ -2108,30 +2259,45 @@ class SampleDataSource(
                                         * 1000
                                     )
                                 ),
-                                **col_profile,
-                            )
-                            for col_profile in profile["columnProfile"]
-                        ],
-                        systemProfile=[
-                            SystemProfile(
-                                timestamp=Timestamp(
-                                    int(
-                                        (
-                                            datetime.now()
-                                            - timedelta(
-                                                days=days, hours=random.randint(0, 24)
-                                            )
-                                        ).timestamp()
-                                        * 1000
-                                    )
-                                ),
-                                **system_profile,
-                            )
-                            for system_profile in profile["systemProfile"]
-                        ],
-                    ),
-                )
-                yield Either(right=table_profile)
+                            ),
+                            columnProfile=[
+                                ColumnProfile(
+                                    timestamp=Timestamp(
+                                        int(
+                                            (
+                                                datetime.now() - timedelta(days=days)
+                                            ).timestamp()
+                                            * 1000
+                                        )
+                                    ),
+                                    **col_profile,
+                                )
+                                for col_profile in profile["columnProfile"]
+                            ],
+                            systemProfile=[
+                                SystemProfile(
+                                    timestamp=Timestamp(
+                                        int(
+                                            (
+                                                datetime.now()
+                                                - timedelta(
+                                                    days=days,
+                                                    hours=random.randint(0, 24),
+                                                )
+                                            ).timestamp()
+                                            * 1000
+                                        )
+                                    ),
+                                    **system_profile,
+                                )
+                                for system_profile in profile["systemProfile"]
+                            ],
+                        ),
+                    )
+                    yield Either(right=table_profile)
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(f"Error ingesting Profiles [{table_profile}]: {exc}")
 
     def ingest_test_suite(self) -> Iterable[Either[OMetaTestSuiteSample]]:
         """Iterate over all the testSuite and testCase and ingest them"""

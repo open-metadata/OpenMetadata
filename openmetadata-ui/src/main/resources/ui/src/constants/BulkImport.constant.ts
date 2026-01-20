@@ -10,10 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { startCase } from 'lodash';
 import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
-import i18n from '../utils/i18next/LocalUtil';
 
 export const SUPPORTED_BULK_IMPORT_EDIT_ENTITY = [
   ResourceEntity.TABLE,
@@ -21,6 +19,8 @@ export const SUPPORTED_BULK_IMPORT_EDIT_ENTITY = [
   ResourceEntity.DATABASE,
   ResourceEntity.DATABASE_SCHEMA,
   ResourceEntity.GLOSSARY_TERM,
+  ResourceEntity.GLOSSARY,
+  ResourceEntity.TEST_CASE,
 ];
 
 export enum VALIDATION_STEP {
@@ -31,38 +31,38 @@ export enum VALIDATION_STEP {
 
 export const ENTITY_IMPORT_STEPS = [
   {
-    name: startCase(i18n.t('label.upload-csv-uppercase-file')),
+    name: 'label.upload-csv-uppercase-file',
     step: VALIDATION_STEP.UPLOAD,
   },
   {
-    name: i18n.t('label.preview-and-edit'),
+    name: 'label.preview-and-edit',
     step: VALIDATION_STEP.EDIT_VALIDATE,
   },
   {
-    name: i18n.t('label.update'),
+    name: 'label.update',
     step: VALIDATION_STEP.UPDATE,
   },
 ];
 
 export const ENTITY_TYPE_OPTIONS = [
   {
-    label: i18n.t('label.database'),
+    label: 'label.database',
     value: EntityType.DATABASE,
   },
   {
-    label: i18n.t('label.database-schema'),
+    label: 'label.database-schema',
     value: EntityType.DATABASE_SCHEMA,
   },
   {
-    label: i18n.t('label.stored-procedure'),
+    label: 'label.stored-procedure',
     value: EntityType.STORED_PROCEDURE,
   },
   {
-    label: i18n.t('label.table'),
+    label: 'label.table',
     value: EntityType.TABLE,
   },
   {
-    label: i18n.t('label.column'),
+    label: 'label.column',
     value: 'column',
   },
 ];

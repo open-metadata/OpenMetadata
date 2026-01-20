@@ -66,6 +66,7 @@ import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.PipelineObservability;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
@@ -97,7 +98,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Collection(name = "tables")
 public class TableResource extends EntityResource<Table, TableRepository> {
   private final TableMapper mapper = new TableMapper();
-  public static final String COLLECTION_PATH = "v1/tables/";
+  public static final String COLLECTION_PATH = "/v1/tables/";
   public static final String FIELDS =
       "tableConstraints,tablePartition,usageSummary,owners,customMetrics,columns,sampleData,"
           + "tags,followers,joins,schemaDefinition,dataModel,extension,testSuite,domains,dataProducts,lifeCycle,sourceHash";
@@ -225,11 +226,17 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    ListFilter filter =
-        new ListFilter(include)
-            .addQueryParam("database", databaseParam)
-            .addQueryParam("databaseSchema", databaseSchemaParam)
-            .addQueryParam("includeEmptyTestSuite", includeEmptyTestSuite);
+    ListFilter filter = new ListFilter(include);
+    if (databaseParam != null) {
+      filter.addQueryParam("database", databaseParam);
+    }
+    if (databaseSchemaParam != null) {
+      filter.addQueryParam("databaseSchema", databaseSchemaParam);
+    }
+    // Only add includeEmptyTestSuite when it's explicitly false (default is true)
+    if (!includeEmptyTestSuite) {
+      filter.addQueryParam("includeEmptyTestSuite", false);
+    }
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -265,8 +272,17 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
   }
 
   @GET
@@ -303,8 +319,17 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include, includeRelations);
   }
 
   @GET
@@ -575,6 +600,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public CsvImportResult importCsv(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the table", schema = @Schema(type = "string"))
           @PathParam("name")
@@ -588,7 +614,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           boolean dryRun,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun, false);
+    return importCsvInternal(uriInfo, securityContext, name, csv, dryRun, false);
   }
 
   @PUT
@@ -608,6 +634,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public Response importCsvAsync(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the table", schema = @Schema(type = "string"))
           @PathParam("name")
@@ -620,7 +647,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @QueryParam("dryRun")
           boolean dryRun,
       String csv) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun, false);
+    return importCsvInternalAsync(uriInfo, securityContext, name, csv, dryRun, false);
   }
 
   @DELETE
@@ -874,6 +901,191 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Table table = repository.deleteSampleData(id);
+    return addHref(uriInfo, table);
+  }
+
+  @PUT
+  @Path("/{id}/pipelineObservability")
+  @Operation(
+      operationId = "addPipelineObservability",
+      summary = "Add pipeline observability data",
+      description = "Add pipeline observability data to the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully update the Table",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class)))
+      })
+  public Table addPipelineObservability(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @RequestBody(
+              description = "Pipeline observability data",
+              required = true,
+              content =
+                  @Content(
+                      mediaType = "application/json",
+                      schema =
+                          @Schema(type = "array", implementation = PipelineObservability.class)))
+          List<PipelineObservability> pipelineObservability) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    Table table = repository.addPipelineObservability(id, pipelineObservability);
+    return addHref(uriInfo, table);
+  }
+
+  @GET
+  @Path("/{id}/pipelineObservability")
+  @Operation(
+      operationId = "getPipelineObservability",
+      summary = "Get pipeline observability data",
+      description = "Get pipeline observability data for the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of pipeline observability data",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(type = "array", implementation = PipelineObservability.class)))
+      })
+  public List<PipelineObservability> getPipelineObservability(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    return repository.getPipelineObservability(id);
+  }
+
+  @GET
+  @Path("/name/{fqn}/pipelineObservability")
+  @Operation(
+      operationId = "getPipelineObservabilityByFQN",
+      summary = "Get pipeline observability data by table FQN",
+      description = "Get pipeline observability data for the table using fully qualified name.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of pipeline observability data",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(type = "array", implementation = PipelineObservability.class)))
+      })
+  public List<PipelineObservability> getPipelineObservabilityByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the table",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    return repository.getPipelineObservabilityByName(fqn);
+  }
+
+  @DELETE
+  @Path("/{id}/pipelineObservability")
+  @Operation(
+      operationId = "deletePipelineObservability",
+      summary = "Delete pipeline observability data",
+      description = "Delete pipeline observability data from the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully update the Table",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class)))
+      })
+  public Table deletePipelineObservability(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    Table table = repository.deletePipelineObservability(id);
+    return addHref(uriInfo, table);
+  }
+
+  @PUT
+  @Path("/{id}/pipelineObservability/{pipelineFqn}")
+  @Operation(
+      operationId = "addSinglePipelineObservability",
+      summary = "Add or update single pipeline observability data",
+      description =
+          "Add or update pipeline observability data for a specific pipeline on the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully update the Table",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class)))
+      })
+  public Table addSinglePipelineObservability(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Parameter(description = "Fully qualified name of the pipeline") @PathParam("pipelineFqn")
+          String pipelineFqn,
+      @RequestBody(
+              description = "Pipeline observability data",
+              required = true,
+              content =
+                  @Content(
+                      mediaType = "application/json",
+                      schema = @Schema(implementation = PipelineObservability.class)))
+          PipelineObservability pipelineObservability) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    Table table = repository.addSinglePipelineObservability(id, pipelineObservability);
+    return addHref(uriInfo, table);
+  }
+
+  @DELETE
+  @Path("/{id}/pipelineObservability/{pipelineFqn}")
+  @Operation(
+      operationId = "deleteSinglePipelineObservability",
+      summary = "Delete single pipeline observability data",
+      description = "Delete pipeline observability data for a specific pipeline from the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully update the Table",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class)))
+      })
+  public Table deleteSinglePipelineObservability(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Parameter(description = "Fully qualified name of the pipeline") @PathParam("pipelineFqn")
+          String pipelineFqn) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    Table table = repository.deleteSinglePipelineObservability(id, pipelineFqn);
     return addHref(uriInfo, table);
   }
 
