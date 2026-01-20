@@ -30,6 +30,8 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Integration tests for Audit Log Resource endpoints.
@@ -43,8 +45,85 @@ import org.openmetadata.sdk.network.RequestOptions;
 @Execution(ExecutionMode.CONCURRENT)
 public class AuditLogResourceIT {
 
+  private static final Logger LOG = LoggerFactory.getLogger(AuditLogResourceIT.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final String AUDIT_LOGS_PATH = "/v1/audit/logs";
+
+  /**
+   * Wait for the AuditLogConsumer to become active by creating a test entity and waiting for it to
+   * appear in the audit log. This handles timing issues where the server just started and the
+   * consumer hasn't processed any events yet.
+   */
+  @org.junit.jupiter.api.BeforeAll
+  static void waitForAuditLogConsumer() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create a test glossary to trigger an audit log entry
+    String warmupName = "AuditLogWarmup_" + java.util.UUID.randomUUID().toString().substring(0, 8);
+    String createJson =
+        String.format(
+            "{\"name\": \"%s\", \"displayName\": \"Warmup\", \"description\": \"Warmup for audit log consumer\"}",
+            warmupName);
+
+    String createResponse =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST, "/v1/glossaries", createJson, RequestOptions.builder().build());
+    java.util.Map<String, Object> glossary =
+        MAPPER.readValue(createResponse, new com.fasterxml.jackson.core.type.TypeReference<>() {});
+    String glossaryId = glossary.get("id").toString();
+
+    try {
+      // Wait up to 30 seconds for the audit log consumer to process the event
+      long startTime = System.currentTimeMillis();
+      long timeout = 30000;
+      boolean found = false;
+
+      while ((System.currentTimeMillis() - startTime) < timeout) {
+        java.util.Map<String, String> params = new java.util.HashMap<>();
+        params.put("limit", "1");
+        String response =
+            client
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.GET,
+                    AUDIT_LOGS_PATH + "?limit=1",
+                    null,
+                    RequestOptions.builder().build());
+        java.util.Map<String, Object> result =
+            MAPPER.readValue(response, new com.fasterxml.jackson.core.type.TypeReference<>() {});
+        java.util.Map<String, Object> paging = (java.util.Map<String, Object>) result.get("paging");
+        int total =
+            paging != null && paging.get("total") != null
+                ? ((Number) paging.get("total")).intValue()
+                : 0;
+
+        if (total > 0) {
+          found = true;
+          break;
+        }
+        Thread.sleep(1000);
+      }
+
+      if (!found) {
+        LOG.warn("AuditLogConsumer may not be active - no audit logs found after 30 seconds");
+      }
+    } finally {
+      // Clean up warmup glossary
+      try {
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.DELETE,
+                "/v1/glossaries/" + glossaryId + "?hardDelete=true",
+                null,
+                RequestOptions.builder().build());
+      } catch (Exception e) {
+        // Ignore cleanup errors
+      }
+    }
+  }
 
   @Test
   void test_listAuditLogs_asAdmin_returnsResults() throws Exception {
@@ -942,6 +1021,8 @@ public class AuditLogResourceIT {
   // ==================== Audit Log Event Verification Tests ====================
   // These tests verify that audit log entries are created with valid UUIDs for all event types.
   // They catch bugs where JDBI @BindBean doesn't properly convert UUID to String.
+  // NOTE: These tests require AuditLogConsumer to be enabled. They will be skipped in CI
+  // environments where the consumer is not running.
 
   private static final long AUDIT_LOG_TIMEOUT_MS = 60000;
   private static final long AUDIT_LOG_POLL_INTERVAL_MS = 1000;
