@@ -3053,7 +3053,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     if (supportsSoftDelete) {
       Map<String, String> queryParams = new HashMap<>();
       queryParams.put("include", "deleted");
-      queryParams.put("includeRelations", "followers:deleted");
+      queryParams.put("includeRelations", "followers:all");
       entity = getEntity(entityId, queryParams, FIELD_FOLLOWERS, ADMIN_AUTH_HEADERS);
       TestUtils.existsInEntityReferenceList(entity.getFollowers(), user1.getId(), true);
     }
