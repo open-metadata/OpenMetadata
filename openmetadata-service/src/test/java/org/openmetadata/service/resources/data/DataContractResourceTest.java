@@ -6788,9 +6788,13 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     deleteDataContract(dpContract.getId());
 
     // After deleting DP contract, table should have no effective contract
+    // Note: This is because the contract was never materialized (no validation was run).
+    // For the case where the contract IS materialized, see
+    // testInheritedContractMaterializationOnValidation
     DataContract effectiveAfterDelete = getEffectiveContractForTable(table);
     assertNull(
-        effectiveAfterDelete, "Table should have no effective contract after DP contract deleted");
+        effectiveAfterDelete,
+        "Table should have no effective contract after DP contract deleted (no materialization)");
   }
 
   @Test
@@ -6857,6 +6861,28 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertTrue(
         newEffectiveContract.getSemantics().get(0).getInherited(),
         "Semantic rule should still be inherited from DP");
+
+    // Now delete the DP contract and verify the materialized contract behavior
+    deleteDataContract(dpContract.getId());
+
+    // After deleting DP contract, the materialized contract should still exist
+    // but without inherited rules (since the source is gone)
+    DataContract contractAfterDpDelete = getEffectiveContractForTable(table);
+    assertNotNull(
+        contractAfterDpDelete,
+        "Materialized contract should still exist after DP contract deletion");
+
+    // The contract should no longer have inherited semantics (the source is deleted)
+    // It should either have empty semantics or null semantics
+    assertTrue(
+        contractAfterDpDelete.getSemantics() == null
+            || contractAfterDpDelete.getSemantics().isEmpty(),
+        "Contract should have no semantics after DP contract (source) is deleted");
+
+    // The materialized contract should still have its validation results
+    assertNotNull(
+        contractAfterDpDelete.getLatestResult(),
+        "Materialized contract should retain its validation results");
   }
 
   private void validateContractByEntityId(UUID entityId, String entityType)
