@@ -28,7 +28,6 @@ import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
@@ -52,10 +51,6 @@ public class DataInsightSystemChartResource
     extends EntityResource<DataInsightCustomChart, DataInsightSystemChartRepository> {
   public static final String COLLECTION_PATH = "/v1/analytics/dataInsights/system/charts";
   private static final Logger LOG = LoggerFactory.getLogger(DataInsightSystemChartResource.class);
-
-  public static class DataInsightCustomChartList extends ResultList<DataInsightCustomChart> {
-    /* Required for serde */
-  }
 
   public DataInsightSystemChartResource(Authorizer authorizer, Limits limit) {
     super(Entity.DATA_INSIGHT_CUSTOM_CHART, authorizer, limit);
