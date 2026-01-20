@@ -39,7 +39,8 @@
         "Wherescape",
         "SSIS",
         "Snowplow",
-        "Mulesoft"
+        "Mulesoft",
+        "MicrosoftFabricPipeline"
       ],
       "javaEnums": [
         {
@@ -110,6 +111,9 @@
         },
         {
           "name": "Mulesoft"
+        },
+        {
+          "name": "MicrosoftFabricPipeline"
         }
       ]
     },
@@ -192,6 +196,9 @@
             },
             {
               "$ref": "./connections/pipeline/mulesoftConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/microsoftFabricPipelineConnection.json"
             }
           ]
         }
@@ -280,19 +287,19 @@
       "type": "boolean",
       "default": false
     },
-    "dataProducts" : {
+    "dataProducts": {
       "description": "List of data products this entity is part of.",
-      "$ref" : "../../type/entityReferenceList.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "followers": {
       "description": "Followers of this entity.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "domains" : {
+    "domains": {
       "description": "Domains the Pipeline service belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "ingestionRunner" : {
+    "ingestionRunner": {
       "description": "The ingestion agent responsible for executing the ingestion pipeline.",
       "$ref": "../../type/entityReference.json"
     }

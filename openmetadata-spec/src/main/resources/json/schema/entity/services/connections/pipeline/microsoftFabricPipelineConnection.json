@@ -1,0 +1,68 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/microsoftFabricPipelineConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MicrosoftFabricPipelineConnection",
+  "description": "Microsoft Fabric Pipeline Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.MicrosoftFabricPipelineConnection",
+  "definitions": {
+    "MicrosoftFabricPipelineType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "MicrosoftFabricPipeline"
+      ],
+      "default": "MicrosoftFabricPipeline"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/MicrosoftFabricPipelineType",
+      "default": "MicrosoftFabricPipeline"
+    },
+    "tenantId": {
+      "title": "Tenant ID",
+      "description": "The Azure tenant (directory) ID where the application is registered.",
+      "type": "string"
+    },
+    "clientId": {
+      "title": "Client ID",
+      "description": "The Azure application (client) ID to use for authentication.",
+      "type": "string"
+    },
+    "clientSecret": {
+      "title": "Client Secret",
+      "description": "The Azure application client secret to use for authentication.",
+      "$ref": "../../../../security/credentials/encryptedString.json"
+    },
+    "workspaceId": {
+      "title": "Workspace ID",
+      "description": "The Microsoft Fabric workspace ID containing the pipelines.",
+      "type": "string"
+    },
+    "authorityUri": {
+      "title": "Authority URI",
+      "description": "The Azure Active Directory authority URI. Defaults to https://login.microsoftonline.com/",
+      "type": "string",
+      "default": "https://login.microsoftonline.com/"
+    },
+    "pipelineFilterPattern": {
+      "description": "Regex to exclude pipelines.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Pipeline Filter Pattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "tenantId",
+    "clientId",
+    "clientSecret",
+    "workspaceId"
+  ]
+}
