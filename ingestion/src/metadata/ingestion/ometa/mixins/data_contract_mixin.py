@@ -207,9 +207,7 @@ class OMetaDataContractMixin:
             )
         return None
 
-    def export_to_odcs(
-        self, data_contract_id: Uuid
-    ) -> Optional[ODCSDataContract]:
+    def export_to_odcs(self, data_contract_id: Uuid) -> Optional[ODCSDataContract]:
         """
         Export a data contract to ODCS (Open Data Contract Standard) format
 
@@ -232,9 +230,7 @@ class OMetaDataContractMixin:
             )
         return None
 
-    def export_to_odcs_by_fqn(
-        self, fqn: str
-    ) -> Optional[ODCSDataContract]:
+    def export_to_odcs_by_fqn(self, fqn: str) -> Optional[ODCSDataContract]:
         """
         Export a data contract to ODCS format by fully qualified name
 
@@ -245,21 +241,15 @@ class OMetaDataContractMixin:
             ODCSDataContract if successful, None otherwise
         """
         try:
-            resp = self.client.get(
-                f"{self.get_suffix(DataContract)}/name/{fqn}/odcs"
-            )
+            resp = self.client.get(f"{self.get_suffix(DataContract)}/name/{fqn}/odcs")
             if resp:
                 return ODCSDataContract(**resp)
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error exporting data contract {fqn} to ODCS: {err}"
-            )
+            logger.warning(f"Error exporting data contract {fqn} to ODCS: {err}")
         return None
 
-    def export_to_odcs_yaml(
-        self, data_contract_id: Uuid
-    ) -> Optional[str]:
+    def export_to_odcs_yaml(self, data_contract_id: Uuid) -> Optional[str]:
         """
         Export a data contract to ODCS YAML format
 
@@ -285,9 +275,7 @@ class OMetaDataContractMixin:
             )
         return None
 
-    def export_to_odcs_yaml_by_fqn(
-        self, fqn: str
-    ) -> Optional[str]:
+    def export_to_odcs_yaml_by_fqn(self, fqn: str) -> Optional[str]:
         """
         Export a data contract to ODCS YAML format by fully qualified name
 
@@ -308,9 +296,7 @@ class OMetaDataContractMixin:
                     return resp
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error exporting data contract {fqn} to ODCS YAML: {err}"
-            )
+            logger.warning(f"Error exporting data contract {fqn} to ODCS YAML: {err}")
         return None
 
     def import_from_odcs(

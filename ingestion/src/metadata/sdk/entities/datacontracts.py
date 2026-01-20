@@ -2,7 +2,7 @@
 DataContracts entity SDK with fluent API for ODCS import/export
 """
 from dataclasses import dataclass, field
-from typing import Any, Optional, Type, cast
+from typing import Any, Optional, Type
 
 from metadata.generated.schema.api.data.createDataContract import (
     CreateDataContractRequest,
@@ -51,7 +51,7 @@ class ODCSExportOperation:
         if rest_client is None:
             raise RuntimeError("OpenMetadata client does not expose a REST interface")
 
-        suffix = cast(str, self.client.get_suffix(DataContract))
+        suffix = self.client.get_suffix(DataContract)
         path_segment = f"name/{self.identifier}" if self.by_name else self.identifier
 
         if self.yaml_format:
@@ -131,7 +131,7 @@ class ODCSImportOperation:
         if rest_client is None:
             raise RuntimeError("OpenMetadata client does not expose a REST interface")
 
-        suffix = cast(str, self.client.get_suffix(DataContract))
+        suffix = self.client.get_suffix(DataContract)
         query_params = f"entityId={self.entity_id}&entityType={self.entity_type}"
         method = rest_client.put if self.smart_merge else rest_client.post
 
@@ -142,12 +142,14 @@ class ODCSImportOperation:
                 data=self.yaml_data,
                 headers={"Content-Type": "application/x-yaml"},
             )
-        else:
+        elif self.odcs_data is not None:
             endpoint = f"{suffix}/odcs?{query_params}"
             resp = method(
                 endpoint,
                 data=self.odcs_data.model_dump_json(by_alias=True, exclude_none=True),
             )
+        else:
+            raise ValueError("Must call from_odcs() or from_yaml() before execute()")
 
         if resp:
             return DataContract(**resp)
