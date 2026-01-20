@@ -143,6 +143,68 @@ export const getColumnConfig = (
   } as Column<any>;
 };
 
+const normalizeCSVValue = (value: string, colName?: string): string => {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  let normalized = value.trim();
+  const isSpecialColumn =
+    colName &&
+    (csvUtilsClassBase
+      .columnsWithMultipleValuesEscapeNeeded()
+      .includes(colName) ||
+      colName === 'tags' ||
+      colName === 'domains' ||
+      colName.endsWith('.tags') ||
+      colName.endsWith('.domains'));
+  const isDomainsColumn =
+    colName === 'domains' || colName?.endsWith('.domains');
+
+  let previousLength = normalized.length + 1;
+
+  while (
+    normalized.length >= 2 &&
+    normalized.startsWith('"') &&
+    normalized.endsWith('"') &&
+    normalized.length < previousLength
+  ) {
+    previousLength = normalized.length;
+
+    if (
+      normalized.startsWith('"""') &&
+      normalized.endsWith('"""') &&
+      normalized.length > 6
+    ) {
+      normalized = normalized.slice(3, -3);
+
+      continue;
+    }
+
+    const innerValue = normalized.slice(1, -1);
+
+    if (innerValue.length === 0) {
+      return '';
+    }
+
+    if (isDomainsColumn) {
+      normalized = innerValue;
+
+      break;
+    }
+
+    if (isSpecialColumn && !innerValue.includes('"')) {
+      break;
+    }
+
+    normalized = innerValue;
+  }
+
+  normalized = normalized.replace(/""/g, '"');
+
+  return normalized;
+};
+
 export const getEntityColumnsAndDataSourceFromCSV = (
   csv: string[][],
   entityType: EntityType,
@@ -170,7 +232,12 @@ export const getEntityColumnsAndDataSourceFromCSV = (
     rows.map((row, idx) => {
       return row.reduce(
         (acc: Record<string, string>, value: string, index: number) => {
-          acc[cols[index]] = value;
+          const colName = cols[index];
+          const normalizedValue =
+            typeof value === 'string'
+              ? normalizeCSVValue(value, colName)
+              : value;
+          acc[colName] = normalizedValue;
           acc['id'] = idx + '';
 
           return acc;
@@ -183,6 +250,103 @@ export const getEntityColumnsAndDataSourceFromCSV = (
     columns,
     dataSource,
   };
+};
+
+const normalizeValueForExport = (value: string): string => {
+  if (typeof value !== 'string') {
+    return String(value);
+  }
+
+  let normalized = value.trim();
+  let previousLength = normalized.length + 1;
+
+  while (
+    normalized.length >= 2 &&
+    normalized.startsWith('"') &&
+    normalized.endsWith('"') &&
+    normalized.length < previousLength
+  ) {
+    previousLength = normalized.length;
+
+    if (
+      normalized.startsWith('"""') &&
+      normalized.endsWith('"""') &&
+      normalized.length > 6
+    ) {
+      normalized = normalized.slice(3, -3);
+
+      continue;
+    }
+
+    const innerValue = normalized.slice(1, -1);
+
+    if (innerValue.length === 0) {
+      return '';
+    }
+
+    const innerStartsEndsWithQuotes =
+      innerValue.startsWith('"') && innerValue.endsWith('"');
+
+    if (!innerStartsEndsWithQuotes) {
+      normalized = innerValue;
+    } else {
+      const doubleStripped = innerValue.slice(1, -1);
+      if (doubleStripped.length > 0) {
+        normalized = doubleStripped;
+      } else {
+        break;
+      }
+    }
+  }
+
+  return normalized;
+};
+
+const needsWrapping = (value: string, colName: string): boolean => {
+  const hasSpecialChars = value.includes(',') || value.includes('\n');
+  const isSpecialColumn =
+    colName.includes('tags') ||
+    colName.includes('domains') ||
+    csvUtilsClassBase.columnsWithMultipleValuesEscapeNeeded().includes(colName);
+
+  return hasSpecialChars || isSpecialColumn || value.includes('"');
+};
+
+const getQuoteStyle = (value: string, colName: string): 'single' | 'triple' => {
+  if (colName.includes('domains')) {
+    return 'triple';
+  }
+
+  const isSpecialColumn = csvUtilsClassBase
+    .columnsWithMultipleValuesEscapeNeeded()
+    .includes(colName);
+
+  if (isSpecialColumn && value.includes('"')) {
+    return 'triple';
+  }
+
+  return 'single';
+};
+
+const formatValueForCSV = (value: string, colName: string): string => {
+  if (isEmpty(value)) {
+    return '';
+  }
+
+  const normalizedValue = normalizeValueForExport(value);
+  const escapedValue = normalizedValue.replaceAll(/"/g, '""');
+
+  if (!needsWrapping(normalizedValue, colName)) {
+    return normalizedValue;
+  }
+
+  const quoteStyle = getQuoteStyle(normalizedValue, colName);
+
+  if (quoteStyle === 'triple') {
+    return `"""${escapedValue}"""`;
+  }
+
+  return `"${escapedValue}"`;
 };
 
 export const getCSVStringFromColumnsAndDataSource = (
@@ -201,29 +365,8 @@ export const getCSVStringFromColumnsAndDataSource = (
       .map((col) => {
         const value = get(row, col.key ?? '', '');
         const colName = col.key ?? '';
-        if (
-          csvUtilsClassBase
-            .columnsWithMultipleValuesEscapeNeeded()
-            .includes(colName)
-        ) {
-          return isEmpty(value)
-            ? ''
-            : `"${value.replaceAll(new RegExp('"', 'g'), '""')}"`;
-        } else if (
-          value.includes(',') ||
-          value.includes('\n') ||
-          colName.includes('tags') ||
-          colName.includes('domains')
-        ) {
-          // Escape quotes when wrapping due to comma/newline
-          return `"${value.replaceAll(/"/g, '""')}"`;
-        }
-        // Values with quotes: escape quotes (for name/displayName/FQN or any other column)
-        if (value.includes('"')) {
-          return `"${value.replaceAll(/"/g, '""')}"`;
-        }
 
-        return value;
+        return formatValueForCSV(String(value), colName);
       })
       .join(',');
   });
