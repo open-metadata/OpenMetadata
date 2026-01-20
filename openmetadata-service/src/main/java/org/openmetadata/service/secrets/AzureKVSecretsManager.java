@@ -9,6 +9,7 @@ import com.azure.security.keyvault.secrets.SecretClientBuilder;
 import com.azure.security.keyvault.secrets.models.DeletedSecret;
 import com.azure.security.keyvault.secrets.models.KeyVaultSecret;
 import com.azure.security.keyvault.secrets.models.SecretProperties;
+import java.time.OffsetDateTime;
 import java.util.regex.Pattern;
 import org.apache.logging.log4j.util.Strings;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
@@ -23,6 +24,7 @@ public class AzureKVSecretsManager extends ExternalSecretsManager {
   public static final String CLIENT_SECRET = "clientSecret";
   public static final String TENANT_ID = "tenantId";
   public static final String VAULT_NAME = "vaultName";
+  public static final String EXPIRES_AFTER_DAYS = "expiresAfterDays";
 
   private AzureKVSecretsManager(
       SecretsManagerProvider secretsManagerProvider, SecretsConfig secretsConfig) {
@@ -83,10 +85,11 @@ public class AzureKVSecretsManager extends ExternalSecretsManager {
 
   @Override
   void storeSecret(String secretName, String secretValue) {
+    SecretProperties properties =
+        new SecretProperties().setTags(SecretsManager.getTags(getSecretsConfig()));
+    setExpirationDate(properties);
     client.setSecret(
-        new KeyVaultSecret(secretName, cleanNullOrEmpty(secretValue))
-            .setProperties(
-                new SecretProperties().setTags(SecretsManager.getTags(getSecretsConfig()))));
+        new KeyVaultSecret(secretName, cleanNullOrEmpty(secretValue)).setProperties(properties));
   }
 
   @Override
@@ -104,6 +107,44 @@ public class AzureKVSecretsManager extends ExternalSecretsManager {
   protected void deleteSecretInternal(String secretName) {
     SyncPoller<DeletedSecret, Void> deletionPoller = client.beginDeleteSecret(secretName);
     deletionPoller.waitForCompletion();
+  }
+
+  /**
+   * Set the expiration date for the secret properties based on the configuration parameter.
+   * If the expiresAfterDays parameter is provided, the expiration date is set to the current date plus the specified number of days.
+   *
+   * @param properties SecretProperties to configure with expiration date
+   */
+  private void setExpirationDate(SecretProperties properties) {
+    if (getSecretsConfig() != null
+        && getSecretsConfig().parameters() != null
+        && getSecretsConfig()
+            .parameters()
+            .getAdditionalProperties()
+            .containsKey(EXPIRES_AFTER_DAYS)) {
+      try {
+        String expiresAfterDaysStr =
+            (String)
+                getSecretsConfig().parameters().getAdditionalProperties().get(EXPIRES_AFTER_DAYS);
+        if (!Strings.isBlank(expiresAfterDaysStr)) {
+          long expiresAfterDays = Long.parseLong(expiresAfterDaysStr);
+          if (expiresAfterDays <= 0) {
+            throw new SecretsManagerException(
+                String.format(
+                    "Invalid value for '%s' parameter. Expected a positive number but got: %s",
+                    EXPIRES_AFTER_DAYS, expiresAfterDays));
+          }
+          OffsetDateTime expiresOn = OffsetDateTime.now().plusDays(expiresAfterDays);
+          properties.setExpiresOn(expiresOn);
+        }
+      } catch (NumberFormatException e) {
+        throw new SecretsManagerException(
+            String.format(
+                "Invalid value for '%s' parameter. Expected a number but got: %s",
+                EXPIRES_AFTER_DAYS,
+                getSecretsConfig().parameters().getAdditionalProperties().get(EXPIRES_AFTER_DAYS)));
+      }
+    }
   }
 
   public static AzureKVSecretsManager getInstance(SecretsConfig secretsConfig) {
