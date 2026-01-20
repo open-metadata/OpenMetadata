@@ -46,7 +46,9 @@ class AthenaLakeFormationClient:
             resource = {"Database": {"Name": name}}
             if self.catalog_id:
                 resource["Database"]["CatalogId"] = self.catalog_id
-            response = self.lake_formation_client.get_resource_lf_tags(Resource=resource)
+            response = self.lake_formation_client.get_resource_lf_tags(
+                Resource=resource
+            )
             lf_tags = LFTags(**response)
             return lf_tags.LFTagOnDatabase
         except Exception as exc:

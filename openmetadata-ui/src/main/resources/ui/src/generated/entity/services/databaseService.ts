@@ -444,6 +444,12 @@ export interface ConfigObject {
     usageLocation?: string;
     awsConfig?:     AWSCredentials;
     /**
+     * Catalog ID for Athena. For S3 Tables, use the format 's3tablescatalog/<bucket-name>'. For
+     * cross-account Glue catalogs, use the AWS account ID. If not provided, defaults to the
+     * caller's AWS account.
+     */
+    catalogId?: string;
+    /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
      *
