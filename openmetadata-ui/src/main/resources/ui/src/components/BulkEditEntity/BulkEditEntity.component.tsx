@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row } from 'antd';
+import { Button, Col, Row, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo } from 'react';
 import DataGrid, { ColumnOrColumnGroup } from 'react-data-grid';
@@ -18,7 +18,11 @@ import 'react-data-grid/lib/styles.css';
 import { useTranslation } from 'react-i18next';
 import { readString } from 'react-papaparse';
 import { useNavigate } from 'react-router-dom';
-import { ENTITY_BULK_EDIT_STEPS } from '../../constants/BulkEdit.constants';
+import {
+  HEADER_HEIGHT,
+  MAX_HEIGHT,
+  ROW_HEIGHT,
+} from '../../constants/BulkEdit.constants';
 import { ExportTypes } from '../../constants/Export.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { useFqn } from '../../hooks/useFqn';
@@ -29,11 +33,9 @@ import {
 } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import Banner from '../common/Banner/Banner';
-import { ImportStatus } from '../common/EntityImport/ImportStatus/ImportStatus.component';
 import Loader from '../common/Loader/Loader';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { useEntityExportModalProvider } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import Stepper from '../Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import { BulkEditEntityProps } from './BulkEditEntity.interface';
 
 const BulkEditEntity = ({
@@ -53,6 +55,7 @@ const BulkEditEntity = ({
   handlePaste,
   handleOnRowsChange,
   sourceEntityType,
+  handleAddRow,
 }: BulkEditEntityProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -60,15 +63,6 @@ const BulkEditEntity = ({
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { triggerExportForBulkEdit, csvExportData, clearCSVExportData } =
     useEntityExportModalProvider();
-
-  const translatedSteps = useMemo(
-    () =>
-      ENTITY_BULK_EDIT_STEPS.map((step) => ({
-        ...step,
-        name: t(step.name),
-      })),
-    [t]
-  );
 
   const handleCancel = () => {
     clearCSVExportData();
@@ -106,6 +100,14 @@ const BulkEditEntity = ({
     Updating store will trigger re-render of the component
     This will cause the owner dropdown or full grid to re-render
   */
+
+  const gridHeight = useMemo(() => {
+    const contentHeight = dataSource.length * ROW_HEIGHT + HEADER_HEIGHT;
+    const maxHeightPx = window.innerHeight - 280;
+
+    return contentHeight < maxHeightPx ? 'auto' : MAX_HEIGHT;
+  }, [dataSource.length]);
+
   const editDataGrid = useMemo(() => {
     return (
       <div className="om-rdg" ref={setGridContainer}>
@@ -118,36 +120,50 @@ const BulkEditEntity = ({
             >[]
           }
           rows={dataSource}
+          style={{ height: gridHeight, maxHeight: MAX_HEIGHT }}
           onCopy={handleCopy}
           onPaste={handlePaste}
           onRowsChange={handleOnRowsChange}
         />
       </div>
     );
-  }, [columns, dataSource, handleCopy, handlePaste, handleOnRowsChange]);
+  }, [
+    columns,
+    dataSource,
+    handleCopy,
+    handlePaste,
+    handleOnRowsChange,
+    handleAddRow,
+    t,
+    gridHeight,
+  ]);
 
-  const columnsUpdated = validateCSVData?.columns
-    .filter((col) => col.key !== 'changeDescription')
-    .map((col) => ({
-      ...col,
-      cellClass: (row: any) => {
-        const updatedFields = getUpdatedFields(row);
+  const newRowIds = useMemo(() => {
+    return new Set(
+      dataSource.filter((row) => row.isNewRow === 'true').map((row) => row.id)
+    );
+  }, [dataSource]);
 
-        return updatedFields.has(col.key) ? 'cell-updated' : '';
-      },
-    }));
+  const columnsUpdated = useMemo(() => {
+    return validateCSVData?.columns
+      .filter((col) => col.key !== 'changeDescription')
+      .map((col) => ({
+        ...col,
+        cellClass: (row: Record<string, string>) => {
+          if (newRowIds.has(row.id)) {
+            return 'cell-updated';
+          }
+          const updatedFields = getUpdatedFields(row);
+
+          return updatedFields.has(col.key) ? 'cell-updated' : '';
+        },
+      }));
+  }, [validateCSVData?.columns, newRowIds]);
 
   return (
     <>
       <Col span={24}>
         <TitleBreadcrumb titleLinks={breadcrumbList} />
-      </Col>
-      <Col span={24}>
-        <Stepper
-          activeStep={activeStep}
-          className="w-max-600 mx-auto"
-          steps={translatedSteps}
-        />
       </Col>
 
       <Col span={24}>
@@ -166,62 +182,94 @@ const BulkEditEntity = ({
       {isEmpty(csvExportData) ? (
         <Loader />
       ) : (
-        <>
-          <Col span={24}>
-            {activeStep === 1 && editDataGrid}
+        <Col span={24}>
+          <div className="bg-white p-md rounded-12 bulk-edit-container">
+            {activeStep === 1 && (
+              <>
+                <Row align="middle" className="m-b-md" justify="space-between">
+                  <Col>
+                    <Typography.Title className="m-b-0" level={5}>
+                      {t('label.edit-entity', {
+                        entity: t('label.column'),
+                      })}
+                    </Typography.Title>
+                  </Col>
+                  <Col>
+                    <Button disabled={isValidating} onClick={handleCancel}>
+                      {t('label.cancel')}
+                    </Button>
+                    <Button
+                      className="m-l-sm"
+                      disabled={isValidating}
+                      type="primary"
+                      onClick={handleValidate}>
+                      {t('label.preview')}
+                    </Button>
+                  </Col>
+                </Row>
+
+                {editDataGrid}
+                <Button
+                  className="p-0 m-t-xs"
+                  data-testid="add-row-btn"
+                  type="link"
+                  onClick={handleAddRow}>
+                  {`+ ${t('label.add-row')}`}
+                </Button>
+              </>
+            )}
 
             {activeStep === 2 && validationData && (
-              <Row gutter={[16, 16]}>
-                <Col span={24}>
-                  <ImportStatus csvImportResult={validationData} />
-                </Col>
+              <>
+                <Row align="middle" className="m-b-md" justify="space-between">
+                  <Col>
+                    <Typography.Title className="m-b-0" level={5}>
+                      {t('label.edit-entity', {
+                        entity: t('label.column'),
+                      })}
+                    </Typography.Title>
+                  </Col>
+                  <Col>
+                    <Button disabled={isValidating} onClick={handleBack}>
+                      {t('label.back')}
+                    </Button>
+                    <Button
+                      className="m-l-sm"
+                      disabled={isValidating}
+                      type="primary"
+                      onClick={handleValidate}>
+                      {t('label.update')}
+                    </Button>
+                  </Col>
+                </Row>
 
-                <Col span={24}>
-                  {validateCSVData && (
-                    <div className="om-rdg">
-                      <DataGrid
-                        className="rdg-light"
-                        columns={
-                          columnsUpdated as unknown as ColumnOrColumnGroup<
-                            NoInfer<Record<string, string>>,
-                            unknown
-                          >[]
-                        }
-                        rows={validateCSVData.dataSource}
-                      />
-                    </div>
-                  )}
-                </Col>
-              </Row>
+                {validateCSVData && (
+                  <div className="om-rdg">
+                    <DataGrid
+                      className="rdg-light"
+                      columns={
+                        columnsUpdated as unknown as ColumnOrColumnGroup<
+                          NoInfer<Record<string, string>>,
+                          unknown
+                        >[]
+                      }
+                      rows={validateCSVData.dataSource}
+                      style={{
+                        height:
+                          validateCSVData.dataSource.length * ROW_HEIGHT +
+                            HEADER_HEIGHT <
+                          window.innerHeight - 280
+                            ? 'auto'
+                            : MAX_HEIGHT,
+                        maxHeight: MAX_HEIGHT,
+                      }}
+                    />
+                  </div>
+                )}
+              </>
             )}
-          </Col>
-          {activeStep > 0 && (
-            <Col span={24}>
-              <div className="float-right import-footer">
-                {activeStep === 1 && (
-                  <Button disabled={isValidating} onClick={handleCancel}>
-                    {t('label.cancel')}
-                  </Button>
-                )}
-
-                {activeStep > 1 && (
-                  <Button disabled={isValidating} onClick={handleBack}>
-                    {t('label.previous')}
-                  </Button>
-                )}
-                {activeStep < 3 && (
-                  <Button
-                    className="m-l-sm"
-                    disabled={isValidating}
-                    type="primary"
-                    onClick={handleValidate}>
-                    {activeStep === 2 ? t('label.update') : t('label.next')}
-                  </Button>
-                )}
-              </div>
-            </Col>
-          )}
-        </>
+          </div>
+        </Col>
       )}
     </>
   );

@@ -22,3 +22,7 @@ export const ENTITY_BULK_EDIT_STEPS = [
     step: VALIDATION_STEP.UPDATE,
   },
 ];
+
+export const ROW_HEIGHT = 35;
+export const HEADER_HEIGHT = 35;
+export const MAX_HEIGHT = 'calc(100vh - 280px)';

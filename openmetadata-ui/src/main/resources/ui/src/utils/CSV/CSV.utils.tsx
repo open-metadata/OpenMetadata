@@ -127,9 +127,20 @@ export const getColumnConfig = (
   isBulkEdit = false
 ): Column<any> => {
   const colType = column.split('.').pop() ?? '';
-  const disabledColumns = isBulkEdit
+  const isDisabledColumn = isBulkEdit
     ? CSV_DISABLED_COLUMNS.includes(colType)
     : false;
+
+  const getEditable = (row: Record<string, string>) => {
+    if (!editable) {
+      return false;
+    }
+    if (isDisabledColumn) {
+      return row.isNewRow === 'true';
+    }
+
+    return true;
+  };
 
   return {
     key: column,
@@ -137,7 +148,7 @@ export const getColumnConfig = (
     sortable: false,
     resizable: true,
     cellClass: () => `rdg-cell-${column.replaceAll(/[^a-zA-Z0-9-_]/g, '')}`,
-    editable: editable ? !disabledColumns : false,
+    editable: getEditable,
     renderEditCell: csvUtilsClassBase.getEditor(
       colType,
       entityType,

@@ -643,6 +643,7 @@ const BulkEntityImportPage = () => {
             breadcrumbList={breadcrumbList}
             columns={filterColumns}
             dataSource={dataSource}
+            handleAddRow={handleAddRow}
             handleBack={handleBack}
             handleCopy={handleCopy}
             handleOnRowsChange={handleOnRowsChange}
