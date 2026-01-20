@@ -41,6 +41,7 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
 
   {
     supportsLifeCycle = true;
+    supportsListAllVersionsByTimestamp = true;
   }
 
   // ===================================================================

@@ -39,6 +39,7 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
     supportsDataProducts = false; // TestDefinition doesn't support dataProducts
     supportsNameLengthValidation = false; // TestDefinition doesn't enforce name length
     supportsSearchIndex = false; // TestDefinition doesn't have a search index
+    supportsListAllVersionsByTimestamp = true;
   }
 
   // ===================================================================

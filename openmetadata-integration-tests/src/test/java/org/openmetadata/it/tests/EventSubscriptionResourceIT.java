@@ -56,6 +56,7 @@ public class EventSubscriptionResourceIT
     supportsDomains = false;
     supportsDataProducts = false;
     supportsSearchIndex = false; // EventSubscription doesn't have a search index
+    supportsListAllVersionsByTimestamp = true;
   }
 
   // ===================================================================

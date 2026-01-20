@@ -26,6 +26,10 @@ import org.openmetadata.sdk.models.ListResponse;
 @Execution(ExecutionMode.CONCURRENT)
 public class LLMServiceResourceIT extends BaseServiceIT<LLMService, CreateLLMService> {
 
+  {
+    supportsListAllVersionsByTimestamp = true;
+  }
+
   @BeforeAll
   public static void setupLLMServices() {
     LLMServices.setDefaultClient(SdkClients.adminClient());

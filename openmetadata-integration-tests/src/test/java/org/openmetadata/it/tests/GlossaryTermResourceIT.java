@@ -43,6 +43,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     // GlossaryTerm export is done through Glossary endpoint, not GlossaryTerm endpoint
     // The Glossary export (/v1/glossaries/name/{name}/export) exports all terms in that glossary
     supportsImportExport = false;
+    supportsListAllVersionsByTimestamp = true;
   }
 
   private Glossary lastCreatedGlossary;

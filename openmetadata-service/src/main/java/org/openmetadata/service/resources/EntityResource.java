@@ -21,7 +21,19 @@ import static org.openmetadata.schema.type.MetadataOperation.VIEW_BASIC;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 import static org.openmetadata.service.util.EntityUtil.createOrUpdateOperation;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.json.JsonPatch;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -1053,5 +1065,47 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
       }
     }
+  }
+
+  @GET
+  @Path("/versions")
+  @Operation(
+      operationId = "listAllEntityVersionsByTimestamp",
+      summary = "List all entity versions within a time range",
+      description =
+          "Get a paginated list of all entity versions within a given time range "
+              + "specified by `startTs` and `endTs` in milliseconds since epoch. ",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of table versions",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ResultList.class)))
+      })
+  public ResultList<T> listAllVersionsByTimestamp(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Start timestamp in milliseconds since epoch", required = true)
+          @QueryParam("startTs")
+          long startTs,
+      @Parameter(description = "End timestamp in milliseconds since epoch", required = true)
+          @QueryParam("endTs")
+          long endTs,
+      @Parameter(description = "Limit the number of tables returned (1 to 1000000, default = 10)")
+          @DefaultValue("10")
+          @Min(value = 1, message = "must be greater than or equal to 1")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(description = "Returns list of table versions before this cursor")
+          @QueryParam("before")
+          String before,
+      @Parameter(description = "Returns list of table versions after this cursor")
+          @QueryParam("after")
+          String after) {
+    return listAllVersionsByTimestampInternal(
+        securityContext, startTs, endTs, before, after, limitParam);
   }
 }

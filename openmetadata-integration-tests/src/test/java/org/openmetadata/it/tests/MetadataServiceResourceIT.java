@@ -29,6 +29,10 @@ import org.openmetadata.sdk.models.ListResponse;
 public class MetadataServiceResourceIT
     extends BaseServiceIT<MetadataService, CreateMetadataService> {
 
+  {
+    supportsListAllVersionsByTimestamp = true;
+  }
+
   @Override
   protected CreateMetadataService createMinimalRequest(TestNamespace ns) {
     try {

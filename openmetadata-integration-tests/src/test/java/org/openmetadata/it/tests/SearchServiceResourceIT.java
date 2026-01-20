@@ -29,6 +29,10 @@ import org.openmetadata.sdk.models.ListResponse;
 @Execution(ExecutionMode.CONCURRENT)
 public class SearchServiceResourceIT extends BaseServiceIT<SearchService, CreateSearchService> {
 
+  {
+    supportsListAllVersionsByTimestamp = true;
+  }
+
   @Override
   protected CreateSearchService createMinimalRequest(TestNamespace ns) {
     ElasticSearchConnection conn =

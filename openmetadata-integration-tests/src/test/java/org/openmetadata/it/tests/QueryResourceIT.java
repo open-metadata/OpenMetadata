@@ -48,6 +48,7 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
     supportsNameLengthValidation = false;
     supportsDataProducts = false;
     supportsSoftDelete = false;
+    supportsListAllVersionsByTimestamp = true;
   }
 
   // ===================================================================

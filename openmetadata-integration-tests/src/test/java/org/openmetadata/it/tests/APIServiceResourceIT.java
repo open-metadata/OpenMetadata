@@ -30,6 +30,10 @@ import org.openmetadata.sdk.models.ListResponse;
 @Execution(ExecutionMode.CONCURRENT)
 public class APIServiceResourceIT extends BaseServiceIT<ApiService, CreateApiService> {
 
+  {
+    supportsListAllVersionsByTimestamp = true;
+  }
+
   @Override
   protected CreateApiService createMinimalRequest(TestNamespace ns) {
     RestConnection conn =

@@ -54,6 +54,7 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
   {
     supportsFollowers = false; // TestSuite doesn't support followers
     supportsDataProducts = false; // TestSuite doesn't support dataProducts
+    supportsListAllVersionsByTimestamp = true;
   }
 
   // ===================================================================

@@ -52,6 +52,7 @@ public class WorksheetResourceIT extends BaseEntityIT<Worksheet, CreateWorksheet
     supportsDataProducts = false;
     supportsCustomExtension = false;
     supportsDomains = false;
+    supportsListAllVersionsByTimestamp = true;
   }
 
   @Override

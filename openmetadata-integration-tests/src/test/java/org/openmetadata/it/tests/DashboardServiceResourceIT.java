@@ -33,6 +33,10 @@ import org.openmetadata.sdk.models.ListResponse;
 public class DashboardServiceResourceIT
     extends BaseServiceIT<DashboardService, CreateDashboardService> {
 
+  {
+    supportsListAllVersionsByTimestamp = true;
+  }
+
   @Override
   protected CreateDashboardService createMinimalRequest(TestNamespace ns) {
     MetabaseConnection conn =

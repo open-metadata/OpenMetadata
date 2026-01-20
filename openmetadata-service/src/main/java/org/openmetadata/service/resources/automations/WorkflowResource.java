@@ -312,50 +312,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
         securityContext, super.getVersionInternal(securityContext, id, version));
   }
 
-  @GET
-  @Path("/versions")
-  @Operation(
-      operationId = "listAllWorkflowVersionsByTimestamp",
-      summary = "List all workflow versions within a time range",
-      description =
-          "Get a paginated list of all workflow entity versions within a given time range "
-              + "specified by `startTs` and `endTs` in milliseconds since epoch. "
-              + "This endpoint requires admin privileges.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List of workflow versions",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = WorkflowList.class)))
-      })
-  public ResultList<Workflow> listAllVersionsByTimestamp(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Start timestamp in milliseconds since epoch", required = true)
-          @QueryParam("startTs")
-          long startTs,
-      @Parameter(description = "End timestamp in milliseconds since epoch", required = true)
-          @QueryParam("endTs")
-          long endTs,
-      @Parameter(
-              description = "Limit the number of workflows returned (1 to 1000000, default = 10)")
-          @DefaultValue("10")
-          @Min(value = 1, message = "must be greater than or equal to 1")
-          @Max(value = 1000000, message = "must be less than or equal to 1000000")
-          @QueryParam("limit")
-          int limitParam,
-      @Parameter(description = "Returns list of workflow versions before this cursor")
-          @QueryParam("before")
-          String before,
-      @Parameter(description = "Returns list of workflow versions after this cursor")
-          @QueryParam("after")
-          String after) {
-    return super.listAllVersionsByTimestampInternal(
-        securityContext, startTs, endTs, before, after, limitParam);
-  }
-
   @POST
   @Operation(
       operationId = "createWorkflow",

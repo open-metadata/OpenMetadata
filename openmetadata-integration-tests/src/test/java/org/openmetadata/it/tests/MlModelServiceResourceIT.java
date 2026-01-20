@@ -29,6 +29,10 @@ import org.openmetadata.sdk.models.ListResponse;
 @Execution(ExecutionMode.CONCURRENT)
 public class MlModelServiceResourceIT extends BaseServiceIT<MlModelService, CreateMlModelService> {
 
+  {
+    supportsListAllVersionsByTimestamp = true;
+  }
+
   @Override
   protected CreateMlModelService createMinimalRequest(TestNamespace ns) {
     MlflowConnection conn =

@@ -289,6 +289,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
           .recordStats()
           .build(new EntityLoaderWithId());
 
+  private static final LoadingCache<String, Integer> COUNT_CACHE =
+      CacheBuilder.newBuilder()
+          .maximumSize(100)
+          .expireAfterWrite(1, TimeUnit.MINUTES)
+          .recordStats()
+          .build(
+              new CacheLoader<String, Integer>() {
+                @Override
+                public Integer load(String key) throws Exception {
+                  throw new UnsupportedOperationException("Use get() method with a custom loader");
+                }
+              });
+
   private final String collectionPath;
   @Getter public final Class<T> entityClass;
   @Getter protected final String entityType;
@@ -1170,6 +1183,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new EntityHistory().withEntityType(entityType).withVersions(allVersions);
   }
 
+  private int getVersionCountCached(
+      String tableName, long startTs, long endTs, String extensionPrefix) {
+    String cacheKey = String.format("%s:%d:%d:%s", tableName, startTs, endTs, extensionPrefix);
+    try {
+      return COUNT_CACHE.get(
+          cacheKey,
+          () ->
+              daoCollection
+                  .entityExtensionDAO()
+                  .getExtensionsByTimestampRangeCount(tableName, startTs, endTs, extensionPrefix));
+    } catch (ExecutionException e) {
+        throw new RuntimeException("Failed to get version count from cache", e);
+    }
+  }
+
   public final ResultList<T> listAllVersionsByTimestamp(
       long startTs, long endTs, String afterCursor, String beforeCursor, int limit) {
     String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityType);
@@ -1183,13 +1211,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (beforeCursor != null) {
       cursorCondition =
           "AND (updatedAt > :cursorUpdatedAt OR (updatedAt = :cursorUpdatedAt AND id > :cursorId))";
-      String[] parts = RestUtil.decodeCursor(beforeCursor).split(":");
+      String decodedCursor = decodeAndValidateCursor(beforeCursor);
+      String[] parts = decodedCursor.split(":");
       cursorUpdatedAt = Long.parseLong(parts[0]);
       cursorId = parts[1];
     } else if (afterCursor != null) {
       cursorCondition =
           "AND (updatedAt < :cursorUpdatedAt OR (updatedAt = :cursorUpdatedAt AND id < :cursorId))";
-      String[] parts = RestUtil.decodeCursor(afterCursor).split(":");
+      String decodedCursor = decodeAndValidateCursor(afterCursor);
+      String[] parts = decodedCursor.split(":");
       cursorUpdatedAt = Long.parseLong(parts[0]);
       cursorId = parts[1];
     }
@@ -1210,10 +1240,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<T> entities = JsonUtils.readObjects(jsons, getEntityClass());
     setFieldsInBulk(putFields, entities);
 
-    int total =
-        daoCollection
-            .entityExtensionDAO()
-            .getExtensionsByTimestampRangeCount(tableName, startTs, endTs, extensionPrefix);
+    int total = getVersionCountCached(tableName, startTs, endTs, extensionPrefix);
 
     String beforeCursorValue = null;
     String afterCursorValue = null;
@@ -1246,6 +1273,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     return getResultList(entities, beforeCursorValue, afterCursorValue, total);
+  }
+
+  private String decodeAndValidateCursor(String cursor) {
+    if (cursor == null) {
+      throw new RuntimeException("Cursor is null");
+    }
+    String decodedCursor = RestUtil.decodeCursor(cursor);
+    if (!decodedCursor.contains(":")) {
+      throw new RuntimeException("Cursor is not a valid cursor: " + cursor);
+    }
+    return decodedCursor;
   }
 
   public final List<T> createMany(UriInfo uriInfo, List<T> entities) {

@@ -56,7 +56,7 @@ UPDATE test_definition
 ALTER TABLE entity_extension
   ADD COLUMN updatedAt BIGINT UNSIGNED
   GENERATED ALWAYS AS (CAST(json_unquote(json_extract(json, '$.updatedAt')) AS UNSIGNED))
-  VIRTUAL;
+  STORED;
 
 -- Create composite index for timestamp-based queries with cursor pagination
 -- This index supports queries that filter by updatedAt range and order by (updatedAt DESC, id DESC)

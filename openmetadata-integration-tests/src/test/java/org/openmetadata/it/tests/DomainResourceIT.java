@@ -58,6 +58,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
     supportsSoftDelete = false;
     supportsPatch = true;
     supportsOwners = true;
+    supportsListAllVersionsByTimestamp = true;
   }
 
   @Override

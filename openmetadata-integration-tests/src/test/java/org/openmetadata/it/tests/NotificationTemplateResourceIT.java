@@ -53,6 +53,7 @@ public class NotificationTemplateResourceIT
     supportsPatch = true;
     supportsOwners = false; // NotificationTemplate doesn't support owners
     supportsSearchIndex = false; // NotificationTemplate doesn't have a search index
+    supportsListAllVersionsByTimestamp = true;
   }
 
   @Override

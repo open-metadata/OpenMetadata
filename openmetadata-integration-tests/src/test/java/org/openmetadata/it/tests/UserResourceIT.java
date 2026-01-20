@@ -88,6 +88,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     supportsSoftDelete = true;
     supportsPatch = true;
     supportsOwners = false;
+    supportsListAllVersionsByTimestamp = true;
   }
 
   // ===================================================================

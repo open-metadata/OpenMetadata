@@ -51,6 +51,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     supportsDataProducts = false; // TestCase doesn't support dataProducts
     supportsNameLengthValidation = false; // TestCase FQN includes table FQN, no strict name length
     supportsImportExport = true;
+    supportsListAllVersionsByTimestamp = true;
   }
 
   private TestSuite lastCreatedTestSuite;

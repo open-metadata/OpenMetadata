@@ -39,6 +39,10 @@ import org.openmetadata.sdk.models.ListResponse;
 public class DatabaseServiceResourceIT
     extends BaseServiceIT<DatabaseService, CreateDatabaseService> {
 
+  {
+    supportsListAllVersionsByTimestamp = true;
+  }
+
   @Override
   protected CreateDatabaseService createMinimalRequest(TestNamespace ns) {
     PostgresConnection conn =

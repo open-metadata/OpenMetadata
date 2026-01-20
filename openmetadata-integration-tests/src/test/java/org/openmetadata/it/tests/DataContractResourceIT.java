@@ -63,6 +63,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     supportsLineage = false;
     supportsLifeCycle = false;
     supportsCertification = false;
+    supportsListAllVersionsByTimestamp = true;
   }
 
   // ===================================================================

@@ -44,6 +44,7 @@ public class DashboardResourceIT extends BaseEntityIT<Dashboard, CreateDashboard
 
   {
     supportsLifeCycle = true;
+    supportsListAllVersionsByTimestamp = true;
   }
 
   // ===================================================================

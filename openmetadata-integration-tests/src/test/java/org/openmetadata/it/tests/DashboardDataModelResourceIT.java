@@ -48,6 +48,7 @@ public class DashboardDataModelResourceIT
 
   {
     supportsLifeCycle = true;
+    supportsListAllVersionsByTimestamp = true;
   }
 
   // ===================================================================

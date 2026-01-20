@@ -42,6 +42,7 @@ public class KpiResourceIT extends BaseEntityIT<Kpi, CreateKpiRequest> {
     supportsDataProducts = false;
     supportsCustomExtension = false;
     supportsSearchIndex = false; // KPI doesn't have a search index
+    supportsListAllVersionsByTimestamp = true;
   }
 
   // ===================================================================

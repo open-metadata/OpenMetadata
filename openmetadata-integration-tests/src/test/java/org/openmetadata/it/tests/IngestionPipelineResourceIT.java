@@ -84,6 +84,7 @@ public class IngestionPipelineResourceIT
     supportsTags = false;
     supportsDomains = false;
     supportsDataProducts = false;
+    supportsListAllVersionsByTimestamp = true;
   }
 
   @BeforeAll

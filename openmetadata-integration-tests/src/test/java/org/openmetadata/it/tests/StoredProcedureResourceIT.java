@@ -39,6 +39,7 @@ public class StoredProcedureResourceIT
   {
     supportsSearchIndex = false;
     supportsLifeCycle = true;
+    supportsListAllVersionsByTimestamp = true;
   }
 
   // ===================================================================

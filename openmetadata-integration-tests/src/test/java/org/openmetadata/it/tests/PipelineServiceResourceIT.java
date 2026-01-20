@@ -31,6 +31,10 @@ import org.openmetadata.sdk.models.ListResponse;
 public class PipelineServiceResourceIT
     extends BaseServiceIT<PipelineService, CreatePipelineService> {
 
+  {
+    supportsListAllVersionsByTimestamp = true;
+  }
+
   @Override
   protected CreatePipelineService createMinimalRequest(TestNamespace ns) {
     AirflowConnection conn =

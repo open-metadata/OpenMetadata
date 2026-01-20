@@ -67,6 +67,7 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     supportsDataProducts = false;
     supportsPatchDomains = true; // Domain change is now supported with asset migration
     supportsSoftDelete = false;
+    supportsListAllVersionsByTimestamp = true;
   }
 
   // ===================================================================
