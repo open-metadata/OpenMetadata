@@ -26,6 +26,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.ApprovalTaskCompletionValidator;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.AutoApproveServiceTaskImpl;
+import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.CheckFeedbackSubmitterIsReviewerImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.CreateRecognizerFeedbackApprovalTaskImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.SetApprovalAssigneesImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.SetCandidateUsersImpl;
@@ -96,6 +97,20 @@ public class CreateRecognizerFeedbackApprovalTask implements NodeInterface {
             approvalThresholdExpr,
             rejectionThresholdExpr);
 
+    ServiceTask checkSubmitterIsReviewerTask =
+        new ServiceTaskBuilder()
+            .id(getFlowableElementId(subProcessId, "checkSubmitterIsReviewer"))
+            .implementation(CheckFeedbackSubmitterIsReviewerImpl.class.getName())
+            .addFieldExtension(inputNamespaceMapExpr)
+            .addFieldExtension(assigneesVarNameExpr)
+            .build();
+
+    ExclusiveGateway submitterIsReviewerGateway =
+        new ExclusiveGatewayBuilder()
+            .id(getFlowableElementId(subProcessId, "submitterIsReviewerGateway"))
+            .name("Check if submitter is reviewer")
+            .build();
+
     ExclusiveGateway hasAssigneesGateway =
         new ExclusiveGatewayBuilder()
             .id(getFlowableElementId(subProcessId, "hasAssigneesGateway"))
@@ -133,6 +148,8 @@ public class CreateRecognizerFeedbackApprovalTask implements NodeInterface {
 
     subProcess.addFlowElement(startEvent);
     subProcess.addFlowElement(setAssigneesVariable);
+    subProcess.addFlowElement(checkSubmitterIsReviewerTask);
+    subProcess.addFlowElement(submitterIsReviewerGateway);
     subProcess.addFlowElement(hasAssigneesGateway);
     subProcess.addFlowElement(userTask);
     subProcess.addFlowElement(autoApproveTask);
@@ -144,7 +161,24 @@ public class CreateRecognizerFeedbackApprovalTask implements NodeInterface {
     subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), setAssigneesVariable.getId()));
 
     subProcess.addFlowElement(
-        new SequenceFlow(setAssigneesVariable.getId(), hasAssigneesGateway.getId()));
+        new SequenceFlow(setAssigneesVariable.getId(), checkSubmitterIsReviewerTask.getId()));
+
+    subProcess.addFlowElement(
+        new SequenceFlow(checkSubmitterIsReviewerTask.getId(), submitterIsReviewerGateway.getId()));
+
+    SequenceFlow submitterIsReviewerToAutoApprove =
+        new SequenceFlow(submitterIsReviewerGateway.getId(), autoApproveTask.getId());
+    submitterIsReviewerToAutoApprove.setConditionExpression("${submitterIsReviewer}");
+    submitterIsReviewerToAutoApprove.setName("Submitter is reviewer");
+    subProcess.addFlowElement(submitterIsReviewerToAutoApprove);
+
+    SequenceFlow submitterIsNotReviewer =
+        new SequenceFlow(submitterIsReviewerGateway.getId(), hasAssigneesGateway.getId());
+    submitterIsNotReviewer.setConditionExpression("${!submitterIsReviewer}");
+    submitterIsNotReviewer.setName("Submitter is not reviewer");
+    subProcess.addFlowElement(submitterIsNotReviewer);
+
+    submitterIsReviewerGateway.setDefaultFlow(submitterIsNotReviewer.getId());
 
     SequenceFlow toUserTask = new SequenceFlow(hasAssigneesGateway.getId(), userTask.getId());
     toUserTask.setConditionExpression("${hasAssignees}");

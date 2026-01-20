@@ -32,10 +32,12 @@ import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.type.ClassificationLanguage;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.PredefinedRecognizer;
 import org.openmetadata.schema.type.Recognizer;
 import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.DatabaseServices;
 import org.openmetadata.sdk.fluent.Databases;
@@ -59,6 +61,16 @@ public class TagRecognizerFeedbackIT {
 
   protected org.openmetadata.schema.entity.teams.User testUser2() {
     return shared().USER2;
+  }
+
+  protected OpenMetadataClient testUser2Client() {
+    org.openmetadata.schema.entity.teams.User user = testUser2();
+    return SdkClients.createClient(
+        user.getName(),
+        user.getEmail(),
+        user.getRoles().stream()
+            .map(EntityReference::getFullyQualifiedName)
+            .toArray(String[]::new));
   }
 
   protected CreateTag createMinimalRequest(TestNamespace ns) {
@@ -133,9 +145,7 @@ public class TagRecognizerFeedbackIT {
   }
 
   private org.openmetadata.schema.type.RecognizerFeedback submitRecognizerFeedback(
-      String entityLink, String tagFQN, String userName) {
-    HttpClient client = SdkClients.adminClient().getHttpClient();
-
+      String entityLink, String tagFQN, HttpClient client) {
     org.openmetadata.schema.type.RecognizerFeedback feedback =
         new org.openmetadata.schema.type.RecognizerFeedback()
             .withEntityLink(entityLink)
@@ -155,6 +165,12 @@ public class TagRecognizerFeedbackIT {
     } catch (Exception e) {
       throw new RuntimeException("Failed to submit recognizer feedback", e);
     }
+  }
+
+  private org.openmetadata.schema.type.RecognizerFeedback submitRecognizerFeedback(
+      String entityLink, String tagFQN) {
+    HttpClient client = SdkClients.adminClient().getHttpClient();
+    return submitRecognizerFeedback(entityLink, tagFQN, client);
   }
 
   private Thread waitForRecognizerFeedbackTask(String tagFQN) throws Exception {
@@ -242,7 +258,7 @@ public class TagRecognizerFeedbackIT {
     String entityLink = "<#E::table::" + table.getFullyQualifiedName() + "::columns::test_column>";
 
     org.openmetadata.schema.type.RecognizerFeedback feedback =
-        submitRecognizerFeedback(entityLink, tag.getFullyQualifiedName(), "admin");
+        submitRecognizerFeedback(entityLink, tag.getFullyQualifiedName());
 
     Thread task = waitForRecognizerFeedbackTask(tag.getFullyQualifiedName());
 
@@ -277,7 +293,7 @@ public class TagRecognizerFeedbackIT {
 
     String entityLink = "<#E::table::" + table.getFullyQualifiedName() + "::columns::test_column>";
 
-    submitRecognizerFeedback(entityLink, tag.getFullyQualifiedName(), "admin");
+    submitRecognizerFeedback(entityLink, tag.getFullyQualifiedName());
 
     assertDoesNotThrow(() -> waitForRecognizerFeedbackTask(tag.getFullyQualifiedName()));
   }
@@ -303,7 +319,56 @@ public class TagRecognizerFeedbackIT {
 
     String entityLink = "<#E::table::" + table.getFullyQualifiedName() + "::columns::test_column>";
 
-    submitRecognizerFeedback(entityLink, tag.getFullyQualifiedName(), "admin");
+    submitRecognizerFeedback(entityLink, tag.getFullyQualifiedName());
+
+    Thread task;
+    try {
+      task = waitForRecognizerFeedbackTask(tag.getFullyQualifiedName());
+    } catch (ConditionTimeoutException ignored) {
+      task = null;
+    }
+    assertNull(task, "No task should be created for tag without reviewer - should be auto-applied");
+
+    Tag updatedTag = getEntity(tag.getId().toString());
+    assertNotNull(updatedTag.getRecognizers());
+    assertFalse(updatedTag.getRecognizers().isEmpty());
+    assertTrue(
+        updatedTag.getRecognizers().getFirst().getExceptionList() != null
+            && !updatedTag.getRecognizers().getFirst().getExceptionList().isEmpty(),
+        "Recognizer should have exception added");
+
+    org.openmetadata.schema.entity.data.Table updatedTable =
+        SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "columns,tags");
+    boolean tagRemoved =
+        updatedTable.getColumns().getFirst().getTags().stream()
+            .noneMatch(t -> t.getTagFQN().equals(tag.getFullyQualifiedName()));
+    assertTrue(tagRemoved, "Tag should be removed from column");
+  }
+
+  @Test
+  void test_recognizerFeedback_submitterIsReviewer_autoApplied(TestNamespace ns) throws Exception {
+    org.openmetadata.service.governance.workflows.WorkflowHandler.getInstance()
+        .resumeWorkflow("RecognizerFeedbackReviewWorkflow");
+
+    Classification classification = createClassification(ns);
+
+    CreateTag tagRequest =
+        new CreateTag()
+            .withRecognizers(java.util.List.of(getNameRecognizer()))
+            .withName("tag_no_reviewer" + "_" + ns.uniqueShortId())
+            .withClassification(classification.getFullyQualifiedName())
+            .withReviewers(java.util.List.of(testUser2().getEntityReference()))
+            .withDescription("Tag without reviewer");
+
+    Tag tag = createEntity(tagRequest);
+
+    org.openmetadata.schema.entity.data.Table table =
+        createTableWithGeneratedTag(ns, tag.getFullyQualifiedName());
+
+    String entityLink = "<#E::table::" + table.getFullyQualifiedName() + "::columns::test_column>";
+
+    submitRecognizerFeedback(
+        entityLink, tag.getFullyQualifiedName(), testUser2Client().getHttpClient());
 
     Thread task;
     try {
@@ -349,7 +414,7 @@ public class TagRecognizerFeedbackIT {
         createTableWithGeneratedTag(ns, tag.getFullyQualifiedName());
 
     String entityLink = "<#E::table::" + table.getFullyQualifiedName() + "::columns::test_column>";
-    submitRecognizerFeedback(entityLink, tag.getFullyQualifiedName(), "admin");
+    submitRecognizerFeedback(entityLink, tag.getFullyQualifiedName());
 
     waitForRecognizerFeedbackTask(tag.getFullyQualifiedName());
 
@@ -412,7 +477,7 @@ public class TagRecognizerFeedbackIT {
 
     String entityLink = "<#E::table::" + table.getFullyQualifiedName() + "::columns::test_column>";
 
-    submitRecognizerFeedback(entityLink, tag.getFullyQualifiedName(), "admin");
+    submitRecognizerFeedback(entityLink, tag.getFullyQualifiedName());
 
     Thread task = waitForRecognizerFeedbackTask(tag.getFullyQualifiedName());
 
