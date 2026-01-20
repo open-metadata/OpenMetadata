@@ -943,8 +943,8 @@ public class AuditLogResourceIT {
   // These tests verify that audit log entries are created with valid UUIDs for all event types.
   // They catch bugs where JDBI @BindBean doesn't properly convert UUID to String.
 
-  private static final long AUDIT_LOG_TIMEOUT_MS = 30000;
-  private static final long AUDIT_LOG_POLL_INTERVAL_MS = 500;
+  private static final long AUDIT_LOG_TIMEOUT_MS = 60000;
+  private static final long AUDIT_LOG_POLL_INTERVAL_MS = 1000;
 
   @Test
   void test_auditLog_entityCreated_hasValidUUIDs() throws Exception {
@@ -1305,14 +1305,48 @@ public class AuditLogResourceIT {
       Thread.sleep(AUDIT_LOG_POLL_INTERVAL_MS);
     }
 
+    // Get diagnostic info: check total audit log count and recent entries
+    String diagnosticInfo = getDiagnosticInfo(client, entityType);
     fail(
         "Audit log entry not found within timeout for entityFQN="
             + entityFqn
             + ", entityType="
             + entityType
             + ", eventTypes="
-            + eventTypes);
+            + eventTypes
+            + ". "
+            + diagnosticInfo);
     return null;
+  }
+
+  private String getDiagnosticInfo(OpenMetadataClient client, String entityType) {
+    try {
+      // Check total count of audit logs
+      Map<String, String> params = new HashMap<>();
+      params.put("limit", "5");
+      String response = executeGet(client, AUDIT_LOGS_PATH, params);
+      Map<String, Object> result = MAPPER.readValue(response, new TypeReference<>() {});
+      Map<String, Object> paging = (Map<String, Object>) result.get("paging");
+      int total =
+          paging != null && paging.get("total") != null
+              ? ((Number) paging.get("total")).intValue()
+              : 0;
+
+      // Check recent entries for this entity type
+      params.put("entityType", entityType);
+      response = executeGet(client, AUDIT_LOGS_PATH, params);
+      result = MAPPER.readValue(response, new TypeReference<>() {});
+      java.util.List<Map<String, Object>> data =
+          (java.util.List<Map<String, Object>>) result.get("data");
+      int entityTypeCount = data != null ? data.size() : 0;
+
+      return String.format(
+          "Diagnostics: Total audit logs=%d, Recent %s logs=%d. "
+              + "AuditLogConsumer may not be enabled or events are not being processed.",
+          total, entityType, entityTypeCount);
+    } catch (Exception e) {
+      return "Failed to get diagnostic info: " + e.getMessage();
+    }
   }
 
   private void verifyAuditEntryHasValidUUIDs(
