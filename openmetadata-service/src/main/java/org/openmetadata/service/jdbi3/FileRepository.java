@@ -55,6 +55,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.drives.FileResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -170,7 +171,7 @@ public class FileRepository extends EntityRepository<File> {
   }
 
   @Override
-  public void setFields(File file, EntityUtil.Fields fields) {
+  public void setFields(File file, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     file.withService(getService(file));
     file.withDirectory(getDirectory(file));
     if (fields.contains(COLUMN_FIELD) && file.getColumns() != null) {

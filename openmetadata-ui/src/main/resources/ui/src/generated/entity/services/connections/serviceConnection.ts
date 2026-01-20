@@ -1373,6 +1373,11 @@ export interface ConfigObject {
      */
     creditCost?: number;
     /**
+     * Optional configuration for ingestion of Snowflake stages (internal and external). By
+     * default, stages are not ingested.
+     */
+    includeStages?: boolean;
+    /**
      * Optional configuration for ingestion of streams, By default, it will skip the streams.
      */
     includeStreams?: boolean;
