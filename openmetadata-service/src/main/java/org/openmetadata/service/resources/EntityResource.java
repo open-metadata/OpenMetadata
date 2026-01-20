@@ -825,6 +825,17 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String csv,
       boolean dryRun,
       boolean recursive) {
+    return importCsvInternalAsync(uriInfo, securityContext, name, csv, dryRun, recursive, null);
+  }
+
+  public Response importCsvInternalAsync(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      String csv,
+      boolean dryRun,
+      boolean recursive,
+      String versioningEntityType) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
@@ -838,7 +849,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
           try {
             WebsocketNotificationHandler.sendCsvImportStartedNotification(jobId, securityContext);
             CsvImportResult result =
-                importCsvInternal(uriInfo, securityContext, name, csv, dryRun, recursive);
+                importCsvInternal(
+                    uriInfo, securityContext, name, csv, dryRun, recursive, versioningEntityType);
             WebsocketNotificationHandler.sendCsvImportCompleteNotification(
                 jobId, securityContext, result);
           } catch (Exception e) {
@@ -867,26 +879,56 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       boolean dryRun,
       boolean recursive)
       throws IOException {
+    return importCsvInternal(uriInfo, securityContext, name, csv, dryRun, recursive, null);
+  }
+
+  protected CsvImportResult importCsvInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      String csv,
+      boolean dryRun,
+      boolean recursive,
+      String versioningEntityType)
+      throws IOException {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     CsvImportResult result =
-        repository.importFromCsv(
-            name, csv, dryRun, securityContext.getUserPrincipal().getName(), recursive);
+        nullOrEmpty(versioningEntityType)
+            ? repository.importFromCsv(
+                name, csv, dryRun, securityContext.getUserPrincipal().getName(), recursive)
+            : repository.importFromCsv(
+                name,
+                csv,
+                dryRun,
+                securityContext.getUserPrincipal().getName(),
+                recursive,
+                versioningEntityType);
 
     // Create version history for bulk import (same logic as async import)
+    String effectiveVersioningEntityType =
+        nullOrEmpty(versioningEntityType) ? entityType : versioningEntityType;
     if (result.getStatus() != ApiStatus.ABORTED
         && result.getNumberOfRowsProcessed() > 1
-        && !dryRun
-        && repository.supportsBulkImportVersioning()) {
-      // Only repositories that support versioning (indicated by flag) will execute this
-      repository.createChangeEventForBulkOperation(
-          repository.getByName(
-              uriInfo, name, new Fields(allowedFields, ""), Include.NON_DELETED, false),
-          result,
-          securityContext.getUserPrincipal().getName());
-    }
+        && !dryRun) {
+      EntityRepository<EntityInterface> versioningRepo =
+          (EntityRepository<EntityInterface>)
+              Entity.getEntityRepository(effectiveVersioningEntityType);
 
+      // Only repositories that support versioning (indicated by flag) will execute this
+      if (versioningRepo.supportsBulkImportVersioning()) {
+        versioningRepo.createChangeEventForBulkOperation(
+            versioningRepo.getByName(
+                uriInfo,
+                name,
+                new Fields(versioningRepo.getAllowedFields(), ""),
+                Include.NON_DELETED,
+                false),
+            result,
+            securityContext.getUserPrincipal().getName());
+      }
+    }
     return result;
   }
 

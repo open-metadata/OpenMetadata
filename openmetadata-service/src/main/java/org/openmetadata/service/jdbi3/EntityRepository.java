@@ -4000,6 +4000,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     throw new IllegalArgumentException(csvNotSupported(entityType));
   }
 
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      String targetEntityType)
+      throws IOException {
+    throw new IllegalArgumentException(csvNotSupported(entityType));
+  }
+
   public List<TagLabel> getAllTags(EntityInterface entity) {
     return entity.getTags();
   }

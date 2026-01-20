@@ -1435,13 +1435,23 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
     List<TestCase> testCases = getTestCasesForExport(name, recursive);
-    return new TestCaseCsv(user).exportCsv(testCases);
+    return new TestCaseCsv(user, null).exportCsv(testCases);
   }
 
   @Override
   public CsvImportResult importFromCsv(
-      String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
-    return new TestCaseCsv(user).importCsv(csv, dryRun);
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      String targetEntityType)
+      throws IOException {
+    TestSuite targetBundleSuite =
+        TEST_SUITE.equals(targetEntityType)
+            ? Entity.getEntityByName(TEST_SUITE, name, "", Include.NON_DELETED)
+            : null;
+    return new TestCaseCsv(user, targetBundleSuite).importCsv(csv, dryRun);
   }
 
   private List<TestCase> getTestCasesForExport(String name, boolean recursive) {
@@ -1494,9 +1504,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   public static class TestCaseCsv extends EntityCsv<TestCase> {
     public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(TEST_CASE, false);
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
+    private final TestSuite targetBundleSuite;
+    private final List<UUID> importedTestCaseIds = new ArrayList<>();
 
-    TestCaseCsv(String user) {
+    TestCaseCsv(String user, TestSuite targetBundleSuite) {
       super(TEST_CASE, HEADERS, user);
+      this.targetBundleSuite = targetBundleSuite;
     }
 
     @Override
@@ -1608,6 +1621,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             // Use createOrUpdateForImport which handles both create and update
             RestUtil.PutResponse<TestCase> response =
                 repository.createOrUpdateForImport(null, testCase, importedBy);
+            if (targetBundleSuite != null) {
+              importedTestCaseIds.add(response.getEntity().getId());
+            }
             if (response.getStatus() == Response.Status.CREATED) {
               importSuccess(printer, csvRecord, ENTITY_CREATED);
             } else {
@@ -1622,6 +1638,25 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         } catch (Exception ex) {
           importFailure(printer, ex.getMessage(), csvRecord);
           importResult.withStatus(ApiStatus.FAILURE);
+        }
+      }
+
+      if (targetBundleSuite != null
+          && !importedTestCaseIds.isEmpty()
+          && !importResult.getDryRun()) {
+        try {
+          TestCaseRepository repository =
+              (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
+          repository.addTestCasesToLogicalTestSuite(targetBundleSuite, importedTestCaseIds);
+          LOG.info(
+              "Attached {} test cases to Bundle Suite '{}'",
+              importedTestCaseIds.size(),
+              targetBundleSuite.getFullyQualifiedName());
+        } catch (Exception e) {
+          LOG.error(
+              "Failed to attach test cases to Bundle Suite '{}': {}",
+              targetBundleSuite.getFullyQualifiedName(),
+              e.getMessage());
         }
       }
     }
