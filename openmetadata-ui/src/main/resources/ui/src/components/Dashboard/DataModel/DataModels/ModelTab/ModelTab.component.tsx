@@ -29,6 +29,8 @@ import {
 } from '../../../../../generated/entity/data/dashboardDataModel';
 import { TagLabel, TagSource } from '../../../../../generated/type/tagLabel';
 import { usePaging } from '../../../../../hooks/paging/usePaging';
+import { useFqn } from '../../../../../hooks/useFqn';
+import { useFqnDeepLink } from '../../../../../hooks/useFqnDeepLink';
 import {
   getDataModelColumnsByFQN,
   searchDataModelColumnsByFQN,
@@ -39,8 +41,6 @@ import {
   getEntityName,
 } from '../../../../../utils/EntityUtils';
 import { columnFilterIcon } from '../../../../../utils/TableColumn.util';
-import { useFqn } from '../../../../../hooks/useFqn';
-import { useFqnDeepLink } from '../../../../../hooks/useFqnDeepLink';
 import {
   getAllTags,
   searchTagInData,
@@ -90,10 +90,7 @@ const ModelTab = () => {
     useGenericContext<DashboardDataModel>();
   const { fullyQualifiedName: entityFqn, deleted: isReadOnly } = dataModel;
 
-  const {
-    columnFqn: columnPart,
-    fqn,
-  } = useFqn({
+  const { columnFqn: columnPart, fqn } = useFqn({
     type: EntityType.DASHBOARD_DATA_MODEL,
   });
 

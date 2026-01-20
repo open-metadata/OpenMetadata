@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 import { JSDOM } from 'jsdom';
 import { isEmpty, lowerCase } from 'lodash';
 import {
@@ -706,7 +706,10 @@ export const assignTag = async (
   await page.getByTestId('saveAssociatedTag').click();
 
   await patchRequest;
-  await page.waitForSelector('[data-testid="saveAssociatedTag"] [data-icon="loading"]', { state: 'detached' });
+  await page.waitForSelector(
+    '[data-testid="saveAssociatedTag"] [data-icon="loading"]',
+    { state: 'detached' }
+  );
   await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
   await expect(
@@ -768,7 +771,10 @@ export const assignTagToChildren = async ({
 
   await patchRequest;
 
-  await page.waitForSelector('[data-testid="saveAssociatedTag"] [data-icon="loading"]', { state: 'detached' });
+  await page.waitForSelector(
+    '[data-testid="saveAssociatedTag"] [data-icon="loading"]',
+    { state: 'detached' }
+  );
   await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
   await expect(
@@ -2104,8 +2110,8 @@ export const checkExploreSearchFilter = async (
     filterKey === 'tier.tagFQN'
       ? filterValue
       : /["%]/.test(filterValue ?? '')
-        ? escapedValue
-        : rawFilterValue;
+      ? escapedValue
+      : rawFilterValue;
 
   // Use a predicate to check the response URL contains the correct filter
   const queryRes = page.waitForResponse(
@@ -2152,7 +2158,8 @@ export const checkExploreSearchFilter = async (
 
   await expect(
     page.getByTestId(
-      `table-data-card_${(entity as TableClass)?.entityResponseData?.fullyQualifiedName
+      `table-data-card_${
+        (entity as TableClass)?.entityResponseData?.fullyQualifiedName
       }`
     )
   ).toBeVisible();
@@ -2216,14 +2223,8 @@ export const testCopyLinkButton = async ({
   const copyButton = page.getByTestId(buttonTestId).first();
   await expect(copyButton).toBeVisible();
 
-  // Click the copy button
-  await copyButton.click();
-
-  // Wait a bit for clipboard to be populated
-  await page.waitForTimeout(500);
-
-  // Read clipboard content with proper permission handling
-  const clipboardText = await readClipboardText(page);
+  // Click copy button and get clipboard text
+  const clipboardText = await copyAndGetClipboardText(page, copyButton);
 
   // Verify the clipboard text contains expected URL path and entity FQN
   expect(clipboardText).toContain(expectedUrlPath);
@@ -2231,23 +2232,44 @@ export const testCopyLinkButton = async ({
 };
 
 /**
- * Reads text from the clipboard with proper permission handling.
- * Grants clipboard permissions before reading to ensure it works in CI environments.
+ * Clicks a copy button and returns the copied text from clipboard.
+ * Handles clipboard interception internally - works across all environments.
  *
  * @param page - Playwright Page object
- * @returns The clipboard text content, or an error message if reading fails
+ * @param locator - Locator for the copy button to click
+ * @returns The clipboard text content
  */
-export const readClipboardText = async (page: Page): Promise<string> => {
-  // Grant clipboard permissions before reading
-  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+export const copyAndGetClipboardText = async (
+  page: Page,
+  locator: Locator
+): Promise<string> => {
+  // Hover and click the copy button
+  await locator.hover();
+  await locator.click({ force: true });
 
-  return page.evaluate(async () => {
-    try {
-      return await navigator.clipboard.readText();
-    } catch (error) {
-      return `CLIPBOARD_ERROR: ${error}`;
-    }
-  });
+  // Small delay to allow clipboard write to complete
+  await page.waitForTimeout(300);
+
+  // Read clipboard using paste method (works reliably in all environments)
+  const textareaId = '__clipboard_reader__';
+
+  await page.evaluate((id) => {
+    const textarea = document.createElement('textarea');
+    textarea.id = id;
+    textarea.style.cssText = 'position:fixed;left:-9999px;top:0;';
+    document.body.appendChild(textarea);
+  }, textareaId);
+
+  await page.locator(`#${textareaId}`).focus();
+  await page.keyboard.press('ControlOrMeta+V');
+
+  const clipboardText = await page.locator(`#${textareaId}`).inputValue();
+
+  await page.evaluate((id) => {
+    document.getElementById(id)?.remove();
+  }, textareaId);
+
+  return clipboardText;
 };
 
 /**
@@ -2273,9 +2295,7 @@ export const validateCopiedLinkFormat = ({
     allowedProtocols?: string[]; // Allowed protocols (default: ['http:', 'https:'])
   };
 }) => {
-  const {
-    allowedProtocols = ['http:', 'https:'],
-  } = options;
+  const { allowedProtocols = ['http:', 'https:'] } = options;
 
   // Parse the URL
   let url: URL;
@@ -2308,5 +2328,3 @@ export const validateCopiedLinkFormat = ({
     isValid: true,
   };
 };
-
-
