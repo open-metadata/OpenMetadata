@@ -174,10 +174,7 @@ jest.mock('../../rest/searchAPI', () => ({
 }));
 jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({
-    search: QueryString.stringify({
-      endTs: 1710161424255,
-      startTs: 1709556624254,
-    }),
+    search: '',
   }));
 });
 jest.mock('../../utils/date-time/DateTimeUtils', () => {
@@ -249,8 +246,6 @@ describe('IncidentManagerPage', () => {
       include: 'non-deleted',
       originEntityFQN: undefined,
       domain: undefined,
-      startTs: 1709556624254,
-      endTs: 1710161424255,
     });
   });
 
@@ -373,17 +368,19 @@ describe('IncidentManagerPage', () => {
     );
   });
 
-  it('Incident should be fetch with updated time', async () => {
+  it('Incident should be fetch with updated time from URL', async () => {
+    const mockUseCustomLocation = require('../../hooks/useCustomLocation/useCustomLocation');
+    mockUseCustomLocation.mockImplementation(() => ({
+      search: QueryString.stringify({
+        endTs: 1710161424255,
+        startTs: 1709556624254,
+      }),
+    }));
+
     const mockGetListTestCaseIncidentStatus =
       getListTestCaseIncidentStatusFromSearch as jest.Mock;
     await act(async () => {
       render(<IncidentManager />);
-    });
-
-    const timeFilterButton = await screen.findByTestId('time-filter');
-
-    await act(async () => {
-      fireEvent.click(timeFilterButton);
     });
 
     expect(mockGetListTestCaseIncidentStatus).toHaveBeenCalledWith({
@@ -398,16 +395,18 @@ describe('IncidentManagerPage', () => {
   });
 
   it('Incident should be fetch with deleted', async () => {
+    const mockUseCustomLocation = require('../../hooks/useCustomLocation/useCustomLocation');
+    mockUseCustomLocation.mockImplementation(() => ({
+      search: QueryString.stringify({
+        endTs: 1710161424255,
+        startTs: 1709556624254,
+      }),
+    }));
+
     const mockGetListTestCaseIncidentStatus =
       getListTestCaseIncidentStatusFromSearch as jest.Mock;
     await act(async () => {
       render(<IncidentManager tableDetails={{ deleted: true } as Table} />);
-    });
-
-    const timeFilterButton = await screen.findByTestId('time-filter');
-
-    await act(async () => {
-      fireEvent.click(timeFilterButton);
     });
 
     expect(mockGetListTestCaseIncidentStatus).toHaveBeenCalledWith({
