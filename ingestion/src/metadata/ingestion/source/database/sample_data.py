@@ -841,6 +841,7 @@ class SampleDataSource(
         yield from self.ingest_teams()
         yield from self.ingest_users()
         yield from self.ingest_drives()
+
         yield from self.ingest_tables()
         self.ingest_tables_sample_data()
         yield from self.ingest_glue()
@@ -1489,6 +1490,29 @@ class SampleDataSource(
                             CreateCustomMetricRequest(**custom_metric),
                             table_entity.id.root,
                         )
+
+            # Patch certification if present in the sample data
+            if table.get("certification"):
+                try:
+                    from metadata.generated.schema.type.assetCertification import (
+                        AssetCertification,
+                    )
+
+                    destination = table_entity.model_copy(deep=True)
+                    destination.certification = AssetCertification.model_validate(
+                        table["certification"]
+                    )
+
+                    self.metadata.patch(
+                        entity=Table, source=table_entity, destination=destination
+                    )
+                    logger.debug(
+                        f"Patched certification for {table_entity.fullyQualifiedName.root}"
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        f"Failed to patch certification for {table.get('name')}: {exc}"
+                    )
 
     def ingest_stored_procedures(self) -> Iterable[Either[Entity]]:
         """Ingest Sample Stored Procedures"""
