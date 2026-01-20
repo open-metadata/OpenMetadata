@@ -63,6 +63,7 @@ def get_connection(connection: SftpConnection) -> SftpClient:
     """
     Create connection to SFTP server
     """
+    transport = None
     try:
         transport = Transport((connection.host, connection.port or 22))
 
@@ -100,6 +101,11 @@ def get_connection(connection: SftpConnection) -> SftpClient:
         return SftpClient(sftp=sftp_client, transport=transport)
 
     except Exception as exc:
+        if transport:
+            try:
+                transport.close()
+            except Exception:
+                pass
         logger.debug(traceback.format_exc())
         raise SourceConnectionException(f"Failed to connect to SFTP server: {exc}")
 
