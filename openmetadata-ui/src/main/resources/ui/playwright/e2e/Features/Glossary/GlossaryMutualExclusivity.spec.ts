@@ -182,7 +182,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         await child1Node.click();
 
         // Verify child1 is selected
-        await expect(child1Checkbox).toBeChecked();
+        await expect(child1Checkbox).toHaveClass(/ant-select-tree-checkbox-checked/);
 
         // Select second child
         const child2Node = page.getByTestId(`tag-${child2.responseData.fullyQualifiedName}`);
@@ -190,8 +190,8 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         await child2Node.click();
 
         // Verify child2 is now selected and child1 is deselected (mutual exclusivity)
-        await expect(child2Checkbox).toBeChecked();
-        await expect(child1Checkbox).not.toBeChecked();
+        await expect(child2Checkbox).toHaveClass(/ant-select-tree-checkbox-checked/);
+        await expect(child1Checkbox).not.toHaveClass(/ant-select-tree-checkbox-checked/);
 
         // Select third child
         const child3Node = page.getByTestId(`tag-${child3.responseData.fullyQualifiedName}`);
@@ -199,9 +199,9 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         await child3Node.click();
 
         // Verify only child3 is selected (mutual exclusivity auto-deselects siblings)
-        await expect(child3Checkbox).toBeChecked();
-        await expect(child2Checkbox).not.toBeChecked();
-        await expect(child1Checkbox).not.toBeChecked();
+        await expect(child3Checkbox).toHaveClass(/ant-select-tree-checkbox-checked/);
+        await expect(child2Checkbox).not.toHaveClass(/ant-select-tree-checkbox-checked/);
+        await expect(child1Checkbox).not.toHaveClass(/ant-select-tree-checkbox-checked/);
 
         await table.delete(apiContext);
       } finally {
@@ -274,24 +274,24 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         const child1Node = page.getByTestId(`tag-${child1.responseData.fullyQualifiedName}`);
         const child1Checkbox = child1Node.locator('.ant-select-tree-checkbox');
         await child1Node.click();
-        await expect(child1Checkbox).toBeChecked();
+        await expect(child1Checkbox).toHaveClass(/ant-select-tree-checkbox-checked/);
 
         // Select second child
         const child2Node = page.getByTestId(`tag-${child2.responseData.fullyQualifiedName}`);
         const child2Checkbox = child2Node.locator('.ant-select-tree-checkbox');
         await child2Node.click();
-        await expect(child2Checkbox).toBeChecked();
+        await expect(child2Checkbox).toHaveClass(/ant-select-tree-checkbox-checked/);
 
         // Select third child
         const child3Node = page.getByTestId(`tag-${child3.responseData.fullyQualifiedName}`);
         const child3Checkbox = child3Node.locator('.ant-select-tree-checkbox');
         await child3Node.click();
-        await expect(child3Checkbox).toBeChecked();
+        await expect(child3Checkbox).toHaveClass(/ant-select-tree-checkbox-checked/);
 
         // Verify all three are still selected
-        await expect(child1Checkbox).toBeChecked();
-        await expect(child2Checkbox).toBeChecked();
-        await expect(child3Checkbox).toBeChecked();
+        await expect(child1Checkbox).toHaveClass(/ant-select-tree-checkbox-checked/);
+        await expect(child2Checkbox).toHaveClass(/ant-select-tree-checkbox-checked/);
+        await expect(child3Checkbox).toHaveClass(/ant-select-tree-checkbox-checked/);
 
         await table.delete(apiContext);
       } finally {
@@ -353,11 +353,11 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         // Select child
         await child1Node.click();
-        await expect(child1Checkbox).toBeChecked();
+        await expect(child1Checkbox).toHaveClass(/ant-select-tree-checkbox-checked/);
 
         // Click again to deselect
         await child1Node.click();
-        await expect(child1Checkbox).not.toBeChecked();
+        await expect(child1Checkbox).not.toHaveClass(/ant-select-tree-checkbox-checked/);
 
         await table.delete(apiContext);
       } finally {
@@ -456,24 +456,24 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
           '.ant-select-tree-checkbox'
         );
         await nonMeChild1Node.click();
-        await expect(nonMeChild1Checkbox).toBeChecked();
+        await expect(nonMeChild1Checkbox).toHaveClass(/ant-select-tree-checkbox-checked/);
 
         const nonMeChild2Node = page.getByTestId(`tag-${nonMeChild2.responseData.fullyQualifiedName}`);
         const nonMeChild2Checkbox = nonMeChild2Node.locator(
           '.ant-select-tree-checkbox'
         );
         await nonMeChild2Node.click();
-        await expect(nonMeChild2Checkbox).toBeChecked();
+        await expect(nonMeChild2Checkbox).toHaveClass(/ant-select-tree-checkbox-checked/);
 
         // Select ME child
         const meChild1Node = page.getByTestId(`tag-${meChild1.responseData.fullyQualifiedName}`);
         const meChild1Checkbox = meChild1Node.locator('.ant-select-tree-checkbox');
         await meChild1Node.click();
-        await expect(meChild1Checkbox).toBeChecked();
+        await expect(meChild1Checkbox).toHaveClass(/ant-select-tree-checkbox-checked/);
 
         // Non-ME children should still be selected
-        await expect(nonMeChild1Checkbox).toBeChecked();
-        await expect(nonMeChild2Checkbox).toBeChecked();
+        await expect(nonMeChild1Checkbox).toHaveClass(/ant-select-tree-checkbox-checked/);
+        await expect(nonMeChild2Checkbox).toHaveClass(/ant-select-tree-checkbox-checked/);
 
         // Select another ME child
         const meChild2Node = page.getByTestId(`tag-${meChild2.responseData.fullyQualifiedName}`);
@@ -481,12 +481,12 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         await meChild2Node.click();
 
         // ME child 1 should be deselected, ME child 2 selected (mutual exclusivity)
-        await expect(meChild2Checkbox).toBeChecked();
-        await expect(meChild1Checkbox).not.toBeChecked();
+        await expect(meChild2Checkbox).toHaveClass(/ant-select-tree-checkbox-checked/);
+        await expect(meChild1Checkbox).not.toHaveClass(/ant-select-tree-checkbox-checked/);
 
         // Non-ME children should still be selected
-        await expect(nonMeChild1Checkbox).toBeChecked();
-        await expect(nonMeChild2Checkbox).toBeChecked();
+        await expect(nonMeChild1Checkbox).toHaveClass(/ant-select-tree-checkbox-checked/);
+        await expect(nonMeChild2Checkbox).toHaveClass(/ant-select-tree-checkbox-checked/);
 
         await table.delete(apiContext);
       } finally {
@@ -812,15 +812,15 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         await term1Node.click();
         await expect(
           term1Node.locator('.ant-select-tree-checkbox')
-        ).toBeChecked();
+        ).toHaveClass(/ant-select-tree-checkbox-checked/);
 
         await term2Node.click();
         await expect(
           term2Node.locator('.ant-select-tree-checkbox')
-        ).toBeChecked();
+        ).toHaveClass(/ant-select-tree-checkbox-checked/);
         await expect(
           term1Node.locator('.ant-select-tree-checkbox')
-        ).not.toBeChecked();
+        ).not.toHaveClass(/ant-select-tree-checkbox-checked/);
 
         await table.delete(apiContext);
       } finally {
