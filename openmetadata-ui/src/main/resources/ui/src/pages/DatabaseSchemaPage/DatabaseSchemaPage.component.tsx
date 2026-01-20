@@ -698,7 +698,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 activeKey={activeTab}
                 className="tabs-new"
                 data-testid="tabs"
-                destroyInactiveTabPane={true}
                 items={tabs}
                 tabBarExtraContent={
                   isExpandViewSupported && (
