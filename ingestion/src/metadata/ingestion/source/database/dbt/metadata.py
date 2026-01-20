@@ -1348,11 +1348,12 @@ class DbtSource(DbtServiceSource):
 
             if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.tier:
                 tier_fqn = dbt_meta_info.openmetadata.tier
+                source_elements = fqn.split(tier_fqn)
                 dbt_table_tags_list.extend(
                     get_tag_labels(
                         metadata=self.metadata,
-                        tags=[tier_fqn.split(fqn.FQN_SEPARATOR)[-1]],
-                        classification_name=tier_fqn.split(fqn.FQN_SEPARATOR)[0],
+                        tags=[source_elements[-1]],
+                        classification_name=source_elements[0],
                         include_tags=True,
                     )
                     or []
@@ -1373,7 +1374,7 @@ class DbtSource(DbtServiceSource):
             if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.tags:
                 for tag_fqn in dbt_meta_info.openmetadata.tags:
                     # Parse classification.tag format
-                    tag_parts = tag_fqn.split(fqn.FQN_SEPARATOR)
+                    tag_parts = fqn.split(tag_fqn)
                     if len(tag_parts) >= 2:
                         classification_name = tag_parts[0]
                         tag_name = fqn.FQN_SEPARATOR.join(tag_parts[1:])
@@ -1553,7 +1554,7 @@ class DbtSource(DbtServiceSource):
                 for entity_link_str in entity_link_list:
                     table_fqn = get_table_fqn(entity_link_str)
                     logger.debug(f"Table fqn found: {table_fqn}")
-                    source_elements = table_fqn.split(fqn.FQN_SEPARATOR)
+                    source_elements = fqn.split(table_fqn)
                     test_case_fqn = fqn.build(
                         self.metadata,
                         entity_type=TestCase,
@@ -1664,7 +1665,7 @@ class DbtSource(DbtServiceSource):
 
                 # Create the test case fqns and add the results
                 for table_fqn in dbt_test.get(DbtCommonEnum.UPSTREAM.value):
-                    source_elements = table_fqn.split(fqn.FQN_SEPARATOR)
+                    source_elements = fqn.split(table_fqn)
                     test_case_fqn = fqn.build(
                         self.metadata,
                         entity_type=TestCase,
