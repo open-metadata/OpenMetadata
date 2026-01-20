@@ -1144,7 +1144,9 @@ def _get_paths_from_subtree(subtree: DiGraph) -> List[List[Any]]:
             root_paths = process_root_node(root, leaf_nodes)
             paths.extend(root_paths)
         except TimeoutError:
-            logger.warning(f"Timeout while processing paths from root node {root}")
+            logger.warning(
+                f"Processing root node {root} failed after timeout of {NODE_PROCESSING_TIMEOUT} seconds"
+            )
     return paths
 
 
