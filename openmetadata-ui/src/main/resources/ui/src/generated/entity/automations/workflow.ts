@@ -393,6 +393,11 @@ export enum AuthProvider {
  *
  * Regex to only fetch api collections with names matching the pattern.
  *
+ * Regex to only fetch api endpoints with names matching the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern. System schemas
+ * (information_schema, _statistics_, sys) are excluded by default.
+ *
  * Regex to include/exclude FHIR resource categories
  *
  * Regex to include/exclude FHIR resource types
@@ -627,6 +632,14 @@ export interface TestServiceConnectionRequest {
      */
     databaseSchema?: string;
     /**
+     * RUNTIME FIELD - Automatically injected by backend from admin
+     * QueryRunnerConfig.querySettings.maxResultSize. This is NOT user-configurable in the
+     * request. The backend fetches this value from the service's QueryRunnerConfig and injects
+     * it here for enforcement by the Python workflow. If query has LIMIT exceeding this value,
+     * an error is raised. If query has no LIMIT, one is automatically injected.
+     */
+    maxResultSize?: number;
+    /**
      * Query to be executed.
      */
     query?: string;
@@ -648,6 +661,10 @@ export interface TestServiceConnectionRequest {
      * UUID of the user executing the query (extracted from JWT token in backend)
      */
     userId?: string;
+    /**
+     * Optional value of the workflow name responsible for running the test
+     */
+    workflowName?: string;
     /**
      * Spark Engine Configuration.
      */
@@ -758,6 +775,8 @@ export interface RequestConnection {
  * Greenplum Database Connection Config
  *
  * Doris Database Connection Config
+ *
+ * StarRocks Database Connection Config
  *
  * UnityCatalog Connection Config
  *
@@ -932,6 +951,10 @@ export interface ConfigObject {
      */
     apiCollectionFilterPattern?: FilterPattern;
     /**
+     * Regex to only fetch api endpoints with names matching the pattern.
+     */
+    apiEndpointFilterPattern?: FilterPattern;
+    /**
      * Documentation URL for the schema.
      */
     docURL?: string;
@@ -1062,6 +1085,8 @@ export interface ConfigObject {
      *
      * Host and port of the Doris service.
      *
+     * Host and port of the StarRocks service.
+     *
      * Host and port of the Teradata service.
      *
      * Host and Port of the SAP ERP instance.
@@ -1142,6 +1167,9 @@ export interface ConfigObject {
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
+     *
+     * Regex to only include/exclude schemas that matches the pattern. System schemas
+     * (information_schema, _statistics_, sys) are excluded by default.
      *
      * Regex to include/exclude FHIR resource categories
      *
@@ -1313,6 +1341,8 @@ export interface ConfigObject {
      *
      * Password to connect to Doris.
      *
+     * Password to connect to StarRocks.
+     *
      * Password to connect to SAS Viya
      *
      * Password to connect to Teradata.
@@ -1414,6 +1444,9 @@ export interface ConfigObject {
      *
      * Username to connect to Doris. This user should have privileges to read all the metadata
      * in Doris.
+     *
+     * Username to connect to StarRocks. This user should have privileges to read all the
+     * metadata in StarRocks.
      *
      * Username to connect to SAS Viya.
      *
@@ -1697,6 +1730,11 @@ export interface ConfigObject {
      * Cost of credit for the Snowflake account.
      */
     creditCost?: number;
+    /**
+     * Optional configuration for ingestion of Snowflake stages (internal and external). By
+     * default, stages are not ingested.
+     */
+    includeStages?: boolean;
     /**
      * Optional configuration for ingestion of streams, By default, it will skip the streams.
      */
@@ -4888,6 +4926,7 @@ export enum ConfigType {
     Spline = "Spline",
     Ssas = "SSAS",
     Ssis = "SSIS",
+    StarRocks = "StarRocks",
     Stitch = "Stitch",
     Superset = "Superset",
     Synapse = "Synapse",

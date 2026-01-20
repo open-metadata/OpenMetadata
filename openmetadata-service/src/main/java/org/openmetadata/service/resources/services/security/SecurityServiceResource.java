@@ -67,7 +67,7 @@ import org.openmetadata.service.util.CSVExportResponse;
 public class SecurityServiceResource
     extends ServiceEntityResource<SecurityService, SecurityServiceRepository, SecurityConnection> {
   private final SecurityServiceMapper mapper = new SecurityServiceMapper();
-  public static final String COLLECTION_PATH = "v1/services/securityServices/";
+  public static final String COLLECTION_PATH = "/v1/services/securityServices/";
   public static final String FIELDS = "owners,tags,domains,followers";
 
   @Override
@@ -573,6 +573,7 @@ public class SecurityServiceResource
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public CsvImportResult importCsv(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Security Service", schema = @Schema(type = "string"))
           @PathParam("name")
@@ -586,7 +587,7 @@ public class SecurityServiceResource
           boolean dryRun,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun, false);
+    return importCsvInternal(uriInfo, securityContext, name, csv, dryRun, false);
   }
 
   @PUT
@@ -608,6 +609,7 @@ public class SecurityServiceResource
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public Response importCsvAsync(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Security Service", schema = @Schema(type = "string"))
           @PathParam("name")
@@ -620,7 +622,7 @@ public class SecurityServiceResource
           @QueryParam("dryRun")
           boolean dryRun,
       String csv) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun, false);
+    return importCsvInternalAsync(uriInfo, securityContext, name, csv, dryRun, false);
   }
 
   @DELETE

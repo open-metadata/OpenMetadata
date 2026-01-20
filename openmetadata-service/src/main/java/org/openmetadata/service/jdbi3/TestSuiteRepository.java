@@ -75,6 +75,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
@@ -139,7 +140,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   @Override
-  public void setFields(TestSuite entity, EntityUtil.Fields fields) {
+  public void setFields(
+      TestSuite entity, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     entity.setPipelines(
         fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
     entity.setTests(fields.contains("tests") ? getTestCases(entity) : entity.getTests());

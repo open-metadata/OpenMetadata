@@ -209,6 +209,10 @@ SNOWFLAKE_GET_STREAM = """
 SHOW STREAMS LIKE '{stream_name}' IN SCHEMA "{schema}"
 """
 
+SNOWFLAKE_GET_STAGES = """
+SHOW STAGES IN SCHEMA "{schema}"
+"""
+
 SNOWFLAKE_GET_TRANSIENT_NAMES = """
 select TABLE_NAME, NULL from information_schema.tables
 where TABLE_SCHEMA = '{schema}'
