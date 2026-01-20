@@ -103,8 +103,6 @@ test.describe(
 
       // Wait for API call that happens on selection change.
       // We strictly wait for a request that has searchParams to avoid catching the initial load or others.
-      // Wait for API call that happens on selection change.
-      // We strictly wait for a request that has searchParams to avoid catching the initial load or others.
       const incidentListResponse = page.waitForResponse(
         (response) =>
           response
