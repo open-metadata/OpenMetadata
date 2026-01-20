@@ -1,0 +1,136 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/microsoftFabricConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MicrosoftFabricConnection",
+  "description": "Microsoft Fabric Warehouse and Lakehouse Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.MicrosoftFabricConnection",
+  "definitions": {
+    "microsoftFabricType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["MicrosoftFabric"],
+      "default": "MicrosoftFabric"
+    },
+    "microsoftFabricScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["mssql+pyodbc"],
+      "default": "mssql+pyodbc"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/microsoftFabricType",
+      "default": "MicrosoftFabric"
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/microsoftFabricScheme",
+      "default": "mssql+pyodbc"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the Microsoft Fabric SQL endpoint (e.g., your-workspace.datawarehouse.fabric.microsoft.com:1433).",
+      "type": "string"
+    },
+    "database": {
+      "title": "Database",
+      "description": "Database of the data source. This is the name of your Fabric Warehouse or Lakehouse. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.",
+      "type": "string"
+    },
+    "clientId": {
+      "title": "Client ID",
+      "description": "Azure Application (client) ID for Service Principal authentication.",
+      "type": "string"
+    },
+    "clientSecret": {
+      "title": "Client Secret",
+      "description": "Azure Application client secret for Service Principal authentication.",
+      "type": "string",
+      "format": "password"
+    },
+    "tenantId": {
+      "title": "Tenant ID",
+      "description": "Azure Directory (tenant) ID for Service Principal authentication.",
+      "type": "string"
+    },
+    "driver": {
+      "title": "Driver",
+      "description": "ODBC driver version in case of pyodbc connection.",
+      "type": "string",
+      "default": "ODBC Driver 18 for SQL Server"
+    },
+    "ingestAllDatabases": {
+      "title": "Ingest All Databases",
+      "description": "Ingest data from all databases (Warehouses and Lakehouses) in Microsoft Fabric. You can use databaseFilterPattern on top of this.",
+      "type": "boolean",
+      "default": false
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "default": {
+        "includes": [],
+        "excludes": ["^db_.*", "^guest$", "^information_schema$", "^sys$"]
+      }
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsDBTExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsDatabase": {
+      "title": "Supports Database",
+      "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
+    },
+    "supportsUsageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
+    },
+    "supportsLineageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
+    },
+    "sampleDataStorageConfig": {
+      "title": "Storage Config for Sample Data",
+      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    },
+    "supportsDataDiff": {
+      "title": "Supports Data Diff Extraction.",
+      "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort", "clientId", "clientSecret", "tenantId"]
+}

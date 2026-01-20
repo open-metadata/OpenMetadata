@@ -36,6 +36,7 @@ import doris from '../assets/img/service-icon-doris.png';
 import druid from '../assets/img/service-icon-druid.png';
 import dynamodb from '../assets/img/service-icon-dynamodb.png';
 import exasol from '../assets/img/service-icon-exasol.png';
+import fabric from '../assets/img/service-icon-fabric.svg';
 import fivetran from '../assets/img/service-icon-fivetran.png';
 import flink from '../assets/img/service-icon-flink.png';
 import gcs from '../assets/img/service-icon-gcs.png';
@@ -156,6 +157,9 @@ export const SYNAPSE = synapse;
 export const LOOKER = looker;
 export const MICROSTRATEGY = microstrategy;
 export const TABLEAU = tableau;
+export const FABRIC = fabric;
+export const MICROSOFTFABRIC = fabric; // Alias for Microsoft Fabric Database
+export const MICROSOFTFABRICPIPELINE = fabric; // Alias for Microsoft Fabric Pipeline
 export const REDASH = redash;
 export const METABASE = metabase;
 export const AZURESQL = azuresql;
@@ -456,6 +460,8 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Dremio,
   MetadataServiceType.Collibra,
   PipelineServiceType.Mulesoft,
+  DatabaseServiceType.MicrosoftFabric,
+  PipelineServiceType.MicrosoftFabricPipeline,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =
