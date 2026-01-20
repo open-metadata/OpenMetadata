@@ -36,9 +36,12 @@ export const useUserProfile = ({
   name: string;
   isTeam?: boolean;
 }): [string | null, boolean, User | undefined] => {
-  const { userProfilePics, updateUserProfilePics } = useApplicationStore();
+  const user = useApplicationStore((state) => state.userProfilePics[name]);
 
-  const user = userProfilePics[name];
+  const updateUserProfilePics = useApplicationStore(
+    (state) => state.updateUserProfilePics
+  );
+
   const [profilePic, setProfilePic] = useState(
     getImageWithResolutionAndFallback(
       ImageQuality['6x'],
@@ -60,8 +63,10 @@ export const useUserProfile = ({
 
   const fetchProfileIfRequired = useCallback(async () => {
     const lowerCasedName = name.toLowerCase();
+    const currentUserProfilePics =
+      useApplicationStore.getState().userProfilePics;
 
-    if (isTeam || userProfilePics[lowerCasedName]) {
+    if (isTeam || currentUserProfilePics[lowerCasedName]) {
       isTeam && setProfilePic(IconTeams);
 
       return;
@@ -89,7 +94,6 @@ export const useUserProfile = ({
       );
     } catch (error) {
       if ((error as AxiosError)?.response?.status === ClientErrors.NOT_FOUND) {
-        // If user not found, add empty user to prevent further requests and infinite loading
         updateUserProfilePics({
           id: name,
           user: {
@@ -104,13 +108,7 @@ export const useUserProfile = ({
         (p) => p !== lowerCasedName
       );
     }
-  }, [
-    updateUserProfilePics,
-    userProfilePics,
-    name,
-    isTeam,
-    userProfilePicsLoading,
-  ]);
+  }, [name, isTeam, updateUserProfilePics]);
 
   useEffect(() => {
     if (!permission) {
