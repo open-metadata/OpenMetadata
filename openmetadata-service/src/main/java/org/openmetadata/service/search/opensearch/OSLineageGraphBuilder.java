@@ -1226,14 +1226,10 @@ public class OSLineageGraphBuilder
 
   /**
    * Checks if column filter requires metadata (tags, glossary terms).
+   * Supports both ES query JSON format and legacy string format.
    */
   private boolean requiresMetadataFilter(String columnFilter) {
-    if (nullOrEmpty(columnFilter)) {
-      return false;
-    }
-
-    String lowerFilter = columnFilter.toLowerCase();
-    return lowerFilter.contains("tag:") || lowerFilter.contains("glossary:");
+    return ColumnFilterMatcher.requiresMetadataForFilter(columnFilter);
   }
 
   /**
