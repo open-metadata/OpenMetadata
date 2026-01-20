@@ -35,7 +35,8 @@
     "clientSecret": {
       "title": "Client Secret",
       "description": "The Azure application client secret to use for authentication.",
-      "$ref": "../../../../security/credentials/encryptedString.json"
+      "type": "string",
+      "format": "password"
     },
     "workspaceId": {
       "title": "Workspace ID",
@@ -44,7 +45,7 @@
     },
     "authorityUri": {
       "title": "Authority URI",
-      "description": "The Azure Active Directory authority URI. Defaults to https://login.microsoftonline.com/",
+      "description": "The Microsoft Entra ID (formerly Azure Active Directory) authority URI. Defaults to https://login.microsoftonline.com/.",
       "type": "string",
       "default": "https://login.microsoftonline.com/"
     },
