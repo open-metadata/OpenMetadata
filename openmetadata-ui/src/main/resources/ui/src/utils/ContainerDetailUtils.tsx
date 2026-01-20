@@ -29,9 +29,11 @@ import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import {
   Column,
+  Container,
   ContainerDataModel as ContainerDataModelType,
 } from '../generated/entity/data/container';
 import { PageType } from '../generated/system/ui/uiCustomization';
+import { EntityReference } from '../generated/type/entityReference';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { ContainerDetailPageTabProps } from './ContainerDetailsClassBase';
@@ -129,7 +131,6 @@ export const getContainerDetailPageTabs = ({
   decodedContainerName,
   editLineagePermission,
   editCustomAttributePermission,
-  viewAllPermission,
   viewCustomPropertiesPermission,
   feedCount,
   getEntityFeedCount,
@@ -268,5 +269,21 @@ export const getContainerWidgetsFromKey = (widgetConfig: WidgetConfig) => {
       entityType={EntityType.CONTAINER}
       widgetConfig={widgetConfig}
     />
+  );
+};
+
+export const extractContainerColumns = <
+  T extends Omit<EntityReference, 'type'>
+>(
+  data: T
+): Column[] => {
+  const container = data as Partial<Container>;
+
+  return (container.dataModel?.columns ?? []).map(
+    (column) =>
+      ({
+        ...column,
+        tags: column.tags ?? [],
+      } as Column)
   );
 };

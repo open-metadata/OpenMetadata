@@ -25,6 +25,8 @@ import {
 
 export const TABLE_SCROLL_VALUE = { x: 1200 };
 
+export const HIGHLIGHTED_ROW_SELECTOR = '.highlighted-row';
+
 export const TABLE_CONSTRAINTS_TYPE_OPTIONS = [
   {
     label: 'label.entity-key',
@@ -229,7 +231,6 @@ export const TABLE_DUMMY_DATA: Table = {
       dataLength: 512,
       dataTypeDisplay: 'varchar',
       description:
-        // eslint-disable-next-line max-len
         'The name of the region, such as a province or state, where the customer is located. For example, Ontario or New York. This column is the same as CustomerAddress.province in the Admin API.',
       fullyQualifiedName:
         'sample_data.ecommerce_db.shopify.dim_address_clean.region',

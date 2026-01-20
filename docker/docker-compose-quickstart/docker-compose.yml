@@ -18,7 +18,7 @@ volumes:
 services:
   mysql:
     container_name: openmetadata_mysql
-    image: docker.getcollate.io/openmetadata/db:1.10.0-SNAPSHOT
+    image: docker.getcollate.io/openmetadata/db:1.12.0-SNAPSHOT
     command: "--sort_buffer_size=10M"
     restart: always
     environment:
@@ -59,7 +59,7 @@ services:
 
   execute-migrate-all:
     container_name: execute_migrate_all
-    image: docker.getcollate.io/openmetadata/server:1.10.0-SNAPSHOT
+    image: docker.getcollate.io/openmetadata/server:1.12.0-SNAPSHOT
     command: "./bootstrap/openmetadata-ops.sh migrate"
     environment:
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
@@ -186,6 +186,13 @@ services:
       ELASTICSEARCH_BATCH_SIZE: ${ELASTICSEARCH_BATCH_SIZE:-100}
       ELASTICSEARCH_PAYLOAD_BYTES_SIZE: ${ELASTICSEARCH_PAYLOAD_BYTES_SIZE:-10485760}   #max payLoadSize in Bytes
       ELASTICSEARCH_INDEX_MAPPING_LANG: ${ELASTICSEARCH_INDEX_MAPPING_LANG:-EN}
+      # AWS IAM Authentication for OpenSearch (auto-enabled when AWS_DEFAULT_REGION is set)
+      # Uses standard AWS env vars: https://docs.aws.amazon.com/cli/v1/userguide/cli-configure-envvars.html
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-""}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-""}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-""}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-""}
+      SEARCH_AWS_SERVICE_NAME: ${SEARCH_AWS_SERVICE_NAME:-"es"}
 
       #eventMonitoringConfiguration
       EVENT_MONITOR: ${EVENT_MONITOR:-prometheus}
@@ -277,7 +284,7 @@ services:
   openmetadata-server:
     container_name: openmetadata_server
     restart: always
-    image: docker.getcollate.io/openmetadata/server:1.10.0-SNAPSHOT
+    image: docker.getcollate.io/openmetadata/server:1.12.0-SNAPSHOT
     environment:
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
       SERVER_PORT: ${SERVER_PORT:-8585}
@@ -400,6 +407,13 @@ services:
       ELASTICSEARCH_BATCH_SIZE: ${ELASTICSEARCH_BATCH_SIZE:-100}
       ELASTICSEARCH_PAYLOAD_BYTES_SIZE: ${ELASTICSEARCH_PAYLOAD_BYTES_SIZE:-10485760}   #max payLoadSize in Bytes
       ELASTICSEARCH_INDEX_MAPPING_LANG: ${ELASTICSEARCH_INDEX_MAPPING_LANG:-EN}
+      # AWS IAM Authentication for OpenSearch (auto-enabled when AWS_DEFAULT_REGION is set)
+      # Uses standard AWS env vars: https://docs.aws.amazon.com/cli/v1/userguide/cli-configure-envvars.html
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-""}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-""}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-""}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-""}
+      SEARCH_AWS_SERVICE_NAME: ${SEARCH_AWS_SERVICE_NAME:-"es"}
 
       #eventMonitoringConfiguration
       EVENT_MONITOR: ${EVENT_MONITOR:-prometheus}
@@ -490,7 +504,7 @@ services:
 
   ingestion:
     container_name: openmetadata_ingestion
-    image: docker.getcollate.io/openmetadata/ingestion:1.10.0-SNAPSHOT
+    image: docker.getcollate.io/openmetadata/ingestion:1.12.0-SNAPSHOT
     depends_on:
       elasticsearch:
         condition: service_started

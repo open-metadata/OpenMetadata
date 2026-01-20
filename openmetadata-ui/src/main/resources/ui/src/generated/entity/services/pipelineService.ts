@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -224,6 +224,8 @@ export interface PipelineConnection {
  * Stitch Connection
  *
  * Snowplow Pipeline Connection Config
+ *
+ * MuleSoft Anypoint Platform Connection Config
  */
 export interface ConfigObject {
     /**
@@ -246,6 +248,9 @@ export interface ConfigObject {
      * KafkaConnect Service Management/UI URI.
      *
      * Host and port of the Stitch API host
+     *
+     * MuleSoft Anypoint Platform URL. Use https://anypoint.mulesoft.com for US cloud,
+     * https://eu1.anypoint.mulesoft.com for EU cloud, or your on-premises URL.
      */
     hostPort?: string;
     /**
@@ -254,6 +259,8 @@ export interface ConfigObject {
     numberOfStatus?: number;
     /**
      * Regex exclude pipelines.
+     *
+     * Regex to filter MuleSoft applications by name.
      */
     pipelineFilterPattern?:      FilterPattern;
     supportsMetadataExtraction?: boolean;
@@ -288,7 +295,7 @@ export interface ConfigObject {
      * Choose between Basic authentication (for self-hosted) or OAuth 2.0 client credentials
      * (for Airbyte Cloud)
      */
-    auth?: Authentication;
+    auth?: PurpleAuthentication;
     /**
      * Fivetran API Key.
      *
@@ -477,8 +484,20 @@ export interface ConfigObject {
     deployment?: SnowplowDeployment;
     /**
      * Snowplow BDP Organization ID
+     *
+     * Anypoint Platform Organization ID. If not provided, the connector will use the user's
+     * default organization.
      */
     organizationId?: string;
+    /**
+     * Choose between Connected App (OAuth 2.0) or Basic Authentication.
+     */
+    authentication?: FluffyAuthentication;
+    /**
+     * Anypoint Platform Environment ID. If not provided, the connector will discover all
+     * accessible environments.
+     */
+    environmentId?: string;
     [property: string]: any;
 }
 
@@ -506,13 +525,39 @@ export interface UsernamePasswordAuthentication {
  *
  * OAuth 2.0 client credentials authentication for Airbyte Cloud
  */
-export interface Authentication {
+export interface PurpleAuthentication {
     /**
      * Password to connect to Airbyte.
      */
     password?: string;
     /**
      * Username to connect to Airbyte.
+     */
+    username?: string;
+    /**
+     * Client ID for the application registered in Airbyte.
+     */
+    clientId?: string;
+    /**
+     * Client Secret for the application registered in Airbyte.
+     */
+    clientSecret?: string;
+}
+
+/**
+ * Choose between Connected App (OAuth 2.0) or Basic Authentication.
+ *
+ * Basic Auth Credentials
+ *
+ * OAuth 2.0 client credentials authentication for Airbyte Cloud
+ */
+export interface FluffyAuthentication {
+    /**
+     * Password to access the service.
+     */
+    password?: string;
+    /**
+     * Username to access the service.
      */
     username?: string;
     /**
@@ -725,8 +770,15 @@ export interface MetadataDatabaseConnection {
      * this.
      */
     ingestAllDatabases?: boolean;
-    sslMode?:            SSLMode;
-    supportsDatabase?:   boolean;
+    /**
+     * Fully qualified name of the view or table to use for query logs. If not provided,
+     * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
+     * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
+     * restricted.
+     */
+    queryStatementSource?: string;
+    sslMode?:              SSLMode;
+    supportsDatabase?:     boolean;
     /**
      * How to run the SQLite database. :memory: by default.
      */
@@ -770,6 +822,8 @@ export interface AuthConfigurationType {
  * Regex to only include/exclude tables that matches the pattern.
  *
  * Regex to only fetch containers that matches the pattern.
+ *
+ * Regex to filter MuleSoft applications by name.
  */
 export interface FilterPattern {
     /**
@@ -1145,6 +1199,7 @@ export enum SaslMechanismType {
 export enum KafkaSecurityProtocol {
     Plaintext = "PLAINTEXT",
     SSL = "SSL",
+    SaslPlaintext = "SASL_PLAINTEXT",
     SaslSSL = "SASL_SSL",
 }
 
@@ -1174,6 +1229,7 @@ export enum PipelineServiceType {
     KafkaConnect = "KafkaConnect",
     KinesisFirehose = "KinesisFirehose",
     Matillion = "Matillion",
+    Mulesoft = "Mulesoft",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",
     Snowplow = "Snowplow",
@@ -1255,6 +1311,14 @@ export interface EntityReference {
  * This schema defines the type for labeling an entity with a Tag.
  */
 export interface TagLabel {
+    /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
     /**
      * Description for the tag label.
      */

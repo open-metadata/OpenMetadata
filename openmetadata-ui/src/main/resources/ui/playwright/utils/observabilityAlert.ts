@@ -14,8 +14,8 @@
 import { expect, Page } from '@playwright/test';
 import { ALERT_UPDATED_DESCRIPTION } from '../constant/alert';
 import {
-    AlertDetails,
-    ObservabilityCreationDetails
+  AlertDetails,
+  ObservabilityCreationDetails,
 } from '../constant/alert.interface';
 import { SidebarItem } from '../constant/sidebar';
 import { Domain } from '../support/domain/Domain';
@@ -24,15 +24,15 @@ import { PipelineClass } from '../support/entity/PipelineClass';
 import { TableClass } from '../support/entity/TableClass';
 import { UserClass } from '../support/user/UserClass';
 import {
-    addDomainFilter,
-    addEntityFQNFilter,
-    addOwnerFilter,
-    addPipelineStatusUpdatesAction,
-    checkRecentEventDetails,
-    inputBasicAlertInformation,
-    visitAlertDetailsPage,
-    visitEditAlertPage,
-    waitForRecentEventsToFinishExecution
+  addDomainFilter,
+  addEntityFQNFilter,
+  addOwnerFilter,
+  addPipelineStatusUpdatesAction,
+  checkRecentEventDetails,
+  inputBasicAlertInformation,
+  visitAlertDetailsPage,
+  visitEditAlertPage,
+  waitForRecentEventsToFinishExecution,
 } from './alert';
 import { clickOutside, descriptionBox, redirectToHomePage } from './common';
 import { addMultiOwner, updateDescription } from './entity';
@@ -89,9 +89,12 @@ export const addExternalDestination = async ({
   await page.waitForSelector(`.ant-select-dropdown:visible`, {
     state: 'visible',
   });
-
   // Select external tab
-  await page.click(`[data-testid="tab-label-external"]:visible`);
+  const externalTab = page.locator(
+    `.ant-select-dropdown:visible [data-testid="destination-category-dropdown-${destinationNumber}"] [data-testid="tab-label-external"]`
+  );
+  await expect(externalTab).toBeVisible();
+  await externalTab.click();
 
   // Select destination category option
   await page.click(

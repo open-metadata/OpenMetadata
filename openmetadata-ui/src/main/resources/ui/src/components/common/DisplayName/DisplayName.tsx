@@ -21,9 +21,14 @@ import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
+import CopyLinkButton from '../CopyLinkButton/CopyLinkButton';
 import { DisplayNameProps } from './DisplayName.interface';
 
-const DisplayName: React.FC<DisplayNameProps> = ({
+interface DisplayNamePropsWithParent extends DisplayNameProps {
+  parentEntityFqn?: string;
+}
+
+const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
   id,
   name,
   displayName,
@@ -31,6 +36,7 @@ const DisplayName: React.FC<DisplayNameProps> = ({
   link,
   allowRename,
   hasEditPermission = false,
+  entityType,
 }) => {
   const { t } = useTranslation();
 
@@ -82,22 +88,38 @@ const DisplayName: React.FC<DisplayNameProps> = ({
 
   return (
     <div className="d-inline-flex flex-column hover-icon-group w-max-full vertical-align-inherit">
-      <Typography.Text className="m-b-0 d-block" data-testid="column-name">
-        {renderMainContent}
-      </Typography.Text>
+      <div className="d-inline-flex items-center gap-2">
+        <Typography.Text className="m-b-0 d-block" data-testid="column-name">
+          {renderMainContent}
+        </Typography.Text>
 
-      {hasEditPermission ? (
-        <Tooltip placement="right" title={t('label.edit')}>
-          <Button
-            ghost
-            className="hover-cell-icon"
-            data-testid="edit-displayName-button"
-            icon={<IconEdit color={DE_ACTIVE_COLOR} {...ICON_DIMENSION} />}
-            type="text"
-            onClick={() => setIsDisplayNameEditing(true)}
-          />
-        </Tooltip>
-      ) : null}
+        <div className="d-flex items-center">
+          {hasEditPermission ? (
+            <Tooltip placement="top" title={t('label.edit')}>
+              <Button
+                ghost
+                className="hover-cell-icon flex-center"
+                data-testid="edit-displayName-button"
+                icon={<IconEdit color={DE_ACTIVE_COLOR} {...ICON_DIMENSION} />}
+                style={{
+                  width: '24px',
+                  height: '24px',
+                }}
+                type="text"
+                onClick={() => setIsDisplayNameEditing(true)}
+              />
+            </Tooltip>
+          ) : null}
+
+          {entityType && id && (
+            <CopyLinkButton
+              entityType={entityType}
+              fieldFqn={id}
+              testId="copy-column-link-button"
+            />
+          )}
+        </div>
+      </div>
       {isDisplayNameEditing && (
         <EntityNameModal
           allowRename={allowRename}

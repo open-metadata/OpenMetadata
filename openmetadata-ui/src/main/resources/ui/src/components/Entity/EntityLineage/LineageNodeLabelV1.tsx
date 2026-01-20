@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { Button, IconButton } from '@mui/material';
+import { Breadcrumbs, Button, Chip, IconButton, Tooltip } from '@mui/material';
 import { Col, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { capitalize, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-filter.svg';
@@ -29,7 +29,10 @@ import {
 } from '../../../generated/tests/testCase';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { getEntityChildrenAndLabel } from '../../../utils/EntityLineageUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  getBreadcrumbsFromFqn,
+  getEntityName,
+} from '../../../utils/EntityUtils';
 import { getEntityTypeIcon, getServiceIcon } from '../../../utils/TableUtils';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
@@ -67,36 +70,55 @@ const EntityLabel = ({ node }: LineageNodeLabelPropsExtended) => {
   );
   const childrenCount = children.length;
 
+  const breadcrumbs = useMemo(
+    () => getBreadcrumbsFromFqn(node.fullyQualifiedName ?? ''),
+    [node.fullyQualifiedName]
+  );
+
+  const renderBreadcrumbItem = useCallback(
+    (item: string) => (
+      <Typography.Text
+        className="text-grey-muted lineage-breadcrumb-item"
+        ellipsis={{ tooltip: true }}>
+        {item}
+      </Typography.Text>
+    ),
+    []
+  );
+
   return (
     <Col
       className={classNames(
         'items-center entity-label-container',
         childrenCount > 0 ? 'with-footer' : ''
       )}>
-      <Col className="d-flex items-center m-b-sm" flex="auto">
+      <Col className="d-flex items-center" flex="auto">
         <div className="d-flex entity-service-icon m-r-xs">
           {getServiceIcon(node)}
         </div>
         <Space align="start" direction="vertical" size={0}>
-          <Space
-            align="start"
-            className="entity-header-name"
-            direction="horizontal"
-            size={6}>
-            <Typography.Text className="m-b-0 d-flex text-left text-grey-muted node-service-type">
-              {node.serviceType}
-            </Typography.Text>
-            {getEntityTypeIcon(node.entityType)}
-            <Typography.Text className="m-b-0 d-flex text-left text-grey-muted node-entity-type">
-              {capitalize(node.entityType)}
-            </Typography.Text>
-          </Space>
           <Typography.Text
             className="m-b-0 d-block text-left entity-header-display-name text-md font-medium w-54"
             data-testid="entity-header-display-name"
             ellipsis={{ tooltip: true }}>
             {getEntityName(node)}
           </Typography.Text>
+
+          <Space
+            className="d-flex items-center m-b-xs lineage-breadcrumbs"
+            data-testid="lineage-breadcrumbs">
+            <Breadcrumbs
+              separator={<span className="lineage-breadcrumb-item-separator" />}
+              sx={{
+                '& ol': {
+                  gap: 0,
+                },
+              }}>
+              {breadcrumbs.map((breadcrumb) =>
+                renderBreadcrumbItem(breadcrumb.name)
+              )}
+            </Breadcrumbs>
+          </Space>
         </Space>
         {!showDeletedIcon && showDbtIcon && (
           <div className="m-r-xs" data-testid="dbt-icon">
@@ -170,6 +192,14 @@ const TestSuiteSummaryContainer = ({ node }: LineageNodeLabelPropsExtended) => {
   );
 };
 
+const EntityTypeIcon = ({ entityType }: { entityType?: string }) => {
+  return (
+    <span style={{ width: '16px', height: '16px' }}>
+      {getEntityTypeIcon(entityType)}
+    </span>
+  );
+};
+
 const EntityFooter = ({
   isChildrenListExpanded,
   node,
@@ -177,6 +207,7 @@ const EntityFooter = ({
   toggleOnlyShowColumnsWithLineageFilterActive,
   isOnlyShowColumnsWithLineageFilterActive,
 }: LineageNodeLabelPropsExtended) => {
+  const { t } = useTranslation();
   const { children, childrenHeading } = useMemo(
     () => getEntityChildrenAndLabel(node),
     [node.id]
@@ -212,27 +243,45 @@ const EntityFooter = ({
 
   return (
     <div className="entity-footer">
-      <Button
-        className={classNames(
-          'children-info-dropdown-label',
-          isChildrenListExpanded ? 'expanded' : 'collapsed'
-        )}
-        data-testid="children-info-dropdown-btn"
-        variant="outlined"
-        onClick={handleClickColumnInfoDropdown}>
-        {childrenInfoDropdownLabel}
-      </Button>
-      <TestSuiteSummaryContainer node={node} />
-      <IconButton
-        className={classNames(
-          'only-show-columns-with-lineage-filter-button',
-          isOnlyShowColumnsWithLineageFilterActive && 'active'
-        )}
-        data-testid="lineage-filter-button"
-        disabled={isEditMode}
-        onClick={handleOnlyShowColumnsWithLineage}>
-        <FilterIcon height={20} width={20} />
-      </IconButton>
+      <div className="entity-footer__entity-type-and-dropdown">
+        <Chip
+          icon={<EntityTypeIcon entityType={node.entityType} />}
+          label={capitalize(node.entityType)}
+          sx={{
+            '& .MuiChip-label': {
+              marginLeft: 1.5,
+            },
+          }}
+          variant="outlined"
+        />
+        <Button
+          className={classNames(
+            'children-info-dropdown-label',
+            isChildrenListExpanded ? 'expanded' : 'collapsed'
+          )}
+          data-testid="children-info-dropdown-btn"
+          variant="outlined"
+          onClick={handleClickColumnInfoDropdown}>
+          {childrenInfoDropdownLabel}
+        </Button>
+      </div>
+      <div className="entity-footer__test-summary-and-filter">
+        <TestSuiteSummaryContainer node={node} />
+        <Tooltip
+          placement="right"
+          title={t('message.only-show-columns-with-lineage')}>
+          <IconButton
+            className={classNames(
+              'only-show-columns-with-lineage-filter-button',
+              isOnlyShowColumnsWithLineageFilterActive && 'active'
+            )}
+            data-testid="lineage-filter-button"
+            disabled={isEditMode}
+            onClick={handleOnlyShowColumnsWithLineage}>
+            <FilterIcon height={20} width={20} />
+          </IconButton>
+        </Tooltip>
+      </div>
     </div>
   );
 };

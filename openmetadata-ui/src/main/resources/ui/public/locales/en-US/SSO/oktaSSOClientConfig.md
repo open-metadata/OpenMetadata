@@ -70,13 +70,40 @@ Okta SSO enables users to log in with their Okta credentials using OAuth 2.0 and
 - **Example:** ["preferred_username", "email", "sub"]
 - **Why it matters:** Determines which claim from the JWT token identifies the user.
 - **Note:** Common Okta claims: email, preferred_username, sub, login
+  - Order matters; first matching claim is used
 
 ### <span data-id="jwtPrincipalClaimsMapping">JWT Principal Claims Mapping</span>
 
-- **Definition:** Maps JWT claims to OpenMetadata user attributes.
-- **Example:** ["email:email", "name:name", "firstName:given_name"]
+- **Definition:** Maps JWT claims to OpenMetadata user attributes. (Overrides JWT Principal Claims if set)
+- **Example:** ["email:email", "username:preferred_username"]
 - **Why it matters:** Controls how user information from Okta maps to OpenMetadata user profiles.
 - **Note:** Format: "openmetadata_field:jwt_claim"
+- **Validation Requirements:**
+  - Both `username` and `email` mappings must be present when this field is used
+  - Only `username` and `email` keys are allowed; no other keys are permitted
+  - If validation fails, errors will be displayed on this specific field
+
+### <span data-id="jwtTeamClaimMapping">JWT Team Claim Mapping</span>
+
+- **Definition:** Okta claim or attribute containing team/department information for automatic team assignment.
+- **Example:** "department", "groups", "division", or custom profile attributes
+- **Why it matters:** Automatically assigns users to existing OpenMetadata teams based on their Okta user profile during login.
+- **How it works:**
+  - Extracts the value(s) from the specified Okta claim (e.g., if set to "department", reads user's department from Okta)
+  - For array claims (like "groups"), processes all values in the array
+  - Matches the extracted value(s) against existing team names in OpenMetadata
+  - Assigns the user to all matching teams that are of type "Group"
+  - If a team doesn't exist or is not of type "Group", a warning is logged but authentication continues
+- **Okta Configuration:**
+  - Common user profile attributes: "department", "division", "organization"
+  - Custom profile attributes can be configured in Okta → Directory → Profile Editor
+  - For group-based teams, use "groups" claim (requires group membership in scope)
+  - Ensure the attribute is included in the ID token by configuring claim mappings in Okta
+- **Note:** 
+  - The team must already exist in OpenMetadata for assignment to work
+  - Only teams of type "Group" can be auto-assigned (not "Organization" or "BusinessUnit" teams)
+  - Team names are case-sensitive and must match exactly
+  - Multiple team assignments are supported for array claims (e.g., "groups")
 
 ### <span data-id="tokenValidation">Token Validation Algorithm</span>
 
@@ -239,7 +266,7 @@ These fields are only shown when Client Type is set to **Confidential**.
 ### <span data-id="adminPrincipals">Admin Principals</span>
 
 - **Definition:** List of user principals who will have admin access.
-- **Example:** ["admin@company.com", "superuser@company.com"]
+- **Example:** ["admin", "superuser"]
 - **Why it matters:** These users will have full administrative privileges in OpenMetadata.
 - **Note:** Use email addresses that match the JWT principal claims
 

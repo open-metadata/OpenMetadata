@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isNil } from 'lodash';
+import { isEmpty } from 'lodash';
 import { RefObject, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -57,6 +57,7 @@ import {
   updateGlossaryTermVotes,
   updateGlossaryVotes,
 } from '../../../rest/glossaryAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
@@ -268,7 +269,7 @@ const GlossaryPage = () => {
           ) || glossaries[0]
         );
 
-        if (isNil(glossaryFqn) && glossaries[0].fullyQualifiedName) {
+        if (isEmpty(glossaryFqn) && glossaries[0].fullyQualifiedName) {
           navigate(getGlossaryPath(glossaries[0].fullyQualifiedName), {
             replace: true,
           });
@@ -520,7 +521,7 @@ const GlossaryPage = () => {
         ),
       }}
       hideFirstPanel={isImportAction}
-      pageTitle={t('label.glossary')}
+      pageTitle={getEntityName(activeGlossary)}
       secondPanel={{
         children: glossaryElement,
         className: 'content-resizable-panel-container',

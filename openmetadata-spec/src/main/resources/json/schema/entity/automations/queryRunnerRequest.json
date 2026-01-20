@@ -23,8 +23,8 @@
       "description": "Optional value to indicate if the query should be transpiled.",
       "type": "boolean"
     },
-    "ingestionRunner": {
-      "description": "Optional value of the ingestion runner name responsible for running the test",
+    "workflowName": {
+      "description": "Optional value of the workflow name responsible for running the test",
       "type": "string"
     },
     "userId": {
@@ -52,6 +52,13 @@
     "databaseSchema": {
       "description": "Optional database schema to use for query execution (selected by user in QueryRunner Studio). Service-specific name (e.g., Snowflake schema). Named 'databaseSchema' instead of 'schema' to avoid conflicts with Pydantic's BaseModel.schema() method.",
       "type": "string",
+      "default": null
+    },
+    "maxResultSize": {
+      "description": "RUNTIME FIELD - Automatically injected by backend from admin QueryRunnerConfig.querySettings.maxResultSize. This is NOT user-configurable in the request. The backend fetches this value from the service's QueryRunnerConfig and injects it here for enforcement by the Python workflow. If query has LIMIT exceeding this value, an error is raised. If query has no LIMIT, one is automatically injected.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000,
       "default": null
     }
   },

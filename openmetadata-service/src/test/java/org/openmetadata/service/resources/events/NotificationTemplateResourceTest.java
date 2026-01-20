@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.events;
 
 import static jakarta.ws.rs.client.Entity.entity;
+import static jakarta.ws.rs.client.Entity.json;
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.CONFLICT;
 import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
@@ -231,12 +232,12 @@ public class NotificationTemplateResourceTest
 
   public final Response resetTemplate(UUID id, Map<String, String> authHeaders) {
     WebTarget target = getResource(id).path("reset");
-    return SecurityUtil.addHeaders(target, authHeaders).put(null);
+    return SecurityUtil.addHeaders(target, authHeaders).put(json("{}"));
   }
 
   public final Response resetTemplateByName(String fqn, Map<String, String> authHeaders) {
     WebTarget target = getResourceByName(fqn).path("reset");
-    return SecurityUtil.addHeaders(target, authHeaders).put(null);
+    return SecurityUtil.addHeaders(target, authHeaders).put(json("{}"));
   }
 
   private NotificationTemplate getSystemTemplate() {
@@ -370,7 +371,16 @@ public class NotificationTemplateResourceTest
             + ".content-card { word-break:break-word; overflow-wrap:anywhere; -ms-word-break:break-all; white-space:normal; max-width:100%!important; } "
             + "pre, code { white-space:pre-wrap!important; word-break:break-all!important; word-wrap:break-word!important; overflow-wrap:anywhere!important; max-width:100%!important; display:block!important; } "
             + "blockquote { margin:10px 0!important; padding:12px 16px!important; background-color:#f8f9fa!important; border-left:3px solid #6b7280!important; border-radius:3px!important; font-style:italic!important; color:#1f2937!important; } "
-            + "@media (max-width:600px){ .container { width:100%!important; } .p-sm { padding-left:16px!important; padding-right:16px!important; } }"
+            + ".om-data-table-container { display:block!important; width:100%!important; max-width:480px!important; overflow-x:auto!important; overflow-y:hidden!important; -webkit-overflow-scrolling:touch!important; -ms-overflow-style:scrollbar!important; box-sizing:border-box!important; } "
+            + ".om-data-table { border-collapse:separate!important; border-spacing:0!important; margin:0!important; width:max-content!important; min-width:100%!important; font-family:-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif!important; font-size:13px!important; line-height:18px!important; background-color:#ffffff!important; border:1px solid #e2e8f0!important; border-radius:8px!important; table-layout:auto!important; } "
+            + ".om-data-table thead { background-color:#f8fafc!important; } "
+            + ".om-data-table th { padding:12px 14px!important; text-align:left!important; font-weight:600!important; color:#475569!important; font-size:11px!important; text-transform:uppercase!important; letter-spacing:0.5px!important; background-color:#f8fafc!important; border-bottom:2px solid #e2e8f0!important; white-space:nowrap!important; min-width:80px!important; } "
+            + ".om-data-table td { padding:12px 14px!important; color:#334155!important; vertical-align:middle!important; border-bottom:1px solid #f1f5f9!important; white-space:nowrap!important; min-width:80px!important; } "
+            + ".om-data-table tbody tr:last-child td { border-bottom:none!important; } "
+            + ".om-data-table .om-data-table-more { text-align:center!important; font-style:italic!important; color:#64748b!important; background-color:#f8fafc!important; font-size:12px!important; padding:10px 14px!important; white-space:normal!important; } "
+            + ".om-data-table td, .om-data-table th { mso-white-space:normal!important; } "
+            + ".content-cell { width:100%!important; max-width:480px!important; table-layout:fixed!important; } "
+            + "@media (max-width:600px){ .container { width:100%!important; } .p-sm { padding-left:16px!important; padding-right:16px!important; } .om-data-table-container { max-width:calc(100vw - 80px)!important; } .content-cell { max-width:calc(100vw - 80px)!important; } }"
             + "</style>"
             + "</head>"
             + "<body id=\"body\" style=\"margin:0; padding:0; background-color:#f6f7fb;\">"
@@ -380,11 +390,11 @@ public class NotificationTemplateResourceTest
             + "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" class=\"full-wrap\" style=\"width:100%; background-color:#f6f7fb;\">"
             + "<tr><td align=\"center\" style=\"padding:24px 12px;\">"
             + "<!--[if (gte mso 9)|(IE)]><table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td><![endif]-->"
-            + "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" class=\"container\" bgcolor=\"#ffffff\" style=\"max-width:600px; border-radius:14px; background-color:#ffffff;\">"
+            + "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" class=\"container\" bgcolor=\"#ffffff\" style=\"max-width:600px; border-radius:14px; background-color:#ffffff; table-layout:fixed;\">"
             + "<tr><td style=\"padding:0; border-top-left-radius:14px; border-top-right-radius:14px;\">"
-            + "<!--[if mso]><v:rect xmlns:v=\"urn:schemas-microsoft-com:vml\" fill=\"true\" stroke=\"false\" style=\"width:600px;height:96px;\"><v:fill type=\"frame\" src=\"https://i.imgur.com/7fn1VBe.png\" /><v:textbox inset=\"0,0,0,0\"></v:textbox></v:rect><![endif]-->"
+            + "<!--[if mso]><v:rect xmlns:v=\"urn:schemas-microsoft-com:vml\" fill=\"true\" stroke=\"false\" style=\"width:600px;height:96px;\"><v:fill type=\"frame\" src=\"https://cdn.getcollate.io/om-change-event-header.png\" /><v:textbox inset=\"0,0,0,0\"></v:textbox></v:rect><![endif]-->"
             + "<!--[if !mso]><!-- -->"
-            + "<img class=\"hero-img\" src=\"https://i.imgur.com/7fn1VBe.png\" width=\"600\" alt=\"OpenMetadata · Change Event\" style=\"width:100%; height:auto; border-top-left-radius:14px; border-top-right-radius:14px;\">"
+            + "<img class=\"hero-img\" src=\"https://cdn.getcollate.io/om-change-event-header.png\" width=\"600\" alt=\"OpenMetadata · Change Event\" style=\"width:100%; height:auto; border-top-left-radius:14px; border-top-right-radius:14px;\">"
             + "<!--<![endif]-->"
             + "</td></tr>"
             + "<tr><td class=\"p-sm\" style=\"padding:20px 24px 8px 24px;\">"
@@ -393,12 +403,12 @@ public class NotificationTemplateResourceTest
             + "<strong>Heads up!</strong> Some fresh updates just landed in your OpenMetadata environment. Take a quick look at what's new below:"
             + "</td></tr></table></td></tr>"
             + "<tr><td class=\"p-sm\" style=\"padding:8px 24px 24px 24px;\">"
-            + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"border-radius:12px;\">"
+            + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"border-radius:12px; table-layout:fixed;\">"
             + "<tr><td width=\"6\" style=\"background-color:#7247e8; border-top-left-radius:12px; border-bottom-left-radius:12px;\">&nbsp;</td>"
-            + "<td bgcolor=\"#ffffff\" style=\"background-color:#ffffff; padding:16px; border-top-right-radius:12px; border-bottom-right-radius:12px;\">"
-            + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">"
-            + "<tr><td align=\"left\" style=\"font-family:-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-size:14px; line-height:22px; color:#1f2937;\">"
-            + "<div class=\"content-card\">"
+            + "<td class=\"content-cell\" bgcolor=\"#ffffff\" style=\"background-color:#ffffff; padding:16px; border-top-right-radius:12px; border-bottom-right-radius:12px; overflow:hidden;\">"
+            + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"table-layout:fixed;\">"
+            + "<tr><td align=\"left\" style=\"font-family:-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-size:14px; line-height:22px; color:#1f2937; overflow:hidden;\">"
+            + "<div class=\"content-card\" style=\"overflow:hidden; max-width:100%;\">"
             + content
             + "</div>"
             + "</td></tr></table></td></tr></table></td></tr>"

@@ -29,6 +29,9 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
     SnowflakeConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
+    QueryParserType,
+)
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import get_table_entities_from_query
@@ -412,7 +415,9 @@ class HexQueryFetcher:
                     query=query_text,
                     dialect=dialect,
                     timeout_seconds=10,  # Use a reasonable timeout
+                    parser_type=QueryParserType.Auto,
                 )
+                query_hash = lineage_parser.query_hash
 
                 # Get source tables from the parser
                 source_tables = lineage_parser.source_tables or []
@@ -440,8 +445,9 @@ class HexQueryFetcher:
                                 tables.append(table_entity)
 
             except Exception as parser_error:
+                hash_prefix = f"[{query_hash}] " if "query_hash" in locals() else ""
                 logger.debug(
-                    f"LineageParser failed, falling back to alternative method: {parser_error}"
+                    f"{hash_prefix}LineageParser failed, falling back to alternative method: {parser_error}"
                 )
 
         except Exception as e:

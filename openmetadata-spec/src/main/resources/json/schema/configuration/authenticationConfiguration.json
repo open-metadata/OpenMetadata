@@ -53,7 +53,7 @@
       "title": "Token Validation Algorithm",
       "description": "Token Validation Algorithm to use.",
       "type": "string",
-      "enum": ["RS256", "RS384", "RS512"],
+      "enum": ["RS256", "RS384", "RS512", "ES256", "ES384", "ES512"],
       "default": "RS256"
     },
     "authority": {
@@ -81,11 +81,17 @@
     },
     "jwtPrincipalClaimsMapping": {
       "title": "Jwt Principal Claims Mapping",
-      "description": "Jwt Principal Claim Mapping",
+      "description": "Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or 'email'. Both username and email mappings are required.",
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "pattern": "^(username|email):[a-zA-Z0-9_-]+$"
       }
+    },
+    "jwtTeamClaimMapping": {
+      "title": "Jwt Team Claim Mapping",
+      "description": "JWT claim name that contains team/department information. For SAML SSO, this is the attribute name (e.g., 'department') from the SAML assertion. For JWT, this is the claim name in the JWT token. The value from this claim will be used to automatically assign users to matching teams in OpenMetadata during login.",
+      "type": "string"
     },
     "enableSelfSignup": {
       "title": "Enable Self Sign Up",
@@ -110,6 +116,12 @@
     },
     "forceSecureSessionCookie": {
       "description": "Force secure flag on session cookies even when not using HTTPS directly. Enable this when running behind a proxy/load balancer that handles SSL termination.",
+      "type": "boolean",
+      "default": false
+    },
+    "enableAutoRedirect": {
+      "title": "Enable Auto Redirect",
+      "description": "Enable automatic redirect from the sign-in page to the configured SSO provider.",
       "type": "boolean",
       "default": false
     }

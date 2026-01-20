@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.CLASSIFICATION;
+import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
@@ -79,8 +80,10 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
@@ -440,7 +443,7 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
-  public void setFields(Tag tag, Fields fields) {
+  public void setFields(Tag tag, Fields fields, RelationIncludes relationIncludes) {
     tag.withClassification(getClassification(tag)).withParent(getParent(tag));
     if (fields.contains("usageCount")) {
       tag.withUsageCount(getUsageCount(tag));
@@ -674,14 +677,25 @@ public class TagRepository extends EntityRepository<Tag> {
       variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
       variables.put(UPDATED_BY_VARIABLE, user);
       WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
-      workflowHandler.resolveTask(
-          taskId, workflowHandler.transformToNodeVariables(taskId, variables));
+      boolean workflowSuccess =
+          workflowHandler.resolveTask(
+              taskId, workflowHandler.transformToNodeVariables(taskId, variables));
 
+      // If workflow failed (corrupted Flowable task), apply the status directly
+      if (!workflowSuccess) {
+        LOG.warn(
+            "[GlossaryTerm] Workflow failed for taskId='{}', applying status directly", taskId);
+        Boolean approved = (Boolean) variables.get(RESULT_VARIABLE);
+        String entityStatus = (approved != null && approved) ? "Approved" : "Rejected";
+        EntityFieldUtils.setEntityField(tag, TAG, user, FIELD_ENTITY_STATUS, entityStatus, true);
+      }
       return tag;
     }
   }
 
   public class TagUpdater extends EntityUpdater {
+    private boolean renameProcessed = false;
+
     public TagUpdater(Tag original, Tag updated, Operation operation) {
       super(original, updated, operation);
     }
@@ -712,39 +726,24 @@ public class TagRepository extends EntityRepository<Tag> {
           "autoClassificationPriority",
           original.getAutoClassificationPriority(),
           updated.getAutoClassificationPriority());
-      updateName(original, updated);
-      updateParent(original, updated);
+      updateNameAndParent(updated);
     }
 
-    public void updateName(Tag original, Tag updated) {
-      if (!original.getName().equals(updated.getName())) {
-        if (ProviderType.SYSTEM.equals(original.getProvider())) {
-          throw new IllegalArgumentException(
-              CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
-        }
-        // Category name changed - update tag names starting from classification and all the
-        // children tags
-        LOG.info("Tag name changed from {} to {}", original.getName(), updated.getName());
-        setFullyQualifiedName(updated);
-        daoCollection
-            .tagDAO()
-            .updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
-        daoCollection
-            .tagUsageDAO()
-            .rename(
-                TagSource.CLASSIFICATION.ordinal(),
-                original.getFullyQualifiedName(),
-                updated.getFullyQualifiedName());
-        recordChange("name", original.getName(), updated.getName());
-      }
+    /**
+     * Handle name and parent changes together using getOriginalFqn() for correct FQN tracking.
+     */
+    public void updateNameAndParent(Tag updated) {
+      // Use getOriginalFqn() which was captured at EntityUpdater construction time.
+      String oldFqn = getOriginalFqn();
+      setFullyQualifiedName(updated);
+      String newFqn = updated.getFullyQualifiedName();
 
-      // Populate response fields
-      invalidateTags(original.getId());
-      getChildren(updated);
-    }
+      // Check if this is a name change
+      String[] oldParts = FullyQualifiedName.split(oldFqn);
+      String oldTagName = oldParts.length > 0 ? oldParts[oldParts.length - 1] : "";
+      boolean nameChanged = !oldTagName.equals(updated.getName());
 
-    private void updateParent(Tag original, Tag updated) {
-      // Can't change parent and Classification both at the same time
+      // Check for parent/classification changes
       UUID oldParentId = getId(original.getParent());
       UUID newParentId = getId(updated.getParent());
       boolean parentChanged = !Objects.equals(oldParentId, newParentId);
@@ -752,20 +751,28 @@ public class TagRepository extends EntityRepository<Tag> {
       UUID oldCategoryId = getId(original.getClassification());
       UUID newCategoryId = getId(updated.getClassification());
       boolean classificationChanged = !Objects.equals(oldCategoryId, newCategoryId);
-      if (!parentChanged && !classificationChanged) {
-        return;
+
+      boolean fqnChanged = !oldFqn.equals(newFqn);
+
+      if (fqnChanged && !renameProcessed) {
+        renameProcessed = true;
+
+        if (nameChanged && ProviderType.SYSTEM.equals(original.getProvider())) {
+          throw new IllegalArgumentException(
+              CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
+        }
+
+        LOG.info("Tag FQN changed from {} to {}", oldFqn, newFqn);
+        daoCollection.tagDAO().updateFqn(oldFqn, newFqn);
+        daoCollection.tagUsageDAO().rename(TagSource.CLASSIFICATION.ordinal(), oldFqn, newFqn);
+
+        if (nameChanged) {
+          recordChange("name", oldTagName, updated.getName());
+        }
+
+        updateEntityLinks(oldFqn, newFqn, updated);
       }
 
-      setFullyQualifiedName(updated);
-      daoCollection
-          .tagDAO()
-          .updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
-      daoCollection
-          .tagUsageDAO()
-          .rename(
-              TagSource.CLASSIFICATION.ordinal(),
-              original.getFullyQualifiedName(),
-              updated.getFullyQualifiedName());
       if (classificationChanged) {
         updateClassificationRelationship(original, updated);
         recordChange(
@@ -774,14 +781,18 @@ public class TagRepository extends EntityRepository<Tag> {
             updated.getClassification(),
             true,
             entityReferenceMatch);
-        invalidateTags(original.getId());
+        invalidateTags(updated.getId());
       }
       if (parentChanged) {
         updateParentRelationship(original, updated);
         recordChange(
             "parent", original.getParent(), updated.getParent(), true, entityReferenceMatch);
-        invalidateTags(original.getId());
+        invalidateTags(updated.getId());
       }
+
+      // Populate response fields
+      invalidateTags(updated.getId());
+      getChildren(updated);
     }
 
     private void updateClassificationRelationship(Tag orig, Tag updated) {
@@ -806,6 +817,24 @@ public class TagRepository extends EntityRepository<Tag> {
     private void deleteParentRelationship(Tag term) {
       if (term.getParent() != null) {
         deleteRelationship(term.getParent().getId(), TAG, term.getId(), TAG, Relationship.CONTAINS);
+      }
+    }
+
+    private void updateEntityLinks(String oldFqn, String newFqn, Tag updated) {
+      daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
+
+      MessageParser.EntityLink newAbout = new MessageParser.EntityLink(TAG, newFqn);
+      daoCollection
+          .feedDAO()
+          .updateByEntityId(newAbout.getLinkString(), updated.getId().toString());
+
+      List<EntityReference> childTags = findTo(updated.getId(), TAG, Relationship.CONTAINS, TAG);
+
+      for (EntityReference child : childTags) {
+        newAbout = new MessageParser.EntityLink(TAG, child.getFullyQualifiedName());
+        daoCollection
+            .feedDAO()
+            .updateByEntityId(newAbout.getLinkString(), child.getId().toString());
       }
     }
 

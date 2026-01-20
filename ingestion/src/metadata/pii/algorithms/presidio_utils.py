@@ -13,7 +13,21 @@ Utilities for working with the Presidio Library.
 """
 import inspect
 import logging
-from typing import Any, Callable, Iterable, List, Optional, Set, Type, Union, cast
+from functools import cache
+from itertools import groupby
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 import spacy
 from dateutil import parser
@@ -35,7 +49,7 @@ from presidio_analyzer.predefined_recognizers import (
 )
 from spacy.cli.download import download  # pyright: ignore[reportUnknownVariableType]
 
-from metadata.pii.algorithms import patterns
+from metadata.pii.algorithms import patterns, presidio_constants
 from metadata.pii.constants import PRESIDIO_LOGGER, SPACY_EN_MODEL, SUPPORTED_LANG
 from metadata.utils.dispatch import class_register
 from metadata.utils.logger import pii_logger
@@ -43,6 +57,7 @@ from metadata.utils.logger import pii_logger
 logger = pii_logger()
 
 
+@cache
 def load_nlp_engine(
     model_name: str = SPACY_EN_MODEL,
     supported_language: str = SUPPORTED_LANG,
@@ -290,3 +305,71 @@ def apply_confidence_threshold(
         return recognizer
 
     return decorate_entity_recognizer
+
+
+def explain_recognition_results(results: List[RecognizerResult]) -> str:
+    """Builds a verbose explanation of the recognition results taking into account multiple values"""
+
+    def _get_getter(res: RecognizerResult) -> str:
+        return cast(Dict[str, str], res.recognition_metadata).get(
+            presidio_constants.RECOGNIZER_METADATA_IDENTIFIER,
+            presidio_constants.DEFAULT_RECOGNIZER_IDENTIFIER,
+        )
+
+    grouped_results: groupby[str, RecognizerResult] = groupby(
+        sorted(results, key=_get_getter),
+        key=_get_getter,
+    )
+
+    textual_explanation = ""
+    for recognizer_identifier, group in grouped_results:
+        group_list = list(group)
+
+        recognizer_name: str = cast(
+            Dict[str, str], group_list[0].recognition_metadata
+        ).get(presidio_constants.RECOGNIZER_METADATA_NAME, recognizer_identifier)
+        results_count = len(group_list)
+        results_score = sum(r.score for r in group_list) / results_count
+        maybe_plural_time = "time" if results_count == 1 else "times"
+
+        textual_explanation += (
+            presidio_constants.TEXTUAL_EXPLANATION_TEMPLATE.format(
+                recognizer_name=recognizer_name,
+                results_count=results_count,
+                maybe_plural_time=maybe_plural_time,
+                results_score=results_score,
+            )
+            + "\n"
+        )
+
+        patterns_matched: Set[Tuple[str, float]] = set()
+        for result in group_list:
+            if (
+                result.analysis_explanation
+                is None  # pyright: ignore[reportUnnecessaryComparison]
+                or result.analysis_explanation.pattern
+                is None  # pyright: ignore[reportUnnecessaryComparison]
+            ):
+                continue
+
+            patterns_matched.add(
+                (result.analysis_explanation.pattern, result.analysis_explanation.score)
+            )
+
+        if patterns_matched:
+            textual_explanation += (
+                presidio_constants.TEXTUAL_EXPLANATION_PATTERN_HEADER_TEMPLATE + "\n"
+            )
+            for pattern, score in sorted(
+                patterns_matched, key=lambda o: o[1], reverse=True
+            ):
+                textual_explanation += (
+                    presidio_constants.TEXTUAL_EXPLANATION_PATTERN_ITEM_TEMPLATE.format(
+                        pattern=pattern, score=score
+                    )
+                    + "\n"
+                )
+
+        textual_explanation += "\n"
+
+    return textual_explanation

@@ -15,6 +15,7 @@ import { NodeData } from '../../components/Lineage/Lineage.interface';
 import { EImpactLevel } from '../../components/LineageTable/LineageTable.interface';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { TagSource } from '../../generated/type/tagLabel';
+import { TableSearchSource } from '../../interface/search.interface';
 import {
   getSearchNameEsQuery,
   LINEAGE_DEPENDENCY_OPTIONS,
@@ -206,8 +207,8 @@ describe('LineageUtils', () => {
 
       expect(firstNode.fromEntity).toEqual(mockEdges[0].fromEntity);
       expect(firstNode.toEntity).toEqual(mockEdges[0].toEntity);
-      expect(firstNode.column?.toColumn).toBe('customer_id1');
-      expect(firstNode.column?.fromColumns).toEqual(['customer_id']); // Flattened to single item
+      expect(firstNode.toColumn).toBe('customer_id1');
+      expect(firstNode.fromColumn).toBe('customer_id'); // Flattened to single item
       expect(firstNode.docId).toBe('customer_id->customer_id1');
       expect(firstNode.nodeDepth).toBe(2); // nodeDepth from toEntity (test.table2)
       expect(firstNode.owners).toEqual([]);
@@ -219,8 +220,8 @@ describe('LineageUtils', () => {
       // Check second column node - second fromColumn from same column mapping
       const secondNode = result[1];
 
-      expect(secondNode.column.toColumn).toBe('customer_id1');
-      expect(secondNode.column.fromColumns).toEqual(['customer_name']); // Second flattened fromColumn
+      expect(secondNode.toColumn).toBe('customer_id1');
+      expect(secondNode.fromColumn).toBe('customer_name'); // Second flattened fromColumn
       expect(secondNode.docId).toBe('customer_name->customer_id1');
     });
 
@@ -239,15 +240,21 @@ describe('LineageUtils', () => {
 
       expect(firstNode.fromEntity).toEqual(mockEdges[0].fromEntity);
       expect(firstNode.toEntity).toEqual(mockEdges[0].toEntity);
-      expect(firstNode.column.toColumn).toBe('customer_id1');
-      expect(firstNode.column.fromColumns).toEqual(['customer_id']); // Flattened
+      expect(firstNode.toColumn).toBe('customer_id1');
+      expect(firstNode.fromColumn).toBe('customer_id'); // Flattened
       expect(firstNode.docId).toBe('customer_id->customer_id1');
       expect(firstNode.nodeDepth).toBe(1); // nodeDepth from fromEntity (test.table1)
-      expect(firstNode.owners).toEqual(mockNodes['test.table1'].entity.owners);
-      expect(firstNode.tier).toEqual(mockNodes['test.table1'].entity.tier);
-      expect(firstNode.tags).toEqual(mockNodes['test.table1'].entity.tags);
+      expect(firstNode.owners).toEqual(
+        (mockNodes['test.table1'].entity as TableSearchSource).owners
+      );
+      expect(firstNode.tier).toEqual(
+        (mockNodes['test.table1'].entity as TableSearchSource).tier
+      );
+      expect(firstNode.tags).toEqual(
+        (mockNodes['test.table1'].entity as TableSearchSource).tags
+      );
       expect(firstNode.domains).toEqual(
-        mockNodes['test.table1'].entity.domains
+        (mockNodes['test.table1'].entity as TableSearchSource).domains
       );
       expect(firstNode.description).toBe('Test table description');
 
@@ -255,7 +262,7 @@ describe('LineageUtils', () => {
       const fourthNode = result[3];
 
       expect(fourthNode.fromEntity).toEqual(mockEdges[1].fromEntity);
-      expect(fourthNode.column?.fromColumns).toEqual(['status']);
+      expect(fourthNode.fromColumn).toBe('status');
       expect(fourthNode.nodeDepth).toBe(2); // nodeDepth from test.table2
     });
 
@@ -507,6 +514,32 @@ describe('LineageUtils', () => {
         },
       });
     });
+
+    it('should use table fields', () => {
+      const searchText = 'status';
+      const result = getSearchNameEsQuery(searchText);
+
+      expect(result).toEqual({
+        bool: {
+          should: [
+            {
+              wildcard: {
+                'name.keyword': {
+                  value: '*status*',
+                },
+              },
+            },
+            {
+              wildcard: {
+                'displayName.keyword': {
+                  value: '*status*',
+                },
+              },
+            },
+          ],
+        },
+      });
+    });
   });
 
   describe('Edge cases and error handling', () => {
@@ -602,8 +635,8 @@ describe('LineageUtils', () => {
       expect(firstNode.toEntity).toEqual(mockEdges[0].toEntity);
       expect(firstNode.docId).toBe('customer_id->customer_id1'); // Custom docId based on fromColumn and toColumn
       expect(firstNode).not.toHaveProperty('columns');
-      expect(firstNode.column?.toColumn).toBe('customer_id1');
-      expect(firstNode.column?.fromColumns).toEqual(['customer_id']); // Flattened
+      expect(firstNode.toColumn).toBe('customer_id1');
+      expect(firstNode.fromColumn).toBe('customer_id'); // Flattened
     });
   });
 
@@ -641,16 +674,16 @@ describe('LineageUtils', () => {
       // Should create 3 separate nodes, one for each fromColumn
       expect(result).toHaveLength(3);
 
-      expect(result[0].column?.fromColumns).toEqual(['col1']);
-      expect(result[0].column?.toColumn).toBe('result');
+      expect(result[0].fromColumn).toBe('col1');
+      expect(result[0].toColumn).toBe('result');
       expect(result[0].docId).toBe('col1->result');
 
-      expect(result[1].column?.fromColumns).toEqual(['col2']);
-      expect(result[1].column?.toColumn).toBe('result');
+      expect(result[1].fromColumn).toBe('col2');
+      expect(result[1].toColumn).toBe('result');
       expect(result[1].docId).toBe('col2->result');
 
-      expect(result[2].column?.fromColumns).toEqual(['col3']);
-      expect(result[2].column?.toColumn).toBe('result');
+      expect(result[2].fromColumn).toBe('col3');
+      expect(result[2].toColumn).toBe('result');
       expect(result[2].docId).toBe('col3->result');
     });
 

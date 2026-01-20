@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -55,6 +55,7 @@ export enum SettingType {
     SlackEventPublishers = "slackEventPublishers",
     SlackInstaller = "slackInstaller",
     SlackState = "slackState",
+    TeamsAppConfiguration = "teamsAppConfiguration",
     WorkflowSettings = "workflowSettings",
 }
 
@@ -84,6 +85,8 @@ export enum SettingType {
  * This schema defines the OpenMetadata base URL configuration
  *
  * This schema defines the Slack App Information
+ *
+ * This schema defines the Microsoft Teams App configuration
  *
  * This schema defines the profiler configuration. It is used to configure globally the
  * metrics to compute for specific data types.
@@ -185,6 +188,10 @@ export interface PipelineServiceClientConfiguration {
      */
     clientType?: ClientType;
     /**
+     * Enable automatic redirect from the sign-in page to the configured SSO provider.
+     */
+    enableAutoRedirect?: boolean;
+    /**
      * Enable Self Sign Up
      */
     enableSelfSignup?: boolean;
@@ -198,9 +205,17 @@ export interface PipelineServiceClientConfiguration {
      */
     jwtPrincipalClaims?: string[];
     /**
-     * Jwt Principal Claim Mapping
+     * Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or
+     * 'email'. Both username and email mappings are required.
      */
     jwtPrincipalClaimsMapping?: string[];
+    /**
+     * JWT claim name that contains team/department information. For SAML SSO, this is the
+     * attribute name (e.g., 'department') from the SAML assertion. For JWT, this is the claim
+     * name in the JWT token. The value from this claim will be used to automatically assign
+     * users to matching teams in OpenMetadata during login.
+     */
+    jwtTeamClaimMapping?: string;
     /**
      * LDAP Configuration in case the Provider is LDAP
      */
@@ -272,6 +287,12 @@ export interface PipelineServiceClientConfiguration {
      */
     useRolesFromProvider?: boolean;
     /**
+     * AWS IAM authentication configuration for OpenSearch. IAM auth is automatically enabled
+     * when region is configured. Uses standard AWS environment variables (AWS_DEFAULT_REGION,
+     * AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN).
+     */
+    aws?: Aws;
+    /**
      * Batch Size for Requests
      */
     batchSize?: number;
@@ -284,7 +305,8 @@ export interface PipelineServiceClientConfiguration {
      */
     connectionTimeoutSecs?: number;
     /**
-     * Elastic Search Host
+     * Elastic Search Host. Supports single host or comma-separated list for multiple hosts
+     * (e.g., 'localhost' or 'es-node1:9200,es-node2:9200,es-node3:9200').
      */
     host?: string;
     /**
@@ -314,7 +336,8 @@ export interface PipelineServiceClientConfiguration {
      */
     payLoadSize?: number;
     /**
-     * Elastic Search port
+     * Elastic Search port. Used when host does not include port. Ignored when using
+     * comma-separated hosts with ports.
      */
     port?: number;
     /**
@@ -419,8 +442,20 @@ export interface PipelineServiceClientConfiguration {
     /**
      * User Token
      */
-    userToken?:           string;
-    metricConfiguration?: MetricConfigurationDefinition[];
+    userToken?: string;
+    /**
+     * Azure AD Application (Client) ID for the Teams bot
+     */
+    microsoftAppId?: string;
+    /**
+     * Azure AD Client Secret for the Teams bot
+     */
+    microsoftAppPassword?: string;
+    /**
+     * Azure AD Tenant ID (optional, for single-tenant bots). Use 'common' for multi-tenant.
+     */
+    microsoftAppTenantId?: string;
+    metricConfiguration?:  MetricConfigurationDefinition[];
     /**
      * Configurations of allowed searchable fields for each entity type
      */
@@ -454,6 +489,10 @@ export interface PipelineServiceClientConfiguration {
      * DownStream Depth for Lineage.
      */
     downstreamDepth?: number;
+    /**
+     * Performance configuration for lineage graph builder.
+     */
+    graphPerformanceConfig?: GraphPerformanceConfig;
     /**
      * Lineage Layer.
      */
@@ -971,6 +1010,10 @@ export interface AuthenticationConfiguration {
      */
     clientType?: ClientType;
     /**
+     * Enable automatic redirect from the sign-in page to the configured SSO provider.
+     */
+    enableAutoRedirect?: boolean;
+    /**
      * Enable Self Sign Up
      */
     enableSelfSignup?: boolean;
@@ -984,9 +1027,17 @@ export interface AuthenticationConfiguration {
      */
     jwtPrincipalClaims: string[];
     /**
-     * Jwt Principal Claim Mapping
+     * Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or
+     * 'email'. Both username and email mappings are required.
      */
     jwtPrincipalClaimsMapping?: string[];
+    /**
+     * JWT claim name that contains team/department information. For SAML SSO, this is the
+     * attribute name (e.g., 'department') from the SAML assertion. For JWT, this is the claim
+     * name in the JWT token. The value from this claim will be used to automatically assign
+     * users to matching teams in OpenMetadata during login.
+     */
+    jwtTeamClaimMapping?: string;
     /**
      * LDAP Configuration in case the Provider is LDAP
      */
@@ -1334,7 +1385,7 @@ export interface SamlSSOClientConfig {
  */
 export interface Idp {
     /**
-     * Authority URL to redirect the users on Sign In page
+     * Authority URL (deprecated, use entityId instead).
      */
     authorityUrl?: string;
     /**
@@ -1346,7 +1397,7 @@ export interface Idp {
      */
     idpX509Certificate?: string;
     /**
-     * Authority URL to redirect the users on Sign In page
+     * Name ID format for SAML assertions
      */
     nameId?: string;
     /**
@@ -1439,6 +1490,9 @@ export interface SP {
  * Token Validation Algorithm to use.
  */
 export enum TokenValidationAlgorithm {
+    Es256 = "ES256",
+    Es384 = "ES384",
+    Es512 = "ES512",
     Rs256 = "RS256",
     Rs384 = "RS384",
     Rs512 = "RS512",
@@ -1495,6 +1549,20 @@ export interface AuthorizerConfiguration {
      * Use Roles from Provider
      */
     useRolesFromProvider?: boolean;
+}
+
+/**
+ * AWS IAM authentication configuration for OpenSearch. IAM auth is automatically enabled
+ * when region is configured. Uses standard AWS environment variables (AWS_DEFAULT_REGION,
+ * AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN).
+ */
+export interface Aws {
+    /**
+     * AWS service name for signing (es for Elasticsearch/OpenSearch, aoss for OpenSearch
+     * Serverless)
+     */
+    serviceName?: string;
+    [property: string]: any;
 }
 
 /**
@@ -1615,6 +1683,70 @@ export interface GlobalSettings {
      * List of field=value term-boost rules that apply only to this asset.
      */
     termBoosts?: TermBoost[];
+}
+
+/**
+ * Performance configuration for lineage graph builder.
+ *
+ * Configuration for lineage graph performance and scalability
+ */
+export interface GraphPerformanceConfig {
+    /**
+     * Cache time-to-live in seconds
+     */
+    cacheTTLSeconds?: number;
+    /**
+     * Enable caching for small/medium graphs
+     */
+    enableCaching?: boolean;
+    /**
+     * Enable progress tracking for long-running queries
+     */
+    enableProgressTracking?: boolean;
+    /**
+     * Batch size for fetching large graph nodes
+     */
+    largeGraphBatchSize?: number;
+    /**
+     * Maximum number of graphs to cache
+     */
+    maxCachedGraphs?: number;
+    /**
+     * Maximum nodes to keep in memory before switching to streaming
+     */
+    maxInMemoryNodes?: number;
+    /**
+     * Batch size for fetching medium graph nodes
+     */
+    mediumGraphBatchSize?: number;
+    /**
+     * Node count threshold for medium graphs (optimized batching)
+     */
+    mediumGraphThreshold?: number;
+    /**
+     * Report progress every N nodes processed
+     */
+    progressReportInterval?: number;
+    /**
+     * Scroll context timeout in minutes
+     */
+    scrollTimeoutMinutes?: number;
+    /**
+     * Batch size for fetching small graph nodes from search backend
+     */
+    smallGraphBatchSize?: number;
+    /**
+     * Node count threshold for small graphs (eligible for caching)
+     */
+    smallGraphThreshold?: number;
+    /**
+     * Batch size for streaming very large graphs
+     */
+    streamingBatchSize?: number;
+    /**
+     * Use Elasticsearch/OpenSearch scroll API for large result sets
+     */
+    useScrollForLargeGraphs?: boolean;
 }
 
 /**
@@ -1960,9 +2092,9 @@ export interface NaturalLanguageSearch {
  */
 export interface Bedrock {
     /**
-     * AWS access key for Bedrock service authentication
+     * AWS credentials configuration for Bedrock service
      */
-    accessKey?: string;
+    awsConfig?: AWSBaseConfig;
     /**
      * Dimension of the embedding vector
      */
@@ -1975,18 +2107,43 @@ export interface Bedrock {
      * Bedrock model identifier to use for query transformation
      */
     modelId?: string;
+}
+
+/**
+ * AWS credentials configuration for Bedrock service
+ *
+ * Base AWS configuration for authentication. Supports static credentials, IAM roles, and
+ * default credential provider chain.
+ */
+export interface AWSBaseConfig {
     /**
-     * AWS Region for Bedrock service
+     * AWS Access Key ID. Falls back to default credential provider chain if not set.
+     */
+    accessKeyId?: string;
+    /**
+     * ARN of IAM role to assume for cross-account access.
+     */
+    assumeRoleArn?: string;
+    /**
+     * Session name for assumed role.
+     */
+    assumeRoleSessionName?: string;
+    /**
+     * Custom endpoint URL for AWS-compatible services (MinIO, LocalStack).
+     */
+    endpointUrl?: string;
+    /**
+     * AWS Region (e.g., us-east-1). When set, enables AWS authentication.
      */
     region?: string;
     /**
-     * AWS secret key for Bedrock service authentication
+     * AWS Secret Access Key. Falls back to default credential provider chain if not set.
      */
-    secretKey?: string;
+    secretAccessKey?: string;
     /**
-     * Set to true to use IAM role based authentication instead of access/secret keys.
+     * AWS Session Token for temporary credentials.
      */
-    useIamRole?: boolean;
+    sessionToken?: string;
 }
 
 /**

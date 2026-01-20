@@ -155,7 +155,13 @@ public class TestDefinitionResource
                   "Filter test definitions by supported service. Returns test definitions that either "
                       + "have an empty supportedServices list (supporting all services) or include the specified service.")
           @QueryParam("supportedService")
-          String supportedServiceParam) {
+          String supportedServiceParam,
+      @Parameter(
+              description =
+                  "Filter by enabled status (true/false). If not specified, returns all test definitions.",
+              schema = @Schema(type = "boolean"))
+          @QueryParam("enabled")
+          Boolean enabledParam) {
     ListFilter filter = new ListFilter(include);
     if (entityType != null) {
       filter.addQueryParam("entityType", entityType);
@@ -168,6 +174,9 @@ public class TestDefinitionResource
     }
     if (supportedServiceParam != null) {
       filter.addQueryParam("supportedService", supportedServiceParam);
+    }
+    if (enabledParam != null) {
+      filter.addQueryParam("enabled", String.valueOf(enabledParam));
     }
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
@@ -230,8 +239,17 @@ public class TestDefinitionResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
   }
 
   @GET

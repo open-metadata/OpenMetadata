@@ -375,8 +375,17 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
   }
 
   @GET
@@ -521,7 +530,12 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
               description = "Index to perform the aggregation against",
               schema = @Schema(type = "String"))
           @QueryParam("index")
-          String index)
+          String index,
+      @Parameter(
+              description = "Filter by domain fully qualified name",
+              schema = @Schema(type = "String"))
+          @QueryParam("domain")
+          String domain)
       throws IOException {
     List<AuthRequest> authRequests = getAuthRequestsForListOps();
     authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
@@ -529,7 +543,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       throw new IllegalArgumentException("aggregationQuery and index are required parameters");
     }
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    return repository.getDataQualityReport(query, aggregationQuery, index, subjectContext);
+    return repository.getDataQualityReport(query, aggregationQuery, index, domain, subjectContext);
   }
 
   @POST

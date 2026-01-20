@@ -1,7 +1,10 @@
 package org.openmetadata.service.search.opensearch;
 
+import static org.openmetadata.service.search.SearchUtils.buildHttpHosts;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
+import static org.openmetadata.service.util.AwsCredentialsUtil.buildCredentialsProvider;
+import static org.openmetadata.service.util.AwsCredentialsUtil.isAwsConfigured;
 
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
@@ -38,6 +41,7 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultLi
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
+import org.openmetadata.schema.service.configuration.elasticsearch.AwsConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
@@ -48,6 +52,7 @@ import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.search.SigV4RequestSigningInterceptor;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
@@ -65,6 +70,8 @@ import os.org.opensearch.client.opensearch.core.BulkResponse;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import os.org.opensearch.client.opensearch.nodes.NodesStatsResponse;
 import os.org.opensearch.client.transport.rest_client.RestClientTransport;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
 
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
@@ -191,6 +198,11 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public void deleteIndex(String indexName) {
     indexManager.deleteIndex(indexName);
+  }
+
+  @Override
+  public void deleteIndexWithBackoff(String indexName) {
+    indexManager.deleteIndexWithBackoff(indexName);
   }
 
   @Override
@@ -609,14 +621,15 @@ public class OpenSearchClient implements SearchClient {
   private RestClientBuilder getLowLevelRestClient(ElasticSearchConfiguration esConfig) {
     if (esConfig != null) {
       try {
-        RestClientBuilder restClientBuilder =
-            RestClient.builder(
-                new HttpHost(esConfig.getHost(), esConfig.getPort(), esConfig.getScheme()));
+        HttpHost[] httpHosts = buildHttpHosts(esConfig, "OpenSearch");
+        RestClientBuilder restClientBuilder = RestClient.builder(httpHosts);
 
-        // Configure connection pooling
+        AwsConfiguration awsConfig = esConfig.getAws();
+        // Enable IAM auth if AWS region is configured (region is required for SigV4 signing)
+        boolean useIamAuth = isAwsConfigured(awsConfig);
+
         restClientBuilder.setHttpClientConfigCallback(
             httpAsyncClientBuilder -> {
-              // Set connection pool sizes
               if (esConfig.getMaxConnTotal() != null && esConfig.getMaxConnTotal() > 0) {
                 httpAsyncClientBuilder.setMaxConnTotal(esConfig.getMaxConnTotal());
               }
@@ -624,8 +637,20 @@ public class OpenSearchClient implements SearchClient {
                 httpAsyncClientBuilder.setMaxConnPerRoute(esConfig.getMaxConnPerRoute());
               }
 
-              // Configure authentication if provided
-              if (StringUtils.isNotEmpty(esConfig.getUsername())
+              if (useIamAuth) {
+                AwsCredentialsProvider credentialsProvider = buildCredentialsProvider(awsConfig);
+                Region region = Region.of(awsConfig.getRegion());
+                String serviceName =
+                    StringUtils.isNotEmpty(awsConfig.getServiceName())
+                        ? awsConfig.getServiceName()
+                        : "es";
+
+                httpAsyncClientBuilder.addInterceptorLast(
+                    new SigV4RequestSigningInterceptor(credentialsProvider, region, serviceName));
+                LOG.info(
+                    "AWS IAM authentication enabled for OpenSearch in region: {}",
+                    awsConfig.getRegion());
+              } else if (StringUtils.isNotEmpty(esConfig.getUsername())
                   && StringUtils.isNotEmpty(esConfig.getPassword())) {
                 CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
                 credentialsProvider.setCredentials(
@@ -635,7 +660,6 @@ public class OpenSearchClient implements SearchClient {
                 httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
               }
 
-              // Configure SSL if needed
               SSLContext sslContext = null;
               try {
                 sslContext = createElasticSearchSSLContext(esConfig);
@@ -646,7 +670,6 @@ public class OpenSearchClient implements SearchClient {
                 httpAsyncClientBuilder.setSSLContext(sslContext);
               }
 
-              // Enable TCP keep alive strategy
               if (esConfig.getKeepAliveTimeoutSecs() != null
                   && esConfig.getKeepAliveTimeoutSecs() > 0) {
                 httpAsyncClientBuilder.setKeepAliveStrategy(
@@ -656,14 +679,12 @@ public class OpenSearchClient implements SearchClient {
               return httpAsyncClientBuilder;
             });
 
-        // Configure request timeouts
         restClientBuilder.setRequestConfigCallback(
             requestConfigBuilder ->
                 requestConfigBuilder
                     .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
 
-        // Enable compression and chunking for better network efficiency
         restClientBuilder.setCompressionEnabled(true);
         restClientBuilder.setChunkedEnabled(true);
         return restClientBuilder;
@@ -746,6 +767,40 @@ public class OpenSearchClient implements SearchClient {
       String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
     entityManager.updateGlossaryTermByFqnPrefix(
         indexName, oldParentFQN, newParentFQN, prefixFieldCondition);
+  }
+
+  @Override
+  public void updateClassificationTagByFqnPrefix(
+      String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
+    entityManager.updateClassificationTagByFqnPrefix(
+        indexName, oldParentFQN, newParentFQN, prefixFieldCondition);
+  }
+
+  @Override
+  public void updateDataProductReferences(String oldFqn, String newFqn) {
+    entityManager.updateDataProductReferences(oldFqn, newFqn);
+  }
+
+  @Override
+  public void updateAssetDomainsForDataProduct(
+      String dataProductFqn, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    entityManager.updateAssetDomainsForDataProduct(dataProductFqn, oldDomainFqns, newDomains);
+  }
+
+  @Override
+  public void updateAssetDomainsByIds(
+      List<UUID> assetIds, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    entityManager.updateAssetDomainsByIds(assetIds, oldDomainFqns, newDomains);
+  }
+
+  @Override
+  public void updateDomainFqnByPrefix(String oldFqn, String newFqn) {
+    entityManager.updateDomainFqnByPrefix(oldFqn, newFqn);
+  }
+
+  @Override
+  public void updateAssetDomainFqnByPrefix(String oldFqn, String newFqn) {
+    entityManager.updateAssetDomainFqnByPrefix(oldFqn, newFqn);
   }
 
   @Override

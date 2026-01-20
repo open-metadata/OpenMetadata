@@ -242,6 +242,10 @@ const IncidentManagerPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/IncidentManager/IncidentManagerPage'))
 );
 
+const RulesLibraryPage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/RulesLibrary/RulesLibraryPage'))
+);
+
 const IncidentManagerDetailPage = withSuspenseFallback(
   React.lazy(
     () =>
@@ -585,6 +589,18 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           </AdminProtectedRoute>
         }
         path={ROUTES.INCIDENT_MANAGER}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.TEST_DEFINITION,
+              permissions
+            )}>
+            <RulesLibraryPage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.RULES_LIBRARY}
       />
 
       {[

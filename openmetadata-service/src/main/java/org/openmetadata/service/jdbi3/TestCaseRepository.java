@@ -7,6 +7,7 @@ import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -93,13 +94,16 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.resources.dqtests.TestCaseResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
@@ -108,7 +112,6 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String TEST_SUITE_FIELD = "testSuite";
   private static final String INCIDENTS_FIELD = "incidentId";
-  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
   private static final String UPDATE_FIELDS =
       "owners,entityLink,testSuite,testSuites,testDefinition,dimensionColumns";
   private static final String PATCH_FIELDS =
@@ -118,7 +121,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   public TestCaseRepository() {
     super(
-        COLLECTION_PATH,
+        TestCaseResource.COLLECTION_PATH,
         TEST_CASE,
         TestCase.class,
         Entity.getCollectionDAO().testCaseDAO(),
@@ -132,7 +135,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
-  public void setFields(TestCase test, Fields fields) {
+  public void setFields(TestCase test, Fields fields, RelationIncludes relationIncludes) {
     test.setTestSuites(
         fields.contains(Entity.FIELD_TEST_SUITES) ? getTestSuites(test) : test.getTestSuites());
     test.setTestSuite(
@@ -479,6 +482,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     TestDefinition testDefinition =
         Entity.getEntity(test.getTestDefinition(), "", Include.NON_DELETED);
     test.setTestDefinition(testDefinition.getEntityReference());
+
+    // Validate that the test definition is enabled (only for new test cases, not updates)
+    if (!update && Boolean.FALSE.equals(testDefinition.getEnabled())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Test definition '%s' is disabled and cannot be used to create test cases",
+              testDefinition.getName()));
+    }
 
     validateTestParameters(
         test.getParameterValues(),
@@ -1108,8 +1119,19 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
       variables.put(UPDATED_BY_VARIABLE, user);
       WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
-      workflowHandler.resolveTask(
-          taskId, workflowHandler.transformToNodeVariables(taskId, variables));
+      boolean workflowSuccess =
+          workflowHandler.resolveTask(
+              taskId, workflowHandler.transformToNodeVariables(taskId, variables));
+
+      // If workflow failed (corrupted Flowable task), apply the status directly
+      if (!workflowSuccess) {
+        LOG.warn(
+            "[GlossaryTerm] Workflow failed for taskId='{}', applying status directly", taskId);
+        Boolean approved = (Boolean) variables.get(RESULT_VARIABLE);
+        String entityStatus = (approved != null && approved) ? "Approved" : "Rejected";
+        EntityFieldUtils.setEntityField(
+            testCase, TEST_CASE, user, FIELD_ENTITY_STATUS, entityStatus, true);
+      }
 
       return testCase;
     }

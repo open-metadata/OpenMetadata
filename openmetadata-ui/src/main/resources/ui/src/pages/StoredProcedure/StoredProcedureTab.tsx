@@ -20,12 +20,10 @@ import { useTranslation } from 'react-i18next';
 import DisplayName from '../../components/common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../components/common/Table/Table';
 import {
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
-  PAGE_SIZE,
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -41,6 +39,7 @@ import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getColumnSorter, highlightSearchText } from '../../utils/EntityUtils';
 import { stringToHTML } from '../../utils/StringsUtils';
+import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const StoredProcedureTab = () => {
@@ -77,15 +76,11 @@ const StoredProcedureTab = () => {
   const searchStoredProcedure = useCallback(
     async (searchValue: string, pageNumber = INITIAL_PAGING_VALUE) => {
       setIsLoading(true);
-      handlePageChange(pageNumber, {
-        cursorType: null,
-        cursorValue: undefined,
-      });
       try {
         const response = await searchQuery({
           query: '',
           pageNumber,
-          pageSize: PAGE_SIZE,
+          pageSize: pageSize,
           queryFilter: buildSchemaQueryFilter(
             'databaseSchema.fullyQualifiedName.keyword',
             decodedDatabaseSchemaFQN,
@@ -139,13 +134,8 @@ const StoredProcedureTab = () => {
   const storedProcedurePagingHandler = useCallback(
     async ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (searchValue) {
-        searchStoredProcedure(searchValue, currentPage);
+        handlePageChange(currentPage);
       } else if (cursorType) {
-        const pagingString = {
-          [cursorType]: paging[cursorType],
-        };
-
-        await fetchStoreProcedureDetails(pagingString);
         handlePageChange(
           currentPage,
           { cursorType, cursorValue: paging[cursorType] },
@@ -153,7 +143,7 @@ const StoredProcedureTab = () => {
         );
       }
     },
-    [paging, handlePageChange, fetchStoreProcedureDetails]
+    [paging, handlePageChange, searchValue]
   );
 
   const handleShowDeletedStoredProcedures = (value: boolean) => {
@@ -187,19 +177,7 @@ const StoredProcedureTab = () => {
           />
         ),
       },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        render: (text: string) =>
-          isEmpty(text) ? (
-            <Typography.Text className="text-grey-muted">
-              {t('label.no-description')}
-            </Typography.Text>
-          ) : (
-            <RichTextEditorPreviewerNew markdown={text} />
-          ),
-      },
+      ...descriptionTableObject(),
     ],
     [searchValue]
   );
@@ -207,16 +185,24 @@ const StoredProcedureTab = () => {
   const onStoredProcedureSearch = useCallback(
     (value: string) => {
       setFilters({ schema: isEmpty(value) ? undefined : value });
-      if (value) {
-        searchStoredProcedure(value);
-      } else {
-        fetchStoreProcedureDetails();
-      }
+      handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
     },
-    [setFilters, searchStoredProcedure, fetchStoreProcedureDetails]
+    [setFilters, handlePageChange]
   );
 
   useEffect(() => {
+    if (searchValue) {
+      searchStoredProcedure(searchValue, currentPage);
+    }
+  }, [searchValue, currentPage, showDeletedStoredProcedures]);
+
+  useEffect(() => {
+    if (searchValue) {
+      return;
+    }
     const { cursorType, cursorValue } = pagingCursor ?? {};
 
     if (cursorType && cursorValue) {
@@ -224,7 +210,7 @@ const StoredProcedureTab = () => {
     } else {
       fetchStoreProcedureDetails();
     }
-  }, [showDeletedStoredProcedures, pageSize, pagingCursor]);
+  }, [showDeletedStoredProcedures, pageSize, pagingCursor, searchValue]);
 
   const paginationProps = useMemo(
     () => ({
@@ -243,6 +229,7 @@ const StoredProcedureTab = () => {
       showPagination,
       pageSize,
       paging,
+      searchValue,
       storedProcedurePagingHandler,
       handlePageSizeChange,
     ]
@@ -254,6 +241,7 @@ const StoredProcedureTab = () => {
         type: t('label.stored-procedure'),
       }),
       typingInterval: 500,
+      searchValue: searchValue,
       onSearch: onStoredProcedureSearch,
     }),
     [onStoredProcedureSearch]

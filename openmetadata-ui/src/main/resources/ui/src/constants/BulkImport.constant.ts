@@ -19,6 +19,8 @@ export const SUPPORTED_BULK_IMPORT_EDIT_ENTITY = [
   ResourceEntity.DATABASE,
   ResourceEntity.DATABASE_SCHEMA,
   ResourceEntity.GLOSSARY_TERM,
+  ResourceEntity.GLOSSARY,
+  ResourceEntity.TEST_CASE,
 ];
 
 export enum VALIDATION_STEP {

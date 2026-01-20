@@ -36,9 +36,9 @@
         "field": "owners.displayName.keyword"
       },
       {
-        "name": "domain.displayName.keyword",
+        "name": "domains.displayName.keyword",
         "type": "terms",
-        "field": "domain.displayName.keyword"
+        "field": "domains.displayName.keyword"
       },
       {
         "name": "tags.tagFQN",
@@ -118,7 +118,7 @@
       },
       {
         "field": "usageSummary.weeklyStats.percentileRank",
-        "factor": 0.05,
+        "factor": 1.0,
         "modifier": "none",
         "missing": 0
       }
@@ -368,7 +368,7 @@
         },
         {
           "field": "usageSummary.monthlyStats.percentileRank",
-          "factor": 0.1,
+          "factor": 1.0,
           "modifier": "none",
           "missing": 0
         }
@@ -732,9 +732,9 @@
           "field": "owners.displayName.keyword"
         },
         {
-          "name": "domain.displayName.keyword",
+          "name": "domains.displayName.keyword",
           "type": "terms",
-          "field": "domain.displayName.keyword"
+          "field": "domains.displayName.keyword"
         },
         {
           "name": "tags.tagFQN",
@@ -2188,7 +2188,7 @@
           "description": "Search on individual parts of the fully qualified name, allowing more flexible matching on hierarchical components."
         },
         {
-          "name": "domain.displayName.keyword",
+          "name": "domains.displayName.keyword",
           "description": "Exact match on domain associated with database."
         },
         {
@@ -2233,7 +2233,7 @@
           "description": "Search on individual parts of the fully qualified name for more flexible hierarchical matching."
         },
         {
-          "name": "domain.displayName.keyword",
+          "name": "domains.displayName.keyword",
           "description": "Exact match on domain associated with database schema."
         },
         {
@@ -2302,7 +2302,7 @@
           "description": "Search within parts of certification tag names. Useful for finding certified tables by partial certification name."
         },
         {
-          "name": "domain.displayName.keyword",
+          "name": "domains.displayName.keyword",
           "description": "Exact match on domain associated with table."
         },
         {
@@ -2367,7 +2367,7 @@
           "description": "Search within parts of certification tag names. Useful for finding certified storedProcedures by partial certification name."
         },
         {
-          "name": "domain.displayName.keyword",
+          "name": "domains.displayName.keyword",
           "description": "Exact match on domain associated with stored procedure."
         },
         {
@@ -2420,7 +2420,7 @@
           "description": "Partial matching on query text to find queries containing specific SQL fragments."
         },
         {
-          "name": "domain.displayName.keyword",
+          "name": "domains.displayName.keyword",
           "description": "Exact match on domain associated with query."
         },
         {
@@ -2513,7 +2513,7 @@
           "description": "Search within parts of certification tag names. Useful for finding certified topics by partial certification name."
         },
         {
-          "name": "domain.displayName.keyword",
+          "name": "domains.displayName.keyword",
           "description": "Exact match on domain associated with topic."
         },
         {
@@ -2598,7 +2598,7 @@
           "description": "Search within parts of certification tag names. Useful for finding certified dashboards by partial certification name."
         },
         {
-          "name": "domain.displayName.keyword",
+          "name": "domains.displayName.keyword",
           "description": "Exact match on domain associated with dashboard."
         },
         {
@@ -2675,7 +2675,7 @@
           "description": "Search within parts of certification tag names. Useful for finding certified dashboard data models by partial certification name."
         },
         {
-          "name": "domain.displayName.keyword",
+          "name": "domains.displayName.keyword",
           "description": "Exact match on domain associated with dashboard data model."
         },
         {
@@ -2740,7 +2740,7 @@
           "description": "Search within parts of certification tag names. Useful for finding certified pipelines by partial certification name."
         },
         {
-          "name": "domain.displayName.keyword",
+          "name": "domains.displayName.keyword",
           "description": "Exact match on domain associated with pipeline."
         },
         {
@@ -2805,7 +2805,7 @@
           "description": "Search within parts of certification tag names. Useful for finding certified mlModels by partial certification name."
         },
         {
-          "name": "domain.displayName.keyword",
+          "name": "domains.displayName.keyword",
           "description": "Exact match on domain associated with mlmodel."
         },
         {
@@ -2870,7 +2870,7 @@
           "description": "Search within parts of certification tag names. Useful for finding certified searchIndexes by partial certification name."
         },
         {
-          "name": "domain.displayName.keyword",
+          "name": "domains.displayName.keyword",
           "description": "Exact match on domain associated with search index."
         },
         {
@@ -2947,7 +2947,7 @@
           "description": "Search within parts of certification tag names. Useful for finding certified containers by partial certification name."
         },
         {
-          "name": "domain.displayName.keyword",
+          "name": "domains.displayName.keyword",
           "description": "Exact match on domain associated with container."
         },
         {
@@ -3040,7 +3040,7 @@
           "description": "Search within parts of certification tag names. Useful for finding certified apiEndpoint by partial certification name."
         },
         {
-          "name": "domain.displayName.keyword",
+          "name": "domains.displayName.keyword",
           "description": "Exact match on domain associated with apiEndpoint."
         },
         {
@@ -3228,7 +3228,7 @@
           "description": "Exact match on domain associated with table."
         },
         {
-          "name": "domain.displayName.keyword",
+          "name": "domains.displayName.keyword",
           "description": "Exact match on domain associated with glossary term."
         }
       ]
@@ -3273,7 +3273,7 @@
           "description": "Exact match on the type of drive service (e.g., Google Drive, SharePoint, Box)."
         },
         {
-          "name": "domain.displayName.keyword",
+          "name": "domains.displayName.keyword",
           "description": "Exact match on domain associated with drive service."
         },
         {
@@ -3338,7 +3338,7 @@
           "description": "Search within parts of tier classification names for directories."
         },
         {
-          "name": "domain.displayName.keyword",
+          "name": "domains.displayName.keyword",
           "description": "Exact match on domain associated with directory."
         },
         {
@@ -3415,7 +3415,7 @@
           "description": "Search within parts of tier classification names for files."
         },
         {
-          "name": "domain.displayName.keyword",
+          "name": "domains.displayName.keyword",
           "description": "Exact match on domain associated with file."
         },
         {
@@ -3484,7 +3484,7 @@
           "description": "Search within parts of tier classification names for spreadsheets."
         },
         {
-          "name": "domain.displayName.keyword",
+          "name": "domains.displayName.keyword",
           "description": "Exact match on domain associated with spreadsheet."
         },
         {
@@ -3557,7 +3557,7 @@
           "description": "Search within parts of tier classification names for worksheets."
         },
         {
-          "name": "domain.displayName.keyword",
+          "name": "domains.displayName.keyword",
           "description": "Exact match on domain associated with worksheet."
         },
         {
@@ -3651,7 +3651,7 @@
       },
       {
         "section": "QUERY TYPE SELECTION (CRITICAL: Filtering vs. Searching)",
-        "content": "- **FOR FILTERING by specific values** (e.g., domain name, owner name, tag FQN, tier, specific ID): ALWAYS prefer a `term` query on the corresponding `.keyword` field (e.g., `domain.displayName.keyword`, `owners.displayName.keyword`, `tags.tagFQN`, `tier.tagFQN`). Check the FIELD SUMMARY for available `.keyword` variants.\n- **FOR SEARCHING within text** (e.g., descriptions, general names where partial matches are okay): Use a `match` query on the base text field (e.g., `description`, `name`).\n- Assume `.keyword` fields with normalizers handle case-insensitivity for `term` queries.",
+        "content": "- **FOR FILTERING by specific values** (e.g., domain name, owner name, tag FQN, tier, specific ID): ALWAYS prefer a `term` query on the corresponding `.keyword` field (e.g., `domains.displayName.keyword`, `owners.displayName.keyword`, `tags.tagFQN`, `tier.tagFQN`). Check the FIELD SUMMARY for available `.keyword` variants.\n- **FOR SEARCHING within text** (e.g., descriptions, general names where partial matches are okay): Use a `match` query on the base text field (e.g., `description`, `name`).\n- Assume `.keyword` fields with normalizers handle case-insensitivity for `term` queries.",
         "order": 10
       },
       {
@@ -3666,7 +3666,7 @@
       },
       {
         "section": "AMBIGUITY RESOLUTION",
-        "content": "- If the user query mentions 'domain', verify if the FIELD SUMMARY lists a specific 'domain' field (like `domain.displayName.keyword`). If yes, use it. If not, or if context suggests otherwise, reconsider. DO NOT default to `service.name` for business domains.\n- If the user query mentions 'data product', verify if the FIELD SUMMARY lists a specific 'data product' field (like `dataProducts.displayName`). If yes, use it.\n- For general terms, use the field description in the FIELD SUMMARY to determine the best fit (e.g., prefer `displayName` for user-friendly name searches over raw `name`).",
+        "content": "- If the user query mentions 'domain', verify if the FIELD SUMMARY lists a specific 'domain' field (like `domains.displayName.keyword`). If yes, use it. If not, or if context suggests otherwise, reconsider. DO NOT default to `service.name` for business domains.\n- If the user query mentions 'data product', verify if the FIELD SUMMARY lists a specific 'data product' field (like `dataProducts.displayName`). If yes, use it.\n- For general terms, use the field description in the FIELD SUMMARY to determine the best fit (e.g., prefer `displayName` for user-friendly name searches over raw `name`).",
         "order": 14
       },
       {

@@ -20,6 +20,7 @@ import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static jakarta.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static java.lang.String.format;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -70,6 +71,7 @@ import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.service.util.FullyQualifiedName.build;
 import static org.openmetadata.service.util.RestUtil.DATE_FORMAT;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType;
@@ -175,6 +177,7 @@ import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.PartitionIntervalTypes;
+import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableConstraint.ConstraintType;
@@ -5620,7 +5623,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     table = table.withColumns(List.of(columnWithAutoClassification));
 
-    Table patchedTable = patchEntity(table.getId(), originalTable, table, ADMIN_AUTH_HEADERS);
+    Table patchResponse =
+        patchEntity(table.getId(), originalTable, table, INGESTION_BOT_AUTH_HEADERS);
+    Table patchedTable = getEntity(table.getId(), ADMIN_AUTH_HEADERS);
 
     assertNotNull(patchedTable.getColumns());
     assertEquals(1, patchedTable.getColumns().size());
@@ -5634,15 +5639,19 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals("Sensitive", piiTag.getName());
     assertEquals("PII.Sensitive", piiTag.getTagFQN());
     assertEquals("Classified with score 1.0", piiTag.getReason());
+    assertNotNull(piiTag.getAppliedAt());
+    assertEquals(INGESTION_BOT, piiTag.getAppliedBy());
 
     // Now add personal tag manually
-    Column columnWithBothTags = column.withTags(List.of(sensitiveTagLabel, personalTagLabel));
+    Column columnWithBothTags = column.withTags(List.of(piiTag, personalTagLabel));
 
-    originalTable = JsonUtils.pojoToJson(patchedTable);
+    originalTable = JsonUtils.pojoToJson(patchResponse);
 
-    table = patchedTable.withColumns(List.of(columnWithBothTags));
+    table = patchResponse.withColumns(List.of(columnWithBothTags));
 
-    patchedTable = patchEntity(table.getId(), originalTable, table, ADMIN_AUTH_HEADERS);
+    patchEntity(table.getId(), originalTable, table, INGESTION_BOT_AUTH_HEADERS);
+
+    patchedTable = getEntity(table.getId(), ADMIN_AUTH_HEADERS);
 
     assertNotNull(patchedTable.getColumns());
     assertEquals(1, patchedTable.getColumns().size());
@@ -5656,12 +5665,16 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals("Sensitive", piiTag.getName());
     assertEquals("PII.Sensitive", piiTag.getTagFQN());
     assertEquals("Classified with score 1.0", piiTag.getReason());
+    assertNotNull(piiTag.getAppliedAt());
+    assertEquals(INGESTION_BOT, piiTag.getAppliedBy());
 
     TagLabel personalTag = tags.getLast();
     assertNotNull(personalTag);
     assertEquals("Personal", personalTag.getName());
     assertEquals("PersonalData.Personal", personalTag.getTagFQN());
     assertNull(personalTag.getReason());
+    assertNotNull(personalTag.getAppliedAt());
+    assertEquals(INGESTION_BOT, personalTag.getAppliedBy());
   }
 
   @Test
@@ -5990,5 +6003,70 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             + tableCount
             + " change events for bulk updated tables, but found "
             + bulkUpdatedEventCount);
+  }
+
+  private String getEntityLink(Table table, Column column) {
+    // Build entity link in the format: <#E::entityType::fqn>
+    if (column == null)
+      return String.format("<#E::%s::%s>", entityType, table.getFullyQualifiedName());
+    return String.format(
+        "<#E::%s::%s::%s::%s>",
+        entityType, table.getFullyQualifiedName(), Entity.FIELD_COLUMNS, column.getName());
+  }
+
+  @Test
+  void test_recognizerFeedback_autoAppliedTagsOnColumns(TestInfo test)
+      throws HttpResponseException {
+    if (!supportsTags) {
+      return; // Skip if entity doesn't support tags
+    }
+
+    // Create an entity with auto-applied tags (simulating recognizer output)
+    TagLabel autoAppliedTag =
+        new TagLabel()
+            .withTagFQN("PII.Sensitive")
+            .withLabelType(TagLabel.LabelType.GENERATED)
+            .withState(TagLabel.State.SUGGESTED)
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    TagLabel manualTag =
+        new TagLabel()
+            .withTagFQN("Tier.Tier1")
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+    Column testColumn =
+        getColumn("test_column", BIGINT, USER_ADDRESS_TAG_LABEL)
+            .withTags(listOf(autoAppliedTag, manualTag));
+    CreateTable create =
+        createRequest(getEntityName(test))
+            .withColumns(listOf(testColumn))
+            .withTableConstraints(emptyList());
+
+    Table entity = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Submit feedback for false positive on auto-applied tag
+    RecognizerFeedback feedback =
+        new RecognizerFeedback()
+            .withEntityLink(getEntityLink(entity, testColumn))
+            .withTagFQN("PII.Sensitive")
+            .withFeedbackType(RecognizerFeedback.FeedbackType.FALSE_POSITIVE)
+            .withUserReason(RecognizerFeedback.UserReason.NOT_SENSITIVE_DATA)
+            .withUserComments("This field contains product IDs, not personal information");
+
+    // Submit feedback via API
+    RecognizerFeedback submittedFeedback = submitRecognizerFeedback(feedback, ADMIN_AUTH_HEADERS);
+    assertNotNull(submittedFeedback.getId());
+
+    // Verify the auto-applied tag is removed after feedback processing
+    TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
+    List<Column> results =
+        tableRepository
+            .getTableColumnsByFQN(
+                entity.getFullyQualifiedName(), Integer.MAX_VALUE, 0, "tags", null, null, null)
+            .getData();
+
+    assertEquals(1, results.size());
+    assertTagsDoNotContain(results.getFirst().getTags(), listOf(autoAppliedTag));
+    assertTagsContain(results.getFirst().getTags(), listOf(manualTag));
   }
 }

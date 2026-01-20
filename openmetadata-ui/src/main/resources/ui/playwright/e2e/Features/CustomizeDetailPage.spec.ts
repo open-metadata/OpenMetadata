@@ -12,9 +12,9 @@
  */
 import {
   APIRequestContext,
+  test as base,
   expect,
   Page,
-  test as base,
 } from '@playwright/test';
 import {
   ECustomizedDataAssets,
@@ -40,6 +40,10 @@ import {
   checkDefaultStateForNavigationTree,
   validateLeftSidebarWithHiddenItems,
 } from '../../utils/customizeNavigation';
+import {
+  getEncodedFqn,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
 
@@ -231,13 +235,19 @@ test.describe('Persona customize UI tab', async () => {
         );
 
         // Select navigation persona
-        await redirectToHomePage(userPage);
         await userPage.getByTestId('dropdown-profile').click();
+        const personaDocsStore = userPage.waitForResponse(
+          `/api/v1/docStore/name/persona.${getEncodedFqn(
+            navigationPersona.responseData.fullyQualifiedName ?? ''
+          )}*`
+        );
         await userPage
           .getByRole('menuitem', {
             name: navigationPersona.responseData.displayName,
           })
           .click();
+        await personaDocsStore;
+        await waitForAllLoadersToDisappear(userPage);
         await clickOutside(userPage);
 
         // Validate changes in navigation tree
@@ -751,7 +761,7 @@ test.describe('Persona customization', () => {
         });
 
         // Change language to French
-        await userPage.getByRole('button', { name: 'EN' }).click();
+        await userPage.getByRole('button', { name: 'EN', exact: true }).click();
         await userPage.getByRole('menuitem', { name: 'Français - FR' }).click();
         await userPage.waitForLoadState('networkidle');
         await userPage.waitForSelector('[data-testid="loader"]', {
