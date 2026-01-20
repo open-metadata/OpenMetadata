@@ -1348,7 +1348,17 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
     inReviewTerm.setEntityStatus(org.openmetadata.schema.type.EntityStatus.IN_REVIEW);
     inReviewTerm = client.glossaryTerms().update(inReviewTerm.getId(), inReviewTerm);
 
-    java.lang.Thread.sleep(5000);
+    // Wait for the term to be updated to IN_REVIEW status
+    final UUID termId = inReviewTerm.getId();
+    org.awaitility.Awaitility.await()
+        .atMost(10, java.util.concurrent.TimeUnit.SECONDS)
+        .pollInterval(500, java.util.concurrent.TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              org.openmetadata.schema.entity.data.GlossaryTerm term =
+                  client.glossaryTerms().get(termId.toString());
+              return term.getEntityStatus() == org.openmetadata.schema.type.EntityStatus.IN_REVIEW;
+            });
 
     log.info("TEST: Creating CSV for unapproved glossary term import");
     log.info("TEST: IN_REVIEW term FQN: {}", inReviewTerm.getFullyQualifiedName());

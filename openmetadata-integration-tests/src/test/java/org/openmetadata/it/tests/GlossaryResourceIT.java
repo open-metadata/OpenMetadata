@@ -1179,10 +1179,17 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     inReviewTerm.setEntityStatus(org.openmetadata.schema.type.EntityStatus.IN_REVIEW);
     inReviewTerm = client.glossaryTerms().update(inReviewTerm.getId(), inReviewTerm);
 
-    java.lang.Thread.sleep(10000);
-    log.info(
-        "TEST: Creating CSV for unapproved term import with IN_REVIEW term FQN: {}",
-        inReviewTerm.getFullyQualifiedName());
+    // Wait for the term to be updated to IN_REVIEW status
+    final UUID termId = inReviewTerm.getId();
+    org.awaitility.Awaitility.await()
+        .atMost(10, java.util.concurrent.TimeUnit.SECONDS)
+        .pollInterval(500, java.util.concurrent.TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              org.openmetadata.schema.entity.data.GlossaryTerm term =
+                  client.glossaryTerms().get(termId.toString());
+              return term.getEntityStatus() == org.openmetadata.schema.type.EntityStatus.IN_REVIEW;
+            });
 
     // Create a CSV trying to import a new term with the IN_REVIEW term as a related term
     String csv =
@@ -1192,21 +1199,8 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
             + ",New Term,Test Term,,\""
             + inReviewTerm.getFullyQualifiedName()
             + "\",,,,,,,,";
-
-    log.info("TEST: CSV to import:\n{}", csv);
-    log.info("TEST: CSV header field count: {}", csv.split("\n")[0].split(",").length);
-    log.info("TEST: CSV data field count: {}", csv.split("\n")[1].split(",", -1).length);
-
-    // Attempt to import - should fail
     log.info("TEST: Attempting CSV import for glossary: {}", glossary.getName());
     String resultCsv = client.glossaries().importCsv(glossary.getName(), csv, false);
-
-    // Log the result for debugging
-    log.info("TEST: CSV Import completed");
-    log.info("TEST: Result CSV:\n{}", resultCsv);
-    log.info("TEST: Result contains 'failure': {}", resultCsv.contains("failure"));
-    log.info("TEST: Result contains 'aborted': {}", resultCsv.contains("aborted"));
-    log.info("TEST: Result contains 'APPROVED status': {}", resultCsv.contains("APPROVED status"));
 
     // Verify import failed with appropriate error message
     assertNotNull(resultCsv);
@@ -1250,10 +1244,6 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
         client.glossaryTerms().get(approvedTerm.getId().toString());
     assertEquals(org.openmetadata.schema.type.EntityStatus.APPROVED, fetchedTerm.getEntityStatus());
 
-    log.info(
-        "TEST [APPROVED]: Creating CSV for approved term import with APPROVED term FQN: {}",
-        approvedTerm.getFullyQualifiedName());
-
     // Create a CSV importing a new term with the APPROVED term as a related term
     String csv =
         "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension\n"
@@ -1263,19 +1253,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
             + approvedTerm.getFullyQualifiedName()
             + "\",,,,,,,,";
 
-    log.info("TEST [APPROVED]: CSV to import:\n{}", csv);
-    log.info("TEST [APPROVED]: CSV header field count: {}", csv.split("\n")[0].split(",").length);
-    log.info("TEST [APPROVED]: CSV data field count: {}", csv.split("\n")[1].split(",", -1).length);
-
-    // Attempt to import - should succeed
-    log.info("TEST [APPROVED]: Attempting CSV import for glossary: {}", glossary.getName());
     String resultCsv = client.glossaries().importCsv(glossary.getName(), csv, false);
-
-    // Log the result for debugging
-    log.info("TEST [APPROVED]: CSV Import completed");
-    log.info("TEST [APPROVED]: Result CSV:\n{}", resultCsv);
-    log.info("TEST [APPROVED]: Result contains 'success': {}", resultCsv.contains("success"));
-    log.info("TEST [APPROVED]: Result contains 'failure': {}", resultCsv.contains("failure"));
 
     // Verify import succeeded
     assertNotNull(resultCsv);
@@ -1299,7 +1277,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
       assertEquals(1, createdTerm.getRelatedTerms().size());
       assertEquals(
           approvedTerm.getFullyQualifiedName(),
-          createdTerm.getRelatedTerms().get(0).getFullyQualifiedName());
+          createdTerm.getRelatedTerms().getFirst().getFullyQualifiedName());
     }
   }
 }

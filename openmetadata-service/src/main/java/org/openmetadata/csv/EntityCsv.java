@@ -387,37 +387,33 @@ public abstract class EntityCsv<T extends EntityInterface> {
     List<String> fqnList = listOrEmpty(CsvUtil.fieldToStrings(fqns));
     List<EntityReference> refs = new ArrayList<>();
     for (String fqn : fqnList) {
-      EntityReference ref =
-          getEntityReference(printer, csvRecord, fieldNumber, Entity.GLOSSARY_TERM, fqn);
-      if (!processRecord) {
+      EntityInterface entity = getEntityByName(Entity.GLOSSARY_TERM, fqn);
+      if (entity == null) {
+        importFailure(printer, entityNotFound(fieldNumber, Entity.GLOSSARY_TERM, fqn), csvRecord);
+        processRecord = false;
         return null;
       }
-      if (ref != null) {
-        // Validate that the glossary term has APPROVED status
-        EntityInterface entityInterface = getEntityByName(Entity.GLOSSARY_TERM, fqn);
-        if (entityInterface != null) {
-          // Cast to GlossaryTerm to access entityStatus
-          org.openmetadata.schema.entity.data.GlossaryTerm term =
-              (org.openmetadata.schema.entity.data.GlossaryTerm) entityInterface;
-          if (term.getEntityStatus() != org.openmetadata.schema.type.EntityStatus.APPROVED) {
-            LOG.error(
-                "[VALIDATION] VALIDATION FAILED! Term '{}' status is {} not APPROVED",
-                fqn,
-                term.getEntityStatus());
-            importFailure(
-                printer,
-                invalidField(
-                    fieldNumber,
-                    String.format(
-                        "Glossary term '%s' must have APPROVED status to be linked. Current status: %s",
-                        fqn, term.getEntityStatus())),
-                csvRecord);
-            processRecord = false;
-            return null;
-          }
-        }
-        refs.add(ref);
+
+      // Validate that the glossary term has APPROVED status
+      org.openmetadata.schema.entity.data.GlossaryTerm term =
+          (org.openmetadata.schema.entity.data.GlossaryTerm) entity;
+      if (term.getEntityStatus() != org.openmetadata.schema.type.EntityStatus.APPROVED) {
+        LOG.error(
+            "[VALIDATION] VALIDATION FAILED! Term '{}' status is {} not APPROVED",
+            fqn,
+            term.getEntityStatus());
+        importFailure(
+            printer,
+            invalidField(
+                fieldNumber,
+                String.format(
+                    "Glossary term '%s' must have APPROVED status to be linked. Current status: %s",
+                    fqn, term.getEntityStatus())),
+            csvRecord);
+        processRecord = false;
+        return null;
       }
+      refs.add(entity.getEntityReference());
     }
     refs.sort(Comparator.comparing(EntityReference::getName));
     return refs.isEmpty() ? null : refs;
