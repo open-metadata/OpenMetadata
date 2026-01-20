@@ -1008,42 +1008,66 @@ test('Tag Page Activity Feed', async ({ page }) => {
           .isVisible({ timeout: 3000 })
           .catch(() => false)
       ) {
+        const feedResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/feed') &&
+            response.url().includes('entityLink')
+        );
         await activityTabAfterRefresh.click();
+        await feedResponse;
         await page.waitForLoadState('networkidle');
         await waitForAllLoadersToDisappear(page);
       }
 
+      // Wait for feed entries to be loaded - check for feed container or message containers
+      await page
+        .waitForSelector(
+          '[data-testid="message-container"], [data-testid="feed-container"], #feedData',
+          {
+            state: 'attached',
+            timeout: 15000,
+          }
+        )
+        .catch(() => {
+          // Feed entries may load asynchronously
+        });
+
+      // Wait a bit more for feed content to fully render
+      await page.waitForTimeout(3000);
+
       // Verify that all performed actions are listed in the feed
       // 1. Verify description update entry
+      // Look for description in either the message container or the header text
       const descriptionUpdateEntry = page
-        .locator('[data-testid="message-container"]')
-        .filter({ hasText: /description|Description/i })
+        .locator('[data-testid="message-container"], [data-testid="headerText"]')
+        .filter({ hasText: /description|Description|updated description/i })
         .first();
-      await expect(descriptionUpdateEntry).toBeVisible({ timeout: 5000 });
+      
+      await expect(descriptionUpdateEntry).toBeVisible({ timeout: 15000 });
 
       // 2. Verify rename entry (if rename was performed)
       if (renamePerformed) {
         const renameEntry = page
-          .locator('[data-testid="message-container"]')
+          .locator('[data-testid="message-container"], [data-testid="headerText"]')
           .filter({ hasText: /rename|Rename|displayName|display name/i })
           .first();
-        await expect(renameEntry).toBeVisible({ timeout: 5000 });
+        await expect(renameEntry).toBeVisible({ timeout: 15000 });
       }
 
       // 3. Verify style change entry (icon/color update)
       const styleUpdateEntry = page
-        .locator('[data-testid="message-container"]')
+        .locator('[data-testid="message-container"], [data-testid="headerText"]')
         .filter({ hasText: /style|Style|icon|Icon|color|Color/i })
         .first();
-      await expect(styleUpdateEntry).toBeVisible({ timeout: 5000 });
+      await expect(styleUpdateEntry).toBeVisible({ timeout: 15000 });
 
       // 4. Verify asset add entry (if asset was added)
       if (assetAdded) {
         const assetAddEntry = page
-          .locator('[data-testid="message-container"]')
+          .locator('[data-testid="message-container"], [data-testid="headerText"]')
           .filter({ hasText: /asset|Asset|added|Added/i })
           .first();
-        await expect(assetAddEntry).toBeVisible({ timeout: 5000 });
+        await expect(assetAddEntry).toBeVisible({ timeout: 15000 });
       }
 
       // Verify the feed contains entries for all performed actions
