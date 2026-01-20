@@ -52,6 +52,20 @@ export const DomainLabelV2 = <
 
   const handleDomainSave = useCallback(
     async (selectedDomain: EntityReference | EntityReference[]) => {
+      if (props.onUpdate) {
+        try {
+          await props.onUpdate(selectedDomain);
+          const updatedDomains = Array.isArray(selectedDomain)
+            ? selectedDomain
+            : [selectedDomain];
+          setActiveDomain(updatedDomains);
+        } catch (err) {
+          showErrorToast(err as AxiosError);
+        }
+
+        return;
+      }
+
       const entityDetails = getEntityAPIfromSource(entityType as AssetsUnion)(
         entityFqn,
         { fields: 'domains' }
@@ -64,6 +78,8 @@ export const DomainLabelV2 = <
             ...entityDetailsResponse,
             domains: Array.isArray(selectedDomain)
               ? selectedDomain
+              : isEmpty(selectedDomain)
+              ? []
               : [selectedDomain],
           });
 
@@ -85,7 +101,7 @@ export const DomainLabelV2 = <
         showErrorToast(err as AxiosError);
       }
     },
-    [entityType, entityId, entityFqn]
+    [entityType, entityId, entityFqn, props.onUpdate]
   );
 
   useEffect(() => {
@@ -151,21 +167,22 @@ export const DomainLabelV2 = <
   }, [activeDomain]);
 
   const hasPermission = useMemo(() => {
-    return permissions?.EditAll && !data?.deleted;
-  }, [permissions?.EditAll, data?.deleted]);
+    return props?.hasPermission ?? (permissions?.EditAll && !data?.deleted);
+  }, [permissions?.EditAll, data?.deleted, props?.hasPermission]);
 
   const selectableList = useMemo(() => {
     return (
       hasPermission && (
         <DomainSelectableList
           hasPermission={Boolean(hasPermission)}
+          isClearable={props.isClearable}
           multiple={props.multiple}
           selectedDomain={activeDomain}
           onUpdate={handleDomainSave}
         />
       )
     );
-  }, [hasPermission, activeDomain, handleDomainSave]);
+  }, [hasPermission, activeDomain, handleDomainSave, props.isClearable]);
 
   const label = useMemo(() => {
     if (props.showDomainHeading) {

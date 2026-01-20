@@ -68,7 +68,7 @@ OAuth2 Client ID to use for the Authentication Flow
 
 To get the Client ID (also known as application ID), follow these steps:
 
-1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+1. Log into <a href="https://ms.portal.azure.com/#allservices" target="_blank">Microsoft Azure</a>.
 2. Search for `App registrations` and select the `App registrations link`.
 3. Select the `Azure AD` app you're using for this connection.
 4. From the Overview section, copy the `Application (client) ID`.
@@ -86,7 +86,7 @@ OAuth2 Client Secret to use for the Authentication Flow
 
 To get the client secret, follow these steps:
 
-1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+1. Log into <a href="https://ms.portal.azure.com/#allservices" target="_blank">Microsoft Azure</a>.
 2. Search for `App registrations` and select the `App registrations link`.
 3. Select the `Azure AD` app you're using for this connection.
 4. Under `Manage`, select `Certificates & secrets`.
@@ -147,7 +147,7 @@ $$section
 
 ### AWS Access Key ID $(id="awsAccessKeyId")
 
-When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have permission to access the resources that you are requesting. AWS uses the security credentials to authenticate and authorize your requests ([docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/security-creds.html)).
+When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have permission to access the resources that you are requesting. AWS uses the security credentials to authenticate and authorize your requests (<a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/security-creds.html" target="_blank">docs</a>).
 
 Access keys consist of two parts:
 1. An access key ID (for example, `AKIAIOSFODNN7EXAMPLE`),
@@ -155,7 +155,7 @@ Access keys consist of two parts:
 
 You must use both the access key ID and secret access key together to authenticate your requests.
 
-You can find further information on how to manage your access keys [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html)
+You can find further information on how to manage your access keys <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html" target="_blank">here</a>
 
 $$
 $$section
@@ -169,11 +169,11 @@ $$section
 
 ### AWS Region $(id="awsRegion")
 
-Each AWS Region is a separate geographic area in which AWS clusters data centers ([docs](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html)).
+Each AWS Region is a separate geographic area in which AWS clusters data centers (<a href="https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html" target="_blank">docs</a>).
 
 As AWS can have instances in multiple regions, we need to know the region the service you want reach belongs to.
 
-Note that the AWS Region is the only required parameter when configuring a connection. When connecting to the services programmatically, there are different ways in which we can extract and use the rest of AWS configurations. You can find further information about configuring your credentials [here](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#configuring-credentials).
+Note that the AWS Region is the only required parameter when configuring a connection. When connecting to the services programmatically, there are different ways in which we can extract and use the rest of AWS configurations. You can find further information about configuring your credentials <a href="https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#configuring-credentials" target="_blank">here</a>.
 
 $$
 $$section
@@ -182,7 +182,7 @@ $$section
 
 If you are using temporary credentials to access your services, you will need to inform the AWS Access Key ID and AWS Secrets Access Key. Also, these will include an AWS Session Token.
 
-You can find more information on [Using temporary credentials with AWS resources](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_use-resources.html).
+You can find more information on <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_use-resources.html" target="_blank">Using temporary credentials with AWS resources</a>.
 
 $$
 $$section
@@ -230,7 +230,7 @@ $$section
 
 To get the tenant ID, follow these steps:
 
-1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+1. Log into <a href="https://ms.portal.azure.com/#allservices" target="_blank">Microsoft Azure</a>.
 2. Search for `App registrations` and select the `App registrations link`.
 3. Select the `Azure AD` app you're using for Power BI.
 4. From the `Overview` section, copy the `Directory (tenant) ID`.

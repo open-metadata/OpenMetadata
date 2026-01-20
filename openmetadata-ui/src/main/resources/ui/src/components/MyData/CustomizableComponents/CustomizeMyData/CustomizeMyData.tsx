@@ -158,6 +158,16 @@ function CustomizeMyData({
     return jsonPatch.length === 0;
   }, [initialPageData?.layout, layout]);
 
+  const handleSave = async (updatedLayout?: WidgetConfig[]) => {
+    await onSaveLayout({
+      ...(initialPageData ??
+        ({
+          pageType: PageType.LandingPage,
+        } as Page)),
+      layout: getUniqueFilteredLayout(updatedLayout ?? layout),
+    });
+  };
+
   const widgets = useMemo(
     () =>
       layout
@@ -173,6 +183,7 @@ function CustomizeMyData({
               handleOpenAddWidgetModal: handleOpenCustomiseHomeModal,
               handlePlaceholderWidgetKey: handlePlaceholderWidgetKey,
               handleRemoveWidget: handleRemoveWidget,
+              handleSaveLayout: handleSave,
               isEditView: true,
               personaName: getEntityName(personaDetails),
               widgetConfig: widget,
@@ -185,18 +196,9 @@ function CustomizeMyData({
       handlePlaceholderWidgetKey,
       handleRemoveWidget,
       handleLayoutUpdate,
+      handleSave,
     ]
   );
-
-  const handleSave = async () => {
-    await onSaveLayout({
-      ...(initialPageData ??
-        ({
-          pageType: PageType.LandingPage,
-        } as Page)),
-      layout: getUniqueFilteredLayout(layout),
-    });
-  };
 
   const handleBackgroundColorUpdate = async (color?: string) => {
     await onBackgroundColorUpdate?.(color);
@@ -216,7 +218,7 @@ function CustomizeMyData({
   useGridLayoutDirection();
 
   return (
-    <NavigationBlocker enabled={!disableSave}>
+    <NavigationBlocker enabled={!disableSave} onConfirm={handleSave}>
       <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
         <PageLayoutV1
           className="p-box customise-my-data"

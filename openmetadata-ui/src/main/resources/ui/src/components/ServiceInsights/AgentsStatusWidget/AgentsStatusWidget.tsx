@@ -28,7 +28,7 @@ import './agents-status-widget.less';
 import { AgentsStatusWidgetProps } from './AgentsStatusWidget.interface';
 
 function AgentsStatusWidget({
-  workflowStatesData,
+  liveAutoPilotStatusData,
   isLoading,
   agentsInfo,
 }: Readonly<AgentsStatusWidgetProps>) {
@@ -36,8 +36,12 @@ function AgentsStatusWidget({
 
   const agentsRunningStatusMessage = useMemo(
     () =>
-      getAgentRunningStatusMessage(isLoading, agentsInfo, workflowStatesData),
-    [workflowStatesData, isLoading, agentsInfo]
+      getAgentRunningStatusMessage(
+        isLoading,
+        agentsInfo,
+        liveAutoPilotStatusData
+      ),
+    [liveAutoPilotStatusData, isLoading, agentsInfo]
   );
 
   const agentStatusSummary = useMemo(() => {
@@ -47,8 +51,11 @@ function AgentsStatusWidget({
   return (
     <Collapse
       className="service-insights-collapse-widget agents-status-widget"
+      data-testid="agent-status-widget"
       expandIcon={() => (
-        <div className="expand-icon-container">
+        <div
+          className="expand-icon-container"
+          data-testid="agent-status-widget-expand-icon">
           {isLoading ? (
             <Skeleton.Input active size="small" />
           ) : (
@@ -56,15 +63,20 @@ function AgentsStatusWidget({
               {Object.entries(agentStatusSummary).map(([key, value]) => (
                 <div
                   className={classNames('agent-status-summary-item', key)}
+                  data-testid={`agent-status-summary-item-${key}`}
                   key={key}>
                   {getIconFromStatus(key)}
-                  <Typography.Text>{value}</Typography.Text>
+                  <Typography.Text data-testid="pipeline-count">
+                    {value}
+                  </Typography.Text>
                   <Typography.Text>{key}</Typography.Text>
                 </div>
               ))}
             </div>
           )}
-          <Typography.Text className="text-primary">
+          <Typography.Text
+            className="text-primary"
+            data-testid="agent-status-widget-view-more">
             {t('label.view-more')}
           </Typography.Text>
           <ArrowSvg className="text-primary" height={14} width={14} />
@@ -112,7 +124,8 @@ function AgentsStatusWidget({
                     className={classNames(
                       'agent-status-card',
                       agent.isCollateAgent ? 'collate-agent' : ''
-                    )}>
+                    )}
+                    data-testid={`agent-status-card-${agent.label}`}>
                     <Space align="center" size={8}>
                       {agent.agentIcon}
                       <Typography.Text>{agent.label}</Typography.Text>

@@ -158,6 +158,91 @@ public abstract class SecretsManager {
   }
 
   /**
+   * Encrypts QueryRunner config secrets using a path structure that groups secrets under the
+   * database service: /{cluster}/DatabaseService/{serviceName}/queryrunner/{configType}/{field}
+   *
+   * @param authConfig The auth config object containing password fields to encrypt
+   * @param serviceName The database service name (e.g., "my-snowflake-prod")
+   * @param configType The config type (ADMIN or USER)
+   * @return The auth config with password fields replaced by secret references
+   */
+  public Object encryptQueryRunnerConfig(Object authConfig, String serviceName, String configType) {
+    if (authConfig == null) {
+      return null;
+    }
+    try {
+      // Path: /argo/DatabaseService/my-snowflake-prod/queryrunner/admin/clientsecret
+      return encryptPasswordFields(
+          authConfig,
+          buildSecretId(true, "DatabaseService", serviceName, "queryrunner", configType),
+          true);
+    } catch (Exception e) {
+      throw new SecretsManagerException(
+          Response.Status.BAD_REQUEST,
+          String.format(
+              "Failed to encrypt query runner config for service [%s], type [%s]",
+              serviceName, configType));
+    }
+  }
+
+  public Object decryptQueryRunnerConfig(Object authConfig) {
+    if (authConfig == null) {
+      return null;
+    }
+    try {
+      return decryptPasswordFields(authConfig);
+    } catch (Exception e) {
+      throw new SecretsManagerException(
+          Response.Status.BAD_REQUEST, "Failed to decrypt query runner config");
+    }
+  }
+
+  /**
+   * Decrypts a single secret value that may be Fernet-encrypted and/or stored in external SM.
+   * Handles the two-layer encryption: Fernet wrapping around external SM references.
+   *
+   * @param value The value to decrypt (may be fernet:..., secret:..., or plain text)
+   * @return The decrypted value
+   */
+  public String decryptSecretIfNeeded(String value) {
+    if (value == null || value.isEmpty()) {
+      return value;
+    }
+    // First, Fernet-decrypt if tokenized
+    String fernetDecrypted = Fernet.isTokenized(value) ? fernet.decrypt(value) : value;
+    // Then, fetch from external SM if it's a secret reference
+    return Boolean.TRUE.equals(isSecret(fernetDecrypted))
+        ? getSecretValue(fernetDecrypted)
+        : fernetDecrypted;
+  }
+
+  /**
+   * Deletes QueryRunner config secrets from the secrets manager.
+   * Uses the same path structure as encryptQueryRunnerConfig:
+   * /{cluster}/DatabaseService/{serviceName}/queryrunner/{configType}/{field}
+   *
+   * @param authConfig The auth config object to identify which fields to delete
+   * @param serviceName The database service name
+   * @param configType The config type: "admin" or "user"
+   */
+  public void deleteQueryRunnerConfigSecrets(
+      Object authConfig, String serviceName, String configType) {
+    if (authConfig != null) {
+      try {
+        deleteSecrets(
+            authConfig,
+            buildSecretId(true, "DatabaseService", serviceName, "queryrunner", configType));
+      } catch (Exception e) {
+        throw new SecretsManagerException(
+            Response.Status.BAD_REQUEST,
+            String.format(
+                "Failed to delete secrets for query runner config, service [%s], type [%s]",
+                serviceName, configType));
+      }
+    }
+  }
+
+  /**
    * This is used to handle the JWT Token internally, in the JWTFilter, when
    * calling for the auth-mechanism in the UI, etc.
    * If using SM, we need to decrypt and GET the secret to ensure we are comparing
@@ -174,7 +259,8 @@ public abstract class SecretsManager {
       } catch (Exception e) {
         throw new SecretsManagerException(
             Response.Status.BAD_REQUEST,
-            String.format("Failed to decrypt user bot instance [%s]", name));
+            String.format(
+                "Failed to decrypt user bot instance [%s] due to [%s]", name, e.getMessage()));
       }
     }
     return null;
@@ -330,7 +416,7 @@ public abstract class SecretsManager {
                   Object obj = ReflectionUtil.getObjectFromMethod(method, toEncryptObject);
                   String fieldName = method.getName().replaceFirst("get", "");
                   // if the object matches the package of openmetadata
-                  if (Boolean.TRUE.equals(CommonUtil.isOpenMetadataObject(obj))) {
+                  if (CommonUtil.isOpenMetadataObject(obj)) {
                     // encryptPasswordFields
                     encryptPasswordFields(
                         obj,
@@ -375,7 +461,7 @@ public abstract class SecretsManager {
                 Object obj = ReflectionUtil.getObjectFromMethod(method, toDecryptObject);
                 String fieldName = method.getName().replaceFirst("get", "");
                 // if the object matches the package of openmetadata
-                if (Boolean.TRUE.equals(CommonUtil.isOpenMetadataObject(obj))) {
+                if (CommonUtil.isOpenMetadataObject(obj)) {
                   // encryptPasswordFields
                   decryptPasswordFields(obj);
                   // check if it has annotation
@@ -383,11 +469,16 @@ public abstract class SecretsManager {
                   String fieldValue = (String) obj;
                   // get setMethod
                   Method toSet = ReflectionUtil.getToSetMethod(toDecryptObject, obj, fieldName);
+                  // First Fernet-decrypt if tokenized, then fetch from external SM if it's a secret
+                  // reference
+                  String fernetDecrypted =
+                      Fernet.isTokenized(fieldValue) ? fernet.decrypt(fieldValue) : fieldValue;
+                  String finalValue =
+                      Boolean.TRUE.equals(isSecret(fernetDecrypted))
+                          ? getSecretValue(fernetDecrypted)
+                          : fernetDecrypted;
                   // set new value
-                  ReflectionUtil.setValueInMethod(
-                      toDecryptObject,
-                      Fernet.isTokenized(fieldValue) ? fernet.decrypt(fieldValue) : fieldValue,
-                      toSet);
+                  ReflectionUtil.setValueInMethod(toDecryptObject, finalValue, toSet);
                 }
               });
       return toDecryptObject;
@@ -413,7 +504,7 @@ public abstract class SecretsManager {
                 Object obj = ReflectionUtil.getObjectFromMethod(method, toDecryptObject);
                 String fieldName = method.getName().replaceFirst("get", "");
                 // if the object matches the package of openmetadata
-                if (Boolean.TRUE.equals(CommonUtil.isOpenMetadataObject(obj))) {
+                if (CommonUtil.isOpenMetadataObject(obj)) {
                   // encryptPasswordFields
                   getSecretFields(obj);
                   // check if it has annotation
@@ -538,7 +629,7 @@ public abstract class SecretsManager {
                 // check if it has annotation:
                 // We are replicating the logic that we use for storing the fields we need to
                 // encrypt at encryptPasswordFields
-                if (Boolean.TRUE.equals(CommonUtil.isOpenMetadataObject(obj))) {
+                if (CommonUtil.isOpenMetadataObject(obj)) {
                   deleteSecrets(
                       obj, buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)));
                 } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {

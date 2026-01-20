@@ -56,6 +56,11 @@ export default defineConfig({
     trace: 'on-first-retry',
     /* Screenshot on failure. */
     screenshot: 'only-on-failure',
+
+    /* Add navigation timeout to prevent infinite hangs on networkidle waits.
+     * This ensures page.goto() and waitForLoadState() calls timeout after 60s
+     * instead of hanging indefinitely under resource pressure. */
+    navigationTimeout: 60000,
   },
 
   /* Configure projects for major browsers */
@@ -63,24 +68,34 @@ export default defineConfig({
     // Admin authentication setup doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
     {
       name: 'setup',
-      testMatch: '**/*.setup.ts',
-      teardown: 'restore-policies',
+      testMatch: '**/auth.setup.ts',
     },
     {
-      name: 'restore-policies',
-      testMatch: '**/auth.teardown.ts',
+      name: 'entity-data-setup',
+      testMatch: '**/entity-data.setup.ts',
+      dependencies: ['setup'],
     },
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
-      dependencies: ['setup'],
+      dependencies: ['setup', 'entity-data-setup'],
       grepInvert: /data-insight/,
-      testIgnore: ['**/nightly/**'],
+      teardown: 'entity-data-teardown',
+      testIgnore: [
+        '**/nightly/**',
+        '**/DataAssetRulesEnabled.spec.ts',
+        '**/DataAssetRulesDisabled.spec.ts',
+        '**/SystemCertificationTags.spec.ts',
+      ],
+    },
+    {
+      name: 'entity-data-teardown',
+      testMatch: '**/entity-data.teardown.ts',
     },
     {
       name: 'data-insight-application',
-      dependencies: ['setup'],
+      dependencies: ['setup', 'entity-data-setup'],
       testMatch: '**/dataInsightApp.ts',
     },
     {
@@ -88,6 +103,30 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['data-insight-application'],
       grep: /data-insight/,
+      teardown: 'entity-data-teardown',
+    },
+    {
+      name: 'DataAssetRulesEnabled',
+      testMatch: '**/DataAssetRulesEnabled.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup'],
+      fullyParallel: true,
+    },
+    {
+      name: 'DataAssetRulesDisabled',
+      testMatch: '**/DataAssetRulesDisabled.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['DataAssetRulesEnabled'],
+      fullyParallel: true,
+    },
+    // System Certification Tags tests modify global shared state (system tags like Gold, Silver, Bronze)
+    // They must run in isolation after the main chromium project to avoid flakiness
+    {
+      name: 'SystemCertificationTags',
+      testMatch: '**/SystemCertificationTags.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup', 'chromium'],
+      fullyParallel: false,
     },
   ],
 

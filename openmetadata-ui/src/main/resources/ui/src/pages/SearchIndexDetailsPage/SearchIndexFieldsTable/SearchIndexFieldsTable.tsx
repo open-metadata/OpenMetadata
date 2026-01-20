@@ -26,25 +26,37 @@ import {
 import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+
+import CopyLinkButton from '../../../components/common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../../components/common/Table/Table';
 import ToggleExpandButton from '../../../components/common/ToggleExpandButton/ToggleExpandButton';
+import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../../components/Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../components/Database/TableDescription/TableDescription.component';
 import TableTags from '../../../components/Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
-import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
+import {
+  HIGHLIGHTED_ROW_SELECTOR,
+  TABLE_SCROLL_VALUE,
+} from '../../../constants/Table.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_SEARCH_INDEX_VISIBLE_COLUMNS,
   TABLE_COLUMNS_KEYS,
 } from '../../../constants/TableKeys.constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
+import {
+  SearchIndex,
+  SearchIndexField,
+} from '../../../generated/entity/data/searchIndex';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { useFqn } from '../../../hooks/useFqn';
+import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
+import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import {
   getColumnSorter,
   getEntityName,
@@ -58,6 +70,7 @@ import {
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import {
+  getHighlightedRowClassName,
   getTableExpandableConfig,
   searchInFields,
   updateFieldDescription,
@@ -88,6 +101,33 @@ const SearchIndexFieldsTable = ({
     []
   );
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+
+  const { openColumnDetailPanel, permissions, selectedColumn } =
+    useGenericContext<SearchIndex>();
+
+  // Extract base FQN and column part from URL
+  const { columnFqn: columnPart, fqn } = useFqn({
+    type: EntityType.SEARCH_INDEX,
+  });
+  useFqnDeepLink({
+    data: searchIndexFields,
+    columnPart,
+    fqn,
+    setExpandedRowKeys: setExpandedRowKeys,
+    openColumnDetailPanel,
+    selectedColumn: selectedColumn as SearchIndexField | null,
+  });
+
+  // Scroll to highlighted row when fields are loaded
+  useScrollToElement(
+    HIGHLIGHTED_ROW_SELECTOR,
+    Boolean(fqn && searchedFields?.length)
+  );
+
+  const getRowClassName = useCallback(
+    (record: SearchIndexField) => getHighlightedRowClassName(record, fqn),
+    [fqn]
+  );
 
   const sortByOrdinalPosition = useMemo(
     () => sortBy(searchIndexFields, 'ordinalPosition'),
@@ -160,6 +200,26 @@ const SearchIndexFieldsTable = ({
     [handleEditField]
   );
 
+  const hasViewPermission = useMemo(
+    () => permissions?.ViewAll || permissions?.ViewBasic,
+    [permissions]
+  );
+
+  const handleFieldClick = useCallback(
+    (field: SearchIndexField, event: React.MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const isExpandIcon = target.closest('.table-expand-icon') !== null;
+      const isButton = target.closest('button') !== null;
+
+      if (!isExpandIcon && !isButton) {
+        if (hasViewPermission) {
+          openColumnDetailPanel(field);
+        }
+      }
+    },
+    [openColumnDetailPanel, hasViewPermission]
+  );
+
   const renderDataTypeDisplay: SearchIndexCellRendered<
     SearchIndexField,
     'dataTypeDisplay'
@@ -221,13 +281,22 @@ const SearchIndexFieldsTable = ({
         width: 220,
         fixed: 'left',
         sorter: getColumnSorter<SearchIndexField, 'name'>('name'),
+        className: 'cursor-pointer',
+        onCell: (record: SearchIndexField) => ({
+          onClick: (event: React.MouseEvent) => handleFieldClick(record, event),
+          'data-testid': 'column-name-cell',
+        }),
         render: (_, record: SearchIndexField) => (
-          <div className="d-inline-flex w-max-90">
+          <div className="d-inline-flex items-center gap-2 hover-icon-group w-max-90">
             <span className="break-word">
               {stringToHTML(
                 highlightSearchText(getEntityName(record), searchText)
               )}
             </span>
+            <CopyLinkButton
+              entityType={EntityType.SEARCH_INDEX}
+              fieldFqn={record.fullyQualifiedName || ''}
+            />
           </div>
         ),
       },
@@ -301,6 +370,8 @@ const SearchIndexFieldsTable = ({
       renderDataTypeDisplay,
       renderDescription,
       tagFilter,
+      handleFieldClick,
+      hasViewPermission,
     ]
   );
 
@@ -325,16 +396,16 @@ const SearchIndexFieldsTable = ({
   );
 
   useEffect(() => {
-    if (!searchText) {
-      setSearchedFields(sortByOrdinalPosition);
-      setExpandedRowKeys([]);
-    } else {
+    if (searchText) {
       const searchFields = searchInFields<SearchIndexField>(
         sortByOrdinalPosition,
         searchText
       );
       setSearchedFields(searchFields);
       setExpandedRowKeys(fieldAllRowKeys);
+    } else {
+      setSearchedFields(sortByOrdinalPosition);
+      setExpandedRowKeys([]);
     }
   }, [searchText, searchIndexFields]);
 
@@ -358,11 +429,12 @@ const SearchIndexFieldsTable = ({
           emptyText: <FilterTablePlaceHolder />,
         }}
         pagination={false}
+        rowClassName={getRowClassName}
         rowKey="fullyQualifiedName"
         scroll={TABLE_SCROLL_VALUE}
         searchProps={{
           placeholder: `${t('message.find-in-table')}`,
-          value: searchText,
+          searchValue: searchText,
           typingInterval: 500,
           onSearch: handleSearchAction,
         }}

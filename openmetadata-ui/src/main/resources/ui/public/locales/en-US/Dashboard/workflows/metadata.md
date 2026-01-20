@@ -18,7 +18,7 @@ For example, to include only those Dashboards whose name starts with the word `d
 
 For example, to exclude all Dashboards with the name containing the word `demo`, add the regex pattern in the exclude field as `.*demo.*`.
 
-Checkout [this](https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/database#database-filter-pattern) document for further examples on filter patterns.
+Checkout <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/database#database-filter-pattern" target="_blank">this</a> document for further examples on filter patterns.
 $$
 
 $$section
@@ -34,7 +34,7 @@ For example, to include only those Charts whose name starts with the word `demo`
 
 For example, to exclude all Charts with the name containing the word `demo`, add regex pattern in the exclude field as `.*demo.*`.
 
-Checkout [this](https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/database#database-filter-pattern) document for further examples on filter patterns.
+Checkout <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/database#database-filter-pattern" target="_blank">this</a> document for further examples on filter patterns.
 $$
 
 $$section
@@ -50,7 +50,7 @@ For example, to include only those Data Models whose name starts with the word `
 
 For example, to exclude all Data Models with the name containing the word `demo`, add regex pattern in the exclude field as `.*demo.*`.
 
-Checkout [this](https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/database#database-filter-pattern) document for further examples on filter patterns.
+Checkout <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/database#database-filter-pattern" target="_blank">this</a> document for further examples on filter patterns.
 $$
 
 $$section
@@ -67,6 +67,14 @@ List of service path prefixes for lineage matching. Supported formats:
 **DBServiceName.DatabaseName.SchemaName.TableName**
 $$
 
+$$section
+### Query Parser Type $(id="type")
+
+Choose the SQL parser for lineage extraction:
+- **Auto** (default): Automatically tries SqlGlot first, falls back to SqlFluff, then SqlParse. Recommended for best results.
+- **SqlGlot**: High-performance parser with good dialect support. Falls back to SqlParse on failure.
+- **SqlFluff**: Comprehensive but slower parser with strong dialect support. Falls back to SqlParse on failure.
+$$
 
 $$section
 ### Enable Debug Logs $(id="enableDebugLog")

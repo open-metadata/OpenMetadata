@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { get, isUndefined } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { PolicyRulesType } from '../support/access-control/PoliciesClass';
@@ -31,6 +31,7 @@ import {
   redirectToHomePage,
   uuid,
 } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
 export const TAG_INVALID_NAMES = {
@@ -45,8 +46,8 @@ export const NEW_TAG = {
   displayName: `PlaywrightTag-${uuid()}`,
   renamedName: `PlaywrightTag-${uuid()}`,
   description: 'This is the PlaywrightTag',
-  color: '#FF5733',
-  icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAF8AAACFCAMAAAAKN9SOAAAAA1BMVEXmGSCqexgYAAAAI0lEQVRoge3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAHgaMeAAAUWJHZ4AAAAASUVORK5CYII=',
+  color: '#F14C75',
+  icon: 'Cube01',
 };
 
 export const visitClassificationPage = async (
@@ -64,8 +65,10 @@ export const visitClassificationPage = async (
   await sidebarClick(page, SidebarItem.TAGS);
   await classificationResponse;
 
+  await page.waitForLoadState('networkidle');
+
   await page.waitForSelector(
-    '[data-testid="tags-container"] [data-testid="loader"]',
+    '[data-testid="tags-container"] .table-container [data-testid="loader"]',
     { state: 'detached' }
   );
 
@@ -81,7 +84,7 @@ export const visitClassificationPage = async (
   await fetchTags;
   await page.waitForLoadState('networkidle');
   await page.waitForSelector(
-    '[data-testid="tags-container"] [data-testid="loader"]',
+    '[data-testid="tags-container"] .table-container [data-testid="loader"]',
     { state: 'detached' }
   );
 };
@@ -135,7 +138,9 @@ export const addAssetsToTag = async (
     const visibleName = entityDisplayName ?? name;
 
     const searchRes = page.waitForResponse(
-      `/api/v1/search/query?q=${visibleName}&index=all&from=0&size=25&**`
+      `/api/v1/search/query?q=${encodeURIComponent(
+        visibleName
+      )}&index=all&from=0&size=25&**`
     );
     await page
       .getByTestId('asset-selection-modal')
@@ -183,6 +188,11 @@ export const removeAssetsFromTag = async (
   await assetsRemoveRes;
 
   await page.waitForLoadState('networkidle');
+  await page.reload();
+  await page.waitForSelector(
+    '[data-testid="tags-container"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
   await checkAssetsCount(page, 0);
 };
 
@@ -482,15 +492,80 @@ export const fillTagForm = async (adminPage: Page, domain: Domain) => {
   await adminPage.fill('[data-testid="name"]', NEW_TAG.name);
   await adminPage.fill('[data-testid="displayName"]', NEW_TAG.displayName);
   await adminPage.locator(descriptionBox).fill(NEW_TAG.description);
-  await adminPage.fill('[data-testid="icon-url"]', NEW_TAG.icon);
-  await adminPage.fill('[data-testid="tags_color-color-input"]', NEW_TAG.color);
-
-  await adminPage.click(
-    '[data-testid="modal-container"] [data-testid="add-domain"]'
-  );
+  await adminPage.getByTestId('icon-picker-btn').click();
   await adminPage
-    .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
+    .getByRole('button', { name: `Select icon ${NEW_TAG.icon}` })
+    .click();
+  await adminPage
+    .getByRole('button', { name: `Select color ${NEW_TAG.color}` })
     .click();
 
-  await adminPage.getByTestId('saveAssociatedTag').click();
+  const domainInput = adminPage.getByTestId('domain-select');
+  await domainInput.scrollIntoViewIfNeeded();
+  await domainInput.waitFor({ state: 'visible' });
+  await domainInput.click();
+  await waitForAllLoadersToDisappear(adminPage);
+
+  const searchDomain = adminPage.waitForResponse(
+    `/api/v1/search/query?q=*index=domain_search_index*`
+  );
+
+  await domainInput.fill(domain.responseData.displayName);
+
+  await searchDomain;
+  await waitForAllLoadersToDisappear(adminPage);
+
+  const domainOption = adminPage.getByText(
+    domain.responseData.displayName || domain.responseData.name
+  );
+
+  await domainOption.waitFor({ state: 'visible', timeout: 5000 });
+  await domainOption.click();
+};
+
+export const setTagDisabled = async (
+  apiContext: APIRequestContext,
+  tagId: string,
+  disabled: boolean
+) => {
+  await apiContext.patch(`/api/v1/tags/${tagId}`, {
+    data: [{ op: disabled ? 'add' : 'remove', path: '/disabled', value: true }],
+    headers: { 'Content-Type': 'application/json-patch+json' },
+  });
+};
+
+export const setClassificationDisabled = async (
+  apiContext: APIRequestContext,
+  classificationName: string,
+  disabled: boolean
+) => {
+  const response = await apiContext.get(
+    `/api/v1/classifications/name/${encodeURIComponent(classificationName)}`
+  );
+  const classification = await response.json();
+
+  await apiContext.patch(`/api/v1/classifications/${classification.id}`, {
+    data: [{ op: disabled ? 'add' : 'remove', path: '/disabled', value: true }],
+    headers: { 'Content-Type': 'application/json-patch+json' },
+  });
+};
+
+export const getTagByFqn = async (
+  apiContext: APIRequestContext,
+  tagFqn: string
+) => {
+  const response = await apiContext.get(
+    `/api/v1/tags/name/${encodeURIComponent(tagFqn)}`
+  );
+
+  return await response.json();
+};
+
+export const setTagDisabledByFqn = async (
+  apiContext: APIRequestContext,
+  tagFqn: string,
+  disabled: boolean
+) => {
+  const tag = await getTagByFqn(apiContext, tagFqn);
+  await setTagDisabled(apiContext, tag.id, disabled);
 };

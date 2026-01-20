@@ -63,7 +63,7 @@ export const createCustomMetric = async ({
   metric,
 }: CustomMetricDetails) => {
   await page
-    .getByRole('menuitem', {
+    .getByRole('tab', {
       name: isColumnMetric ? 'Column Profile' : 'Table Profile',
     })
     .click();
@@ -71,30 +71,27 @@ export const createCustomMetric = async ({
   await page.locator('[data-testid="custom-metric"]').click();
 
   const customMetricResponse = page.waitForResponse(
-    '/api/v1/tables/name/*?fields=customMetrics%2Ccolumns&include=all'
+    '/api/v1/tables/name/*?fields=customMetrics%2Ccolumns&include=all*'
   );
 
   // validate redirection and cancel button
   await expect(page.locator('[data-testid="heading"]')).toBeVisible();
   await expect(
-    page.locator(
-      `[data-testid="${
-        isColumnMetric
-          ? 'profiler-tab-container'
-          : 'table-profiler-chart-container'
-      }"]`
-    )
+    page
+      .locator(
+        `[data-testid="${
+          isColumnMetric
+            ? 'profiler-tab-container'
+            : 'table-profiler-chart-container'
+        }"]`
+      )
+      .first()
   ).toBeVisible();
 
   await page.locator('[data-testid="cancel-button"]').click();
   await customMetricResponse;
 
   await expect(page).toHaveURL(/profiler/);
-  await expect(
-    page.getByRole('heading', {
-      name: isColumnMetric ? 'Column Profile' : 'Table Profile',
-    })
-  ).toBeVisible();
 
   // Click on create custom metric button
   await page.click('[data-testid="profiler-add-table-test-btn"]');
@@ -126,15 +123,8 @@ export const createCustomMetric = async ({
 
   // verify the created custom metric
   await expect(page).toHaveURL(/profiler/);
-  await expect(
-    page.getByRole('heading', {
-      name: isColumnMetric ? 'Column Profile' : 'Table Profile',
-    })
-  ).toBeVisible();
 
-  await expect(
-    page.locator(`[data-testid="${metric.name}-custom-metrics"]`)
-  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: metric.name })).toBeVisible();
 };
 
 export const deleteCustomMetric = async ({
@@ -147,15 +137,13 @@ export const deleteCustomMetric = async ({
   isColumnMetric?: boolean;
 }) => {
   await page
-    .locator(`[data-testid="${metric.name}-custom-metrics"]`)
+    .getByRole('heading', { name: metric.name })
     .scrollIntoViewIfNeeded();
 
-  await expect(
-    page.locator(`[data-testid="${metric.name}-custom-metrics"]`)
-  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: metric.name })).toBeVisible();
 
   await page.click(`[data-testid="${metric.name}-custom-metrics-menu"]`);
-  await page.click(`[data-menu-id*="delete"]`);
+  await page.getByRole('menuitem', { name: 'Delete' }).click();
 
   await expect(page.locator('.ant-modal-header')).toContainText(metric.name);
 

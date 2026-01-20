@@ -14,6 +14,7 @@
 import { AxiosError } from 'axios';
 import parse from 'html-react-parser';
 import { get, isString } from 'lodash';
+import i18n from './i18next/LocalUtil';
 
 export const stringToSlug = (dataString: string, slugString = '') => {
   return dataString.toLowerCase().replace(/ /g, slugString);
@@ -46,19 +47,19 @@ export const stringToDOMElement = function (strHTML: string): HTMLElement {
 export const ordinalize = (num: number): string => {
   const mod10 = num % 10;
   const mod100 = num % 100;
-  let ordinalSuffix: string;
+  let ordinalSuffixKey: string;
 
   if (mod10 === 1 && mod100 !== 11) {
-    ordinalSuffix = 'st';
+    ordinalSuffixKey = 'ordinal-suffix-st';
   } else if (mod10 === 2 && mod100 !== 12) {
-    ordinalSuffix = 'nd';
+    ordinalSuffixKey = 'ordinal-suffix-nd';
   } else if (mod10 === 3 && mod100 !== 13) {
-    ordinalSuffix = 'rd';
+    ordinalSuffixKey = 'ordinal-suffix-rd';
   } else {
-    ordinalSuffix = 'th';
+    ordinalSuffixKey = 'ordinal-suffix-th';
   }
 
-  return num + ordinalSuffix;
+  return num + i18n.t(`label.${ordinalSuffixKey}`);
 };
 
 export const getJSONFromString = (data: string): string | null => {
@@ -258,7 +259,7 @@ export const formatJsonString = (jsonString: string, indent = '') => {
 
 export const replaceCallback = (character: string) => {
   // Generate a random number between 0 and 15
-  const randomNumber = (Math.random() * 16) | 0;
+  const randomNumber = crypto.getRandomValues(new Uint8Array(1))[0] & 0xf;
 
   // If the character in the UUID template is 'x', use the random number.
   // Otherwise, use the random number ANDed with 0x3 (which gives a number between 0 and 3) ORed with 0x8
@@ -314,7 +315,7 @@ export const jsonToCSV = <T extends JSONRecord>(
         }
         const escaped =
           typeof value === 'string'
-            ? value.replace(/"/g, '\\"')
+            ? value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
             : value.toString(); // handle quotes in content
 
         return `"${escaped}"`; // wrap each field in quotes

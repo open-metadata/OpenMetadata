@@ -14,6 +14,7 @@
 import { Button, Col, Divider, Modal, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import { isArray, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -34,6 +35,7 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import DataQualityTab from '../../components/Database/Profiler/DataQualityTab/DataQualityTab';
 import { AddTestCaseList } from '../../components/DataQuality/AddTestCaseList/AddTestCaseList.component';
 import TestSuitePipelineTab from '../../components/DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
+import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import EntityHeaderTitle from '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -50,11 +52,13 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../enums/entity.enum';
+import { Operation } from '../../generated/entity/policies/policy';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCase } from '../../generated/tests/testCase';
 import { EntityReference, TestSuite } from '../../generated/tests/testSuite';
 import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
+import { useEntityRules } from '../../hooks/useEntityRules';
 import { useFqn } from '../../hooks/useFqn';
 import {
   DataQualityPageTabs,
@@ -69,19 +73,26 @@ import {
   updateTestSuiteById,
 } from '../../rest/testAPI';
 import { getEntityName } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  checkPermission,
+  DEFAULT_ENTITY_PERMISSION,
+} from '../../utils/PermissionsUtils';
 import {
   getDataQualityPagePath,
   getTestSuitePath,
 } from '../../utils/RouterUtils';
+import { ExtraTestCaseDropdownOptions } from '../../utils/TestCaseUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './test-suite-details-page.styles.less';
 
 const TestSuiteDetailsPage = () => {
   const { t } = useTranslation();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
+  const { entityRules } = useEntityRules(EntityType.TEST_SUITE);
+  const { getEntityPermissionByFqn, permissions: globalPermissions } =
+    usePermissionProvider();
   const { fqn: testSuiteFQN } = useFqn();
   const navigate = useNavigate();
+  const { showModal } = useEntityExportModalProvider();
 
   const afterDeleteAction = () => {
     navigate(getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES));
@@ -134,6 +145,32 @@ const TestSuiteDetailsPage = () => {
       hasDeletePermission: testSuitePermissions?.Delete,
     };
   }, [testSuitePermissions]);
+
+  const extraDropdownContent = useMemo(() => {
+    const bulkImportExportTestCasePermission = {
+      ViewAll:
+        checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.TEST_CASE,
+          globalPermissions
+        ) ?? false,
+      EditAll:
+        checkPermission(
+          Operation.EditAll,
+          ResourceEntity.TEST_CASE,
+          globalPermissions
+        ) ?? false,
+    };
+
+    return ExtraTestCaseDropdownOptions(
+      testSuite?.fullyQualifiedName ?? '',
+      bulkImportExportTestCasePermission,
+      testSuite?.deleted ?? false,
+      navigate,
+      showModal,
+      EntityType.TEST_SUITE
+    );
+  }, [globalPermissions, testSuite, navigate, showModal]);
 
   const incidentUrlState = useMemo(() => {
     return [
@@ -285,7 +322,11 @@ const TestSuiteDetailsPage = () => {
     async (updateDomain?: EntityReference | EntityReference[]) => {
       const updatedTestSuite: TestSuite = {
         ...testSuite,
-        domains: updateDomain,
+        domains: isArray(updateDomain)
+          ? updateDomain
+          : isEmpty(updateDomain)
+          ? []
+          : [updateDomain],
       } as TestSuite;
 
       await updateTestSuiteData(updatedTestSuite);
@@ -380,8 +421,16 @@ const TestSuiteDetailsPage = () => {
     [currentPage, paging, pageSize, handlePageSizeChange, handleTestCasePaging]
   );
 
-  const tabs = useMemo(
-    () => [
+  const tabs = useMemo(() => {
+    const removeFromTestSuite = testSuite
+      ? {
+          testSuite,
+          isAllowed:
+            testSuitePermissions.EditAll || testSuitePermissions.EditTests,
+        }
+      : undefined;
+
+    return [
       {
         label: (
           <TabsLabel
@@ -398,7 +447,7 @@ const TestSuiteDetailsPage = () => {
             fetchTestCases={handleSortTestCase}
             isLoading={isLoading || isTestCaseLoading}
             pagingData={pagingData}
-            removeFromTestSuite={testSuite ? { testSuite } : undefined}
+            removeFromTestSuite={removeFromTestSuite}
             showPagination={showPagination}
             testCases={testCaseResult}
             onTestCaseResultUpdate={handleTestSuiteUpdate}
@@ -419,21 +468,21 @@ const TestSuiteDetailsPage = () => {
           <TestSuitePipelineTab isLogicalTestSuite testSuite={testSuite} />
         ),
       },
-    ],
-    [
-      testSuite,
-      incidentUrlState,
-      isLoading,
-      isTestCaseLoading,
-      pagingData,
-      showPagination,
-      testCaseResult,
-      handleTestSuiteUpdate,
-      handleSortTestCase,
-      fetchTestCases,
-      ingestionPipelineCount,
-    ]
-  );
+    ];
+  }, [
+    testSuite,
+    incidentUrlState,
+    isLoading,
+    isTestCaseLoading,
+    pagingData,
+    showPagination,
+    testCaseResult,
+    handleTestSuiteUpdate,
+    handleSortTestCase,
+    fetchTestCases,
+    ingestionPipelineCount,
+    testSuitePermissions,
+  ]);
 
   const selectedTestCases = useMemo(() => {
     return testCaseResult.map((test) => test.name);
@@ -505,6 +554,7 @@ const TestSuiteDetailsPage = () => {
                   entityId={testSuite?.id}
                   entityName={testSuite?.fullyQualifiedName as string}
                   entityType={EntityType.TEST_SUITE}
+                  extraDropdownContent={extraDropdownContent}
                   onEditDisplayName={handleDisplayNameChange}
                 />
               </Space>
@@ -513,17 +563,21 @@ const TestSuiteDetailsPage = () => {
             <Col span={24}>
               <div className="d-flex flex-wrap gap-2">
                 <DomainLabel
-                  multiple
                   domains={testSuite?.domains}
                   entityFqn={testSuite?.fullyQualifiedName ?? ''}
                   entityId={testSuite?.id ?? ''}
                   entityType={EntityType.TEST_SUITE}
                   hasPermission={testSuitePermissions.EditAll}
+                  multiple={entityRules.canAddMultipleDomains}
                   onUpdate={handleDomainUpdate}
                 />
                 <Divider className="self-center" type="vertical" />
                 <OwnerLabel
                   hasPermission={permissions.hasEditOwnerPermission}
+                  multiple={{
+                    user: entityRules.canAddMultipleUserOwners,
+                    team: entityRules.canAddMultipleTeamOwner,
+                  }}
                   owners={testOwners}
                   onUpdate={onUpdateOwner}
                 />

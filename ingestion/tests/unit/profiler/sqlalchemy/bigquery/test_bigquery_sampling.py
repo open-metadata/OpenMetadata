@@ -22,6 +22,7 @@ from metadata.generated.schema.security.credentials.gcpCredentials import GCPCre
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
@@ -69,6 +70,7 @@ class SampleTest(TestCase):
                     dataType=DataType.INT,
                 ),
             ],
+            database=EntityReference(id=uuid4(), name="myproject", type="database"),
         )
 
         cls.bq_conn = BigQueryConnection(
@@ -137,6 +139,7 @@ class SampleTest(TestCase):
                 ),
             ],
             tableType=TableType.View,
+            database=EntityReference(id=uuid4(), name="myproject", type="database"),
         )
 
         sampler = BigQuerySampler(
@@ -172,6 +175,7 @@ class SampleTest(TestCase):
                 ),
             ],
             tableType=TableType.View,
+            database=EntityReference(id=uuid4(), name="myproject", type="database"),
         )
 
         sampler = BigQuerySampler(

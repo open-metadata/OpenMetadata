@@ -90,11 +90,17 @@
       "title": "Include Transient Tables",
       "description": "Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the TRANSIENT tables.",
       "type": "boolean",
-      "default": false
+      "default": true
     },
     "includeStreams": {
       "title": "Include Streams",
       "description": "Optional configuration for ingestion of streams, By default, it will skip the streams.",
+      "type": "boolean",
+      "default": false
+    },
+    "includeStages": {
+      "title": "Include Stages",
+      "description": "Optional configuration for ingestion of Snowflake stages (internal and external). By default, stages are not ingested.",
       "type": "boolean",
       "default": false
     },
@@ -134,6 +140,11 @@
         "includes": [],
         "excludes": ["^snowflake$"]
       }
+    },
+    "storedProcedureFilterPattern": {
+      "title": "Default Stored Procedure Filter Pattern",
+      "description": "Regex to only include/exclude stored procedures that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
     },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
@@ -181,6 +192,12 @@
       "description": "Cost of credit for the Snowflake account.",
       "type": "number",
       "default": 3.3
+    },
+    "snowflakeSourceHost": {
+      "title": "Snowflake Source Host",
+      "description": "Snowflake source host for the Snowflake account.",
+      "type": "string",
+      "default": "app.snowflake.com"
     }
   },
   "additionalProperties": false,

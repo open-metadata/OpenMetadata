@@ -84,6 +84,7 @@ export enum FormattedDatabaseServiceType {
   DeltaLake = 'DeltaLake',
   DomoDatabase = 'Domo Database',
   Doris = 'Doris',
+  StarRocks = 'StarRocks',
   Druid = 'Druid',
   DynamoDB = 'Dynamo DB',
   Exasol = 'Exasol',
@@ -149,4 +150,10 @@ export enum FormattedStorageServiceType {
   CustomStorage = 'CustomStorage',
   Gcs = 'GCS',
   S3 = 'S3',
+}
+
+export enum FormattedDriveServiceType {
+  CustomDrive = 'Custom Drive',
+  GoogleDrive = 'Google Drive',
+  SharePoint = 'Share Point',
 }

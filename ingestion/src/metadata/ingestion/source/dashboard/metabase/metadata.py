@@ -108,6 +108,8 @@ class MetabaseSource(DashboardServiceSource):
         """
         Get List of all dashboards
         """
+        if not self.source_config.includeOwners:
+            logger.debug("Skipping owner information as includeOwners is False")
         self.dashboards_list = self.client.get_dashboards_list(self.collections)
         return self.dashboards_list
 
@@ -180,6 +182,8 @@ class MetabaseSource(DashboardServiceSource):
         Get dashboard owner from email
         """
         try:
+            if not self.source_config.includeOwners:
+                return None
             if dashboard_details.creator_id:
                 owner_details = self.client.get_user_details(
                     dashboard_details.creator_id
@@ -377,7 +381,9 @@ class MetabaseSource(DashboardServiceSource):
                 if db_service
                 else Dialect.ANSI
             ),
+            parser_type=self.get_query_parser_type(),
         )
+        query_hash = lineage_parser.query_hash
 
         if (
             prefix_database_name
@@ -385,7 +391,7 @@ class MetabaseSource(DashboardServiceSource):
             and prefix_database_name.lower() != database_name.lower()
         ):
             logger.debug(
-                f"Database {database_name} does not match prefix {prefix_database_name}"
+                f"[{query_hash}] Database {database_name} does not match prefix {prefix_database_name}"
             )
             return
 

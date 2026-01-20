@@ -106,12 +106,19 @@ class TableauClient:
     def site_id(self) -> str:
         return self.tableau_server.site_id
 
-    def get_tableau_owner(self, owner_id: str) -> Optional[TableauOwner]:
+    def get_tableau_owner(
+        self, owner_id: str, include_owners: bool = True
+    ) -> Optional[TableauOwner]:
+        """
+        Get tableau owner with optional include_owners flag
+        """
         try:
+            if not include_owners:
+                return None
             if owner_id in self.owner_cache:
                 return self.owner_cache[owner_id]
             owner = self.tableau_server.users.get_by_id(owner_id) if owner_id else None
-            if owner and owner.email:
+            if owner:
                 owner_obj = TableauOwner(
                     id=str(owner.id), name=owner.name, email=owner.email
                 )
@@ -122,7 +129,7 @@ class TableauClient:
         return None
 
     def get_workbook_charts_and_user_count(
-        self, views: List[ViewItem]
+        self, views: List[ViewItem], include_owners: bool = True
     ) -> Optional[Tuple[Optional[int], Optional[List[TableauChart]]]]:
         """
         Fetches workbook charts and dashboard user view count
@@ -136,7 +143,7 @@ class TableauClient:
                         id=str(view.id),
                         name=view.name,
                         tags=view.tags,
-                        owner=self.get_tableau_owner(view.owner_id),
+                        owner=self.get_tableau_owner(view.owner_id, include_owners),
                         contentUrl=view.content_url,
                         sheetType=view.sheet_type,
                     )
@@ -202,7 +209,7 @@ class TableauClient:
             logger.debug(f"Failed to get project parents by id: {str(e)}")
         return None
 
-    def get_workbooks(self) -> Iterable[TableauDashboard]:
+    def get_workbooks(self, include_owners: bool = True) -> Iterable[TableauDashboard]:
         """
         Fetch all tableau workbooks
         """
@@ -212,7 +219,7 @@ class TableauClient:
             try:
                 self.tableau_server.workbooks.populate_views(workbook, usage=True)
                 charts, user_views = self.get_workbook_charts_and_user_count(
-                    workbook.views
+                    workbook.views, include_owners
                 )
                 workbook = TableauDashboard(
                     id=str(workbook.id),
@@ -220,7 +227,7 @@ class TableauClient:
                     project=TableauBaseModel(
                         id=str(workbook.project_id), name=workbook.project_name
                     ),
-                    owner=self.get_tableau_owner(workbook.owner_id),
+                    owner=self.get_tableau_owner(workbook.owner_id, include_owners),
                     description=workbook.description,
                     tags=workbook.tags,
                     webpageUrl=workbook.webpage_url,
@@ -248,9 +255,11 @@ class TableauClient:
             "Please check if the user has permissions to access the Dashboards information"
         )
 
-    def test_get_workbook_views(self):
+    def test_get_workbook_views(self, include_owners: bool = True):
         workbook = self.test_get_workbooks()
-        charts, _ = self.get_workbook_charts_and_user_count(workbook.views)
+        charts, _ = self.get_workbook_charts_and_user_count(
+            workbook.views, include_owners
+        )
         if charts:
             return True
         raise TableauChartsException(
@@ -258,9 +267,9 @@ class TableauClient:
             "Please check if the user has permissions to access the Charts information"
         )
 
-    def test_get_owners(self) -> Optional[List[TableauOwner]]:
+    def test_get_owners(self, include_owners: bool = True) -> Optional[TableauOwner]:
         workbook = self.test_get_workbooks()
-        owners = self.get_tableau_owner(workbook.owner_id)
+        owners = self.get_tableau_owner(workbook.owner_id, include_owners)
         if owners is not None:
             return owners
         raise TableauOwnersNotFound(
@@ -320,14 +329,18 @@ class TableauClient:
                     workbook_id=dashboard_id, first=entities_per_page, offset=offset
                 )
             )
-            if datasources_graphql_result:
-                if datasources_graphql_result and datasources_graphql_result.get(
-                    "data"
-                ):
+            if datasources_graphql_result and datasources_graphql_result.get("data"):
+                if datasources_graphql_result["data"].get("workbooks"):
                     tableau_datasource_connection = TableauDatasourcesConnection(
                         **datasources_graphql_result["data"]["workbooks"][0]
                     )
                     return tableau_datasource_connection.embeddedDatasourcesConnection
+                else:
+                    logger.warning(
+                        f"No Datasources found in GraphQL datasources query result for the workbook {dashboard_id}. "
+                        "If this is a recently created or updated workbook, it may take some time "
+                        f"to become available for querying via the GraphQL API. : \n graphql = {datasources_graphql_result}\n"
+                    )
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning(

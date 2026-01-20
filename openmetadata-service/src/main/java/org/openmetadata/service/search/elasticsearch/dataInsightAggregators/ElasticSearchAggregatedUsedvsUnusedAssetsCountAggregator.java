@@ -1,41 +1,41 @@
 package org.openmetadata.service.search.elasticsearch.dataInsightAggregators;
 
-import es.org.elasticsearch.search.aggregations.Aggregations;
-import es.org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
-import es.org.elasticsearch.search.aggregations.bucket.histogram.Histogram.Bucket;
-import es.org.elasticsearch.search.aggregations.metrics.Sum;
-import java.time.ZonedDateTime;
+import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregate;
+import es.co.elastic.clients.elasticsearch._types.aggregations.DateHistogramBucket;
 import java.util.List;
+import java.util.Map;
 import org.openmetadata.service.dataInsight.AggregatedUsedvsUnusedAssetsCountAggregator;
 
 public class ElasticSearchAggregatedUsedvsUnusedAssetsCountAggregator
-    extends AggregatedUsedvsUnusedAssetsCountAggregator<Aggregations, Histogram, Bucket, Sum> {
-  public ElasticSearchAggregatedUsedvsUnusedAssetsCountAggregator(Aggregations aggregations) {
+    extends AggregatedUsedvsUnusedAssetsCountAggregator<
+        Map<String, Aggregate>, Aggregate, DateHistogramBucket, Aggregate> {
+  public ElasticSearchAggregatedUsedvsUnusedAssetsCountAggregator(
+      Map<String, Aggregate> aggregations) {
     super(aggregations);
   }
 
   @Override
-  protected Histogram getHistogramBucket(Aggregations aggregations) {
+  protected Aggregate getHistogramBucket(Map<String, Aggregate> aggregations) {
     return aggregations.get(TIMESTAMP);
   }
 
   @Override
-  protected List<? extends Bucket> getBuckets(Histogram histogramBucket) {
-    return histogramBucket.getBuckets();
+  protected List<DateHistogramBucket> getBuckets(Aggregate histogramBucket) {
+    return histogramBucket.dateHistogram().buckets().array();
   }
 
   @Override
-  protected long getKeyAsEpochTimestamp(Bucket bucket) {
-    return ((ZonedDateTime) bucket.getKey()).toInstant().toEpochMilli();
+  protected long getKeyAsEpochTimestamp(DateHistogramBucket bucket) {
+    return bucket.key();
   }
 
   @Override
-  protected Sum getAggregations(Bucket bucket, String key) {
-    return bucket.getAggregations().get(key);
+  protected Aggregate getAggregations(DateHistogramBucket bucket, String key) {
+    return bucket.aggregations().get(key);
   }
 
   @Override
-  protected Double getValue(Sum aggregations) {
-    return aggregations != null ? aggregations.getValue() : null;
+  protected Double getValue(Aggregate aggregations) {
+    return aggregations != null && aggregations.isSum() ? aggregations.sum().value() : null;
   }
 }

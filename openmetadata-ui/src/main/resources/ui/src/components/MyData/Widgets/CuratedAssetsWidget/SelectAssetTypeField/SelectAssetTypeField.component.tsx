@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 
-import { Col, Form, Select, Skeleton } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
+import { Col, Form, Skeleton, TreeSelect } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CURATED_ASSETS_LIST } from '../../../../../constants/AdvancedSearch.constants';
+import { EntityType } from '../../../../../enums/entity.enum';
 import { getSourceOptionsFromResourceList } from '../../../../../utils/Alerts/AlertsUtil';
 import {
   AlertMessage,
   CuratedAssetsFormSelectedAssetsInfo,
-  getExploreURLWithFilters,
+  getSimpleExploreURLForAssetTypes,
 } from '../../../../../utils/CuratedAssetsUtils';
 import searchClassBase from '../../../../../utils/SearchClassBase';
 import { useAdvanceSearch } from '../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
@@ -41,19 +41,48 @@ export const SelectAssetTypeField = ({
   const { t } = useTranslation();
   const form = Form.useFormInstance<CuratedAssetsConfig>();
 
-  const { config, onChangeSearchIndex } = useAdvanceSearch();
+  const { onChangeSearchIndex } = useAdvanceSearch();
   const [isCountLoading, setIsCountLoading] = useState<boolean>(false);
 
   const selectedResource: Array<string> =
     Form.useWatch<Array<string>>('resources', form) || [];
 
-  const resourcesOptions: DefaultOptionType[] = useMemo(() => {
-    return getSourceOptionsFromResourceList(
+  const resourcesOptions = useMemo(() => {
+    const allOptions = getSourceOptionsFromResourceList(
       CURATED_ASSETS_LIST,
       false,
       selectedResource,
       false
     );
+
+    // Create tree structure with "All" as parent
+    const allOption = allOptions.find(
+      (option) => option.value === EntityType.ALL
+    );
+    const individualOptions = allOptions.filter(
+      (option) => option.value !== EntityType.ALL
+    );
+
+    if (allOption) {
+      return [
+        {
+          title: allOption.label,
+          value: allOption.value,
+          key: allOption.value,
+          children: individualOptions.map((option) => ({
+            title: option.label,
+            value: option.value,
+            key: option.value,
+          })),
+        },
+      ];
+    }
+
+    return allOptions.map((option) => ({
+      title: option.label,
+      value: option.value,
+      key: option.value,
+    }));
   }, [selectedResource]);
 
   const handleEntityCountChange = useCallback(async () => {
@@ -71,13 +100,8 @@ export const SelectAssetTypeField = ({
   }, [fetchEntityCount, selectedResource]);
 
   const queryURL = useMemo(
-    () =>
-      getExploreURLWithFilters({
-        queryFilter: '{}',
-        selectedResource,
-        config,
-      }),
-    [config, selectedResource]
+    () => getSimpleExploreURLForAssetTypes(selectedResource),
+    [selectedResource]
   );
 
   const showFilteredResourceCount = useMemo(
@@ -89,10 +113,12 @@ export const SelectAssetTypeField = ({
   );
 
   const handleResourceChange = useCallback(
-    (val: string | string[]) => {
-      if (form) {
-        form.setFieldValue('resources', [val]);
+    (val: string[]) => {
+      if (!form) {
+        return;
       }
+
+      form.setFieldValue('resources', val);
     },
     [form]
   );
@@ -120,9 +146,15 @@ export const SelectAssetTypeField = ({
         }}
         name="resources"
         style={{ marginBottom: 8 }}>
-        <Select
-          options={resourcesOptions}
+        <TreeSelect
+          treeCheckable
+          treeDefaultExpandAll
+          autoClearSearchValue={false}
+          className="w-full"
+          maxTagCount="responsive"
           placeholder={t('label.select-asset-type')}
+          showCheckedStrategy={TreeSelect.SHOW_PARENT}
+          treeData={resourcesOptions}
           value={selectedResource}
           onChange={handleResourceChange}
         />
@@ -142,6 +174,7 @@ export const SelectAssetTypeField = ({
           <AlertMessage
             assetCount={selectedAssetsInfo?.resourceCount}
             href={queryURL}
+            target="_blank"
           />
         </Col>
       )}

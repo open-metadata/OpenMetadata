@@ -15,7 +15,7 @@ import { OktaAuth, OktaAuthOptions } from '@okta/okta-auth-js';
 import { Security } from '@okta/okta-react';
 import { FunctionComponent, ReactNode, useCallback, useMemo } from 'react';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { setOidcToken } from '../../../utils/LocalStorageUtils';
+import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from './AuthProvider';
 
 interface Props {
@@ -41,7 +41,7 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
         pkce,
         tokenManager: {
           autoRenew: true,
-          storage: 'localStorage',
+          storage: 'memory',
           syncStorage: true,
           expireEarlySeconds: 60,
           secure: true,
@@ -81,7 +81,7 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
       const idToken = _oktaAuth.getIdToken() ?? '';
       const scopes =
         _oktaAuth.authStateManager.getAuthState()?.idToken?.scopes.join() || '';
-      setOidcToken(idToken);
+      await setOidcToken(idToken);
       _oktaAuth
         .getUser()
         .then((info) => {
@@ -91,7 +91,7 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
             profile: {
               email: info.email ?? '',
               name: info.name ?? '',
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
               picture: (info as any).imageUrl ?? '',
               locale: info.locale ?? '',
               sub: info.sub,

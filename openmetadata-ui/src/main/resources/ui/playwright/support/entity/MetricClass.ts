@@ -17,25 +17,41 @@ import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class MetricClass extends EntityClass {
-  private metricName = `playwright-metric-${uuid()}`;
+  private metricName: string;
 
-  entity = {
-    name: this.metricName,
-    description: `Total sales over the last quarter ${this.metricName}`,
+  entity: {
+    name: string;
+    description: string;
     metricExpression: {
-      code: 'SUM(sales)',
-      language: 'SQL',
-    },
-    granularity: 'QUARTER',
-    metricType: 'SUM',
-    displayName: this.metricName,
-    unitOfMeasurement: 'DOLLARS',
+      code: string;
+      language: string;
+    };
+    granularity: string;
+    metricType: string;
+    displayName: string;
+    unitOfMeasurement: string;
   };
 
   entityResponseData: ResponseDataType = {} as ResponseDataType;
 
   constructor() {
     super(EntityTypeEndpoint.METRIC);
+
+    this.metricName = `playwright-metric-${uuid()}`;
+
+    this.entity = {
+      name: this.metricName,
+      description: `Total sales over the last quarter ${this.metricName}`,
+      metricExpression: {
+        code: 'SUM(sales)',
+        language: 'SQL',
+      },
+      granularity: 'QUARTER',
+      metricType: 'SUM',
+      displayName: this.metricName,
+      unitOfMeasurement: 'DOLLARS',
+    };
+
     this.type = 'Metric';
   }
 
@@ -51,17 +67,23 @@ export class MetricClass extends EntityClass {
     };
   }
 
-  async get() {
+  get() {
     return {
       entity: this.entityResponseData,
     };
+  }
+
+  public set(data: { entity: ResponseDataType }): void {
+    this.entityResponseData = data.entity;
   }
 
   async visitEntityPage(page: Page) {
     await visitEntityPage({
       page,
       searchTerm: this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.entity.name}-${this.entity.name}`,
+      dataTestId: `${this.entityResponseData.name ?? this.entity.name}-${
+        this.entityResponseData.name ?? this.entity.name
+      }`,
     });
   }
 

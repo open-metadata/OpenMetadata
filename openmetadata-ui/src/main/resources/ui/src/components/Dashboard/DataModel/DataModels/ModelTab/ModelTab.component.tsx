@@ -12,7 +12,7 @@
  */
 import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { groupBy, omit, uniqBy } from 'lodash';
+import { groupBy, isEmpty, omit, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,6 +29,8 @@ import {
 } from '../../../../../generated/entity/data/dashboardDataModel';
 import { TagLabel, TagSource } from '../../../../../generated/type/tagLabel';
 import { usePaging } from '../../../../../hooks/paging/usePaging';
+import { useFqn } from '../../../../../hooks/useFqn';
+import { useFqnDeepLink } from '../../../../../hooks/useFqnDeepLink';
 import {
   getDataModelColumnsByFQN,
   searchDataModelColumnsByFQN,
@@ -43,7 +45,10 @@ import {
   getAllTags,
   searchTagInData,
 } from '../../../../../utils/TableTags/TableTags.utils';
-import { pruneEmptyChildren } from '../../../../../utils/TableUtils';
+import {
+  getHighlightedRowClassName,
+  pruneEmptyChildren,
+} from '../../../../../utils/TableUtils';
 import DisplayName from '../../../../common/DisplayName/DisplayName';
 import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -61,8 +66,12 @@ import { ModalWithMarkdownEditor } from '../../../../Modals/ModalWithMarkdownEdi
 
 const ModelTab = () => {
   const { t } = useTranslation();
+
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
+  const [_expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
+  const { openColumnDetailPanel, selectedColumn } =
+    useGenericContext<DashboardDataModel>();
 
   const [paginatedColumns, setPaginatedColumns] = useState<Column[]>([]);
   const [columnsLoading, setColumnsLoading] = useState(true);
@@ -80,6 +89,24 @@ const ModelTab = () => {
   const { data: dataModel, permissions } =
     useGenericContext<DashboardDataModel>();
   const { fullyQualifiedName: entityFqn, deleted: isReadOnly } = dataModel;
+
+  const { columnFqn: columnPart, fqn } = useFqn({
+    type: EntityType.DASHBOARD_DATA_MODEL,
+  });
+
+  useFqnDeepLink({
+    data: paginatedColumns,
+    columnPart,
+    fqn,
+    setExpandedRowKeys: setExpandedRowKeys,
+    openColumnDetailPanel,
+    selectedColumn: selectedColumn as Column | null,
+  });
+
+  const getRowClassName = useCallback(
+    (record: Column) => getHighlightedRowClassName(record, fqn),
+    [fqn]
+  );
 
   // Always use paginated columns, never dataModel.columns directly
   const data = paginatedColumns;
@@ -109,9 +136,10 @@ const ModelTab = () => {
               fields: TabSpecificField.TAGS,
             });
 
-        setPaginatedColumns(pruneEmptyChildren(response.data) || []);
+        const data = pruneEmptyChildren(response.data) || [];
+        setPaginatedColumns(data);
         handlePagingChange(response.paging);
-      } catch (error) {
+      } catch {
         setPaginatedColumns([]);
         handlePagingChange({
           offset: 1,
@@ -169,7 +197,7 @@ const ModelTab = () => {
     if (entityFqn) {
       fetchPaginatedColumns(1, searchText || undefined);
     }
-  }, [entityFqn, searchText, fetchPaginatedColumns, pageSize]);
+  }, [entityFqn, searchText, fetchPaginatedColumns, pageSize, dataModel]);
 
   const updateColumnDetails = async (
     columnFqn: string,
@@ -177,12 +205,15 @@ const ModelTab = () => {
     field?: keyof Column
   ) => {
     const response = await updateDataModelColumn(columnFqn, column);
+    const cleanResponse = isEmpty(response.children)
+      ? omit(response, 'children')
+      : response;
 
     setPaginatedColumns((prev) =>
       prev.map((col) =>
         col.fullyQualifiedName === columnFqn
           ? // Have to omit the field which is being updated to avoid persisted old value
-            { ...omit(col, field ?? ''), ...response }
+            { ...omit(col, field ?? ''), ...cleanResponse }
           : col
       )
     );
@@ -241,6 +272,21 @@ const ModelTab = () => {
     );
   };
 
+  const handleColumnClick = useCallback(
+    (column: Column, event: React.MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (
+        target.closest(
+          'button, a, input, textarea, select, .table-expand-icon'
+        ) !== null
+      ) {
+        return;
+      }
+      openColumnDetailPanel(column);
+    },
+    [openColumnDetailPanel]
+  );
+
   const searchProps = useMemo(
     () => ({
       placeholder: t('message.find-in-table'),
@@ -284,16 +330,24 @@ const ModelTab = () => {
         key: TABLE_COLUMNS_KEYS.NAME,
         width: 250,
         fixed: 'left',
+        className: 'cursor-pointer',
         sorter: getColumnSorter<Column, 'name'>('name'),
+        onCell: (record: Column) => ({
+          onClick: (event: React.MouseEvent) =>
+            handleColumnClick(record, event),
+          'data-testid': 'column-name-cell',
+        }),
         render: (_, record: Column) => {
           const { displayName } = record;
 
           return (
             <DisplayName
               displayName={displayName}
+              entityType={EntityType.DASHBOARD_DATA_MODEL}
               hasEditPermission={editDisplayNamePermission}
               id={record.fullyQualifiedName ?? ''}
               name={record.name}
+              parentEntityFqn={entityFqn}
               onEditDisplayName={handleEditColumnData}
             />
           );
@@ -386,6 +440,9 @@ const ModelTab = () => {
       editColumnDescription,
       hasEditDescriptionPermission,
       handleFieldTagsChange,
+      handleColumnClick,
+      editDisplayNamePermission,
+      handleEditColumnData,
     ]
   );
 
@@ -403,6 +460,7 @@ const ModelTab = () => {
           emptyText: <FilterTablePlaceHolder />,
         }}
         pagination={false}
+        rowClassName={getRowClassName}
         rowKey="name"
         scroll={{ x: 1200 }}
         searchProps={searchProps}

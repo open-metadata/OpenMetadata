@@ -41,7 +41,14 @@ lint:  ## Run pylint on the Python sources to analyze the codebase
 
 .PHONY: static-checks
 static-checks:
-	basedpyright -p $(INGESTION_DIR)/pyproject.toml
+	# For Python 3.9, optionally skip SDK type checks if OM_SKIP_SDK_PY39=1
+	PY_VER=$$(python -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")'); \
+    if [ "$$PY_VER" = "3.9" ] && [ "$$OM_SKIP_SDK_PY39" = "1" ]; then \
+        echo "[static-checks] Python $$PY_VER detected with OM_SKIP_SDK_PY39=1 — excluding sdk/ from type checks"; \
+        basedpyright $$(find $(INGESTION_DIR)/src/metadata -maxdepth 1 -mindepth 1 -type d \( -not -name sdk -a -not -name __pycache__ \) | tr '\n' ' ') $$(find $(INGESTION_DIR)/src/metadata -maxdepth 1 -type f -name '*.py' | tr '\n' ' '); \
+    else \
+        basedpyright -p $(INGESTION_DIR)/pyproject.toml; \
+    fi
 
 .PHONY: precommit_install
 precommit_install:  ## Install the project's precommit hooks from .pre-commit-config.yaml
@@ -118,7 +125,7 @@ coverage_apis:  ## Run the python tests on openmetadata-airflow-apis
 coverage:  ## Run all Python tests and generate the coverage XML report
 	$(MAKE) run_python_tests
 	coverage xml --rcfile $(INGESTION_DIR)/pyproject.toml -o $(INGESTION_DIR)/coverage.xml || true
-	sed -e "s/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g" $(INGESTION_DIR)/coverage.xml >> $(INGESTION_DIR)/ci-coverage.xml
+	sed 's|filename="[^"]*\(/metadata/[^"]*"\)|filename="src\1|g' $(INGESTION_DIR)/coverage.xml > $(INGESTION_DIR)/ci-coverage.xml
 
 .PHONY: clean-nox
 clean-nox:

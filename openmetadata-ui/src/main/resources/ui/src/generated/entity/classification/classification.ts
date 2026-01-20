@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,6 +15,10 @@
  * and classifying data assets and other entities.
  */
 export interface Classification {
+    /**
+     * Configuration for automatic classification behavior
+     */
+    autoClassificationConfig?: AutoClassificationConfig;
     /**
      * Change that lead to this version of the entity.
      */
@@ -41,6 +45,10 @@ export interface Classification {
      */
     domains?: EntityReference[];
     /**
+     * Status of the tag.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * FullyQualifiedName same as `name`.
      */
     fullyQualifiedName?: string;
@@ -52,6 +60,10 @@ export interface Classification {
      * Unique identifier of this entity instance.
      */
     id: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Change that lead to this version of the entity.
      */
@@ -71,6 +83,10 @@ export interface Classification {
      */
     owners?:   EntityReference[];
     provider?: ProviderType;
+    /**
+     * User references of the reviewers for this tag.
+     */
+    reviewers?: EntityReference[];
     /**
      * Total number of children tag terms under this classification. This includes all the
      * children in the hierarchy.
@@ -93,6 +109,37 @@ export interface Classification {
      * Metadata version of the entity.
      */
     version?: number;
+}
+
+/**
+ * Configuration for automatic classification behavior
+ */
+export interface AutoClassificationConfig {
+    /**
+     * Strategy for resolving conflicts when multiple tags match
+     */
+    conflictResolution?: ConflictResolution;
+    /**
+     * Whether automatic classification is enabled for this classification
+     */
+    enabled?: boolean;
+    /**
+     * Minimum confidence score required to apply a tag
+     */
+    minimumConfidence?: number;
+    /**
+     * Only apply tags when recognizers explicitly match (no default tagging)
+     */
+    requireExplicitMatch?: boolean;
+}
+
+/**
+ * Strategy for resolving conflicts when multiple tags match
+ */
+export enum ConflictResolution {
+    HighestConfidence = "highest_confidence",
+    HighestPriority = "highest_priority",
+    MostSpecific = "most_specific",
 }
 
 /**
@@ -215,6 +262,21 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Status of the tag.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }
 
 /**

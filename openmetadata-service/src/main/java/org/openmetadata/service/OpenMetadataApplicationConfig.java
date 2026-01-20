@@ -15,8 +15,7 @@ package org.openmetadata.service;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.dropwizard.core.Configuration;
-import io.dropwizard.db.DataSourceFactory;
-import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
+import io.dropwizard.core.server.DefaultServerFactory;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.util.Map;
@@ -26,6 +25,7 @@ import org.openmetadata.DefaultOperationalConfigProvider;
 import org.openmetadata.schema.api.configuration.dataQuality.DataQualityConfiguration;
 import org.openmetadata.schema.api.configuration.events.EventHandlerConfiguration;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
+import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.fernet.FernetConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
@@ -37,11 +37,13 @@ import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.config.CacheConfiguration;
+import org.openmetadata.service.config.BulkOperationConfiguration;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.config.ObjectStorageConfiguration;
+import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
+import org.openmetadata.service.swagger.SwaggerBundleConfiguration;
 
 @Getter
 @Setter
@@ -56,7 +58,7 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("database")
   @NotNull
   @Valid
-  private DataSourceFactory dataSourceFactory;
+  private HikariCPDataSourceFactory dataSourceFactory;
 
   @JsonProperty("swagger")
   private SwaggerBundleConfiguration swaggerBundleConfig;
@@ -145,15 +147,42 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @Valid
   private ObjectStorageConfiguration objectStorage;
 
-  @JsonProperty("cacheConfiguration")
-  @Valid
-  private CacheConfiguration cacheConfiguration;
-
   @JsonProperty("scimConfiguration")
   private ScimConfiguration scimConfiguration;
 
   @JsonProperty("aiPlatformConfiguration")
   private AiPlatformConfiguration aiPlatformConfiguration;
+
+  @JsonProperty("rdf")
+  private RdfConfiguration rdfConfiguration = new RdfConfiguration();
+
+  @JsonProperty("cache")
+  private org.openmetadata.service.cache.CacheConfig cacheConfig;
+
+  public org.openmetadata.service.cache.CacheConfig getCacheConfig() {
+    if (cacheConfig == null) {
+      cacheConfig = new org.openmetadata.service.cache.CacheConfig();
+    }
+    return cacheConfig;
+  }
+
+  @JsonProperty("bulkOperation")
+  @Valid
+  private BulkOperationConfiguration bulkOperationConfiguration;
+
+  public BulkOperationConfiguration getBulkOperationConfiguration() {
+    if (bulkOperationConfiguration == null) {
+      bulkOperationConfiguration = new BulkOperationConfiguration();
+    }
+    return bulkOperationConfiguration;
+  }
+
+  public String getApiRootPath() {
+    if (!(getServerFactory() instanceof DefaultServerFactory serverFactory)) {
+      return "";
+    }
+    return serverFactory.getJerseyRootPath().map(path -> path.replaceFirst("\\*$", "")).orElse("");
+  }
 
   @Override
   public String toString() {

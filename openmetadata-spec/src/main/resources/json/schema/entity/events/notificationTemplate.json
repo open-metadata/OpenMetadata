@@ -1,0 +1,95 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/events/notificationTemplate.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NotificationTemplate",
+  "$comment": "@om-entity-type",
+  "description": "A NotificationTemplate defines the default formatting template for notifications of a specific entity type.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.events.NotificationTemplate",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this template instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name for the notification template (e.g., 'Default Table Template', 'Custom Pipeline Alerts').",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this template.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name for the template.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "description": {
+      "description": "Description of the template purpose and usage.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "version": {
+      "description": "Metadata version of the template.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the template.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
+    "href": {
+      "description": "Link to this template resource.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "templateSubject": {
+      "description": "Handlebars template for the email subject line with placeholders.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "templateBody": {
+      "description": "Handlebars HTML template body with placeholders.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 10240
+    },
+    "provider": {
+      "description": "Provider of the template. System templates are pre-loaded and cannot be deleted. User templates are created by users and can be deleted.",
+      "$ref": "../../type/basic.json#/definitions/providerType"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the template.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the template has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "isModifiedFromDefault": {
+      "description": "Indicates if this system template has been modified from its default version. Only applicable to system templates.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "templateSubject",
+    "templateBody"
+  ],
+  "additionalProperties": false
+}

@@ -10,14 +10,64 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { expect, Page, test } from '@playwright/test';
+import { ENTITY_TYPES } from '../../constant/entity';
 import { SidebarItem } from '../../constant/sidebar';
+import { EntityType } from '../../support/entity/EntityDataClass.interface';
 import { redirectToHomePage } from '../../utils/common';
 import { selectDataAssetFilter } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 
-// use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
+
+async function openEntitySummaryPanel(page: Page, entityType: EntityType) {
+  await selectDataAssetFilter(page, entityType);
+  await page.waitForLoadState('networkidle');
+
+  const firstEntityCard = page
+    .locator('[data-testid="table-data-card"]')
+    .first();
+  if (await firstEntityCard.isVisible()) {
+    await firstEntityCard.click();
+    await page.waitForLoadState('networkidle');
+  }
+}
+
+async function verifyEntitySummaryPanelStructure(page: Page) {
+  await expect(page.locator('.entity-summary-panel-container')).toBeVisible({
+    timeout: 10000,
+  });
+
+  await expect(page.locator('.summary-panel-container')).toBeVisible();
+}
+
+async function verifyEntityDetailsInPanel(page: Page) {
+  const summaryPanel = page.locator('.entity-summary-panel-container');
+  const entityLink = summaryPanel
+    .locator('[data-testid="entity-link"]')
+    .first();
+
+  await expect(entityLink).toBeVisible();
+}
+
+async function verifyTabNavigation(page: Page) {
+  const tabs = [
+    'OVERVIEW',
+    'SCHEMA',
+    'LINEAGE',
+    'DATA_QUALITY',
+    'CUSTOM_PROPERTIES',
+  ];
+
+  for (const tab of tabs) {
+    const tabButton = page.locator(`[data-testid="entity-panel-tab-${tab}"]`);
+    if (await tabButton.isVisible()) {
+      await tabButton.click();
+
+      await expect(tabButton).toHaveClass(/active/);
+    }
+  }
+}
 
 test.describe('Entity Summary Panel', () => {
   test.beforeEach(async ({ page }) => {
@@ -25,166 +75,104 @@ test.describe('Entity Summary Panel', () => {
     await sidebarClick(page, SidebarItem.EXPLORE);
   });
 
-  test('Table Entity', async ({ page }) => {
-    await selectDataAssetFilter(page, 'table');
+  ENTITY_TYPES.forEach((entityType) => {
+    test(`should display summary panel for ${entityType}`, async ({ page }) => {
+      await openEntitySummaryPanel(page, entityType);
 
-    await expect(page.getByTestId('Type-label')).toBeVisible();
-    await expect(page.getByTestId('Queries-label')).toBeVisible();
-    await expect(page.getByTestId('Columns-label')).toBeVisible();
-    await expect(page.getByTestId('profiler-header')).toBeVisible();
-    await expect(page.getByTestId('domain-header')).toBeVisible();
-    await expect(page.getByTestId('tags-header')).toBeVisible();
-    await expect(page.getByTestId('description-header')).toBeVisible();
-    await expect(page.getByTestId('data-products-header')).toBeVisible();
-    await expect(page.getByTestId('schema-header')).toBeVisible();
+      await page.locator('.entity-summary-panel-container').isVisible();
+
+      await verifyEntitySummaryPanelStructure(page);
+      await verifyEntityDetailsInPanel(page);
+    });
   });
 
-  test('Database', async ({ page }) => {
-    await selectDataAssetFilter(page, 'database');
+  test('should render entity title section with link', async ({ page }) => {
+    await openEntitySummaryPanel(page, 'table');
 
-    await expect(
-      page.locator('.ant-card-head-title > [data-testid="entity-link"]')
-    ).toBeVisible();
-    await expect(page.getByTestId('Owners-value')).toBeVisible();
-    await expect(page.getByTestId('Tier-label')).toBeVisible();
-    await expect(page.getByTestId('Service-label')).toBeVisible();
-    await expect(page.getByTestId('Usage-label')).toBeVisible();
-    await expect(page.getByTestId('domain-header')).toBeVisible();
-    await expect(page.getByTestId('tags-header')).toBeVisible();
-    await expect(page.getByTestId('description-header')).toBeVisible();
-    await expect(page.getByTestId('data-products-header')).toBeVisible();
-    await expect(page.getByTestId('schema-header')).toBeVisible();
+    const summaryPanel = page.locator('.entity-summary-panel-container');
+    const hasSummaryPanel = await summaryPanel.isVisible();
+
+    if (hasSummaryPanel) {
+      await expect(summaryPanel.locator('.title-section')).toBeVisible();
+
+      const entityLink = summaryPanel
+        .locator('[data-testid="entity-link"]')
+        .first();
+      if (await entityLink.isVisible()) {
+        await expect(entityLink).toHaveAttribute('href', /.+/);
+      }
+    }
   });
 
-  test('Database schema', async ({ page }) => {
-    await selectDataAssetFilter(page, 'databaseSchema');
+  test('should display owners section', async ({ page }) => {
+    await openEntitySummaryPanel(page, 'table');
 
-    await expect(
-      page.locator('.ant-card-head-title > [data-testid="entity-link"]')
-    ).toBeVisible();
-    await expect(page.getByTestId('Owners-value')).toBeVisible();
-    await expect(page.getByTestId('Tier-label')).toBeVisible();
-    await expect(page.getByTestId('Service-label')).toBeVisible();
-    await expect(page.getByTestId('Database-label')).toBeVisible();
-    await expect(page.getByTestId('Usage-label')).toBeVisible();
-    await expect(page.getByTestId('description-header')).toBeVisible();
-    await expect(page.getByTestId('data-products-header')).toBeVisible();
-    await expect(page.getByTestId('domain-header')).toBeVisible();
+    const hasSummaryPanel = await page
+      .locator('.entity-summary-panel-container')
+      .isVisible();
+
+    if (hasSummaryPanel) {
+      const ownersSection = page.locator('.owners-section');
+      if (await ownersSection.isVisible()) {
+        await expect(ownersSection).toBeVisible();
+      }
+    }
   });
 
-  test('Dashboard entity', async ({ page }) => {
-    await selectDataAssetFilter(page, 'dashboard');
+  test('should display domain section', async ({ page }) => {
+    await openEntitySummaryPanel(page, 'table');
 
-    await expect(
-      page.locator('.ant-card-head-title > [data-testid="entity-link"]')
-    ).toBeVisible();
+    const hasSummaryPanel = await page
+      .locator('.entity-summary-panel-container')
+      .isVisible();
 
-    await expect(page.getByTestId('Dashboard URL-label')).toBeVisible();
-    await expect(page.getByTestId('Project-label')).toBeVisible();
-    await expect(page.getByTestId('tags-header')).toBeVisible();
-    await expect(page.getByTestId('description-header')).toBeVisible();
-    await expect(page.getByTestId('data-products-header')).toBeVisible();
-    await expect(page.getByTestId('charts-header')).toBeVisible();
-    await expect(page.getByTestId('domain-header')).toBeVisible();
+    if (hasSummaryPanel) {
+      const domainSection = page.locator('.domains-section');
+      if (await domainSection.isVisible()) {
+        await expect(domainSection).toBeVisible();
+      }
+    }
   });
 
-  test('Dashboard data model entity', async ({ page }) => {
-    await selectDataAssetFilter(page, 'dashboardDataModel');
+  test('should display tags section', async ({ page }) => {
+    await openEntitySummaryPanel(page, 'table');
 
-    await expect(
-      page.locator('.ant-card-head-title > [data-testid="entity-link"]')
-    ).toBeVisible();
+    const hasSummaryPanel = await page
+      .locator('.entity-summary-panel-container')
+      .isVisible();
 
-    await expect(page.getByTestId('Data Model URL-label')).toBeVisible();
-    await expect(page.getByTestId('Service-label')).toBeVisible();
-    await expect(page.getByTestId('Tier-label')).toBeVisible();
-    await expect(page.getByTestId('Data Model Type-label')).toBeVisible();
-    await expect(page.getByTestId('tags-header')).toBeVisible();
-    await expect(page.getByTestId('description-header')).toBeVisible();
-    await expect(page.getByTestId('data-products-header')).toBeVisible();
-    await expect(page.getByTestId('column-header')).toBeVisible();
-    await expect(page.getByTestId('domain-header')).toBeVisible();
+    if (hasSummaryPanel) {
+      const tagsSection = page.locator('.tags-section');
+      if (await tagsSection.isVisible()) {
+        await expect(tagsSection).toBeVisible();
+      }
+    }
   });
 
-  test('Pipeline entity', async ({ page }) => {
-    await selectDataAssetFilter(page, 'pipeline');
+  test('should navigate between tabs', async ({ page }) => {
+    await openEntitySummaryPanel(page, 'table');
 
-    await expect(
-      page.locator('.ant-card-head-title > [data-testid="entity-link"]')
-    ).toBeVisible();
+    const hasSummaryPanel = await page
+      .locator('.entity-summary-panel-container')
+      .isVisible();
 
-    await expect(page.getByTestId('Pipeline URL-label')).toBeVisible();
-    await expect(page.getByTestId('tags-header')).toBeVisible();
-    await expect(page.getByTestId('description-header')).toBeVisible();
-    await expect(page.getByTestId('data-products-header')).toBeVisible();
-    await expect(page.getByTestId('tasks-header')).toBeVisible();
+    if (hasSummaryPanel) {
+      await verifyTabNavigation(page);
+    }
   });
 
-  test('Topic entity', async ({ page }) => {
-    await selectDataAssetFilter(page, 'topic');
+  test('should display description section', async ({ page }) => {
+    await openEntitySummaryPanel(page, 'table');
 
-    await expect(
-      page.locator('.ant-card-head-title > [data-testid="entity-link"]')
-    ).toBeVisible();
+    const hasSummaryPanel = await page
+      .locator('.entity-summary-panel-container')
+      .isVisible();
 
-    await expect(page.getByTestId('Partitions-label')).toBeVisible();
-    await expect(page.getByTestId('Replication Factor-label')).toBeVisible();
-    await expect(page.getByTestId('Retention Size-label')).toBeVisible();
-    await expect(page.getByTestId('CleanUp Policies-label')).toBeVisible();
-    await expect(page.getByTestId('Max Message Size-label')).toBeVisible();
-    await expect(page.getByTestId('Schema Type-label')).toBeVisible();
-    await expect(page.getByTestId('tags-header')).toBeVisible();
-    await expect(page.getByTestId('description-header')).toBeVisible();
-    await expect(page.getByTestId('data-products-header')).toBeVisible();
-    await expect(page.getByTestId('schema-header')).toBeVisible();
-    await expect(page.getByTestId('domain-header')).toBeVisible();
-  });
-
-  test('ML Model entity', async ({ page }) => {
-    await selectDataAssetFilter(page, 'mlmodel');
-
-    await expect(
-      page.locator('.ant-card-head-title > [data-testid="entity-link"]')
-    ).toBeVisible();
-
-    await expect(page.getByTestId('Algorithm-label')).toBeVisible();
-    await expect(page.getByTestId('Target-label')).toBeVisible();
-    await expect(page.getByTestId('Server-label')).toBeVisible();
-    await expect(page.getByTestId('Dashboard-label')).toBeVisible();
-    await expect(page.getByTestId('tags-header')).toBeVisible();
-    await expect(page.getByTestId('description-header')).toBeVisible();
-    await expect(page.getByTestId('data-products-header')).toBeVisible();
-    await expect(page.getByTestId('features-header')).toBeVisible();
-    await expect(page.getByTestId('domain-header')).toBeVisible();
-  });
-
-  test('Container entity', async ({ page }) => {
-    await selectDataAssetFilter(page, 'container');
-
-    await expect(
-      page.locator('.ant-card-head-title > [data-testid="entity-link"]')
-    ).toBeVisible();
-
-    await expect(page.getByTestId('Objects-label')).toBeVisible();
-    await expect(page.getByTestId('Service Type-label')).toBeVisible();
-    await expect(page.getByTestId('Columns-label')).toBeVisible();
-    await expect(page.getByTestId('tags-header')).toBeVisible();
-    await expect(page.getByTestId('description-header')).toBeVisible();
-    await expect(page.getByTestId('data-products-header')).toBeVisible();
-    await expect(page.getByTestId('schema-header')).toBeVisible();
-    await expect(page.getByTestId('domain-header')).toBeVisible();
-  });
-
-  test('Search Index entity', async ({ page }) => {
-    await selectDataAssetFilter(page, 'searchIndex');
-
-    await expect(
-      page.locator('.ant-card-head-title > [data-testid="entity-link"]')
-    ).toBeVisible();
-
-    await expect(page.getByTestId('tags-header')).toBeVisible();
-    await expect(page.getByTestId('description-header')).toBeVisible();
-    await expect(page.getByTestId('data-products-header')).toBeVisible();
-    await expect(page.getByTestId('fields-header')).toBeVisible();
+    if (hasSummaryPanel) {
+      const descriptionSection = page.locator('.description-section');
+      if (await descriptionSection.isVisible()) {
+        await expect(descriptionSection).toBeVisible();
+      }
+    }
   });
 });

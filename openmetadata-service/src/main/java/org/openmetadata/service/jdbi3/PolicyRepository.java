@@ -47,7 +47,9 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.policies.PolicyResource;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 public class PolicyRepository extends EntityRepository<Policy> {
@@ -64,7 +66,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   @Override
-  public void setFields(Policy policy, Fields fields) {
+  public void setFields(Policy policy, Fields fields, RelationIncludes relationIncludes) {
     policy.setTeams(fields.contains("teams") ? getTeams(policy) : policy.getTeams());
     policy.withRoles(fields.contains("roles") ? getRoles(policy) : policy.getRoles());
   }
@@ -246,6 +248,8 @@ public class PolicyRepository extends EntityRepository<Policy> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange(ENABLED, original.getEnabled(), updated.getEnabled());
       updateRules(original.getRules(), updated.getRules());
+      // Invalidate policy cache when policy rules change
+      SubjectCache.invalidateAll();
     }
 
     private void updateRules(List<Rule> origRules, List<Rule> updatedRules) {

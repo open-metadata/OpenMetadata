@@ -1,49 +1,22 @@
 package org.openmetadata.service.search.elasticsearch;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchDynamicChartAggregatorInterface.getDateHistogramByFormula;
 
-import es.org.elasticsearch.action.search.SearchRequest;
-import es.org.elasticsearch.action.search.SearchResponse;
-import es.org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
-import es.org.elasticsearch.plugins.spi.NamedXContentProvider;
-import es.org.elasticsearch.search.aggregations.Aggregation;
-import es.org.elasticsearch.search.aggregations.bucket.filter.ParsedFilter;
-import es.org.elasticsearch.search.aggregations.bucket.filter.ParsedFilters;
-import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
-import es.org.elasticsearch.search.aggregations.bucket.histogram.ParsedDateHistogram;
-import es.org.elasticsearch.search.aggregations.bucket.histogram.ParsedHistogram;
-import es.org.elasticsearch.search.aggregations.bucket.range.ParsedDateRange;
-import es.org.elasticsearch.search.aggregations.bucket.range.ParsedRange;
-import es.org.elasticsearch.search.aggregations.bucket.terms.ParsedStringTerms;
-import es.org.elasticsearch.search.aggregations.metrics.ParsedAvg;
-import es.org.elasticsearch.search.aggregations.metrics.ParsedMax;
-import es.org.elasticsearch.search.aggregations.metrics.ParsedMin;
-import es.org.elasticsearch.search.aggregations.metrics.ParsedSum;
-import es.org.elasticsearch.search.aggregations.metrics.ParsedTopHits;
-import es.org.elasticsearch.search.aggregations.metrics.ParsedValueCount;
-import es.org.elasticsearch.search.aggregations.pipeline.ParsedBucketMetricValue;
-import es.org.elasticsearch.search.builder.SearchSourceBuilder;
-import es.org.elasticsearch.search.suggest.Suggest;
-import es.org.elasticsearch.search.suggest.completion.CompletionSuggestion;
-import es.org.elasticsearch.search.suggest.phrase.PhraseSuggestion;
-import es.org.elasticsearch.search.suggest.term.TermSuggestion;
-import es.org.elasticsearch.xcontent.ContextParser;
-import es.org.elasticsearch.xcontent.DeprecationHandler;
-import es.org.elasticsearch.xcontent.NamedXContentRegistry;
-import es.org.elasticsearch.xcontent.ParseField;
-import es.org.elasticsearch.xcontent.XContentFactory;
-import es.org.elasticsearch.xcontent.XContentParser;
-import es.org.elasticsearch.xcontent.json.JsonXContent;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import es.co.elastic.clients.elasticsearch.core.SearchRequest;
+import es.co.elastic.clients.elasticsearch.core.SearchResponse;
+import es.co.elastic.clients.json.JsonData;
+import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
+import jakarta.json.stream.JsonParser;
 import java.io.IOException;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.ServiceLoader;
-import java.util.stream.Collectors;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
@@ -57,19 +30,10 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
 
   static final long START = 1721082271000L;
   static final long END = 1721592271000L;
+  private final ObjectMapper objectMapper = new ObjectMapper();
 
   private boolean compareRequest(String expectedJsonReq, Map<String, Object> chartDetails)
       throws IOException {
-    XContentParser parser =
-        XContentFactory.xContent(expectedJsonReq)
-            .createParser(
-                EsUtils.esXContentRegistry, LoggingDeprecationHandler.INSTANCE, expectedJsonReq);
-    SearchSourceBuilder searchSourceBuilder = SearchSourceBuilder.fromXContent(parser);
-
-    // Create a SearchRequest and set the SearchSourceBuilder
-    SearchRequest expectedSearchRequest =
-        new SearchRequest().source(searchSourceBuilder).indices("di-data-assets-*");
-    expectedSearchRequest.source(searchSourceBuilder);
     DataInsightCustomChart chart =
         new DataInsightCustomChart().withName("random_chart_name").withChartDetails(chartDetails);
     ElasticSearchDynamicChartAggregatorInterface aggregator =
@@ -78,16 +42,29 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
 
     Map<String, ElasticSearchLineChartAggregator.MetricFormulaHolder> metricFormulaHolder =
         new HashMap<>();
-    es.org.elasticsearch.action.search.SearchRequest searchRequest =
+    SearchRequest searchRequest =
         aggregator.prepareSearchRequest(chart, START, END, formulas, metricFormulaHolder, false);
 
-    return expectedSearchRequest.equals(searchRequest);
+    String actualJsonStr = searchRequestToJson(searchRequest);
+    JsonNode expectedJson = objectMapper.readTree(expectedJsonReq);
+    JsonNode actualJson = objectMapper.readTree(actualJsonStr);
+
+    return expectedJson.equals(actualJson);
+  }
+
+  private String searchRequestToJson(SearchRequest request) {
+    JacksonJsonpMapper mapper = new JacksonJsonpMapper();
+    java.io.StringWriter sw = new java.io.StringWriter();
+    jakarta.json.stream.JsonGenerator generator = mapper.jsonProvider().createGenerator(sw);
+    request.serialize(generator, mapper);
+    generator.close();
+    return sw.toString();
   }
 
   @Test
   public void testFieldChartRequestCount() throws IOException {
     String cardString1 =
-        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}\n";
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"day\"},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}}";
     Map<String, Object> summaryCard1 = new LinkedHashMap<>();
     Map<String, Object> metricMapSummary = new LinkedHashMap<>();
     summaryCard1.put("type", "SummaryCard");
@@ -97,7 +74,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(cardString1, summaryCard1));
 
     String lineString =
-        "{\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}\n";
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"day\"},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}";
     Map<String, Object> lineChart = new LinkedHashMap<>();
     lineChart.put("type", "LineChart");
 
@@ -109,7 +86,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(lineString, lineChart));
 
     String lineString1 =
-        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"term_1\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":1000,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}]},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}}}";
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"aggregations\":{\"term_1\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":1000},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"day\"},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}}}";
     Map<String, Object> lineChart1 = new LinkedHashMap<>();
     lineChart1.put("type", "LineChart");
 
@@ -122,7 +99,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(lineString1, lineChart1));
 
     String lineString2 =
-        "{\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"filer\":{\"filter\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"owner.displayName.keyword\":{\"value\":\"admin\",\"boost\":1.0}}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}}}";
+        "{\"aggregations\":{\"metric_1\":{\"aggregations\":{\"filter\":{\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}},\"filter\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"owner.displayName.keyword\":{\"value\":\"admin\"}}}]}}]}}}},\"date_histogram\":{\"calendar_interval\":\"day\",\"field\":\"@timestamp\"}}},\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"size\":0}";
     Map<String, Object> lineChart2 = new LinkedHashMap<>();
     lineChart2.put("type", "LineChart");
     Map<String, Object> metricMap2 = new LinkedHashMap<>();
@@ -138,7 +115,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
   @Test
   public void testFormulaChartRequest() throws IOException {
     String cardString =
-        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}";
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"day\"},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}";
     Map<String, Object> summaryCard = new LinkedHashMap<>();
     summaryCard.put("type", "SummaryCard");
     Map<String, Object> metricMapSummary = new LinkedHashMap<>();
@@ -154,7 +131,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(cardString, summaryCard1));
 
     String lineString =
-        "{\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}";
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"day\"},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}";
     Map<String, Object> lineChart = new LinkedHashMap<>();
     lineChart.put("type", "LineChart");
     Map<String, Object> metricMap = new LinkedHashMap<>();
@@ -163,7 +140,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(lineString, lineChart));
 
     String lineString1 =
-        "{\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}},\"version1\":{\"sum\":{\"field\":\"version\"}}}}}}";
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"day\"},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}},\"version1\":{\"sum\":{\"field\":\"version\"}}}}}}";
     Map<String, Object> lineChart1 = new LinkedHashMap<>();
     lineChart1.put("type", "LineChart");
     Map<String, Object> metricMap1 = new LinkedHashMap<>();
@@ -172,7 +149,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(lineString1, lineChart1));
 
     String lineString2 =
-        "{\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}},\"id.keyword1\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}";
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"day\"},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}},\"id.keyword1\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}";
     Map<String, Object> lineChart2 = new LinkedHashMap<>();
     lineChart2.put("type", "LineChart");
     Map<String, Object> metricMap2 = new LinkedHashMap<>();
@@ -181,7 +158,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(lineString2, lineChart2));
 
     String lineString3 =
-        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"term_1\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":1000,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}]},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}},\"id.keyword1\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}}}";
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"aggregations\":{\"term_1\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":1000},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"day\"},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}},\"id.keyword1\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}}}";
     Map<String, Object> lineChart3 = new LinkedHashMap<>();
     lineChart3.put("type", "LineChart");
     Map<String, Object> metricMap3 = new LinkedHashMap<>();
@@ -191,7 +168,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(lineString3, lineChart3));
 
     String lineString4 =
-        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"term_1\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":1000,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}]},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"filer0\":{\"filter\":{\"query_string\":{\"query\":\"hasDescription: 1\",\"fields\":[],\"type\":\"best_fields\",\"default_operator\":\"or\",\"max_determinized_states\":10000,\"enable_position_increments\":true,\"fuzziness\":\"AUTO\",\"fuzzy_prefix_length\":0,\"fuzzy_max_expansions\":50,\"phrase_slop\":0,\"escape\":false,\"auto_generate_synonyms_phrase_query\":true,\"fuzzy_transpositions\":true,\"boost\":1.0}},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}},\"filer1\":{\"filter\":{\"query_string\":{\"query\":\"owner.name.keyword: *\",\"fields\":[],\"type\":\"best_fields\",\"default_operator\":\"or\",\"max_determinized_states\":10000,\"enable_position_increments\":true,\"fuzziness\":\"AUTO\",\"fuzzy_prefix_length\":0,\"fuzzy_max_expansions\":50,\"phrase_slop\":0,\"escape\":false,\"auto_generate_synonyms_phrase_query\":true,\"fuzzy_transpositions\":true,\"boost\":1.0}},\"aggregations\":{\"id.keyword1\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}}}}}";
+        "{\"aggregations\":{\"term_1\":{\"aggregations\":{\"metric_1\":{\"aggregations\":{\"filter0\":{\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}},\"filter\":{\"query_string\":{\"lenient\":true,\"query\":\"hasDescription: 1\"}}},\"filter1\":{\"aggregations\":{\"id.keyword1\":{\"value_count\":{\"field\":\"id.keyword\"}}},\"filter\":{\"query_string\":{\"lenient\":true,\"query\":\"owner.name.keyword: *\"}}}},\"date_histogram\":{\"calendar_interval\":\"day\",\"field\":\"@timestamp\"}}},\"terms\":{\"field\":\"entityType.keyword\",\"size\":1000}}},\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"size\":0}";
     Map<String, Object> lineChart4 = new LinkedHashMap<>();
     lineChart4.put("type", "LineChart");
     Map<String, Object> metricMap4 = new LinkedHashMap<>();
@@ -211,7 +188,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(lineString4, lineChart41));
 
     String lineString5 =
-        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"term_1\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":1000,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}]},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"filer0\":{\"filter\":{\"bool\":{\"must\":[{\"query_string\":{\"query\":\"hasDescription: 1\",\"fields\":[],\"type\":\"best_fields\",\"default_operator\":\"or\",\"max_determinized_states\":10000,\"enable_position_increments\":true,\"fuzziness\":\"AUTO\",\"fuzzy_prefix_length\":0,\"fuzzy_max_expansions\":50,\"phrase_slop\":0,\"escape\":false,\"auto_generate_synonyms_phrase_query\":true,\"fuzzy_transpositions\":true,\"boost\":1.0}},{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"owners.displayName.keyword\":{\"value\":\"admin\",\"boost\":1.0}}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}},\"filer1\":{\"filter\":{\"bool\":{\"must\":[{\"query_string\":{\"query\":\"owner.name.keyword: *\",\"fields\":[],\"type\":\"best_fields\",\"default_operator\":\"or\",\"max_determinized_states\":10000,\"enable_position_increments\":true,\"fuzziness\":\"AUTO\",\"fuzzy_prefix_length\":0,\"fuzzy_max_expansions\":50,\"phrase_slop\":0,\"escape\":false,\"auto_generate_synonyms_phrase_query\":true,\"fuzzy_transpositions\":true,\"boost\":1.0}},{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"owners.displayName.keyword\":{\"value\":\"admin\",\"boost\":1.0}}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}},\"aggregations\":{\"id.keyword1\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}}}}}";
+        "{\"aggregations\":{\"term_1\":{\"aggregations\":{\"metric_1\":{\"aggregations\":{\"filter0\":{\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}},\"filter\":{\"bool\":{\"must\":[{\"query_string\":{\"lenient\":true,\"query\":\"hasDescription: 1\"}},{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"owners.displayName.keyword\":{\"value\":\"admin\"}}}]}}]}}]}}},\"filter1\":{\"aggregations\":{\"id.keyword1\":{\"value_count\":{\"field\":\"id.keyword\"}}},\"filter\":{\"bool\":{\"must\":[{\"query_string\":{\"lenient\":true,\"query\":\"owner.name.keyword: *\"}},{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"owners.displayName.keyword\":{\"value\":\"admin\"}}}]}}]}}]}}}},\"date_histogram\":{\"calendar_interval\":\"day\",\"field\":\"@timestamp\"}}},\"terms\":{\"field\":\"entityType.keyword\",\"size\":1000}}},\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"size\":0}";
     Map<String, Object> lineChart5 = new LinkedHashMap<>();
     lineChart5.put("type", "LineChart");
     Map<String, Object> metricMap5 = new LinkedHashMap<>();
@@ -227,7 +204,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(lineString5, lineChart5));
 
     String lineString6 =
-        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"term_1\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":1000,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}],\"exclude\":[\"glossaryTerm\",\"tag\"]},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}},\"id.keyword1\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}}}";
+        "{\"aggregations\":{\"term_1\":{\"aggregations\":{\"metric_1\":{\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}},\"id.keyword1\":{\"value_count\":{\"field\":\"id.keyword\"}}},\"date_histogram\":{\"calendar_interval\":\"day\",\"field\":\"@timestamp\"}}},\"terms\":{\"exclude\":[\"tag\",\"glossaryTerm\"],\"field\":\"entityType.keyword\",\"size\":1000}}},\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"size\":0}";
     Map<String, Object> lineChart6 = new LinkedHashMap<>();
     lineChart6.put("type", "LineChart");
     Map<String, Object> metricMap6 = new LinkedHashMap<>();
@@ -241,7 +218,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
   @Test
   public void testFieldChartRequestSum() throws IOException {
     String cardString =
-        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"sum\":{\"field\":\"version\"}}}}}}";
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"day\"},\"aggregations\":{\"version0\":{\"sum\":{\"field\":\"version\"}}}}}}";
     Map<String, Object> summaryCard = new LinkedHashMap<>();
     summaryCard.put("type", "SummaryCard");
     Map<String, Object> metricMapSummary1 = new LinkedHashMap<>();
@@ -251,7 +228,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(cardString, summaryCard));
 
     String lineString =
-        "{\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"sum\":{\"field\":\"version\"}}}}}}";
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"day\"},\"aggregations\":{\"version0\":{\"sum\":{\"field\":\"version\"}}}}}}";
     Map<String, Object> lineChart = new LinkedHashMap<>();
     lineChart.put("type", "LineChart");
     Map<String, Object> metricMap = new LinkedHashMap<>();
@@ -262,7 +239,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(lineString, lineChart));
 
     String lineString1 =
-        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"term_1\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":1000,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}]},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"sum\":{\"field\":\"version\"}}}}}}}}";
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"aggregations\":{\"term_1\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":1000},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"day\"},\"aggregations\":{\"version0\":{\"sum\":{\"field\":\"version\"}}}}}}}}";
     Map<String, Object> lineChart1 = new LinkedHashMap<>();
     lineChart1.put("type", "LineChart");
     Map<String, Object> metricMap1 = new LinkedHashMap<>();
@@ -273,7 +250,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(lineString1, lineChart1));
 
     String lineString2 =
-        "{\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"filer\":{\"filter\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"owner.displayName.keyword\":{\"value\":\"admin\",\"boost\":1.0}}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}},\"aggregations\":{\"version0\":{\"sum\":{\"field\":\"version\"}}}}}}}}";
+        "{\"aggregations\":{\"metric_1\":{\"aggregations\":{\"filter\":{\"aggregations\":{\"version0\":{\"sum\":{\"field\":\"version\"}}},\"filter\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"owner.displayName.keyword\":{\"value\":\"admin\"}}}]}}]}}}},\"date_histogram\":{\"calendar_interval\":\"day\",\"field\":\"@timestamp\"}}},\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"size\":0}";
     Map<String, Object> lineChart2 = new LinkedHashMap<>();
     lineChart2.put("type", "LineChart");
     Map<String, Object> metricMap2 = new LinkedHashMap<>();
@@ -289,7 +266,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
   @Test
   public void testFieldChartRequestAvg() throws IOException {
     String cardString =
-        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"avg\":{\"field\":\"version\"}}}}}}";
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"day\"},\"aggregations\":{\"version0\":{\"avg\":{\"field\":\"version\"}}}}}}";
     Map<String, Object> summaryCard = new LinkedHashMap<>();
     summaryCard.put("type", "SummaryCard");
     Map<String, Object> metricMapSummary1 = new LinkedHashMap<>();
@@ -299,7 +276,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(cardString, summaryCard));
 
     String lineString =
-        "{\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"avg\":{\"field\":\"version\"}}}}}}";
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"day\"},\"aggregations\":{\"version0\":{\"avg\":{\"field\":\"version\"}}}}}}";
     Map<String, Object> lineChart = new LinkedHashMap<>();
     lineChart.put("type", "LineChart");
     Map<String, Object> metricMap = new LinkedHashMap<>();
@@ -309,7 +286,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(lineString, lineChart));
 
     String lineString1 =
-        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"term_1\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":1000,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}]},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"avg\":{\"field\":\"version\"}}}}}}}}";
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"aggregations\":{\"term_1\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":1000},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"day\"},\"aggregations\":{\"version0\":{\"avg\":{\"field\":\"version\"}}}}}}}}";
     Map<String, Object> lineChart1 = new LinkedHashMap<>();
     lineChart1.put("type", "LineChart");
     Map<String, Object> metricMap1 = new LinkedHashMap<>();
@@ -320,7 +297,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(lineString1, lineChart1));
 
     String lineString2 =
-        "{\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"filer\":{\"filter\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"owner.displayName.keyword\":{\"value\":\"admin\",\"boost\":1.0}}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}},\"aggregations\":{\"version0\":{\"avg\":{\"field\":\"version\"}}}}}}}}";
+        "{\"aggregations\":{\"metric_1\":{\"aggregations\":{\"filter\":{\"aggregations\":{\"version0\":{\"avg\":{\"field\":\"version\"}}},\"filter\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"owner.displayName.keyword\":{\"value\":\"admin\"}}}]}}]}}}},\"date_histogram\":{\"calendar_interval\":\"day\",\"field\":\"@timestamp\"}}},\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"size\":0}";
     Map<String, Object> lineChart2 = new LinkedHashMap<>();
     lineChart2.put("type", "LineChart");
     Map<String, Object> metricMap2 = new LinkedHashMap<>();
@@ -336,7 +313,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
   @Test
   public void testFieldChartRequestMin() throws IOException {
     String cardString =
-        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"min\":{\"field\":\"version\"}}}}}}";
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"day\"},\"aggregations\":{\"version0\":{\"min\":{\"field\":\"version\"}}}}}}";
     Map<String, Object> summaryCard = new LinkedHashMap<>();
     summaryCard.put("type", "SummaryCard");
     Map<String, Object> metricMapSummary1 = new LinkedHashMap<>();
@@ -346,7 +323,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(cardString, summaryCard));
 
     String lineString =
-        "{\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"min\":{\"field\":\"version\"}}}}}}";
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"day\"},\"aggregations\":{\"version0\":{\"min\":{\"field\":\"version\"}}}}}}";
     Map<String, Object> lineChart = new LinkedHashMap<>();
     lineChart.put("type", "LineChart");
     Map<String, Object> metricMap = new LinkedHashMap<>();
@@ -356,7 +333,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(lineString, lineChart));
 
     String lineString1 =
-        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"term_1\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":1000,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}]},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"min\":{\"field\":\"version\"}}}}}}}}";
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"aggregations\":{\"term_1\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":1000},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"day\"},\"aggregations\":{\"version0\":{\"min\":{\"field\":\"version\"}}}}}}}}";
     Map<String, Object> lineChart1 = new LinkedHashMap<>();
     lineChart1.put("type", "LineChart");
     Map<String, Object> metricMap1 = new LinkedHashMap<>();
@@ -367,7 +344,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(lineString1, lineChart1));
 
     String lineString2 =
-        "{\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"filer\":{\"filter\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"owner.displayName.keyword\":{\"value\":\"admin\",\"boost\":1.0}}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}},\"aggregations\":{\"version0\":{\"min\":{\"field\":\"version\"}}}}}}}}";
+        "{\"aggregations\":{\"metric_1\":{\"aggregations\":{\"filter\":{\"aggregations\":{\"version0\":{\"min\":{\"field\":\"version\"}}},\"filter\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"owner.displayName.keyword\":{\"value\":\"admin\"}}}]}}]}}}},\"date_histogram\":{\"calendar_interval\":\"day\",\"field\":\"@timestamp\"}}},\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"size\":0}";
     Map<String, Object> lineChart2 = new LinkedHashMap<>();
     lineChart2.put("type", "LineChart");
     Map<String, Object> metricMap2 = new LinkedHashMap<>();
@@ -383,7 +360,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
   @Test
   public void testFieldChartRequestMax() throws IOException {
     String cardString =
-        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"max\":{\"field\":\"version\"}}}}}}";
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"day\"},\"aggregations\":{\"version0\":{\"max\":{\"field\":\"version\"}}}}}}";
     Map<String, Object> summaryCard = new LinkedHashMap<>();
     summaryCard.put("type", "SummaryCard");
     Map<String, Object> metricMapSummary1 = new LinkedHashMap<>();
@@ -393,7 +370,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(cardString, summaryCard));
 
     String lineString =
-        "{\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"max\":{\"field\":\"version\"}}}}}}";
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"day\"},\"aggregations\":{\"version0\":{\"max\":{\"field\":\"version\"}}}}}}";
     Map<String, Object> lineChart = new LinkedHashMap<>();
     lineChart.put("type", "LineChart");
     Map<String, Object> metricMap = new LinkedHashMap<>();
@@ -403,7 +380,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(lineString, lineChart));
 
     String lineString1 =
-        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"term_1\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":1000,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}]},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"max\":{\"field\":\"version\"}}}}}}}}";
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"aggregations\":{\"term_1\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":1000},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"day\"},\"aggregations\":{\"version0\":{\"max\":{\"field\":\"version\"}}}}}}}}";
     Map<String, Object> lineChart1 = new LinkedHashMap<>();
     lineChart1.put("type", "LineChart");
     Map<String, Object> metricMap1 = new LinkedHashMap<>();
@@ -414,7 +391,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(lineString1, lineChart1));
 
     String lineString2 =
-        "{\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"filer\":{\"filter\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"owner.displayName.keyword\":{\"value\":\"admin\",\"boost\":1.0}}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}},\"aggregations\":{\"version0\":{\"max\":{\"field\":\"version\"}}}}}}}}";
+        "{\"aggregations\":{\"metric_1\":{\"aggregations\":{\"filter\":{\"aggregations\":{\"version0\":{\"max\":{\"field\":\"version\"}}},\"filter\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"owner.displayName.keyword\":{\"value\":\"admin\"}}}]}}]}}}},\"date_histogram\":{\"calendar_interval\":\"day\",\"field\":\"@timestamp\"}}},\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"size\":0}";
     Map<String, Object> lineChart2 = new LinkedHashMap<>();
     lineChart2.put("type", "LineChart");
     Map<String, Object> metricMap2 = new LinkedHashMap<>();
@@ -427,73 +404,19 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(lineString2, lineChart2));
   }
 
-  public static SearchResponse getSearchResponseFromJson(String jsonResponse) throws IOException {
-    NamedXContentRegistry registry = new NamedXContentRegistry(getDefaultNamedXContents());
-    XContentParser parser =
-        JsonXContent.jsonXContent.createParser(
-            registry, DeprecationHandler.THROW_UNSUPPORTED_OPERATION, jsonResponse);
-    return SearchResponse.fromXContent(parser);
-  }
-
-  private static List<NamedXContentRegistry.Entry> getProvidedNamedXContents() {
-    List<NamedXContentRegistry.Entry> entries = new ArrayList<>();
-
-    for (NamedXContentProvider service : ServiceLoader.load(NamedXContentProvider.class)) {
-      entries.addAll(service.getNamedXContentParsers());
-    }
-
-    return entries;
-  }
-
-  private static List<NamedXContentRegistry.Entry> getDefaultNamedXContents() {
-    Map<String, ContextParser<Object, ? extends Aggregation>> map = new HashMap<>();
-    map.put("min", (p, c) -> ParsedMin.fromXContent(p, (String) c));
-    map.put("max", (p, c) -> ParsedMax.fromXContent(p, (String) c));
-    map.put("sum", (p, c) -> ParsedSum.fromXContent(p, (String) c));
-    map.put("avg", (p, c) -> ParsedAvg.fromXContent(p, (String) c));
-    map.put("sterms", (p, c) -> ParsedStringTerms.fromXContent(p, (String) c));
-    map.put("value_count", (p, c) -> ParsedValueCount.fromXContent(p, (String) c));
-    map.put("bucket_metric_value", (p, c) -> ParsedBucketMetricValue.fromXContent(p, (String) c));
-    map.put("histogram", (p, c) -> ParsedHistogram.fromXContent(p, (String) c));
-    map.put("date_histogram", (p, c) -> ParsedDateHistogram.fromXContent(p, (String) c));
-    map.put("filter", (p, c) -> ParsedFilter.fromXContent(p, (String) c));
-    map.put("range", (p, c) -> ParsedRange.fromXContent(p, (String) c));
-    map.put("date_range", (p, c) -> ParsedDateRange.fromXContent(p, (String) c));
-    map.put("filters", (p, c) -> ParsedFilters.fromXContent(p, (String) c));
-    map.put("top_hits", (p, c) -> ParsedTopHits.fromXContent(p, (String) c));
-    List<NamedXContentRegistry.Entry> entries =
-        map.entrySet().stream()
-            .map(
-                (entry) ->
-                    new NamedXContentRegistry.Entry(
-                        Aggregation.class, new ParseField(entry.getKey()), entry.getValue()))
-            .collect(Collectors.toList());
-    entries.add(
-        new NamedXContentRegistry.Entry(
-            Suggest.Suggestion.class,
-            new ParseField("term"),
-            (parser, context) -> TermSuggestion.fromXContent(parser, (String) context)));
-    entries.add(
-        new NamedXContentRegistry.Entry(
-            Suggest.Suggestion.class,
-            new ParseField("phrase"),
-            (parser, context) -> PhraseSuggestion.fromXContent(parser, (String) context)));
-    entries.add(
-        new NamedXContentRegistry.Entry(
-            Suggest.Suggestion.class,
-            new ParseField("completion"),
-            (parser, context) -> CompletionSuggestion.fromXContent(parser, (String) context)));
-
-    return entries;
+  public static SearchResponse<JsonData> getSearchResponseFromJson(String jsonResponse) {
+    JacksonJsonpMapper mapper = new JacksonJsonpMapper();
+    JsonParser parser = mapper.jsonProvider().createParser(new StringReader(jsonResponse));
+    return SearchResponse.createSearchResponseDeserializer(JsonData._DESERIALIZER)
+        .deserialize(parser, mapper);
   }
 
   private boolean compareResponse(
       String expectedJsonRes,
       Map<String, Object> chartDetails,
       String formula,
-      List<DataInsightCustomChartResult> expectedResultList)
-      throws IOException {
-    SearchResponse response = getSearchResponseFromJson(expectedJsonRes);
+      List<DataInsightCustomChartResult> expectedResultList) {
+    SearchResponse<JsonData> response = getSearchResponseFromJson(expectedJsonRes);
     DataInsightCustomChart chart =
         new DataInsightCustomChart().withName("random_chart_name").withChartDetails(chartDetails);
     ElasticSearchDynamicChartAggregatorInterface aggregator =
@@ -502,8 +425,6 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     Map<String, ElasticSearchLineChartAggregator.MetricFormulaHolder> metricFormulaHolder =
         new HashMap<>();
     if (formula != null) {
-      getDateHistogramByFormula(
-          formula, null, new DateHistogramAggregationBuilder("demo"), formulas);
       metricFormulaHolder.put(
           "metric_1",
           new ElasticSearchLineChartAggregator.MetricFormulaHolder(
@@ -517,7 +438,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
   }
 
   @Test
-  public void testSearchResponseProcessor() throws IOException {
+  public void testSearchResponseProcessor() {
     String sampleResponse1 =
         "{\"took\":26,\"timed_out\":false,\"_shards\":{\"total\":1,\"successful\":1,\"skipped\":0,\"failed\":0},\"hits\":{\"total\":{\"value\":132,\"relation\":\"eq\"},\"max_score\":null,\"hits\":[]},\"aggregations\":{\"date_histogram#1\":{\"buckets\":[{\"key_as_string\":\"2024-07-21T00:00:00.000Z\",\"key\":1721520000000,\"doc_count\":54,\"value_count#id.keyword0\":{\"value\":54}},{\"key_as_string\":\"2024-07-22T00:00:00.000Z\",\"key\":1721606400000,\"doc_count\":78,\"value_count#id.keyword0\":{\"value\":78}},{\"key_as_string\":\"2024-07-23T00:00:00.000Z\",\"key\":1721607000000,\"doc_count\":78}]}}}";
     Map<String, Object> summaryCard = new LinkedHashMap<>();
@@ -557,7 +478,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareResponse(sampleResponse1, lineChartFunc, null, resultListLine));
 
     String sampleResponse2 =
-        "{\"took\":100,\"timed_out\":false,\"_shards\":{\"total\":1,\"successful\":1,\"skipped\":0,\"failed\":0},\"hits\":{\"total\":{\"value\":192,\"relation\":\"eq\"},\"max_score\":null,\"hits\":[]},\"aggregations\":{\"sterms#0\":{\"doc_count_error_upper_bound\":0,\"sum_other_doc_count\":0,\"buckets\":[{\"key\":\"Table\",\"doc_count\":85,\"date_histogram#metric_1\":{\"buckets\":[{\"key_as_string\":\"2024-07-18T00:00:00.000Z\",\"key\":1721260800000,\"doc_count\":5,\"filter#filer0\":{\"doc_count\":0,\"value_count#id.keyword0\":{\"value\":0}},\"value_count#id.keyword1\":{\"value\":5}}]}},{\"key\":\"Tag\",\"doc_count\":74,\"date_histogram#metric_1\":{\"buckets\":[{\"key_as_string\":\"2024-07-18T00:00:00.000Z\",\"key\":1721260800000,\"doc_count\":10,\"filter#filer0\":{\"doc_count\":10,\"value_count#id.keyword0\":{\"value\":10}},\"value_count#id.keyword1\":{\"value\":10}}]}},{\"key\":\"StoredProcedure\",\"doc_count\":15,\"date_histogram#metric_1\":{\"buckets\":[{\"key_as_string\":\"2024-07-18T00:00:00.000Z\",\"key\":1721260800000,\"doc_count\":3,\"filter#filer0\":{\"doc_count\":0,\"value_count#id.keyword0\":{\"value\":0}},\"value_count#id.keyword1\":{\"value\":3}}]}},{\"key\":\"Database\",\"doc_count\":9,\"date_histogram#metric_1\":{\"buckets\":[{\"key_as_string\":\"2024-07-18T00:00:00.000Z\",\"key\":1721260800000,\"doc_count\":1,\"filter#filer0\":{\"doc_count\":0,\"value_count#id.keyword0\":{\"value\":0}},\"value_count#id.keyword1\":{\"value\":1}}]}},{\"key\":\"DatabaseSchema\",\"doc_count\":9,\"date_histogram#metric_1\":{\"buckets\":[{\"key_as_string\":\"2024-07-18T00:00:00.000Z\",\"key\":1721260800000,\"doc_count\":1,\"filter#filer0\":{\"doc_count\":0,\"value_count#id.keyword0\":{\"value\":0}},\"value_count#id.keyword1\":{\"value\":1}},{\"key_as_string\":\"2024-07-22T00:00:00.000Z\",\"key\":1721606400000,\"doc_count\":1,\"filter#filer0\":{\"doc_count\":0,\"value_count#id.keyword0\":{\"value\":0}},\"value_count#id.keyword1\":{\"value\":0}}]}}]}}}";
+        "{\"took\":100,\"timed_out\":false,\"_shards\":{\"total\":1,\"successful\":1,\"skipped\":0,\"failed\":0},\"hits\":{\"total\":{\"value\":192,\"relation\":\"eq\"},\"max_score\":null,\"hits\":[]},\"aggregations\":{\"sterms#0\":{\"doc_count_error_upper_bound\":0,\"sum_other_doc_count\":0,\"buckets\":[{\"key\":\"Table\",\"doc_count\":85,\"date_histogram#metric_1\":{\"buckets\":[{\"key_as_string\":\"2024-07-18T00:00:00.000Z\",\"key\":1721260800000,\"doc_count\":5,\"filter#filter0\":{\"doc_count\":0,\"value_count#id.keyword0\":{\"value\":0}},\"value_count#id.keyword1\":{\"value\":5}}]}},{\"key\":\"Tag\",\"doc_count\":74,\"date_histogram#metric_1\":{\"buckets\":[{\"key_as_string\":\"2024-07-18T00:00:00.000Z\",\"key\":1721260800000,\"doc_count\":10,\"filter#filter0\":{\"doc_count\":10,\"value_count#id.keyword0\":{\"value\":10}},\"value_count#id.keyword1\":{\"value\":10}}]}},{\"key\":\"StoredProcedure\",\"doc_count\":15,\"date_histogram#metric_1\":{\"buckets\":[{\"key_as_string\":\"2024-07-18T00:00:00.000Z\",\"key\":1721260800000,\"doc_count\":3,\"filter#filter0\":{\"doc_count\":0,\"value_count#id.keyword0\":{\"value\":0}},\"value_count#id.keyword1\":{\"value\":3}}]}},{\"key\":\"Database\",\"doc_count\":9,\"date_histogram#metric_1\":{\"buckets\":[{\"key_as_string\":\"2024-07-18T00:00:00.000Z\",\"key\":1721260800000,\"doc_count\":1,\"filter#filter0\":{\"doc_count\":0,\"value_count#id.keyword0\":{\"value\":0}},\"value_count#id.keyword1\":{\"value\":1}}]}},{\"key\":\"DatabaseSchema\",\"doc_count\":9,\"date_histogram#metric_1\":{\"buckets\":[{\"key_as_string\":\"2024-07-18T00:00:00.000Z\",\"key\":1721260800000,\"doc_count\":1,\"filter#filter0\":{\"doc_count\":0,\"value_count#id.keyword0\":{\"value\":0}},\"value_count#id.keyword1\":{\"value\":1}},{\"key_as_string\":\"2024-07-22T00:00:00.000Z\",\"key\":1721606400000,\"doc_count\":1,\"filter#filter0\":{\"doc_count\":0,\"value_count#id.keyword0\":{\"value\":0}},\"value_count#id.keyword1\":{\"value\":0}}]}}]}}}";
     Map<String, Object> lineChartFormula = new LinkedHashMap<>();
     lineChartFormula.put("type", "LineChart");
     Map<String, Object> metricsFormula = new LinkedHashMap<>();
@@ -585,11 +506,133 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
             .withCount(0d)
             .withDay(1.7212608E12)
             .withGroup("DatabaseSchema"));
+    resultListLineFormula.add(
+        new DataInsightCustomChartResult()
+            .withCount(0d)
+            .withDay(1.7216064E12)
+            .withGroup("DatabaseSchema"));
     assertTrue(
         compareResponse(
             sampleResponse2,
             lineChartFormula,
             "(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100",
             resultListLineFormula));
+  }
+
+  /**
+   * Test that verifies the aggregation ordering fix works correctly.
+   * This test uses a response where id.keyword1 (total count) appears BEFORE
+   * filter0 (filtered count)
+   * in the JSON, simulating the HashMap ordering issue that caused the 162300%
+   * bug.
+   *
+   * <p>
+   * The formula is: (count(k='id.keyword',q='hasDescription:
+   * 1')/count(k='id.keyword'))*100
+   * With values: (171/455)*100 = 37.58%
+   *
+   * <p>
+   * Without the sorting fix, if id.keyword1 (455) is processed before filter0
+   * (171),
+   * the result would be calculated as: (455/171)*100 = 266% (WRONG!)
+   */
+  @Test
+  public void testAggregationOrderingWithReversedKeys() {
+    // Response with id.keyword1 appearing BEFORE filter0 in the aggregation keys
+    // This simulates the HashMap ordering issue
+    String responseWithReversedOrder =
+        "{\"took\":15,\"timed_out\":false,\"_shards\":{\"failed\":0.0,\"successful\":17.0,\"total\":17.0,\"skipped\":0.0},"
+            + "\"hits\":{\"total\":{\"relation\":\"eq\",\"value\":720},\"hits\":[],\"max_score\":null},"
+            + "\"aggregations\":{\"sterms#0\":{\"buckets\":["
+            + "{\"date_histogram#metric_1\":{\"buckets\":["
+            + "{\"value_count#id.keyword1\":{\"value\":455.0}," // Total count comes FIRST
+            + "\"filter#filter0\":{\"value_count#id.keyword0\":{\"value\":171.0},\"doc_count\":171}," // Filtered
+            // count comes
+            // SECOND
+            + "\"doc_count\":455,\"key_as_string\":\"2026-01-19T00:00:00.000Z\",\"key\":1768780800000}]},"
+            + "\"doc_count\":455,\"key\":\"table\"},"
+            + "{\"date_histogram#metric_1\":{\"buckets\":["
+            + "{\"value_count#id.keyword1\":{\"value\":90.0}," // Total count comes FIRST
+            + "\"filter#filter0\":{\"value_count#id.keyword0\":{\"value\":20.0},\"doc_count\":20}," // Filtered
+            // count comes
+            // SECOND
+            + "\"doc_count\":90,\"key_as_string\":\"2026-01-19T00:00:00.000Z\",\"key\":1768780800000}]},"
+            + "\"doc_count\":90,\"key\":\"pipeline\"}],"
+            + "\"doc_count_error_upper_bound\":0,\"sum_other_doc_count\":0}}}";
+
+    Map<String, Object> lineChartFormula = new LinkedHashMap<>();
+    lineChartFormula.put("type", "LineChart");
+    Map<String, Object> metricsFormula = new LinkedHashMap<>();
+    metricsFormula.put(
+        "formula", "(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100");
+    lineChartFormula.put("metrics", List.of(metricsFormula));
+    lineChartFormula.put("groupBy", "entityType.keyword");
+
+    // Expected results: (171/455)*100 ≈ 37.58% for table, (20/90)*100 ≈ 22.22% for
+    // pipeline
+    List<DataInsightCustomChartResult> expectedResults = new ArrayList<>();
+    expectedResults.add(
+        new DataInsightCustomChartResult()
+            .withCount(37.582417582417584) // (171/455)*100
+            .withDay(1.7687808E12)
+            .withGroup("table"));
+    expectedResults.add(
+        new DataInsightCustomChartResult()
+            .withCount(22.22222222222222) // (20/90)*100
+            .withDay(1.7687808E12)
+            .withGroup("pipeline"));
+
+    assertTrue(
+        compareResponse(
+            responseWithReversedOrder,
+            lineChartFormula,
+            "(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100",
+            expectedResults));
+  }
+
+  /**
+   * Test that verifies the aggregation ordering fix for a simple division
+   * formula.
+   * Uses response where the total count key appears before the filtered count
+   * key.
+   */
+  @Test
+  public void testAggregationOrderingSimpleDivision() {
+    // Response where id.keyword1 comes before filter0 - this is the ordering that
+    // caused the bug
+    String responseWithReversedOrder =
+        "{\"took\":10,\"timed_out\":false,\"_shards\":{\"total\":1,\"successful\":1,\"skipped\":0,\"failed\":0},"
+            + "\"hits\":{\"total\":{\"value\":100,\"relation\":\"eq\"},\"max_score\":null,\"hits\":[]},"
+            + "\"aggregations\":{\"date_histogram#metric_1\":{\"buckets\":["
+            + "{\"key_as_string\":\"2024-07-20T00:00:00.000Z\",\"key\":1721433600000,\"doc_count\":100,"
+            + "\"value_count#id.keyword1\":{\"value\":1623.0}," // Total count (large number) first
+            + "\"filter#filter0\":{\"doc_count\":1,\"value_count#id.keyword0\":{\"value\":1.0}}}]}}}"; // Filtered
+    // count
+    // (small
+    // number)
+    // second
+
+    Map<String, Object> lineChart = new LinkedHashMap<>();
+    lineChart.put("type", "LineChart");
+    Map<String, Object> metrics = new LinkedHashMap<>();
+    // The formula where the bug manifested: should be (1/1623)*100 = 0.0616% not
+    // (1623/1)*100 = 162300%
+    metrics.put(
+        "formula", "(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100");
+    lineChart.put("metrics", List.of(metrics));
+
+    // Expected: (1/1623)*100 = 0.0616... NOT 162300
+    List<DataInsightCustomChartResult> expectedResults = new ArrayList<>();
+    expectedResults.add(
+        new DataInsightCustomChartResult()
+            .withCount(0.06161429451632779) // (1/1623)*100 - the CORRECT value
+            .withDay(1.7214336E12));
+
+    assertTrue(
+        compareResponse(
+            responseWithReversedOrder,
+            lineChart,
+            "(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100",
+            expectedResults));
   }
 }

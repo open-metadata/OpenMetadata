@@ -38,6 +38,7 @@ import {
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
+import { BulkImportVersionSummary } from '../components/Entity/EntityVersionTimeLine/BulkImportVersionSummary/BulkImportVersionSummary.component';
 import { VersionButton } from '../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
@@ -390,6 +391,28 @@ const getSummaryText = ({
   return `${glossaryTermApprovalText} ${summaryText}`;
 };
 
+const getBulkImportSummary = (fieldsUpdated: FieldChange[]) => {
+  const bulkImportField = fieldsUpdated.find(
+    (field) => field.name === 'bulkImport'
+  );
+
+  if (!bulkImportField) {
+    return null;
+  }
+
+  const newValue = isObject(bulkImportField.newValue)
+    ? bulkImportField.newValue
+    : isValidJSONString(bulkImportField.newValue)
+    ? JSON.parse(bulkImportField.newValue)
+    : null;
+
+  if (!newValue) {
+    return null;
+  }
+
+  return <BulkImportVersionSummary csvImportResult={newValue} />;
+};
+
 export const getSummary = ({
   changeDescription,
   isPrefix = false,
@@ -411,6 +434,8 @@ export const getSummary = ({
       (field) => field.name === 'deleted'
     ) ?? []),
   ];
+
+  const bulkImportSummary = getBulkImportSummary(fieldsUpdated);
 
   return (
     <Fragment>
@@ -441,13 +466,20 @@ export const getSummary = ({
       ) : null}
       {fieldsUpdated?.length ? (
         <Typography.Paragraph>
-          {getSummaryText({
-            isPrefix,
-            fieldsChanged: fieldsUpdated,
-            actionType: t('label.edited'),
-            actionText: t('label.updated-lowercase'),
-            isGlossaryTerm,
-          })}
+          {bulkImportSummary ? (
+            <>
+              {t('message.bulk-import-completed')}
+              {bulkImportSummary}
+            </>
+          ) : (
+            getSummaryText({
+              isPrefix,
+              fieldsChanged: fieldsUpdated,
+              actionType: t('label.edited'),
+              actionText: t('label.updated-lowercase'),
+              isGlossaryTerm,
+            })
+          )}
         </Typography.Paragraph>
       ) : null}
       {fieldsDeleted?.length ? (
@@ -662,11 +694,18 @@ export const getOwnerDiff = (
     })),
   ];
 
+  const ownerDisplayName = new Map<string, ReactNode>();
+
+  allItems.forEach(({ item, operation }) => {
+    const displayName = getOwnerLabelName(item, operation);
+    if (item.name) {
+      ownerDisplayName.set(item.name, displayName);
+    }
+  });
+
   return {
     owners: allItems.map(({ item }) => item),
-    ownerDisplayName: allItems.map(({ item, operation }) =>
-      getOwnerLabelName(item, operation)
-    ),
+    ownerDisplayName: ownerDisplayName,
   };
 };
 
@@ -1353,12 +1392,28 @@ export const getOwnerVersionLabel = (
   }
 
   if (defaultItems.length > 0) {
+    const ownerDisplayName = new Map<string, ReactNode>();
+
+    defaultItems.forEach((item: EntityReference) => {
+      const displayName = getOwnerLabelName(
+        item,
+        EntityChangeOperations.NORMAL
+      );
+      if (item.name) {
+        ownerDisplayName.set(item.name, displayName);
+      }
+    });
+
     return (
       <OwnerLabel
-        ownerDisplayName={defaultItems.map((item: EntityReference) =>
-          getOwnerLabelName(item, EntityChangeOperations.NORMAL)
-        )}
+        ownerDisplayName={ownerDisplayName}
         owners={defaultItems}
+        {...(ownerField === TabSpecificField.OWNERS
+          ? {
+              isCompactView: false,
+              showLabel: false,
+            }
+          : {})}
       />
     );
   }

@@ -12,6 +12,7 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { storedProcedureVersionMockProps } from '../../../mocks/StoredProcedureVersion.mock';
 import StoredProcedureVersion from './StoredProcedureVersion.component';
 
@@ -53,7 +54,19 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
     tab: 'tables',
   }),
+  useLocation: jest.fn().mockImplementation(() => ({ pathname: 'mockPath' })),
 }));
+
+jest.mock(
+  '../../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
 
 describe('StoredProcedureVersion tests', () => {
   it('Should render component properly if not loading', async () => {
@@ -82,7 +95,10 @@ describe('StoredProcedureVersion tests', () => {
         <StoredProcedureVersion
           {...storedProcedureVersionMockProps}
           isVersionLoading
-        />
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
       );
     });
 
@@ -105,7 +121,9 @@ describe('StoredProcedureVersion tests', () => {
 
   it('Should update url on click of tab', async () => {
     await act(async () => {
-      render(<StoredProcedureVersion {...storedProcedureVersionMockProps} />);
+      render(<StoredProcedureVersion {...storedProcedureVersionMockProps} />, {
+        wrapper: MemoryRouter,
+      });
     });
 
     const customPropertyTabLabel = screen.getByText(

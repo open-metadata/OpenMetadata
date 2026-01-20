@@ -32,10 +32,12 @@ import {
 } from '../generated/tests/testDefinition';
 import {
   getCurrentMillis,
+  getEndOfDayInMillis,
   getEpochMillisForPastDays,
+  getStartOfDayInMillis,
 } from '../utils/date-time/DateTimeUtils';
 import { t } from '../utils/i18next/LocalUtil';
-import { GREEN_3, PURPLE_2, RED_3 } from './Color.constants';
+import { BLUE_50, BLUE_500, BLUE_800, YELLOW_3 } from './Color.constants';
 
 export const PROFILER_METRIC = [
   'valuesCount',
@@ -67,51 +69,59 @@ export const PROFILER_CHART_DATA_SIZE = 500;
 export const PROFILER_FILTER_RANGE: DateFilterType = {
   yesterday: {
     days: 1,
-    title: t('label.yesterday'),
+    title: 'label.yesterday',
   },
   last3days: {
     days: 3,
-    title: t('label.last-number-of-days', {
+    title: 'label.last-number-of-days',
+    titleData: {
       numberOfDays: 3,
-    }),
+    },
   },
   last7days: {
     days: 7,
-    title: t('label.last-number-of-days', {
+    title: 'label.last-number-of-days',
+    titleData: {
       numberOfDays: 7,
-    }),
+    },
   },
   last14days: {
     days: 14,
-    title: t('label.last-number-of-days', {
+    title: 'label.last-number-of-days',
+    titleData: {
       numberOfDays: 14,
-    }),
+    },
   },
   last30days: {
     days: 30,
-    title: t('label.last-number-of-days', {
+    title: 'label.last-number-of-days',
+    titleData: {
       numberOfDays: 30,
-    }),
+    },
   },
   last60days: {
     days: 60,
-    title: t('label.last-number-of-days', {
+    title: 'label.last-number-of-days',
+    titleData: {
       numberOfDays: 60,
-    }),
+    },
   },
 };
 
 export const DEFAULT_SELECTED_RANGE = {
-  key: 'last7Days',
-  title: t('label.last-number-of-days', {
+  key: 'last7days',
+  title: 'label.last-number-of-days',
+  titleData: {
     numberOfDays: 7,
-  }),
+  },
   days: 7,
 };
 
 export const DEFAULT_RANGE_DATA = {
-  startTs: getEpochMillisForPastDays(DEFAULT_SELECTED_RANGE.days),
-  endTs: getCurrentMillis(),
+  startTs: getStartOfDayInMillis(
+    getEpochMillisForPastDays(DEFAULT_SELECTED_RANGE.days)
+  ),
+  endTs: getEndOfDayInMillis(getCurrentMillis()),
 };
 
 export const COLORS = ['#7147E8', '#B02AAC', '#B02AAC', '#1890FF', '#008376'];
@@ -123,28 +133,28 @@ export const INITIAL_COUNT_METRIC_VALUE = {
         entity: t('label.distinct'),
       }),
       dataKey: 'distinctCount',
-      color: '#1890FF',
+      color: '#467DDC',
     },
     {
       title: t('label.entity-count', {
         entity: t('label.null'),
       }),
       dataKey: 'nullCount',
-      color: '#7147E8',
+      color: '#3488B5',
     },
     {
       title: t('label.entity-count', {
         entity: t('label.unique'),
       }),
       dataKey: 'uniqueCount',
-      color: '#008376',
+      color: '#685997',
     },
     {
       title: t('label.entity-count', {
         entity: t('label.value-plural'),
       }),
       dataKey: 'valuesCount',
-      color: '#B02AAC',
+      color: '#464A52',
     },
   ],
   data: [],
@@ -157,21 +167,21 @@ export const INITIAL_PROPORTION_METRIC_VALUE = {
         entity: t('label.distinct'),
       }),
       dataKey: 'distinctProportion',
-      color: '#1890FF',
+      color: '#6B97E3',
     },
     {
       title: t('label.entity-proportion', {
         entity: t('label.null'),
       }),
       dataKey: 'nullProportion',
-      color: '#7147E8',
+      color: '#867AAC',
     },
     {
       title: t('label.entity-proportion', {
         entity: t('label.unique'),
       }),
       dataKey: 'uniqueProportion',
-      color: '#008376',
+      color: '#6B6E75',
     },
   ],
   data: [],
@@ -182,17 +192,17 @@ export const INITIAL_MATH_METRIC_VALUE = {
     {
       title: t('label.max'),
       dataKey: 'max',
-      color: '#1890FF',
+      color: '#6B97E3',
     },
     {
       title: t('label.mean'),
       dataKey: 'mean',
-      color: '#7147E8',
+      color: '#6B6E75',
     },
     {
       title: t('label.min'),
       dataKey: 'min',
-      color: '#008376',
+      color: '#867AAC',
     },
   ],
   data: [],
@@ -203,7 +213,8 @@ export const INITIAL_SUM_METRIC_VALUE = {
     {
       title: t('label.sum'),
       dataKey: 'sum',
-      color: '#1890FF',
+      color: BLUE_500,
+      fill: BLUE_50,
     },
   ],
   data: [],
@@ -213,22 +224,22 @@ export const INITIAL_QUARTILE_METRIC_VALUE = {
     {
       title: t('label.first-quartile'),
       dataKey: 'firstQuartile',
-      color: '#1890FF',
+      color: '#467DDC',
     },
     {
       title: t('label.median'),
       dataKey: 'median',
-      color: '#7147E8',
+      color: '#3488B5',
     },
     {
       title: t('label.inter-quartile-range'),
       dataKey: 'interQuartileRange',
-      color: '#008376',
+      color: '#685997',
     },
     {
       title: t('label.third-quartile'),
       dataKey: 'thirdQuartile',
-      color: '#B02AAC',
+      color: '#464A52',
     },
   ],
   data: [],
@@ -241,7 +252,8 @@ export const INITIAL_ROW_METRIC_VALUE = {
         entity: t('label.row'),
       }),
       dataKey: 'rowCount',
-      color: GREEN_3,
+      color: BLUE_500,
+      fill: BLUE_50,
     },
   ],
   data: [],
@@ -252,17 +264,20 @@ export const INITIAL_OPERATION_METRIC_VALUE = {
     {
       title: t('label.insert'),
       dataKey: DMLOperationType.Insert,
-      color: GREEN_3,
+      color: BLUE_800,
+      stackId: 'operation-metrics',
     },
     {
       title: t('label.update'),
       dataKey: DMLOperationType.Update,
-      color: PURPLE_2,
+      color: BLUE_500,
+      stackId: 'operation-metrics',
     },
     {
       title: t('label.delete'),
       dataKey: DMLOperationType.Delete,
-      color: RED_3,
+      color: YELLOW_3,
+      stackId: 'operation-metrics',
     },
   ],
   data: [],
@@ -289,12 +304,11 @@ export const INITIAL_DATA_ASSETS_COVERAGE_STATES = {
 
 export const STEPS_FOR_ADD_TEST_CASE: Array<StepperStepType> = [
   {
-    name: t('label.configure-entity', {
-      entity: t('label.test-case-lowercase'),
-    }),
+    name: 'label.configure-entity',
+    nameData: { entity: 'label.test-case-lowercase' },
     step: 1,
   },
-  { name: t('label.success'), step: 2 },
+  { name: 'label.success', step: 2 },
 ];
 
 export const SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME = [
@@ -386,14 +400,48 @@ export const TEST_CASE_FILTERS: Record<string, keyof TestCaseSearchParams> = {
   dimension: 'dataQualityDimension',
 };
 
+export const TEST_CASE_FILTERS_LABELS: Record<
+  keyof typeof TEST_CASE_FILTERS,
+  string
+> = {
+  table: t('label.table'),
+  platform: t('label.platform'),
+  type: t('label.type'),
+  status: t('label.status'),
+  lastRun: t('label.last-run'),
+  tier: t('label.tier'),
+  tags: t('label.tag-plural'),
+  service: t('label.service'),
+  dimension: t('label.dimension'),
+};
+
 export const TEST_CASE_PLATFORM_OPTION = values(TestPlatform).map((value) => ({
   label: value,
   value: value,
 }));
 
+export const TEST_CASE_DIMENSION_LABELS: Record<DataQualityDimensions, string> =
+  {
+    [DataQualityDimensions.Accuracy]: t('label.accuracy'),
+    [DataQualityDimensions.Completeness]: t('label.completeness'),
+    [DataQualityDimensions.Consistency]: t('label.consistency'),
+    [DataQualityDimensions.Integrity]: t('label.integrity'),
+    [DataQualityDimensions.NoDimension]: t('label.no-dimension'),
+    [DataQualityDimensions.SQL]: t('label.sql-uppercase'),
+    [DataQualityDimensions.Uniqueness]: t('label.uniqueness'),
+    [DataQualityDimensions.Validity]: t('label.validity'),
+  };
+
+export const TEST_CASE_STATUS_LABELS: Record<TestCaseStatus, string> = {
+  [TestCaseStatus.Aborted]: t('label.aborted'),
+  [TestCaseStatus.Failed]: t('label.failed'),
+  [TestCaseStatus.Queued]: t('label.queued'),
+  [TestCaseStatus.Success]: t('label.success'),
+};
+
 export const TEST_CASE_DIMENSIONS_OPTION = values(DataQualityDimensions).map(
   (value) => ({
-    label: value,
+    label: TEST_CASE_DIMENSION_LABELS[value],
     value: value,
   })
 );

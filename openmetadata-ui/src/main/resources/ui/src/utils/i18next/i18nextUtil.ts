@@ -13,6 +13,7 @@
 
 import i18next, { InitOptions } from 'i18next';
 import { map, upperCase } from 'lodash';
+import arSA from '../../locale/languages/ar-sa.json';
 import deDe from '../../locale/languages/de-de.json';
 import enUS from '../../locale/languages/en-us.json';
 import esES from '../../locale/languages/es-es.json';
@@ -30,6 +31,7 @@ import ruRU from '../../locale/languages/ru-ru.json';
 import thTH from '../../locale/languages/th-th.json';
 import trTR from '../../locale/languages/tr-tr.json';
 import zhCN from '../../locale/languages/zh-cn.json';
+import zhTW from '../../locale/languages/zh-tw.json';
 import { SupportedLocales } from './LocalUtil.interface';
 
 export const languageSelectOptions = map(SupportedLocales, (value, key) => ({
@@ -46,6 +48,7 @@ export const getInitOptions = (): InitOptions => {
       'ko-KR': { translation: koKR },
       'fr-FR': { translation: frFR },
       'zh-CN': { translation: zhCN },
+      'zh-TW': { translation: zhTW },
       'ja-JP': { translation: jaJP },
       'pt-BR': { translation: ptBR },
       'pt-PT': { translation: ptPT },
@@ -59,6 +62,7 @@ export const getInitOptions = (): InitOptions => {
       'th-TH': { translation: thTH },
       'mr-IN': { translation: mrIN },
       'tr-TR': { translation: trTR },
+      'ar-SA': { translation: arSA },
     },
     fallbackLng: ['en-US'],
     detection: {
@@ -84,6 +88,7 @@ export const getCurrentLocaleForConstrue = () => {
       SupportedLocales['Português (Brasil)'],
       SupportedLocales['Português (Portugal)'],
       SupportedLocales.简体中文,
+      SupportedLocales.繁體中文,
     ].includes(i18next.resolvedLanguage as SupportedLocales)
   ) {
     return i18next.resolvedLanguage.replaceAll('-', '_');
@@ -110,4 +115,5 @@ export const languageMap: Record<string, SupportedLocales> = {
   pr: SupportedLocales.Persian,
   th: SupportedLocales.Thai,
   tr: SupportedLocales.Türkçe,
+  ar: SupportedLocales.العربية,
 };

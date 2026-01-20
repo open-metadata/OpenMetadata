@@ -16,12 +16,13 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.service.Entity.API_COLLCECTION;
+import static org.openmetadata.service.Entity.API_COLLECTION;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 
 import java.util.ArrayList;
@@ -52,6 +53,7 @@ import org.openmetadata.service.resources.apis.APIEndpointResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
@@ -100,7 +102,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
     if (endpoint.getApiCollection() != null) {
       APICollection apiCollection =
           Entity.getEntity(
-              API_COLLCECTION, endpoint.getApiCollection().getId(), "owners,domains", ALL);
+              API_COLLECTION, endpoint.getApiCollection().getId(), "owners,domains", ALL);
       inheritOwners(endpoint, fields, apiCollection);
       inheritDomains(endpoint, fields, apiCollection);
     }
@@ -156,7 +158,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
   }
 
   @Override
-  public void setFields(APIEndpoint apiEndpoint, Fields fields) {
+  public void setFields(APIEndpoint apiEndpoint, Fields fields, RelationIncludes relationIncludes) {
     setDefaultFields(apiEndpoint);
     if (apiEndpoint.getRequestSchema() != null) {
       populateEntityFieldTags(
@@ -191,7 +193,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
     Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
     for (APIEndpoint endpoint : apiEndpoints) {
       endpoint.setTags(
-          addDerivedTags(
+          addDerivedTagsGracefully(
               tagsMap.getOrDefault(endpoint.getFullyQualifiedName(), Collections.emptyList())));
     }
 

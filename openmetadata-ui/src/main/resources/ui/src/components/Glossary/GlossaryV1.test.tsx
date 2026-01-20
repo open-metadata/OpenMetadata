@@ -12,6 +12,7 @@
  */
 
 import { findByText, queryByText, render } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import {
   mockedGlossaries,
   mockedGlossaryTerms,
@@ -75,6 +76,7 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => params),
   Link: jest.fn().mockImplementation(({ children }) => <a>{children}</a>),
   useNavigate: jest.fn().mockReturnValue(jest.fn()),
+  useLocation: jest.fn().mockImplementation(() => ({ pathname: 'mockPath' })),
 }));
 
 jest.mock('./GlossaryDetails/GlossaryDetails.component', () => {
@@ -114,8 +116,22 @@ jest.mock('./useGlossary.store', () => ({
     setGlossaryFunctionRef: jest.fn(),
     termsLoading: false,
     setTermsLoading: jest.fn(),
+    glossaryChildTerms: [],
+    setGlossaryChildTerms: jest.fn(),
+    insertNewGlossaryTermToChildTerms: jest.fn(),
   })),
 }));
+
+jest.mock(
+  '../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
 
 const mockProps: GlossaryV1Props = {
   selectedData: mockedGlossaries[0],
@@ -130,7 +146,9 @@ const mockProps: GlossaryV1Props = {
 
 describe('Test Glossary component', () => {
   it('Should render Glossary-details', async () => {
-    const { container } = render(<GlossaryV1 {...mockProps} />);
+    const { container } = render(<GlossaryV1 {...mockProps} />, {
+      wrapper: MemoryRouter,
+    });
 
     const glossaryDetails = await findByText(
       container,
@@ -152,7 +170,10 @@ describe('Test Glossary component', () => {
         {...mockProps}
         isGlossaryActive={false}
         selectedData={mockedGlossaryTerms[0]}
-      />
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
     );
 
     const glossaryTerm = await findByText(

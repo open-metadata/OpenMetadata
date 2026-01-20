@@ -48,44 +48,43 @@ public class MigrationUtil {
   private static final String AUTOMATOR_APP_TYPE = "Automator";
   private static final String GLOSSARY_TERM_APPROVAL_WORKFLOW = "GlossaryTermApprovalWorkflow";
   private static final int BATCH_SIZE = 100;
-  static DataInsightSystemChartRepository dataInsightSystemChartRepository;
+  static DataInsightSystemChartRepository dataInsightSystemChartRepository =
+      new DataInsightSystemChartRepository();
 
   public static void updateChart(String chartName, Object chartDetails) {
-    DataInsightCustomChart chart =
-        dataInsightSystemChartRepository.getByName(null, chartName, EntityUtil.Fields.EMPTY_FIELDS);
-    chart.setChartDetails(chartDetails);
-    dataInsightSystemChartRepository.prepareInternal(chart, false);
     try {
+      DataInsightCustomChart chart =
+          dataInsightSystemChartRepository.getByName(
+              null, chartName, EntityUtil.Fields.EMPTY_FIELDS);
+      chart.setChartDetails(chartDetails);
+      dataInsightSystemChartRepository.prepareInternal(chart, false);
       dataInsightSystemChartRepository.getDao().update(chart);
     } catch (Exception ex) {
-      LOG.warn(ex.toString());
-      LOG.warn(String.format("Error updating chart %s ", chart));
+      LOG.warn(String.format("Chart %s exists, Exception Message: {}", chartName, ex.getMessage()));
     }
   }
 
   public static void createSummaryChart(String chartName, Object chartObject) {
-    DataInsightCustomChart chart =
-        new DataInsightCustomChart()
-            .withId(UUID.randomUUID())
-            .withName(chartName)
-            .withChartDetails(chartObject)
-            .withUpdatedAt(System.currentTimeMillis())
-            .withUpdatedBy("ingestion-bot")
-            .withDeleted(false)
-            .withIsSystemChart(true);
-    dataInsightSystemChartRepository.prepareInternal(chart, false);
     try {
+      DataInsightCustomChart chart =
+          new DataInsightCustomChart()
+              .withId(UUID.randomUUID())
+              .withName(chartName)
+              .withChartDetails(chartObject)
+              .withUpdatedAt(System.currentTimeMillis())
+              .withUpdatedBy("ingestion-bot")
+              .withDeleted(false)
+              .withIsSystemChart(true);
+      dataInsightSystemChartRepository.prepareInternal(chart, false);
       dataInsightSystemChartRepository
           .getDao()
           .insert("fqnHash", chart, chart.getFullyQualifiedName());
     } catch (Exception ex) {
-      LOG.warn(ex.toString());
-      LOG.warn(String.format("Chart %s exists", chart));
+      LOG.warn(String.format("Chart %s exists, Exception Message: {}", chartName, ex.getMessage()));
     }
   }
 
   public static void updateServiceCharts() {
-    dataInsightSystemChartRepository = new DataInsightSystemChartRepository();
     updateChart(
         "tag_source_breakdown",
         new LineChart()

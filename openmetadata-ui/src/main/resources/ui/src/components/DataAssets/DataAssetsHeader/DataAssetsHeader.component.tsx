@@ -32,6 +32,11 @@ import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.com
 import TierCard from '../../../components/common/TierCard/TierCard';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import {
+  CustomizeEntityType,
+  ENTITY_PAGE_TYPE_MAP,
+} from '../../../constants/Customize.constants';
 import {
   EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
   SERVICE_TYPES,
@@ -46,18 +51,24 @@ import {
 import { ServiceCategory } from '../../../enums/service.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import { Container } from '../../../generated/entity/data/container';
-import { ContractExecutionStatus } from '../../../generated/entity/data/dataContract';
+import {
+  ContractExecutionStatus,
+  DataContract,
+} from '../../../generated/entity/data/dataContract';
+import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
+import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
 import {
   getDataAssetsHeaderInfo,
-  getEntityExtraInfoLength,
   isDataAssetsWithServiceField,
 } from '../../../utils/DataAssetsHeader.utils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
@@ -83,6 +94,7 @@ import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
+import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
 import { VotingDataProps } from '../../Entity/Voting/voting.interface';
 import MetricHeaderInfo from '../../Metric/MetricHeaderInfo/MetricHeaderInfo';
@@ -99,10 +111,10 @@ import {
 
 export const DataAssetsHeader = ({
   allowSoftDelete = true,
+  allowRename = false,
   showDomain = true,
   afterDeleteAction,
   dataAsset,
-  dataContract,
   onUpdateVote,
   onOwnerUpdate,
   onTierUpdate,
@@ -126,6 +138,7 @@ export const DataAssetsHeader = ({
   afterTriggerAction,
   isAutoPilotWorkflowStatusLoading = false,
   onCertificationUpdate,
+  disableRunAgentsButtonMessage,
 }: DataAssetsHeaderProps) => {
   const { serviceCategory } = useRequiredParams<{
     serviceCategory: ServiceCategory;
@@ -135,12 +148,26 @@ export const DataAssetsHeader = ({
   const USER_ID = currentUser?.id ?? '';
   const { t } = useTranslation();
   const { isTourPage } = useTourProvider();
+  const { customizedPage } = useCustomPages(
+    ENTITY_PAGE_TYPE_MAP[entityType as CustomizeEntityType]
+  );
   const [parentContainers, setParentContainers] = useState<Container[]>([]);
   const [isBreadcrumbLoading, setIsBreadcrumbLoading] = useState(false);
   const [dqFailureCount, setDqFailureCount] = useState(0);
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
   const navigate = useNavigate();
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
+  const { entityRules } = useEntityRules(entityType);
+  const [dataContract, setDataContract] = useState<DataContract>();
+
+  const fetchDataContract = async (entityId: string) => {
+    try {
+      const contract = await getContractByEntityId(entityId, entityType);
+      setDataContract(contract);
+    } catch {
+      // Do nothing
+    }
+  };
 
   const icon = useMemo(() => {
     const serviceType = get(dataAsset, 'serviceType', '');
@@ -225,9 +252,22 @@ export const DataAssetsHeader = ({
   };
 
   const alertBadge = useMemo(() => {
+    const shouldShowStatus =
+      entityUtilClassBase.shouldShowEntityStatus(entityType);
+    const entityStatus =
+      'entityStatus' in dataAsset
+        ? dataAsset.entityStatus
+        : EntityStatus.Unprocessed;
+
+    const statusBadge =
+      shouldShowStatus && entityStatus ? (
+        <EntityStatusBadge showDivider={false} status={entityStatus} />
+      ) : null;
+
     const renderAlertBadgeWithDq = () => (
       <Space size={8}>
         {badge}
+        {statusBadge}
         <Tooltip placement="right" title={t('label.check-upstream-failure')}>
           <Link
             to={{
@@ -246,6 +286,20 @@ export const DataAssetsHeader = ({
         </Tooltip>
       </Space>
     );
+
+    const renderDefaultBadge = () => {
+      if (!badge && !statusBadge) {
+        return null;
+      }
+
+      return (
+        <Space size={8}>
+          {badge}
+          {statusBadge}
+        </Space>
+      );
+    };
+
     if (
       isDqAlertSupported &&
       tableClassBase.getAlertEnableStatus() &&
@@ -254,8 +308,14 @@ export const DataAssetsHeader = ({
       return renderAlertBadgeWithDq();
     }
 
-    return badge;
-  }, [dqFailureCount, dataAsset?.fullyQualifiedName, entityType, badge]);
+    return renderDefaultBadge();
+  }, [
+    dqFailureCount,
+    dataAsset?.fullyQualifiedName,
+    entityType,
+    badge,
+    dataAsset,
+  ]);
 
   const fetchActiveAnnouncement = async () => {
     try {
@@ -321,14 +381,6 @@ export const DataAssetsHeader = ({
     [entityType, dataAsset, entityName, parentContainers]
   );
 
-  const showCompressedExtraInfoItems = useMemo(
-    () =>
-      entityType === EntityType.METRIC
-        ? false
-        : getEntityExtraInfoLength(extraInfo) <= 1,
-    [extraInfo, entityType]
-  );
-
   const handleOpenTaskClick = () => {
     if (!dataAsset.fullyQualifiedName) {
       return;
@@ -365,6 +417,7 @@ export const DataAssetsHeader = ({
     () => setIsAnnouncementDrawerOpen(false),
     []
   );
+
   const handleFollowingClick = useCallback(async () => {
     setIsFollowingLoading(true);
     await onFollowClick?.();
@@ -425,7 +478,14 @@ export const DataAssetsHeader = ({
   ]);
 
   const dataContractLatestResultButton = useMemo(() => {
+    const entityContainContractTabVisible =
+      isUndefined(customizedPage?.tabs) ||
+      Boolean(
+        customizedPage?.tabs?.find((item) => item.id === EntityTabs.CONTRACT)
+      );
+
     if (
+      entityContainContractTabVisible &&
       dataContract?.latestResult?.status &&
       [
         ContractExecutionStatus.Aborted,
@@ -462,7 +522,7 @@ export const DataAssetsHeader = ({
     }
 
     return null;
-  }, [dataContract]);
+  }, [dataContract, customizedPage?.tabs]);
 
   const triggerTheAutoPilotApplication = useCallback(async () => {
     try {
@@ -498,7 +558,11 @@ export const DataAssetsHeader = ({
     const isLoading = isAutoPilotWorkflowStatusLoading || isAutoPilotTriggering;
 
     return (
-      <Tooltip title={t('message.trigger-auto-pilot-application')}>
+      <Tooltip
+        title={
+          disableRunAgentsButtonMessage ??
+          t('message.trigger-auto-pilot-application')
+        }>
         <Button
           className="font-semibold"
           data-testid="trigger-auto-pilot-application-button"
@@ -507,7 +571,7 @@ export const DataAssetsHeader = ({
           loading={isLoading}
           type="primary"
           onClick={triggerTheAutoPilotApplication}>
-          {t('label.run-agent-plural')}
+          {t('label.trigger-entity', { entity: t('label.auto-pilot') })}
         </Button>
       </Tooltip>
     );
@@ -516,7 +580,14 @@ export const DataAssetsHeader = ({
     isAutoPilotWorkflowStatusLoading,
     isAutoPilotTriggering,
     triggerTheAutoPilotApplication,
+    disableRunAgentsButtonMessage,
   ]);
+
+  useEffect(() => {
+    if (dataAsset.id) {
+      fetchDataContract(dataAsset.id);
+    }
+  }, [dataAsset?.id]);
 
   return (
     <>
@@ -615,6 +686,7 @@ export const DataAssetsHeader = ({
                   <ManageButton
                     isAsyncDelete
                     afterDeleteAction={afterDeleteAction}
+                    allowRename={allowRename}
                     allowSoftDelete={!dataAsset.deleted && allowSoftDelete}
                     canDelete={permissions.Delete}
                     deleted={dataAsset.deleted}
@@ -652,20 +724,20 @@ export const DataAssetsHeader = ({
 
         <Col span={24}>
           <div
-            className={classNames('data-asset-header-metadata ', {
-              'data-asset-header-less-items': showCompressedExtraInfoItems,
-            })}>
+            className="data-asset-header-metadata"
+            data-testid="data-asset-header-metadata">
             {showDomain && (
               <>
                 <DomainLabel
                   headerLayout
-                  multiple
+                  showDashPlaceholder
                   afterDomainUpdateAction={afterDomainUpdateAction}
                   domains={(dataAsset as EntitiesWithDomainField).domains}
                   entityFqn={dataAsset.fullyQualifiedName ?? ''}
                   entityId={dataAsset.id ?? ''}
                   entityType={entityType}
                   hasPermission={editDomainPermission}
+                  multiple={entityRules.canAddMultipleDomains}
                   textClassName="render-domain-lebel-style"
                 />
                 <Divider
@@ -675,9 +747,15 @@ export const DataAssetsHeader = ({
               </>
             )}
             <OwnerLabel
+              showDashPlaceholder
+              avatarSize={24}
               hasPermission={editOwnerPermission}
               isCompactView={false}
               maxVisibleOwners={4}
+              multiple={{
+                user: entityRules.canAddMultipleUserOwners,
+                team: entityRules.canAddMultipleTeamOwner,
+              }}
               owners={dataAsset?.owners}
               onUpdate={onOwnerUpdate}
             />
@@ -685,7 +763,7 @@ export const DataAssetsHeader = ({
             {tierSuggestionRender ?? (
               <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
                 <Space
-                  className="d-flex tier-container align-start"
+                  className="d-flex align-start"
                   data-testid="header-tier-container">
                   {tier ? (
                     <div className="d-flex flex-col gap-2">
@@ -707,6 +785,7 @@ export const DataAssetsHeader = ({
                       </div>
 
                       <TagsV1
+                        hideIcon
                         startWith={TAG_START_WITH.SOURCE_ICON}
                         tag={tier}
                         tagProps={{
@@ -734,9 +813,7 @@ export const DataAssetsHeader = ({
                       <span
                         className="font-medium no-tier-text text-sm"
                         data-testid="Tier">
-                        {t('label.no-entity', {
-                          entity: t('label.tier'),
-                        })}
+                        {NO_DATA_PLACEHOLDER}
                       </span>
                     </div>
                   )}
@@ -807,9 +884,7 @@ export const DataAssetsHeader = ({
                             certification={(dataAsset as Table).certification!}
                           />
                         ) : (
-                          t('label.no-entity', {
-                            entity: t('label.certification'),
-                          })
+                          NO_DATA_PLACEHOLDER
                         )}
                       </div>
                     </Typography.Text>

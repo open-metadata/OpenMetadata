@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -38,18 +38,22 @@ export interface NodeConfiguration {
     /**
      * Choose which Status to apply to the Glossary Term
      */
-    glossaryTermStatus: Status;
+    glossaryTermStatus: EntityStatus;
 }
 
 /**
  * Choose which Status to apply to the Glossary Term
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
  */
-export enum Status {
+export enum EntityStatus {
     Approved = "Approved",
     Deprecated = "Deprecated",
     Draft = "Draft",
     InReview = "In Review",
     Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }
 
 export interface InputNamespaceMap {

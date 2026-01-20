@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-@import (reference) url('../../../styles/variables.less');
+@import (reference) '../../../styles/variables.less';
 
 .ant-popover.user-team-selectable-list-search-input-popover {
   width: calc(50vw - 50px);
@@ -21,15 +21,11 @@
 
 .select-owners {
   .assignee-tag {
-    display: flex;
-    align-items: center;
     margin-right: 8px;
     background: @white;
-    padding: 2px 12px;
-    height: 28px;
-
+    padding: 2px 8px;
+    height: 24px;
     border-radius: 6px;
-    gap: 4px;
     border: 1px solid @grey-300;
 
     .ant-typography {
@@ -41,7 +37,7 @@
     .anticon {
       color: @grey-400;
       font-weight: 500;
-      font-size: 10px;
+      font-size: 8px;
     }
 
     .ant-select-selection-item-content {

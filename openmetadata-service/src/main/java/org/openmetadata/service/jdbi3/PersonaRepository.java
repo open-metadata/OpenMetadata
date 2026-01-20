@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.PERSONA;
+import static org.openmetadata.service.Entity.USER;
 
 import java.util.List;
 import java.util.Objects;
@@ -28,6 +29,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.teams.PersonaResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 public class PersonaRepository extends EntityRepository<Persona> {
@@ -48,7 +50,7 @@ public class PersonaRepository extends EntityRepository<Persona> {
   }
 
   @Override
-  public void setFields(Persona persona, Fields fields) {
+  public void setFields(Persona persona, Fields fields, RelationIncludes relationIncludes) {
     persona.setUsers(fields.contains(FIELD_USERS) ? getUsers(persona) : persona.getUsers());
   }
 
@@ -106,6 +108,23 @@ public class PersonaRepository extends EntityRepository<Persona> {
       return JsonUtils.readValue(json, Persona.class);
     }
     return null;
+  }
+
+  @Override
+  @Transaction
+  protected void preDelete(Persona persona, String deletedBy) {
+    // Remove all user-persona relationships (APPLIED_TO)
+    List<EntityReference> users = findTo(persona.getId(), PERSONA, Relationship.APPLIED_TO, USER);
+    for (EntityReference user : listOrEmpty(users)) {
+      deleteRelationship(persona.getId(), PERSONA, user.getId(), USER, Relationship.APPLIED_TO);
+    }
+
+    // Remove all default persona relationships (DEFAULTS_TO)
+    List<EntityReference> defaultUsers =
+        findTo(persona.getId(), PERSONA, Relationship.DEFAULTS_TO, USER);
+    for (EntityReference user : listOrEmpty(defaultUsers)) {
+      deleteRelationship(user.getId(), USER, persona.getId(), PERSONA, Relationship.DEFAULTS_TO);
+    }
   }
 
   /** Handles entity updated from PUT and POST operation. */

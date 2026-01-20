@@ -27,6 +27,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertEntityReferenceNames;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
@@ -34,12 +35,14 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
+import jakarta.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -47,20 +50,27 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateChart;
 import org.openmetadata.schema.api.data.CreateDashboard;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.services.DashboardService;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.charts.ChartResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResource.DashboardList;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.RdfTestUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -76,6 +86,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
         "dashboards",
         DashboardResource.FIELDS);
     supportsSearchIndex = true;
+    supportsBulkAPI = true;
   }
 
   @BeforeAll
@@ -481,5 +492,333 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
+  }
+
+  @Test
+  void testDashboardRdfRelationships(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create charts for the dashboard
+    Chart chart1 =
+        chartResourceTest.createEntity(
+            chartResourceTest
+                .createRequest(test.getDisplayName() + "_chart1")
+                .withService(getContainer().getName()),
+            ADMIN_AUTH_HEADERS);
+    Chart chart2 =
+        chartResourceTest.createEntity(
+            chartResourceTest
+                .createRequest(test.getDisplayName() + "_chart2")
+                .withService(getContainer().getName()),
+            ADMIN_AUTH_HEADERS);
+
+    // Create dashboard with owner, tags and charts
+    CreateDashboard createDashboard =
+        createRequest(test)
+            .withService(getContainer().getName())
+            .withOwners(List.of(USER1_REF))
+            .withTags(List.of(TIER1_TAG_LABEL))
+            .withCharts(List.of(chart1.getFullyQualifiedName(), chart2.getFullyQualifiedName()));
+
+    Dashboard dashboard = createEntity(createDashboard, ADMIN_AUTH_HEADERS);
+
+    // Verify dashboard exists in RDF
+    RdfTestUtils.verifyEntityInRdf(dashboard, RdfUtils.getRdfType("dashboard"));
+
+    // Verify hierarchical relationship (service CONTAINS dashboard)
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), dashboard.getEntityReference());
+
+    // Verify owner relationship
+    RdfTestUtils.verifyOwnerInRdf(dashboard.getFullyQualifiedName(), USER1_REF);
+
+    // Verify dashboard tags
+    RdfTestUtils.verifyTagsInRdf(dashboard.getFullyQualifiedName(), dashboard.getTags());
+
+    // Verify HAS relationships with charts
+    for (Chart chart : List.of(chart1, chart2)) {
+      RdfTestUtils.verifyRelationshipInRdf(
+          dashboard.getEntityReference(),
+          chart.getEntityReference(),
+          org.openmetadata.schema.type.Relationship.HAS);
+    }
+  }
+
+  @Test
+  void testDashboardRdfSoftDeleteAndRestore(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create dashboard
+    CreateDashboard createDashboard =
+        createRequest(test).withService(getContainer().getName()).withOwners(List.of(USER1_REF));
+    Dashboard dashboard = createEntity(createDashboard, ADMIN_AUTH_HEADERS);
+
+    // Verify dashboard exists
+    RdfTestUtils.verifyEntityInRdf(dashboard, RdfUtils.getRdfType("dashboard"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), dashboard.getEntityReference());
+    RdfTestUtils.verifyOwnerInRdf(dashboard.getFullyQualifiedName(), USER1_REF);
+
+    // Soft delete the dashboard
+    deleteEntity(dashboard.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify dashboard still exists in RDF after soft delete
+    RdfTestUtils.verifyEntityInRdf(dashboard, RdfUtils.getRdfType("dashboard"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), dashboard.getEntityReference());
+    RdfTestUtils.verifyOwnerInRdf(dashboard.getFullyQualifiedName(), USER1_REF);
+
+    // Restore the dashboard
+    Dashboard restored =
+        restoreEntity(new RestoreEntity().withId(dashboard.getId()), OK, ADMIN_AUTH_HEADERS);
+
+    // Verify dashboard still exists after restore
+    RdfTestUtils.verifyEntityInRdf(restored, RdfUtils.getRdfType("dashboard"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), restored.getEntityReference());
+    RdfTestUtils.verifyOwnerInRdf(restored.getFullyQualifiedName(), USER1_REF);
+  }
+
+  @Test
+  void testDashboardRdfHardDelete(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create dashboard
+    CreateDashboard createDashboard = createRequest(test).withService(getContainer().getName());
+    Dashboard dashboard = createEntity(createDashboard, ADMIN_AUTH_HEADERS);
+
+    // Verify dashboard exists
+    RdfTestUtils.verifyEntityInRdf(dashboard, RdfUtils.getRdfType("dashboard"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(getContainer(), dashboard.getEntityReference());
+
+    // Hard delete the dashboard
+    deleteEntity(dashboard.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    // Verify dashboard no longer exists in RDF after hard delete
+    RdfTestUtils.verifyEntityNotInRdf(dashboard.getFullyQualifiedName());
+  }
+
+  @Test
+  void test_getDashboardByName_withMissingGlossaryTerm_shouldReturnDashboard(TestInfo test)
+      throws IOException {
+    // Create a dashboard with charts
+    CreateDashboard createDashboard =
+        createRequest(test)
+            .withName("DashboardWithMissingTag")
+            .withCharts(CHART_REFERENCES)
+            .withService(getContainer().getName());
+    Dashboard createdDashboard = createEntity(createDashboard, ADMIN_AUTH_HEADERS);
+
+    // Manually insert a tag_usage record with a non-existent glossary term
+    // This simulates the scenario where a glossary term was deleted but the tag reference remains
+    String dashboardFqn = createdDashboard.getFullyQualifiedName();
+    String nonExistentGlossaryTermFqn = "NonExistentGlossary.NonExistentTerm";
+
+    // Insert invalid tag usage directly into database
+    try {
+      Entity.getCollectionDAO()
+          .tagUsageDAO()
+          .applyTag(
+              org.openmetadata.schema.type.TagLabel.TagSource.GLOSSARY.ordinal(),
+              nonExistentGlossaryTermFqn,
+              nonExistentGlossaryTermFqn,
+              dashboardFqn,
+              org.openmetadata.schema.type.TagLabel.LabelType.MANUAL.ordinal(),
+              org.openmetadata.schema.type.TagLabel.State.CONFIRMED.ordinal(),
+              null,
+              "test");
+    } catch (Exception e) {
+      LOG.warn("Failed to insert invalid tag usage for test setup: {}", e.getMessage());
+    }
+
+    // Attempt to retrieve dashboard by name with tags field
+    // This should NOT throw an exception even though the glossary term doesn't exist
+    Dashboard retrievedDashboard =
+        getEntityByName(
+            createdDashboard.getFullyQualifiedName(), "tags,charts", ADMIN_AUTH_HEADERS);
+
+    // Verify dashboard was retrieved successfully
+    assertNotNull(retrievedDashboard, "Dashboard should be retrieved successfully");
+    assertEquals(
+        createdDashboard.getId(),
+        retrievedDashboard.getId(),
+        "Retrieved dashboard ID should match created dashboard");
+    assertEquals(
+        createdDashboard.getName(),
+        retrievedDashboard.getName(),
+        "Retrieved dashboard name should match");
+
+    // Verify charts are still present
+    assertListNotNull(retrievedDashboard.getCharts());
+    assertEquals(
+        CHART_REFERENCES.size(),
+        retrievedDashboard.getCharts().size(),
+        "All charts should be present");
+
+    // Tags field should be present (might be empty or contain only valid tags)
+    // The missing glossary term should have been gracefully skipped
+    assertNotNull(retrievedDashboard.getTags(), "Tags field should not be null");
+
+    LOG.info(
+        "Successfully retrieved dashboard with missing glossary term reference without error. Retrieved tags: {}",
+        retrievedDashboard.getTags());
+
+    // Clean up
+    deleteEntity(createdDashboard.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testBulk_PreservesUserEditsOnUpdate(TestInfo test) throws IOException {
+    // Critical test: Verify that bulk updates preserve user-made changes
+    // and only update the fields sent in the bulk request (incremental updates)
+
+    // Step 1: Bot creates initial dashboard (using regular create, not bulk)
+    CreateDashboard botCreate =
+        createRequest(test.getDisplayName())
+            .withDescription("Bot initial description")
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL));
+
+    Dashboard entity = createEntity(botCreate, INGESTION_BOT_AUTH_HEADERS);
+    assertEquals("Bot initial description", entity.getDescription());
+    assertEquals(1, entity.getTags().size());
+
+    // Step 2: User edits description and adds tag
+    String originalJson = JsonUtils.pojoToJson(entity);
+    String userDescription = "User-edited description - should be preserved";
+    entity.setDescription(userDescription);
+    entity.setTags(List.of(USER_ADDRESS_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+
+    Dashboard userEditedEntity =
+        patchEntity(entity.getId(), originalJson, entity, ADMIN_AUTH_HEADERS);
+    assertEquals(userDescription, userEditedEntity.getDescription());
+    assertEquals(2, userEditedEntity.getTags().size());
+
+    // Step 3: Bot sends bulk update with new tag and different description
+    // Bot's description should be IGNORED (bot protection)
+    // Bot's tag should be MERGED (added to existing)
+    CreateDashboard botUpdate =
+        createRequest(test.getDisplayName())
+            .withDescription("Bot trying to overwrite - should be ignored")
+            .withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult updateResult =
+        TestUtils.put(
+            bulkTarget,
+            List.of(botUpdate),
+            BulkOperationResult.class,
+            OK,
+            INGESTION_BOT_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, updateResult.getStatus());
+    assertEquals(1, updateResult.getNumberOfRowsPassed());
+
+    // Step 4: Verify user edits were preserved
+    Dashboard verifyEntity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+
+    // Description should still be user's (bot protection)
+    assertEquals(
+        userDescription,
+        verifyEntity.getDescription(),
+        "Bot should NOT be able to overwrite user-edited description");
+
+    // Tags should be merged (original 2 + new 1 from bot)
+    assertEquals(3, verifyEntity.getTags().size(), "Tags should be merged, not replaced");
+
+    List<String> tagFqns =
+        verifyEntity.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
+    assertTrue(tagFqns.contains(USER_ADDRESS_TAG_LABEL.getTagFQN()));
+    assertTrue(tagFqns.contains(PERSONAL_DATA_TAG_LABEL.getTagFQN()));
+    assertTrue(tagFqns.contains(PII_SENSITIVE_TAG_LABEL.getTagFQN()));
+
+    // Cleanup
+    deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testBulk_TagMergeBehavior(TestInfo test) throws IOException {
+    // Test that bulk updates MERGE tags (add new, keep existing)
+    // NOT replace tags completely
+
+    // Step 1: Create dashboard with initial tags
+    CreateDashboard createRequest =
+        createRequest(test.getDisplayName())
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+
+    Dashboard entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+    assertEquals(2, entity.getTags().size());
+
+    // Step 2: Send bulk update with additional tag (not replacing existing)
+    CreateDashboard updateRequest =
+        createRequest(test.getDisplayName()).withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget, List.of(updateRequest), BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    // Step 3: Verify tags were merged (original 2 + new 1 = 3 total)
+    Dashboard updatedEntity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        3, updatedEntity.getTags().size(), "Tags should be merged: 2 original + 1 new = 3 total");
+
+    List<String> tagFqns =
+        updatedEntity.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
+
+    assertTrue(
+        tagFqns.contains(USER_ADDRESS_TAG_LABEL.getTagFQN()),
+        "Original tag USER_ADDRESS should still exist");
+    assertTrue(
+        tagFqns.contains(PERSONAL_DATA_TAG_LABEL.getTagFQN()),
+        "Original tag PERSONAL_DATA should still exist");
+    assertTrue(
+        tagFqns.contains(PII_SENSITIVE_TAG_LABEL.getTagFQN()),
+        "New tag PII_SENSITIVE should be added");
+
+    // Cleanup
+    deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testBulk_AdminCanOverrideDescription(TestInfo test) throws IOException {
+    // Test that while bots cannot overwrite user descriptions,
+    // admins CAN update descriptions via bulk
+
+    // Step 1: User creates dashboard
+    CreateDashboard createRequest =
+        createRequest(test.getDisplayName()).withDescription("User-created description");
+
+    Dashboard entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+    assertEquals("User-created description", entity.getDescription());
+
+    // Step 2: Admin updates description via bulk
+    String adminDescription = "Admin-updated description via bulk";
+    CreateDashboard adminUpdate =
+        createRequest(test.getDisplayName()).withDescription(adminDescription);
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget, List.of(adminUpdate), BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    // Step 3: Verify admin's description was applied
+    Dashboard updatedEntity = getEntity(entity.getId(), "", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        adminDescription,
+        updatedEntity.getDescription(),
+        "Admin should be able to update description via bulk");
+
+    // Cleanup
+    deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
   }
 }

@@ -17,8 +17,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.events.errors.EventPublisherException;
-import org.openmetadata.service.util.ResultList;
 import org.quartz.JobExecutionContext;
 
 public interface Consumer<T> {

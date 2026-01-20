@@ -19,16 +19,18 @@
           "description": "SSO Login URL.",
           "type": "string"
         },
+        "authorityUrl": {
+          "description": "Authority URL (deprecated, use entityId instead).",
+          "type": "string",
+          "deprecated": true
+        },
         "idpX509Certificate": {
           "description": "X509 Certificate ",
-          "type": "string"
-        },
-        "authorityUrl": {
-          "description": "Authority URL to redirect the users on Sign In page",
-          "type": "string"
+          "type": "string",
+          "format": "password"
         },
         "nameId": {
-          "description": "Authority URL to redirect the users on Sign In page",
+          "description": "Name ID format for SAML assertions",
           "type": "string",
           "default": "urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress"
         }
@@ -51,11 +53,13 @@
         },
         "spX509Certificate": {
           "description": "X509 Certificate ",
-          "type": "string"
+          "type": "string",
+          "format": "password"
         },
         "spPrivateKey": {
           "description": "Sp Private Key for Signing and Encryption Only",
-          "type": "string"
+          "type": "string",
+          "format": "password"
         },
         "callback": {
           "description": "Service Provider Entity ID usually same as the SSO login URL.",
@@ -125,7 +129,8 @@
         },
         "keyStorePassword": {
           "description": "KeyStore Password",
-          "type": "string"
+          "type": "string",
+          "format": "password"
         }
       },
       "additionalProperties": false

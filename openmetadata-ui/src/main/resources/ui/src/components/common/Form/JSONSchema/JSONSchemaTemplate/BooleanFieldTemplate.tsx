@@ -16,18 +16,18 @@ import { startCase } from 'lodash';
 
 const BooleanFieldTemplate = (props: FieldProps) => {
   return (
-    <Form.Item
-      className="m-t-md"
-      colon={false}
-      label={startCase(props.name)}
-      labelAlign="left"
-      labelCol={{ span: 10 }}>
-      <Switch
-        checked={props.formData}
-        id={props.idSchema.$id}
-        onChange={(value) => props.onChange(value)}
-        onClick={() => props.formContext?.handleFocus?.(props.idSchema.$id)}
-      />
+    <Form.Item className="m-t-md" colon={false}>
+      <div className="flex items-center gap-2">
+        <Switch
+          checked={props.formData}
+          id={props.idSchema.$id}
+          onChange={(value) => props.onChange(value)}
+          onClick={() => props.formContext?.handleFocus?.(props.idSchema.$id)}
+        />
+        <label className="cursor-pointer" htmlFor={props.idSchema.$id}>
+          {props.schema.title ?? startCase(props.name)}
+        </label>
+      </div>
     </Form.Item>
   );
 };

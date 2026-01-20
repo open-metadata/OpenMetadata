@@ -24,6 +24,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.bots.BotResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 public class BotRepository extends EntityRepository<Bot> {
@@ -41,7 +42,7 @@ public class BotRepository extends EntityRepository<Bot> {
   }
 
   @Override
-  public void setFields(Bot entity, Fields fields) {
+  public void setFields(Bot entity, Fields fields, RelationIncludes relationIncludes) {
     entity.withBotUser(getBotUser(entity));
   }
 
@@ -52,7 +53,17 @@ public class BotRepository extends EntityRepository<Bot> {
 
   @Override
   public void prepare(Bot entity, boolean update) {
-    User user = Entity.getEntity(entity.getBotUser(), "", Include.ALL);
+    EntityReference botUserRef = entity.getBotUser();
+    if (botUserRef == null) {
+      // Race condition detected: Retry by fetching the relationship directly from the database
+      botUserRef = getBotUser(entity);
+    }
+    if (botUserRef == null) {
+      // This should never happen
+      throw new IllegalStateException(
+          String.format("Bot entity [%s] is missing required botUser reference", entity.getId()));
+    }
+    User user = Entity.getEntity(botUserRef, "", Include.ALL);
     entity.withBotUser(user.getEntityReference());
   }
 

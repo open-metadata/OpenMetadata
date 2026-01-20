@@ -210,6 +210,11 @@ public class DataInsightSystemChartResource
           @QueryParam("filter")
           String filter,
       @Parameter(
+              description = "Entity link for workflow instances filtering",
+              schema = @Schema(type = "String", example = "<#E::databaseService::sample_data>"))
+          @QueryParam("entityLink")
+          String entityLink,
+      @Parameter(
               description = "Start time for data fetching (unix timestamp in milliseconds)",
               schema = @Schema(type = "long", example = "1426349294842"))
           @QueryParam("startTime")
@@ -229,7 +234,7 @@ public class DataInsightSystemChartResource
       // Call repository method to handle streaming
       Map<String, Object> response =
           repository.startChartDataStreaming(
-              chartNames, serviceName, filter, user.getId(), startTime, endTime);
+              chartNames, serviceName, filter, entityLink, user.getId(), startTime, endTime);
 
       // Check if there's an error in the response
       if (response.containsKey("error")) {

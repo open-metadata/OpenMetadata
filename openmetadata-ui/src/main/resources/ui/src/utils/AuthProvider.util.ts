@@ -35,7 +35,8 @@ import {
 import { AuthProvider } from '../generated/settings/settings';
 import { isDev } from './EnvironmentUtils';
 import { getBasePath } from './HistoryUtils';
-import { setOidcToken } from './LocalStorageUtils';
+import { oidcTokenStorage } from './OidcTokenStorage';
+import { setOidcToken } from './SwTokenStorageUtils';
 
 const cookieStorage = new CookieStorage();
 
@@ -69,7 +70,8 @@ export const getUserManagerConfig = (
     redirect_uri: getRedirectUri(callbackUrl),
     silent_redirect_uri: getSilentRedirectUri(),
     scope,
-    userStore: new WebStorageStateStore({ store: localStorage }),
+    userStore: oidcTokenStorage,
+    stateStore: oidcTokenStorage,
   };
 };
 
@@ -83,6 +85,7 @@ export const getAuthConfig = (
     provider,
     providerName,
     enableSelfSignup,
+    enableAutoRedirect,
     samlConfiguration,
     responseType = 'id_token',
     clientType = 'public',
@@ -101,6 +104,7 @@ export const getAuthConfig = (
           provider,
           clientType,
           enableSelfSignup,
+          enableAutoRedirect,
         };
       }
 
@@ -117,6 +121,7 @@ export const getAuthConfig = (
           responseType,
           clientType,
           enableSelfSignup,
+          enableAutoRedirect,
         };
       }
 
@@ -132,6 +137,7 @@ export const getAuthConfig = (
           responseType,
           clientType,
           enableSelfSignup,
+          enableAutoRedirect,
         };
       }
 
@@ -143,6 +149,7 @@ export const getAuthConfig = (
           provider,
           clientType,
           enableSelfSignup,
+          enableAutoRedirect,
         };
       }
 
@@ -158,6 +165,7 @@ export const getAuthConfig = (
           responseType: 'code',
           clientType,
           enableSelfSignup,
+          enableAutoRedirect,
         };
       }
 
@@ -170,6 +178,7 @@ export const getAuthConfig = (
         provider,
         clientType,
         enableSelfSignup,
+        enableAutoRedirect,
       };
 
       break;
@@ -188,6 +197,7 @@ export const getAuthConfig = (
         },
         provider,
         enableSelfSignup,
+        enableAutoRedirect,
         clientType,
       };
 
@@ -208,6 +218,7 @@ export const getAuthConfig = (
           provider,
           clientType,
           enableSelfSignup,
+          enableAutoRedirect,
         } as Configuration;
       }
 
@@ -393,7 +404,9 @@ export const prepareUserProfileFromClaims = ({
 };
 
 // Responsible for parsing the response from MSAL AuthenticationResult
-export const parseMSALResponse = (response: AuthenticationResult): OidcUser => {
+export const parseMSALResponse = async (
+  response: AuthenticationResult
+): Promise<OidcUser> => {
   // Call your API with the access token and return the data you need to save in state
   const { idToken, scopes, account } = response;
 
@@ -409,7 +422,7 @@ export const parseMSALResponse = (response: AuthenticationResult): OidcUser => {
     } as UserProfile,
   };
 
-  setOidcToken(idToken);
+  await setOidcToken(idToken);
 
   return user;
 };

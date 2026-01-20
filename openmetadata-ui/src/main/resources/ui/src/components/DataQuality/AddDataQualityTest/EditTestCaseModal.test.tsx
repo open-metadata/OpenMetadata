@@ -67,11 +67,24 @@ jest.mock('../../../rest/testAPI', () => {
       .mockImplementation(() =>
         Promise.resolve(MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_MATCH_REGEX)
       ),
-    updateTestCaseById: jest
-      .fn()
-      .mockImplementation(() => Promise.resolve(MOCK_TEST_CASE[0])),
+    updateTestCaseById: jest.fn(),
   };
 });
+
+jest.mock('../../../rest/tableAPI', () => ({
+  getTableDetailsByFQN: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      id: 'tableId',
+      columns: [
+        {
+          name: 'last_name',
+          columnDataType: 'VARCHAR',
+        },
+      ],
+      name: 'dim_address',
+    })
+  ),
+}));
 
 describe('EditTestCaseModal Component', () => {
   it('component should render', async () => {
@@ -137,6 +150,14 @@ describe('EditTestCaseModal Component', () => {
 
   it('should call onUpdate function, on click of submit button', async () => {
     render(<EditTestCaseModal {...mockProps} />);
+
+    const displayNameInput = await screen.findByLabelText('label.display-name');
+
+    await act(async () => {
+      fireEvent.change(displayNameInput, {
+        target: { value: 'Updated Display Name' },
+      });
+    });
 
     await act(async () => {
       userEvent.click(await screen.findByText('label.save'));

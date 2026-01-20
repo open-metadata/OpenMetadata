@@ -8,7 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
@@ -37,6 +37,7 @@ public class OmAppJobListener implements JobListener {
   public static final String APP_RUN_STATS = "AppRunStats";
   public static final String JOB_LISTENER_NAME = "OM_JOB_LISTENER";
   public static final String SERVICES_FIELD = "services";
+  public static final String APP_ID = "appId";
 
   protected OmAppJobListener() {
     this.repository = new AppRepository();
@@ -53,7 +54,16 @@ public class OmAppJobListener implements JobListener {
       String runType =
           (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
       String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
-      App jobApp = repository.findByName(appName, Include.NON_DELETED);
+      App jobApp =
+          repository.getByName(
+              null, appName, repository.getFields("bot"), Include.NON_DELETED, true);
+
+      // Debug logging to check if App ID is present
+      if (jobApp.getId() == null) {
+        LOG.info("App {} has null ID after findByName", appName);
+      } else {
+        LOG.info("App {} has ID: {}", appName, jobApp.getId());
+      }
 
       ApplicationConfig appConfig =
           JsonUtils.convertValue(jobApp.getAppConfiguration(), ApplicationConfig.class);
@@ -67,6 +77,8 @@ public class OmAppJobListener implements JobListener {
 
       ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);
       JobDataMap dataMap = jobExecutionContext.getJobDetail().getJobDataMap();
+      // Cache appId to avoid repeated repository lookups during status updates
+      dataMap.put(APP_ID, jobApp.getId());
       long jobStartTime = System.currentTimeMillis();
       AppRunRecord runRecord =
           new AppRunRecord()
@@ -189,8 +201,8 @@ public class OmAppJobListener implements JobListener {
       dataMap.put(SCHEDULED_APP_RUN_EXTENSION, JsonUtils.pojoToJson(runRecord));
 
       // Push Updates to the Database
-      String appName = (String) context.getJobDetail().getJobDataMap().get(APP_NAME);
-      UUID appId = repository.findByName(appName, Include.NON_DELETED).getId();
+      // Use cached appId to avoid repeated repository lookups that cause cache contention
+      UUID appId = (UUID) dataMap.get(APP_ID);
       if (update) {
         repository.updateAppStatus(appId, runRecord);
       } else {

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -25,6 +25,10 @@ export interface DataProduct {
      */
     changeDescription?: ChangeDescription;
     /**
+     * Other data products that this product consumes data from
+     */
+    consumesFrom?: EntityReference[];
+    /**
      * Description of the Data Product.
      */
     description: string;
@@ -36,6 +40,10 @@ export interface DataProduct {
      * Domains or sub-domains to which this Data Product belongs to.
      */
     domains?: EntityReference[];
+    /**
+     * Status of the Data Product.
+     */
+    entityStatus?: EntityStatus;
     /**
      * List of users who are experts for this Data Product.
      */
@@ -61,9 +69,17 @@ export interface DataProduct {
      */
     id: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * Change that lead to this version of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
+    /**
+     * Current lifecycle stage of the data product
+     */
+    lifecycleStage?: LifecycleStage;
     /**
      * A unique name of the Data Product
      */
@@ -72,7 +88,19 @@ export interface DataProduct {
      * Owners of this Data Product.
      */
     owners?: EntityReference[];
-    style?:  Style;
+    /**
+     * Other data products that consume data from this product
+     */
+    providesTo?: EntityReference[];
+    /**
+     * User references of the reviewers for this Data Product.
+     */
+    reviewers?: EntityReference[];
+    /**
+     * Service Level Agreement for this data product
+     */
+    sla?:   SlaDefinition;
+    style?: Style;
     /**
      * Tags associated with the Data Product.
      */
@@ -214,6 +242,74 @@ export interface FieldChange {
 }
 
 /**
+ * Status of the Data Product.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
+}
+
+/**
+ * Current lifecycle stage of the data product
+ *
+ * Lifecycle stage of the data product
+ */
+export enum LifecycleStage {
+    Deprecated = "DEPRECATED",
+    Design = "DESIGN",
+    Development = "DEVELOPMENT",
+    Ideation = "IDEATION",
+    Production = "PRODUCTION",
+    Retired = "RETIRED",
+    Testing = "TESTING",
+}
+
+/**
+ * Service Level Agreement for this data product
+ *
+ * Service Level Agreement definition
+ */
+export interface SlaDefinition {
+    /**
+     * Expected availability percentage (e.g., 99.9)
+     */
+    availability?: number;
+    /**
+     * Maximum data staleness in minutes
+     */
+    dataFreshness?: number;
+    /**
+     * Minimum data quality score
+     */
+    dataQuality?: number;
+    /**
+     * Expected response time in milliseconds
+     */
+    responseTime?: number;
+    /**
+     * SLA tier (e.g., GOLD, SILVER, BRONZE)
+     */
+    tier?: Tier;
+}
+
+/**
+ * SLA tier (e.g., GOLD, SILVER, BRONZE)
+ */
+export enum Tier {
+    Bronze = "BRONZE",
+    Custom = "CUSTOM",
+    Gold = "GOLD",
+    Silver = "SILVER",
+}
+
+/**
  * UI Style is used to associate a color code and/or icon to entity to customize the look of
  * that entity in UI.
  */
@@ -223,15 +319,45 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
 }
 
 /**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
+}
+
+/**
  * This schema defines the type for labeling an entity with a Tag.
  */
 export interface TagLabel {
+    /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
     /**
      * Description for the tag label.
      */
@@ -256,6 +382,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */

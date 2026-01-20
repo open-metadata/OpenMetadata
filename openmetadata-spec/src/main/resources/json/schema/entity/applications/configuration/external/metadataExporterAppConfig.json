@@ -1,0 +1,114 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/metadataExporterAppConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MetadataExporterAppConfig",
+  "description": "Configuration for the Metadata Exporter Application.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.app.external.MetadataExporterAppConfig",
+  "definitions": {
+    "metadataExporterAppType": {
+      "description": "Application type.",
+      "type": "string",
+      "enum": ["MetadataExporter"],
+      "default": "MetadataExporter"
+    },
+    "exportRangeConfig": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.applications.configuration.metadataExporter.ExportRangeConfig",
+      "title": "Export Range Configuration",
+      "description": "Configuration for the export range of data.",
+      "properties": {
+        "rangeType": {
+          "type": "string",
+          "enum": ["ALL", "LATEST", "DATE_RANGE"],
+          "default": "ALL",
+          "description": "Type of range for data export."
+        },
+        "interval": {
+          "type": "integer",
+          "description": "Interval for the export range, applicable when rangeType is 'DATE_RANGE'."
+        },
+        "unit": {
+          "type": "string",
+          "enum": ["DAYS", "HOURS"],
+          "description": "Unit of time for the export range."
+        }
+      },
+      "required": [
+        "rangeType"
+      ]
+    },
+    "tableConfig": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.applications.configuration.metadataExporter.TableConfig",
+      "title": "Configuration for the table to export the data to.",
+      "description": "Configuration for the table to export the data to.",
+      "properties": {
+        "databaseName": {
+          "type": "string"
+        },
+        "schemaName": {
+          "type": "string"
+        },
+        "tableName": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "databaseName",
+        "schemaName",
+        "tableName"
+      ]
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Application Type",
+      "description": "Application Type",
+      "$ref": "#/definitions/metadataExporterAppType",
+      "default": "MetadataExporter"
+    },
+    "connectionConfig": {
+      "description": "Connection details for the Metadata Exporter Application.",
+      "mask": true,
+      "oneOf": [
+        {
+          "$ref": "metadataExporterConnectors/snowflakeConnection.json"
+        },
+        {
+          "$ref": "metadataExporterConnectors/databricksConnection.json"
+        },
+        {
+          "$ref": "metadataExporterConnectors/bigQueryConnection.json"
+        }
+      ]
+    },
+    "exportRange": {
+      "description": "Range of data to export. Options are 'ALL' for all data, 'LATEST' for the latest data, or a specific date range.",
+      "$ref": "#/definitions/exportRangeConfig"
+    },
+    "eventTypes": {
+      "description": "List of event types to export.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "PROFILE",
+          "TEST_CASE_RESULTS"
+        ]
+      },
+      "default": ["PROFILE", "TEST_CASE_RESULTS"]
+    },
+    "backfill": {
+      "description": "Enable backfill for the exporter to process historical data. This will only work on the very first run of the exporter.",
+      "type": "boolean",
+      "default": false
+    },
+    "tableConfiguration": {
+      "description": "Configuration for the table to export the data to.",
+      "$ref": "#/definitions/tableConfig"
+    }
+  },
+  "required": ["connectionConfig", "exportRange", "tableConfiguration"],
+  "additionalProperties": false
+}

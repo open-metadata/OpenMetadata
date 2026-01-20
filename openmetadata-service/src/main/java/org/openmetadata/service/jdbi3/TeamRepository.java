@@ -50,6 +50,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -83,17 +84,23 @@ import org.openmetadata.schema.type.csv.CsvErrorType;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.teams.TeamResource;
+import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
+import org.openmetadata.service.search.InheritedFieldEntitySearch;
+import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
+import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class TeamRepository extends EntityRepository<Team> {
@@ -105,6 +112,7 @@ public class TeamRepository extends EntityRepository<Team> {
       "profile,users,defaultRoles,parents,children,policies,teamType,email,domains";
   private static final String DEFAULT_ROLES = "defaultRoles";
   private Team organization = null;
+  private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
   public TeamRepository() {
     super(
@@ -124,10 +132,14 @@ public class TeamRepository extends EntityRepository<Team> {
     this.fieldFetchers.put("childrenCount", this::fetchAndSetChildrenCount);
     this.fieldFetchers.put("userCount", this::fetchAndSetUserCount);
     this.fieldFetchers.put("owns", this::fetchAndSetOwns);
+
+    if (searchRepository != null) {
+      inheritedFieldEntitySearch = new DefaultInheritedFieldEntitySearch(searchRepository);
+    }
   }
 
   @Override
-  public void setFields(Team team, Fields fields) {
+  public void setFields(Team team, Fields fields, RelationIncludes relationIncludes) {
     team.setUsers(fields.contains("users") ? getUsers(team) : team.getUsers());
     team.setOwns(fields.contains("owns") ? getOwns(team) : team.getOwns());
     team.setDefaultRoles(
@@ -368,6 +380,7 @@ public class TeamRepository extends EntityRepository<Team> {
   public void prepare(Team team, boolean update) {
     populateParents(team); // Validate parents
     populateChildren(team); // Validate children
+    validateHierarchy(team); // Validate hierarchy for circular dependency
     validateUsers(team.getUsers());
     validateRoles(team.getDefaultRoles());
     validatePolicies(team.getPolicies());
@@ -403,6 +416,62 @@ public class TeamRepository extends EntityRepository<Team> {
         throw new IllegalArgumentException("Only users can be added to a Team");
       }
     }
+  }
+
+  public ResultList<EntityReference> getTeamAssets(UUID teamId, int limit, int offset) {
+    Team team = get(null, teamId, getFields("id,fullyQualifiedName"));
+
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search is unavailable for team assets. Returning empty list.");
+      return new ResultList<>(new ArrayList<>(), null, null, 0);
+    }
+
+    InheritedFieldQuery query = InheritedFieldQuery.forTeam(team.getId().toString(), offset, limit);
+
+    InheritedFieldResult result =
+        inheritedFieldEntitySearch.getEntitiesForField(
+            query,
+            () -> {
+              LOG.warn(
+                  "Search fallback for team {} assets. Returning empty list.",
+                  team.getFullyQualifiedName());
+              return new InheritedFieldResult(new ArrayList<>(), 0);
+            });
+
+    return new ResultList<>(result.entities(), null, null, result.total());
+  }
+
+  public ResultList<EntityReference> getTeamAssetsByName(String teamName, int limit, int offset) {
+    Team team = getByName(null, teamName, getFields("id,fullyQualifiedName"));
+    return getTeamAssets(team.getId(), limit, offset);
+  }
+
+  public Map<String, Integer> getAllTeamsWithAssetsCount() {
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search unavailable for team asset counts");
+      return new HashMap<>();
+    }
+
+    List<Team> allTeams = listAll(getFields("id,fullyQualifiedName"), new ListFilter(null));
+    Map<String, Integer> teamAssetCounts = new LinkedHashMap<>();
+
+    for (Team team : allTeams) {
+      InheritedFieldQuery query = InheritedFieldQuery.forTeam(team.getId().toString(), 0, 0);
+
+      Integer count =
+          inheritedFieldEntitySearch.getCountForField(
+              query,
+              () -> {
+                LOG.warn(
+                    "Search fallback for team {} asset count. Returning 0.",
+                    team.getFullyQualifiedName());
+                return 0;
+              });
+
+      teamAssetCounts.put(team.getFullyQualifiedName(), count);
+    }
+
+    return teamAssetCounts;
   }
 
   @Override
@@ -666,16 +735,25 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   protected List<EntityReference> getChildren(Team team) {
-    return getChildren(team.getId());
+    return getChildren(team.getId(), NON_DELETED);
+  }
+
+  @Override
+  protected List<EntityReference> getChildren(Team team, Include include) {
+    return getChildren(team.getId(), include);
   }
 
   protected List<EntityReference> getChildren(UUID teamId) {
+    return getChildren(teamId, NON_DELETED);
+  }
+
+  protected List<EntityReference> getChildren(UUID teamId, Include include) {
     if (teamId.equals(
         organization.getId())) { // For organization all the parentless teams are children
       List<String> children = daoCollection.teamDAO().listTeamsUnderOrganization(teamId);
       return EntityUtil.populateEntityReferencesById(EntityUtil.strToIds(children), Entity.TEAM);
     }
-    return findTo(teamId, TEAM, Relationship.PARENT_OF, TEAM);
+    return findTo(teamId, TEAM, Relationship.PARENT_OF, TEAM, include);
   }
 
   private Integer getChildrenCount(Team team) {
@@ -963,6 +1041,18 @@ public class TeamRepository extends EntityRepository<Team> {
 
       // Field 5 - parent teams
       getParents(printer, csvRecord, team);
+
+      // Validate during dry run to catch logical errors early
+      TeamRepository repository = (TeamRepository) Entity.getEntityRepository(TEAM);
+      if (processRecord && importResult.getDryRun()) {
+        try {
+          repository.validateForDryRun(team, dryRunCreatedEntities);
+        } catch (Exception ex) {
+          importFailure(printer, ex.getMessage(), csvRecord);
+          processRecord = false;
+        }
+      }
+
       if (processRecord) {
         createEntity(printer, csvRecord, team);
       }
@@ -1078,6 +1168,8 @@ public class TeamRepository extends EntityRepository<Team> {
       updateParents(original, updated);
       updateChildren(original, updated);
       updatePolicies(original, updated);
+      // Invalidate policy cache when team roles/policies/hierarchy changes
+      SubjectCache.invalidateAll();
     }
 
     private void updateUsers(Team origTeam, Team updatedTeam) {
@@ -1186,5 +1278,138 @@ public class TeamRepository extends EntityRepository<Team> {
           updatedPolicies,
           false);
     }
+  }
+
+  /**
+   * Validate hierarchy to avoid circular references A -> B -> A.
+   */
+  private void validateHierarchy(Team team) {
+    if (listOrEmpty(team.getParents()).isEmpty()) {
+      return;
+    }
+
+    // Check if any parent causes a circular dependency
+    for (EntityReference parent : team.getParents()) {
+      // 1. Self-reference check
+      if (parent.getId().equals(team.getId())) {
+        throw new IllegalArgumentException(
+            String.format("Invalid hierarchy: Team '%s' cannot be its own parent", team.getName()));
+      }
+
+      // 2. Initial circular reference check (check if the proposed parent is already a child)
+      // Team --PARENT_OF--> Child. We want to find Children.
+      // Relationship: from:Team, to:Child.
+      // findTo(fromId=Team) gets the Children.
+      List<EntityReference> children = findTo(team.getId(), TEAM, Relationship.PARENT_OF, TEAM);
+      for (EntityReference child : listOrEmpty(children)) {
+        if (child.getId().equals(parent.getId())) {
+          throw new IllegalArgumentException(
+              String.format(
+                  "Circular reference detected: Team '%s' is already a child of '%s'.",
+                  parent.getName(), team.getName()));
+        }
+      }
+
+      // 3. Deep circular reference check by traversing up the parent chain of the NEW parent
+      Set<UUID> visited = new HashSet<>();
+      visited.add(team.getId());
+      visited.add(parent.getId());
+
+      checkCircularReference(parent.getId(), visited, team.getName());
+    }
+  }
+
+  private void checkCircularReference(
+      UUID currentTeamId, Set<UUID> visited, String originalTeamName) {
+    // Traverse up from the current parent to see if we reach the original team
+    // Team relationship direction: Parent --(PARENT_OF)--> Child(currentTeamId).
+    // We want the Parent.
+    // findFrom(toId=currentTeamId) gets the Parents.
+    List<EntityReference> parents = findFrom(currentTeamId, TEAM, Relationship.PARENT_OF, TEAM);
+
+    for (EntityReference parent : listOrEmpty(parents)) {
+      // Check Name match to handle potential ID mismatch during import (New Object vs DB Object)
+      if (parent.getName().equals(originalTeamName) || visited.contains(parent.getId())) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Circular reference detected in hierarchy for Team '%s'. The parent relationship creates a loop.",
+                originalTeamName));
+      }
+
+      visited.add(parent.getId());
+      checkCircularReference(parent.getId(), visited, originalTeamName);
+    }
+  }
+
+  /**
+   * Validate hierarchy during Dry Run. This is critical for CSV imports where entities might not
+   * exist in DB yet but are in the batch.
+   */
+  public void validateForDryRun(Team team, Map<String, Team> dryRunCreatedEntities) {
+    if (listOrEmpty(team.getParents()).isEmpty()) {
+      return;
+    }
+
+    for (EntityReference parentRef : team.getParents()) {
+      // 1. Self Check by Name (since ID might be new)
+      if (parentRef.getName().equals(team.getName())) {
+        throw new IllegalArgumentException(
+            String.format("Invalid hierarchy: Team '%s' cannot be its own parent", team.getName()));
+      }
+
+      // 2. Check in DryRun Entities (In-Memory check for the CSV batch)
+      checkCircularReferenceInDryRun(
+          team.getName(),
+          parentRef.getName(),
+          dryRunCreatedEntities,
+          new HashSet<>(Set.of(team.getName())));
+    }
+  }
+
+  private void checkCircularReferenceInDryRun(
+      String originalTeamName,
+      String currentParentName,
+      Map<String, Team> dryRunMap,
+      Set<String> visited) {
+    if (visited.contains(currentParentName)) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Circular reference detected in CSV: Team '%s' participates in a loop involving '%s'.",
+              originalTeamName, currentParentName));
+    }
+    visited.add(currentParentName);
+
+    // If the parent is being created in this batch, using strict FQN or lenient name match
+    Team parentTeamInCsv = findInDryRunMap(currentParentName, dryRunMap);
+
+    if (parentTeamInCsv != null) {
+      for (EntityReference grandParent : listOrEmpty(parentTeamInCsv.getParents())) {
+        checkCircularReferenceInDryRun(
+            originalTeamName, grandParent.getName(), dryRunMap, new HashSet<>(visited));
+      }
+    } else {
+      Team dbTeam = findByNameOrNull(currentParentName, Include.NON_DELETED);
+      if (dbTeam != null) {
+        for (EntityReference parent : listOrEmpty(dbTeam.getParents())) {
+          checkCircularReferenceInDryRun(
+              originalTeamName, parent.getName(), dryRunMap, new HashSet<>(visited));
+        }
+      }
+    }
+  }
+
+  private Team findInDryRunMap(String name, Map<String, Team> dryRunMap) {
+    // 1. Try direct FQN match
+    if (dryRunMap.containsKey(name)) {
+      return dryRunMap.get(name);
+    }
+    // 2. Lenient match: check if any key ends with the name (handling "Org.Team" vs "Team")
+    // or if the entity name matches
+    for (Team t : dryRunMap.values()) {
+      if (t.getName().equals(name)) {
+        return t;
+      }
+    }
+    return null;
   }
 }

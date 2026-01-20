@@ -26,6 +26,7 @@ import AddNotificationPage from '../../pages/AddNotificationPage/AddNotification
 import AlertDetailsPage from '../../pages/AlertDetailsPage/AlertDetailsPage';
 import AppearanceConfigSettingsPage from '../../pages/AppearanceConfigSettingsPage/AppearanceConfigSettingsPage';
 import ApplicationPage from '../../pages/Application/ApplicationPage';
+import AuditLogsPage from '../../pages/AuditLogsPage/AuditLogsPage';
 import BotsPageV1 from '../../pages/BotsPageV1/BotsPageV1.component';
 import DataAssetRulesPage from '../../pages/Configuration/DataAssetRules/DataAssetRulesPage';
 import EditLoginConfiguration from '../../pages/Configuration/EditLoginConfiguration/EditLoginConfigurationPage';
@@ -67,6 +68,7 @@ import {
 import EntitySearchSettings from '../SearchSettings/EntitySeachSettings/EntitySearchSettings';
 import AppDetails from '../Settings/Applications/AppDetails/AppDetails.component';
 import AdminPermissionDebugger from '../Settings/Users/AdminPermissionDebugger/AdminPermissionDebugger.component';
+import SettingsSso from '../SettingsSso/SettingsSso';
 import AdminProtectedRoute from './AdminProtectedRoute';
 
 const NotificationAlertDetailsPage = () => (
@@ -80,6 +82,7 @@ const SettingsRouter = () => {
   return (
     <Routes>
       <Route element={<GlobalSettingPage />} path="/" />
+      <Route element={<SettingsSso />} path={ROUTES.SETTINGS_SSO} />
 
       {/* keep these route above the setting route always */}
       <Route
@@ -199,7 +202,7 @@ const SettingsRouter = () => {
             <NotificationListPage />
           </AdminProtectedRoute>
         }
-        path={getSettingPathRelative(GlobalSettingsMenuCategory.NOTIFICATIONS)}
+        path={ROUTES.NOTIFICATION_ALERT_LIST.replace(ROUTES.SETTINGS, '')}
       />
 
       <Route
@@ -520,6 +523,21 @@ const SettingsRouter = () => {
         element={
           <AdminProtectedRoute
             hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.AUDIT_LOG,
+              permissions
+            )}>
+            <AuditLogsPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.ACCESS,
+          GlobalSettingOptions.AUDIT_LOGS
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
               ResourceEntity.USER,
               permissions
             )}>
@@ -627,6 +645,10 @@ const SettingsRouter = () => {
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.OM_HEALTH
         )}
+      />
+      <Route
+        element={<SettingsSso />}
+        path={getSettingPathRelative(GlobalSettingsMenuCategory.SSO)}
       />
     </Routes>
   );

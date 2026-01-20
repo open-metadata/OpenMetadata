@@ -2,6 +2,7 @@ package org.openmetadata.service.resources.datainsight;
 
 import static jakarta.ws.rs.core.Response.Status.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.service.Entity.DATA_INSIGHT_CHART;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionDenied;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
@@ -190,5 +191,62 @@ public class DataInsightChartResourceTest
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
     assertCommonFieldChange(fieldName, expected, actual);
+  }
+
+  @Test
+  void test_mostViewedEntitiesTeamFilter() throws ParseException, HttpResponseException {
+    // Test that team filter parameter is accepted and processed for MostViewedEntities chart
+    WebTarget target = getCollection().path("/aggregate");
+
+    target =
+        target.queryParam(
+            "dataInsightChartName",
+            DataInsightChartResult.DataInsightChartType.MOST_VIEWED_ENTITIES);
+    target = target.queryParam("dataReportIndex", "web_analytic_entity_view_report_data_index");
+    target = target.queryParam("startTs", TestUtils.dateToTimestamp("2023-03-21"));
+    target = target.queryParam("endTs", TestUtils.dateToTimestamp("2023-03-22"));
+
+    // Test without team filter - should return 200 OK with valid response
+    DataInsightChartResult resultWithoutFilter =
+        TestUtils.get(target, DataInsightChartResult.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(resultWithoutFilter, "Result should not be null");
+    assertEquals(
+        DataInsightChartResult.DataInsightChartType.MOST_VIEWED_ENTITIES,
+        resultWithoutFilter.getChartType(),
+        "Chart type should be MOST_VIEWED_ENTITIES");
+    assertNotNull(resultWithoutFilter.getData(), "Result data should not be null");
+
+    // Test with single team filter - should return 200 OK and accept the team parameter
+    WebTarget targetWithSingleTeam = target.queryParam("team", "Data Platform");
+    DataInsightChartResult resultWithSingleTeam =
+        TestUtils.get(targetWithSingleTeam, DataInsightChartResult.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(resultWithSingleTeam, "Result with team filter should not be null");
+    assertEquals(
+        DataInsightChartResult.DataInsightChartType.MOST_VIEWED_ENTITIES,
+        resultWithSingleTeam.getChartType(),
+        "Chart type should be MOST_VIEWED_ENTITIES");
+    assertNotNull(resultWithSingleTeam.getData(), "Filtered result data should not be null");
+
+    // Test with multiple teams filter (comma-separated) - should return 200 OK
+    WebTarget targetWithMultipleTeams = target.queryParam("team", "Team A, Team B");
+    DataInsightChartResult resultWithMultipleTeams =
+        TestUtils.get(targetWithMultipleTeams, DataInsightChartResult.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(resultWithMultipleTeams, "Result with multiple teams should not be null");
+    assertEquals(
+        DataInsightChartResult.DataInsightChartType.MOST_VIEWED_ENTITIES,
+        resultWithMultipleTeams.getChartType(),
+        "Chart type should be MOST_VIEWED_ENTITIES");
+    assertNotNull(
+        resultWithMultipleTeams.getData(), "Multiple teams result data should not be null");
+
+    // Test with special characters in team name - should handle correctly
+    WebTarget targetWithSpecialChars = target.queryParam("team", "Merger & Acquisitions");
+    DataInsightChartResult resultWithSpecialChars =
+        TestUtils.get(targetWithSpecialChars, DataInsightChartResult.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(resultWithSpecialChars, "Result with special chars should not be null");
+    assertEquals(
+        DataInsightChartResult.DataInsightChartType.MOST_VIEWED_ENTITIES,
+        resultWithSpecialChars.getChartType(),
+        "Chart type should be MOST_VIEWED_ENTITIES");
   }
 }

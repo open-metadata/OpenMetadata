@@ -4,11 +4,11 @@ In this section, we provide guides and references to use the Dagster connector.
 
 ## Requirements
 
-OpenMetadata is integrated with dagster up to version [1.0.13](https://docs.dagster.io/getting-started) and will continue to work for future dagster versions.
+OpenMetadata is integrated with dagster up to version <a href="https://docs.dagster.io/getting-started" target="_blank">1.0.13</a> and will continue to work for future dagster versions.
 
-The ingestion framework uses [dagster graphql python client](https://docs.dagster.io/_apidocs/libraries/dagster-graphql#dagster_graphql.DagsterGraphQLClient) to connect to the dagster instance and perform the API calls.
+The ingestion framework uses <a href="https://docs.dagster.io/_apidocs/libraries/dagster-graphql#dagster_graphql.DagsterGraphQLClient" target="_blank">dagster graphql python client</a> to connect to the dagster instance and perform the API calls.
 
-You can find further information on the Kafka connector in the [docs](https://docs.open-metadata.org/connectors/pipeline/dagster).
+You can find further information on the Kafka connector in the <a href="https://docs.open-metadata.org/connectors/pipeline/dagster" target="_blank">docs</a>.
 
 ## Connection Details
 

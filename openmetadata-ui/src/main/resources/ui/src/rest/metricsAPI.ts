@@ -41,6 +41,8 @@ export const getMetricByFqn = async (fqn: string, params?: ListParams) => {
       params: {
         ...params,
         include: params?.include ?? Include.All,
+        includeRelations:
+          params?.includeRelations ?? 'owners:non-deleted,experts:non-deleted',
       },
     }
   );
@@ -118,6 +120,12 @@ export const createMetric = async (data: CreateMetric) => {
     '/metrics',
     data
   );
+
+  return response.data;
+};
+
+export const getCustomUnitsOfMeasurement = async () => {
+  const response = await APIClient.get<string[]>('/metrics/customUnits');
 
   return response.data;
 };

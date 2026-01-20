@@ -25,4 +25,6 @@ export interface DomainSelectableListProps {
   selectedDomain?: EntityReference | EntityReference[];
   showAllDomains?: boolean;
   wrapInButton?: boolean;
+  overlayClassName?: string;
+  isClearable?: boolean;
 }

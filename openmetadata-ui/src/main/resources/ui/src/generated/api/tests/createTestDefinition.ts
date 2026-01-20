@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,6 +14,7 @@
  * Schema corresponding to a Test Definition
  */
 export interface CreateTestDefinition {
+    dataQualityDimension?: DataQualityDimensions;
     /**
      * Description of the testcase.
      */
@@ -37,8 +38,33 @@ export interface CreateTestDefinition {
     owners?:              EntityReference[];
     parameterDefinition?: TestCaseParameterDefinition[];
     provider?:            ProviderType;
-    supportedDataTypes?:  DataType[];
-    testPlatforms:        TestPlatform[];
+    /**
+     * SQL expression template for custom SQL-based test definitions. Supports substitution
+     * variables: {table} and {column} for runtime entity references, and {{paramName}} for
+     * user-defined parameters.
+     */
+    sqlExpression?:      string;
+    supportedDataTypes?: DataType[];
+    /**
+     * List of services that this test definition supports. When empty, it implies all services
+     * are supported.
+     */
+    supportedServices?: string[];
+    testPlatforms:      TestPlatform[];
+}
+
+/**
+ * This enum defines the dimension a test case belongs to.
+ */
+export enum DataQualityDimensions {
+    Accuracy = "Accuracy",
+    Completeness = "Completeness",
+    Consistency = "Consistency",
+    Integrity = "Integrity",
+    NoDimension = "NoDimension",
+    SQL = "SQL",
+    Uniqueness = "Uniqueness",
+    Validity = "Validity",
 }
 
 /**
@@ -230,6 +256,7 @@ export enum DataType {
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
     Heirarchy = "HEIRARCHY",
+    Hierarchyid = "HIERARCHYID",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -294,7 +321,7 @@ export enum DataType {
  * This schema defines the platform where tests are defined and ran.
  */
 export enum TestPlatform {
-    Dbt = "DBT",
+    Dbt = "dbt",
     Deequ = "Deequ",
     GreatExpectations = "GreatExpectations",
     OpenMetadata = "OpenMetadata",

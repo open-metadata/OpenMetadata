@@ -11,22 +11,31 @@
  *  limitations under the License.
  */
 
+import { get } from 'lodash';
+import { lazy, Suspense } from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
+import Loader from '../components/common/Loader/Loader';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import Lineage from '../components/Lineage/Lineage.component';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import MlModelFeaturesList from '../components/MlModel/MlModelDetail/MlModelFeaturesList';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
+import { MlFeature, Mlmodel } from '../generated/entity/data/mlmodel';
 import { PageType } from '../generated/system/ui/page';
+import { EntityReference } from '../generated/type/entityReference';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { t } from './i18next/LocalUtil';
 import { MlModelDetailPageTabProps } from './MlModel/MlModelClassBase';
+const EntityLineageTab = lazy(() =>
+  import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
+    (module) => ({ default: module.EntityLineageTab })
+  )
+);
 
 // eslint-disable-next-line max-len
 export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.DOMAINS},${TabSpecificField.OWNERS}, ${TabSpecificField.DASHBOARD},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION}`;
@@ -36,7 +45,7 @@ export const getMlModelDetailsPageTabs = ({
   activeTab,
   editLineagePermission,
   editCustomAttributePermission,
-  viewAllPermission,
+  viewCustomPropertiesPermission,
   fetchMlModel,
   handleFeedCount,
   mlModelDetail,
@@ -107,15 +116,25 @@ export const getMlModelDetailsPageTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <LineageProvider>
-          <Lineage
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
             deleted={Boolean(mlModelDetail.deleted)}
             entity={mlModelDetail as SourceType}
             entityType={EntityType.MLMODEL}
             hasEditAccess={editLineagePermission}
           />
-        </LineageProvider>
+        </Suspense>
       ),
+    },
+    {
+      label: (
+        <TabsLabel
+          id={EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab />,
     },
     {
       label: (
@@ -132,7 +151,7 @@ export const getMlModelDetailsPageTabs = ({
         <CustomPropertyTable<EntityType.MLMODEL>
           entityType={EntityType.MLMODEL}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
     },
@@ -150,4 +169,12 @@ export const getMlModelWidgetsFromKey = (widgetConfig: WidgetConfig) => {
       widgetConfig={widgetConfig}
     />
   );
+};
+
+export const extractMlModelFeatures = <T extends Omit<EntityReference, 'type'>>(
+  data: T
+): MlFeature[] => {
+  const mlModel = data as Partial<Mlmodel>;
+
+  return mlModel.mlFeatures ?? [];
 };

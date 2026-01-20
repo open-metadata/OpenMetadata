@@ -11,17 +11,14 @@
  *  limitations under the License.
  */
 import { Card } from 'antd';
-import Qs from 'qs';
-import { DragEvent, useCallback, useEffect, useMemo, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
-import ReactFlow, { Background, MiniMap, Panel } from 'reactflow';
+import classNames from 'classnames';
+import { DragEvent, useCallback, useEffect, useRef, useState } from 'react';
+import ReactFlow, { Background, Edge, MiniMap, Node, Panel } from 'reactflow';
 import {
   MAX_ZOOM_VALUE,
   MIN_ZOOM_VALUE,
 } from '../../constants/Lineage.constants';
 import { useLineageProvider } from '../../context/LineageProvider/LineageProvider';
-import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import {
   customEdges,
   dragHandle,
@@ -31,9 +28,7 @@ import {
   onNodeMouseLeave,
   onNodeMouseMove,
 } from '../../utils/EntityLineageUtils';
-import { getEntityBreadcrumbs } from '../../utils/EntityUtils';
 import Loader from '../common/Loader/Loader';
-import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
 import LineageControlButtons from '../Entity/EntityLineage/LineageControlButtons/LineageControlButtons';
 import LineageLayers from '../Entity/EntityLineage/LineageLayers/LineageLayers';
@@ -42,16 +37,15 @@ import { LineageProps } from './Lineage.interface';
 
 const Lineage = ({
   deleted,
-  hasEditAccess,
   entity,
   entityType,
   isPlatformLineage,
+  hasEditAccess,
+  platformHeader,
 }: LineageProps) => {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const [showMiniMap, setShowMiniMap] = useState(true);
 
-  const location = useCustomLocation();
   const {
     nodes,
     edges,
@@ -64,44 +58,16 @@ const Lineage = ({
     onEdgesChange,
     onPaneClick,
     onConnect,
+    onConnectStart,
+    onConnectEnd,
     onInitReactFlow,
     updateEntityData,
   } = useLineageProvider();
-
-  const queryParams = new URLSearchParams(location.search);
-  const isFullScreen = queryParams.get('fullscreen') === 'true';
-
-  const onFullScreenClick = useCallback(() => {
-    navigate({
-      search: Qs.stringify({ fullscreen: true }),
-    });
-  }, []);
-
-  const onExitFullScreenViewClick = useCallback(() => {
-    navigate({
-      search: '',
-    });
-  }, []);
 
   const onDragOver = useCallback((event: DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
   }, []);
-
-  const breadcrumbs = useMemo(
-    () =>
-      entity
-        ? [
-            ...getEntityBreadcrumbs(entity, entityType),
-            {
-              name: t('label.lineage'),
-              url: '',
-              activeTitle: true,
-            },
-          ]
-        : [],
-    [entity]
-  );
 
   useEffect(() => {
     updateEntityData(entityType, entity as SourceType, isPlatformLineage);
@@ -109,7 +75,7 @@ const Lineage = ({
 
   // Memoize callback for onEdgeClick to prevent unnecessary re-renders
   const handleEdgeClick = useCallback(
-    (_e: React.MouseEvent, data: any) => {
+    (_e: React.MouseEvent, data: Edge) => {
       onEdgeClick(data);
       _e.stopPropagation();
     },
@@ -118,7 +84,7 @@ const Lineage = ({
 
   // Memoize callback for onNodeClick to prevent unnecessary re-renders
   const handleNodeClick = useCallback(
-    (_e: React.MouseEvent, node: any) => {
+    (_e: React.MouseEvent, node: Node) => {
       onNodeClick(node);
       _e.stopPropagation();
     },
@@ -136,36 +102,38 @@ const Lineage = ({
     [onNodeDrop, reactFlowWrapper]
   );
 
+  const toggleMiniMapVisibility = useCallback(() => {
+    setShowMiniMap((show) => !show);
+  }, []);
+
   // Loading the react flow component after the nodes and edges are initialised improves performance
   // considerably. So added an init state for showing loader.
   return (
     <Card
-      className="lineage-card card-body-full w-auto border-none card-padding-0"
-      data-testid="lineage-details">
-      {isFullScreen && breadcrumbs.length > 0 && (
-        <TitleBreadcrumb className="p-md" titleLinks={breadcrumbs} />
-      )}
-      <div
-        className="h-full relative lineage-container"
-        data-testid="lineage-container"
-        id="lineage-container" // ID is required for export PNG functionality
-        ref={reactFlowWrapper}>
-        {init ? (
-          <>
-            {isPlatformLineage ? null : (
-              <CustomControlsComponent className="absolute top-1 right-1 p-xs" />
-            )}
-            <LineageControlButtons
-              deleted={deleted}
-              entityType={entityType}
-              handleFullScreenViewClick={
-                !isFullScreen ? onFullScreenClick : undefined
-              }
+      className="lineage-card card-padding-0"
+      data-testid="lineage-details"
+      title={
+        isPlatformLineage ? (
+          platformHeader
+        ) : (
+          <div
+            className={classNames('lineage-header', {
+              'lineage-header-edit-mode': isEditMode,
+            })}>
+            <CustomControlsComponent
+              deleted={Boolean(deleted)}
               hasEditAccess={hasEditAccess}
-              onExitFullScreenViewClick={
-                isFullScreen ? onExitFullScreenViewClick : undefined
-              }
             />
+          </div>
+        )
+      }>
+      {
+        <div
+          className="h-full relative lineage-container"
+          data-testid="lineage-container"
+          id="lineage-container" // ID is required for export PNG functionality
+          ref={reactFlowWrapper}>
+          {init ? (
             <ReactFlow
               elevateEdgesOnSelect
               className="custom-react-flow"
@@ -184,6 +152,8 @@ const Lineage = ({
               nodesConnectable={isEditMode}
               selectNodesOnDrag={false}
               onConnect={onConnect}
+              onConnectEnd={onConnectEnd}
+              onConnectStart={onConnectStart}
               onDragOver={onDragOver}
               onDrop={handleNodeDrop}
               onEdgeClick={handleEdgeClick}
@@ -200,19 +170,29 @@ const Lineage = ({
               onNodesChange={onNodesChange}
               onPaneClick={onPaneClick}>
               <Background gap={12} size={1} />
-              <MiniMap pannable zoomable position="bottom-right" />
+              {showMiniMap && (
+                <MiniMap pannable zoomable position="bottom-right" />
+              )}
 
-              <Panel position="bottom-left">
+              <Panel
+                className={classNames({ 'edit-mode': isEditMode })}
+                position="bottom-left">
                 <LineageLayers entity={entity} entityType={entityType} />
               </Panel>
+              <Panel position="bottom-right">
+                <LineageControlButtons
+                  miniMapVisible={showMiniMap}
+                  onToggleMiniMap={toggleMiniMapVisibility}
+                />
+              </Panel>
             </ReactFlow>
-          </>
-        ) : (
-          <div className="loading-card">
-            <Loader />
-          </div>
-        )}
-      </div>
+          ) : (
+            <div className="loading-card">
+              <Loader />
+            </div>
+          )}
+        </div>
+      }
     </Card>
   );
 };

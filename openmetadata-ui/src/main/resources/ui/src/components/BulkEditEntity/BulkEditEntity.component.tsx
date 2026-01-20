@@ -13,7 +13,7 @@
 import { Button, Col, Row } from 'antd';
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo } from 'react';
-import DataGrid from 'react-data-grid';
+import DataGrid, { ColumnOrColumnGroup } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
 import { useTranslation } from 'react-i18next';
 import { readString } from 'react-papaparse';
@@ -22,8 +22,10 @@ import { ENTITY_BULK_EDIT_STEPS } from '../../constants/BulkEdit.constants';
 import { ExportTypes } from '../../constants/Export.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { useFqn } from '../../hooks/useFqn';
-import { getBulkEditCSVExportEntityApi } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
-import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import {
+  getBulkEditCSVExportEntityApi,
+  getBulkEntityNavigationPath,
+} from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import Banner from '../common/Banner/Banner';
 import { ImportStatus } from '../common/EntityImport/ImportStatus/ImportStatus.component';
@@ -49,6 +51,7 @@ const BulkEditEntity = ({
   handleCopy,
   handlePaste,
   handleOnRowsChange,
+  sourceEntityType,
 }: BulkEditEntityProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -57,9 +60,18 @@ const BulkEditEntity = ({
   const { triggerExportForBulkEdit, csvExportData, clearCSVExportData } =
     useEntityExportModalProvider();
 
+  const translatedSteps = useMemo(
+    () =>
+      ENTITY_BULK_EDIT_STEPS.map((step) => ({
+        ...step,
+        name: t(step.name),
+      })),
+    [t]
+  );
+
   const handleCancel = () => {
     clearCSVExportData();
-    navigate(entityUtilClassBase.getEntityLink(entityType, fqn));
+    navigate(getBulkEntityNavigationPath(entityType, fqn, sourceEntityType));
   };
 
   useEffect(() => {
@@ -98,7 +110,12 @@ const BulkEditEntity = ({
       <div className="om-rdg" ref={setGridContainer}>
         <DataGrid
           className="rdg-light"
-          columns={columns}
+          columns={
+            columns as unknown as ColumnOrColumnGroup<
+              NoInfer<Record<string, string>>,
+              unknown
+            >[]
+          }
           rows={dataSource}
           onCopy={handleCopy}
           onPaste={handlePaste}
@@ -117,7 +134,7 @@ const BulkEditEntity = ({
         <Stepper
           activeStep={activeStep}
           className="w-max-600 mx-auto"
-          steps={ENTITY_BULK_EDIT_STEPS}
+          steps={translatedSteps}
         />
       </Col>
 

@@ -1,6 +1,11 @@
 package org.openmetadata.mcp.tools;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
+import jakarta.json.Json;
+import jakarta.json.JsonArray;
 import jakarta.json.JsonPatch;
+import java.io.StringReader;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -10,6 +15,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -21,22 +27,33 @@ public class PatchEntityTool implements McpTool {
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params) {
     String entityType = (String) params.get("entityType");
-    String entityFqn = (String) params.get("entityFqn");
-    JsonPatch patch = JsonUtils.readOrConvertValue(params.get("patch"), JsonPatch.class);
+    String fqn = (String) params.get("fqn");
+    String jsonPatchString = (String) params.get("patch");
+    if (nullOrEmpty(jsonPatchString)) {
+      throw new IllegalArgumentException("Patch cannot be null or empty");
+    }
+
+    JsonArray patchArray = Json.createReader(new StringReader(jsonPatchString)).readArray();
+    JsonPatch jsonPatch = Json.createPatch(patchArray);
 
     // Validate If the User Can Perform the Patch Operation
-    OperationContext operationContext = new OperationContext(entityType, patch);
+    OperationContext operationContext = new OperationContext(entityType, jsonPatch);
     authorizer.authorize(
-        securityContext, operationContext, new ResourceContext<>(entityType, null, entityFqn));
+        securityContext, operationContext, new ResourceContext<>(entityType, null, fqn));
 
     EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+
+    // Get impersonatedBy from thread-local context set by McpAuthFilter
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+
     RestUtil.PatchResponse<? extends EntityInterface> response =
         repository.patch(
             null,
-            entityFqn,
+            fqn,
             securityContext.getUserPrincipal().getName(),
-            patch,
-            ChangeSource.MANUAL);
+            jsonPatch,
+            ChangeSource.MANUAL,
+            impersonatedBy);
     return JsonUtils.convertValue(response, Map.class);
   }
 

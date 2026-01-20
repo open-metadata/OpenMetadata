@@ -22,6 +22,7 @@ import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.getSearchIndexField;
 
@@ -57,6 +58,7 @@ import org.openmetadata.service.resources.searchindex.SearchIndexResource;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class SearchIndexRepository extends EntityRepository<SearchIndex> {
@@ -122,7 +124,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   }
 
   @Override
-  public void setFields(SearchIndex searchIndex, Fields fields) {
+  public void setFields(SearchIndex searchIndex, Fields fields, RelationIncludes relationIncludes) {
     searchIndex.setService(getContainer(searchIndex.getId()));
     searchIndex.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(searchIndex) : null);
     if (searchIndex.getFields() != null) {
@@ -212,7 +214,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
     for (SearchIndex searchIndex : searchIndexes) {
       searchIndex.setTags(
-          addDerivedTags(
+          addDerivedTagsGracefully(
               tagsMap.getOrDefault(searchIndex.getFullyQualifiedName(), Collections.emptyList())));
     }
 

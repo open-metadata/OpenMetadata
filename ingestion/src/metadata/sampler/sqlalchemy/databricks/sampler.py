@@ -11,7 +11,8 @@
 """
 Helper module to handle data sampling for the profiler
 """
-from sqlalchemy import Column, text
+from sqlalchemy import Column, event, text
+from sqlalchemy.orm import scoped_session, sessionmaker
 
 from metadata.ingestion.source.database.databricks.connection import (
     get_connection as databricks_get_connection,
@@ -25,6 +26,17 @@ class DatabricksSamplerInterface(SQASampler):
         """Initialize with a single Databricks connection"""
         super().__init__(*args, **kwargs)
         self.connection = databricks_get_connection(self.service_connection_config)
+        session_maker = sessionmaker(bind=self.connection)
+
+        @event.listens_for(session_maker, "after_begin")
+        def set_catalog(session, transaction, connection):
+            # Safely quote the catalog name to prevent SQL injection
+            quoted_catalog = connection.dialect.identifier_preparer.quote(
+                self.service_connection_config.catalog
+            )
+            connection.execute(f"USE CATALOG {quoted_catalog};")
+
+        self.session_factory = scoped_session(session_maker)
 
     def get_client(self):
         """client is the session for SQA"""

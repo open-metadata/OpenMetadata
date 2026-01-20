@@ -213,6 +213,8 @@ def get_log_name(record: Entity) -> Optional[str]:
     try:
         if hasattr(record, "name"):
             return f"{type(record).__name__} [{getattr(record, 'name').root}]"
+        if hasattr(record, "table") and hasattr(record.table, "name"):
+            return f"{type(record).__name__} [{record.table.name.root}]"
         return f"{type(record).__name__} [{record.entity.name.root}]"
     except Exception:
         return str(record)

@@ -29,6 +29,8 @@ public interface ServiceEntityInterface extends EntityInterface {
 
   void setPipelines(List<EntityReference> pipelines);
 
+  void setIngestionRunner(EntityReference ingestionRunner);
+
   void setTestConnectionResult(TestConnectionResult testConnectionResult);
 
   EnumInterface getServiceType();

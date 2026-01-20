@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -36,7 +36,12 @@ export interface TestDefinition {
      * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
      * it belongs to.
      */
-    domains?:    EntityReference[];
+    domains?: EntityReference[];
+    /**
+     * When `true` indicates the test definition is available for creating test cases. System
+     * test definitions can only be disabled by users with appropriate permissions.
+     */
+    enabled?:    boolean;
     entityType?: EntityType;
     /**
      * FullyQualifiedName same as `name`.
@@ -64,7 +69,20 @@ export interface TestDefinition {
     owners?:              EntityReference[];
     parameterDefinition?: TestCaseParameterDefinition[];
     provider?:            ProviderType;
-    supportedDataTypes?:  DataType[];
+    /**
+     * SQL expression template for custom SQL-based test definitions. Supports substitution
+     * variables: {table} and {column} for runtime entity references, and {{paramName}} for
+     * user-defined parameters. This field is only applicable for test definitions with
+     * testPlatforms set to 'OpenMetadata' and is used to execute custom SQL queries for data
+     * quality validation.
+     */
+    sqlExpression?:      string;
+    supportedDataTypes?: DataType[];
+    /**
+     * List of services that this test definition supports. When empty, it implies all services
+     * are supported.
+     */
+    supportedServices?: string[];
     /**
      * When `true` indicates the test case supports dynamic assertions.
      */
@@ -162,6 +180,7 @@ export enum DataQualityDimensions {
     Completeness = "Completeness",
     Consistency = "Consistency",
     Integrity = "Integrity",
+    NoDimension = "NoDimension",
     SQL = "SQL",
     Uniqueness = "Uniqueness",
     Validity = "Validity",
@@ -357,6 +376,7 @@ export enum DataType {
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
     Heirarchy = "HEIRARCHY",
+    Hierarchyid = "HIERARCHYID",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -421,7 +441,7 @@ export enum DataType {
  * This schema defines the platform where tests are defined and ran.
  */
 export enum TestPlatform {
-    Dbt = "DBT",
+    Dbt = "dbt",
     Deequ = "Deequ",
     GreatExpectations = "GreatExpectations",
     OpenMetadata = "OpenMetadata",

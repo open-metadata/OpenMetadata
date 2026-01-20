@@ -61,6 +61,10 @@
         "$ref": "../../type/tagLabel.json"
       },
       "default": null
+    },
+    "reviewers": {
+      "description": "Reviewers of this test suite",
+      "$ref": "../../type/entityReferenceList.json"
     }
   },
   "required": [

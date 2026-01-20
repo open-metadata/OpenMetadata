@@ -27,4 +27,6 @@ export interface ExploreQuickFiltersProps {
   independent?: boolean; // flag to indicate if the filters are independent of aggregations
   fieldsWithNullValues?: EntityFields[];
   defaultQueryFilter?: Record<string, unknown>;
+  showSelectedCounts?: boolean; // flag to show counts instead of labels for selected filters
+  optionPageSize?: number;
 }

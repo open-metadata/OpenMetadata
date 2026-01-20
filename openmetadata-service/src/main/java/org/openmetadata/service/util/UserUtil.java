@@ -35,16 +35,20 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.LandingPageSettings;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -162,10 +166,66 @@ public final class UserUtil {
             .withConfig(new BasicAuthMechanism().withPassword(hashedPwd)));
   }
 
+  /**
+   * Create and persist a ChangeEvent for SSO/LDAP user operations.
+   * Pattern follows TestSuiteRepository.createTestSuiteCompletionChangeEvent()
+   */
+  private static void createUserChangeEvent(User user, EventType eventType) {
+    try {
+      ChangeEvent changeEvent =
+          new ChangeEvent()
+              .withId(UUID.randomUUID())
+              .withEventType(eventType)
+              .withEntityId(user.getId())
+              .withEntityType(Entity.USER)
+              .withEntityFullyQualifiedName(user.getFullyQualifiedName())
+              .withUserName(user.getName())
+              .withTimestamp(user.getUpdatedAt())
+              .withCurrentVersion(user.getVersion())
+              .withPreviousVersion(
+                  user.getChangeDescription() != null
+                      ? user.getChangeDescription().getPreviousVersion()
+                      : (eventType == EventType.ENTITY_CREATED ? null : user.getVersion()))
+              .withEntity(user);
+
+      // Include changeDescription if present (for updates)
+      if (user.getChangeDescription() != null) {
+        changeEvent.withChangeDescription(user.getChangeDescription());
+      }
+
+      // Populate domains if available
+      if (user.getDomains() != null && !user.getDomains().isEmpty()) {
+        changeEvent.withDomains(
+            user.getDomains().stream().map(EntityReference::getId).collect(Collectors.toList()));
+      }
+
+      // Insert directly into change event DAO
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+    } catch (Exception e) {
+      // Don't fail user creation if ChangeEvent fails
+      LOG.error("Failed to create ChangeEvent for user {}: {}", user.getName(), e.getMessage(), e);
+    }
+  }
+
   public static User addOrUpdateUser(User user) {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     try {
+      // Check if user exists BEFORE createOrUpdate to determine event type
+      User existingUser = null;
+      try {
+        existingUser = userRepository.findByNameOrNull(user.getFullyQualifiedName(), NON_DELETED);
+      } catch (Exception e) {
+        // User doesn't exist, will be created
+      }
+      boolean isCreate = (existingUser == null);
+
+      // Perform the actual create/update
       PutResponse<User> addedUser = userRepository.createOrUpdate(null, user, ADMIN_USER_NAME);
+
+      // Create ChangeEvent for EventSubscription evaluation
+      EventType eventType = isCreate ? EventType.ENTITY_CREATED : EventType.ENTITY_UPDATED;
+      createUserChangeEvent(addedUser.getEntity(), eventType);
+
       // should not log the user auth details in LOGS
       LOG.debug("Added user entry: {}", addedUser.getEntity().getName());
       return addedUser.getEntity();
@@ -180,6 +240,80 @@ public final class UserUtil {
   public static User user(String name, String domain, String updatedBy) {
     return getUser(
         updatedBy, new CreateUser().withName(name).withEmail(name + "@" + domain).withIsBot(false));
+  }
+
+  /**
+   * Assigns a user to teams based on the team names from SAML/JWT claims.
+   * Only teams of type "Group" can have users directly assigned via claims.
+   * If a team exists and is of type Group, it will be assigned to the user.
+   * If a team doesn't exist or is not of type Group, it will be logged and ignored.
+   * This method only ADDS teams - it does not remove users from existing teams.
+   *
+   * @param user User to assign teams to
+   * @param teamNames List of team names from the claim (e.g., groups or department values)
+   * @return true if any team was assigned, false otherwise
+   */
+  public static boolean assignTeamsFromClaim(User user, List<String> teamNames) {
+    if (nullOrEmpty(teamNames)) {
+      return false;
+    }
+
+    List<EntityReference> currentTeams = user.getTeams();
+    if (currentTeams == null) {
+      currentTeams = new ArrayList<>();
+    }
+
+    boolean anyTeamAssigned = false;
+
+    for (String teamName : teamNames) {
+      if (nullOrEmpty(teamName)) {
+        continue;
+      }
+
+      try {
+        Team team = Entity.getEntityByName(Entity.TEAM, teamName, "id,teamType", NON_DELETED);
+
+        if (team.getTeamType() != CreateTeam.TeamType.GROUP) {
+          LOG.warn(
+              "Team '{}' is of type '{}', not 'Group'. "
+                  + "Users can only be auto-assigned to teams of type 'Group' via claims. "
+                  + "User '{}' will not be assigned to this team.",
+              teamName,
+              team.getTeamType(),
+              user.getName());
+          continue;
+        }
+
+        EntityReference teamRef = team.getEntityReference();
+        boolean teamAlreadyAssigned =
+            currentTeams.stream().anyMatch(t -> t.getId().equals(teamRef.getId()));
+
+        if (!teamAlreadyAssigned) {
+          currentTeams.add(teamRef);
+          anyTeamAssigned = true;
+          LOG.info("Assigned team '{}' to user '{}' from claim", teamName, user.getName());
+        }
+      } catch (EntityNotFoundException e) {
+        LOG.warn(
+            "Team '{}' from claim mapping not found in OpenMetadata. "
+                + "User '{}' will not be assigned to this team.",
+            teamName,
+            user.getName());
+      } catch (Exception e) {
+        LOG.error(
+            "Error assigning team '{}' to user '{}': {}",
+            teamName,
+            user.getName(),
+            e.getMessage(),
+            e);
+      }
+    }
+
+    if (anyTeamAssigned) {
+      user.setTeams(currentTeams);
+    }
+
+    return anyTeamAssigned;
   }
 
   /**

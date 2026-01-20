@@ -19,9 +19,12 @@ export type CSVExportResponse = {
 
 export type CSVExportWebsocketResponse = {
   jobId: string;
-  status: 'COMPLETED' | 'FAILED';
+  status: 'COMPLETED' | 'FAILED' | 'IN_PROGRESS';
   data: string;
   error: string | null;
+  progress?: number;
+  total?: number;
+  message?: string;
 };
 
 export type CSVExportJob = {
@@ -54,6 +57,7 @@ export type ExportData = {
   exportTypes: ExportTypes[];
   viewport?: ExportViewport;
   exportConfig?: Partial<PDFLayoutConfig>;
+  hideExportModal?: boolean;
   onExport: (
     name: string,
     params?: {

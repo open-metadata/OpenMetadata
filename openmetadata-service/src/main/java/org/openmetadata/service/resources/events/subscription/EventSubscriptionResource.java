@@ -58,6 +58,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.alert.type.EmailAlertConfig;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.events.EventSubscriptionDestinationTestRequest;
 import org.openmetadata.schema.api.events.EventSubscriptionDiagnosticInfo;
@@ -72,7 +73,9 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.NotificationResourceDescriptor;
+import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertFactory;
@@ -90,7 +93,8 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.URLValidator;
+import org.openmetadata.service.util.email.EmailUtil;
 import org.quartz.SchedulerException;
 
 @Slf4j
@@ -137,6 +141,8 @@ public class EventSubscriptionResource
           listOrEmpty(EventSubscriptionResource.getObservabilityFilterDescriptors()));
       repository.initSeedDataFromResources();
       initializeEventSubscriptions();
+      // Schedule the audit log consumer to read from change_event and write to audit_log
+      EventSubscriptionScheduler.getInstance().scheduleAuditLogConsumer();
     } catch (Exception ex) {
       // Starting application should not fail
       LOG.warn("Exception during initialization", ex);
@@ -195,6 +201,13 @@ public class EventSubscriptionResource
           @QueryParam("alertType")
           String alertType,
       @Parameter(
+              description =
+                  "Filter subscriptions by notification template ID. "
+                      + "Returns only subscriptions using the specified template.",
+              schema = @Schema(type = "string", format = "uuid"))
+          @QueryParam("notificationTemplate")
+          String notificationTemplate,
+      @Parameter(
               description = "Returns list of event subscriptions before this cursor",
               schema = @Schema(type = "string"))
           @QueryParam("before")
@@ -207,6 +220,9 @@ public class EventSubscriptionResource
     ListFilter filter = new ListFilter(null);
     if (!nullOrEmpty(alertType)) {
       filter.addQueryParam("alertType", alertType);
+    }
+    if (!nullOrEmpty(notificationTemplate)) {
+      filter.addQueryParam("notificationTemplate", notificationTemplate);
     }
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -299,9 +315,13 @@ public class EventSubscriptionResource
           NoSuchMethodException,
           InstantiationException,
           IllegalAccessException {
+    if (request.getDestinations() != null && !request.getDestinations().isEmpty()) {
+      for (SubscriptionDestination destination : request.getDestinations()) {
+        validateDestinationConfig(destination);
+      }
+    }
     EventSubscription eventSub =
         mapper.createToEntity(request, securityContext.getUserPrincipal().getName());
-    // Only one Creation is allowed
     Response response = create(uriInfo, securityContext, eventSub);
     EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(eventSub, false);
     return response;
@@ -326,6 +346,11 @@ public class EventSubscriptionResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateEventSubscription create) {
+    if (create.getDestinations() != null && !create.getDestinations().isEmpty()) {
+      for (SubscriptionDestination destination : create.getDestinations()) {
+        validateDestinationConfig(destination);
+      }
+    }
     EventSubscription eventSub =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, eventSub);
@@ -1385,29 +1410,115 @@ public class EventSubscriptionResource
   public Response sendTestMessageAlert(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      EventSubscriptionDestinationTestRequest request) {
+      @Valid EventSubscriptionDestinationTestRequest request) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
+
+    if (request.getDestinations() == null || request.getDestinations().isEmpty()) {
+      throw new WebApplicationException(
+          "At least one destination must be provided to send a test message.",
+          Response.Status.BAD_REQUEST);
+    }
+
     EventSubscription eventSubscription = new EventSubscription();
 
     List<SubscriptionDestination> resultDestinations = new ArrayList<>();
 
-    // by-pass AbstractEventConsumer - covers external destinations as of now
-    request
-        .getDestinations()
-        .forEach(
-            (destination) -> {
-              Destination<ChangeEvent> alert =
-                  AlertFactory.getAlert(eventSubscription, destination);
-              try {
-                alert.sendTestMessage();
-                resultDestinations.add(destination);
-              } catch (EventPublisherException e) {
-                LOG.error(e.getMessage());
-              }
-            });
+    for (SubscriptionDestination destination : request.getDestinations()) {
+      validateDestinationConfig(destination);
+      try {
+        Destination<ChangeEvent> alert = AlertFactory.getAlert(eventSubscription, destination);
+        alert.sendTestMessage();
+        resultDestinations.add(destination);
+      } catch (EventPublisherException e) {
+        LOG.error("Failed to send test message to destination: {}", e.getMessage());
+      }
+    }
 
     return Response.ok(resultDestinations).build();
+  }
+
+  private void validateDestinationConfig(SubscriptionDestination destination) {
+    boolean isInternalDestination = isInternalDestination(destination.getCategory());
+    if (isInternalDestination) {
+      return;
+    }
+
+    Object config = destination.getConfig();
+
+    if (config == null) {
+      throw new WebApplicationException(
+          String.format("Destination configuration is required for %s type", destination.getType()),
+          Response.Status.BAD_REQUEST);
+    }
+
+    if (config instanceof Map && ((Map<?, ?>) config).isEmpty()) {
+      throw new WebApplicationException(
+          String.format("Destination configuration is empty for %s type", destination.getType()),
+          Response.Status.BAD_REQUEST);
+    }
+
+    switch (destination.getType()) {
+      case EMAIL -> validateEmailConfig(config);
+      case WEBHOOK, SLACK, MS_TEAMS, G_CHAT -> validateWebhookConfig(config);
+      case ACTIVITY_FEED, GOVERNANCE_WORKFLOW_CHANGE_EVENT -> {}
+    }
+  }
+
+  private boolean isInternalDestination(SubscriptionDestination.SubscriptionCategory category) {
+    return category != null && category != SubscriptionDestination.SubscriptionCategory.EXTERNAL;
+  }
+
+  private void validateEmailConfig(Object config) {
+    EmailAlertConfig emailConfig;
+    try {
+      emailConfig = JsonUtils.convertValue(config, EmailAlertConfig.class);
+    } catch (Exception e) {
+      throw new WebApplicationException(
+          "Invalid email configuration: " + e.getMessage(), Response.Status.BAD_REQUEST);
+    }
+
+    if (emailConfig.getReceivers() == null || emailConfig.getReceivers().isEmpty()) {
+      throw new WebApplicationException(
+          "Email destination requires at least one email address in 'receivers'",
+          Response.Status.BAD_REQUEST);
+    }
+
+    for (String email : emailConfig.getReceivers()) {
+      if (!EmailUtil.isValidEmail(email)) {
+        throw new WebApplicationException(
+            String.format("Invalid email format: '%s'", email), Response.Status.BAD_REQUEST);
+      }
+    }
+  }
+
+  private void validateWebhookConfig(Object config) {
+    Webhook webhookConfig;
+    try {
+      webhookConfig = JsonUtils.convertValue(config, Webhook.class);
+    } catch (Exception e) {
+      throw new WebApplicationException(
+          "Invalid webhook configuration: " + e.getMessage(), Response.Status.BAD_REQUEST);
+    }
+
+    if (webhookConfig.getEndpoint() == null) {
+      throw new WebApplicationException(
+          "Webhook destination requires an 'endpoint' URL", Response.Status.BAD_REQUEST);
+    }
+
+    String endpoint = webhookConfig.getEndpoint().toString();
+    if (endpoint.trim().isEmpty()) {
+      throw new WebApplicationException(
+          "Webhook endpoint URL cannot be empty", Response.Status.BAD_REQUEST);
+    }
+
+    try {
+      URLValidator.validateURL(endpoint);
+    } catch (Exception e) {
+      throw new WebApplicationException(
+          String.format("Invalid webhook endpoint URL: %s", e.getMessage()),
+          Response.Status.BAD_REQUEST);
+    }
   }
 
   public static List<FilterResourceDescriptor> getNotificationsFilterDescriptors()

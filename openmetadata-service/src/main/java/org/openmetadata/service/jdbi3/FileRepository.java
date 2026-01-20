@@ -50,6 +50,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.drives.FileResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -136,12 +137,10 @@ public class FileRepository extends EntityRepository<File> {
     // Inherit domain from directory if available, otherwise from service
     if (nullOrEmpty(file.getDomains())) {
       if (file.getDirectory() != null) {
-        Directory directory =
-            Entity.getEntity(file.getDirectory(), "domains,service", Include.NON_DELETED);
+        Directory directory = Entity.getEntity(file.getDirectory(), "domains,service", Include.ALL);
         inheritDomains(file, fields, directory);
       } else {
-        DriveService service =
-            Entity.getEntity(file.getService(), FIELD_DOMAINS, Include.NON_DELETED);
+        DriveService service = Entity.getEntity(file.getService(), FIELD_DOMAINS, Include.ALL);
         inheritDomains(file, fields, service);
       }
     }
@@ -153,7 +152,7 @@ public class FileRepository extends EntityRepository<File> {
   }
 
   @Override
-  public void setFields(File file, EntityUtil.Fields fields) {
+  public void setFields(File file, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     file.withService(getService(file));
     file.withDirectory(getDirectory(file));
   }

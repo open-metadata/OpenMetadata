@@ -15,7 +15,22 @@ import { CONTAINER_CHILDREN } from '../../constant/contianer';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
+import {
+  assignTagToChildren,
+  copyAndGetClipboardText,
+  removeTagsFromChildren,
+  testCopyLinkButton,
+  validateCopiedLinkFormat,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { test } from '../fixtures/pages';
+
+// Grant clipboard permissions for copy link tests
+test.use({
+  contextOptions: {
+    permissions: ['clipboard-read', 'clipboard-write'],
+  },
+});
 
 const container = new ContainerClass();
 
@@ -115,5 +130,95 @@ test.describe('Container entity specific tests ', () => {
     await expect(page.getByTestId('page-indicator')).toContainText(
       'Page 1 of 2'
     );
+  });
+
+  test('expand / collapse should not appear after updating nested fields for container', async ({
+    page,
+  }) => {
+    await page.goto('/container/s3_storage_sample.departments.finance');
+
+    await waitForAllLoadersToDisappear(page);
+
+    await assignTagToChildren({
+      page,
+      tag: 'PersonalData.Personal',
+      rowId: 'budget_executor',
+      entityEndpoint: 'containers',
+    });
+
+    // Should not show expand icon for non-nested columns
+    expect(
+      page
+        .locator('[data-row-key="budget_executor"]')
+        .getByTestId('expand-icon')
+    ).not.toBeVisible();
+
+    await removeTagsFromChildren({
+      page,
+      tags: ['PersonalData.Personal'],
+      rowId: 'budget_executor',
+      entityEndpoint: 'containers',
+    });
+  });
+
+  test('Copy column link button should copy the column URL to clipboard', async ({
+    dataConsumerPage: page,
+  }) => {
+    await container.visitEntityPage(page);
+
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    await testCopyLinkButton({
+      page,
+      buttonTestId: 'copy-column-link-button',
+      containerTestId: 'container-data-model-table',
+      expectedUrlPath: '/container/',
+      entityFqn: container.entityResponseData?.['fullyQualifiedName'] ?? '',
+    });
+  });
+
+  test('Copy column link should have valid URL format', async ({
+    dataConsumerPage: page,
+  }) => {
+    await container.visitEntityPage(page);
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    await expect(page.getByTestId('container-data-model-table')).toBeVisible();
+
+    const copyButton = page.getByTestId('copy-column-link-button').first();
+    await expect(copyButton).toBeVisible();
+
+    const clipboardText = await copyAndGetClipboardText(page, copyButton);
+
+    const validationResult = validateCopiedLinkFormat({
+      clipboardText,
+      expectedEntityType: 'container',
+      entityFqn: container.entityResponseData?.['fullyQualifiedName'] ?? '',
+    });
+
+    expect(validationResult.isValid).toBe(true);
+    expect(validationResult.protocol).toMatch(/^https?:$/);
+    expect(validationResult.pathname).toContain('container');
+
+    // Visit the copied link to verify it opens the side panel
+    await page.goto(clipboardText);
+
+    // Verify side panel is open
+    const sidePanel = page.locator('.column-detail-panel');
+    await expect(sidePanel).toBeVisible();
+
+    // Verify the correct column is showing in the panel
+    const columnName = (container.entityResponseData as any)?.dataModel
+      ?.columns?.[0]?.name;
+    if (columnName) {
+      await expect(sidePanel).toContainText(columnName);
+    }
+
+    // Close side panel
+    await page.getByTestId('close-button').click();
+    await expect(sidePanel).not.toBeVisible();
+
+    // Verify URL does not contain the column part
+    await expect(page).toHaveURL(new RegExp(`/container/${container.entityResponseData?.['fullyQualifiedName']}$`));
   });
 });

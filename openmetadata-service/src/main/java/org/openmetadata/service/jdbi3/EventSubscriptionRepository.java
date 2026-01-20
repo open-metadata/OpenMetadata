@@ -30,7 +30,12 @@ import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
+import org.openmetadata.schema.entity.events.NotificationTemplate;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -38,11 +43,13 @@ import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 public class EventSubscriptionRepository extends EntityRepository<EventSubscription> {
-  static final String ALERT_PATCH_FIELDS = "trigger,enabled,batchSize";
-  static final String ALERT_UPDATE_FIELDS = "trigger,enabled,batchSize,input,filteringRules";
+  static final String ALERT_PATCH_FIELDS = "trigger,enabled,batchSize,notificationTemplate";
+  static final String ALERT_UPDATE_FIELDS =
+      "trigger,enabled,batchSize,input,filteringRules,notificationTemplate";
 
   public EventSubscriptionRepository() {
     super(
@@ -55,7 +62,8 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   }
 
   @Override
-  public void setFields(EventSubscription entity, Fields fields) {
+  public void setFields(
+      EventSubscription entity, Fields fields, RelationIncludes relationIncludes) {
     if (fields.contains("statusDetails") && !entity.getDestinations().isEmpty()) {
       List<SubscriptionDestination> destinations = new ArrayList<>();
       entity
@@ -69,10 +77,27 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
                                   entity.getId(), destination.getId()))));
       entity.withDestinations(destinations);
     }
+    entity.setNotificationTemplate(getTemplateReference(entity));
   }
 
   @Override
   public void clearFields(EventSubscription entity, Fields fields) {}
+
+  @Override
+  public void setInheritedFields(EventSubscription entity, Fields fields) {
+    entity.setNotificationTemplate(getTemplateReference(entity));
+  }
+
+  private EntityReference getTemplateReference(EventSubscription subscription) {
+    List<EntityReference> templateRefs =
+        findTo(
+            subscription.getId(),
+            Entity.EVENT_SUBSCRIPTION,
+            Relationship.USES,
+            Entity.NOTIFICATION_TEMPLATE);
+
+    return templateRefs.isEmpty() ? null : templateRefs.get(0);
+  }
 
   @Override
   public void prepare(EventSubscription entity, boolean update) {
@@ -98,6 +123,19 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       entity.setFilteringRules(
           validateAndBuildFilteringConditions(
               entity.getFilteringRules().getResources(), entity.getAlertType(), entity.getInput()));
+    }
+
+    // Validate custom template if assigned
+    EntityReference templateRef = entity.getNotificationTemplate();
+    if (templateRef != null) {
+      NotificationTemplate template =
+          Entity.getEntity(
+              Entity.NOTIFICATION_TEMPLATE, templateRef.getId(), "", Include.NON_DELETED);
+
+      if (template.getProvider() == ProviderType.SYSTEM) {
+        throw new IllegalArgumentException(
+            "System templates cannot be assigned to EventSubscriptions. Please use a USER template or create a custom one.");
+      }
     }
 
     validateFilterRules(entity);
@@ -145,7 +183,15 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
   @Override
   public void storeRelationships(EventSubscription entity) {
-    // No relationships to store beyond what is stored in the super class
+    EntityReference templateRef = entity.getNotificationTemplate();
+    if (templateRef != null) {
+      addRelationship(
+          entity.getId(),
+          templateRef.getId(),
+          Entity.EVENT_SUBSCRIPTION,
+          Entity.NOTIFICATION_TEMPLATE,
+          Relationship.USES);
+    }
   }
 
   @Override
@@ -165,6 +211,8 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      updateTemplateRelationship();
+
       recordChange("input", original.getInput(), updated.getInput(), true);
       recordChange("batchSize", original.getBatchSize(), updated.getBatchSize());
       if (!original.getAlertType().equals(CreateEventSubscription.AlertType.ACTIVITY_FEED)) {
@@ -181,6 +229,61 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
         recordChange("trigger", original.getTrigger(), updated.getTrigger(), true);
         recordChange("config", original.getConfig(), updated.getConfig(), true);
       }
+    }
+
+    private void updateTemplateRelationship() {
+      EntityReference origTemplate = original.getNotificationTemplate();
+      EntityReference updatedTemplate = updated.getNotificationTemplate();
+
+      // No change: both null or same template ID
+      if (hasSameTemplate(origTemplate, updatedTemplate)) {
+        return;
+      }
+
+      // Template removed: delete existing USES relationship
+      if (updatedTemplate == null) {
+        deleteRelationship(
+            original.getId(),
+            Entity.EVENT_SUBSCRIPTION,
+            origTemplate.getId(),
+            Entity.NOTIFICATION_TEMPLATE,
+            Relationship.USES);
+        recordChange("notificationTemplate", origTemplate, null);
+        return;
+      }
+
+      // Template added: create new USES relationship
+      if (origTemplate == null) {
+        addRelationship(
+            updated.getId(),
+            updatedTemplate.getId(),
+            Entity.EVENT_SUBSCRIPTION,
+            Entity.NOTIFICATION_TEMPLATE,
+            Relationship.USES);
+        recordChange("notificationTemplate", null, updatedTemplate);
+        return;
+      }
+
+      // Template changed: replace old relationship with new one
+      deleteRelationship(
+          original.getId(),
+          Entity.EVENT_SUBSCRIPTION,
+          origTemplate.getId(),
+          Entity.NOTIFICATION_TEMPLATE,
+          Relationship.USES);
+      addRelationship(
+          updated.getId(),
+          updatedTemplate.getId(),
+          Entity.EVENT_SUBSCRIPTION,
+          Entity.NOTIFICATION_TEMPLATE,
+          Relationship.USES);
+      recordChange("notificationTemplate", origTemplate, updatedTemplate);
+    }
+
+    private boolean hasSameTemplate(EntityReference orig, EntityReference updated) {
+      if (orig == null && updated == null) return true;
+      if (orig == null || updated == null) return false;
+      return orig.getId().equals(updated.getId());
     }
   }
 }

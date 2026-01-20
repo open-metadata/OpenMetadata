@@ -26,6 +26,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.FullyQualifiedName.build;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
@@ -57,6 +58,7 @@ import org.openmetadata.schema.api.data.CreateContainer;
 import org.openmetadata.schema.api.services.CreateStorageService;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.services.StorageService;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -64,14 +66,15 @@ import org.openmetadata.schema.type.ContainerDataModel;
 import org.openmetadata.schema.type.ContainerFileFormat;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.StorageServiceResourceTest;
 import org.openmetadata.service.resources.storages.ContainerResource.ContainerList;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -986,5 +989,92 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
 
       assertTrue(col2.getTags() == null || col2.getTags().isEmpty(), "col2 should not have tags");
     }
+  }
+
+  @Test
+  void testBulk_PreservesUserEditsOnUpdate(TestInfo test) throws IOException {
+    CreateContainer botCreate =
+        createRequest(test.getDisplayName())
+            .withDescription("Bot initial description")
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL));
+    Container entity = createEntity(botCreate, INGESTION_BOT_AUTH_HEADERS);
+
+    CreateContainer userUpdate =
+        createRequest(test.getDisplayName()).withDescription("User updated description");
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget,
+            List.of(userUpdate),
+            BulkOperationResult.class,
+            OK,
+            INGESTION_BOT_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    Container updated = getEntity(entity.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(
+        "Bot initial description",
+        updated.getDescription(),
+        "Bot should not be able to override non-empty user-edited description");
+
+    List<TagLabel> expectedTags = List.of(USER_ADDRESS_TAG_LABEL);
+    assertTrue(
+        TestUtils.isTagsSuperSet(updated.getTags(), expectedTags),
+        "Tags should be preserved from bot creation");
+  }
+
+  @Test
+  void testBulk_TagMergeBehavior(TestInfo test) throws IOException {
+    CreateContainer initialCreate =
+        createRequest(test.getDisplayName()).withTags(List.of(USER_ADDRESS_TAG_LABEL));
+    Container entity = createEntity(initialCreate, ADMIN_AUTH_HEADERS);
+    assertEquals(1, entity.getTags().size());
+    assertTrue(entity.getTags().contains(USER_ADDRESS_TAG_LABEL));
+
+    CreateContainer updateWithNewTag =
+        createRequest(test.getDisplayName()).withTags(List.of(PERSONAL_DATA_TAG_LABEL));
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget,
+            List.of(updateWithNewTag),
+            BulkOperationResult.class,
+            OK,
+            ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    Container updated = getEntity(entity.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(2, updated.getTags().size(), "Tags should be merged, not replaced");
+    assertTrue(
+        updated.getTags().stream()
+            .map(TagLabel::getTagFQN)
+            .collect(Collectors.toSet())
+            .containsAll(
+                List.of(USER_ADDRESS_TAG_LABEL.getTagFQN(), PERSONAL_DATA_TAG_LABEL.getTagFQN())),
+        "Both old and new tags should be present");
+  }
+
+  @Test
+  void testBulk_AdminCanOverrideDescription(TestInfo test) throws IOException {
+    CreateContainer initialCreate =
+        createRequest(test.getDisplayName()).withDescription("Initial description");
+    Container entity = createEntity(initialCreate, ADMIN_AUTH_HEADERS);
+
+    CreateContainer adminUpdate =
+        createRequest(test.getDisplayName()).withDescription("Admin updated description");
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget, List.of(adminUpdate), BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    Container updated = getEntity(entity.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(
+        "Admin updated description",
+        updated.getDescription(),
+        "Admin should be able to update description via bulk API");
   }
 }

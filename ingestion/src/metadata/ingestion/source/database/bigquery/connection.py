@@ -31,6 +31,7 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
     TestConnectionResult,
 )
 from metadata.generated.schema.security.credentials.gcpCredentials import (
+    GcpADC,
     GcpCredentialsPath,
 )
 from metadata.generated.schema.security.credentials.gcpValues import (
@@ -68,25 +69,21 @@ def get_connection_url(connection: BigQueryConnection) -> str:
             connection.credentials.gcpConfig.projectId, SingleProjectId
         ):
             if not connection.credentials.gcpConfig.projectId.root:
-                return f"{connection.scheme.value}://{connection.billingProjectId or connection.credentials.gcpConfig.projectId.root or ''}"
+                return f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root or ''}"
             if (
                 not connection.credentials.gcpConfig.privateKey
                 and connection.credentials.gcpConfig.projectId.root
             ):
                 project_id = connection.credentials.gcpConfig.projectId.root
-                os.environ["GOOGLE_CLOUD_PROJECT"] = (
-                    connection.billingProjectId or project_id
-                )
-            return f"{connection.scheme.value}://{connection.billingProjectId or connection.credentials.gcpConfig.projectId.root}"
+                os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
+            return f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root}"
         elif isinstance(connection.credentials.gcpConfig.projectId, MultipleProjectId):
             for project_id in connection.credentials.gcpConfig.projectId.root:
                 if not connection.credentials.gcpConfig.privateKey and project_id:
                     # Setting environment variable based on project id given by user / set in ADC
-                    os.environ["GOOGLE_CLOUD_PROJECT"] = (
-                        connection.billingProjectId or project_id
-                    )
-                return f"{connection.scheme.value}://{connection.billingProjectId or project_id}"
-            return f"{connection.scheme.value}://{connection.billingProjectId or ''}"
+                    os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
+                return f"{connection.scheme.value}://{project_id}"
+            return f"{connection.scheme.value}://"
 
     # If gcpConfig is the JSON key path and projectId is defined, we use it by default
     elif (
@@ -96,13 +93,27 @@ def get_connection_url(connection: BigQueryConnection) -> str:
         if isinstance(  # pylint: disable=no-else-return
             connection.credentials.gcpConfig.projectId, SingleProjectId
         ):
-            return f"{connection.scheme.value}://{connection.billingProjectId or connection.credentials.gcpConfig.projectId.root}"
+            return f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root}"
 
         elif isinstance(connection.credentials.gcpConfig.projectId, MultipleProjectId):
             for project_id in connection.credentials.gcpConfig.projectId.root:
-                return f"{connection.scheme.value}://{connection.billingProjectId or project_id}"
+                return f"{connection.scheme.value}://{project_id}"
 
-    return f"{connection.scheme.value}://{connection.billingProjectId or ''}"
+    # If gcpConfig is the GCP ADC and projectId is defined, we use it by default
+    elif (
+        isinstance(connection.credentials.gcpConfig, GcpADC)
+        and connection.credentials.gcpConfig.projectId
+    ):
+        if isinstance(  # pylint: disable=no-else-return
+            connection.credentials.gcpConfig.projectId, SingleProjectId
+        ):
+            return f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root}"
+
+        elif isinstance(connection.credentials.gcpConfig.projectId, MultipleProjectId):
+            for project_id in connection.credentials.gcpConfig.projectId.root:
+                return f"{connection.scheme.value}://{project_id}"
+
+    return f"{connection.scheme.value}://"
 
 
 def get_connection(connection: BigQueryConnection) -> Engine:
@@ -110,10 +121,15 @@ def get_connection(connection: BigQueryConnection) -> Engine:
     Prepare the engine and the GCP credentials
     """
     set_google_credentials(gcp_credentials=connection.credentials)
+    kwargs = {}
+    if connection.billingProjectId:
+        kwargs["billing_project_id"] = connection.billingProjectId
+
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url,
         get_connection_args_fn=get_connection_args_common,
+        **kwargs,
     )
 
 
@@ -137,6 +153,10 @@ def test_connection(
             return policy_tags
 
     def test_tags():
+        if not service_connection.includePolicyTags:
+            logger.info("'includePolicyTags' is set to false, so skipping this test.")
+            return None
+
         taxonomy_project_ids = []
         if engine.url.host:
             taxonomy_project_ids.append(engine.url.host)

@@ -51,12 +51,12 @@ from metadata.profiler.metrics.core import (
     TMetric,
 )
 from metadata.profiler.metrics.static.row_count import RowCount
-from metadata.profiler.orm.functions.table_metric_computer import CREATE_DATETIME
 from metadata.profiler.orm.registry import NOT_COMPUTE
 from metadata.profiler.processor.metric_filter import MetricFilter
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
+CREATE_DATETIME = "createDateTime"
 
 
 class MissingMetricException(Exception):

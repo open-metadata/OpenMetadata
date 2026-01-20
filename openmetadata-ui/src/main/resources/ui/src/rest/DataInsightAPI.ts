@@ -76,6 +76,7 @@ export const setChartDataStreamConnection = async (params: {
   serviceName: string;
   startTime: number;
   endTime: number;
+  entityLink: string;
 }) => {
   const response = await APIClient.post<StartChartDataStreamConnectionResponse>(
     `/analytics/dataInsights/system/charts/stream`,

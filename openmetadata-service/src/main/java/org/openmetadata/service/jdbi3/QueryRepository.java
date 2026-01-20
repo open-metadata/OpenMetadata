@@ -10,7 +10,9 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +31,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.query.QueryResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
@@ -64,7 +67,7 @@ public class QueryRepository extends EntityRepository<Query> {
   }
 
   @Override
-  public void setFields(Query entity, EntityUtil.Fields fields) {
+  public void setFields(Query entity, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     entity.setQueryUsedIn(
         fields.contains(QUERY_USED_IN_FIELD) ? getQueryUsage(entity) : entity.getQueryUsedIn());
     entity.withUsers(fields.contains("users") ? getQueryUsers(entity) : entity.getUsers());
@@ -83,6 +86,10 @@ public class QueryRepository extends EntityRepository<Query> {
     }
     // Bulk fetch and set services for all queries first
     fetchAndSetServices(entities);
+
+    // Bulk fetch and set query-specific fields
+    fetchAndSetQueryUsage(entities, fields);
+    fetchAndSetQueryUsers(entities, fields);
 
     // Then call parent's implementation which handles standard fields
     super.setFieldsInBulk(fields, entities);
@@ -115,6 +122,62 @@ public class QueryRepository extends EntityRepository<Query> {
             }
           });
     }
+  }
+
+  private void fetchAndSetQueryUsage(List<Query> queries, EntityUtil.Fields fields) {
+    if (!fields.contains(QUERY_USED_IN_FIELD) || queries == null || queries.isEmpty()) {
+      return;
+    }
+
+    List<String> queryIds = queries.stream().map(q -> q.getId().toString()).toList();
+    List<CollectionDAO.EntityRelationshipObject> relationships =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(queryIds, Entity.QUERY, Relationship.MENTIONED_IN.ordinal());
+
+    // Group relationships by query ID
+    Map<UUID, List<EntityReference>> queryUsageMap = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : relationships) {
+      UUID queryId = UUID.fromString(record.getToId());
+      EntityReference entityRef =
+          Entity.getEntityReferenceById(
+              record.getFromEntity(), UUID.fromString(record.getFromId()), Include.ALL);
+      queryUsageMap.computeIfAbsent(queryId, k -> new ArrayList<>()).add(entityRef);
+    }
+
+    queries.forEach(
+        query -> {
+          List<EntityReference> usage = queryUsageMap.getOrDefault(query.getId(), List.of());
+          query.setQueryUsedIn(usage);
+        });
+  }
+
+  private void fetchAndSetQueryUsers(List<Query> queries, EntityUtil.Fields fields) {
+    if (!fields.contains("users") || queries == null || queries.isEmpty()) {
+      return;
+    }
+
+    List<String> queryIds = queries.stream().map(q -> q.getId().toString()).toList();
+    List<CollectionDAO.EntityRelationshipObject> relationships =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(queryIds, Entity.QUERY, Relationship.USES.ordinal());
+
+    // Group relationships by query ID
+    Map<UUID, List<EntityReference>> queryUsersMap = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : relationships) {
+      UUID queryId = UUID.fromString(record.getToId());
+      EntityReference entityRef =
+          Entity.getEntityReferenceById(
+              record.getFromEntity(), UUID.fromString(record.getFromId()), Include.ALL);
+      queryUsersMap.computeIfAbsent(queryId, k -> new ArrayList<>()).add(entityRef);
+    }
+
+    queries.forEach(
+        query -> {
+          List<EntityReference> users = queryUsersMap.getOrDefault(query.getId(), List.of());
+          query.withUsers(users);
+        });
   }
 
   public List<EntityReference> getQueryUsage(Query queryEntity) {

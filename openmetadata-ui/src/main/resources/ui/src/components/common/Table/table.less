@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('../../../styles/variables.less');
+@import (reference) '../../../styles/variables.less';
 
 .table-container {
   height: initial !important;
@@ -20,21 +20,18 @@
   overflow: hidden;
 
   .ant-table-body {
-    scrollbar-width: none;
-
-    &::-webkit-scrollbar {
-      display: none;
-    }
-
     tr:last-child td {
       border-bottom: none;
     }
   }
 
   .custom-column-dropdown-menu {
-    margin-right: 10px;
     border: none;
-    color: @primary-color;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 500;
+    color: @grey-600;
 
     .ant-dropdown-menu {
       background-color: @white;
@@ -49,6 +46,9 @@
     .ant-dropdown-menu-item:hover {
       background-color: @white;
       color: inherit;
+    }
+    svg {
+      height: 24px;
     }
   }
 

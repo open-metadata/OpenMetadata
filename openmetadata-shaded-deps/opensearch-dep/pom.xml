@@ -5,7 +5,7 @@
     <parent>
         <artifactId>openmetadata-shaded-deps</artifactId>
         <groupId>org.open-metadata</groupId>
-        <version>1.9.0-SNAPSHOT</version>
+        <version>1.12.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>opensearch-deps</artifactId>
@@ -16,14 +16,21 @@
              https://issues.apache.org/jira/browse/MSHADE-206 which makes it so
              the dependency reduced pom is not reflected in a multi-module build
              correctly. -->
+
+        <!-- OpenSearch Java API Client -->
         <dependency>
             <groupId>org.opensearch.client</groupId>
-            <artifactId>opensearch-rest-high-level-client</artifactId>
+            <artifactId>opensearch-java</artifactId>
+            <version>2.26.0</version>
             <optional>true</optional>
             <exclusions>
                 <exclusion>
                     <groupId>org.yaml</groupId>
                     <artifactId>snakeyaml</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.parsson</groupId>
+                    <artifactId>parsson</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -121,6 +128,15 @@
                         <relocation>
                             <pattern>org.apache.lucene</pattern>
                             <shadedPattern>os.org.apache.lucene</shadedPattern>
+                        </relocation>
+                        <!-- New OpenSearch Java API Client relocations -->
+                        <relocation>
+                            <pattern>org.opensearch.client.json</pattern>
+                            <shadedPattern>os.org.opensearch.client.json</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>org.opensearch.client.transport</pattern>
+                            <shadedPattern>os.org.opensearch.client.transport</shadedPattern>
                         </relocation>
                         <relocation>
                             <pattern>META-INF/versions/9/org/apache/logging/log4j/</pattern>

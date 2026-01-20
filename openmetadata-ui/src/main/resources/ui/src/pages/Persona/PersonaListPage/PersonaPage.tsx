@@ -12,6 +12,7 @@
  */
 import { Button, Skeleton } from 'antd';
 import Card from 'antd/lib/card/Card';
+import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,12 +29,14 @@ import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.co
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
+import { CursorType } from '../../../enums/pagination.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
 import { Paging } from '../../../generated/type/paging';
 import { useAuth } from '../../../hooks/authHooks';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getAllPersonas } from '../../../rest/PersonaAPI';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import './persona-page.less';
 
 const PERSONA_PAGE_SIZE = 12;
@@ -49,9 +52,10 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
   const {
     currentPage,
     handlePageChange,
+    handlePagingChange,
     pageSize,
     paging,
-    handlePagingChange,
+    pagingCursor,
     showPagination,
   } = usePaging(PERSONA_PAGE_SIZE);
 
@@ -60,28 +64,44 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
     []
   );
 
-  const fetchPersonas = useCallback(async (params?: Partial<Paging>) => {
-    try {
-      setIsLoading(true);
-      const { data, paging } = await getAllPersonas({
-        limit: pageSize,
-        fields: TabSpecificField.USERS,
-        after: params?.after,
-        before: params?.before,
-      });
+  const fetchPersonas = useCallback(
+    async (params?: Partial<Paging>) => {
+      try {
+        setIsLoading(true);
+        const { data, paging } = await getAllPersonas({
+          limit: pageSize,
+          fields: TabSpecificField.USERS,
+          after: params?.after,
+          before: params?.before,
+        });
 
-      setPersona(data);
-      handlePagingChange(paging);
-    } catch {
-      // Error
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+        setPersona(data);
+        handlePagingChange(paging);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [pageSize, handlePagingChange]
+  );
 
+  // Initial load and when URL params change
   useEffect(() => {
-    fetchPersonas();
-  }, [pageSize]);
+    const cursorValue = pagingCursor.cursorValue;
+    const cursorType = pagingCursor.cursorType as CursorType;
+
+    if (cursorType && cursorValue) {
+      fetchPersonas({ [cursorType]: cursorValue });
+    } else {
+      fetchPersonas();
+    }
+  }, [
+    pagingCursor.cursorType,
+    pagingCursor.cursorValue,
+    pageSize,
+    fetchPersonas,
+  ]);
 
   const handleAddNewPersona = useCallback(() => {
     setAddEditPersona({} as Persona);
@@ -112,14 +132,18 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
 
   const handlePersonaAddEditSave = useCallback(() => {
     handlePersonalAddEditCancel();
-    fetchPersonas();
-  }, [fetchPersonas]);
+    fetchPersonas({ [CursorType.AFTER]: paging[CursorType.AFTER] });
+  }, [fetchPersonas, paging]);
 
   const handlePersonaPageChange = useCallback(
     ({ currentPage, cursorType }: PagingHandlerParams) => {
-      handlePageChange(currentPage);
-      if (cursorType) {
-        fetchPersonas({ [cursorType]: paging[cursorType] });
+      const cursorValue = cursorType ? paging[cursorType] : undefined;
+      handlePageChange(currentPage, {
+        cursorType: cursorType as CursorType,
+        cursorValue,
+      });
+      if (cursorType && cursorValue) {
+        fetchPersonas({ [cursorType]: cursorValue });
       }
     },
     [handlePageChange, fetchPersonas, paging]
@@ -151,7 +175,12 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
           </div>
           <div className="d-flex justify-between align-center">
             <div className="flex-1">
-              <PageHeader data={PAGE_HEADERS.PERSONAS} />
+              <PageHeader
+                data={{
+                  header: t(PAGE_HEADERS.PERSONAS.header),
+                  subHeader: t(PAGE_HEADERS.PERSONAS.subHeader),
+                }}
+              />
             </div>
             <div>
               <Button
@@ -170,7 +199,10 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
           <div className="persona-cards-grid">
             {isLoading
               ? [1, 2, 3].map((key) => (
-                  <div className="skeleton-card-item" key={key}>
+                  <div
+                    className="skeleton-card-item"
+                    data-testid="skeleton-card-loader"
+                    key={key}>
                     <Card>
                       <Skeleton active paragraph title />
                     </Card>
@@ -187,7 +219,7 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
 
           {/* Pagination at bottom of page */}
           {showPagination && (
-            <div className="d-flex justify-center align-center m-b-sm">
+            <div className="d-flex justify-center align-center m-b-sm m-t-sm">
               <NextPrevious
                 currentPage={currentPage}
                 isLoading={isLoading}

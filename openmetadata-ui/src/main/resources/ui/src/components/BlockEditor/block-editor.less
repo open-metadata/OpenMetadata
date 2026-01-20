@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('../../styles/variables.less');
+@import (reference) '../../styles/variables.less';
 
 @border-radius: 6px;
 @border-color: #e8e8ed;
@@ -322,6 +322,27 @@
   .hashtag-item {
     padding: 6px;
   }
+  .handlebars-item {
+    padding: 6px;
+  }
+}
+
+// Handlebars highlighting
+.om-handlebars {
+  color: @primary-color;
+  background-color: transparent;
+  padding: 0;
+  border: none;
+}
+
+// Handlebars block syntax
+.om-handlebars-block {
+  color: @primary-color;
+  margin: 4px 0;
+  padding: 0;
+  line-height: 20px;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .block-editor-link-modal,

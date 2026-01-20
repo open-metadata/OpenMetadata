@@ -23,13 +23,12 @@ import { Col, Form, Input, Row, Skeleton } from 'antd';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CURATED_ASSETS_LIST } from '../../../../../constants/AdvancedSearch.constants';
-import { EntityType } from '../../../../../enums/entity.enum';
 import { useFqn } from '../../../../../hooks/useFqn';
 import {
   AlertMessage,
   CuratedAssetsFormSelectedAssetsInfo,
-  getExploreURLWithFilters,
+  getExpandedResourceList,
+  getExploreURLForAdvancedFilter,
   getModifiedQueryFilterWithSelectedAssets,
 } from '../../../../../utils/CuratedAssetsUtils';
 import { elasticSearchFormat } from '../../../../../utils/QueryBuilderElasticsearchFormatUtils';
@@ -67,34 +66,28 @@ export const AdvancedAssetsFilterField = ({
   const selectedResource: Array<string> =
     Form.useWatch('resources', form) || [];
 
-  // Helper function to expand 'all' selection to all individual entity types
-  const getExpandedResourceList = useCallback((resources: Array<string>) => {
-    if (resources.includes(EntityType.ALL)) {
-      // Return all entity types except 'all' itself
-      return CURATED_ASSETS_LIST.filter((type) => type !== EntityType.ALL);
-    }
-
-    return resources;
-  }, []);
-
   const queryURL = useMemo(() => {
-    // Expand 'all' selection to individual entity types for the query URL
-    const expandedResources = getExpandedResourceList(selectedResource);
-
-    return getExploreURLWithFilters({
+    return getExploreURLForAdvancedFilter({
       queryFilter,
-      selectedResource: expandedResources,
+      selectedResource,
       config,
     });
-  }, [queryFilter, config, selectedResource, getExpandedResourceList]);
+  }, [queryFilter, config, selectedResource]);
 
   const handleChange = useCallback(
     (nTree: ImmutableTree, nConfig: Config) => {
       onTreeUpdate(nTree, nConfig);
+      const elasticQuery = elasticSearchFormat(nTree, nConfig);
       const queryFilter = {
-        query: elasticSearchFormat(nTree, nConfig),
+        query: elasticQuery ?? '',
       };
+
+      // Update form field with the raw query filter (without entity type filter)
+      // The entity type filter will be added when needed in getModifiedQueryFilterWithSelectedAssets
       form.setFieldValue('queryFilter', JSON.stringify(queryFilter));
+
+      // Update local state for entity count calculation
+      setQueryFilter(JSON.stringify(queryFilter));
     },
     [onTreeUpdate, form]
   );
@@ -199,9 +192,6 @@ export const AdvancedAssetsFilterField = ({
                 <Builder {...props} />
               </div>
             )}
-            settings={{
-              ...config.settings,
-            }}
             value={treeInternal}
             onChange={handleChange}
           />
@@ -223,6 +213,7 @@ export const AdvancedAssetsFilterField = ({
             <AlertMessage
               assetCount={selectedAssetsInfo?.filteredResourceCount}
               href={queryURL}
+              target="_blank"
             />
           </Col>
         )}

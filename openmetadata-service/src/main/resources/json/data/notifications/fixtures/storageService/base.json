@@ -1,0 +1,28 @@
+{
+  "id": "5a4f3e2d-1c0b-9a8f-7e6d-5c4b3a2f1e0d",
+  "name": "sample-storage-service",
+  "displayName": "Sample Storage Service",
+  "fullyQualifiedName": "sample-storage-service",
+  "description": "Mock storage service for notification template testing",
+  "version": 1.0,
+  "updatedAt": 1699564800000,
+  "updatedBy": "admin",
+  "deleted": false,
+  "href": "http://localhost:8585/api/v1/services/storageServices/5a4f3e2d-1c0b-9a8f-7e6d-5c4b3a2f1e0d",
+  "serviceType": "S3",
+  "connection": {
+    "config": {
+      "type": "S3",
+      "awsRegion": "us-east-1"
+    }
+  },
+  "owners": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "type": "user",
+      "name": "john.doe",
+      "fullyQualifiedName": "john.doe"
+    }
+  ],
+  "tags": []
+}

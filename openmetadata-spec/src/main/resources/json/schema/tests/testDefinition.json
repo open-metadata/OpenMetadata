@@ -14,7 +14,7 @@
       "enum": [
         "OpenMetadata",
         "GreatExpectations",
-        "DBT",
+        "dbt",
         "Deequ",
         "Soda",
         "Other"
@@ -116,7 +116,8 @@
         "Validity",
         "Uniqueness",
         "Integrity",
-        "SQL"
+        "SQL",
+        "NoDimension"
       ]
     }
   },
@@ -215,6 +216,23 @@
       "description": "When `true` indicates the test case supports dynamic assertions.",
       "type": "boolean",
       "default": false
+    },
+    "enabled": {
+      "description": "When `true` indicates the test definition is available for creating test cases. System test definitions can only be disabled by users with appropriate permissions.",
+      "type": "boolean",
+      "default": true
+     },
+    "supportedServices": {
+      "description": "List of services that this test definition supports. When empty, it implies all services are supported.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+     },
+    "sqlExpression": {
+      "description": "SQL expression template for custom SQL-based test definitions. Supports substitution variables: {table} and {column} for runtime entity references, and {{paramName}} for user-defined parameters. This field is only applicable for test definitions with testPlatforms set to 'OpenMetadata' and is used to execute custom SQL queries for data quality validation.",
+      "$ref": "../type/basic.json#/definitions/sqlQuery"
     }
   },
   "required": ["name", "description", "testPlatforms"],

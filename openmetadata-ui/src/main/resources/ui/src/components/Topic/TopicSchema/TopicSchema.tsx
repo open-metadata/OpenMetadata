@@ -19,7 +19,10 @@ import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
+import {
+  HIGHLIGHTED_ROW_SELECTOR,
+  TABLE_SCROLL_VALUE,
+} from '../../../constants/Table.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_TOPIC_VISIBLE_COLUMNS,
@@ -35,7 +38,9 @@ import {
 } from '../../../generated/entity/data/topic';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
+import { useScrollToElement } from '../../../hooks/useScrollToElement';
+import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
@@ -44,10 +49,18 @@ import {
 } from '../../../utils/TableTags/TableTags.utils';
 import {
   getAllRowKeysByKeyName,
+  getExpandAllKeysToDepth,
+  getHighlightedRowClassName,
+  getSafeExpandAllKeys,
+  getSchemaDepth,
+  getSchemaFieldCount,
   getTableExpandableConfig,
+  isLargeSchema,
+  shouldCollapseSchema,
   updateFieldDescription,
   updateFieldTags,
 } from '../../../utils/TableUtils';
+import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -74,6 +87,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   const [viewType, setViewType] = useState<SchemaViewType>(
     SchemaViewType.FIELDS
   );
+
   const viewTypeOptions = [
     {
       label: t('label.field-plural'),
@@ -82,14 +96,23 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     { label: t('label.text'), value: SchemaViewType.TEXT },
   ];
 
-  const { fqn: entityFqn } = useFqn();
   const {
     data: topicDetails,
     isVersionView,
     permissions,
     onUpdate,
     currentVersionData,
+    openColumnDetailPanel,
+    selectedColumn,
   } = useGenericContext<Topic>();
+
+  const {
+    entityFqn: topicFqn,
+    columnFqn: columnPart,
+    fqn,
+  } = useFqn({
+    type: EntityType.TOPIC,
+  });
 
   const isReadOnly = useMemo(() => {
     // If there is a current version, it should be read only
@@ -129,6 +152,27 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     );
   }, [messageSchema?.schemaFields]);
 
+  useScrollToElement(
+    HIGHLIGHTED_ROW_SELECTOR,
+    Boolean(fqn && messageSchema?.schemaFields?.length)
+  );
+
+  const getRowClassName = useCallback(
+    (record: Field) => getHighlightedRowClassName(record, fqn),
+    [fqn]
+  );
+
+  const schemaStats = useMemo(() => {
+    const fields = messageSchema?.schemaFields ?? [];
+
+    return {
+      totalFields: getSchemaFieldCount(fields),
+      maxDepth: getSchemaDepth(fields),
+      isLargeSchema: isLargeSchema(fields),
+      shouldCollapse: shouldCollapseSchema(fields),
+    };
+  }, [messageSchema?.schemaFields]);
+
   const handleFieldTagsChange = async (
     selectedTags: EntityTags[],
     editColumnTag: Field
@@ -159,9 +203,38 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     }
   };
 
+  const handleColumnClick = useCallback(
+    (field: Field, event: React.MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (
+        target.closest(
+          'button, a, input, textarea, select, .table-expand-icon'
+        ) !== null
+      ) {
+        return;
+      }
+      openColumnDetailPanel(field);
+    },
+    [openColumnDetailPanel]
+  );
+
+  useFqnDeepLink({
+    data: topicDetails?.messageSchema?.schemaFields ?? [],
+    columnPart,
+    fqn,
+    setExpandedRowKeys: setExpandedRowKeys,
+    openColumnDetailPanel,
+    selectedColumn: selectedColumn as Field | null,
+  });
+
   const toggleExpandAll = () => {
     if (expandedRowKeys.length < schemaAllRowKeys.length) {
-      setExpandedRowKeys(schemaAllRowKeys);
+      const safeKeys = getSafeExpandAllKeys(
+        messageSchema?.schemaFields ?? [],
+        schemaStats.isLargeSchema,
+        schemaAllRowKeys
+      );
+      setExpandedRowKeys(safeKeys);
     } else {
       setExpandedRowKeys([]);
     }
@@ -173,7 +246,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
   const renderSchemaName = useCallback(
     (_: unknown, record: Field) => (
-      <div className="d-inline-flex w-max-90 vertical-align-inherit">
+      <div className="d-inline-flex items-center gap-2 hover-icon-group w-max-90 vertical-align-inherit">
         <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
           <span className="break-word">
             {isVersionView ? (
@@ -183,6 +256,12 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             )}
           </span>
         </Tooltip>
+        {!isVersionView && record.fullyQualifiedName && (
+          <CopyLinkButton
+            entityType={EntityType.TOPIC}
+            fieldFqn={record.fullyQualifiedName}
+          />
+        )}
       </div>
     ),
     [isVersionView]
@@ -212,6 +291,58 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     >;
   }, [messageSchema?.schemaFields]);
 
+  const renderDescription = useCallback(
+    (_: string, record: Field, index: number) => (
+      <TableDescription
+        columnData={{
+          fqn: record.fullyQualifiedName ?? '',
+          field: record.description,
+        }}
+        entityFqn={topicFqn}
+        entityType={EntityType.TOPIC}
+        hasEditPermission={hasDescriptionEditAccess}
+        index={index}
+        isReadOnly={isReadOnly}
+        onClick={() => setEditFieldDescription(record)}
+      />
+    ),
+    [topicFqn, hasDescriptionEditAccess, isReadOnly]
+  );
+
+  const renderClassificationTags = useCallback(
+    (tags: TagLabel[], record: Field, index: number) => (
+      <TableTags<Field>
+        entityFqn={topicFqn}
+        entityType={EntityType.TOPIC}
+        handleTagSelection={handleFieldTagsChange}
+        hasTagEditAccess={hasTagEditAccess}
+        index={index}
+        isReadOnly={isReadOnly}
+        record={record}
+        tags={tags}
+        type={TagSource.Classification}
+      />
+    ),
+    [topicFqn, handleFieldTagsChange, hasTagEditAccess, isReadOnly]
+  );
+
+  const renderGlossaryTags = useCallback(
+    (tags: TagLabel[], record: Field, index: number) => (
+      <TableTags<Field>
+        entityFqn={topicFqn}
+        entityType={EntityType.TOPIC}
+        handleTagSelection={handleFieldTagsChange}
+        hasTagEditAccess={hasGlossaryTermEditAccess}
+        index={index}
+        isReadOnly={isReadOnly}
+        record={record}
+        tags={tags}
+        type={TagSource.Glossary}
+      />
+    ),
+    [topicFqn, handleFieldTagsChange, hasGlossaryTermEditAccess, isReadOnly]
+  );
+
   const columns: ColumnsType<Field> = useMemo(
     () => [
       {
@@ -220,7 +351,13 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         key: TABLE_COLUMNS_KEYS.NAME,
         fixed: 'left',
         width: 220,
+        sorter: getColumnSorter<Field, 'name'>('name'),
         render: renderSchemaName,
+        className: 'cursor-pointer',
+        onCell: (record: Field) => ({
+          onClick: (event) => handleColumnClick(record, event),
+          'data-testid': 'column-name-cell',
+        }),
       },
       {
         title: t('label.type'),
@@ -235,20 +372,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
         key: TABLE_COLUMNS_KEYS.DESCRIPTION,
         width: 350,
-        render: (_, record, index) => (
-          <TableDescription
-            columnData={{
-              fqn: record.fullyQualifiedName ?? '',
-              field: record.description,
-            }}
-            entityFqn={entityFqn}
-            entityType={EntityType.TOPIC}
-            hasEditPermission={hasDescriptionEditAccess}
-            index={index}
-            isReadOnly={isReadOnly}
-            onClick={() => setEditFieldDescription(record)}
-          />
-        ),
+        render: renderDescription,
       },
       {
         title: t('label.tag-plural'),
@@ -256,19 +380,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         key: TABLE_COLUMNS_KEYS.TAGS,
         width: 300,
         filterIcon: columnFilterIcon,
-        render: (tags: TagLabel[], record: Field, index: number) => (
-          <TableTags<Field>
-            entityFqn={entityFqn}
-            entityType={EntityType.TOPIC}
-            handleTagSelection={handleFieldTagsChange}
-            hasTagEditAccess={hasTagEditAccess}
-            index={index}
-            isReadOnly={isReadOnly}
-            record={record}
-            tags={tags}
-            type={TagSource.Classification}
-          />
-        ),
+        render: renderClassificationTags,
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
         onFilter: searchTagInData,
@@ -279,39 +391,39 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         key: TABLE_COLUMNS_KEYS.GLOSSARY,
         width: 300,
         filterIcon: columnFilterIcon,
-        render: (tags: TagLabel[], record: Field, index: number) => (
-          <TableTags<Field>
-            entityFqn={entityFqn}
-            entityType={EntityType.TOPIC}
-            handleTagSelection={handleFieldTagsChange}
-            hasTagEditAccess={hasGlossaryTermEditAccess}
-            index={index}
-            isReadOnly={isReadOnly}
-            record={record}
-            tags={tags}
-            type={TagSource.Glossary}
-          />
-        ),
+        render: renderGlossaryTags,
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
         onFilter: searchTagInData,
       },
     ],
     [
-      isReadOnly,
-      messageSchema,
-      hasTagEditAccess,
-      editFieldDescription,
-      hasDescriptionEditAccess,
-      handleFieldTagsChange,
+      t,
       renderSchemaName,
       renderDataType,
+      renderDescription,
+      renderClassificationTags,
+      renderGlossaryTags,
+      tagFilter,
     ]
   );
 
   useEffect(() => {
-    setExpandedRowKeys(schemaAllRowKeys);
-  }, []);
+    const fields = messageSchema?.schemaFields ?? [];
+
+    if (schemaStats.shouldCollapse) {
+      // For large schemas, expand only 2 levels deep for better performance
+      const optimalKeys = getExpandAllKeysToDepth(fields, 2);
+      setExpandedRowKeys(optimalKeys);
+    } else {
+      // For small schemas, expand all for better UX
+      setExpandedRowKeys(schemaAllRowKeys);
+    }
+  }, [
+    schemaStats.shouldCollapse,
+    schemaAllRowKeys,
+    messageSchema?.schemaFields,
+  ]);
 
   return (
     <Row gutter={[16, 16]}>
@@ -376,6 +488,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
                   />
                 }
                 pagination={false}
+                rowClassName={getRowClassName}
                 rowKey="name"
                 scroll={TABLE_SCROLL_VALUE}
                 size="small"

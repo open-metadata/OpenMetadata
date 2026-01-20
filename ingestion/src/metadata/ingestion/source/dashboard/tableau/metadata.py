@@ -132,7 +132,11 @@ class TableauSource(DashboardServiceSource):
         return cls(config, metadata)
 
     def get_dashboards_list(self) -> Iterable[TableauDashboard]:
-        yield from self.client.get_workbooks()
+        if not self.source_config.includeOwners:
+            logger.debug("Skipping owner information as includeOwners is False")
+        yield from self.client.get_workbooks(
+            include_owners=self.source_config.includeOwners
+        )
 
     def get_dashboard_name(self, dashboard: TableauDashboard) -> str:
         return dashboard.name
@@ -151,6 +155,8 @@ class TableauSource(DashboardServiceSource):
         Get dashboard owner from email
         """
         try:
+            if not self.source_config.includeOwners:
+                return None
             if dashboard_details.owner and dashboard_details.owner.email:
                 return self.metadata.get_reference_by_email(
                     dashboard_details.owner.email
@@ -431,7 +437,11 @@ class TableauSource(DashboardServiceSource):
                     datamodel_entity = self.metadata.get_by_name(
                         entity=DashboardDataModel, fqn=datamodel_fqn
                     )
-
+                    if not datamodel_entity:
+                        logger.debug(
+                            f"Datamodel entity not found for lineage: {str(datamodel)}"
+                        )
+                        continue
                     # TableauPublishedDatasource will be skipped here and their lineage will be processed later
                     if (
                         datamodel_entity.dataModelType
@@ -629,7 +639,9 @@ class TableauSource(DashboardServiceSource):
                                     if db_service_entity
                                     else Dialect.ANSI
                                 ),
+                                parser_type=self.get_query_parser_type(),
                             )
+                            query_hash = lineage_parser.query_hash
                             for source_table in lineage_parser.source_tables or []:
                                 database_schema_table = fqn.split_table_name(
                                     str(source_table)
@@ -656,7 +668,8 @@ class TableauSource(DashboardServiceSource):
                                     != database_name.lower()
                                 ):
                                     logger.debug(
-                                        f"Database {database_name} does not match prefix {prefix_database_name}"
+                                        f"[{query_hash}] Database {database_name} does not match"
+                                        f" prefix {prefix_database_name}"
                                     )
                                     continue
 
@@ -667,7 +680,8 @@ class TableauSource(DashboardServiceSource):
                                     != schema_name.lower()
                                 ):
                                     logger.debug(
-                                        f"Schema {schema_name} does not match prefix {prefix_schema_name}"
+                                        f"[{query_hash}] Schema {schema_name} does not match"
+                                        f" prefix {prefix_schema_name}"
                                     )
                                     continue
 
@@ -677,7 +691,8 @@ class TableauSource(DashboardServiceSource):
                                     and prefix_table_name.lower() != table_name.lower()
                                 ):
                                     logger.debug(
-                                        f"Table {table_name} does not match prefix {prefix_table_name}"
+                                        f"[{query_hash}] Table {table_name} does not match"
+                                        f" prefix {prefix_table_name}"
                                     )
                                     continue
 
@@ -694,7 +709,7 @@ class TableauSource(DashboardServiceSource):
                                 )
                                 if not from_entities:
                                     logger.debug(
-                                        "No table entities found for custom SQL lineage."
+                                        f"[{query_hash}] No table entities found for custom SQL lineage."
                                         f"fqn_search_string={fqn_search_string}, table_name={table_name}, query={query}"
                                     )
                                 for table_entity in from_entities or []:
@@ -969,7 +984,9 @@ class TableauSource(DashboardServiceSource):
                         if db_service_entity
                         else Dialect.ANSI
                     ),
+                    parser_type=self.get_query_parser_type(),
                 )
+                query_hash = lineage_parser.query_hash
                 for source_table in lineage_parser.source_tables or []:
                     database_schema_table = fqn.split_table_name(str(source_table))
                     database_name = database_schema_table.get("database")
@@ -992,7 +1009,7 @@ class TableauSource(DashboardServiceSource):
                         and prefix_database_name.lower() != database_name.lower()
                     ):
                         logger.debug(
-                            f"Database {database_name} does not match prefix {prefix_database_name}"
+                            f"[{query_hash}] Database {database_name} does not match prefix {prefix_database_name}"
                         )
                         continue
                     if (
@@ -1001,7 +1018,7 @@ class TableauSource(DashboardServiceSource):
                         and prefix_schema_name.lower() != schema_name.lower()
                     ):
                         logger.debug(
-                            f"Schema {schema_name} does not match prefix {prefix_schema_name}"
+                            f"[{query_hash}] Schema {schema_name} does not match prefix {prefix_schema_name}"
                         )
                         continue
                     if (
@@ -1010,7 +1027,7 @@ class TableauSource(DashboardServiceSource):
                         and prefix_table_name.lower() != table_name.lower()
                     ):
                         logger.debug(
-                            f"Table {table_name} does not match prefix {prefix_table_name}"
+                            f"[{query_hash}] Table {table_name} does not match prefix {prefix_table_name}"
                         )
                         continue
 
@@ -1027,7 +1044,7 @@ class TableauSource(DashboardServiceSource):
                     )
                     if not from_entities:
                         logger.debug(
-                            "No table entities found for lineage using SQL Queries."
+                            f"[{query_hash}] No table entities found for lineage using SQL Queries."
                             f"fqn_search_string={fqn_search_string}, "
                             f"table_name={table_name}, query={custom_sql_table.query}"
                         )

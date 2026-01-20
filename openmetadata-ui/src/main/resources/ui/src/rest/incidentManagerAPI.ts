@@ -28,8 +28,11 @@ export type TestCaseIncidentStatusParams = ListParams & {
   testCaseResolutionStatusType?: string;
   assignee?: string;
   testCaseFQN?: string;
-  offset?: string;
+  offset?: number;
   originEntityFQN?: string;
+  domain?: string;
+  sortField?: string;
+  sortType?: 'asc' | 'desc';
 };
 
 export const getListTestCaseIncidentStatus = async ({
@@ -75,6 +78,20 @@ export const postTestCaseIncidentStatus = async (
     CreateTestCaseResolutionStatus,
     AxiosResponse<TestCaseResolutionStatus>
   >(testCaseIncidentUrl, data);
+
+  return response.data;
+};
+
+export const getListTestCaseIncidentStatusFromSearch = async ({
+  limit = 10,
+  offset = 0,
+  ...params
+}: TestCaseIncidentStatusParams) => {
+  const response = await APIClient.get<
+    PagingResponse<TestCaseResolutionStatus[]>
+  >(`${testCaseIncidentUrl}/search/list`, {
+    params: { ...params, limit, offset },
+  });
 
   return response.data;
 };

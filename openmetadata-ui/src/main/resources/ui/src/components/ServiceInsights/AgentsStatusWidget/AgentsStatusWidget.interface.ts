@@ -12,12 +12,14 @@
  */
 import { ReactNode } from 'react';
 import { AgentStatus } from '../../../enums/ServiceInsights.enum';
+import { WorkflowInstance } from '../../../generated/governance/workflows/workflowInstance';
 import { ServiceInsightWidgetCommonProps } from '../ServiceInsightsTab.interface';
 
 export interface AgentsStatusWidgetProps
   extends ServiceInsightWidgetCommonProps {
   isLoading: boolean;
   agentsInfo: AgentsInfo[];
+  liveAutoPilotStatusData?: WorkflowInstance;
 }
 
 export interface AgentsInfo {

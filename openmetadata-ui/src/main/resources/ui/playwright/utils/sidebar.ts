@@ -30,11 +30,19 @@ export const sidebarClick = async (page: Page, id: string) => {
   const items = SIDEBAR_LIST_ITEMS[id as keyof typeof SIDEBAR_LIST_ITEMS];
   if (items) {
     await page.hover('[data-testid="left-sidebar"]');
-    await page.waitForTimeout(300);
     await page.click(`[data-testid="${items[0]}"]`);
-    await page.click(`[data-testid="app-bar-item-${items[1]}"]`);
+
+    const targetElement = page
+      .locator(`[data-testid="app-bar-item-${items[1]}"]`)
+      .first();
+    await targetElement.waitFor({ state: 'visible' });
+    await targetElement.click();
   } else {
-    await page.click(`[data-testid="app-bar-item-${id}"]`);
+    const targetElement = page
+      .locator(`[data-testid="app-bar-item-${id}"]`)
+      .first();
+    await targetElement.waitFor({ state: 'visible' });
+    await targetElement.click();
   }
 
   await page.mouse.move(1280, 0); // Move mouse to top right corner

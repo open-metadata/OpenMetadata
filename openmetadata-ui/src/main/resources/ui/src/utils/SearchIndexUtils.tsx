@@ -11,28 +11,38 @@
  *  limitations under the License.
  */
 
-import { uniqueId } from 'lodash';
+import { get, uniqueId } from 'lodash';
+import { lazy, Suspense } from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../components/common/Loader/Loader';
 import QueryViewer from '../components/common/QueryViewer/QueryViewer.component';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import SampleDataWithMessages from '../components/Database/SampleDataWithMessages/SampleDataWithMessages';
-import Lineage from '../components/Lineage/Lineage.component';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
-import { SearchIndexField } from '../generated/entity/data/searchIndex';
+import {
+  SearchIndex as SearchIndexEntity,
+  SearchIndexField,
+} from '../generated/entity/data/searchIndex';
 import { PageType } from '../generated/system/ui/page';
+import { EntityReference } from '../generated/type/entityReference';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import SearchIndexFieldsTab from '../pages/SearchIndexDetailsPage/SearchIndexFieldsTab/SearchIndexFieldsTab';
 import { t } from './i18next/LocalUtil';
 import { SearchIndexDetailPageTabProps } from './SearchIndexDetailsClassBase';
+const EntityLineageTab = lazy(() =>
+  import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
+    (module) => ({ default: module.EntityLineageTab })
+  )
+);
 
 // eslint-disable-next-line max-len
 export const defaultFields = `${TabSpecificField.FIELDS},${TabSpecificField.FOLLOWERS},${TabSpecificField.TAGS},${TabSpecificField.OWNERS},${TabSpecificField.DOMAINS},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
@@ -49,7 +59,7 @@ export const makeData = (
 
 export const getSearchIndexDetailsTabs = ({
   searchIndexDetails,
-  viewAllPermission,
+  viewCustomPropertiesPermission,
   feedCount,
   activeTab,
   getEntityFeedCount,
@@ -107,7 +117,12 @@ export const getSearchIndexDetailsTabs = ({
         />
       ),
       key: EntityTabs.SAMPLE_DATA,
-      children: !viewSampleDataPermission ? (
+      children: viewSampleDataPermission ? (
+        <SampleDataWithMessages
+          entityId={searchIndexDetails?.id ?? ''}
+          entityType={EntityType.SEARCH_INDEX}
+        />
+      ) : (
         <div className="m-t-xlg">
           <ErrorPlaceHolder
             className="border-none"
@@ -117,11 +132,6 @@ export const getSearchIndexDetailsTabs = ({
             type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
           />
         </div>
-      ) : (
-        <SampleDataWithMessages
-          entityId={searchIndexDetails?.id ?? ''}
-          entityType={EntityType.SEARCH_INDEX}
-        />
       ),
     },
     {
@@ -133,14 +143,14 @@ export const getSearchIndexDetailsTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <LineageProvider>
-          <Lineage
-            deleted={deleted}
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(deleted)}
             entity={searchIndexDetails as SourceType}
             entityType={EntityType.SEARCH_INDEX}
             hasEditAccess={editLineagePermission}
           />
-        </LineageProvider>
+        </Suspense>
       ),
     },
     {
@@ -165,6 +175,16 @@ export const getSearchIndexDetailsTabs = ({
     {
       label: (
         <TabsLabel
+          id={EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab />,
+    },
+    {
+      label: (
+        <TabsLabel
           id={EntityTabs.CUSTOM_PROPERTIES}
           name={
             labelMap?.[EntityTabs.CUSTOM_PROPERTIES] ??
@@ -177,7 +197,7 @@ export const getSearchIndexDetailsTabs = ({
         <CustomPropertyTable<EntityType.SEARCH_INDEX>
           entityType={EntityType.SEARCH_INDEX}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
     },
@@ -194,5 +214,17 @@ export const getSearchIndexWidgetsFromKey = (widgetConfig: WidgetConfig) => {
       entityType={EntityType.SEARCH_INDEX}
       widgetConfig={widgetConfig}
     />
+  );
+};
+
+export const extractSearchIndexFields = <
+  T extends Omit<EntityReference, 'type'>
+>(
+  data: T
+): SearchIndexField[] => {
+  const searchIndex = data as Partial<SearchIndexEntity>;
+
+  return (searchIndex.fields ?? []).map(
+    (field) => ({ ...field, tags: field.tags ?? [] } as SearchIndexField)
   );
 };

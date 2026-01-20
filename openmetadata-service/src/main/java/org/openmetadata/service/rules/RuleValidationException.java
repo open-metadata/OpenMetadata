@@ -12,6 +12,10 @@ public class RuleValidationException extends IllegalArgumentException {
     super(formatMessage(rule, message));
   }
 
+  public RuleValidationException(String message) {
+    super(message);
+  }
+
   public RuleValidationException(List<SemanticsRule> rules, String message) {
     super(formatMessage(rules, message));
   }

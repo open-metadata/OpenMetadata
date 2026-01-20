@@ -14,11 +14,14 @@ import { expect, test } from '@playwright/test';
 
 import { RDG_ACTIVE_CELL_SELECTOR } from '../../constant/bulkImportExport';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { Domain } from '../../support/domain/Domain';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
-import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
+import { Glossary } from '../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
+import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
   getApiContext,
@@ -27,6 +30,7 @@ import {
 } from '../../utils/common';
 import {
   createColumnRowDetails,
+  createColumnRowDetailsWithEncloseDot,
   createCustomPropertiesForEntity,
   createDatabaseRowDetails,
   createDatabaseSchemaRowDetails,
@@ -38,6 +42,9 @@ import {
   fillRowDetails,
   fillStoredProcedureCode,
   firstTimeGridAddRowAction,
+  performBulkDownload,
+  performColumnSelectAndDeleteOperation,
+  performDeleteOperationOnEntity,
   pressKeyXTimes,
   validateImportStatus,
 } from '../../utils/importUtils';
@@ -50,9 +57,16 @@ test.use({
   },
 });
 
+const user1 = new UserClass();
+const user2 = new UserClass();
+const glossary = new Glossary();
+const glossaryTerm = new GlossaryTerm(glossary);
+const domain1 = new Domain();
+const domain2 = new Domain();
+
 const glossaryDetails = {
-  name: EntityDataClass.glossaryTerm1.data.name,
-  parent: EntityDataClass.glossary1.data.name,
+  name: glossaryTerm.data.name,
+  parent: glossary.data.name,
 };
 
 const databaseDetails1 = {
@@ -91,7 +105,7 @@ const columnDetails1 = {
 };
 
 const columnDetails2 = {
-  ...createColumnRowDetails(),
+  ...createColumnRowDetailsWithEncloseDot(),
   glossary: glossaryDetails,
 };
 
@@ -101,19 +115,15 @@ const storedProcedureDetails = {
 };
 
 test.describe('Bulk Import Export', () => {
-  test.beforeAll('setup pre-test', async ({ browser }, testInfo) => {
+  test.beforeAll('setup pre-test', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
-    testInfo.setTimeout(90000);
-    await EntityDataClass.preRequisitesForTests(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll('Cleanup', async ({ browser }, testInfo) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    testInfo.setTimeout(90000);
-    await EntityDataClass.postRequisitesForTests(apiContext);
+    await user1.create(apiContext);
+    await user2.create(apiContext);
+    await glossary.create(apiContext);
+    await glossaryTerm.create(apiContext);
+    await domain1.create(apiContext);
+    await domain2.create(apiContext);
     await afterAction();
   });
 
@@ -141,17 +151,7 @@ test.describe('Bulk Import Export', () => {
 
     await test.step('should export data database service details', async () => {
       await dbService.visitEntityPage(page);
-
-      const downloadPromise = page.waitForEvent('download');
-
-      await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="export-button-title"]');
-      await page.fill('#fileName', dbService.entity.name);
-      await page.click('#submit-button');
-      const download = await downloadPromise;
-
-      // Wait for the download process to complete and save the downloaded file somewhere.
-      await download.saveAs('downloads/' + download.suggestedFilename());
+      await performBulkDownload(page, dbService.entity.name);
     });
 
     await test.step(
@@ -183,10 +183,10 @@ test.describe('Bulk Import Export', () => {
           {
             ...databaseDetails1,
             owners: [
-              EntityDataClass.user1.responseData?.['displayName'],
-              EntityDataClass.user2.responseData?.['displayName'],
+              user1.responseData?.['displayName'],
+              user2.responseData?.['displayName'],
             ],
-            domains: EntityDataClass.domain1.responseData,
+            domains: domain1.responseData,
           },
           page,
           customPropertyRecord
@@ -213,10 +213,10 @@ test.describe('Bulk Import Export', () => {
           {
             ...databaseSchemaDetails1,
             owners: [
-              EntityDataClass.user1.responseData?.['displayName'],
-              EntityDataClass.user2.responseData?.['displayName'],
+              user1.responseData?.['displayName'],
+              user2.responseData?.['displayName'],
             ],
-            domains: EntityDataClass.domain1.responseData,
+            domains: domain1.responseData,
           },
           page
         );
@@ -243,10 +243,10 @@ test.describe('Bulk Import Export', () => {
           {
             ...tableDetails1,
             owners: [
-              EntityDataClass.user1.responseData?.['displayName'],
-              EntityDataClass.user2.responseData?.['displayName'],
+              user1.responseData?.['displayName'],
+              user2.responseData?.['displayName'],
             ],
-            domains: EntityDataClass.domain1.responseData,
+            domains: domain1.responseData,
           },
           page
         );
@@ -291,10 +291,10 @@ test.describe('Bulk Import Export', () => {
           {
             ...storedProcedureDetails,
             owners: [
-              EntityDataClass.user1.responseData?.['displayName'],
-              EntityDataClass.user2.responseData?.['displayName'],
+              user1.responseData?.['displayName'],
+              user2.responseData?.['displayName'],
             ],
-            domains: EntityDataClass.domain2.responseData,
+            domains: domain2.responseData,
           },
           page
         );
@@ -324,10 +324,10 @@ test.describe('Bulk Import Export', () => {
           {
             ...databaseDetails2,
             owners: [
-              EntityDataClass.user1.responseData?.['displayName'],
-              EntityDataClass.user2.responseData?.['displayName'],
+              user1.responseData?.['displayName'],
+              user2.responseData?.['displayName'],
             ],
-            domains: EntityDataClass.domain2.responseData,
+            domains: domain2.responseData,
           },
           page
         );
@@ -402,18 +402,7 @@ test.describe('Bulk Import Export', () => {
 
     await test.step('should export data database details', async () => {
       await dbEntity.visitEntityPage(page);
-
-      const downloadPromise = page.waitForEvent('download');
-
-      await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="export-button-title"]');
-      await page.fill('#fileName', dbEntity.entity.name);
-      await page.click('#submit-button');
-
-      const download = await downloadPromise;
-
-      // Wait for the download process to complete and save the downloaded file somewhere.
-      await download.saveAs('downloads/' + download.suggestedFilename());
+      await performBulkDownload(page, dbEntity.entity.name);
     });
 
     await test.step(
@@ -444,10 +433,10 @@ test.describe('Bulk Import Export', () => {
           {
             ...databaseSchemaDetails1,
             owners: [
-              EntityDataClass.user1.responseData?.['displayName'],
-              EntityDataClass.user2.responseData?.['displayName'],
+              user1.responseData?.['displayName'],
+              user2.responseData?.['displayName'],
             ],
-            domains: EntityDataClass.domain1.responseData,
+            domains: domain1.responseData,
           },
           page,
           customPropertyRecord
@@ -475,10 +464,10 @@ test.describe('Bulk Import Export', () => {
           {
             ...tableDetails1,
             owners: [
-              EntityDataClass.user1.responseData?.['displayName'],
-              EntityDataClass.user2.responseData?.['displayName'],
+              user1.responseData?.['displayName'],
+              user2.responseData?.['displayName'],
             ],
-            domains: EntityDataClass.domain1.responseData,
+            domains: domain1.responseData,
           },
           page
         );
@@ -523,10 +512,10 @@ test.describe('Bulk Import Export', () => {
           {
             ...databaseSchemaDetails2,
             owners: [
-              EntityDataClass.user1.responseData?.['displayName'],
-              EntityDataClass.user2.responseData?.['displayName'],
+              user1.responseData?.['displayName'],
+              user2.responseData?.['displayName'],
             ],
-            domains: EntityDataClass.domain1.responseData,
+            domains: domain1.responseData,
           },
           page
         );
@@ -611,17 +600,7 @@ test.describe('Bulk Import Export', () => {
 
     await test.step('should export data database schema details', async () => {
       await dbSchemaEntity.visitEntityPage(page);
-
-      const downloadPromise = page.waitForEvent('download');
-      await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="export-button-title"]');
-      await page.fill('#fileName', dbSchemaEntity.entity.name);
-      await page.click('#submit-button');
-
-      const download = await downloadPromise;
-
-      // Wait for the download process to complete and save the downloaded file somewhere.
-      await download.saveAs('downloads/' + download.suggestedFilename());
+      await performBulkDownload(page, dbSchemaEntity.entity.name);
     });
 
     await test.step(
@@ -654,10 +633,10 @@ test.describe('Bulk Import Export', () => {
           {
             ...tableDetails1,
             owners: [
-              EntityDataClass.user1.responseData?.['displayName'],
-              EntityDataClass.user2.responseData?.['displayName'],
+              user1.responseData?.['displayName'],
+              user2.responseData?.['displayName'],
             ],
-            domains: EntityDataClass.domain1.responseData,
+            domains: domain1.responseData,
           },
           page,
           customPropertyRecord
@@ -704,10 +683,10 @@ test.describe('Bulk Import Export', () => {
           {
             ...tableDetails2,
             owners: [
-              EntityDataClass.user1.responseData?.['displayName'],
-              EntityDataClass.user2.responseData?.['displayName'],
+              user1.responseData?.['displayName'],
+              user2.responseData?.['displayName'],
             ],
-            domains: EntityDataClass.domain1.responseData,
+            domains: domain1.responseData,
           },
           page,
           customPropertyRecord
@@ -734,7 +713,7 @@ test.describe('Bulk Import Export', () => {
         await fillRecursiveColumnDetails(
           {
             ...columnDetails2,
-            fullyQualifiedName: `${dbSchemaEntity.entityResponseData.fullyQualifiedName}.${tableDetails2.name}.${columnDetails2.name}`,
+            fullyQualifiedName: `${dbSchemaEntity.entityResponseData.fullyQualifiedName}.${tableDetails2.name}."${columnDetails2.name}"`,
           },
           page
         );
@@ -785,18 +764,7 @@ test.describe('Bulk Import Export', () => {
 
     await test.step('should export data table details', async () => {
       await tableEntity.visitEntityPage(page);
-
-      const downloadPromise = page.waitForEvent('download');
-
-      await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="export-button-title"]');
-      await page.fill('#fileName', tableEntity.entity.name);
-      await page.click('#submit-button');
-
-      const download = await downloadPromise;
-
-      // Wait for the download process to complete and save the downloaded file somewhere.
-      await download.saveAs('downloads/' + download.suggestedFilename());
+      await performBulkDownload(page, tableEntity.entity.name);
     });
 
     await test.step(
@@ -839,25 +807,18 @@ test.describe('Bulk Import Export', () => {
         await fillColumnDetails(columnDetails2, page);
 
         await page.getByRole('button', { name: 'Next' }).click();
-
+        // total column count +1 for header row and +2 for newly added columns
+        const count = `${tableEntity.entityLinkColumnsName.length + 3}`;
         await validateImportStatus(page, {
-          passed: '11',
-          processed: '11',
+          passed: count,
+          processed: count,
           failed: '0',
         });
 
-        const rowStatus = [
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-          'Entity updated',
-        ];
+        // total column count +2 for newly added columns
+        const rowStatus = Array(
+          tableEntity.entityLinkColumnsName.length + 2
+        ).fill('Entity updated');
 
         await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
@@ -874,7 +835,204 @@ test.describe('Bulk Import Export', () => {
       }
     );
 
-    await tableEntity.delete(apiContext);
+    await afterAction();
+  });
+
+  test('Keyboard Delete selection', async ({ page }) => {
+    test.slow(true);
+
+    const dbEntity = new DatabaseClass();
+
+    const { apiContext, afterAction } = await getApiContext(page);
+    await dbEntity.create(apiContext);
+
+    await test.step('should export data database schema details', async () => {
+      await dbEntity.visitEntityPage(page);
+      await performBulkDownload(page, dbEntity.entity.name);
+    });
+
+    await test.step(
+      'should import and perform edit operation on entity',
+      async () => {
+        await dbEntity.visitEntityPage(page);
+
+        await page.click('[data-testid="manage-button"] > .anticon');
+        await page.click('[data-testid="import-button-title"]');
+        const fileInput = await page.$('[type="file"]');
+        await fileInput?.setInputFiles([
+          'downloads/' + dbEntity.entity.name + '.csv',
+        ]);
+
+        await page.waitForSelector('[data-testid="add-row-btn"]', {
+          state: 'visible',
+        });
+
+        // Adding some assertion to make sure that CSV loaded correctly
+        await expect(page.getByTestId('add-row-btn')).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+        await expect(
+          page.getByRole('button', { name: 'Previous' })
+        ).toBeVisible();
+
+        // Click on first cell and edit
+        await page.click('.rdg-cell[role="gridcell"]');
+        await fillRowDetails(
+          {
+            ...databaseDetails1,
+            owners: [
+              user1.responseData?.['displayName'],
+              user2.responseData?.['displayName'],
+            ],
+            domains: domain1.responseData,
+          },
+          page,
+          undefined,
+          true
+        );
+
+        await fillRecursiveEntityTypeFQNDetails(
+          `${dbEntity.entityResponseData.fullyQualifiedName}.${databaseSchemaDetails1.name}`,
+          databaseSchemaDetails1.entityType,
+          page
+        );
+
+        await page.getByRole('button', { name: 'Next' }).click();
+
+        await validateImportStatus(page, {
+          passed: '9',
+          processed: '9',
+          failed: '0',
+        });
+
+        const rowStatus = [
+          'Entity created',
+          'Entity updated',
+          'Entity updated',
+          'Entity updated',
+          'Entity updated',
+          'Entity updated',
+          'Entity updated',
+          'Entity updated',
+        ];
+
+        await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+
+        const updateButtonResponse = page.waitForResponse(
+          `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
+        );
+
+        await page.getByRole('button', { name: 'Update' }).click();
+        await page
+          .locator('.inovua-react-toolkit-load-mask__background-layer')
+          .waitFor({ state: 'detached' });
+
+        await updateButtonResponse;
+        await page.waitForEvent('framenavigated');
+        await toastNotification(page, /details updated successfully/);
+      }
+    );
+
+    await test.step(
+      'should export data database schema details after edit changes',
+      async () => {
+        await dbEntity.visitEntityPage(page);
+        await performBulkDownload(page, `${dbEntity.entity.name}-delete`);
+      }
+    );
+
+    await test.step('Perform Column Select and Delete Operation', async () => {
+      await page.click('[data-testid="manage-button"] > .anticon');
+      await page.click('[data-testid="import-button-title"]');
+      const fileInput = await page.$('[type="file"]');
+      await fileInput?.setInputFiles([
+        'downloads/' + `${dbEntity.entity.name}-delete` + '.csv',
+      ]);
+
+      await page.waitForSelector('[data-testid="add-row-btn"]', {
+        state: 'visible',
+      });
+
+      // Adding some assertion to make sure that CSV loaded correctly
+      await expect(page.getByTestId('add-row-btn')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Previous' })
+      ).toBeVisible();
+
+      // Perform Delete Operation  on Edit Operation on Entity
+      await performColumnSelectAndDeleteOperation(page);
+    });
+
+    await test.step('Perform Cell Delete Operation and Save', async () => {
+      await page.locator('.rdg-cell-name').first().click();
+
+      // Perform Delete Operation on Edit Operation on Entity
+      await performDeleteOperationOnEntity(page);
+
+      await page.getByRole('button', { name: 'Next' }).click();
+
+      await validateImportStatus(page, {
+        passed: '10',
+        processed: '10',
+        failed: '0',
+      });
+
+      const rowStatus = [
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+      ];
+
+      await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
+      );
+
+      await page.getByRole('button', { name: 'Update' }).click();
+      await page
+        .locator('.inovua-react-toolkit-load-mask__background-layer')
+        .waitFor({ state: 'detached' });
+
+      await updateButtonResponse;
+      await page.waitForEvent('framenavigated');
+      await toastNotification(page, /details updated successfully/);
+    });
+
+    await test.step('should verify the removed value from entity', async () => {
+      await page.getByTestId('column-name').first().click();
+      await page.waitForLoadState('networkidle');
+
+      await expect(
+        page
+          .getByTestId('asset-description-container')
+          .getByText('No description')
+      ).toBeVisible();
+
+      await expect(
+        page.getByTestId('tags-container').getByTestId('add-tag')
+      ).toBeVisible();
+
+      await expect(
+        page.getByTestId('glossary-container').getByTestId('add-tag')
+      ).toBeVisible();
+
+      await expect(page.getByTestId('Tier')).toContainText('--');
+
+      await expect(page.getByTestId('certification-label')).toContainText('--');
+
+      await expect(page.getByTestId('owner-label')).toContainText('--');
+
+      await expect(page.getByTestId('no-domain-text')).toBeVisible();
+    });
+
+    await dbEntity.delete(apiContext);
     await afterAction();
   });
 
@@ -891,18 +1049,7 @@ test.describe('Bulk Import Export', () => {
 
     await test.step('should export data database details', async () => {
       await dbEntity.visitEntityPage(page);
-
-      const downloadPromise = page.waitForEvent('download');
-
-      await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="export-button-description"]');
-      await page.fill('#fileName', dbEntity.entity.name);
-      await page.click('#submit-button');
-
-      const download = await downloadPromise;
-
-      // Wait for the download process to complete and save the downloaded file somewhere.
-      await download.saveAs('downloads/' + download.suggestedFilename());
+      await performBulkDownload(page, dbEntity.entity.name);
     });
 
     await test.step('should import and test range selection', async () => {

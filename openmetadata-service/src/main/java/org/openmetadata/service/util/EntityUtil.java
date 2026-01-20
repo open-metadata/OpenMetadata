@@ -70,6 +70,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -198,6 +199,109 @@ public final class EntityUtil {
   }
 
   public static List<EntityReference> populateEntityReferences(List<EntityReference> list) {
+    if (nullOrEmpty(list)) {
+      return list;
+    }
+
+    long startTime = System.currentTimeMillis();
+
+    // Create a mutable copy to avoid UnsupportedOperationException on immutable lists
+    List<EntityReference> mutableList = new ArrayList<>(list);
+
+    // Group references by type and whether they have ID or need name-based lookup
+    Map<String, List<EntityReference>> byIdByType =
+        mutableList.stream()
+            .filter(ref -> ref.getId() != null)
+            .collect(Collectors.groupingBy(EntityReference::getType));
+
+    Map<String, List<EntityReference>> byNameByType =
+        mutableList.stream()
+            .filter(ref -> ref.getId() == null && ref.getFullyQualifiedName() != null)
+            .collect(Collectors.groupingBy(EntityReference::getType));
+
+    // Track which references were successfully populated (not orphaned)
+    Set<EntityReference> populatedRefs = new HashSet<>();
+    int queryCount = 0;
+
+    // Batch fetch by ID (most common case) - one query per entity type
+    for (Map.Entry<String, List<EntityReference>> entry : byIdByType.entrySet()) {
+      String entityType = entry.getKey();
+      List<UUID> ids =
+          entry.getValue().stream().map(EntityReference::getId).collect(Collectors.toList());
+      queryCount++;
+
+      try {
+        List<EntityReference> fetched = Entity.getEntityReferencesByIds(entityType, ids, ALL);
+        Map<UUID, EntityReference> fetchedMap =
+            fetched.stream()
+                .collect(Collectors.toMap(EntityReference::getId, ref -> ref, (a, b) -> a));
+
+        for (EntityReference ref : entry.getValue()) {
+          EntityReference fetched2 = fetchedMap.get(ref.getId());
+          if (fetched2 != null) {
+            copy(fetched2, ref);
+            populatedRefs.add(ref);
+          } else {
+            LOG.info("Skipping orphaned entity reference: {} {}", ref.getType(), ref.getId());
+          }
+        }
+      } catch (Exception e) {
+        // Fallback to individual fetch on batch failure
+        LOG.warn(
+            "Batch fetch failed for type {}, falling back to individual fetch: {}",
+            entityType,
+            e.getMessage());
+        for (EntityReference ref : entry.getValue()) {
+          try {
+            EntityReference ref2 = Entity.getEntityReference(ref, ALL);
+            copy(ref2, ref);
+            populatedRefs.add(ref);
+          } catch (EntityNotFoundException ex) {
+            LOG.info(
+                "Skipping orphaned entity reference: {} {} - {}",
+                ref.getType(),
+                ref.getId(),
+                ex.getMessage());
+          }
+        }
+      }
+    }
+
+    // Fetch by name (less common path - still individual queries)
+    for (Map.Entry<String, List<EntityReference>> entry : byNameByType.entrySet()) {
+      for (EntityReference ref : entry.getValue()) {
+        queryCount++;
+        try {
+          EntityReference ref2 =
+              Entity.getEntityReferenceByName(ref.getType(), ref.getFullyQualifiedName(), ALL);
+          copy(ref2, ref);
+          populatedRefs.add(ref);
+        } catch (EntityNotFoundException e) {
+          LOG.info(
+              "Skipping orphaned entity reference: {} {} - {}",
+              ref.getType(),
+              ref.getFullyQualifiedName(),
+              e.getMessage());
+        }
+      }
+    }
+
+    // Remove orphaned references (those that weren't successfully populated)
+    mutableList.removeIf(ref -> !populatedRefs.contains(ref));
+
+    mutableList.sort(compareEntityReference);
+
+    LOG.debug(
+        "populateEntityReferences: {} refs -> {} queries in {}ms",
+        mutableList.size(),
+        queryCount,
+        System.currentTimeMillis() - startTime);
+
+    return mutableList;
+  }
+
+  public static List<EntityReference> validateAndPopulateEntityReferences(
+      List<EntityReference> list) {
     if (list != null) {
       for (EntityReference ref : list) {
         EntityReference ref2 = Entity.getEntityReference(ref, ALL);
@@ -212,11 +316,55 @@ public final class EntityUtil {
     if (nullOrEmpty(list)) {
       return Collections.emptyList();
     }
+
+    long startTime = System.currentTimeMillis();
+
+    // Group by entity type for batch fetch - reduces N queries to M queries (where M = unique
+    // types)
+    Map<String, List<UUID>> idsByType =
+        list.stream()
+            .collect(
+                Collectors.groupingBy(
+                    EntityRelationshipRecord::getType,
+                    Collectors.mapping(EntityRelationshipRecord::getId, Collectors.toList())));
+
     List<EntityReference> refs = new ArrayList<>();
-    for (EntityRelationshipRecord ref : list) {
-      refs.add(Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL));
+    int queryCount = 0;
+
+    for (Map.Entry<String, List<UUID>> entry : idsByType.entrySet()) {
+      String entityType = entry.getKey();
+      List<UUID> ids = entry.getValue();
+      queryCount++;
+
+      try {
+        List<EntityReference> typeRefs = Entity.getEntityReferencesByIds(entityType, ids, ALL);
+        refs.addAll(typeRefs);
+      } catch (Exception e) {
+        // Fallback for partial failures - fetch individually to handle deleted entities gracefully
+        LOG.warn(
+            "Batch fetch failed for type {}, falling back to individual fetch: {}",
+            entityType,
+            e.getMessage());
+        for (UUID id : ids) {
+          try {
+            refs.add(Entity.getEntityReferenceById(entityType, id, ALL));
+          } catch (EntityNotFoundException ex) {
+            LOG.info(
+                "Skipping deleted entity reference: {} {} - {}", entityType, id, ex.getMessage());
+          }
+        }
+      }
     }
+
     refs.sort(compareEntityReference);
+
+    LOG.debug(
+        "getEntityReferences: {} records -> {} types -> {} queries in {}ms",
+        list.size(),
+        idsByType.size(),
+        queryCount,
+        System.currentTimeMillis() - startTime);
+
     return refs;
   }
 
@@ -230,6 +378,10 @@ public final class EntityUtil {
     String entityType = entityLink.getEntityType();
     String fqn = entityLink.getEntityFQN();
     return Entity.getEntityReferenceByName(entityType, fqn, ALL);
+  }
+
+  public static String buildEntityLink(String entityType, String fullyQualifiedName) {
+    return String.format("<#E::%s::%s>", entityType, fullyQualifiedName);
   }
 
   public static UsageDetails getLatestUsage(UsageDAO usageDAO, UUID entityId) {
@@ -330,6 +482,18 @@ public final class EntityUtil {
         .collect(Collectors.toList());
   }
 
+  public static List<EntityReference> validateToEntityReferences(
+      List<UUID> ids, String entityType) {
+    if (ids == null) {
+      return null;
+    }
+    List<EntityReference> refs = new ArrayList<>();
+    for (UUID id : ids) {
+      refs.add(Entity.getEntityReferenceById(entityType, id, ALL));
+    }
+    return refs;
+  }
+
   public static List<UUID> refToIds(List<EntityReference> refs) {
     if (refs == null) {
       return null;
@@ -420,6 +584,73 @@ public final class EntityUtil {
     @Override
     public @org.jetbrains.annotations.NotNull Iterator<String> iterator() {
       return fieldList.iterator();
+    }
+  }
+
+  /**
+   * Holds include values for relation fields, allowing per-field control over whether to include
+   * deleted, non-deleted, or all related entities.
+   *
+   * <p>Usage: API parameter format is "field:include_value,field2:include_value2" Example:
+   * "owners:non_deleted,followers:all,experts:deleted"
+   */
+  @Getter
+  public static class RelationIncludes {
+    private final Include defaultInclude;
+    private final Map<String, Include> fieldIncludes;
+
+    public RelationIncludes(Include defaultInclude) {
+      this.defaultInclude = defaultInclude != null ? defaultInclude : ALL;
+      this.fieldIncludes = new HashMap<>();
+    }
+
+    public RelationIncludes(Include defaultInclude, String includeRelationsParam) {
+      this.defaultInclude = defaultInclude != null ? defaultInclude : ALL;
+      this.fieldIncludes = parseIncludeRelations(includeRelationsParam);
+    }
+
+    public RelationIncludes(Include defaultInclude, Map<String, Include> fieldIncludes) {
+      this.defaultInclude = defaultInclude != null ? defaultInclude : ALL;
+      this.fieldIncludes = fieldIncludes != null ? new HashMap<>(fieldIncludes) : new HashMap<>();
+    }
+
+    public Include getIncludeFor(String fieldName) {
+      return fieldIncludes.getOrDefault(fieldName, defaultInclude);
+    }
+
+    public boolean hasFieldSpecificInclude(String fieldName) {
+      return fieldIncludes.containsKey(fieldName);
+    }
+
+    private static Map<String, Include> parseIncludeRelations(String includeRelationsParam) {
+      Map<String, Include> result = new HashMap<>();
+      if (nullOrEmpty(includeRelationsParam)) {
+        return result;
+      }
+      String[] pairs = includeRelationsParam.split(",");
+      for (String pair : pairs) {
+        String[] parts = pair.trim().split(":");
+        if (parts.length == 2) {
+          String fieldName = parts[0].trim();
+          String includeValue = parts[1].trim().toUpperCase().replace("-", "_");
+          try {
+            Include include = Include.valueOf(includeValue);
+            result.put(fieldName, include);
+          } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                "Invalid include value '"
+                    + parts[1].trim()
+                    + "' for field '"
+                    + fieldName
+                    + "'. Valid values are: all, deleted, non-deleted");
+          }
+        }
+      }
+      return result;
+    }
+
+    public static RelationIncludes fromInclude(Include include) {
+      return new RelationIncludes(include);
     }
   }
 
@@ -698,6 +929,33 @@ public final class EntityUtil {
     return refs;
   }
 
+  public static String getFilteredFields(String entityType, String fields) {
+    // Helper method to filter fields based on what the entity supports
+    if (fields == null || fields.isEmpty() || entityType == null) {
+      return fields;
+    }
+
+    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+    Set<String> allowed = new HashSet<>(repository.getAllowedFields());
+
+    // Always allow these common fields
+    allowed.add("owners");
+    allowed.add("tags");
+    allowed.add("domains");
+
+    // Filter the requested fields to only include those supported by the entity's allowed list
+    String[] requestedFields = fields.split(",");
+    List<String> validFields = new ArrayList<>();
+    for (String field : requestedFields) {
+      field = field.trim();
+      if (allowed.contains(field)) {
+        validFields.add(field);
+      }
+    }
+
+    return String.join(",", validFields);
+  }
+
   public static void validateProfileSample(String profileSampleType, double profileSampleValue) {
     if (profileSampleType.equals("PERCENTAGE")
         && (profileSampleValue < 0 || profileSampleValue > 100.0)) {
@@ -804,6 +1062,7 @@ public final class EntityUtil {
       if (!nullOrEmpty(subjectContext.getUserDomains())) {
         filter.addQueryParam(
             "domainId", getCommaSeparatedIdsFromRefs(subjectContext.getUserDomains()));
+        filter.addQueryParam("domainAccessControl", "true");
       } else {
         filter.addQueryParam("domainId", NULL_PARAM);
         filter.addQueryParam("entityType", entityType);

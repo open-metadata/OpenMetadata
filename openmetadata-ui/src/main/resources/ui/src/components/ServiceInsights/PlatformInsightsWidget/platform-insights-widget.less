@@ -19,6 +19,10 @@
     gap: 16px;
   }
 
+  .other-charts-container.four-chart-container {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
   .percent-change-tag {
     display: flex;
     align-items: center;
@@ -42,6 +46,12 @@
       &::before,
       &::after {
         display: none;
+      }
+
+      .current-percentage {
+        line-height: 20px;
+        font-size: 20px;
+        font-weight: 600;
       }
     }
   }

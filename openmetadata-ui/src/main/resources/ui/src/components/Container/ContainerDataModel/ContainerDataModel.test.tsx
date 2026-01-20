@@ -15,6 +15,7 @@ import {
   findAllByTestId,
   findByTestId,
   findByText,
+  fireEvent,
   queryByTestId,
   render,
   screen,
@@ -102,19 +103,25 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   }),
 }));
 
-jest.mock('../../../utils/TableUtils', () => ({
-  getTableExpandableConfig: jest.fn(),
-  getTableColumnConfigSelections: jest
-    .fn()
-    .mockReturnValue([
-      'name',
-      'description',
-      'dataTypeDisplay',
-      'tags',
-      'glossary',
-    ]),
-  handleUpdateTableColumnSelections: jest.fn(),
-}));
+jest.mock('../../../utils/TableUtils', () => {
+  const actual = jest.requireActual('../../../utils/TableUtils');
+
+  return {
+    ...actual,
+    getTableExpandableConfig: jest.fn(),
+    getTableColumnConfigSelections: jest
+      .fn()
+      .mockReturnValue([
+        'name',
+        'description',
+        'dataTypeDisplay',
+        'tags',
+        'glossary',
+      ]),
+    handleUpdateTableColumnSelections: jest.fn(),
+    pruneEmptyChildren: jest.fn().mockImplementation((value) => value),
+  };
+});
 
 jest.mock('../../../utils/TableTags/TableTags.utils', () => ({
   ...jest.requireActual('../../../utils/TableTags/TableTags.utils'),
@@ -162,6 +169,36 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
     .mockImplementation(() => (
       <div data-testid="error-placeholder">ErrorPlaceHolder</div>
     ))
+);
+
+jest.mock('../../../utils/RouterUtils', () => ({
+  getEntityDetailsPath: jest
+    .fn()
+    .mockImplementation((_entityType, fqn) => `/container/${fqn}`),
+}));
+
+jest.mock(
+  '../../Database/ColumnDetailPanel/ColumnDetailPanel.component',
+  () => ({
+    ColumnDetailPanel: jest
+      .fn()
+      .mockImplementation(() => <div data-testid="column-detail-panel" />),
+  })
+);
+
+jest.mock('../../Database/ColumnFilter/ColumnFilter.component', () => ({
+  ColumnFilter: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="column-filter" />),
+}));
+
+jest.mock(
+  '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider',
+  () => ({
+    EntityAttachmentProvider: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+  })
 );
 
 describe('ContainerDataModel', () => {
@@ -235,5 +272,46 @@ describe('ContainerDataModel', () => {
     const editDescriptionButton = queryByTestId(row1, 'edit-button');
 
     expect(editDescriptionButton).toBeNull();
+  });
+
+  it('Should render copy column link button for each column', async () => {
+    render(
+      <MemoryRouter>
+        <ContainerDataModel {...props} />
+      </MemoryRouter>
+    );
+
+    const copyButtons = await screen.findAllByTestId('copy-column-link-button');
+
+    expect(copyButtons).toHaveLength(4);
+  });
+
+  it('Should copy column link to clipboard when copy button is clicked', async () => {
+    const mockWriteText = jest.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: mockWriteText,
+      },
+    });
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      writable: true,
+    });
+
+    render(
+      <MemoryRouter>
+        <ContainerDataModel {...props} />
+      </MemoryRouter>
+    );
+
+    const copyButtons = await screen.findAllByTestId('copy-column-link-button');
+
+    await act(async () => {
+      fireEvent.click(copyButtons[0]);
+    });
+
+    expect(mockWriteText).toHaveBeenCalledWith(
+      expect.stringContaining(props.dataModel.columns[0].fullyQualifiedName!)
+    );
   });
 });

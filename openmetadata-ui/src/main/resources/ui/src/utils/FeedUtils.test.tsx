@@ -22,48 +22,32 @@ import {
   getEntityType,
   getFeedHeaderTextFromCardStyle,
   getFieldOperationIcon,
+  getFrontEndFormat,
   suggestions,
 } from './FeedUtils';
 
-jest.mock('../rest/miscAPI', () => ({
-  getSearchedUsers: jest.fn().mockResolvedValue({
-    data: {
-      hits: {
-        hits: [
-          {
-            _source: {
-              entityType: 'User',
-              name: 'John Doe',
-              deleted: false,
-            },
-            _id: '1',
+jest.mock('../rest/searchAPI', () => ({
+  searchQuery: jest.fn().mockResolvedValue({
+    hits: {
+      hits: [
+        {
+          _source: {
+            entityType: 'Table',
+            name: 'Table1',
+            displayName: 'Table 1',
+            fullyQualifiedName: 'db.schema.Table1',
           },
-        ],
-      },
-    },
-  }),
-  searchData: jest.fn().mockResolvedValue({
-    data: {
-      hits: {
-        hits: [
-          {
-            _source: {
-              entityType: 'Table',
-              name: 'Table1',
-              displayName: 'Table 1',
-              fullyQualifiedName: 'db.schema.Table1',
-            },
-            _id: '1',
-          },
-        ],
-      },
+          _id: '1',
+          _index: 'team_search_index',
+        },
+      ],
     },
   }),
 }));
 
 jest.mock('./StringsUtils', () => ({
-  getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
-  getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
+  getEncodedFqn: jest.fn().mockImplementation((fqn) => encodeURIComponent(fqn)),
+  getDecodedFqn: jest.fn().mockImplementation((fqn) => decodeURIComponent(fqn)),
 }));
 
 jest.mock('./FeedUtils', () => ({
@@ -125,8 +109,7 @@ describe('Feed Utils', () => {
     const message = `<#E::user::"admin.test"|[@admin.test](http://localhost:3000/users/%22admin.test%22)> test`;
     const result = getBackendFormat(message);
 
-    // eslint-disable-next-line no-useless-escape
-    const expectedResult = `<#E::user::\"admin.test\"|<#E::user::%22admin.test%22|[@admin.test](http://localhost:3000/users/%22admin.test%22)>> test`;
+    const expectedResult = `<#E::user::"admin.test"|<#E::user::"admin.test"|[@admin.test](http://localhost:3000/users/%22admin.test%22)>> test`;
 
     expect(result).toStrictEqual(expectedResult);
   });
@@ -277,5 +260,45 @@ describe('getFieldOperationIcon', () => {
     const stringResult = JSON.stringify(result);
 
     expect(stringResult).toContain(FieldOperation.Deleted);
+  });
+});
+
+describe('getFrontEndFormat', () => {
+  it('should return correct frontend format for user mention', () => {
+    const message =
+      '<#E::user::admin|[@admin](http://localhost:3000/users/admin)>';
+    const result = getFrontEndFormat(message);
+
+    expect(result).toBe('[@admin](http://localhost:3000/users/admin)');
+  });
+
+  it('should return correct frontend format for api endpoint with chinese characters', () => {
+    const encodedFqn = 'pw-api-service.collection.%E6%B5%8B%E8%AF%95';
+    const decodedFqn = 'pw-api-service.collection.测试';
+    const message = `<#E::apiEndpoint::${encodedFqn}|[#apiEndpoint/${decodedFqn}](http://localhost:3000/apiEndpoint/${encodedFqn})>`;
+
+    const result = getFrontEndFormat(message);
+
+    expect(result).toBe(
+      `[#apiEndpoint/${decodedFqn}](http://localhost:3000/apiEndpoint/${decodedFqn})`
+    );
+  });
+
+  it('should return correct frontend format for user mention with encoded characters in URL', () => {
+    const userName = '测试';
+    const encodedName = encodeURIComponent(userName);
+    const message = `<#E::user::${userName}|[@${userName}](http://localhost:3000/users/${encodedName})>`;
+
+    const result = getFrontEndFormat(message);
+
+    expect(result).toBe(
+      `[@${userName}](http://localhost:3000/users/${userName})`
+    );
+  });
+
+  it('should handle message without mentions', () => {
+    const message = 'Hello world';
+
+    expect(getFrontEndFormat(message)).toBe('Hello world');
   });
 });

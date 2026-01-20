@@ -9,16 +9,23 @@
   ],
   "parameterDefinition": [
     {
+      "name": "keyColumns",
+      "displayName": "Table 1's key columns",
+      "description": "The columns to use as the key for the comparison. If not provided, it will be resolved from the primary key or unique columns. The tuples created from the key columns must be unique.",
+      "dataType": "ARRAY",
+      "required": false
+    },
+    {
       "name": "table2",
       "displayName": "Table 2",
       "description": "Fully qualified name of the table to compare against.",
       "dataType": "STRING",
-      "required": "true"
+      "required": true
     },
     {
-      "name": "keyColumns",
-      "displayName": "Key Columns",
-      "description": "The columns to use as the key for the comparison. If not provided, it will be resolved from the primary key or unique columns. The tuples created from the key columns must be unique.",
+      "name": "table2.keyColumns",
+      "displayName": "Table 2's key columns",
+      "description": "The columns in table 2 to use as comparison. If not provided, it will default to `Key Columns`, risking errors if the key columns' names have changed.",
       "dataType": "ARRAY",
       "required": false
     },
@@ -52,6 +59,19 @@
     }
   ],
   "provider": "system",
-  "dataQualityDimension": "Consistency"
+  "enabled": true,
+  "dataQualityDimension": "Consistency",
+  "supportedServices": [
+    "Snowflake",
+    "BigQuery",
+    "Athena",
+    "Redshift",
+    "Postgres",
+    "MySQL",
+    "Mssql",
+    "Oracle",
+    "Trino",
+    "SapHana"
+  ]
 }
   

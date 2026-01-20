@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 # since it helps us organize and isolate version management
 [project]
 name = "openmetadata-ingestion"
-version = "1.9.0.0.dev0"
+version = "1.12.0.0.dev0"
 dynamic = ["readme", "dependencies", "optional-dependencies"]
 authors = [
     { name = "OpenMetadata Committers" }
@@ -40,11 +40,10 @@ metadata = "metadata.cmd:metadata"
 provider_info = "airflow_provider_openmetadata:get_provider_config"
 
 [tool.coverage.run]
-source = [
-    "env/lib/python3.10/site-packages/metadata"
-]
+source = ["metadata"]
 relative_files = true
 branch = true
+dynamic_context = "test_function"
 
 [tool.coverage.report]
 omit = [
@@ -54,6 +53,12 @@ omit = [
     "ingestion/src/*",
     "*/src/metadata/ingestion/source/database/sample_*"
 ]
+
+[tool.coverage.xml]
+output = "ci-coverage.xml"
+
+[tool.coverage.html]
+show_contexts = true
 
 [tool.mypy]
 mypy_path = "src"

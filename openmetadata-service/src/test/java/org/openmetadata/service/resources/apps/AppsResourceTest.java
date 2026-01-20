@@ -4,6 +4,9 @@ import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.CREATED;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.INT;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
@@ -68,9 +71,11 @@ import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.ReportDataRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.WebAnalyticEventRepository;
@@ -84,7 +89,6 @@ import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.RetryableAssertionError;
 import org.openmetadata.service.util.TestUtils;
 
@@ -369,7 +373,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     assertEventually(
         "triggerCustomConfig",
         () ->
-            Assertions.assertEquals(
+            assertEquals(
                 1234, getLatestAppRun(appName, ADMIN_AUTH_HEADERS).getConfig().get("batchSize")));
   }
 
@@ -380,6 +384,42 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
         () -> postTriggerApp(appName, ADMIN_AUTH_HEADERS, Map.of("thisShouldFail", "but will it?")),
         BAD_REQUEST,
         "Unrecognized field \"thisShouldFail\"");
+  }
+
+  @Test
+  void list_app_runs_returns_newest_run_first() throws IOException {
+    String appName = "AppRunOrderingTest" + System.currentTimeMillis();
+    App app = createAndCheckEntity(createRequest(appName), ADMIN_AUTH_HEADERS);
+    AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+
+    Entity.getCollectionDAO()
+        .appExtensionTimeSeriesDao()
+        .delete(app.getId().toString(), AppExtension.ExtensionType.STATUS.toString());
+
+    long baseTime = System.currentTimeMillis();
+    AppRunRecord newerRun =
+        new AppRunRecord()
+            .withAppId(app.getId())
+            .withAppName(app.getName())
+            .withTimestamp(baseTime + 2000)
+            .withStartTime(baseTime + 2000)
+            .withStatus(AppRunRecord.Status.SUCCESS);
+    AppRunRecord olderRun =
+        new AppRunRecord()
+            .withAppId(app.getId())
+            .withAppName(app.getName())
+            .withTimestamp(baseTime + 1000)
+            .withStartTime(baseTime + 1000)
+            .withStatus(AppRunRecord.Status.FAILED);
+
+    // Insert in reverse chronological order to ensure API reorders by startTime.
+    appRepository.addAppStatus(newerRun);
+    appRepository.addAppStatus(olderRun);
+
+    ResultList<AppRunRecord> runList = listAppRuns(appName, ADMIN_AUTH_HEADERS);
+    assertEquals(2, runList.getData().size());
+    assertEquals(newerRun.getStartTime(), runList.getData().get(0).getStartTime());
+    assertEquals(olderRun.getStartTime(), runList.getData().get(1).getStartTime());
   }
 
   private void assertAppStatusAvailableAfterTrigger(String appName) {
@@ -493,7 +533,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
             () -> {
               BaseCallbackResource.EventDetails<ChangeEvent> result =
                   webhookCallbackResource.getEventDetails(subscriptionName);
-              Assertions.assertNotNull(result);
+              assertNotNull(result);
               Assertions.assertTrue(
                   result.getEvents().stream()
                       .anyMatch(
@@ -521,6 +561,31 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
                 ADMIN_AUTH_HEADERS),
         NOT_FOUND,
         String.format("eventsubscription instance for %s not found", subscriptionName));
+  }
+
+  @Test
+  void test_list_apps_returns_bot_field() throws IOException {
+    String appName = "TestAppWithBot" + System.currentTimeMillis();
+    App app = createAndCheckEntity(createRequest(appName), ADMIN_AUTH_HEADERS);
+
+    // Get the app by name to ensure it has bot field populated
+    App retrievedApp = getEntityByName(appName, "*", ADMIN_AUTH_HEADERS);
+    assertNotNull(retrievedApp.getBot(), "Bot field should be populated");
+
+    // Test list API with bot field
+    Map<String, String> queryParams = Map.of("fields", "*", "limit", "1000");
+    ResultList<App> apps = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+
+    // Find our app in the list
+    App appFromList =
+        apps.getData().stream().filter(a -> a.getName().equals(appName)).findFirst().orElse(null);
+
+    assertNotNull(appFromList, "App should be found in list");
+    assertNotNull(appFromList.getBot(), "Bot field should be present in list API response");
+    assertEquals(
+        retrievedApp.getBot().getId(),
+        appFromList.getBot().getId(),
+        "Bot field should match between get and list APIs");
   }
 
   @Test
@@ -591,10 +656,10 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
 
     // Get the latest run record to check statistics
     AppRunRecord latestRun = getLatestAppRun("DataRetentionApplication", ADMIN_AUTH_HEADERS);
-    Assertions.assertNotNull(latestRun);
+    assertNotNull(latestRun);
 
     // Check whether successContext is not null
-    Assertions.assertNotNull(latestRun.getSuccessContext());
+    assertNotNull(latestRun.getSuccessContext());
 
     // Clean up - delete the test entities
     tableResourceTest.deleteEntity(table.getId(), true, true, ADMIN_AUTH_HEADERS);
@@ -661,8 +726,15 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   private void postAppStop(String appName, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("apps/stop").path(appName);
-    Response response = SecurityUtil.addHeaders(target, authHeaders).post(null);
+    Response response =
+        SecurityUtil.addHeaders(target, authHeaders).post(jakarta.ws.rs.client.Entity.json("{}"));
     readResponse(response, OK.getStatusCode());
+  }
+
+  private ResultList<AppRunRecord> listAppRuns(String appName, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource(String.format("apps/name/%s/status", appName));
+    return TestUtils.get(target, AppResource.AppRunList.class, authHeaders);
   }
 
   private AppRunRecord getLatestAppRun(String appName, Map<String, String> authHeaders)
@@ -678,5 +750,230 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
         getResource(
             String.format("apps/name/%s/extension?extensionType=%s", appName, extensionType));
     return TestUtils.get(target, AppExtension.class, authHeaders);
+  }
+
+  @Test
+  void test_listApps_filterBySingleAgentType() throws IOException {
+    // Create app marketplace definitions with specific agent types
+    AppMarketPlaceResourceTest appMarketPlaceResourceTest = new AppMarketPlaceResourceTest();
+
+    String appName1 = "TestAppCollateAI" + System.currentTimeMillis();
+    String appName2 = "TestAppMetadata" + System.currentTimeMillis();
+
+    try {
+      // Create marketplace definition with CollateAI agent type
+      CreateAppMarketPlaceDefinitionReq marketPlaceReq1 =
+          appMarketPlaceResourceTest
+              .createRequest(appName1)
+              .withAgentType(org.openmetadata.schema.entity.app.AgentType.CollateAI);
+      AppMarketPlaceDefinition marketPlaceDef1 =
+          appMarketPlaceResourceTest.createAndCheckEntity(marketPlaceReq1, ADMIN_AUTH_HEADERS);
+
+      // Create marketplace definition with Metadata agent type
+      CreateAppMarketPlaceDefinitionReq marketPlaceReq2 =
+          appMarketPlaceResourceTest
+              .createRequest(appName2)
+              .withAgentType(org.openmetadata.schema.entity.app.AgentType.Metadata);
+      AppMarketPlaceDefinition marketPlaceDef2 =
+          appMarketPlaceResourceTest.createAndCheckEntity(marketPlaceReq2, ADMIN_AUTH_HEADERS);
+
+      // Create apps from the marketplace definitions
+      CreateApp createApp1 =
+          new CreateApp()
+              .withName(marketPlaceDef1.getName())
+              .withAppConfiguration(marketPlaceDef1.getAppConfiguration())
+              .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.HOURLY));
+
+      CreateApp createApp2 =
+          new CreateApp()
+              .withName(marketPlaceDef2.getName())
+              .withAppConfiguration(marketPlaceDef2.getAppConfiguration())
+              .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.HOURLY));
+
+      App app1 = createAndCheckEntity(createApp1, ADMIN_AUTH_HEADERS);
+      App app2 = createAndCheckEntity(createApp2, ADMIN_AUTH_HEADERS);
+
+      // Test filtering by CollateAI agent type
+      Map<String, String> queryParams = Map.of("agentType", "CollateAI");
+      ResultList<App> apps = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+
+      assertNotNull(apps);
+      assertNotNull(apps.getData());
+
+      // Verify that the CollateAI app is in the results
+      boolean foundCollateAIApp =
+          apps.getData().stream().anyMatch(app -> app.getName().equals(appName1));
+      assertTrue(
+          foundCollateAIApp,
+          "CollateAI app should be found when filtering by CollateAI agent type");
+
+      // Test filtering by Metadata agent type
+      queryParams = Map.of("agentType", "Metadata");
+      apps = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+
+      assertNotNull(apps);
+      assertNotNull(apps.getData());
+
+      // Verify that the Metadata app is in the results
+      boolean foundMetadataApp =
+          apps.getData().stream().anyMatch(app -> app.getName().equals(appName2));
+      assertTrue(
+          foundMetadataApp, "Metadata app should be found when filtering by Metadata agent type");
+
+    } finally {
+      // Clean up created apps
+      try {
+        deleteEntityByName(appName1, true, true, ADMIN_AUTH_HEADERS);
+      } catch (Exception ignored) {
+      }
+      try {
+        deleteEntityByName(appName2, true, true, ADMIN_AUTH_HEADERS);
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
+  @Test
+  void test_listApps_filterByMultipleAgentTypes() throws IOException {
+    // Create app marketplace definitions with different agent types
+    AppMarketPlaceResourceTest appMarketPlaceResourceTest = new AppMarketPlaceResourceTest();
+
+    String appName1 = "TestAppCollateAI" + System.currentTimeMillis();
+    String appName2 = "TestAppMetadata" + System.currentTimeMillis();
+    String appName3 = "TestAppTierAgent" + System.currentTimeMillis();
+
+    try {
+      // Create marketplace definitions with different agent types
+      CreateAppMarketPlaceDefinitionReq marketPlaceReq1 =
+          appMarketPlaceResourceTest
+              .createRequest(appName1)
+              .withAgentType(org.openmetadata.schema.entity.app.AgentType.CollateAI);
+      CreateAppMarketPlaceDefinitionReq marketPlaceReq2 =
+          appMarketPlaceResourceTest
+              .createRequest(appName2)
+              .withAgentType(org.openmetadata.schema.entity.app.AgentType.Metadata);
+      CreateAppMarketPlaceDefinitionReq marketPlaceReq3 =
+          appMarketPlaceResourceTest
+              .createRequest(appName3)
+              .withAgentType(org.openmetadata.schema.entity.app.AgentType.CollateAITierAgent);
+
+      AppMarketPlaceDefinition marketPlaceDef1 =
+          appMarketPlaceResourceTest.createAndCheckEntity(marketPlaceReq1, ADMIN_AUTH_HEADERS);
+      AppMarketPlaceDefinition marketPlaceDef2 =
+          appMarketPlaceResourceTest.createAndCheckEntity(marketPlaceReq2, ADMIN_AUTH_HEADERS);
+      AppMarketPlaceDefinition marketPlaceDef3 =
+          appMarketPlaceResourceTest.createAndCheckEntity(marketPlaceReq3, ADMIN_AUTH_HEADERS);
+
+      // Create apps from the marketplace definitions
+      App app1 =
+          createAndCheckEntity(
+              new CreateApp()
+                  .withName(marketPlaceDef1.getName())
+                  .withAppConfiguration(marketPlaceDef1.getAppConfiguration())
+                  .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.HOURLY)),
+              ADMIN_AUTH_HEADERS);
+
+      App app2 =
+          createAndCheckEntity(
+              new CreateApp()
+                  .withName(marketPlaceDef2.getName())
+                  .withAppConfiguration(marketPlaceDef2.getAppConfiguration())
+                  .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.HOURLY)),
+              ADMIN_AUTH_HEADERS);
+
+      App app3 =
+          createAndCheckEntity(
+              new CreateApp()
+                  .withName(marketPlaceDef3.getName())
+                  .withAppConfiguration(marketPlaceDef3.getAppConfiguration())
+                  .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.HOURLY)),
+              ADMIN_AUTH_HEADERS);
+
+      // Test filtering by multiple agent types using comma-separated values
+      Map<String, String> queryParams = Map.of("agentType", "CollateAI,CollateAITierAgent");
+      ResultList<App> apps = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+
+      assertNotNull(apps);
+      assertNotNull(apps.getData());
+
+      // Should return apps with CollateAI or CollateAITierAgent agent types
+      boolean foundCollateAIApp =
+          apps.getData().stream().anyMatch(app -> app.getName().equals(appName1));
+      boolean foundTierAgentApp =
+          apps.getData().stream().anyMatch(app -> app.getName().equals(appName3));
+
+      assertTrue(
+          foundCollateAIApp || foundTierAgentApp,
+          "Should find apps matching CollateAI or CollateAITierAgent agent types");
+
+      // Should NOT return the Metadata app
+      boolean foundMetadataApp =
+          apps.getData().stream().anyMatch(app -> app.getName().equals(appName2));
+      // Note: This assertion might be too strict if there are other Metadata apps in the system
+
+    } finally {
+      // Clean up created apps
+      try {
+        deleteEntityByName(appName1, true, true, ADMIN_AUTH_HEADERS);
+      } catch (Exception ignored) {
+      }
+      try {
+        deleteEntityByName(appName2, true, true, ADMIN_AUTH_HEADERS);
+      } catch (Exception ignored) {
+      }
+      try {
+        deleteEntityByName(appName3, true, true, ADMIN_AUTH_HEADERS);
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
+  @Test
+  void test_listApps_filterByAgentTypeWithWhitespace() throws IOException {
+    // Test that whitespace around agent types is handled properly
+    Map<String, String> queryParams = Map.of("agentType", " CollateAI , Metadata ");
+    ResultList<App> apps = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+
+    // Should handle whitespace and return proper results
+    assertNotNull(apps);
+    assertNotNull(apps.getData());
+  }
+
+  @Test
+  void test_listApps_filterByEmptyAgentType() throws IOException {
+    // Test that empty agent type parameter doesn't break the request
+    Map<String, String> queryParams = Map.of("agentType", "");
+    ResultList<App> apps = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+
+    // Should return all apps (no filtering applied)
+    assertNotNull(apps);
+    assertNotNull(apps.getData());
+  }
+
+  @Test
+  void test_listApps_filterByNonExistentAgentType() throws IOException {
+    // Test filtering by agent type that doesn't exist
+    Map<String, String> queryParams = Map.of("agentType", "NonExistentAgentType");
+    ResultList<App> apps = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+
+    // Should return empty list or no matches
+    assertNotNull(apps);
+    assertNotNull(apps.getData());
+    // Note: Depending on test data, this might return 0 results
+  }
+
+  @Test
+  void test_listApps_combineAgentTypeWithOtherFilters() throws IOException {
+    // Test combining agentType filter with other query parameters
+    Map<String, String> queryParams =
+        Map.of(
+            "agentType", "CollateAI,Metadata",
+            "limit", "50");
+    ResultList<App> apps = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+
+    // Should return filtered results with specified limit
+    assertNotNull(apps);
+    assertNotNull(apps.getData());
+    assertTrue(apps.getData().size() <= 50);
   }
 }

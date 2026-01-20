@@ -268,9 +268,17 @@ class SqlColumnHandlerMixin:
 
         table_columns = []
 
-        columns = self._get_columns_internal(
-            schema_name, table_name, db_name, inspector, table_type
-        )
+        try:
+            columns = self._get_columns_internal(
+                schema_name, table_name, db_name, inspector, table_type
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Unexpected exception getting columns for table [{table_name}] "
+                f"(schema: '{schema_name}', db: '{db_name}'): {exc}"
+            )
+            columns = []
 
         def process_column(column: dict):
             (
@@ -321,7 +329,8 @@ class SqlColumnHandlerMixin:
                     dataLength=col_data_length,
                     constraint=col_constraint,
                     arrayDataType=arr_data_type,
-                    ordinalPosition=column.get("ordinalPosition"),
+                    ordinalPosition=column.get("ordinalPosition")
+                    or column.get("ordinal_position"),
                 )
                 if precision:
                     # Precision and scale must be integer values

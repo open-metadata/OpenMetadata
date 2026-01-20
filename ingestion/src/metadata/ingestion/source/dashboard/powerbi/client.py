@@ -30,6 +30,7 @@ from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.source.dashboard.powerbi.file_client import PowerBiFileClient
 from metadata.ingestion.source.dashboard.powerbi.models import (
     DashboardsResponse,
+    DataflowExportResponse,
     Dataset,
     DatasetResponse,
     Group,
@@ -38,6 +39,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     PowerBIReport,
     PowerBiTable,
     PowerBiToken,
+    ReportPagesAPIResponse,
     ReportsResponse,
     TablesResponse,
     Tile,
@@ -46,6 +48,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     WorkSpaceScanResponse,
 )
 from metadata.utils.filters import validate_regex
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -74,7 +77,7 @@ class PowerBiApiClient:
             authority=self.config.authorityURI + self.config.tenantId,
         )
         client_config = ClientConfig(
-            base_url="https://api.powerbi.com",
+            base_url=clean_uri(self.config.apiURL),
             api_version="v1.0",
             auth_token=self.get_auth_token,
             auth_header="Authorization",
@@ -214,6 +217,34 @@ class PowerBiApiClient:
 
         return None
 
+    def fetch_report_details(
+        self, group_id: str, report_id: str
+    ) -> Optional[PowerBIReport]:
+        """Method to fetch details of an individual report within a group
+        API: https://learn.microsoft.com/en-us/rest/api/power-bi/reports/get-report-in-group
+        Returns:
+            PowerBIReport
+        """
+        try:
+            logger.debug(
+                f"Calling the API({str(self.client._base_url)}/myorg/groups/{group_id}/reports/{report_id})"  # pylint: disable=protected-access
+                " to get report details"
+            )
+            response_data = self.client.get(
+                f"/myorg/groups/{group_id}/reports/{report_id}"
+            )
+            if not response_data:
+                logger.debug(
+                    f"report details could not be fetched from api for report_id = {report_id}"
+                )
+                return None
+            return PowerBIReport(**response_data)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error fetching report details: {exc}")
+
+        return None
+
     def fetch_all_org_datasets(self, group_id: str) -> Optional[List[Dataset]]:
         """Method to fetch all powerbi datasets within the group
         Returns:
@@ -279,6 +310,21 @@ class PowerBiApiClient:
             logger.warning(f"Error fetching dataset tables: {exc}")
 
         return None
+
+    def fetch_report_pages(self, group_id: str, report_id: str) -> Optional[List[dict]]:
+        # get report pages for report url formation
+        try:
+            # https://api.powerbi.com/v1.0/myorg/groups/4e57dcbb-***/reports/a2902011-***/pages
+            response_data = self.client.get(
+                f"/myorg/groups/{group_id}/reports/{report_id}/pages"
+            )
+            if response_data:
+                response = ReportPagesAPIResponse(**response_data)
+                return response.value
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error fetching report pages: {exc}")
+        return []
 
     def regex_to_odata_condition(self, regex: str) -> str:
         """
@@ -590,6 +636,33 @@ class PowerBiApiClient:
             poll += 1
 
         return False
+
+    def fetch_dataflow_export(
+        self, dataflow_id: str
+    ) -> Optional[DataflowExportResponse]:
+        """Method to export dataflow definition using admin API
+        API: https://api.powerbi.com/v1.0/myorg/admin/dataflows/{dataflowId}/export
+        API doc: https://learn.microsoft.com/en-us/rest/api/power-bi/admin/dataflows-export-dataflow-as-admin
+        Args:
+            dataflow_id: The ID of the dataflow to export
+        Returns:
+            DataflowExportResponse containing entities and their attributes
+        """
+        try:
+            logger.debug(
+                f"Calling the API({str(self.client._base_url)}/myorg/admin/dataflows/{dataflow_id}/export)"  # pylint: disable=protected-access
+                " to export dataflow definition"
+            )
+            response_data = self.client.get(
+                f"/myorg/admin/dataflows/{dataflow_id}/export"
+            )
+            if response_data:
+                return DataflowExportResponse(**response_data)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error exporting dataflow {dataflow_id}: {exc}")
+
+        return None
 
 
 class PowerBiClient(BaseModel):

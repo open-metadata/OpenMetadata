@@ -15,7 +15,7 @@ package org.openmetadata.service.resources.services;
 
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.OK;
-import static org.apache.commons.lang.StringEscapeUtils.escapeCsv;
+import static org.apache.commons.lang3.StringEscapeUtils.escapeCsv;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -742,5 +742,39 @@ public class DatabaseServiceResourceTest
       assertEquals(
           expectedSnowflakeConnection.getPassword(), actualSnowflakeConnection.getPassword());
     }
+  }
+
+  @Test
+  void test_softDeleteWithConnection_preservesSecrets(TestInfo test) throws IOException {
+    CreateDatabaseService createRequest =
+        createRequest(test)
+            .withServiceType(DatabaseServiceType.Mysql)
+            .withConnection(TestUtils.MYSQL_DATABASE_CONNECTION);
+    DatabaseService service = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(service.getConnection(), "Service should have connection");
+
+    deleteEntity(service.getId(), false, false, ADMIN_AUTH_HEADERS);
+
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("include", Include.DELETED.value());
+    DatabaseService deletedService =
+        getEntity(service.getId(), queryParams, "", ADMIN_AUTH_HEADERS);
+    assertTrue(deletedService.getDeleted(), "Service should be marked as deleted");
+    assertNotNull(
+        deletedService.getConnection(), "Connection should be preserved after soft delete");
+  }
+
+  @Test
+  void test_hardDeleteWithConnection_deletesSecrets(TestInfo test) throws IOException {
+    CreateDatabaseService createRequest =
+        createRequest(test)
+            .withServiceType(DatabaseServiceType.Mysql)
+            .withConnection(TestUtils.MYSQL_DATABASE_CONNECTION);
+    DatabaseService service = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+
+    deleteEntity(service.getId(), false, true, ADMIN_AUTH_HEADERS);
+
+    assertEntityDeleted(service.getId(), true);
   }
 }

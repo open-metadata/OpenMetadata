@@ -40,6 +40,7 @@ export interface ActivityFeedTabBasicProps {
   subTab?: ActivityFeedTabs;
   layoutType?: ActivityFeedLayoutType;
   feedCount?: FeedCounts;
+  urlFqn?: string;
 }
 
 export type ActivityFeedTabProps = ActivityFeedTabBasicProps &

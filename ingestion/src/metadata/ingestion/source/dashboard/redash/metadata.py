@@ -110,6 +110,8 @@ class RedashSource(DashboardServiceSource):
         )
 
     def get_dashboards_list(self) -> Optional[List[dict]]:
+        if not self.source_config.includeOwners:
+            logger.debug("Skipping owner information as includeOwners is False")
         return self.dashboard_list
 
     def get_dashboard_name(self, dashboard: dict) -> str:
@@ -123,6 +125,8 @@ class RedashSource(DashboardServiceSource):
         Get owner from email
         """
         try:
+            if not self.source_config.includeOwners:
+                return None
             if dashboard_details.get("user") and dashboard_details["user"].get("email"):
                 return self.metadata.get_reference_by_email(
                     dashboard_details["user"].get("email")
@@ -230,7 +234,11 @@ class RedashSource(DashboardServiceSource):
                 if not visualization:
                     continue
                 if visualization.get("query", {}).get("query"):
-                    lineage_parser = LineageParser(visualization["query"]["query"])
+                    lineage_parser = LineageParser(
+                        visualization["query"]["query"],
+                        parser_type=self.get_query_parser_type(),
+                    )
+                    query_hash = lineage_parser.query_hash
                     for table in lineage_parser.source_tables:
                         table_name = str(table)
                         database_schema_table = fqn.split_table_name(table_name)
@@ -247,7 +255,8 @@ class RedashSource(DashboardServiceSource):
                             != database_schema_table.get("table").lower()
                         ):
                             logger.debug(
-                                f"Table {database_schema_table.get('table')} does not match prefix {prefix_table_name}"
+                                f"[{query_hash}] Table {database_schema_table.get('table')} does not match"
+                                f" prefix {prefix_table_name}"
                             )
                             continue
 
@@ -258,7 +267,8 @@ class RedashSource(DashboardServiceSource):
                             != database_schema_name.lower()
                         ):
                             logger.debug(
-                                f"Schema {database_schema_name} does not match prefix {prefix_schema_name}"
+                                f"[{query_hash}] Schema {database_schema_name} does not match"
+                                f" prefix {prefix_schema_name}"
                             )
                             continue
 
@@ -269,7 +279,8 @@ class RedashSource(DashboardServiceSource):
                             != database_schema_table.get("database").lower()
                         ):
                             logger.debug(
-                                f"Database {database_schema_table.get('database')} does not match prefix {prefix_database_name}"
+                                f"[{query_hash}] Database {database_schema_table.get('database')} does not match"
+                                f" prefix {prefix_database_name}"
                             )
                             continue
 

@@ -17,10 +17,12 @@ import { PagingResponse } from 'Models';
 import { SORT_ORDER } from '../enums/common.enum';
 import { TestCaseType, TestSuiteType } from '../enums/TestSuite.enum';
 import { CreateTestCase } from '../generated/api/tests/createTestCase';
+import { CreateTestDefinition } from '../generated/api/tests/createTestDefinition';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
 import { DataQualityReport } from '../generated/tests/dataQualityReport';
 import {
   TestCase,
+  TestCaseDimensionResult,
   TestCaseResult,
   TestCaseStatus,
 } from '../generated/tests/testCase';
@@ -35,6 +37,7 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
+import { CSVImportAsyncResponse } from '../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
@@ -72,12 +75,14 @@ export type ListTestCaseParamsBySearch = ListTestCaseParams & {
   tier?: string;
   serviceName?: string;
   dataQualityDimension?: string;
+  followedBy?: string;
 };
 
 export type ListTestDefinitionsParams = ListParams & {
   entityType?: EntityType;
-  testPlatform: TestPlatform;
+  testPlatform?: TestPlatform;
   supportedDataType?: string;
+  enabled?: boolean;
 };
 
 export type ListTestCaseResultsParams = Omit<
@@ -112,6 +117,13 @@ export type DataQualityReportParamsType = {
   q?: string;
   aggregationQuery: string;
   index: string;
+};
+
+export type TestCaseDimensionResultParams = {
+  dimensionalityKey?: string;
+  startTs?: number;
+  endTs?: number;
+  dimensionName?: string;
 };
 
 const testCaseUrl = '/dataQuality/testCases';
@@ -229,6 +241,20 @@ export const getTestCaseVersionDetails = async (
   return response.data;
 };
 
+// Test case dimensionality results
+export const getTestCaseDimensionResultsByFqn = async (
+  fqn: string,
+  params?: TestCaseDimensionResultParams
+) => {
+  const response = await APIClient.get<
+    PagingResponse<TestCaseDimensionResult[]>
+  >(`${testCaseUrl}/dimensionResults/${getEncodedFqn(fqn)}`, {
+    params,
+  });
+
+  return response.data;
+};
+
 // testDefinition Section
 export const getListTestDefinitions = async (
   params?: ListTestDefinitionsParams
@@ -248,6 +274,49 @@ export const getTestDefinitionById = async (
 ) => {
   const response = await APIClient.get<TestDefinition>(
     `${testDefinitionUrl}/${id}`,
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};
+
+export const createTestDefinition = async (data: CreateTestDefinition) => {
+  const response = await APIClient.post<TestDefinition>(
+    testDefinitionUrl,
+    data
+  );
+
+  return response.data;
+};
+
+export const updateTestDefinition = async (data: TestDefinition) => {
+  const response = await APIClient.put<TestDefinition>(testDefinitionUrl, data);
+
+  return response.data;
+};
+
+export const patchTestDefinition = async (id: string, patch: Operation[]) => {
+  const response = await APIClient.patch<TestDefinition>(
+    `${testDefinitionUrl}/${id}`,
+    patch
+  );
+
+  return response.data;
+};
+
+export const deleteTestDefinitionByFqn = async (
+  fqn: string,
+  paramsValue?: { hardDelete?: boolean; recursive?: boolean }
+) => {
+  const params = {
+    hardDelete: true,
+    recursive: true,
+    ...paramsValue,
+  };
+  const response = await APIClient.delete<TestDefinition>(
+    `${testDefinitionUrl}/name/${fqn}`,
     {
       params,
     }
@@ -352,6 +421,18 @@ export const listTestCases = async (params: ListTestCasesParams) => {
     {
       params,
     }
+  );
+
+  return response.data;
+};
+
+export const exportTestCasesInCSV = async (
+  name: string,
+  params?: { recursive?: boolean }
+): Promise<CSVImportAsyncResponse> => {
+  const response = await APIClient.get(
+    `/dataQuality/testCases/name/${getEncodedFqn(name)}/exportAsync`,
+    { params }
   );
 
   return response.data;

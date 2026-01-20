@@ -1,0 +1,549 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/ai/aiApplication.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AIApplication",
+  "$comment": "@om-entity-type",
+  "description": "AI Application entity representing AI systems including chatbots, agents, copilots, and other AI-powered applications. Applications can use multiple LLM models and integrate with various tools and data sources.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.ai.AIApplication",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "applicationType": {
+      "javaType": "org.openmetadata.schema.entity.ai.ApplicationType",
+      "description": "Type of AI application based on primary function and interaction pattern",
+      "type": "string",
+      "enum": [
+        "Chatbot",
+        "Agent",
+        "Copilot",
+        "Assistant",
+        "RAG",
+        "CodeGenerator",
+        "DataAnalyst",
+        "AutomationBot",
+        "MultiAgent",
+        "Custom"
+      ],
+      "javaEnums": [
+        {"name": "Chatbot"},
+        {"name": "Agent"},
+        {"name": "Copilot"},
+        {"name": "Assistant"},
+        {"name": "RAG"},
+        {"name": "CodeGenerator"},
+        {"name": "DataAnalyst"},
+        {"name": "AutomationBot"},
+        {"name": "MultiAgent"},
+        {"name": "Custom"}
+      ]
+    },
+    "developmentStage": {
+      "javaType": "org.openmetadata.schema.entity.ai.DevelopmentStage",
+      "description": "Development stage of the AI application. 'Unauthorized' indicates Shadow AI that needs governance review.",
+      "type": "string",
+      "enum": [
+        "Proposal",
+        "Development",
+        "Testing",
+        "Staging",
+        "Production",
+        "Deprecated",
+        "Unauthorized"
+      ],
+      "javaEnums": [
+        {"name": "Proposal"},
+        {"name": "Development"},
+        {"name": "Testing"},
+        {"name": "Staging"},
+        {"name": "Production"},
+        {"name": "Deprecated"},
+        {"name": "Unauthorized"}
+      ]
+    },
+    "modelConfiguration": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.ModelConfiguration",
+      "description": "Configuration for one LLM model used by this application. Applications can have multiple model configurations for different purposes.",
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "$ref": "../../type/entityReference.json",
+          "description": "Reference to LLMModel entity"
+        },
+        "purpose": {
+          "description": "Purpose of this model in the application workflow",
+          "type": "string",
+          "enum": ["Primary", "Reasoning", "Embedding", "CodeGeneration", "Fallback", "CostOptimization"],
+          "javaType": "org.openmetadata.schema.entity.ai.ModelPurpose",
+          "javaEnums": [
+            {"name": "Primary"},
+            {"name": "Reasoning"},
+            {"name": "Embedding"},
+            {"name": "CodeGeneration"},
+            {"name": "Fallback"},
+            {"name": "CostOptimization"}
+          ]
+        },
+        "selectionCriteria": {
+          "type": "object",
+          "description": "Criteria for when to use this model",
+          "properties": {
+            "queryTypes": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Types of queries this model handles"
+            },
+            "maxTokens": {
+              "type": "integer",
+              "description": "Use this model only if query is under this token count"
+            },
+            "costThreshold": {
+              "type": "number",
+              "description": "Use this model if cost per query is under this threshold"
+            }
+          }
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Model-specific parameters for this application",
+          "properties": {
+            "temperature": {"type": "number"},
+            "maxTokens": {"type": "integer"},
+            "topP": {"type": "number"},
+            "frequencyPenalty": {"type": "number"},
+            "presencePenalty": {"type": "number"}
+          }
+        }
+      },
+      "required": ["model", "purpose"]
+    },
+    "governanceMetadata": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.GovernanceMetadata",
+      "description": "AI governance metadata for compliance and risk management",
+      "additionalProperties": false,
+      "properties": {
+        "registrationStatus": {
+          "type": "string",
+          "description": "Registration status - used to track Shadow AI",
+          "enum": ["Registered", "Unregistered", "PendingApproval", "Approved", "Rejected"]
+        },
+        "registeredBy": {"type": "string"},
+        "registeredAt": {
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "approvedBy": {"type": "string"},
+        "approvedAt": {
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "riskAssessment": {
+          "type": "object",
+          "description": "Risk assessment for this AI application",
+          "properties": {
+            "riskLevel": {
+              "type": "string",
+              "enum": ["Low", "Medium", "High", "Critical"]
+            },
+            "riskFactors": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Identified risk factors"
+            },
+            "mitigations": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Risk mitigation measures in place"
+            },
+            "assessedBy": {"type": "string"},
+            "assessedAt": {
+              "$ref": "../../type/basic.json#/definitions/timestamp"
+            }
+          }
+        },
+        "dataClassification": {
+          "type": "object",
+          "description": "Classification of data accessed by this application",
+          "properties": {
+            "accessesPII": {
+              "type": "boolean",
+              "description": "Does this application access Personally Identifiable Information"
+            },
+            "accessesSensitiveData": {
+              "type": "boolean",
+              "description": "Does this application access sensitive business data"
+            },
+            "dataCategories": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Categories of data accessed"
+            },
+            "dataRetentionPeriod": {
+              "type": "string",
+              "description": "Data retention period for application logs"
+            }
+          }
+        },
+        "governancePolicies": {
+          "$ref": "../../type/entityReferenceList.json",
+          "description": "Governance policies applied to this application"
+        },
+        "aiCompliance": {
+          "$ref": "../../type/aiCompliance.json",
+          "description": "AI compliance assessments for various regulatory frameworks (EU AI Act, NIST AI RMF, etc.)"
+        },
+        "intakeNotes": {
+          "type": "string",
+          "description": "Notes from AI governance intake form or review process"
+        },
+        "approvalComments": {
+          "type": "string",
+          "description": "Comments from governance council on approval/rejection decision"
+        }
+      }
+    },
+    "biasMetrics": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.BiasMetrics",
+      "description": "Bias evaluation metrics for the AI application",
+      "additionalProperties": false,
+      "properties": {
+        "lastEvaluatedAt": {
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "evaluationMethod": {
+          "type": "string",
+          "description": "Method used for bias evaluation (e.g., Fairlearn, AI Fairness 360)"
+        },
+        "overallBiasScore": {
+          "type": "number",
+          "description": "Overall bias score from 0-1, where higher values indicate more bias",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "demographicParity": {
+          "type": "number",
+          "description": "Demographic parity score"
+        },
+        "equalizedOdds": {
+          "type": "number",
+          "description": "Equalized odds score"
+        },
+        "disparateImpact": {
+          "type": "number",
+          "description": "Disparate impact ratio"
+        },
+        "dimensionScores": {
+          "type": "object",
+          "description": "Bias scores by demographic dimension",
+          "properties": {
+            "gender": {"type": "number"},
+            "race": {"type": "number"},
+            "age": {"type": "number"},
+            "religion": {"type": "number"},
+            "disability": {"type": "number"},
+            "socioeconomic": {"type": "number"}
+          }
+        },
+        "testDataset": {
+          "$ref": "../../type/entityReference.json",
+          "description": "Dataset used for bias evaluation"
+        },
+        "biasDetected": {
+          "type": "boolean",
+          "description": "Whether significant bias was detected"
+        },
+        "remediationSteps": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Steps taken or recommended to remediate bias"
+        }
+      }
+    },
+    "performanceMetrics": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.PerformanceMetrics",
+      "description": "Runtime performance metrics for the AI application",
+      "additionalProperties": false,
+      "properties": {
+        "totalExecutions": {
+          "type": "integer",
+          "description": "Total number of executions"
+        },
+        "successRate": {
+          "type": "number",
+          "description": "Success rate (0-1)"
+        },
+        "averageLatencyMs": {
+          "type": "number",
+          "description": "Average latency in milliseconds"
+        },
+        "p95LatencyMs": {
+          "type": "number",
+          "description": "95th percentile latency in milliseconds"
+        },
+        "p99LatencyMs": {
+          "type": "number",
+          "description": "99th percentile latency in milliseconds"
+        },
+        "averageCost": {
+          "type": "number",
+          "description": "Average cost per execution"
+        },
+        "totalCost": {
+          "type": "number",
+          "description": "Total cost across all executions"
+        },
+        "currency": {
+          "type": "string",
+          "default": "USD"
+        },
+        "lastExecutionAt": {
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        }
+      }
+    },
+    "qualityMetrics": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.QualityMetrics",
+      "description": "Quality metrics for AI application responses",
+      "additionalProperties": false,
+      "properties": {
+        "answerRelevancy": {
+          "type": "number",
+          "description": "Answer relevancy score (0-1)"
+        },
+        "contextPrecision": {
+          "type": "number",
+          "description": "Context precision score (0-1)"
+        },
+        "faithfulness": {
+          "type": "number",
+          "description": "Faithfulness to source data (0-1)"
+        },
+        "hallucinationRate": {
+          "type": "number",
+          "description": "Rate of hallucinations (0-1)"
+        }
+      }
+    },
+    "safetyMetrics": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.SafetyMetrics",
+      "description": "Safety metrics for AI application",
+      "additionalProperties": false,
+      "properties": {
+        "piiLeakageRate": {
+          "type": "number",
+          "description": "Rate of PII leakage incidents"
+        },
+        "harmfulContentRate": {
+          "type": "number",
+          "description": "Rate of harmful content generated"
+        },
+        "promptInjectionAttempts": {
+          "type": "integer",
+          "description": "Number of prompt injection attempts detected"
+        },
+        "blockedRequests": {
+          "type": "integer",
+          "description": "Number of requests blocked by safety filters"
+        }
+      }
+    },
+    "frameworkInfo": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.FrameworkInfo",
+      "description": "Information about the framework used to build the application",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "enum": ["LangChain", "LlamaIndex", "AutoGen", "CrewAI", "Semantic Kernel", "Haystack", "Custom"]
+        },
+        "version": {"type": "string"},
+        "language": {
+          "type": "string",
+          "enum": ["Python", "TypeScript", "JavaScript", "Java", "C#", "Go"]
+        }
+      }
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of the AI Application.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this AI Application.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of the AI Application.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display name for the AI Application.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the AI Application, its purpose, and usage.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "applicationType": {
+      "$ref": "#/definitions/applicationType"
+    },
+    "developmentStage": {
+      "$ref": "#/definitions/developmentStage"
+    },
+    "modelConfigurations": {
+      "description": "Multiple LLM models this application can use for different purposes",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/modelConfiguration"
+      },
+      "minItems": 1
+    },
+    "primaryModel": {
+      "description": "Primary/default LLM model used by this application",
+      "$ref": "../../type/entityReference.json"
+    },
+    "promptTemplates": {
+      "description": "Prompt templates used by this application",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "tools": {
+      "description": "MCP tools or other tools available to this application",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "dataSources": {
+      "description": "Data sources (tables, APIs, etc.) this application can access",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "knowledgeBases": {
+      "description": "Vector databases, document stores used for RAG",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "upstreamApplications": {
+      "description": "Other AI applications this application depends on (multi-agent orchestration)",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "downstreamApplications": {
+      "description": "AI applications that depend on this application",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "framework": {
+      "$ref": "#/definitions/frameworkInfo"
+    },
+    "governanceMetadata": {
+      "$ref": "#/definitions/governanceMetadata"
+    },
+    "biasMetrics": {
+      "$ref": "#/definitions/biasMetrics"
+    },
+    "performanceMetrics": {
+      "$ref": "#/definitions/performanceMetrics"
+    },
+    "qualityMetrics": {
+      "$ref": "#/definitions/qualityMetrics"
+    },
+    "safetyMetrics": {
+      "$ref": "#/definitions/safetyMetrics"
+    },
+    "testSuites": {
+      "description": "Test suites for validating this AI application",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "sourceCode": {
+      "description": "Link to source code repository",
+      "type": "string"
+    },
+    "deploymentUrl": {
+      "description": "Production deployment endpoint",
+      "type": "string"
+    },
+    "documentation": {
+      "description": "Link to external documentation",
+      "type": "string"
+    },
+    "owners": {
+      "description": "Owners of this AI Application",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "followers": {
+      "description": "Followers of this AI Application",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "domain": {
+      "description": "Domain the AI Application belongs to",
+      "$ref": "../../type/entityReference.json"
+    },
+    "dataProducts": {
+      "description": "Data products this AI Application is part of",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "tags": {
+      "description": "Tags for this AI Application",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "version": {
+      "description": "Metadata version of the entity",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time in Unix epoch milliseconds",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to this resource",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that led to this version",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Change that led to this version",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When true, indicates the entity has been soft deleted",
+      "type": "boolean",
+      "default": false
+    },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "domains": {
+      "description": "Domains the AI Application belongs to",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "votes": {
+      "description": "Votes on the entity",
+      "$ref": "../../type/votes.json"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle properties of the entity",
+      "$ref": "../../type/lifeCycle.json"
+    },
+    "sourceHash": {
+      "description": "Source hash of the entity",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
+    }
+  },
+  "required": ["id", "name", "applicationType", "modelConfigurations"],
+  "additionalProperties": false
+}

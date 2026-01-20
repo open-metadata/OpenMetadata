@@ -22,19 +22,28 @@ import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
+import { DirectoryClass } from '../../support/entity/DirectoryClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
+import { FileClass } from '../../support/entity/FileClass';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { SpreadsheetClass } from '../../support/entity/SpreadsheetClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { WorksheetClass } from '../../support/entity/WorksheetClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { TagClass } from '../../support/tag/TagClass';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
-import { updateDisplayNameForEntity } from '../../utils/entity';
+import {
+  copyAndGetClipboardText,
+  testCopyLinkButton,
+  updateDisplayNameForEntity,
+  validateCopiedLinkFormat,
+} from '../../utils/entity';
 import {
   Bucket,
   validateBucketsForIndex,
@@ -44,7 +53,12 @@ import {
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
+test.use({
+  storageState: 'playwright/.auth/admin.json',
+  contextOptions: {
+    permissions: ['clipboard-read', 'clipboard-write'],
+  },
+});
 
 test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
@@ -129,7 +143,7 @@ test.describe('Explore Tree scenarios', () => {
 
       await expect(
         page.getByTestId('search-dropdown-Data Assets')
-      ).toContainText('Data Assets: glossaryTerm');
+      ).toContainText('Data Assets: glossaryterm');
 
       await page.getByTestId('explore-tree-title-Tags').click();
 
@@ -286,6 +300,10 @@ test.describe('Explore page', () => {
   const mlModel = new MlModelClass();
   const database = new DatabaseClass();
   const databaseSchema = new DatabaseSchemaClass();
+  const directory = new DirectoryClass();
+  const file = new FileClass();
+  const spreadsheet = new SpreadsheetClass();
+  const worksheet = new WorksheetClass();
   const metric = new MetricClass();
   const domain = new Domain();
   const dataProduct = new DataProduct([domain]);
@@ -315,6 +333,10 @@ test.describe('Explore page', () => {
     await metric.create(apiContext);
     await dataProduct.create(apiContext);
     await tag.create(apiContext);
+    await directory.create(apiContext);
+    await file.create(apiContext);
+    await spreadsheet.create(apiContext);
+    await worksheet.create(apiContext);
     await afterAction();
   });
 
@@ -323,8 +345,8 @@ test.describe('Explore page', () => {
 
     const { apiContext, afterAction } = await getApiContext(page);
     await table.delete(apiContext);
-    await glossary.delete(apiContext);
     await glossaryTerm.delete(apiContext);
+    await glossary.delete(apiContext);
     await dashboard.delete(apiContext);
     await storedProcedure.delete(apiContext);
     await pipeline.delete(apiContext);
@@ -340,6 +362,10 @@ test.describe('Explore page', () => {
     await domain.delete(apiContext);
     await dataProduct.delete(apiContext);
     await tag.delete(apiContext);
+    await directory.delete(apiContext);
+    await file.delete(apiContext);
+    await spreadsheet.delete(apiContext);
+    await worksheet.delete(apiContext);
     await afterAction();
   });
 
@@ -410,5 +436,113 @@ test.describe('Explore page', () => {
         }
       }
     );
+  });
+
+  test('Copy field link button should copy the field URL to clipboard for SearchIndex', async ({
+    page,
+  }) => {
+    await searchIndex.visitEntityPage(page);
+
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    await testCopyLinkButton({
+      page,
+      buttonTestId: 'copy-field-link-button',
+      containerTestId: 'search-index-fields-table',
+      expectedUrlPath: '/searchIndex/',
+      entityFqn: searchIndex.entityResponseData?.['fullyQualifiedName'] ?? '',
+    });
+  });
+
+  test('Copy field link button should copy the field URL to clipboard for APIEndpoint', async ({
+    page,
+  }) => {
+    await apiEndpoint.visitEntityPage(page);
+
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    await testCopyLinkButton({
+      page,
+      buttonTestId: 'copy-field-link-button',
+      containerTestId: 'schema-fields-table',
+      expectedUrlPath: '/apiEndpoint/',
+      entityFqn: apiEndpoint.entityResponseData?.['fullyQualifiedName'] ?? '',
+    });
+  });
+
+  test('Copy field link should have valid URL format for SearchIndex', async ({
+    page,
+  }) => {
+    await searchIndex.visitEntityPage(page);
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    await expect(page.getByTestId('search-index-fields-table')).toBeVisible();
+
+    const copyButton = page.getByTestId('copy-field-link-button').first();
+    await expect(copyButton).toBeVisible();
+
+    const clipboardText = await copyAndGetClipboardText(page, copyButton);
+
+    const validationResult = validateCopiedLinkFormat({
+      clipboardText,
+      expectedEntityType: 'searchIndex',
+      entityFqn: searchIndex.entityResponseData?.['fullyQualifiedName'] ?? '',
+    });
+
+    expect(validationResult.isValid).toBe(true);
+    expect(validationResult.protocol).toMatch(/^https?:$/);
+    expect(validationResult.pathname).toContain('searchIndex');
+
+    // Visit the copied link to verify it opens the side panel
+    await page.goto(clipboardText);
+
+    // Verify side panel is open
+    const sidePanel = page.locator('.column-detail-panel');
+    await expect(sidePanel).toBeVisible();
+
+    // Close side panel
+    await page.getByTestId('close-button').click();
+    await expect(sidePanel).not.toBeVisible();
+
+    // Verify URL does not contain the column part
+    await expect(page).toHaveURL(new RegExp(`/searchIndex/${searchIndex.entityResponseData?.['fullyQualifiedName']}$`));
+  });
+
+  test('Copy field link should have valid URL format for APIEndpoint', async ({
+    page,
+  }) => {
+    await apiEndpoint.visitEntityPage(page);
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    await expect(page.getByTestId('schema-fields-table')).toBeVisible();
+
+    const copyButton = page.getByTestId('copy-field-link-button').first();
+    await expect(copyButton).toBeVisible();
+
+    const clipboardText = await copyAndGetClipboardText(page, copyButton);
+
+    const validationResult = validateCopiedLinkFormat({
+      clipboardText,
+      expectedEntityType: 'apiEndpoint',
+      entityFqn: apiEndpoint.entityResponseData?.['fullyQualifiedName'] ?? '',
+    });
+
+    expect(validationResult.isValid).toBe(true);
+    expect(validationResult.protocol).toMatch(/^https?:$/);
+    expect(validationResult.pathname).toContain('apiEndpoint');
+
+    // Visit the copied link to verify it opens the side panel
+    await page.goto(clipboardText);
+
+    // Verify side panel is open
+    const sidePanel = page.locator('.column-detail-panel');
+    await expect(sidePanel).toBeVisible();
+
+    // Close side panel
+    await page.getByTestId('close-button').click();
+    await expect(sidePanel).not.toBeVisible();
+
+    // Verify URL does not contain the column part
+    await expect(page).toHaveURL(new RegExp(`/apiEndpoint/${apiEndpoint.entityResponseData?.['fullyQualifiedName']}$`));
   });
 });

@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import { MemoryRouter } from 'react-router-dom';
 import {
   MOCK_CURRENT_TEAM,
   MOCK_TABLE_DATA,
 } from '../../../../mocks/Teams.mock';
+import { descriptionTableObject } from '../../../../utils/TableColumn.util';
 import { TeamHierarchyProps } from './team.interface';
 import TeamHierarchy from './TeamHierarchy';
 
@@ -80,13 +83,18 @@ jest.mock('../../../common/SearchBarComponent/SearchBar.component', () =>
   jest.fn().mockImplementation(() => <div>SearchBar</div>)
 );
 
+const renderComponent = (props = {}) => {
+  return render(
+    <DndProvider backend={HTML5Backend}>
+      <TeamHierarchy {...teamHierarchyPropsData} {...props} />
+    </DndProvider>,
+    { wrapper: MemoryRouter }
+  );
+};
+
 describe('Team Hierarchy page', () => {
   it('Initially, Table should load', async () => {
-    await act(async () => {
-      render(<TeamHierarchy {...teamHierarchyPropsData} />, {
-        wrapper: MemoryRouter,
-      });
-    });
+    renderComponent();
 
     const table = await screen.findByTestId('team-hierarchy-table');
 
@@ -94,11 +102,7 @@ describe('Team Hierarchy page', () => {
   });
 
   it('Should render all table columns', async () => {
-    await act(async () => {
-      render(<TeamHierarchy {...teamHierarchyPropsData} />, {
-        wrapper: MemoryRouter,
-      });
-    });
+    renderComponent();
 
     const table = await screen.findByTestId('team-hierarchy-table');
     const teamsColumn = await screen.findByText('label.team-plural');
@@ -106,7 +110,6 @@ describe('Team Hierarchy page', () => {
     const subTeamsColumn = await screen.findByText('label.sub-team-plural');
     const usersColumn = await screen.findByText('label.user-plural');
     const assetCountColumn = await screen.findByText('label.entity-count');
-    const descriptionColumn = await screen.findByText('label.description');
     const rows = await screen.findAllByRole('row');
 
     expect(table).toBeInTheDocument();
@@ -115,17 +118,13 @@ describe('Team Hierarchy page', () => {
     expect(subTeamsColumn).toBeInTheDocument();
     expect(usersColumn).toBeInTheDocument();
     expect(assetCountColumn).toBeInTheDocument();
-    expect(descriptionColumn).toBeInTheDocument();
+    expect(descriptionTableObject).toHaveBeenCalledWith({ width: 300 });
 
     expect(rows).toHaveLength(MOCK_TABLE_DATA.length + 1);
   });
 
   it('Should render child row in table', async () => {
-    await act(async () => {
-      render(<TeamHierarchy {...teamHierarchyPropsData} />, {
-        wrapper: MemoryRouter,
-      });
-    });
+    renderComponent();
 
     const table = await screen.findByTestId('team-hierarchy-table');
 

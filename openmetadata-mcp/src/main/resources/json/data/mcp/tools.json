@@ -2,37 +2,111 @@
   "tools": [
     {
       "name": "search_metadata",
-      "description": "Find your data and business terms in OpenMetadata. For example if the user asks to 'find tables that contain customers information', then 'customers' should be the query, and the entity_type should be 'table'. Here make sure to use 'Href' is available in result to create a hyperlink to the entity in OpenMetadata.",
+      "description": "Find data assets and business terms in OpenMetadata catalog. Searches tables, dashboards, topics, pipelines, and other metadata entities using natural language.",
       "parameters": {
-        "description": "The search query to find metadata in the OpenMetadata catalog, entity type could be table, topic etc. Limit can be used to paginate on the data.",
+        "description": "Use 'query' parameter for natural language search (recommended for most use cases). The system will automatically optimize the search query.",
         "type": "object",
         "properties": {
           "query": {
             "type": "string",
-            "description": "Keywords to use for searching."
+            "description": "Natural language search query. Use this for simple searches. Examples: 'tables owned by marketing', 'dashboards with customer data', 'tier1 tables', 'tables with column SKU', 'BigQuery services'. The query will be automatically converted to an optimized search."
           },
-          "entity_type": {
+          "entityType": {
             "type": "string",
-            "description": "Optional entity type to filter results. The OpenMetadata entities are categorized as follows: Service Entities include databaseService, messagingService, apiService, dashboardService, pipelineService, storageService, mlmodelService, metadataService, and searchService; Data Asset Entities include apiCollection, apiEndpoint, table, storedProcedure, database, databaseSchema, dashboard, dashboardDataModel, pipeline, chart, topic, searchIndex, mlmodel, and container; User Entities include user and team; Domain entities include domain and dataProduct; and Governance entities include metric, glossary, and glossaryTerm."
+            "description": "Filter by entity type (auto-detected if not specified). Use singular form: table, dashboard, topic, pipeline, database, databaseService, glossary, glossaryTerm, mlmodel, container, chart, metric, user, team, domain, dataProduct."
           },
-          "limit": {
+          "queryFilter": {
+            "type": "string",
+            "description": "Advanced: Direct OpenSearch JSON query string for precise control. Only use if you can generate valid OpenSearch DSL. When provided, this overrides the 'query' parameter. Must include entityType filter. Example: '{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"owners.name\": \"marketing\"}}]}}'. Key rules: Use singular entityType, 'owners.name' (plural), tier format is 'Tier.Tier1', columns are NOT nested."
+          },
+          "from": {
             "type": "integer",
-            "description": "Maximum number of results to return. Default is 10. Try to keep this number low unless the user asks for more."
+            "description": "In case the request more than 'size' results, this is the offset from the first result you want to fetch. Default is 0.",
+            "default": 10
+          },
+          "size": {
+            "type": "integer",
+            "description": "Number of results to return. Default is 10, we can iteratively page through results by increasing 'from'. Maximum allowed is 50.",
+            "default": 10
+          },
+          "includeDeleted": {
+            "type": "boolean",
+            "description": "Include deleted entities in search results. Default is false.",
+            "default": false
+          },
+          "fields": {
+            "type": "string",
+            "description": "Comma-separated additional fields to include. Default returns: name, displayName, fullyQualifiedName, description, entityType, service, database, databaseSchema, serviceType, href, tags, owners, tier, tableType, columnNames.\n\nAdditional fields by entity type:\n- Table entities: columns, schemaDefinition, queries, upstreamLineage, entityRelationship\n- Topic entities: messageSchema, partitions, replicationFactor  \n- Dashboard entities: charts, dataModels, project\n- Pipeline entities: tasks, pipelineUrl, scheduleInterval\n- All entities: createdAt, updatedAt, changeDescription, extension, domain, dataProducts, lifeCycle, sourceHash\n\nExample: 'columns,queries' for table column details and sample queries."
+          },
+          "includeAggregations": {
+            "type": "boolean",
+            "description": "Whether to include aggregation data (facets) in the response. Defaults to false to optimize LLM context size. Set to true only when you need aggregation statistics like counts by service type, owner, tags, etc. Aggregations can significantly increase response size.",
+            "default": false
+          },
+          "maxAggregationBuckets": {
+            "type": "integer",
+            "description": "Maximum number of aggregation buckets to return per field when includeAggregations is true. Limits response size to prevent context overflow. Default is 10, maximum allowed is 50.",
+            "default": 10
           }
         },
-        "required": [
-          "query"
+        "required": [],
+        "examples": [
+          {
+            "description": "Simple search - Find tables owned by a team",
+            "query": "tables owned by marketing",
+            "entityType": "table"
+          },
+          {
+            "description": "Simple search - Find customer-related data",
+            "query": "tables with customer data"
+          },
+          {
+            "description": "Simple search - Find tier1 tables",
+            "query": "tier1 tables",
+            "entityType": "table"
+          },
+          {
+            "description": "Simple search - Find dashboards",
+            "query": "sales dashboards",
+            "entityType": "dashboard"
+          },
+          {
+            "description": "Simple search with pagination",
+            "query": "tables",
+            "size": 20,
+            "from": 0
+          },
+          {
+            "description": "Advanced - Owner filter with OpenSearch",
+            "queryFilter": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"owners.name\": \"marketing\"}}]}}"
+          },
+          {
+            "description": "Advanced - Column search with OpenSearch",
+            "queryFilter": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"match\": {\"columns.name\": \"customer\"}}]}}"
+          },
+          {
+            "description": "Advanced - Tier1 tables with OpenSearch",
+            "queryFilter": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"tier.tagFQN\": \"Tier.Tier1\"}}]}}"
+          },
+          {
+            "description": "Advanced - Tag filtering with OpenSearch",
+            "queryFilter": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"tags.tagFQN\": \"PII.Sensitive\"}}]}}"
+          },
+          {
+            "description": "Advanced - Aggregation query for counting",
+            "queryFilter": "{\"size\": 0, \"query\": {\"bool\": {\"must\": [{\"term\": {\"entityType\": \"databaseService\"}}, {\"term\": {\"serviceType\": \"BigQuery\"}}]}}, \"aggs\": {\"total_count\": {\"value_count\": {\"field\": \"_id\"}}}}"
+          }
         ]
       }
     },
     {
       "name": "get_entity_details",
-      "description": "Get detailed information about a specific entity",
+      "description": "Get detailed information about a specific entity. Response is optimized for LLM context by excluding verbose metadata fields.",
       "parameters": {
         "description": "Fqn is the fully qualified name of the entity. Entity type could be table, topic etc.",
         "type": "object",
         "properties": {
-          "entity_type": {
+          "entityType": {
             "type": "string",
             "description": "Type of entity"
           },
@@ -42,7 +116,7 @@
           }
         },
         "required": [
-          "entity_type",
+          "entityType",
           "fqn"
         ]
       }
@@ -135,7 +209,7 @@
             "type": "string",
             "description": "Entity Type to patch."
           },
-          "entityFqn": {
+          "fqn": {
             "type": "string",
             "description": "Fully Qualified Name of the Entity to be patched."
           },
@@ -146,7 +220,7 @@
         },
         "required": [
           "entityType",
-          "entityFqn",
+          "fqn",
           "patch"
         ]
       }
@@ -158,7 +232,7 @@
         "description": "Fqn is the fully qualified name of the entity. Entity type could be table, topic etc.",
         "type": "object",
         "properties": {
-          "entity_type": {
+          "entityType": {
             "type": "string",
             "description": "Type of entity"
           },
@@ -166,20 +240,20 @@
             "type": "string",
             "description": "Fully qualified name of the entity"
           },
-          "upstream_depth": {
+          "upstreamDepth": {
             "type": "integer",
-            "description": "Depth for reaching upstream entities. Default is 5."
+            "description": "Number of upstream hops to traverse. Default is 3, maximum is 10 to prevent excessive response size.",
+            "default": 3
           },
-          "downstream_depth": {
+          "downstreamDepth": {
             "type": "integer",
-            "description": "Depth for reaching downstream entities. Default is 5."
+            "description": "Number of downstream hops to traverse. Default is 3, maximum is 10 to prevent excessive response size.",
+            "default": 3
           }
         },
         "required": [
-          "entity_type",
-          "fqn",
-          "upstream_depth",
-          "downstream_depth"
+          "entityType",
+          "fqn"
         ]
       }
     }

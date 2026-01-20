@@ -13,6 +13,7 @@
 import { expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../constant/settings';
 import { redirectToHomePage } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick } from './sidebar';
 
 export const updatePersonaDisplayName = async ({
@@ -43,11 +44,10 @@ export const updatePersonaDisplayName = async ({
  */
 export const navigateToPersonaSettings = async (page: Page) => {
   await redirectToHomePage(page);
+  const listPersonas = page.waitForResponse('/api/v1/personas?*');
   await settingClick(page, GlobalSettingOptions.PERSONA);
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await listPersonas;
+  await waitForAllLoadersToDisappear(page, 'skeleton-loader');
 };
 
 /**
@@ -57,28 +57,23 @@ export const checkPersonaInProfile = async (
   page: Page,
   expectedPersonaName?: string
 ) => {
-  // Wait for page to load completely
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
+  await page.locator('[data-testid="dropdown-profile"] svg').click();
+  await page.waitForSelector('[role="menu"].profile-dropdown', {
+    state: 'visible',
   });
-
-  const profileDropdown = page.locator('[data-testid="dropdown-profile"]');
-
-  await profileDropdown.click();
-
-  const personaSelector = page.locator('[data-testid="persona-label"]');
+  await page.getByTestId('user-name').click();
+  await page.waitForLoadState('networkidle');
 
   if (expectedPersonaName) {
     // Expect persona to be visible with specific name
-    await expect(personaSelector).toBeVisible();
-    await expect(personaSelector).toContainText(expectedPersonaName);
+    await expect(page.getByTestId('default-persona-chip')).toBeVisible();
+    await expect(page.getByTestId('default-persona-chip')).toContainText(
+      expectedPersonaName
+    );
   } else {
     // Expect no persona to be visible
-    await expect(personaSelector).not.toBeVisible();
+    await expect(page.getByText('No default persona')).toBeVisible();
   }
-
-  // Close dropdown
-  await page.keyboard.press('Escape');
 };
 
 /**
@@ -97,11 +92,50 @@ export const setPersonaAsDefault = async (page: Page) => {
   await setAsDefaultResponse;
 };
 
+export const navigateToPersonaWithPagination = async (
+  page: Page,
+  personaName: string,
+  click = true,
+  maxPages = 15
+) => {
+  for (let currentPage = 0; currentPage < maxPages; currentPage++) {
+    // Wait for the skeleton card loader to disappear first
+    await waitForAllLoadersToDisappear(page, 'skeleton-card-loader');
+
+    const locator = page.getByTestId(`persona-details-card-${personaName}`);
+
+    // Check if element is visible on current page
+    if (await locator.isVisible()) {
+      if (click) {
+        const personaDetailsResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/personas/name/') &&
+            response.status() === 200
+        );
+        await locator.click();
+        await personaDetailsResponse;
+      }
+
+      return;
+    }
+
+    const nextBtn = page.locator('[data-testid="next"]');
+    await nextBtn.waitFor({ state: 'visible' });
+
+    const getPersonas = page.waitForResponse('/api/v1/personas*');
+    await nextBtn.click();
+    await getPersonas;
+  }
+};
+
 /**
  * Remove persona default through the admin UI
  */
-export const removePersonaDefault = async (page: Page, personaName: string) => {
-  await page.getByTestId(`persona-details-card-${personaName}`).click();
+export const removePersonaDefault = async (
+  page: Page,
+  personaName?: string
+) => {
+  await navigateToPersonaWithPagination(page, personaName ?? '');
 
   await page.getByTestId('manage-button').click();
   await page.getByTestId('remove-default-button').click();

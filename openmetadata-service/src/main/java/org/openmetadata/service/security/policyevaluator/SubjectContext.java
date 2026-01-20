@@ -20,9 +20,11 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Getter;
@@ -35,16 +37,22 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /** Subject context used for Access Control Policies */
 @Slf4j
-public record SubjectContext(User user) {
+public record SubjectContext(User user, String impersonatedBy) {
   private static final String USER_FIELDS = "roles,teams,isAdmin,profile,domains";
   public static final String TEAM_FIELDS = "defaultRoles, policies, parents, profile,domains";
 
   public static SubjectContext getSubjectContext(String userName) {
-    User user = Entity.getEntityByName(Entity.USER, userName, USER_FIELDS, NON_DELETED);
-    return new SubjectContext(user);
+    User user = SubjectCache.getUserContext(userName);
+    return new SubjectContext(user, null);
+  }
+
+  public static SubjectContext getSubjectContext(String userName, String impersonatedBy) {
+    User user = SubjectCache.getUserContext(userName);
+    return new SubjectContext(user, impersonatedBy);
   }
 
   public boolean isAdmin() {
@@ -74,12 +82,68 @@ public record SubjectContext(User user) {
     return false;
   }
 
+  public boolean isReviewer(List<EntityReference> reviewers) {
+    if (nullOrEmpty(reviewers)) {
+      return false;
+    }
+    for (EntityReference reviewer : reviewers) {
+      // Reviewer is the same user
+      if (reviewer.getType().equals(Entity.USER) && reviewer.getName().equals(user.getName())) {
+        return true;
+      }
+
+      // Reviewer is a team and user is a member of that team
+      if (reviewer.getType().equals(Entity.TEAM)) {
+        for (EntityReference userTeam : listOrEmpty(user.getTeams())) {
+          if (userTeam.getName().equals(reviewer.getName())) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
   public boolean hasDomains(List<EntityReference> domains) {
-    return listOrEmpty(user.getDomains()).stream()
-        .anyMatch(
-            userDomain ->
-                listOrEmpty(domains).stream()
-                    .anyMatch(domain -> userDomain.getId().equals(domain.getId())));
+    return checkDomainHierarchyAccess(user.getDomains(), domains);
+  }
+
+  /**
+   * Checks if user can access resource domains through hierarchy.
+   * Parent domain users can access sub-domain resources.
+   */
+  private boolean checkDomainHierarchyAccess(
+      List<EntityReference> userDomains, List<EntityReference> resourceDomains) {
+
+    if (listOrEmpty(resourceDomains).isEmpty()) return true; // No restrictions
+    if (listOrEmpty(userDomains).isEmpty()) return false; // No user domains
+
+    // Simple nested loops - optimal for typical small domain counts
+    for (EntityReference userDomain : userDomains) {
+      String userDomainFQN = userDomain.getFullyQualifiedName();
+      for (EntityReference resourceDomain : resourceDomains) {
+        if (isDomainParentOrEqual(userDomainFQN, resourceDomain.getFullyQualifiedName())) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Checks if userDomainFQN is an parent of or equal to resourceDomainFQN.
+   * Example: "Engineering" is parent of "Engineering.Backend.Services"
+   */
+  private static boolean isDomainParentOrEqual(String userDomainFQN, String resourceDomainFQN) {
+    if (userDomainFQN.equals(resourceDomainFQN)) return true; // Exact match
+
+    // Check if user domain is parent by walking up resource domain hierarchy
+    String parentDomainFQN = FullyQualifiedName.getParentFQN(resourceDomainFQN);
+    while (parentDomainFQN != null) {
+      if (parentDomainFQN.equals(userDomainFQN)) return true;
+      parentDomainFQN = FullyQualifiedName.getParentFQN(parentDomainFQN);
+    }
+    return false;
   }
 
   /** Returns true if the user of this SubjectContext is under the team hierarchy of parentTeam */
@@ -114,10 +178,20 @@ public record SubjectContext(User user) {
   /** Return true if the team is part of the hierarchy of parentTeam */
   public static boolean isInTeam(String parentTeam, EntityReference team) {
     Deque<EntityReference> stack = new ArrayDeque<>();
+    Set<UUID> visitedTeams = new HashSet<>();
     stack.push(team); // Start with team and see if the parent matches
     while (!stack.isEmpty()) {
       try {
-        Team parent = Entity.getEntity(Entity.TEAM, stack.pop().getId(), "parents", NON_DELETED);
+        EntityReference currentTeamRef = stack.pop();
+        // Skip if we've already visited this team to prevent circular dependencies
+        if (visitedTeams.contains(currentTeamRef.getId())) {
+          LOG.warn(
+              "Circular dependency detected in team hierarchy for team: {}. Skipping to prevent infinite loop.",
+              currentTeamRef.getName());
+          continue;
+        }
+        visitedTeams.add(currentTeamRef.getId());
+        Team parent = Entity.getEntity(Entity.TEAM, currentTeamRef.getId(), "parents", NON_DELETED);
         if (parent.getName().equals(parentTeam)) {
           return true;
         }
@@ -131,12 +205,25 @@ public record SubjectContext(User user) {
   }
 
   public static List<EntityReference> getRolesForTeams(List<EntityReference> teams) {
+    return getRolesForTeams(teams, new HashSet<>());
+  }
+
+  private static List<EntityReference> getRolesForTeams(
+      List<EntityReference> teams, Set<UUID> visitedTeams) {
     List<EntityReference> roles = new ArrayList<>();
     for (EntityReference teamRef : listOrEmpty(teams)) {
+      // Skip if we've already visited this team to prevent circular dependencies
+      if (visitedTeams.contains(teamRef.getId())) {
+        LOG.warn(
+            "Circular dependency detected in team hierarchy for team: {}. Skipping to prevent StackOverflowError.",
+            teamRef.getName());
+        continue;
+      }
       try {
+        visitedTeams.add(teamRef.getId());
         Team team = Entity.getEntity(Entity.TEAM, teamRef.getId(), TEAM_FIELDS, NON_DELETED);
         roles.addAll(team.getDefaultRoles());
-        roles.addAll(getRolesForTeams(team.getParents()));
+        roles.addAll(getRolesForTeams(team.getParents(), visitedTeams));
       } catch (Exception ex) {
         // Ignore and continue
       }
@@ -150,7 +237,27 @@ public record SubjectContext(User user) {
 
   // Iterate over all the policies of the team hierarchy the user belongs to
   public Iterator<PolicyContext> getPolicies(List<EntityReference> resourceOwners) {
-    return new UserPolicyIterator(user, resourceOwners, new ArrayList<>());
+    // Get cached user policies (roles + team hierarchy)
+    List<PolicyContext> cachedPolicies = SubjectCache.getPolicies(user.getName());
+
+    // If no resource owners, return cached policies directly
+    if (nullOrEmpty(resourceOwners)) {
+      return cachedPolicies.iterator();
+    }
+
+    // Add resource owner team policies (not cached - resource specific)
+    List<PolicyContext> allPolicies = new ArrayList<>(cachedPolicies);
+
+    // Get all teams visited during user policy loading to avoid duplicates
+    List<UUID> teamsVisited = SubjectCache.getVisitedTeams(user.getName());
+
+    for (EntityReference owner : resourceOwners) {
+      if (owner.getType().equals(Entity.TEAM)) {
+        allPolicies.addAll(SubjectCache.getTeamPoliciesForResource(owner.getId(), teamsVisited));
+      }
+    }
+
+    return allPolicies.iterator();
   }
 
   public List<EntityReference> getTeams() {
@@ -159,12 +266,13 @@ public record SubjectContext(User user) {
 
   /** Returns true if the user has any of the roles (either direct or inherited roles) */
   public boolean hasAnyRole(String roles) {
-    return hasRole(user(), roles);
+    return hasRole(user, roles);
   }
 
   /** Return true if the given user has any roles the list of roles */
   public static boolean hasRole(User user, String role) {
     Deque<EntityReference> stack = new ArrayDeque<>();
+    Set<UUID> visitedTeams = new HashSet<>();
     // If user has one of the roles directly assigned then return true
     if (hasRole(user.getRoles(), role)) {
       return true;
@@ -172,7 +280,17 @@ public record SubjectContext(User user) {
     listOrEmpty(user.getTeams()).forEach(stack::push); // Continue to go up the chain of parents
     while (!stack.isEmpty()) {
       try {
-        Team parent = Entity.getEntity(Entity.TEAM, stack.pop().getId(), TEAM_FIELDS, NON_DELETED);
+        EntityReference currentTeamRef = stack.pop();
+        // Skip if we've already visited this team to prevent circular dependencies
+        if (visitedTeams.contains(currentTeamRef.getId())) {
+          LOG.warn(
+              "Circular dependency detected in team hierarchy for team: {}. Skipping to prevent infinite loop.",
+              currentTeamRef.getName());
+          continue;
+        }
+        visitedTeams.add(currentTeamRef.getId());
+        Team parent =
+            Entity.getEntity(Entity.TEAM, currentTeamRef.getId(), TEAM_FIELDS, NON_DELETED);
         if (hasRole(parent.getDefaultRoles(), role)) {
           return true;
         }
@@ -394,6 +512,7 @@ public record SubjectContext(User user) {
 
       // If a team is already visited (because user can belong to multiple teams
       // and a team can belong to multiple teams) then don't visit the roles/policies of that team
+      // This also protects against circular dependencies in team hierarchy
       if (!teamsVisited.contains(teamId)) {
         teamsVisited.add(teamId);
         if (!skipRoles && team.getDefaultRoles() != null) {
@@ -406,6 +525,10 @@ public record SubjectContext(User user) {
         for (EntityReference parentTeam : listOrEmpty(team.getParents())) {
           iterators.add(new TeamPolicyIterator(parentTeam.getId(), teamsVisited, skipRoles));
         }
+      } else {
+        LOG.warn(
+            "Circular dependency detected in team hierarchy for team: {}. Skipping to prevent infinite loop.",
+            team.getName());
       }
     }
 

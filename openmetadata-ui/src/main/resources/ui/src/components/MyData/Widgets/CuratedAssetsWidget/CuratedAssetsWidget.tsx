@@ -35,6 +35,7 @@ import {
 import { SIZE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { AssetCertification } from '../../../../generated/type/assetCertification';
 import {
   SearchIndexSearchSourceMapping,
   SearchSourceAlias,
@@ -44,8 +45,9 @@ import {
   WidgetConfig,
 } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { getTextFromHtmlString } from '../../../../utils/BlockEditorUtils';
 import {
-  getExploreURLWithFilters,
+  getExploreURLForAdvancedFilter,
   getModifiedQueryFilterWithSelectedAssets,
   getTotalResourceCount,
 } from '../../../../utils/CuratedAssetsUtils';
@@ -55,6 +57,7 @@ import { getEntityName } from '../../../../utils/EntityUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import CertificationTag from '../../../common/CertificationTag/CertificationTag';
 import { useAdvanceSearch } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
@@ -72,6 +75,7 @@ const CuratedAssetsWidget = ({
   handleRemoveWidget,
   widgetKey,
   handleLayoutUpdate,
+  handleSaveLayout,
   currentLayout,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
@@ -122,7 +126,17 @@ const CuratedAssetsWidget = ({
     [data, isLoading]
   );
 
-  const sourceIcon = searchClassBase.getEntityIcon(selectedResource?.[0] ?? '');
+  const sourceIcon = searchClassBase.getEntityIcon(
+    selectedResource?.length === 1 ? selectedResource?.[0] : ''
+  );
+
+  const queryURL = useMemo(() => {
+    return getExploreURLForAdvancedFilter({
+      queryFilter,
+      selectedResource,
+      config,
+    });
+  }, [queryFilter, config, selectedResource]);
 
   // Helper function to expand 'all' selection to all individual entity types
   const getExpandedResourceList = useCallback((resources: Array<string>) => {
@@ -135,7 +149,7 @@ const CuratedAssetsWidget = ({
   }, []);
 
   const prepareData = useCallback(async () => {
-    if (selectedResource?.[0]) {
+    if (selectedResource?.length) {
       try {
         setIsLoading(true);
         const sortField = getSortField(selectedSortBy);
@@ -144,10 +158,17 @@ const CuratedAssetsWidget = ({
         // Expand 'all' selection to individual entity types for the API call
         const expandedResources = getExpandedResourceList(selectedResource);
 
-        // Use SearchIndex.ALL when 'all' is selected, otherwise use the first selected resource
+        // Use SearchIndex.ALL when 'all' is selected, otherwise use all the selected resource
         const searchIndex = selectedResource.includes(EntityType.ALL)
           ? SearchIndex.ALL
-          : (selectedResource[0] as SearchIndex);
+          : SearchIndex.DATA_ASSET;
+
+        // Create the modified query filter with selected assets
+        const parsedQueryFilter = JSON.parse(queryFilter || '{}');
+        const modifiedQueryFilter = getModifiedQueryFilterWithSelectedAssets(
+          parsedQueryFilter,
+          expandedResources
+        );
 
         const res = await searchQuery({
           query: '',
@@ -157,10 +178,7 @@ const CuratedAssetsWidget = ({
           includeDeleted: false,
           trackTotalHits: false,
           fetchSource: true,
-          queryFilter: getModifiedQueryFilterWithSelectedAssets(
-            JSON.parse(queryFilter),
-            expandedResources
-          ),
+          queryFilter: modifiedQueryFilter as Record<string, unknown>,
           sortField,
           sortOrder,
         });
@@ -196,10 +214,10 @@ const CuratedAssetsWidget = ({
   ]);
 
   const handleTitleClick = useCallback(() => {
-    navigate(ROUTES.EXPLORE);
-  }, [navigate]);
+    navigate(queryFilter?.length > 0 ? queryURL : ROUTES.EXPLORE);
+  }, [navigate, queryFilter, queryURL]);
 
-  const handleSave = (value: WidgetConfig['config']) => {
+  const handleSave = async (value: WidgetConfig['config']) => {
     const hasCurrentCuratedAssets = currentLayout?.find(
       (layout: WidgetConfig) => layout.i === widgetKey
     );
@@ -219,6 +237,11 @@ const CuratedAssetsWidget = ({
 
     // Update layout if handleLayoutUpdate is provided
     handleLayoutUpdate && handleLayoutUpdate(updatedLayout as Layout[]);
+
+    // Automatically save layout after updating
+    if (handleSaveLayout) {
+      await handleSaveLayout(updatedLayout as WidgetConfig[]);
+    }
 
     setCreateCuratedAssetsModalOpen(false);
   };
@@ -282,24 +305,14 @@ const CuratedAssetsWidget = ({
     selectedSortBy,
   ]);
 
-  const queryURL = useMemo(
-    () =>
-      getExploreURLWithFilters({
-        queryFilter,
-        selectedResource,
-        config,
-      }),
-    [queryFilter, config, selectedResource]
-  );
-
   const noDataState = useMemo(
     () => (
       <WidgetEmptyState
         icon={
           <CuratedAssetsNoDataIcon
             data-testid="curated-assets-no-data-icon"
-            height={SIZE.LARGE}
-            width={SIZE.LARGE}
+            height={SIZE.MEDIUM}
+            width={SIZE.MEDIUM}
           />
         }
         title={t('message.curated-assets-no-data-message')}
@@ -317,8 +330,8 @@ const CuratedAssetsWidget = ({
         icon={
           <CuratedAssetsEmptyIcon
             data-testid="curated-assets-empty-icon"
-            height={SIZE.LARGE}
-            width={SIZE.LARGE}
+            height={SIZE.MEDIUM}
+            width={SIZE.MEDIUM}
           />
         }
         onActionClick={handleModalOpen}
@@ -331,6 +344,7 @@ const CuratedAssetsWidget = ({
     (item: SearchIndexSearchSourceMapping[SearchIndex]) => {
       const title = getEntityName(item);
       const description = get(item, 'description');
+      const certification = get(item, 'certification');
 
       return (
         <Link
@@ -350,17 +364,24 @@ const CuratedAssetsWidget = ({
               )}
             />
             <div className="flex flex-col curated-assets-list-item-content">
-              <Typography.Text
-                className="entity-list-item-title"
-                ellipsis={{ tooltip: true }}>
-                {title}
-              </Typography.Text>
+              <div className="flex items-center gap-1">
+                <Typography.Text
+                  className="entity-list-item-title"
+                  ellipsis={{ tooltip: true }}>
+                  {title}
+                </Typography.Text>
+                {certification && (
+                  <CertificationTag
+                    certification={certification as AssetCertification}
+                  />
+                )}
+              </div>
               {description && (
-                <Typography.Paragraph
-                  className="entity-list-item-description"
-                  ellipsis={{ rows: 2 }}>
-                  {description}
-                </Typography.Paragraph>
+                <Typography.Text
+                  className="max-two-lines entity-list-item-description text-grey-muted"
+                  ellipsis={{ tooltip: true }}>
+                  {getTextFromHtmlString(description)}
+                </Typography.Text>
               )}
             </div>
           </div>
@@ -424,7 +445,6 @@ const CuratedAssetsWidget = ({
           </Typography.Text>
         }
         widgetKey={widgetKey}
-        widgetWidth={curatedAssetsWidth}
         onEditClick={handleModalOpen}
         onSortChange={(key: string) => handleSortByClick({ key } as MenuInfo)}
         onTitleClick={handleTitleClick}
@@ -458,7 +478,7 @@ const CuratedAssetsWidget = ({
       </div>
 
       <WidgetFooter
-        moreButtonLink={queryURL}
+        moreButtonLink={queryFilter?.length > 0 ? queryURL : ROUTES.EXPLORE}
         moreButtonText={t('label.view-more-count', {
           countValue: viewMoreCount,
         })}

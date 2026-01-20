@@ -31,19 +31,24 @@ workflowConfig:
 """
 
 import traceback
-from typing import Dict, Iterator, List
+from typing import Iterator
 
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.source.database.lineage_source import LineageSource
+from metadata.ingestion.source.database.redshift.connection import (
+    get_redshift_instance_type,
+)
+from metadata.ingestion.source.database.redshift.models import RedshiftInstanceType
 from metadata.ingestion.source.database.redshift.queries import (
-    REDSHIFT_GET_STORED_PROCEDURE_QUERIES,
-    REDSHIFT_SQL_STATEMENT,
+    REDSHIFT_GET_STORED_PROCEDURE_QUERIES_MAP,
+    REDSHIFT_SQL_STATEMENT_MAP,
 )
 from metadata.ingestion.source.database.redshift.query_parser import (
+    OpenMetadata,
     RedshiftQueryParserSource,
+    WorkflowSource,
 )
 from metadata.ingestion.source.database.stored_procedures_mixin import (
-    QueryByProcedure,
     StoredProcedureLineageMixin,
 )
 from metadata.utils.helpers import get_start_and_end
@@ -55,7 +60,7 @@ logger = ingestion_logger()
 class RedshiftLineageSource(
     RedshiftQueryParserSource, StoredProcedureLineageMixin, LineageSource
 ):
-    filters = """
+    provisioned_filters = """
         AND (
           querytxt ILIKE '%%create%%table%%as%%select%%'
           OR querytxt ILIKE '%%insert%%into%%select%%'
@@ -64,7 +69,30 @@ class RedshiftLineageSource(
         )
     """
 
-    sql_stmt = REDSHIFT_SQL_STATEMENT
+    serverless_filters = """
+        AND (
+            (query_text ILIKE '%%create%%table%%as%%select%%' AND query_type = 'CTAS')
+            OR (query_text ILIKE '%%insert%%into%%select%%' AND query_type = 'INSERT')
+            OR (query_text ILIKE '%%update%%' AND query_type = 'UPDATE')
+            OR (query_text ILIKE '%%merge%%' AND query_type = 'MERGE')
+        )
+    """
+
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
+
+        self.redshift_instance_type = get_redshift_instance_type(self.engine)
+
+        if self.redshift_instance_type == RedshiftInstanceType.PROVISIONED:
+            self.sql_stmt = REDSHIFT_SQL_STATEMENT_MAP[RedshiftInstanceType.PROVISIONED]
+            self.filters = self.provisioned_filters
+            logger.info(
+                "Using STL views for lineage processing of Redshift Provisioned"
+            )
+        else:
+            self.sql_stmt = REDSHIFT_SQL_STATEMENT_MAP[RedshiftInstanceType.SERVERLESS]
+            self.filters = self.serverless_filters
+            logger.info("Using SYS views for lineage processing of Redshift Serverless")
 
     def yield_table_query(self) -> Iterator[TableQuery]:
         """
@@ -97,16 +125,13 @@ class RedshiftLineageSource(
                             f"Error processing query_dict {query_dict}: {exc}"
                         )
 
-    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
+    def get_stored_procedure_sql_statement(self) -> str:
         """
-        Return the dictionary associating stored procedures to the
-        queries they triggered
+        Return the SQL statement to get the stored procedure queries
         """
         start, _ = get_start_and_end(self.source_config.queryLogDuration)
-        query = REDSHIFT_GET_STORED_PROCEDURE_QUERIES.format(start_date=start)
+        query = REDSHIFT_GET_STORED_PROCEDURE_QUERIES_MAP[
+            self.redshift_instance_type
+        ].format(start_date=start)
 
-        queries_dict = self.procedure_queries_dict(
-            query=query,
-        )
-
-        return queries_dict
+        return query

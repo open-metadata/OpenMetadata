@@ -73,6 +73,5 @@ export interface CollateAgentLiveInfo
 export interface TotalAssetsCount {
   name: string;
   value: number;
-  fill: string;
   icon: JSX.Element;
 }
