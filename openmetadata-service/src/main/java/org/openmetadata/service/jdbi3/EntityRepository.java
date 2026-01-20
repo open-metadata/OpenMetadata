@@ -1183,8 +1183,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new EntityHistory().withEntityType(entityType).withVersions(allVersions);
   }
 
-  private int getVersionCountCached(
-      String tableName, long startTs, long endTs, String entityType) {
+  private int getVersionCountCached(String tableName, long startTs, long endTs, String entityType) {
     String cacheKey = String.format("%s:%d:%d:%s", tableName, startTs, endTs, entityType);
     try {
       return COUNT_CACHE.get(

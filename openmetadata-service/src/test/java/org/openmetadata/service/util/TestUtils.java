@@ -289,7 +289,7 @@ public final class TestUtils {
     MAJOR_UPDATE // PUT/PATCH made backward incompatible minor version change
   }
 
-public static String plurializeEntityType(String entityType) {
+  public static String plurializeEntityType(String entityType) {
     if (entityType.endsWith("s")) {
       return entityType + "es";
     } else if (entityType.endsWith("y")) {
