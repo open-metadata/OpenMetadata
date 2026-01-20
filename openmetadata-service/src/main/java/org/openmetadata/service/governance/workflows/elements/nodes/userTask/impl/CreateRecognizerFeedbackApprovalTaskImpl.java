@@ -139,49 +139,57 @@ public class CreateRecognizerFeedbackApprovalTaskImpl implements TaskListener {
     MessageParser.EntityLink about =
         new MessageParser.EntityLink(Entity.TAG, tag.getFullyQualifiedName());
 
+    String createdByFqn =
+        feedback.getCreatedBy() != null
+            ? feedback.getCreatedBy().getFullyQualifiedName()
+            : "unknown";
+
     Thread thread;
 
     try {
       thread = feedRepository.getTask(about, TaskType.RecognizerFeedbackApproval, TaskStatus.Open);
       WorkflowHandler.getInstance()
           .terminateTaskProcessInstance(thread.getId(), "A Newer Process Instance is Running.");
+      thread = null;
     } catch (EntityNotFoundException ex) {
-      TaskDetails taskDetails =
-          new TaskDetails()
-              .withAssignees(FeedMapper.formatAssignees(assignees))
-              .withType(TaskType.RecognizerFeedbackApproval)
-              .withStatus(TaskStatus.Open)
-              .withFeedback(feedback);
-
-      thread =
-          new Thread()
-              .withId(UUID.randomUUID())
-              .withThreadTs(System.currentTimeMillis())
-              .withMessage(
-                  String.format(
-                      "Approval required for recognizer feedback on tag %s", tag.getName()))
-              .withCreatedBy(feedback.getCreatedBy().getFullyQualifiedName())
-              .withAbout(about.getLinkString())
-              .withType(ThreadType.Task)
-              .withTask(taskDetails)
-              .withUpdatedBy(feedback.getCreatedBy().getFullyQualifiedName())
-              .withUpdatedAt(System.currentTimeMillis());
-      feedRepository.create(thread);
-
-      ChangeEvent changeEvent =
-          new ChangeEvent()
-              .withId(UUID.randomUUID())
-              .withEventType(EventType.THREAD_CREATED)
-              .withEntityId(thread.getId())
-              .withEntityType(Entity.THREAD)
-              .withUserName(feedback.getCreatedBy().getFullyQualifiedName())
-              .withTimestamp(thread.getUpdatedAt())
-              .withEntity(thread);
-
-      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToMaskedJson(changeEvent));
-
-      WebsocketNotificationHandler.handleTaskNotification(thread);
+      thread = null;
     }
+
+    TaskDetails taskDetails =
+        new TaskDetails()
+            .withAssignees(FeedMapper.formatAssignees(assignees))
+            .withType(TaskType.RecognizerFeedbackApproval)
+            .withStatus(TaskStatus.Open)
+            .withFeedback(feedback);
+
+    thread =
+        new Thread()
+            .withId(UUID.randomUUID())
+            .withThreadTs(System.currentTimeMillis())
+            .withMessage(
+                String.format("Approval required for recognizer feedback on tag %s", tag.getName()))
+            .withCreatedBy(createdByFqn)
+            .withAbout(about.getLinkString())
+            .withType(ThreadType.Task)
+            .withTask(taskDetails)
+            .withUpdatedBy(createdByFqn)
+            .withUpdatedAt(System.currentTimeMillis());
+    feedRepository.create(thread);
+
+    ChangeEvent changeEvent =
+        new ChangeEvent()
+            .withId(UUID.randomUUID())
+            .withEventType(EventType.THREAD_CREATED)
+            .withEntityId(thread.getId())
+            .withEntityType(Entity.THREAD)
+            .withUserName(createdByFqn)
+            .withTimestamp(thread.getUpdatedAt())
+            .withEntity(thread);
+
+    Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToMaskedJson(changeEvent));
+
+    WebsocketNotificationHandler.handleTaskNotification(thread);
+
     return thread;
   }
 }
