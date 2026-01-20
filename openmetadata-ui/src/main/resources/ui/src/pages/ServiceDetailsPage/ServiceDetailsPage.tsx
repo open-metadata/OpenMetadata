@@ -1975,6 +1975,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
               className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              destroyInactiveTabPane={true}
               onChange={activeTabHandler}
             />
           </Col>
