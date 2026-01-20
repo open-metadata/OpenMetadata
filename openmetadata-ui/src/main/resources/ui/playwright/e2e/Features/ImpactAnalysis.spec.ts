@@ -550,4 +550,35 @@ test.describe('Impact Analysis', () => {
       ).toBeVisible();
     }
   });
+
+  test('Verify entity popover card appears on asset hover in lineage-card-table', async ({
+    page,
+  }) => {
+    // Verify the lineage-card-table is present
+    const lineageCardTable = page.getByTestId('lineage-card-table');
+    await expect(lineageCardTable).toBeVisible();
+
+    // Find the first asset link in the table
+    const firstAssetLink = lineageCardTable
+      .locator('tbody tr')
+      .first()
+      .getByRole('cell')
+      .first()
+      .getByRole('link');
+
+    await expect(firstAssetLink).toBeVisible();
+
+    // Hover over the asset name to trigger the EntityPopOverCard
+    await firstAssetLink.hover();
+
+    // Wait for the popover content to appear using the specific testid
+    // The ExploreSearchCard has testid pattern: table-data-card_<fqn>
+    const entityPopoverCard = page.getByTestId(/^table-data-card_/);
+    await expect(entityPopoverCard).toBeVisible();
+
+    // Verify the popover contains expected entity information
+    await expect(
+      entityPopoverCard.getByTestId('entity-header-display-name')
+    ).toBeVisible();
+  });
 });
