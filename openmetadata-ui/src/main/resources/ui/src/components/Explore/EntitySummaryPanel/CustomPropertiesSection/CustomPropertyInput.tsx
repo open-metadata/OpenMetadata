@@ -12,7 +12,7 @@
  */
 
 import { Form, Input, Select, TimePicker } from 'antd';
-import { isArray, isUndefined, noop, omitBy, toNumber } from 'lodash';
+import { isArray, isString, isUndefined, noop, omitBy, toNumber } from 'lodash';
 import { DateTime } from 'luxon';
 import moment, { Moment } from 'moment';
 import { CSSProperties, FC } from 'react';
@@ -58,7 +58,7 @@ const CustomPropertyInput: FC<{
     item: DataAssetOption | string,
     options: DataAssetOption[]
   ) => {
-    if (typeof item === 'string') {
+    if (isString(item)) {
       return options.find((option) => option.value === item)?.reference;
     }
 

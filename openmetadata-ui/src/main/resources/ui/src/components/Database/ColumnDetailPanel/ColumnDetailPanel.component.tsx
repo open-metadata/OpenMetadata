@@ -678,7 +678,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           title={getEntityName(activeColumn)}
           trigger="hover">
           <div className="d-flex items-center justify-between w-full">
-            <div className="d-flex items-center gap-2">
+            <div className="d-flex items-center">
               <span className="entity-icon">
                 <ColumnIcon />
               </span>
