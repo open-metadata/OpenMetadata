@@ -167,16 +167,20 @@ export interface AlationDatabaseConnection {
     /**
      * SSL Configuration details.
      */
-    sslConfig?:                  Config;
-    sslMode?:                    SSLMode;
-    supportsDatabase?:           boolean;
-    supportsDataDiff?:           boolean;
-    supportsDBTExtraction?:      boolean;
-    supportsLineageExtraction?:  boolean;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    supportsQueryComment?:       boolean;
-    supportsUsageExtraction?:    boolean;
+    sslConfig?: Config;
+    sslMode?:   SSLMode;
+    /**
+     * Regex to only include/exclude stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?: FilterPattern;
+    supportsDatabase?:             boolean;
+    supportsDataDiff?:             boolean;
+    supportsDBTExtraction?:        boolean;
+    supportsLineageExtraction?:    boolean;
+    supportsMetadataExtraction?:   boolean;
+    supportsProfiler?:             boolean;
+    supportsQueryComment?:         boolean;
+    supportsUsageExtraction?:      boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
@@ -310,6 +314,8 @@ export interface AzureCredentials {
  * Regex to only fetch entities that matches the pattern.
  *
  * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude stored procedures that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
  */
