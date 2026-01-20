@@ -303,6 +303,20 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return repository.listVersions(id);
   }
 
+  protected ResultList<T> listAllVersionsByTimestampInternal(
+      SecurityContext securityContext,
+      long startTs,
+      long endTs,
+      String before,
+      String after,
+      int limit) {
+
+    ResourceContext resourceContext = getResourceContext();
+    OperationContext operationContext = new OperationContext(entityType, VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    return repository.listAllVersionsByTimestamp(startTs, endTs, after, before, limit);
+  }
+
   public T getByNameInternal(
       UriInfo uriInfo,
       SecurityContext securityContext,

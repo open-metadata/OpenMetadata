@@ -1146,6 +1146,84 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new EntityHistory().withEntityType(entityType).withVersions(allVersions);
   }
 
+  public final ResultList<T> listAllVersionsByTimestamp(
+      long startTs, long endTs, String afterCursor, String beforeCursor, int limit) {
+    String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityType);
+    String tableName = dao.getTableName();
+    int fetchLimit = limit + 1;
+
+    String cursorCondition = "";
+    Long cursorUpdatedAt = null;
+    String cursorId = null;
+
+    if (beforeCursor != null) {
+      cursorCondition =
+          "AND (updatedAt > :cursorUpdatedAt OR (updatedAt = :cursorUpdatedAt AND id > :cursorId))";
+      String[] parts = RestUtil.decodeCursor(beforeCursor).split(":");
+      cursorUpdatedAt = Long.parseLong(parts[0]);
+      cursorId = parts[1];
+    } else if (afterCursor != null) {
+      cursorCondition =
+          "AND (updatedAt < :cursorUpdatedAt OR (updatedAt = :cursorUpdatedAt AND id < :cursorId))";
+      String[] parts = RestUtil.decodeCursor(afterCursor).split(":");
+      cursorUpdatedAt = Long.parseLong(parts[0]);
+      cursorId = parts[1];
+    }
+
+    List<String> jsons =
+        daoCollection
+            .entityExtensionDAO()
+            .getExtensionsByTimestampRange(
+                tableName,
+                startTs,
+                endTs,
+                cursorCondition,
+                extensionPrefix,
+                cursorUpdatedAt,
+                cursorId,
+                fetchLimit);
+
+    List<T> entities = JsonUtils.readObjects(jsons, getEntityClass());
+    setFieldsInBulk(putFields, entities);
+
+    int total =
+        daoCollection
+            .entityExtensionDAO()
+            .getExtensionsByTimestampRangeCount(tableName, startTs, endTs, extensionPrefix);
+
+    String beforeCursorValue = null;
+    String afterCursorValue = null;
+
+    if (!entities.isEmpty()) {
+      boolean hasMoreInCurrentDirection = entities.size() > limit;
+
+      if (hasMoreInCurrentDirection) {
+        entities = entities.subList(0, limit);
+      }
+
+      T first = entities.get(0);
+      T last = entities.get(entities.size() - 1);
+      String firstCursor = first.getUpdatedAt() + ":" + first.getId().toString();
+      String lastCursor = last.getUpdatedAt() + ":" + last.getId().toString();
+
+      if (beforeCursor != null) {
+        if (hasMoreInCurrentDirection) {
+          beforeCursorValue = firstCursor;
+        }
+        afterCursorValue = lastCursor;
+      } else {
+        if (hasMoreInCurrentDirection) {
+          afterCursorValue = lastCursor;
+        }
+        if (afterCursor != null) {
+          beforeCursorValue = firstCursor;
+        }
+      }
+    }
+
+    return getResultList(entities, beforeCursorValue, afterCursorValue, total);
+  }
+
   public final List<T> createMany(UriInfo uriInfo, List<T> entities) {
     for (T e : entities) {
       prepareInternal(e, false);
@@ -6241,7 +6319,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
                   return Optional.ofNullable(targetHashToTagLabel.get(targetFQNHash))
                       .filter(list -> !list.isEmpty())
                       .orElseGet(ArrayList::new);
-                }));
+                },
+                (a, b) -> a));
   }
 
   private Map<UUID, List<EntityReference>> batchFetchDomains(List<T> entities) {

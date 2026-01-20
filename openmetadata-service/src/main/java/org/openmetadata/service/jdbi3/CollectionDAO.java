@@ -1327,6 +1327,50 @@ public interface CollectionDAO {
     List<ExtensionRecord> getExtensions(
         @BindUUID("id") UUID id, @Bind("extensionPrefix") String extensionPrefix);
 
+    @SqlQuery(
+        value =
+            "SELECT json FROM ("
+                + "SELECT id, updatedAt, json FROM entity_extension "
+                + "WHERE updatedAt >= :startTs "
+                + "AND updatedAt <= :endTs "
+                + "AND extension LIKE CONCAT (:extensionPrefix, '.%') "
+                + "UNION ALL "
+                + "SELECT id, updatedAt, json FROM <table> "
+                + "WHERE updatedAt >= :startTs AND "
+                + "updatedAt <= :endTs "
+                + ") combined WHERE 1=1 "
+                + "<cursorCondition> "
+                + "ORDER BY updatedAt DESC, id DESC "
+                + "LIMIT :limit")
+    @RegisterRowMapper(ExtensionMapper.class)
+    List<String> getExtensionsByTimestampRange(
+        @Define("table") String table,
+        @Bind("startTs") long startTs,
+        @Bind("endTs") long endTs,
+        @Define("cursorCondition") String cursorCondition,
+        @Bind("extensionPrefix") String extensionPrefix,
+        @Bind("cursorUpdatedAt") Long cursorUpdatedAt,
+        @Bind("cursorId") String cursorId,
+        @Bind("limit") int limit);
+
+    @SqlQuery(
+        value =
+            "SELECT SUM(cnt) FROM ("
+                + "SELECT COUNT(*) AS cnt FROM entity_extension "
+                + "WHERE updatedAt >= :startTs "
+                + "AND updatedAt <= :endTs "
+                + "AND extension LIKE CONCAT (:extensionPrefix, '.%')"
+                + "UNION ALL "
+                + "SELECT COUNT(*) AS cnt FROM <table> "
+                + "WHERE updatedAt >= :startTs AND "
+                + "updatedAt <= :endTs"
+                + ") total_counts")
+    int getExtensionsByTimestampRangeCount(
+        @Define("table") String table,
+        @Bind("startTs") long startTs,
+        @Bind("endTs") long endTs,
+        @Bind("extensionPrefix") String extensionPrefix);
+
     @RegisterRowMapper(ExtensionMapper.class)
     @SqlQuery(
         "SELECT extension, json FROM entity_extension WHERE id = :id AND extension "

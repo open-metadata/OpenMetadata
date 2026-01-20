@@ -50,3 +50,14 @@ CREATE INDEX idx_test_definition_enabled ON test_definition(enabled);
 UPDATE test_definition
   SET json = JSON_SET(json, '$.enabled', true)
   WHERE json_extract(json, '$.enabled') IS NULL;
+
+-- Add updatedAt generated column to entity_extension table for efficient timestamp-based queries
+-- This supports the listAllVersionsByTimestamp API endpoint for retrieving entity versions within a time range
+ALTER TABLE entity_extension
+  ADD COLUMN updatedAt BIGINT UNSIGNED
+  GENERATED ALWAYS AS (CAST(json_unquote(json_extract(json, '$.updatedAt')) AS UNSIGNED))
+  VIRTUAL;
+
+-- Create composite index for timestamp-based queries with cursor pagination
+-- This index supports queries that filter by updatedAt range and order by (updatedAt DESC, id DESC)
+CREATE INDEX idx_entity_extension_updated_at_id ON entity_extension(updatedAt DESC, id DESC);
