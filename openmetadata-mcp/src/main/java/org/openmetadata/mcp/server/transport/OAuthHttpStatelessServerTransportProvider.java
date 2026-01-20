@@ -20,6 +20,7 @@ import java.util.concurrent.CompletionException;
 import org.openmetadata.mcp.auth.AuthorizationCode;
 import org.openmetadata.mcp.auth.OAuthAuthorizationServerProvider;
 import org.openmetadata.mcp.auth.OAuthClientInformation;
+import org.openmetadata.mcp.auth.OAuthClientMetadata;
 import org.openmetadata.mcp.auth.OAuthMetadata;
 import org.openmetadata.mcp.auth.OAuthToken;
 import org.openmetadata.mcp.auth.ProtectedResourceMetadata;
@@ -28,9 +29,11 @@ import org.openmetadata.mcp.auth.exception.TokenException;
 import org.openmetadata.mcp.server.auth.handlers.AuthorizationHandler;
 import org.openmetadata.mcp.server.auth.handlers.MetadataHandler;
 import org.openmetadata.mcp.server.auth.handlers.ProtectedResourceMetadataHandler;
+import org.openmetadata.mcp.server.auth.handlers.RegistrationHandler;
 import org.openmetadata.mcp.server.auth.middleware.AuthContext;
 import org.openmetadata.mcp.server.auth.middleware.BearerAuthenticator;
 import org.openmetadata.mcp.server.auth.middleware.ClientAuthenticator;
+import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.slf4j.Logger;
@@ -52,6 +55,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   private final ProtectedResourceMetadataHandler protectedResourceMetadataHandler;
 
   private final AuthorizationHandler authorizationHandler;
+
+  private final RegistrationHandler registrationHandler;
 
   private final ClientAuthenticator clientAuthenticator;
 
@@ -99,6 +104,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     metadata.setIssuer(URI.create(baseUrl + mcpEndpoint));
     metadata.setAuthorizationEndpoint(URI.create(baseUrl + mcpEndpoint + "/authorize"));
     metadata.setTokenEndpoint(URI.create(baseUrl + mcpEndpoint + "/token"));
+    metadata.setRegistrationEndpoint(URI.create(baseUrl + mcpEndpoint + "/register"));
     metadata.setScopesSupported(
         List.of("openid", "profile", "email", "offline_access", "api://apiId/.default"));
     metadata.setResponseTypesSupported(java.util.Arrays.asList("code"));
@@ -122,6 +128,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     this.protectedResourceMetadataHandler =
         new ProtectedResourceMetadataHandler(protectedResourceMetadata);
     this.authorizationHandler = new AuthorizationHandler(authProvider);
+    this.registrationHandler = new RegistrationHandler(new OAuthClientRepository());
 
     this.jwtFilter =
         new JwtFilter(
@@ -309,6 +316,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
         handleTokenRequest(request, response);
       } else if (path.endsWith("/authorize")) {
         handleAuthorizeRequest(request, response);
+      } else if (path.endsWith("/register")) {
+        handleRegistrationRequest(request, response);
       } else {
         // Handle other POST requests using the parent class
         super.doPost(request, response);
@@ -505,6 +514,68 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       error.put(
           "error_description",
           cause.getMessage() != null ? cause.getMessage() : ex.getClass().getSimpleName());
+      getObjectMapper().writeValue(response.getOutputStream(), error);
+    }
+  }
+
+  private void handleRegistrationRequest(HttpServletRequest request, HttpServletResponse response)
+      throws IOException {
+    try {
+      logger.info("Client registration request received");
+
+      // Parse registration request
+      OAuthClientMetadata metadata =
+          getObjectMapper().readValue(request.getInputStream(), OAuthClientMetadata.class);
+
+      // Register client
+      OAuthClientInformation clientInfo = registrationHandler.handle(metadata).join();
+
+      // Return client information per RFC 7591
+      response.setContentType("application/json");
+      response.setHeader("Cache-Control", "no-store");
+      response.setHeader("Pragma", "no-cache");
+      setCorsHeaders(request, response);
+      response.setStatus(201); // Created
+      getObjectMapper().writeValue(response.getOutputStream(), clientInfo);
+
+      logger.info("Client registered successfully: {}", clientInfo.getClientId());
+
+    } catch (CompletionException ex) {
+      logger.error("Client registration failed", ex);
+      setCorsHeaders(request, response);
+      response.setContentType("application/json");
+
+      Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+
+      // Extract error details if RegistrationException
+      if (cause.getCause() instanceof org.openmetadata.mcp.auth.exception.RegistrationException) {
+        org.openmetadata.mcp.auth.exception.RegistrationException regEx =
+            (org.openmetadata.mcp.auth.exception.RegistrationException) cause.getCause();
+        response.setStatus(400);
+
+        Map<String, String> error = new HashMap<>();
+        error.put("error", regEx.getError());
+        error.put("error_description", regEx.getErrorDescription());
+        getObjectMapper().writeValue(response.getOutputStream(), error);
+      } else {
+        // Generic error
+        response.setStatus(400);
+        Map<String, String> error = new HashMap<>();
+        error.put("error", "invalid_client_metadata");
+        error.put(
+            "error_description",
+            cause.getMessage() != null ? cause.getMessage() : "Client registration failed");
+        getObjectMapper().writeValue(response.getOutputStream(), error);
+      }
+    } catch (Exception ex) {
+      logger.error("Unexpected error during client registration", ex);
+      setCorsHeaders(request, response);
+      response.setContentType("application/json");
+      response.setStatus(500);
+
+      Map<String, String> error = new HashMap<>();
+      error.put("error", "server_error");
+      error.put("error_description", "Internal server error during client registration");
       getObjectMapper().writeValue(response.getOutputStream(), error);
     }
   }
