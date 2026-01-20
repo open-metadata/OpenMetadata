@@ -65,6 +65,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.databases.DatabaseResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -183,7 +184,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
     return databaseCsv.importCsv(records, dryRun);
   }
 
-  public void setFields(Database database, Fields fields) {
+  @Override
+  public void setFields(Database database, Fields fields, RelationIncludes relationIncludes) {
     database.setService(getContainer(database.getId()));
     database.setDatabaseSchemas(
         fields.contains("databaseSchemas") ? getSchemas(database) : database.getDatabaseSchemas());

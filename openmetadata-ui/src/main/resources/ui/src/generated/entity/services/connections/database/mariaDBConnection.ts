@@ -47,7 +47,11 @@ export interface MariaDBConnection {
     /**
      * SQLAlchemy driver scheme options.
      */
-    scheme?:                        MariaDBScheme;
+    scheme?: MariaDBScheme;
+    /**
+     * Regex to only include/exclude stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?:  FilterPattern;
     supportsDBTExtraction?:         boolean;
     supportsMetadataExtraction?:    boolean;
     supportsProfiler?:              boolean;
@@ -74,6 +78,8 @@ export interface MariaDBConnection {
  * Regex to only fetch entities that matches the pattern.
  *
  * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude stored procedures that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
  */
