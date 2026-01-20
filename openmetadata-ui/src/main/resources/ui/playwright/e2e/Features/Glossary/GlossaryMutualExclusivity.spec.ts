@@ -16,12 +16,11 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import {
-  createNewPage,
   getApiContext,
-  redirectToHomePage,
+  redirectToHomePage
 } from '../../../utils/common';
-import { sidebarClick } from '../../../utils/sidebar';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { sidebarClick } from '../../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -83,32 +82,29 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         await page.locator('#tagsForm_tags').press('Enter');
         await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-        // Expand the glossary (click the expand icon, which is a sibling img)
-        await page
-          .getByTestId(`tag-${glossary.responseData.fullyQualifiedName}`)
-          .locator('..')
-          .locator('img')
-          .first()
-          .click();
-
         // Wait for glossary terms to load
         await waitForAllLoadersToDisappear(page);
 
-        // Expand the ME parent term (click the expand icon)
-        const parentNode = page.getByTestId(`tag-${parentTerm.responseData.fullyQualifiedName}`);
-        await parentNode.locator('..').locator('img').first().click();
+        const parentTermNode = page.getByTestId(`tag-${parentTerm.responseData.fullyQualifiedName}`)
+        await expect(parentTermNode).toBeVisible();
+
+        // Search and expand the ME parent term
+        await parentTermNode
+          .getByTestId('expand-icon')
+          .first()
+          .click();
 
         // Verify children have checkboxes
         const child1Node = page.getByTestId(`tag-${child1.responseData.fullyQualifiedName}`);
-        const child1Checkbox = child1Node.locator('input[type="checkbox"]');
+        const child1Checkbox = child1Node.locator('.ant-select-tree-checkbox');
         await expect(child1Checkbox).toBeVisible();
 
         const child2Node = page.getByTestId(`tag-${child2.responseData.fullyQualifiedName}`);
-        const child2Checkbox = child2Node.locator('input[type="checkbox"]');
+        const child2Checkbox = child2Node.locator('.ant-select-tree-checkbox');
         await expect(child2Checkbox).toBeVisible();
 
         const child3Node = page.getByTestId(`tag-${child3.responseData.fullyQualifiedName}`);
-        const child3Checkbox = child3Node.locator('input[type="checkbox"]');
+        const child3Checkbox = child3Node.locator('.ant-select-tree-checkbox');
         await expect(child3Checkbox).toBeVisible();
 
         await table.delete(apiContext);
@@ -164,17 +160,25 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         await page.waitForSelector('[role="presentation"]', { state: 'visible' });
 
-        // Navigate to children (click expand icons)
-        const glossaryNode = page.getByTestId(`tag-${glossary.responseData.fullyQualifiedName}`);
-        await glossaryNode.locator('..').locator('img').first().click();
-        await page.waitForResponse('/api/v1/glossaryTerms?*');
+        // Search for the glossary to bring it into view
+        await page.locator('#tagsForm_tags').fill(glossary.responseData.name);
+        await page.locator('#tagsForm_tags').press('Enter');
+        await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-        const parentNode = page.getByTestId(`tag-${parentTerm.responseData.fullyQualifiedName}`);
-        await parentNode.locator('..').locator('img').first().click();
+        await waitForAllLoadersToDisappear(page);
+
+        const parentTermNode = page.getByTestId(`tag-${parentTerm.responseData.fullyQualifiedName}`);
+        await expect(parentTermNode).toBeVisible();
+
+        // Expand the parent term
+        await parentTermNode
+          .getByTestId('expand-icon')
+          .first()
+          .click();
 
         // Select first child
         const child1Node = page.getByTestId(`tag-${child1.responseData.fullyQualifiedName}`);
-        const child1Checkbox = child1Node.locator('input[type="checkbox"]');
+        const child1Checkbox = child1Node.locator('.ant-select-tree-checkbox');
         await child1Node.click();
 
         // Verify child1 is selected
@@ -182,7 +186,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         // Select second child
         const child2Node = page.getByTestId(`tag-${child2.responseData.fullyQualifiedName}`);
-        const child2Checkbox = child2Node.locator('input[type="checkbox"]');
+        const child2Checkbox = child2Node.locator('.ant-select-tree-checkbox');
         await child2Node.click();
 
         // Verify child2 is now selected and child1 is deselected (mutual exclusivity)
@@ -191,7 +195,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         // Select third child
         const child3Node = page.getByTestId(`tag-${child3.responseData.fullyQualifiedName}`);
-        const child3Checkbox = child3Node.locator('input[type="checkbox"]');
+        const child3Checkbox = child3Node.locator('.ant-select-tree-checkbox');
         await child3Node.click();
 
         // Verify only child3 is selected (mutual exclusivity auto-deselects siblings)
@@ -250,29 +254,37 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         await page.waitForSelector('[role="presentation"]', { state: 'visible' });
 
-        // Navigate to children (click expand icons)
-        const glossaryNode = page.getByTestId(`tag-${glossary.responseData.fullyQualifiedName}`);
-        await glossaryNode.locator('..').locator('img').first().click();
-        await page.waitForResponse('/api/v1/glossaryTerms?*');
+        // Search for the glossary to bring it into view
+        await page.locator('#tagsForm_tags').fill(glossary.responseData.name);
+        await page.locator('#tagsForm_tags').press('Enter');
+        await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-        const parentNode = page.getByTestId(`tag-${parentTerm.responseData.fullyQualifiedName}`);
-        await parentNode.locator('..').locator('img').first().click();
+        await waitForAllLoadersToDisappear(page);
+
+        const parentTermNode = page.getByTestId(`tag-${parentTerm.responseData.fullyQualifiedName}`);
+        await expect(parentTermNode).toBeVisible();
+
+        // Expand the parent term
+        await parentTermNode
+          .getByTestId('expand-icon')
+          .first()
+          .click();
 
         // Select first child
         const child1Node = page.getByTestId(`tag-${child1.responseData.fullyQualifiedName}`);
-        const child1Checkbox = child1Node.locator('input[type="checkbox"]');
+        const child1Checkbox = child1Node.locator('.ant-select-tree-checkbox');
         await child1Node.click();
         await expect(child1Checkbox).toBeChecked();
 
         // Select second child
         const child2Node = page.getByTestId(`tag-${child2.responseData.fullyQualifiedName}`);
-        const child2Checkbox = child2Node.locator('input[type="checkbox"]');
+        const child2Checkbox = child2Node.locator('.ant-select-tree-checkbox');
         await child2Node.click();
         await expect(child2Checkbox).toBeChecked();
 
         // Select third child
         const child3Node = page.getByTestId(`tag-${child3.responseData.fullyQualifiedName}`);
-        const child3Checkbox = child3Node.locator('input[type="checkbox"]');
+        const child3Checkbox = child3Node.locator('.ant-select-tree-checkbox');
         await child3Node.click();
         await expect(child3Checkbox).toBeChecked();
 
@@ -320,16 +332,24 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         await page.waitForSelector('[role="presentation"]', { state: 'visible' });
 
-        // Navigate to child (click expand icons)
-        const glossaryNode = page.getByTestId(`tag-${glossary.responseData.fullyQualifiedName}`);
-        await glossaryNode.locator('..').locator('img').first().click();
-        await page.waitForResponse('/api/v1/glossaryTerms?*');
+        // Search for the glossary to bring it into view
+        await page.locator('#tagsForm_tags').fill(glossary.responseData.name);
+        await page.locator('#tagsForm_tags').press('Enter');
+        await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-        const parentNode = page.getByTestId(`tag-${parentTerm.responseData.fullyQualifiedName}`);
-        await parentNode.locator('..').locator('img').first().click();
+        await waitForAllLoadersToDisappear(page);
+
+        const parentTermNode = page.getByTestId(`tag-${parentTerm.responseData.fullyQualifiedName}`);
+        await expect(parentTermNode).toBeVisible();
+
+        // Expand the parent term
+        await parentTermNode
+          .getByTestId('expand-icon')
+          .first()
+          .click();
 
         const child1Node = page.getByTestId(`tag-${child1.responseData.fullyQualifiedName}`);
-        const child1Checkbox = child1Node.locator('input[type="checkbox"]');
+        const child1Checkbox = child1Node.locator('.ant-select-tree-checkbox');
 
         // Select child
         await child1Node.click();
@@ -407,37 +427,47 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         await page.waitForSelector('[role="presentation"]', { state: 'visible' });
 
-        // Navigate tree (click expand icons)
-        const glossaryNode = page.getByTestId(`tag-${glossary.responseData.fullyQualifiedName}`);
-        await glossaryNode.locator('..').locator('img').first().click();
-        await page.waitForResponse('/api/v1/glossaryTerms?*');
+        // Search for the glossary to bring it into view
+        await page.locator('#tagsForm_tags').fill(glossary.responseData.name);
+        await page.locator('#tagsForm_tags').press('Enter');
+        await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-        // Expand ME parent
+        await waitForAllLoadersToDisappear(page);
+
+        // Assert and expand ME parent
         const meParentNode = page.getByTestId(`tag-${meParent.responseData.fullyQualifiedName}`);
-        await meParentNode.locator('..').locator('img').first().click();
+        await expect(meParentNode).toBeVisible();
+        await meParentNode
+          .getByTestId('expand-icon')
+          .first()
+          .click();
 
-        // Expand non-ME parent
+        // Assert and expand non-ME parent
         const nonMeParentNode = page.getByTestId(`tag-${nonMeParent.responseData.fullyQualifiedName}`);
-        await nonMeParentNode.locator('..').locator('img').first().click();
+        await expect(nonMeParentNode).toBeVisible();
+        await nonMeParentNode
+          .getByTestId('expand-icon')
+          .first()
+          .click();
 
         // Select non-ME children first
         const nonMeChild1Node = page.getByTestId(`tag-${nonMeChild1.responseData.fullyQualifiedName}`);
         const nonMeChild1Checkbox = nonMeChild1Node.locator(
-          'input[type="checkbox"]'
+          '.ant-select-tree-checkbox'
         );
         await nonMeChild1Node.click();
         await expect(nonMeChild1Checkbox).toBeChecked();
 
         const nonMeChild2Node = page.getByTestId(`tag-${nonMeChild2.responseData.fullyQualifiedName}`);
         const nonMeChild2Checkbox = nonMeChild2Node.locator(
-          'input[type="checkbox"]'
+          '.ant-select-tree-checkbox'
         );
         await nonMeChild2Node.click();
         await expect(nonMeChild2Checkbox).toBeChecked();
 
         // Select ME child
         const meChild1Node = page.getByTestId(`tag-${meChild1.responseData.fullyQualifiedName}`);
-        const meChild1Checkbox = meChild1Node.locator('input[type="checkbox"]');
+        const meChild1Checkbox = meChild1Node.locator('.ant-select-tree-checkbox');
         await meChild1Node.click();
         await expect(meChild1Checkbox).toBeChecked();
 
@@ -447,7 +477,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         // Select another ME child
         const meChild2Node = page.getByTestId(`tag-${meChild2.responseData.fullyQualifiedName}`);
-        const meChild2Checkbox = meChild2Node.locator('input[type="checkbox"]');
+        const meChild2Checkbox = meChild2Node.locator('.ant-select-tree-checkbox');
         await meChild2Node.click();
 
         // ME child 1 should be deselected, ME child 2 selected (mutual exclusivity)
@@ -498,13 +528,21 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         await page.waitForSelector('[role="presentation"]', { state: 'visible' });
 
-        // Navigate and select (click expand icons)
-        const glossaryNode = page.getByTestId(`tag-${glossary.responseData.fullyQualifiedName}`);
-        await glossaryNode.locator('..').locator('img').first().click();
-        await page.waitForResponse('/api/v1/glossaryTerms?*');
+        // Search for the glossary to bring it into view
+        await page.locator('#tagsForm_tags').fill(glossary.responseData.name);
+        await page.locator('#tagsForm_tags').press('Enter');
+        await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-        const parentNode = page.getByTestId(`tag-${parentTerm.responseData.fullyQualifiedName}`);
-        await parentNode.locator('..').locator('img').first().click();
+        await waitForAllLoadersToDisappear(page);
+
+        const parentTermNode = page.getByTestId(`tag-${parentTerm.responseData.fullyQualifiedName}`);
+        await expect(parentTermNode).toBeVisible();
+
+        // Expand the parent term
+        await parentTermNode
+          .getByTestId('expand-icon')
+          .first()
+          .click();
 
         const childNode = page.getByTestId(`tag-${child.responseData.fullyQualifiedName}`);
         await childNode.click();
@@ -570,13 +608,21 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         await page.waitForSelector('[role="presentation"]', { state: 'visible' });
 
-        // Navigate and select (click expand icons)
-        const glossaryNode = page.getByTestId(`tag-${glossary.responseData.fullyQualifiedName}`);
-        await glossaryNode.locator('..').locator('img').first().click();
-        await page.waitForResponse('/api/v1/glossaryTerms?*');
+        // Search for the glossary to bring it into view
+        await page.locator('#tagsForm_tags').fill(glossary.responseData.name);
+        await page.locator('#tagsForm_tags').press('Enter');
+        await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-        const parentNode = page.getByTestId(`tag-${parentTerm.responseData.fullyQualifiedName}`);
-        await parentNode.locator('..').locator('img').first().click();
+        await waitForAllLoadersToDisappear(page);
+
+        const parentTermNode = page.getByTestId(`tag-${parentTerm.responseData.fullyQualifiedName}`);
+        await expect(parentTermNode).toBeVisible();
+
+        // Expand the parent term
+        await parentTermNode
+          .getByTestId('expand-icon')
+          .first()
+          .click();
 
         const childNode = page.getByTestId(`tag-${child.responseData.fullyQualifiedName}`);
         await childNode.click();
@@ -678,16 +724,25 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         await page.waitForSelector('[role="presentation"]', { state: 'visible' });
 
-        const glossaryNode = page.getByTestId(`tag-${glossary.responseData.fullyQualifiedName}`);
-        await glossaryNode.locator('..').locator('img').first().click();
-        await page.waitForResponse('/api/v1/glossaryTerms?*');
+        // Search for the glossary to bring it into view
+        await page.locator('#tagsForm_tags').fill(glossary.responseData.name);
+        await page.locator('#tagsForm_tags').press('Enter');
+        await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-        const parentNode = page.getByTestId(`tag-${parentTerm.responseData.fullyQualifiedName}`);
-        await parentNode.locator('..').locator('img').first().click();
+        await waitForAllLoadersToDisappear(page);
+
+        const parentTermNode = page.getByTestId(`tag-${parentTerm.responseData.fullyQualifiedName}`);
+        await expect(parentTermNode).toBeVisible();
+
+        // Expand the parent term
+        await parentTermNode
+          .getByTestId('expand-icon')
+          .first()
+          .click();
 
         // Children should now have checkboxes with ME behavior (ME was toggled on)
         const child1Node = page.getByTestId(`tag-${child1.responseData.fullyQualifiedName}`);
-        await expect(child1Node.locator('input[type="checkbox"]')).toBeVisible();
+        await expect(child1Node.locator('.ant-select-tree-checkbox')).toBeVisible();
 
         await table.delete(apiContext);
       } finally {
@@ -731,30 +786,40 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         await page.waitForSelector('[role="presentation"]', { state: 'visible' });
 
-        // Expand glossary (click expand icon)
+        // Search for the glossary to bring it into view
+        await page.locator('#tagsForm_tags').fill(glossary.responseData.name);
+        await page.locator('#tagsForm_tags').press('Enter');
+        await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+        await waitForAllLoadersToDisappear(page);
+
+        // Assert and expand the glossary node
         const glossaryNode = page.getByTestId(`tag-${glossary.responseData.fullyQualifiedName}`);
-        await glossaryNode.locator('..').locator('img').first().click();
-        await page.waitForResponse('/api/v1/glossaryTerms?*');
+        await expect(glossaryNode).toBeVisible();
+        await glossaryNode
+          .getByTestId('expand-icon')
+          .first()
+          .click();
 
         // Terms directly under ME glossary should be checkboxes
         const term1Node = page.getByTestId(`tag-${term1.responseData.fullyQualifiedName}`);
-        await expect(term1Node.locator('input[type="checkbox"]')).toBeVisible();
+        await expect(term1Node.locator('.ant-select-tree-checkbox')).toBeVisible();
 
         const term2Node = page.getByTestId(`tag-${term2.responseData.fullyQualifiedName}`);
-        await expect(term2Node.locator('input[type="checkbox"]')).toBeVisible();
+        await expect(term2Node.locator('.ant-select-tree-checkbox')).toBeVisible();
 
         // Verify mutual exclusivity works (selecting one deselects the other)
         await term1Node.click();
         await expect(
-          term1Node.locator('input[type="checkbox"]')
+          term1Node.locator('.ant-select-tree-checkbox')
         ).toBeChecked();
 
         await term2Node.click();
         await expect(
-          term2Node.locator('input[type="checkbox"]')
+          term2Node.locator('.ant-select-tree-checkbox')
         ).toBeChecked();
         await expect(
-          term1Node.locator('input[type="checkbox"]')
+          term1Node.locator('.ant-select-tree-checkbox')
         ).not.toBeChecked();
 
         await table.delete(apiContext);
