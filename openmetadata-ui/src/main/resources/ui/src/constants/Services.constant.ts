@@ -107,6 +107,7 @@ import securitySafe from '../assets/svg/security-safe.svg';
 import googleDrive from '../assets/svg/service-icon-google-drive.svg';
 import hex from '../assets/svg/service-icon-hex.svg';
 import mlflow from '../assets/svg/service-icon-mlflow.svg';
+import sftp from '../assets/svg/service-icon-sftp.svg';
 import teradata from '../assets/svg/teradata.svg';
 import topicDefault from '../assets/svg/topic.svg';
 import { EntityType } from '../enums/entity.enum';
@@ -225,6 +226,7 @@ export const COCKROACH = cockroach;
 export const SECURITY_DEFAULT = securitySafe;
 export const GRAFANA = grafana;
 export const GOOGLE_DRIVE = googleDrive;
+export const SFTP = sftp;
 export const TIMESCALE = timescale;
 export const excludedService = [
   MlModelServiceType.Sklearn,
