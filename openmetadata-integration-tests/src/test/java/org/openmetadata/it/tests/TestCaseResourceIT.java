@@ -263,6 +263,81 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   // ===================================================================
+  // TEST CASE OVERRIDEN TESTS
+  // ===================================================================
+  @Override
+  @Test
+  void test_importCsvDryRun(TestNamespace ns) {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        supportsImportExport, "Entity does not support import/export");
+
+    String containerName = getImportExportContainerName(ns);
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        containerName != null, "Container name not provided");
+
+    // Create an entity first
+    CreateTestCase createRequest = createMinimalRequest(ns);
+    TestCase entity = createEntity(createRequest);
+    assertNotNull(entity, "Entity should be created");
+
+    try {
+      // Export to get valid CSV format
+      String exportedCsv = SdkClients.adminClient().testCases().exportCsv(containerName);
+      assertNotNull(exportedCsv, "Export should return CSV data");
+
+      // Import with dry run - TestCase requires targetEntityType
+      String result =
+          SdkClients.adminClient()
+              .testCases()
+              .importCsv(containerName, exportedCsv, true, "testSuite");
+      assertNotNull(result, "Import dry run should return a result");
+    } catch (org.openmetadata.sdk.exceptions.OpenMetadataException e) {
+      org.junit.jupiter.api.Assertions.fail("Import/export failed: " + e.getMessage());
+    }
+  }
+
+  @Override
+  @Test
+  void test_importExportRoundTrip(TestNamespace ns) {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        supportsImportExport, "Entity does not support import/export");
+
+    String containerName = getImportExportContainerName(ns);
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        containerName != null, "Container name not provided");
+
+    // Create an entity first
+    CreateTestCase createRequest = createMinimalRequest(ns);
+    TestCase entity = createEntity(createRequest);
+    assertNotNull(entity, "Entity should be created");
+
+    try {
+      // Export current state
+      String exportedCsv = SdkClients.adminClient().testCases().exportCsv(containerName);
+      assertNotNull(exportedCsv, "Export should return CSV data");
+
+      // Import the exported data - TestCase requires targetEntityType
+      String result =
+          SdkClients.adminClient()
+              .testCases()
+              .importCsv(containerName, exportedCsv, false, "testSuite");
+      assertNotNull(result, "Import should return a result");
+
+      // Export again and verify consistency
+      String reExportedCsv = SdkClients.adminClient().testCases().exportCsv(containerName);
+      assertNotNull(reExportedCsv, "Re-export should return CSV data");
+
+      // Headers should match after round-trip
+      String[] originalLines = exportedCsv.split("\n");
+      String[] reExportedLines = reExportedCsv.split("\n");
+      assertEquals(
+          originalLines[0], reExportedLines[0], "CSV headers should match after round-trip");
+    } catch (org.openmetadata.sdk.exceptions.OpenMetadataException e) {
+      org.junit.jupiter.api.Assertions.fail("Import/export round-trip failed: " + e.getMessage());
+    }
+  }
+
+  // ===================================================================
   // TEST CASE SPECIFIC TESTS
   // ===================================================================
 

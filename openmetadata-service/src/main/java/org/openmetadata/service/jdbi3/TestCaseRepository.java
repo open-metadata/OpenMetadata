@@ -1440,6 +1440,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public CsvImportResult importFromCsv(
+      String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
+    throw new IllegalArgumentException(
+        "TestCase CSV import requires 'targetEntityType' parameter. "
+            + "Specify 'table' when importing from a table context, or 'testSuite' when importing from a Bundle Suite Context.");
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(
       String name,
       String csv,
       boolean dryRun,
