@@ -127,3 +127,47 @@ def test_complex_join_table_lineage(
         set(),
         None,
     )
+
+
+def test_interim_target_table_temp_lineage(
+    oracle_lineage_container,
+    oracle_lineage_ingestion,
+    metadata,
+    oracle_lineage_service_name,
+):
+    """
+    Check temp table lineage: interim_target_table_1 should have lineage from source_table_1
+    even though interim_table_1 (intermediate) was deleted.
+    This test validates enableTempTableLineage functionality.
+    """
+    table_fqn = f"{oracle_lineage_service_name}.default.test.INTERIM_TARGET_TABLE_1"
+    lineage = metadata.get_lineage_by_name(Table, table_fqn)
+
+    assert_lineage(
+        lineage,
+        {"SOURCE_TABLE_1"},  # Should show source even though interim_table_1 is deleted
+        set(),
+        None,
+    )
+
+
+def test_interim_target_view_temp_lineage(
+    oracle_lineage_container,
+    oracle_lineage_ingestion,
+    metadata,
+    oracle_lineage_service_name,
+):
+    """
+    Check temp table lineage: interim_target_view_1 should have lineage from source_table_1
+    even though interim_table_1 (intermediate) was deleted.
+    This test validates enableTempTableLineage functionality for views.
+    """
+    table_fqn = f"{oracle_lineage_service_name}.default.test.interim_target_view_1"
+    lineage = metadata.get_lineage_by_name(Table, table_fqn)
+
+    assert_lineage(
+        lineage,
+        {"SOURCE_TABLE_1"},  # Should show source even though interim_table_1 is deleted
+        set(),
+        None,
+    )

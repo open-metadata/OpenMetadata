@@ -58,10 +58,12 @@ from metadata.utils.execution_time_tracker import (
 from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.logger import utils_logger
 from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
+from metadata.utils.timeout import timeout
 
 logger = utils_logger()
 DEFAULT_SCHEMA_NAME = "<default>"
 CUTOFF_NODES = 20
+NODE_PROCESSING_TIMEOUT = 30  # seconds
 
 
 # pylint: disable=too-many-function-args,protected-access
@@ -1125,11 +1127,18 @@ def _get_paths_from_subtree(subtree: DiGraph) -> List[List[Any]]:
     # Find all leaf nodes (nodes with no outgoing edges)
     leaf_nodes = [node for node in subtree if subtree.out_degree(node) == 0]
 
-    # Find all simple paths from each root to each leaf
-    for root in root_nodes:
+    @timeout(seconds=NODE_PROCESSING_TIMEOUT)
+    def process_root_node(root, leaf_nodes, paths):
         logger.debug(f"Processing root node {root}")
         for leaf in leaf_nodes:
             paths.extend(nx.all_simple_paths(subtree, root, leaf, cutoff=CUTOFF_NODES))
+
+    # Find all simple paths from each root to each leaf
+    for root in root_nodes:
+        try:
+            process_root_node(root, leaf_nodes, paths)
+        except TimeoutError:
+            logger.warning(f"Timeout while processing paths from root node {root}")
     return paths
 
 
