@@ -608,7 +608,7 @@ export const addCustomPropertiesForEntity = async ({
   await expect(page.locator('[data-testid="create-button"]')).toBeDisabled();
 
   // Click the switch to show service doc panel
-  await page.getByRole('switch').click();
+  await page.locator('[data-testid="add-field-button"]').getByRole('switch').click();
 
   // Validation checks
   await page.fill(

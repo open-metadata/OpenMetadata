@@ -59,9 +59,7 @@ const CustomPropertyInput: FC<{
     options: DataAssetOption[]
   ) => {
     if (typeof item === 'string') {
-      const option = options.find((option) => option.value === item);
-
-      return option?.reference;
+      return options.find((option) => option.value === item)?.reference;
     }
 
     return item?.reference;
