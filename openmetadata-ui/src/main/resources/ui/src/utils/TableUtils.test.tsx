@@ -1894,11 +1894,7 @@ describe('TableUtils', () => {
       ];
 
       const newExtension = { deepProperty: 'deepValue' };
-      updateFieldExtension(
-        'table.level1.level2.level3',
-        newExtension,
-        fields
-      );
+      updateFieldExtension('table.level1.level2.level3', newExtension, fields);
 
       expect(fields[0].children?.[0].children?.[0].extension).toEqual(
         newExtension
