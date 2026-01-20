@@ -90,6 +90,7 @@ const MuiDrawer: FC<MuiDrawerProps> = ({
               <Box alignItems="center" display="flex" gap={1}>
                 <Switch
                   checked={showSidePanel}
+                  data-testid="show-side-panel-switch"
                   onChange={(e) => setShowSidePanel(e.target.checked)}
                 />
                 <Typography variant="body2">
