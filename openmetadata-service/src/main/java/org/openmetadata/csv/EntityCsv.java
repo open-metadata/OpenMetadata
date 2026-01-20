@@ -377,43 +377,28 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
   protected final List<EntityReference> getEntityReferencesForGlossaryTerms(
       CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
-    LOG.info(
-        "[VALIDATION] getEntityReferencesForGlossaryTerms called, processRecord={}, fieldNumber={}",
-        processRecord,
-        fieldNumber);
     if (!processRecord) {
       return null;
     }
     String fqns = csvRecord.get(fieldNumber);
-    LOG.info("[VALIDATION] Field {} value: {}", fieldNumber, fqns);
     if (nullOrEmpty(fqns)) {
-      LOG.info("[VALIDATION] Field is null or empty, returning null");
       return null;
     }
     List<String> fqnList = listOrEmpty(CsvUtil.fieldToStrings(fqns));
-    LOG.info("[VALIDATION] FQN list has {} terms", fqnList.size());
     List<EntityReference> refs = new ArrayList<>();
     for (String fqn : fqnList) {
-      LOG.info("[VALIDATION] Processing glossary term FQN: {}", fqn);
       EntityReference ref =
           getEntityReference(printer, csvRecord, fieldNumber, Entity.GLOSSARY_TERM, fqn);
       if (!processRecord) {
-        LOG.info("[VALIDATION] processRecord is false after getEntityReference, returning null");
         return null;
       }
       if (ref != null) {
-        LOG.info("[VALIDATION] Got entity reference for: {}", fqn);
         // Validate that the glossary term has APPROVED status
         EntityInterface entityInterface = getEntityByName(Entity.GLOSSARY_TERM, fqn);
-        LOG.info(
-            "[VALIDATION] getEntityByName returned: {}",
-            entityInterface != null ? "entity found" : "null");
         if (entityInterface != null) {
           // Cast to GlossaryTerm to access entityStatus
           org.openmetadata.schema.entity.data.GlossaryTerm term =
               (org.openmetadata.schema.entity.data.GlossaryTerm) entityInterface;
-          LOG.info(
-              "[VALIDATION] Glossary term '{}' has entityStatus: {}", fqn, term.getEntityStatus());
           if (term.getEntityStatus() != org.openmetadata.schema.type.EntityStatus.APPROVED) {
             LOG.error(
                 "[VALIDATION] VALIDATION FAILED! Term '{}' status is {} not APPROVED",
@@ -429,17 +414,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 csvRecord);
             processRecord = false;
             return null;
-          } else {
-            LOG.info("[VALIDATION] Term '{}' is APPROVED, validation passed", fqn);
           }
         }
         refs.add(ref);
-      } else {
-        LOG.info("[VALIDATION] Entity reference is null for FQN: {}", fqn);
       }
     }
     refs.sort(Comparator.comparing(EntityReference::getName));
-    LOG.info("[VALIDATION] Returning {} entity references", refs.size());
     return refs.isEmpty() ? null : refs;
   }
 
