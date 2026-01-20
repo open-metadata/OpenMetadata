@@ -74,6 +74,7 @@ import {
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../utils/EntityUtils';
+import Fqn from '../../utils/Fqn';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
@@ -84,7 +85,6 @@ import { flattenColumns } from '../../utils/TableUtils';
 import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-import Fqn from '../../utils/Fqn';
 
 const ContainerPage = () => {
   const navigate = useNavigate();
@@ -193,8 +193,8 @@ const ContainerPage = () => {
 
       // If we successfully resolved using fallback, the remainder is the column
       if (isFallback) {
-         // decodedEntityFqn is the full FQN "A.B.Column", containerFQN is "A.B"
-         setActiveColumnFqn(decodedEntityFqn);
+        // decodedEntityFqn is the full FQN "A.B.Column", containerFQN is "A.B"
+        setActiveColumnFqn(decodedEntityFqn);
       } else {
         setActiveColumnFqn(undefined);
       }

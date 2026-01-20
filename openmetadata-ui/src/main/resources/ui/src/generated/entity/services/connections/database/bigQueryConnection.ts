@@ -48,7 +48,11 @@ export interface BigQueryConnection {
     /**
      * SQLAlchemy driver scheme options.
      */
-    scheme?:                                BigqueryScheme;
+    scheme?: BigqueryScheme;
+    /**
+     * Regex to only include/exclude stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?:          FilterPattern;
     supportsDatabase?:                      boolean;
     supportsDataDiff?:                      boolean;
     supportsDBTExtraction?:                 boolean;
@@ -208,6 +212,8 @@ export interface GCPImpersonateServiceAccountValues {
  * Regex to only fetch entities that matches the pattern.
  *
  * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude stored procedures that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
  */

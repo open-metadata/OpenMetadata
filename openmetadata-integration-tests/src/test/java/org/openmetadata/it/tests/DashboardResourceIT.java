@@ -42,6 +42,10 @@ import org.openmetadata.sdk.models.ListResponse;
 @Execution(ExecutionMode.CONCURRENT)
 public class DashboardResourceIT extends BaseEntityIT<Dashboard, CreateDashboard> {
 
+  {
+    supportsLifeCycle = true;
+  }
+
   // ===================================================================
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
   // ===================================================================
