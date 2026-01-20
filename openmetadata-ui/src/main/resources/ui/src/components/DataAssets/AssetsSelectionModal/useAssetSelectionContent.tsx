@@ -120,9 +120,11 @@ export const useAssetSelectionContent = ({
     useState<Map<string, EntityDetailUnion>>();
   const [isLoading, setIsLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState<SearchIndex>(
-    type === AssetsOfEntity.GLOSSARY ||
-      type === AssetsOfEntity.DATA_PRODUCT_INPUT_PORT ||
-      type === AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT
+    [
+      AssetsOfEntity.GLOSSARY,
+      AssetsOfEntity.DATA_PRODUCT_INPUT_PORT,
+      AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT,
+    ].includes(type)
       ? SearchIndex.DATA_ASSET
       : SearchIndex.ALL
   );

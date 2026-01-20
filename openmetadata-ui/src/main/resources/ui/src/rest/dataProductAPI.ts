@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import {
   APPLICATION_JSON_CONTENT_TYPE_HEADER,
   PAGE_SIZE,
@@ -248,6 +249,30 @@ export const removeOutputPortsFromDataProduct = async (
     { assets: EntityReference[] },
     AxiosResponse<DataProduct>
   >(`${BASE_URL}/${getEncodedFqn(dataProductFqn)}/outputPorts/remove`, data);
+
+  return response.data;
+};
+
+export const removePortsFromDataProduct = async (
+  dataProductFqn: string,
+  ports: EntityReference[],
+  type:
+    | AssetsOfEntity.DATA_PRODUCT_INPUT_PORT
+    | AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT
+) => {
+  const data: { assets: EntityReference[] } = {
+    assets: ports,
+  };
+
+  const endpoint =
+    type === AssetsOfEntity.DATA_PRODUCT_INPUT_PORT
+      ? `${BASE_URL}/${getEncodedFqn(dataProductFqn)}/inputPorts/remove`
+      : `${BASE_URL}/${getEncodedFqn(dataProductFqn)}/outputPorts/remove`;
+
+  const response = await APIClient.put<
+    { assets: EntityReference[] },
+    AxiosResponse<DataProduct>
+  >(endpoint, data);
 
   return response.data;
 };

@@ -58,8 +58,7 @@ import { QueryFilterInterface } from '../../../../pages/ExplorePage/ExplorePage.
 import {
   getDataProductByName,
   removeAssetsFromDataProduct,
-  removeInputPortsFromDataProduct,
-  removeOutputPortsFromDataProduct,
+  removePortsFromDataProduct,
 } from '../../../../rest/dataProductAPI';
 import {
   getDomainByName,
@@ -433,17 +432,11 @@ const AssetsTabs = forwardRef(
               break;
 
             case AssetsOfEntity.DATA_PRODUCT_INPUT_PORT:
-              await removeInputPortsFromDataProduct(
-                activeEntity.fullyQualifiedName ?? '',
-                entities
-              );
-
-              break;
-
             case AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT:
-              await removeOutputPortsFromDataProduct(
+              await removePortsFromDataProduct(
                 activeEntity.fullyQualifiedName ?? '',
-                entities
+                entities,
+                type
               );
 
               break;
