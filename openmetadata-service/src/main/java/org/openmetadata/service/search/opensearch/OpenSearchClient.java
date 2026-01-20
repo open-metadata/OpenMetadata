@@ -201,6 +201,11 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public void deleteIndexWithBackoff(String indexName) {
+    indexManager.deleteIndexWithBackoff(indexName);
+  }
+
+  @Override
   public Set<String> getAliases(String indexName) {
     return indexManager.getAliases(indexName);
   }
