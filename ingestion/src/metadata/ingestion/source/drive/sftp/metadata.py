@@ -26,7 +26,7 @@ from metadata.generated.schema.api.data.createSpreadsheet import (
 )
 from metadata.generated.schema.api.data.createWorksheet import CreateWorksheetRequest
 from metadata.generated.schema.entity.data.directory import Directory, DirectoryType
-from metadata.generated.schema.entity.data.file import FileType
+from metadata.generated.schema.entity.data.file import File, FileType
 from metadata.generated.schema.entity.data.table import Column, DataType, TableData
 from metadata.generated.schema.entity.services.connections.drive.sftpConnection import (
     SftpConnection,
@@ -509,6 +509,10 @@ class SftpSource(DriveServiceSource):
                 service_name=self.context.get().drive_service,
             )
 
+            extract_sample_data = getattr(
+                self.service_connection, "extractSampleData", False
+            )
+
             if not self._root_files_processed:
                 root_files = self._files_by_parent_cache.get("root", [])
                 if root_files:
@@ -520,7 +524,6 @@ class SftpSource(DriveServiceSource):
                                 self.source_config.fileFilterPattern,
                                 file_info.name,
                             ):
-                                # Check if we should skip non-structured files
                                 structured_only = getattr(
                                     self.service_connection,
                                     "structuredDataFilesOnly",
@@ -539,12 +542,15 @@ class SftpSource(DriveServiceSource):
                                     continue
 
                                 columns = None
+                                sample_data = None
                                 file_type = None
 
                                 if self._is_csv_file(file_info.name):
                                     file_type = FileType.CSV
-                                    columns, _ = self._extract_csv_schema(
-                                        file_info.full_path, file_info.name
+                                    columns, sample_data = self._extract_csv_schema(
+                                        file_info.full_path,
+                                        file_info.name,
+                                        extract_sample_data=extract_sample_data,
                                     )
 
                                 request = CreateFileRequest(
@@ -560,6 +566,13 @@ class SftpSource(DriveServiceSource):
 
                                 self.register_record_file(request)
                                 yield Either(right=request)
+
+                                if sample_data:
+                                    self._ingest_sample_data_for_file(
+                                        file_name=file_info.name,
+                                        directory_path=None,
+                                        sample_data=sample_data,
+                                    )
                             else:
                                 logger.debug(
                                     f"Root file '{file_info.name}' filtered out"
@@ -591,8 +604,11 @@ class SftpSource(DriveServiceSource):
             )
 
             directory_reference = None
+            directory_path_components = None
             if directory_path in self._directory_fqn_cache:
                 directory_reference = self._directory_fqn_cache[directory_path]
+            if directory_path in self._directories_cache:
+                directory_path_components = self._directories_cache[directory_path].path
 
             for file_info in files_in_directory:
                 try:
@@ -600,7 +616,6 @@ class SftpSource(DriveServiceSource):
                         self.source_config.fileFilterPattern,
                         file_info.name,
                     ):
-                        # Check if we should skip non-structured files
                         structured_only = getattr(
                             self.service_connection, "structuredDataFilesOnly", False
                         )
@@ -618,12 +633,15 @@ class SftpSource(DriveServiceSource):
                         )
 
                         columns = None
+                        sample_data = None
                         file_type = None
 
                         if self._is_csv_file(file_info.name):
                             file_type = FileType.CSV
-                            columns, _ = self._extract_csv_schema(
-                                file_info.full_path, file_info.name
+                            columns, sample_data = self._extract_csv_schema(
+                                file_info.full_path,
+                                file_info.name,
+                                extract_sample_data=extract_sample_data,
                             )
 
                         request = CreateFileRequest(
@@ -639,6 +657,13 @@ class SftpSource(DriveServiceSource):
 
                         self.register_record_file(request)
                         yield Either(right=request)
+
+                        if sample_data:
+                            self._ingest_sample_data_for_file(
+                                file_name=file_info.name,
+                                directory_path=directory_path_components,
+                                sample_data=sample_data,
+                            )
                     else:
                         logger.debug(
                             f"File '{file_info.name}' filtered out by fileFilterPattern"
@@ -715,6 +740,44 @@ class SftpSource(DriveServiceSource):
         lower_name = filename.lower()
         return any(lower_name.endswith(ext) for ext in STRUCTURED_DATA_EXTENSIONS)
 
+    def _ingest_sample_data_for_file(
+        self,
+        file_name: str,
+        directory_path: Optional[List[str]],
+        sample_data: TableData,
+    ) -> None:
+        """
+        Ingest sample data for a file after it has been created.
+
+        Args:
+            file_name: Name of the file
+            directory_path: Path components of the parent directory (None/empty for root files)
+            sample_data: Sample data to ingest
+        """
+        try:
+            if not directory_path:
+                directory_path = [self.context.get().drive_service]
+
+            file_fqn = fqn.build(
+                self.metadata,
+                entity_type=File,
+                service_name=self.context.get().drive_service,
+                directory_path=directory_path,
+                file_name=file_name,
+            )
+
+            file_entity = self.metadata.get_by_name(entity=File, fqn=file_fqn)
+            if file_entity:
+                self.metadata.ingest_file_sample_data(file_entity, sample_data)
+                logger.debug(f"Ingested sample data for file: {file_fqn}")
+            else:
+                logger.warning(
+                    f"Could not find file entity to ingest sample data: {file_fqn}"
+                )
+        except Exception as e:
+            logger.warning(f"Failed to ingest sample data for file {file_name}: {e}")
+            logger.debug(traceback.format_exc())
+
     def _get_csv_separator(self, filename: str) -> str:
         """Get separator based on file extension."""
         if filename.lower().endswith(".tsv"):
@@ -722,17 +785,19 @@ class SftpSource(DriveServiceSource):
         return ","
 
     def _extract_csv_schema(
-        self, file_path: str, filename: str
+        self, file_path: str, filename: str, extract_sample_data: bool = False
     ) -> tuple[Optional[List[Column]], Optional[TableData]]:
         """
-        Extract column schema and sample data from CSV file.
+        Extract column schema and optionally sample data from CSV file.
 
         Args:
             file_path: Full path to the CSV file on SFTP server
             filename: Name of the file (for determining separator)
+            extract_sample_data: Whether to extract sample data (default: False)
 
         Returns:
-            Tuple of (columns, sample_data) or (None, None) on error
+            Tuple of (columns, sample_data) or (None, None) on error.
+            sample_data will be None if extract_sample_data is False.
         """
         try:
             separator = self._get_csv_separator(filename)
@@ -771,19 +836,24 @@ class SftpSource(DriveServiceSource):
                     )
                 )
 
-            sample_df = df.head(MAX_SAMPLE_ROWS)
-            sample_rows = []
-            for _, row in sample_df.iterrows():
-                sample_rows.append([str(val) if pd.notna(val) else None for val in row])
+            sample_data = None
+            if extract_sample_data:
+                sample_df = df.head(MAX_SAMPLE_ROWS)
+                sample_rows = []
+                for _, row in sample_df.iterrows():
+                    sample_rows.append(
+                        [str(val) if pd.notna(val) else None for val in row]
+                    )
 
-            sample_data = TableData(
-                columns=[str(col) for col in df.columns],
-                rows=sample_rows,
-            )
-
-            logger.debug(
-                f"Extracted {len(columns)} columns and {len(sample_rows)} sample rows from {filename}"
-            )
+                sample_data = TableData(
+                    columns=[str(col) for col in df.columns],
+                    rows=sample_rows,
+                )
+                logger.debug(
+                    f"Extracted {len(columns)} columns and {len(sample_rows)} sample rows from {filename}"
+                )
+            else:
+                logger.debug(f"Extracted {len(columns)} columns from {filename}")
 
             return columns, sample_data
 

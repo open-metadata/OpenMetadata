@@ -509,7 +509,7 @@ class TestCsvExtraction(TestCase):
         self.mock_sftp.open.return_value = mock_file
 
         columns, sample_data = self.sftp_source._extract_csv_schema(
-            "/data/test.csv", "test.csv"
+            "/data/test.csv", "test.csv", extract_sample_data=True
         )
 
         self.assertIsNotNone(columns)
@@ -523,6 +523,31 @@ class TestCsvExtraction(TestCase):
         self.assertIsNotNone(sample_data)
         self.assertEqual(len(sample_data.columns), 3)
         self.assertEqual(len(sample_data.rows), 2)
+
+    def test_extract_csv_schema_without_sample_data(self):
+        """Test CSV extraction without sample data (default behavior)"""
+        csv_content = b"id,name,value\n1,test1,100\n2,test2,200"
+
+        mock_file = MagicMock()
+        mock_file.read.return_value = csv_content
+        mock_file.__enter__ = MagicMock(return_value=mock_file)
+        mock_file.__exit__ = MagicMock(return_value=False)
+
+        self.mock_sftp.open.return_value = mock_file
+
+        columns, sample_data = self.sftp_source._extract_csv_schema(
+            "/data/test.csv", "test.csv", extract_sample_data=False
+        )
+
+        self.assertIsNotNone(columns)
+        self.assertEqual(len(columns), 3)
+
+        column_names = [col.name.root for col in columns]
+        self.assertIn("id", column_names)
+        self.assertIn("name", column_names)
+        self.assertIn("value", column_names)
+
+        self.assertIsNone(sample_data)
 
     def test_extract_csv_schema_empty_file(self):
         """Test CSV extraction with empty file"""
@@ -614,3 +639,156 @@ class TestConfigOptions(TestCase):
         )
         self.assertTrue(connection.structuredDataFilesOnly)
         self.assertTrue(connection.extractSampleData)
+
+
+class TestSampleDataIngestion(TestCase):
+    """Test sample data ingestion functionality"""
+
+    @patch(
+        "metadata.ingestion.source.drive.drive_service.DriveServiceSource.test_connection"
+    )
+    @patch("metadata.ingestion.source.drive.sftp.metadata.get_connection")
+    def setUp(self, mock_get_connection, mock_test_connection):
+        """Set up test fixtures"""
+        mock_test_connection.return_value = False
+
+        self.mock_sftp = MagicMock()
+        self.mock_transport = MagicMock()
+        self.mock_client = MagicMock()
+        self.mock_client.sftp = self.mock_sftp
+        self.mock_client.transport = self.mock_transport
+        mock_get_connection.return_value = self.mock_client
+
+        self.mock_sftp.listdir_attr = get_mock_listdir_attr
+
+        config = OpenMetadataWorkflowConfig.model_validate(MOCK_SFTP_CONFIG)
+        self.sftp_source = SftpSource.create(
+            MOCK_SFTP_CONFIG["source"],
+            config.workflowConfig.openMetadataServerConfig,
+        )
+
+        mock_context = MagicMock()
+        mock_context.get.return_value = MagicMock(
+            drive_service="sftp_test",
+            directory=None,
+        )
+        self.sftp_source.context = mock_context
+        self.sftp_source.metadata = MagicMock()
+
+    def test_yield_file_without_extract_sample_data(self):
+        """Test yield_file does not extract sample data when extractSampleData=False"""
+        from metadata.ingestion.source.drive.sftp.models import SftpFileInfo
+
+        self.sftp_source.service_connection.extractSampleData = False
+        self.sftp_source._directories_cache = {
+            "/data/subdir1": MagicMock(path=["subdir1"], name="subdir1")
+        }
+        self.sftp_source._directory_fqn_cache = {"/data/subdir1": "sftp_test.subdir1"}
+        self.sftp_source._files_by_parent_cache = {
+            "/data/subdir1": [
+                SftpFileInfo(
+                    name="test.csv",
+                    full_path="/data/subdir1/test.csv",
+                    size=100,
+                    mime_type="text/csv",
+                )
+            ]
+        }
+
+        csv_content = b"id,name\n1,test"
+        mock_file = MagicMock()
+        mock_file.read.return_value = csv_content
+        mock_file.__enter__ = MagicMock(return_value=mock_file)
+        mock_file.__exit__ = MagicMock(return_value=False)
+        self.mock_sftp.open.return_value = mock_file
+
+        results = list(self.sftp_source.yield_file("/data/subdir1"))
+
+        self.assertEqual(len(results), 1)
+        self.sftp_source.metadata.ingest_file_sample_data.assert_not_called()
+
+    @patch("metadata.ingestion.source.drive.drive_service.fqn")
+    @patch("metadata.ingestion.source.drive.sftp.metadata.fqn")
+    def test_yield_file_with_extract_sample_data(self, mock_fqn, mock_drive_fqn):
+        """Test yield_file extracts and ingests sample data when extractSampleData=True"""
+        from metadata.ingestion.source.drive.sftp.models import SftpFileInfo
+
+        mock_fqn.build.return_value = "sftp_test.subdir1.test.csv"
+        mock_drive_fqn.build.return_value = "sftp_test.subdir1.test.csv"
+
+        self.sftp_source.service_connection.extractSampleData = True
+        self.sftp_source._directories_cache = {
+            "/data/subdir1": MagicMock(path=["subdir1"], name="subdir1")
+        }
+        self.sftp_source._directory_fqn_cache = {"/data/subdir1": "sftp_test.subdir1"}
+        self.sftp_source._files_by_parent_cache = {
+            "/data/subdir1": [
+                SftpFileInfo(
+                    name="test.csv",
+                    full_path="/data/subdir1/test.csv",
+                    size=100,
+                    mime_type="text/csv",
+                )
+            ]
+        }
+
+        csv_content = b"id,name\n1,test"
+        mock_file = MagicMock()
+        mock_file.read.return_value = csv_content
+        mock_file.__enter__ = MagicMock(return_value=mock_file)
+        mock_file.__exit__ = MagicMock(return_value=False)
+        self.mock_sftp.open.return_value = mock_file
+
+        mock_file_entity = MagicMock()
+        mock_file_entity.id = MagicMock(root="test-id")
+        mock_file_entity.fullyQualifiedName = MagicMock(
+            root="sftp_test.subdir1.test.csv"
+        )
+        self.sftp_source.metadata.get_by_name.return_value = mock_file_entity
+
+        results = list(self.sftp_source.yield_file("/data/subdir1"))
+
+        self.assertEqual(len(results), 1)
+        self.sftp_source.metadata.get_by_name.assert_called()
+        self.sftp_source.metadata.ingest_file_sample_data.assert_called_once()
+
+    def test_ingest_sample_data_for_file_success(self):
+        """Test _ingest_sample_data_for_file successfully ingests sample data"""
+        from metadata.generated.schema.entity.data.table import TableData
+
+        mock_file_entity = MagicMock()
+        mock_file_entity.id = MagicMock(root="test-id")
+        mock_file_entity.fullyQualifiedName = MagicMock(
+            root="sftp_test.subdir1.test.csv"
+        )
+        self.sftp_source.metadata.get_by_name.return_value = mock_file_entity
+
+        sample_data = TableData(columns=["id", "name"], rows=[["1", "test"]])
+
+        self.sftp_source._ingest_sample_data_for_file(
+            file_name="test.csv",
+            directory_path=["subdir1"],
+            sample_data=sample_data,
+        )
+
+        self.sftp_source.metadata.get_by_name.assert_called_once()
+        self.sftp_source.metadata.ingest_file_sample_data.assert_called_once_with(
+            mock_file_entity, sample_data
+        )
+
+    def test_ingest_sample_data_for_file_not_found(self):
+        """Test _ingest_sample_data_for_file handles missing file gracefully"""
+        from metadata.generated.schema.entity.data.table import TableData
+
+        self.sftp_source.metadata.get_by_name.return_value = None
+
+        sample_data = TableData(columns=["id", "name"], rows=[["1", "test"]])
+
+        self.sftp_source._ingest_sample_data_for_file(
+            file_name="test.csv",
+            directory_path=["subdir1"],
+            sample_data=sample_data,
+        )
+
+        self.sftp_source.metadata.get_by_name.assert_called_once()
+        self.sftp_source.metadata.ingest_file_sample_data.assert_not_called()
