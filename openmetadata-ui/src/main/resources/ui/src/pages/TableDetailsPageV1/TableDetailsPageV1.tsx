@@ -81,7 +81,10 @@ import {
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
-import { defaultFields } from '../../utils/DatasetDetailsUtils';
+import {
+  defaultFields,
+  defaultFieldsWithColumns,
+} from '../../utils/DatasetDetailsUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
@@ -199,7 +202,7 @@ const TableDetailsPageV1: React.FC = () => {
         setLoading(true);
       }
       try {
-        let fields = defaultFields;
+        let fields = defaultFieldsWithColumns;
         if (viewUsagePermission) {
           fields += `,${TabSpecificField.USAGE_SUMMARY}`;
         }
@@ -211,7 +214,7 @@ const TableDetailsPageV1: React.FC = () => {
           getTableDetailsByFQN(tableFqn, { fields }),
           getTableColumnsByFQN(tableFqn, {
             fields: 'tags,customMetrics,extension', 
-          }), 
+          }).catch(() => null), 
         ]);
 
         let finalColumns = details.columns || [];
@@ -857,6 +860,7 @@ const TableDetailsPageV1: React.FC = () => {
     if (isTourOpen || isTourPage) {
       setTableDetails(mockDatasetData.tableDetails as unknown as Table);
     } else if (viewBasicPermission) {
+      setTableDetails(undefined);
       fetchTableDetails();
       getEntityFeedCount();
     }
@@ -916,6 +920,7 @@ const TableDetailsPageV1: React.FC = () => {
   return (
     <PageLayoutV1 pageTitle={entityName} title="Table details">
       <GenericProvider<Table>
+        key={tableFqn}
         columnFqn={columnFqn}
         customizedPage={customizedPage}
         data={tableDetails}
