@@ -1128,15 +1128,21 @@ def _get_paths_from_subtree(subtree: DiGraph) -> List[List[Any]]:
     leaf_nodes = [node for node in subtree if subtree.out_degree(node) == 0]
 
     @timeout(seconds=NODE_PROCESSING_TIMEOUT)
-    def process_root_node(root, leaf_nodes, paths):
+    def process_root_node(root, leaf_nodes):
+        """Process a single root node and return all paths to leaf nodes."""
         logger.debug(f"Processing root node {root}")
+        node_paths = []
         for leaf in leaf_nodes:
-            paths.extend(nx.all_simple_paths(subtree, root, leaf, cutoff=CUTOFF_NODES))
+            node_paths.extend(
+                nx.all_simple_paths(subtree, root, leaf, cutoff=CUTOFF_NODES)
+            )
+        return node_paths
 
     # Find all simple paths from each root to each leaf
     for root in root_nodes:
         try:
-            process_root_node(root, leaf_nodes, paths)
+            root_paths = process_root_node(root, leaf_nodes)
+            paths.extend(root_paths)
         except TimeoutError:
             logger.warning(f"Timeout while processing paths from root node {root}")
     return paths
