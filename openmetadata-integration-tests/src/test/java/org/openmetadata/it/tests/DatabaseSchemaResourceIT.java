@@ -38,9 +38,9 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
   private static final org.slf4j.Logger log =
       org.slf4j.LoggerFactory.getLogger(DatabaseSchemaResourceIT.class);
 
-  // Enable import/export for database schemas
   {
     supportsImportExport = true;
+    supportsLifeCycle = true;
   }
 
   // Store last created schema for import/export tests

@@ -60,6 +60,8 @@ export const getDatabaseDetailsByFQN = async (
       params: {
         ...params,
         include: params?.include ?? Include.NonDeleted,
+        includeRelations:
+          params?.includeRelations ?? 'owners:non-deleted,experts:non-deleted',
       },
     }
   );
@@ -154,6 +156,8 @@ export const getDatabaseSchemaDetailsByFQN = async (
       params: {
         ...params,
         include: params?.include ?? Include.NonDeleted,
+        includeRelations:
+          params?.includeRelations ?? 'owners:non-deleted,experts:non-deleted',
       },
     }
   );

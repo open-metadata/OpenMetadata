@@ -49,6 +49,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.drives.DirectoryResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -153,7 +154,8 @@ public class DirectoryRepository extends EntityRepository<Directory> {
   }
 
   @Override
-  public void setFields(Directory directory, EntityUtil.Fields fields) {
+  public void setFields(
+      Directory directory, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     directory.withService(getService(directory));
     directory.withParent(getParentDirectory(directory));
 
@@ -279,6 +281,11 @@ public class DirectoryRepository extends EntityRepository<Directory> {
 
     LOG.debug("Total children found for directory {}: {}", directory.getId(), children.size());
     return children;
+  }
+
+  @Override
+  public boolean supportsBulkImportVersioning() {
+    return false;
   }
 
   @Override

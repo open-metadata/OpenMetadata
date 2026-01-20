@@ -592,6 +592,7 @@ public class DatabaseServiceResource
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public CsvImportResult importCsv(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Database Service", schema = @Schema(type = "string"))
           @PathParam("name")
@@ -609,7 +610,7 @@ public class DatabaseServiceResource
           boolean recursive,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun, recursive);
+    return importCsvInternal(uriInfo, securityContext, name, csv, dryRun, recursive);
   }
 
   @PUT
@@ -631,6 +632,7 @@ public class DatabaseServiceResource
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public Response importCsvAsync(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Database Service", schema = @Schema(type = "string"))
           @PathParam("name")
@@ -647,7 +649,7 @@ public class DatabaseServiceResource
           @QueryParam("recursive")
           boolean recursive,
       String csv) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun, recursive);
+    return importCsvInternalAsync(uriInfo, securityContext, name, csv, dryRun, recursive);
   }
 
   @DELETE
