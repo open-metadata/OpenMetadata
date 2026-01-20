@@ -1253,6 +1253,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public CsvImportResult importCsv(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Name parameter (currently not used, reserved for future use)",
@@ -1268,7 +1269,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           boolean dryRun,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun, false);
+    return importCsvInternal(uriInfo, securityContext, name, csv, dryRun, false);
   }
 
   @PUT
@@ -1291,6 +1292,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
                     schema = @Schema(implementation = Response.class)))
       })
   public Response importCsvAsync(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Name parameter (currently not used, reserved for future use)",
@@ -1305,7 +1307,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("dryRun")
           boolean dryRun,
       String csv) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun, false);
+    return importCsvInternalAsync(uriInfo, securityContext, name, csv, dryRun, false);
   }
 
   protected static ResourceContextInterface getResourceContext(
