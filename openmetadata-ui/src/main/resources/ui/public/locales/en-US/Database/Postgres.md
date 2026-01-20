@@ -374,3 +374,9 @@ Use this to configure a custom view (e.g., `my_schema.custom_pg_stat_statements`
 
 The custom view must have the same columns as `pg_stat_statements` (`query`, `dbid`, `userid`, `total_exec_time` or `total_time` depending on Postgres version).
 $$
+
+
+$$section
+### Default Stored Procedure Filter Pattern $(id="storedProcedureFilterPattern")
+Regex to only include/exclude stored procedures that matches the pattern.
+$$

@@ -159,6 +159,76 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
     deleteIndexInternal(indexName);
   }
 
+  @Override
+  public void deleteIndexWithBackoff(String indexName) {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot delete index.");
+      return;
+    }
+
+    int maxRetries = 5;
+    long initialDelayMs = 1000; // 1 second
+    long maxDelayMs = 60000; // 60 seconds
+
+    for (int attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        DeleteIndexRequest request = DeleteIndexRequest.of(builder -> builder.index(indexName));
+        DeleteIndexResponse response = client.indices().delete(request);
+
+        if (response.acknowledged()) {
+          LOG.info(
+              "Successfully deleted index: {} (attempt {}/{})",
+              indexName,
+              attempt + 1,
+              maxRetries + 1);
+          return;
+        } else {
+          LOG.warn(
+              "Index deletion for {} was not acknowledged (attempt {}/{})",
+              indexName,
+              attempt + 1,
+              maxRetries + 1);
+        }
+      } catch (ElasticsearchException esEx) {
+        // Check if it's a snapshot-related error (status 400 or 503)
+        if (esEx.status() == 400 || esEx.status() == 503) {
+          if (attempt < maxRetries) {
+            long delayMs = Math.min(initialDelayMs * (long) Math.pow(2, attempt), maxDelayMs);
+            LOG.warn(
+                "Failed to delete index {} due to snapshot or temporary issue (attempt {}/{}). "
+                    + "Retrying in {} ms. Error: {}",
+                indexName,
+                attempt + 1,
+                maxRetries + 1,
+                delayMs,
+                esEx.getMessage());
+            try {
+              Thread.sleep(delayMs);
+            } catch (InterruptedException ie) {
+              Thread.currentThread().interrupt();
+              LOG.error("Interrupted while waiting to retry index deletion for {}", indexName, ie);
+              return;
+            }
+          } else {
+            LOG.error(
+                "Failed to delete index {} after {} attempts due to snapshot or temporary issue",
+                indexName,
+                maxRetries + 1,
+                esEx);
+            return;
+          }
+        } else {
+          // Non-retryable error
+          LOG.error("Failed to delete index {} due to non-retryable error", indexName, esEx);
+          return;
+        }
+      } catch (Exception e) {
+        LOG.error("Failed to delete index {} due to unexpected error", indexName, e);
+        return;
+      }
+    }
+  }
+
   private void deleteIndexInternal(String indexName) {
     if (!isClientAvailable) {
       LOG.error("ElasticSearch client is not available. Cannot delete index.");

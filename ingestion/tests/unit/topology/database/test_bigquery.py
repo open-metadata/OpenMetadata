@@ -18,7 +18,7 @@ import types
 from copy import deepcopy
 from typing import Dict
 from unittest import TestCase
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from sqlalchemy import Integer, String
 
@@ -51,6 +51,7 @@ from metadata.generated.schema.type.basic import (
     SourceUrl,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.bigquery.lineage import BigqueryLineageSource
@@ -541,6 +542,37 @@ class BigqueryUnitTest(TestCase):
                 either.right
                 for either in self.bq_source.yield_table((table[0], table[1]))
             ]
+
+    def test_get_stored_procedures(self):
+        """
+        Test fetching stored procedures with filter
+        """
+        self.bq_source.source_config.includeStoredProcedures = True
+        self.bq_source.source_config.storedProcedureFilterPattern = FilterPattern(
+            excludes=["sp_exclude"]
+        )
+
+        mock_engine = MagicMock()
+        self.bq_source.engine = mock_engine
+
+        # Mock rows
+        row1 = {
+            "name": "sp_include",
+            "definition": "def1",
+            "language": "SQL",
+        }
+        row2 = {
+            "name": "sp_exclude",
+            "definition": "def2",
+            "language": "SQL",
+        }
+
+        mock_engine.execute.return_value.all.return_value = [row1, row2]
+
+        results = list(self.bq_source.get_stored_procedures())
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].name, "sp_include")
 
 
 class BigqueryLineageSourceTest(TestCase):
