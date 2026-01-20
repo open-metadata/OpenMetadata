@@ -333,6 +333,38 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return repository.listVersions(id);
   }
 
+  protected EntityHistory listVersionsWithFiltersInternal(
+      SecurityContext securityContext,
+      UUID id,
+      Integer limit,
+      Long startTs,
+      Long endTs,
+      String fieldName) {
+    OperationContext operationContext = new OperationContext(entityType, VIEW_BASIC);
+    return listVersionsWithFiltersInternal(
+        securityContext,
+        id,
+        limit,
+        startTs,
+        endTs,
+        fieldName,
+        operationContext,
+        getResourceContextById(id));
+  }
+
+  protected EntityHistory listVersionsWithFiltersInternal(
+      SecurityContext securityContext,
+      UUID id,
+      Integer limit,
+      Long startTs,
+      Long endTs,
+      String fieldName,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext) {
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    return repository.listVersionsWithFilters(id, limit, startTs, endTs, fieldName);
+  }
+
   public T getByNameInternal(
       UriInfo uriInfo,
       SecurityContext securityContext,
