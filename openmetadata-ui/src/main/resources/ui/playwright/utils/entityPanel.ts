@@ -302,3 +302,49 @@ export async function navigateToExploreAndSelectTable(
 
   await waitForAllLoadersToDisappear(page);
 }
+
+export const removeOwnerFromPanel = async (
+  page: Page,
+  ownerNames: string[],
+  type: 'Users' | 'Teams' = 'Users'
+) => {
+  await page.waitForSelector('[data-testid="edit-owners"]', {
+    state: 'visible',
+  });
+  await page.getByTestId('edit-owners').click({ force: true });
+
+  await page.getByTestId('select-owner-tabs').waitFor({ state: 'visible' });
+
+  await page.getByRole('tab', { name: type }).click();
+
+  const patchPromise = waitForPatchResponse(page);
+
+  for (const ownerName of ownerNames) {
+    const searchBarDataTestId =
+      type === 'Users'
+        ? 'owner-select-users-search-bar'
+        : 'owner-select-teams-search-bar';
+    const searchBar = page.getByTestId(searchBarDataTestId);
+    if (await searchBar.isVisible()) {
+      await searchBar.fill(ownerName);
+      const ownerItem = page
+        .locator('.ant-list-item')
+        .filter({ hasText: ownerName });
+      await ownerItem.waitFor({ state: 'visible' });
+      await ownerItem.click();
+    } else {
+      const ownerItem = page
+        .locator('.ant-list-item')
+        .filter({ hasText: ownerName });
+      await ownerItem.waitFor({ state: 'visible' });
+      await ownerItem.click();
+    }
+  }
+
+  const updateButton = page.getByTestId('selectable-list-update-btn');
+  if (await updateButton.isVisible()) {
+    await updateButton.click();
+  }
+
+  await patchPromise;
+};
