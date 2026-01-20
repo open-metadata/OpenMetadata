@@ -84,6 +84,7 @@ import {
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
+import { merge } from 'lodash';
 
 // Define entities that support Data Contracts
 const entitiesWithDataContracts = [
@@ -1583,6 +1584,11 @@ test.describe('Data Contracts', () => {
     await table.visitEntityPage(page);
     await page.click('[data-testid="contract"]');
     await page.getByTestId('add-contract-button').click();
+    await expect(page.getByTestId('add-contract-menu')).toBeVisible();
+    await page.getByTestId('create-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-card')).toBeVisible();
+
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -1677,6 +1683,11 @@ test.describe('Data Contracts', () => {
     await navigateToContractTab(page);
 
     await page.getByTestId('add-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-menu')).toBeVisible();
+    await page.getByTestId('create-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-card')).toBeVisible();
     await page.getByRole('tab', { name: 'Semantics' }).click();
 
     await expect(page.getByTestId('add-semantic-button')).toBeDisabled();
@@ -1732,6 +1743,11 @@ test.describe('Data Contracts', () => {
     await navigateToContractTab(page);
 
     await page.getByTestId('add-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-menu')).toBeVisible();
+    await page.getByTestId('create-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-card')).toBeVisible();
     await page.getByRole('tab', { name: 'Semantics' }).click();
 
     await expect(page.getByTestId('add-semantic-button')).toBeDisabled();
@@ -1802,6 +1818,11 @@ test.describe('Data Contracts', () => {
       await navigateToContractTab(page);
 
       await page.getByTestId('add-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-menu')).toBeVisible();
+    await page.getByTestId('create-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
       await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
 
@@ -2016,7 +2037,7 @@ test.describe('Data Contracts', () => {
         await navigateToContractTab(page);
         await importOdcsViaDropdown(page, ODCS_WITH_SLA_YAML, 'initial.yaml');
 
-        await toastNotification(page, 'ODCSContract imported successfully');
+        await toastNotification(page, 'ODCS Contract imported successfully');
 
         await expect(page.getByTestId('contract-title')).toBeVisible();
         await expect(page.getByTestId('contract-sla-card')).toBeVisible();
@@ -2035,13 +2056,13 @@ test.describe('Data Contracts', () => {
           await page.getByTestId('import-odcs-contract-button').click();
 
           // Modal should be visible
-          await page.waitForSelector('.ant-modal', { state: 'visible' });
+          await page.getByTestId('import-contract-modal').waitFor();
 
           // Upload a new ODCS file with different content
-          const dropzone = page.locator('.ant-upload-drag');
+          const dropzone = page.locator('.import-content-wrapper');
           await dropzone.click();
 
-          const fileInput = page.locator('input[type="file"]');
+          const fileInput = page.getByTestId('file-upload-input');
           await fileInput.setInputFiles({
             name: 'update.yaml',
             mimeType: 'application/yaml',
@@ -2056,16 +2077,14 @@ description:
 `),
           });
 
-          // Wait for file to be processed
-          await page.waitForSelector('.ant-alert-success');
-
           // Modal should show "existing contract detected" warning and merge/replace options
           await expect(
-            page.getByText(/existing contract detected/i)
+            page.getByTestId('existing-contract-warning')
           ).toBeVisible();
 
           // Verify merge is default selected
-          const mergeRadio = page.getByRole('radio', { name: /Merge/i });
+          const mergeRadio = page.locator('input[type="radio"][value="merge"]');
+          await expect(mergeRadio).toBeVisible();
           await expect(mergeRadio).toBeChecked();
 
           // Import with merge mode
@@ -2076,7 +2095,7 @@ description:
           await page.getByRole('button', { name: 'Import' }).click();
           await importResponse;
 
-          await toastNotification(page, 'imported successfully');
+          await toastNotification(page, 'ODCS Contract imported successfully');
 
           // SLA should still be preserved from original import (merge mode preserves fields)
           await expect(page.getByTestId('contract-sla-card')).toBeVisible();
@@ -2125,12 +2144,14 @@ description:
 
           await page.getByTestId('import-odcs-contract-button').click();
 
-          await page.waitForSelector('.ant-modal', { state: 'visible' });
+          // Modal should be visible
+          await page.getByTestId('import-contract-modal').waitFor();
 
-          const dropzone = page.locator('.ant-upload-drag');
+          // Upload a new ODCS file with different content
+          const dropzone = page.locator('.import-content-wrapper');
           await dropzone.click();
 
-          const fileInput = page.locator('input[type="file"]');
+          const fileInput = page.getByTestId('file-upload-input');
           await fileInput.setInputFiles({
             name: 'replace.yaml',
             mimeType: 'application/yaml',
@@ -2145,14 +2166,13 @@ description:
 `),
           });
 
-          await page.waitForSelector('.ant-alert-success');
-
           await expect(
-            page.getByText(/existing contract detected/i)
+            page.getByTestId('existing-contract-warning')
           ).toBeVisible();
 
           // Select replace mode
-          const replaceRadio = page.getByRole('radio', { name: /Replace/i });
+          const replaceRadio = page.locator('input[type="radio"][value="replace"]');
+          await expect(replaceRadio).toBeVisible();
           await replaceRadio.click();
 
           const importResponse = page.waitForResponse(
@@ -2162,7 +2182,7 @@ description:
           await page.getByRole('button', { name: 'Import' }).click();
           await importResponse;
 
-          await toastNotification(page, 'imported successfully');
+          await toastNotification(page, 'ODCS Contract imported successfully');
 
           
           await page.waitForSelector('[data-testid="loader"]', {

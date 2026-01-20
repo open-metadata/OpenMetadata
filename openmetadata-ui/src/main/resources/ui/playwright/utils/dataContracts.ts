@@ -364,6 +364,9 @@ export const performInitialStepForRules = async (page: Page) => {
 
   await page.getByTestId('add-contract-button').click();
 
+  await expect(page.getByTestId('add-contract-menu')).toBeVisible();
+  await page.getByTestId('create-contract-button').click();
+
   await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
   await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
