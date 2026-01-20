@@ -1327,7 +1327,7 @@ public interface CollectionDAO {
     List<ExtensionRecord> getExtensions(
         @BindUUID("id") UUID id, @Bind("extensionPrefix") String extensionPrefix);
 
-    @SqlQuery(
+    @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM ("
                 + "SELECT id, updatedAt, json FROM entity_extension "
@@ -1341,7 +1341,24 @@ public interface CollectionDAO {
                 + ") combined WHERE 1=1 "
                 + "<cursorCondition> "
                 + "ORDER BY updatedAt DESC, id DESC "
-                + "LIMIT :limit")
+                + "LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ("
+                + "SELECT id, updatedAt, json FROM entity_extension "
+                + "WHERE updatedAt >= :startTs "
+                + "AND updatedAt <= :endTs "
+                + "AND extension LIKE CONCAT (:extensionPrefix, '.%') "
+                + "UNION ALL "
+                + "SELECT id, updatedAt, json::jsonb FROM <table> "
+                + "WHERE updatedAt >= :startTs AND "
+                + "updatedAt <= :endTs "
+                + ") combined WHERE 1=1 "
+                + "<cursorCondition> "
+                + "ORDER BY updatedAt DESC, id DESC "
+                + "LIMIT :limit",
+        connectionType = POSTGRES)
     @RegisterRowMapper(ExtensionMapper.class)
     List<String> getEntityHistoryByTimestampRange(
         @Define("table") String table,
