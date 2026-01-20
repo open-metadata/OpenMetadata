@@ -209,6 +209,10 @@ SNOWFLAKE_GET_STREAM = """
 SHOW STREAMS LIKE '{stream_name}' IN SCHEMA "{schema}"
 """
 
+SNOWFLAKE_GET_STAGES = """
+SHOW STAGES IN SCHEMA "{schema}"
+"""
+
 SNOWFLAKE_GET_TRANSIENT_NAMES = """
 select TABLE_NAME, NULL from information_schema.tables
 where TABLE_SCHEMA = '{schema}'
@@ -336,7 +340,8 @@ SELECT /* sqlalchemy:_get_schema_columns */
         ic.is_identity,
         ic.comment,
         ic.identity_start,
-        ic.identity_increment
+        ic.identity_increment,
+        ic.ordinal_position
     FROM information_schema.columns ic
     WHERE ic.table_schema=:table_schema
     ORDER BY ic.ordinal_position

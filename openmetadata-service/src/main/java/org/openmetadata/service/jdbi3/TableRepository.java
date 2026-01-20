@@ -119,6 +119,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ValidatorUtil;
@@ -173,7 +174,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public void setFields(Table table, Fields fields) {
+  public void setFields(Table table, Fields fields, RelationIncludes relationIncludes) {
     setDefaultFields(table);
     if (table.getUsageSummary() == null) {
       table.setUsageSummary(
@@ -1728,9 +1729,17 @@ public class TableRepository extends EntityRepository<Table> {
       List<TableConstraint> updatedConstraints = listOrEmpty(updatedTable.getTableConstraints());
       origConstraints.sort(EntityUtil.compareTableConstraint);
       origConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
+      origConstraints.stream()
+          .filter(c -> c.getReferredColumns() != null)
+          .map(TableConstraint::getReferredColumns)
+          .forEach(Collections::sort);
 
       updatedConstraints.sort(EntityUtil.compareTableConstraint);
       updatedConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
+      updatedConstraints.stream()
+          .filter(c -> c.getReferredColumns() != null)
+          .map(TableConstraint::getReferredColumns)
+          .forEach(Collections::sort);
 
       List<TableConstraint> added = new ArrayList<>();
       List<TableConstraint> deleted = new ArrayList<>();

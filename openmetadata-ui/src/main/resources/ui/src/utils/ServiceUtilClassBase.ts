@@ -109,6 +109,7 @@ import {
   SPARK,
   SPLINE,
   SQLITE,
+  STARROCKS,
   SUPERSET,
   SYNAPSE,
   TABLEAU,
@@ -188,6 +189,7 @@ class ServiceUtilClassBase {
     DriveServiceType.GoogleDrive,
     DriveServiceType.SharePoint,
     DatabaseServiceType.ServiceNow,
+    DatabaseServiceType.Dremio,
     MetadataServiceType.Collibra,
     PipelineServiceType.Mulesoft,
   ];
@@ -263,6 +265,24 @@ class ServiceUtilClassBase {
 
   public getEditServiceDetails() {
     return this.serviceDetails;
+  }
+
+  public getAddWorkflowData(
+    connectionType: string,
+    serviceType: ServiceType,
+    serviceName?: string,
+    configData?: ConfigData
+  ) {
+    return {
+      name: getTestConnectionName(connectionType),
+      workflowType: WorkflowType.TestConnection,
+      request: {
+        connection: { config: configData as ConfigObject },
+        serviceType,
+        connectionType,
+        serviceName,
+      },
+    };
   }
 
   public getServiceConfigData(data: {
@@ -453,6 +473,9 @@ class ServiceUtilClassBase {
 
       case this.DatabaseServiceTypeSmallCase.Doris:
         return DORIS;
+
+      case this.DatabaseServiceTypeSmallCase.StarRocks:
+        return STARROCKS;
 
       case this.DatabaseServiceTypeSmallCase.Druid:
         return DRUID;

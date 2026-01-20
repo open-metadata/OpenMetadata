@@ -257,7 +257,7 @@ export const selectDataProduct = async (
   });
 };
 
-const goToAssetsTab = async (
+export const goToAssetsTab = async (
   page: Page,
   domain: Domain['data'],
   skipDomainSelection = false
@@ -275,6 +275,25 @@ const goToAssetsTab = async (
 
   await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+};
+
+export const verifyAssetsInDomain = async (
+  page: Page,
+  domain: Domain['data'],
+  tables: TableClass[],
+  expectedVisible: boolean
+) => {
+  await goToAssetsTab(page, domain);
+
+  for (const table of tables) {
+    const tableFqn = table.entityResponseData.fullyQualifiedName;
+    const tableCard = page.locator(`[data-testid="table-data-card_${tableFqn}"]`);
+    if (expectedVisible) {
+      await expect(tableCard).toBeVisible({ timeout: 10000 });
+    } else {
+      await expect(tableCard).not.toBeVisible({ timeout: 5000 });
+    }
+  }
 };
 
 const fillCommonFormItems = async (
@@ -1228,4 +1247,25 @@ export const navigateToSubDomain = async (
     page.getByTestId(subDomainData.name).click(),
     page.waitForResponse('/api/v1/domains/name/*'),
   ]);
+};
+
+/**
+ * Renames a domain or subdomain via the UI.
+ * Opens the manage menu, clicks rename, fills the new name and saves.
+ */
+export const renameDomain = async (page: Page, newName: string) => {
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('rename-button-title').click();
+
+  await expect(page.getByRole('dialog')).toBeVisible();
+
+  await page.locator('#name').clear();
+  await page.locator('#name').fill(newName);
+
+  const patchRes = page.waitForResponse('/api/v1/domains/*');
+  await page.getByTestId('save-button').click();
+  await patchRes;
+
+  await page.reload();
+  await waitForAllLoadersToDisappear(page);
 };

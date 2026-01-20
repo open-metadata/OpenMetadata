@@ -998,6 +998,73 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
     return lastCreatedTeam.getFullyQualifiedName();
   }
 
+  @Test
+  void test_importCsv_circularDependency_dryRun(TestNamespace ns) {
+    String parentName = ns.prefix("ParentTeam");
+    String childName = ns.prefix("ChildTeam");
+    String eTeamName = ns.prefix("ETeam");
+
+    String csv =
+        "name*,displayName,description,teamType*,parents*,Owner,isJoinable,defaultRoles,policies\n"
+            + String.format("%s,%s,,Department,Organization,,false,,\n", parentName, parentName)
+            + String.format("%s,%s,,Department,%s,,false,,\n", childName, childName, parentName)
+            + String.format("%s,%s,,Department,%s,,false,,\n", parentName, parentName, childName)
+            + String.format("%s,%s,,Group,%s,,false,,", eTeamName, childName, eTeamName);
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    String container = "Organization";
+
+    // Dry Run
+    try {
+      String result = client.teams().importCsv(container, csv, true);
+      assertNotNull(result);
+      assertTrue(result.contains("failure"), "Result should contain failure status");
+      assertTrue(
+          result.contains("Circular reference detected")
+              || result.contains("participates in a loop"),
+          "Dry run should detect circular dependency. Result: " + result);
+    } catch (Exception e) {
+      assertTrue(
+          e.getMessage().contains("Circular reference detected")
+              || e.getMessage().contains("participates in a loop"),
+          "Expected circular dependency error but got: " + e.getMessage());
+    }
+  }
+
+  @Test
+  void test_importCsv_circularDependency_trueRun(TestNamespace ns) {
+    String parentName = ns.prefix("ParentTeamTrue");
+    String childName = ns.prefix("ChildTeamTrue");
+    String eTeamName = ns.prefix("ETeamTrue");
+
+    String csv =
+        "name*,displayName,description,teamType*,parents*,Owner,isJoinable,defaultRoles,policies\n"
+            + String.format("%s,%s,,Department,Organization,,false,,\n", parentName, parentName)
+            + String.format("%s,%s,,Department,%s,,false,,\n", childName, childName, parentName)
+            + String.format("%s,%s,,Department,%s,,false,,\n", parentName, parentName, childName)
+            + String.format("%s,%s,,Group,%s,,false,,", eTeamName, childName, eTeamName);
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    String container = "Organization";
+
+    // True Run
+    // We expect it to NOT crash (StackOverflow) and report the error
+    try {
+      String result = client.teams().importCsv(container, csv, false);
+      assertNotNull(result);
+      assertTrue(result.contains("failure"), "Result should contain failure status");
+      assertTrue(
+          result.contains("Circular reference detected")
+              || result.contains("participates in a loop"),
+          "True run should detect circular dependency. Result: " + result);
+    } catch (Exception e) {
+      assertTrue(
+          e.getMessage().contains("Circular reference detected")
+              || e.getMessage().contains("participates in a loop"),
+          "Expected circular dependency error but got: " + e.getMessage());
+    }
+  }
+
   /**
    * Get CSV headers for team import/export.
    * Uses TeamRepository.TeamCsv to get proper headers.

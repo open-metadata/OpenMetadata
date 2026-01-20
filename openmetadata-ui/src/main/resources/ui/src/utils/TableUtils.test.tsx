@@ -11,15 +11,21 @@
  *  limitations under the License.
  */
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
-import { EntityTabs } from '../enums/entity.enum';
+import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { TagLabel } from '../generated/entity/data/container';
-import { Column, DataType } from '../generated/entity/data/table';
+import { Column, DataType, Table } from '../generated/entity/data/table';
+import { EntityReference } from '../generated/type/entityReference';
+import { LabelType, State, TagSource } from '../generated/type/tagLabel';
 import { MOCK_TABLE, MOCK_TABLE_DBT } from '../mocks/TableData.mock';
 import {
+  extractColumnsFromData,
   ExtraTableDropdownOptions,
+  fieldExistsByFQN,
   findColumnByEntityLink,
   getEntityIcon,
   getExpandAllKeysToDepth,
+  getHighlightedRowClassName,
+  getParentKeysToExpand,
   getSafeExpandAllKeys,
   getSchemaDepth,
   getSchemaFieldCount,
@@ -27,11 +33,13 @@ import {
   getTagsWithoutTier,
   getTierTags,
   isLargeSchema,
+  normalizeTags,
   pruneEmptyChildren,
   shouldCollapseSchema,
   updateColumnInNestedStructure,
 } from '../utils/TableUtils';
 import EntityLink from './EntityLink';
+import { extractTableColumns } from './TableUtils';
 
 jest.mock(
   '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',
@@ -336,6 +344,156 @@ describe('TableUtils', () => {
     });
   });
 
+  describe('normalizeTags', () => {
+    it('should remove style property from glossary terms', () => {
+      const tags: TagLabel[] = [
+        {
+          tagFQN: 'glossary.term1',
+          source: TagSource.Glossary,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+          style: { color: '#FF0000' },
+        } as TagLabel,
+        {
+          tagFQN: 'glossary.term2',
+          source: TagSource.Glossary,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+          style: { color: '#00FF00' },
+        } as TagLabel,
+      ];
+
+      const result = normalizeTags(tags);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).not.toHaveProperty('style');
+      expect(result[1]).not.toHaveProperty('style');
+      expect(result[0].tagFQN).toBe('glossary.term1');
+      expect(result[1].tagFQN).toBe('glossary.term2');
+    });
+
+    it('should keep style property for classification tags', () => {
+      const tags: TagLabel[] = [
+        {
+          tagFQN: 'Classification.Tag1',
+          source: TagSource.Classification,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+          style: { color: '#FF0000' },
+        } as TagLabel,
+        {
+          tagFQN: 'Classification.Tag2',
+          source: TagSource.Classification,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+          style: { color: '#00FF00' },
+        } as TagLabel,
+      ];
+
+      const result = normalizeTags(tags);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toHaveProperty('style');
+      expect(result[1]).toHaveProperty('style');
+      expect(result[0].style).toEqual({ color: '#FF0000' });
+      expect(result[1].style).toEqual({ color: '#00FF00' });
+    });
+
+    it('should handle mixed glossary and classification tags', () => {
+      const tags: TagLabel[] = [
+        {
+          tagFQN: 'glossary.term1',
+          source: TagSource.Glossary,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+          style: { color: '#FF0000' },
+        } as TagLabel,
+        {
+          tagFQN: 'Classification.Tag1',
+          source: TagSource.Classification,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+          style: { color: '#00FF00' },
+        } as TagLabel,
+        {
+          tagFQN: 'glossary.term2',
+          source: TagSource.Glossary,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+          style: { color: '#0000FF' },
+        } as TagLabel,
+      ];
+
+      const result = normalizeTags(tags);
+
+      expect(result).toHaveLength(3);
+      // Glossary terms should not have style
+      expect(result[0]).not.toHaveProperty('style');
+      expect(result[2]).not.toHaveProperty('style');
+      // Classification tag should have style
+      expect(result[1]).toHaveProperty('style');
+      expect(result[1].style).toEqual({ color: '#00FF00' });
+    });
+
+    it('should handle tags without style property', () => {
+      const tags: TagLabel[] = [
+        {
+          tagFQN: 'glossary.term1',
+          source: TagSource.Glossary,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+        } as TagLabel,
+        {
+          tagFQN: 'Classification.Tag1',
+          source: TagSource.Classification,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+        } as TagLabel,
+      ];
+
+      const result = normalizeTags(tags);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).not.toHaveProperty('style');
+      expect(result[1]).not.toHaveProperty('style');
+    });
+
+    it('should handle empty array', () => {
+      const tags: TagLabel[] = [];
+
+      const result = normalizeTags(tags);
+
+      expect(result).toHaveLength(0);
+      expect(result).toEqual([]);
+    });
+
+    it('should preserve all other tag properties', () => {
+      const tags: TagLabel[] = [
+        {
+          tagFQN: 'glossary.term1',
+          name: 'term1',
+          displayName: 'Term 1',
+          description: 'Description',
+          source: TagSource.Glossary,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+          style: { color: '#FF0000' },
+        } as TagLabel,
+      ];
+
+      const result = normalizeTags(tags);
+
+      expect(result[0]).not.toHaveProperty('style');
+      expect(result[0].tagFQN).toBe('glossary.term1');
+      expect(result[0].name).toBe('term1');
+      expect(result[0].displayName).toBe('Term 1');
+      expect(result[0].description).toBe('Description');
+      expect(result[0].source).toBe('Glossary');
+      expect(result[0].labelType).toBe('Manual');
+      expect(result[0].state).toBe('Confirmed');
+    });
+  });
+
   describe('pruneEmptyChildren', () => {
     it('should remove children property when children array is empty', () => {
       const columns: Column[] = [
@@ -435,241 +593,6 @@ describe('TableUtils', () => {
       expect(result[1].children).toHaveLength(1);
       expect(result[2]).not.toHaveProperty('children');
       expect(result[3]).not.toHaveProperty('children');
-    });
-
-    it('should handle nested empty children recursively', () => {
-      const columns: Column[] = [
-        {
-          name: 'parentColumn',
-          dataType: DataType.Struct,
-          children: [
-            {
-              name: 'childColumn1',
-              dataType: DataType.String,
-              children: [],
-            } as Column,
-            {
-              name: 'childColumn2',
-              dataType: DataType.Int,
-              children: [
-                {
-                  name: 'grandchildColumn',
-                  dataType: DataType.Boolean,
-                  children: [],
-                } as Column,
-              ],
-            } as Column,
-          ],
-        } as Column,
-      ];
-
-      const result = pruneEmptyChildren(columns);
-
-      expect(result[0]).toHaveProperty('children');
-      expect(result[0].children).toHaveLength(2);
-      expect(result[0].children?.[0]).not.toHaveProperty('children');
-      expect(result[0].children?.[1]).toHaveProperty('children');
-      expect(result[0].children?.[1].children?.[0]).not.toHaveProperty(
-        'children'
-      );
-    });
-
-    it('should return empty array when input is empty', () => {
-      const columns: Column[] = [];
-
-      const result = pruneEmptyChildren(columns);
-
-      expect(result).toEqual([]);
-    });
-
-    it('should preserve all other column properties', () => {
-      const columns: Column[] = [
-        {
-          name: 'column1',
-          dataType: DataType.String,
-          description: 'Test description',
-          displayName: 'Test Display Name',
-          fullyQualifiedName: 'test.table.column1',
-          ordinalPosition: 1,
-          precision: 10,
-          scale: 2,
-          dataLength: 255,
-          children: [],
-          tags: [],
-          customMetrics: [],
-        } as Column,
-      ];
-
-      const result = pruneEmptyChildren(columns);
-
-      expect(result[0]).not.toHaveProperty('children');
-      expect(result[0].name).toBe('column1');
-      expect(result[0].dataType).toBe(DataType.String);
-      expect(result[0].description).toBe('Test description');
-      expect(result[0].displayName).toBe('Test Display Name');
-      expect(result[0].fullyQualifiedName).toBe('test.table.column1');
-      expect(result[0].ordinalPosition).toBe(1);
-      expect(result[0].precision).toBe(10);
-      expect(result[0].scale).toBe(2);
-      expect(result[0].dataLength).toBe(255);
-      expect(result[0].tags).toEqual([]);
-      expect(result[0].customMetrics).toEqual([]);
-    });
-
-    it('should handle complex nested structure with multiple empty children levels', () => {
-      const columns: Column[] = [
-        {
-          name: 'level1',
-          dataType: DataType.Struct,
-          children: [
-            {
-              name: 'level2a',
-              dataType: DataType.Struct,
-              children: [],
-            } as Column,
-            {
-              name: 'level2b',
-              dataType: DataType.Struct,
-              children: [
-                {
-                  name: 'level3a',
-                  dataType: DataType.String,
-                  children: [],
-                } as Column,
-                {
-                  name: 'level3b',
-                  dataType: DataType.Int,
-                  children: [
-                    {
-                      name: 'level4',
-                      dataType: DataType.Boolean,
-                      children: [],
-                    } as Column,
-                  ],
-                } as Column,
-              ],
-            } as Column,
-          ],
-        } as Column,
-      ];
-
-      const result = pruneEmptyChildren(columns);
-
-      expect(result[0]).toHaveProperty('children');
-      expect(result[0].children).toHaveLength(2);
-
-      // level2a should have children removed
-      expect(result[0].children?.[0]).not.toHaveProperty('children');
-
-      // level2b should keep children
-      expect(result[0].children?.[1]).toHaveProperty('children');
-      expect(result[0].children?.[1].children).toHaveLength(2);
-
-      // level3a should have children removed
-      expect(result[0].children?.[1].children?.[0]).not.toHaveProperty(
-        'children'
-      );
-
-      // level3b should keep children but level4 should have children removed
-      expect(result[0].children?.[1].children?.[1]).toHaveProperty('children');
-      expect(
-        result[0].children?.[1].children?.[1].children?.[0]
-      ).not.toHaveProperty('children');
-    });
-
-    it('should handle columns with undefined children property', () => {
-      const columns: Column[] = [
-        {
-          name: 'column1',
-          dataType: DataType.String,
-          children: undefined,
-        } as Column,
-        {
-          name: 'column2',
-          dataType: DataType.Int,
-        } as Column,
-      ];
-
-      const result = pruneEmptyChildren(columns);
-
-      expect(result[0]).not.toHaveProperty('children');
-      expect(result[1]).not.toHaveProperty('children');
-      expect(result[0].name).toBe('column1');
-      expect(result[1].name).toBe('column2');
-    });
-
-    it('should handle columns with null children property', () => {
-      const columns: Column[] = [
-        {
-          name: 'column1',
-          dataType: DataType.String,
-        } as Column,
-      ];
-
-      const result = pruneEmptyChildren(columns);
-
-      expect(result[0]).not.toHaveProperty('children');
-      expect(result[0].name).toBe('column1');
-    });
-
-    it('should handle deeply nested structure where all children become empty after pruning', () => {
-      const columns: Column[] = [
-        {
-          name: 'parent',
-          dataType: DataType.Struct,
-          children: [
-            {
-              name: 'child1',
-              dataType: DataType.Struct,
-              children: [
-                {
-                  name: 'grandchild1',
-                  dataType: DataType.String,
-                  children: [],
-                } as Column,
-                {
-                  name: 'grandchild2',
-                  dataType: DataType.Int,
-                  children: [],
-                } as Column,
-              ],
-            } as Column,
-            {
-              name: 'child2',
-              dataType: DataType.Struct,
-              children: [
-                {
-                  name: 'grandchild3',
-                  dataType: DataType.Boolean,
-                  children: [],
-                } as Column,
-              ],
-            } as Column,
-          ],
-        } as Column,
-      ];
-
-      const result = pruneEmptyChildren(columns);
-
-      expect(result[0]).toHaveProperty('children');
-      expect(result[0].children).toHaveLength(2);
-
-      // child1 should keep children but grandchildren should have children removed
-      expect(result[0].children?.[0]).toHaveProperty('children');
-      expect(result[0].children?.[0].children).toHaveLength(2);
-      expect(result[0].children?.[0].children?.[0]).not.toHaveProperty(
-        'children'
-      );
-      expect(result[0].children?.[0].children?.[1]).not.toHaveProperty(
-        'children'
-      );
-
-      // child2 should keep children but grandchild should have children removed
-      expect(result[0].children?.[1]).toHaveProperty('children');
-      expect(result[0].children?.[1].children).toHaveLength(1);
-      expect(result[0].children?.[1].children?.[0]).not.toHaveProperty(
-        'children'
-      );
     });
   });
 
@@ -994,6 +917,900 @@ describe('TableUtils', () => {
       expect(stringifyResult).toContain(
         '{"data-testid":"dbt-source-project-id","children":"--"}'
       );
+    });
+  });
+
+  describe('extractColumnsFromData', () => {
+    it('should extract columns from TABLE entity', () => {
+      const tableData = {
+        id: '1',
+        name: 'test_table',
+        columns: [
+          {
+            name: 'col1',
+            fullyQualifiedName: 'test.col1',
+            dataType: 'STRING',
+            tags: [{ tagFQN: 'tag1' }],
+          },
+          {
+            name: 'col2',
+            fullyQualifiedName: 'test.col2',
+            dataType: 'INT',
+            tags: undefined,
+          },
+        ],
+      };
+
+      const result = extractColumnsFromData(tableData, EntityType.TABLE);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toMatchObject({
+        name: 'col1',
+        tags: [{ tagFQN: 'tag1' }],
+      });
+      expect(result[1]).toMatchObject({
+        name: 'col2',
+        tags: [],
+      });
+    });
+
+    it('should extract fields from API_ENDPOINT entity (request and response schemas)', () => {
+      const apiEndpointData = {
+        id: '1',
+        name: 'test_api',
+        requestSchema: {
+          schemaFields: [
+            {
+              name: 'reqField1',
+              fullyQualifiedName: 'test.reqField1',
+              tags: [{ tagFQN: 'tag1' }],
+            },
+          ],
+        },
+        responseSchema: {
+          schemaFields: [
+            {
+              name: 'resField1',
+              fullyQualifiedName: 'test.resField1',
+              tags: [{ tagFQN: 'tag2' }],
+            },
+          ],
+        },
+      };
+
+      const result = extractColumnsFromData(
+        apiEndpointData,
+        EntityType.API_ENDPOINT
+      );
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toMatchObject({
+        name: 'reqField1',
+        tags: [{ tagFQN: 'tag1' }],
+      });
+      expect(result[1]).toMatchObject({
+        name: 'resField1',
+        tags: [{ tagFQN: 'tag2' }],
+      });
+    });
+
+    it('should extract columns from DASHBOARD_DATA_MODEL entity', () => {
+      const dataModelData = {
+        id: '1',
+        name: 'test_model',
+        columns: [
+          {
+            name: 'modelCol1',
+            fullyQualifiedName: 'test.modelCol1',
+            tags: [{ tagFQN: 'tag1' }],
+          },
+        ],
+      };
+
+      const result = extractColumnsFromData(
+        dataModelData,
+        EntityType.DASHBOARD_DATA_MODEL
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        name: 'modelCol1',
+        tags: [{ tagFQN: 'tag1' }],
+      });
+    });
+
+    it('should extract features from MLMODEL entity', () => {
+      const mlModelData = {
+        id: '1',
+        name: 'test_ml_model',
+        mlFeatures: [
+          {
+            name: 'feature1',
+            fullyQualifiedName: 'test.feature1',
+            dataType: 'NUMERIC',
+          },
+          {
+            name: 'feature2',
+            fullyQualifiedName: 'test.feature2',
+            dataType: 'CATEGORICAL',
+          },
+        ],
+      };
+
+      const result = extractColumnsFromData(mlModelData, EntityType.MLMODEL);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toMatchObject({
+        name: 'feature1',
+        dataType: 'NUMERIC',
+      });
+      expect(result[1]).toMatchObject({
+        name: 'feature2',
+        dataType: 'CATEGORICAL',
+      });
+    });
+
+    it('should extract tasks from PIPELINE entity', () => {
+      const pipelineData = {
+        id: '1',
+        name: 'test_pipeline',
+        tasks: [
+          {
+            name: 'task1',
+            fullyQualifiedName: 'test.task1',
+            taskType: 'Ingestion',
+            tags: [{ tagFQN: 'tag1' }],
+          },
+          {
+            name: 'task2',
+            fullyQualifiedName: 'test.task2',
+            taskType: 'Transformation',
+            tags: undefined,
+          },
+        ],
+      };
+
+      const result = extractColumnsFromData(pipelineData, EntityType.PIPELINE);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toMatchObject({
+        name: 'task1',
+        tags: [{ tagFQN: 'tag1' }],
+      });
+      expect(result[1]).toMatchObject({
+        name: 'task2',
+        tags: [],
+      });
+    });
+
+    it('should extract schema fields from TOPIC entity', () => {
+      const topicData = {
+        id: '1',
+        name: 'test_topic',
+        messageSchema: {
+          schemaFields: [
+            {
+              name: 'field1',
+              fullyQualifiedName: 'test.field1',
+              dataType: 'STRING',
+            },
+            {
+              name: 'field2',
+              fullyQualifiedName: 'test.field2',
+              dataType: 'INT',
+            },
+          ],
+        },
+      };
+
+      const result = extractColumnsFromData(topicData, EntityType.TOPIC);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toMatchObject({
+        name: 'field1',
+        dataType: 'STRING',
+      });
+      expect(result[1]).toMatchObject({
+        name: 'field2',
+        dataType: 'INT',
+      });
+    });
+
+    it('should extract columns from CONTAINER entity', () => {
+      const containerData = {
+        id: '1',
+        name: 'test_container',
+        dataModel: {
+          columns: [
+            {
+              name: 'containerCol1',
+              fullyQualifiedName: 'test.containerCol1',
+              tags: [{ tagFQN: 'tag1' }],
+            },
+          ],
+        },
+      };
+
+      const result = extractColumnsFromData(
+        containerData,
+        EntityType.CONTAINER
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        name: 'containerCol1',
+        tags: [{ tagFQN: 'tag1' }],
+      });
+    });
+
+    it('should extract fields from SEARCH_INDEX entity', () => {
+      const searchIndexData = {
+        id: '1',
+        name: 'test_index',
+        fields: [
+          {
+            name: 'indexField1',
+            fullyQualifiedName: 'test.indexField1',
+            dataType: 'TEXT',
+            tags: [{ tagFQN: 'tag1' }],
+          },
+          {
+            name: 'indexField2',
+            fullyQualifiedName: 'test.indexField2',
+            dataType: 'KEYWORD',
+            tags: undefined,
+          },
+        ],
+      };
+
+      const result = extractColumnsFromData(
+        searchIndexData,
+        EntityType.SEARCH_INDEX
+      );
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toMatchObject({
+        name: 'indexField1',
+        tags: [{ tagFQN: 'tag1' }],
+      });
+      expect(result[1]).toMatchObject({
+        name: 'indexField2',
+        tags: [],
+      });
+    });
+
+    it('should return empty array for unsupported entity type', () => {
+      const unknownData = {
+        id: '1',
+        name: 'unknown',
+      };
+
+      const result = extractColumnsFromData(unknownData, EntityType.DASHBOARD);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle missing columns/fields arrays gracefully', () => {
+      const tableDataWithoutColumns = {
+        id: '1',
+        name: 'test_table',
+        columns: undefined,
+      };
+
+      const result = extractColumnsFromData(
+        tableDataWithoutColumns,
+        EntityType.TABLE
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle empty columns/fields arrays', () => {
+      const tableDataWithEmptyColumns = {
+        id: '1',
+        name: 'test_table',
+        columns: [],
+      };
+
+      const result = extractColumnsFromData(
+        tableDataWithEmptyColumns,
+        EntityType.TABLE
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle API_ENDPOINT with missing schemas', () => {
+      const apiEndpointData = {
+        id: '1',
+        name: 'test_api',
+        requestSchema: undefined,
+        responseSchema: undefined,
+      };
+
+      const result = extractColumnsFromData(
+        apiEndpointData,
+        EntityType.API_ENDPOINT
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle API_ENDPOINT with only request schema', () => {
+      const apiEndpointData = {
+        id: '1',
+        name: 'test_api',
+        requestSchema: {
+          schemaFields: [
+            {
+              name: 'reqField1',
+              fullyQualifiedName: 'test.reqField1',
+            },
+          ],
+        },
+        responseSchema: undefined,
+      };
+
+      const result = extractColumnsFromData(
+        apiEndpointData,
+        EntityType.API_ENDPOINT
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({ name: 'reqField1' });
+    });
+
+    it('should handle CONTAINER with missing dataModel', () => {
+      const containerData = {
+        id: '1',
+        name: 'test_container',
+        dataModel: undefined,
+      };
+
+      const result = extractColumnsFromData(
+        containerData,
+        EntityType.CONTAINER
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle TOPIC with missing messageSchema', () => {
+      const topicData = {
+        id: '1',
+        name: 'test_topic',
+        messageSchema: undefined,
+      };
+
+      const result = extractColumnsFromData(topicData, EntityType.TOPIC);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should ensure all columns have tags array (default to empty)', () => {
+      const tableData = {
+        id: '1',
+        name: 'test_table',
+        columns: [
+          {
+            name: 'col1',
+            fullyQualifiedName: 'test.col1',
+            tags: undefined,
+          },
+          {
+            name: 'col2',
+            fullyQualifiedName: 'test.col2',
+            tags: null,
+          },
+        ],
+      };
+
+      const result = extractColumnsFromData(tableData, EntityType.TABLE);
+
+      expect(result).toHaveLength(2);
+      expect(result[0].tags).toEqual([]);
+      expect(result[1].tags).toEqual([]);
+    });
+  });
+
+  describe('extractTableColumns', () => {
+    it('should extract columns from table with tags filled', () => {
+      const mockTable = {
+        id: 'test-id',
+        columns: [
+          {
+            name: 'column1',
+            dataType: DataType.String,
+            fullyQualifiedName: 'table.column1',
+          },
+          {
+            name: 'column2',
+            dataType: DataType.Int,
+            fullyQualifiedName: 'table.column2',
+            tags: [
+              {
+                tagFQN: 'tag1',
+                source: TagSource.Classification,
+                labelType: LabelType.Manual,
+                state: State.Confirmed,
+              },
+            ],
+          },
+        ],
+      } as Partial<Table> & Pick<Omit<EntityReference, 'type'>, 'id'>;
+
+      const result = extractTableColumns(mockTable);
+
+      expect(result).toHaveLength(2);
+      expect(result[0].name).toBe('column1');
+      expect(result[0].tags).toEqual([]);
+      expect(result[1].name).toBe('column2');
+      expect(result[1].tags).toHaveLength(1);
+    });
+
+    it('should return empty array when columns are undefined', () => {
+      const mockTable = {
+        id: 'test-id',
+      } as Partial<Table> & Pick<Omit<EntityReference, 'type'>, 'id'>;
+
+      const result = extractTableColumns(mockTable);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should add empty tags array to columns without tags', () => {
+      const mockTable = {
+        id: 'test-id',
+        columns: [
+          {
+            name: 'column1',
+            dataType: DataType.String,
+            fullyQualifiedName: 'table.column1',
+          },
+        ],
+      } as Partial<Table> & Pick<Omit<EntityReference, 'type'>, 'id'>;
+
+      const result = extractTableColumns(mockTable);
+
+      expect(result[0].tags).toEqual([]);
+    });
+  });
+
+  describe('fieldExistsByFQN', () => {
+    it('should return true when field exists at root level', () => {
+      const items = [
+        { fullyQualifiedName: 'table.column1' },
+        { fullyQualifiedName: 'table.column2' },
+        { fullyQualifiedName: 'table.column3' },
+      ];
+
+      expect(fieldExistsByFQN(items, 'table.column2')).toBe(true);
+    });
+
+    it('should return true when field exists in nested children', () => {
+      const items = [
+        {
+          fullyQualifiedName: 'table.parent',
+          children: [
+            { fullyQualifiedName: 'table.parent.child1' },
+            { fullyQualifiedName: 'table.parent.child2' },
+          ],
+        },
+        { fullyQualifiedName: 'table.other' },
+      ];
+
+      expect(fieldExistsByFQN(items, 'table.parent.child1')).toBe(true);
+      expect(fieldExistsByFQN(items, 'table.parent.child2')).toBe(true);
+    });
+
+    it('should return true when targetFqn starts with item FQN prefix', () => {
+      const items = [
+        { fullyQualifiedName: 'table.parent' },
+        { fullyQualifiedName: 'table.other' },
+      ];
+
+      expect(fieldExistsByFQN(items, 'table.parent.child')).toBe(true);
+      expect(fieldExistsByFQN(items, 'table.parent.child.grandchild')).toBe(
+        true
+      );
+    });
+
+    it('should return false when field does not exist', () => {
+      const items = [
+        { fullyQualifiedName: 'table.column1' },
+        { fullyQualifiedName: 'table.column2' },
+      ];
+
+      expect(fieldExistsByFQN(items, 'table.nonexistent')).toBe(false);
+      expect(fieldExistsByFQN(items, 'other.table.column1')).toBe(false);
+    });
+
+    it('should return false for empty array', () => {
+      expect(fieldExistsByFQN([], 'table.column1')).toBe(false);
+    });
+
+    it('should handle deeply nested structures', () => {
+      const items = [
+        {
+          fullyQualifiedName: 'table.level1',
+          children: [
+            {
+              fullyQualifiedName: 'table.level1.level2',
+              children: [
+                {
+                  fullyQualifiedName: 'table.level1.level2.level3',
+                  children: [
+                    { fullyQualifiedName: 'table.level1.level2.level3.level4' },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      expect(fieldExistsByFQN(items, 'table.level1.level2.level3.level4')).toBe(
+        true
+      );
+      expect(fieldExistsByFQN(items, 'table.level1.level2.level3')).toBe(true);
+    });
+
+    it('should handle items with undefined fullyQualifiedName', () => {
+      const items = [
+        { fullyQualifiedName: undefined },
+        { fullyQualifiedName: 'table.column1' },
+      ];
+
+      expect(fieldExistsByFQN(items, 'table.column1')).toBe(true);
+      expect(fieldExistsByFQN(items, 'table.undefined')).toBe(false);
+    });
+
+    it('should handle items with empty children array', () => {
+      const items = [
+        {
+          fullyQualifiedName: 'table.parent',
+          children: [],
+        },
+        { fullyQualifiedName: 'table.column1' },
+      ];
+
+      expect(fieldExistsByFQN(items, 'table.column1')).toBe(true);
+      expect(fieldExistsByFQN(items, 'table.parent.child')).toBe(true); // prefix match
+    });
+
+    it('should handle multiple levels of nesting with mixed results', () => {
+      const items = [
+        {
+          fullyQualifiedName: 'table.parent1',
+          children: [
+            { fullyQualifiedName: 'table.parent1.child1' },
+            {
+              fullyQualifiedName: 'table.parent1.child2',
+              children: [
+                { fullyQualifiedName: 'table.parent1.child2.grandchild' },
+              ],
+            },
+          ],
+        },
+        {
+          fullyQualifiedName: 'table.parent2',
+          children: [{ fullyQualifiedName: 'table.parent2.child1' }],
+        },
+      ];
+
+      expect(fieldExistsByFQN(items, 'table.parent1.child1')).toBe(true);
+      expect(fieldExistsByFQN(items, 'table.parent1.child2.grandchild')).toBe(
+        true
+      );
+      expect(fieldExistsByFQN(items, 'table.parent2.child1')).toBe(true);
+      expect(fieldExistsByFQN(items, 'table.parent1.nonexistent')).toBe(true); // prefix match
+      expect(fieldExistsByFQN(items, 'table.nonexistent')).toBe(false);
+    });
+  });
+
+  describe('getParentKeysToExpand', () => {
+    it('should return empty array when field is at root level', () => {
+      const items = [
+        { fullyQualifiedName: 'table.column1' },
+        { fullyQualifiedName: 'table.column2' },
+      ];
+
+      expect(getParentKeysToExpand(items, 'table.column1')).toEqual([]);
+      expect(getParentKeysToExpand(items, 'table.column2')).toEqual([]);
+    });
+
+    it('should return parent keys for field in one level of nesting', () => {
+      const items = [
+        {
+          fullyQualifiedName: 'table.parent',
+          children: [
+            { fullyQualifiedName: 'table.parent.child1' },
+            { fullyQualifiedName: 'table.parent.child2' },
+          ],
+        },
+      ];
+
+      expect(getParentKeysToExpand(items, 'table.parent.child1')).toEqual([
+        'table.parent',
+      ]);
+      expect(getParentKeysToExpand(items, 'table.parent.child2')).toEqual([
+        'table.parent',
+      ]);
+    });
+
+    it('should return all parent keys for deeply nested field', () => {
+      const items = [
+        {
+          fullyQualifiedName: 'table.level1',
+          children: [
+            {
+              fullyQualifiedName: 'table.level1.level2',
+              children: [
+                {
+                  fullyQualifiedName: 'table.level1.level2.level3',
+                  children: [
+                    { fullyQualifiedName: 'table.level1.level2.level3.level4' },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      expect(
+        getParentKeysToExpand(items, 'table.level1.level2.level3.level4')
+      ).toEqual([
+        'table.level1',
+        'table.level1.level2',
+        'table.level1.level2.level3',
+      ]);
+    });
+
+    it('should return empty array when field does not exist', () => {
+      const items = [
+        { fullyQualifiedName: 'table.column1' },
+        {
+          fullyQualifiedName: 'table.parent',
+          children: [{ fullyQualifiedName: 'table.parent.child1' }],
+        },
+      ];
+
+      expect(getParentKeysToExpand(items, 'table.nonexistent')).toEqual([]);
+      expect(getParentKeysToExpand(items, 'table.parent.nonexistent')).toEqual(
+        []
+      );
+    });
+
+    it('should return empty array for empty items array', () => {
+      expect(getParentKeysToExpand([], 'table.column1')).toEqual([]);
+    });
+
+    it('should use name as fallback when fullyQualifiedName is undefined', () => {
+      const items = [
+        {
+          name: 'parent',
+          fullyQualifiedName: undefined,
+          children: [
+            { fullyQualifiedName: 'table.parent.child1' },
+            { fullyQualifiedName: 'table.parent.child2' },
+          ],
+        },
+      ];
+
+      expect(getParentKeysToExpand(items, 'table.parent.child1')).toEqual([
+        'parent',
+      ]);
+    });
+
+    it('should use empty string when both fullyQualifiedName and name are undefined', () => {
+      const items = [
+        {
+          name: undefined,
+          fullyQualifiedName: undefined,
+          children: [{ fullyQualifiedName: 'table.child1' }],
+        },
+      ];
+
+      expect(getParentKeysToExpand(items, 'table.child1')).toEqual(['']);
+    });
+
+    it('should handle multiple parents with different children', () => {
+      const items = [
+        {
+          fullyQualifiedName: 'table.parent1',
+          children: [
+            { fullyQualifiedName: 'table.parent1.child1' },
+            { fullyQualifiedName: 'table.parent1.child2' },
+          ],
+        },
+        {
+          fullyQualifiedName: 'table.parent2',
+          children: [
+            {
+              fullyQualifiedName: 'table.parent2.child1',
+              children: [
+                { fullyQualifiedName: 'table.parent2.child1.grandchild' },
+              ],
+            },
+          ],
+        },
+      ];
+
+      expect(getParentKeysToExpand(items, 'table.parent1.child1')).toEqual([
+        'table.parent1',
+      ]);
+      expect(
+        getParentKeysToExpand(items, 'table.parent2.child1.grandchild')
+      ).toEqual(['table.parent2', 'table.parent2.child1']);
+    });
+
+    it('should handle parent keys parameter correctly', () => {
+      const items = [
+        {
+          fullyQualifiedName: 'table.parent',
+          children: [{ fullyQualifiedName: 'table.parent.child1' }],
+        },
+      ];
+
+      const initialParentKeys = ['table.root'];
+
+      expect(
+        getParentKeysToExpand(items, 'table.parent.child1', initialParentKeys)
+      ).toEqual(['table.root', 'table.parent']);
+    });
+
+    it('should return correct path when target is direct child', () => {
+      const items = [
+        {
+          fullyQualifiedName: 'table.parent',
+          children: [
+            { fullyQualifiedName: 'table.parent.child1' },
+            {
+              fullyQualifiedName: 'table.parent.child2',
+              children: [
+                { fullyQualifiedName: 'table.parent.child2.grandchild' },
+              ],
+            },
+          ],
+        },
+      ];
+
+      // Direct child should return parent
+      expect(getParentKeysToExpand(items, 'table.parent.child1')).toEqual([
+        'table.parent',
+      ]);
+
+      // Nested child should return all parents
+      expect(
+        getParentKeysToExpand(items, 'table.parent.child2.grandchild')
+      ).toEqual(['table.parent', 'table.parent.child2']);
+    });
+
+    it('should handle items without children property', () => {
+      const items = [
+        { fullyQualifiedName: 'table.column1' },
+        { fullyQualifiedName: 'table.column2' },
+      ];
+
+      expect(getParentKeysToExpand(items, 'table.column1')).toEqual([]);
+    });
+  });
+
+  describe('getHighlightedRowClassName', () => {
+    it('should return "highlighted-row" when highlightedFqn matches record fullyQualifiedName', () => {
+      const record = {
+        fullyQualifiedName: 'test.database.schema.table.column1',
+      };
+      const highlightedFqn = 'test.database.schema.table.column1';
+
+      const result = getHighlightedRowClassName(record, highlightedFqn);
+
+      expect(result).toBe('highlighted-row');
+    });
+
+    it('should return empty string when highlightedFqn does not match record fullyQualifiedName', () => {
+      const record = {
+        fullyQualifiedName: 'test.database.schema.table.column1',
+      };
+      const highlightedFqn = 'test.database.schema.table.column2';
+
+      const result = getHighlightedRowClassName(record, highlightedFqn);
+
+      expect(result).toBe('');
+    });
+
+    it('should return empty string when highlightedFqn is undefined', () => {
+      const record = {
+        fullyQualifiedName: 'test.database.schema.table.column1',
+      };
+
+      const result = getHighlightedRowClassName(record, undefined);
+
+      expect(result).toBe('');
+    });
+
+    it('should return empty string when highlightedFqn is empty string', () => {
+      const record = {
+        fullyQualifiedName: 'test.database.schema.table.column1',
+      };
+
+      const result = getHighlightedRowClassName(record, '');
+
+      expect(result).toBe('');
+    });
+
+    it('should return empty string when record fullyQualifiedName is undefined', () => {
+      const record = {
+        fullyQualifiedName: undefined,
+      };
+      const highlightedFqn = 'test.database.schema.table.column1';
+
+      const result = getHighlightedRowClassName(record, highlightedFqn);
+
+      expect(result).toBe('');
+    });
+
+    it('should return empty string when both highlightedFqn and record fullyQualifiedName are undefined', () => {
+      const record = {
+        fullyQualifiedName: undefined,
+      };
+
+      const result = getHighlightedRowClassName(record, undefined);
+
+      expect(result).toBe('');
+    });
+
+    it('should work with Column type', () => {
+      const column = {
+        name: 'column1',
+        fullyQualifiedName: 'test.database.schema.table.column1',
+        dataType: 'STRING',
+      } as Column;
+
+      expect(
+        getHighlightedRowClassName(column, 'test.database.schema.table.column1')
+      ).toBe('highlighted-row');
+      expect(
+        getHighlightedRowClassName(column, 'test.database.schema.table.column2')
+      ).toBe('');
+    });
+
+    it('should work with SearchIndexField type', () => {
+      const field = {
+        name: 'field1',
+        fullyQualifiedName: 'test.index.field1',
+        dataType: 'TEXT',
+      };
+
+      expect(getHighlightedRowClassName(field, 'test.index.field1')).toBe(
+        'highlighted-row'
+      );
+      expect(getHighlightedRowClassName(field, 'test.index.field2')).toBe('');
+    });
+
+    it('should handle case-sensitive FQN matching', () => {
+      const record = {
+        fullyQualifiedName: 'Test.Database.Schema.Table.Column1',
+      };
+      const highlightedFqn = 'test.database.schema.table.column1';
+
+      const result = getHighlightedRowClassName(record, highlightedFqn);
+
+      expect(result).toBe('');
+    });
+
+    it('should handle records with additional properties', () => {
+      const record = {
+        fullyQualifiedName: 'test.database.schema.table.column1',
+        name: 'column1',
+        description: 'Test column',
+        tags: [],
+      };
+
+      expect(
+        getHighlightedRowClassName(record, 'test.database.schema.table.column1')
+      ).toBe('highlighted-row');
     });
   });
 });

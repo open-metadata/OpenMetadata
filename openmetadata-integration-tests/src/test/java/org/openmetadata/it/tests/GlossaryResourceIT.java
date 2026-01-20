@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.csv.EntityCsvTest.assertSummary;
 import static org.openmetadata.csv.EntityCsvTest.createCsv;
@@ -36,6 +37,7 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -872,6 +874,137 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
   }
 
   // ===================================================================
+  // CSV IMPORT VERSIONING TESTS
+  // ===================================================================
+
+  /**
+   * Test: Bulk CSV import of glossary terms increments the glossary version
+   * and creates proper version history with bulk import change description.
+   *
+   * This test validates the implementation that adds versioning support
+   * for bulk import operations for both sync and async endpoints.
+   */
+  @Test
+  void test_bulkImportGlossaryTermsIncrementsVersion(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Step 1: Create a glossary with initial version 0.1
+    CreateGlossary createGlossary = createMinimalRequest(ns);
+    Glossary glossary = createEntity(createGlossary);
+    assertEquals(0.1, glossary.getVersion(), 0.001, "Initial version should be 0.1");
+
+    // Step 2: Prepare CSV content with multiple glossary terms
+    String csvContent = buildGlossaryTermsCsv(glossary.getFullyQualifiedName(), ns);
+
+    // Step 3: Import CSV using SYNC method (now also creates version history!)
+    try {
+      String result =
+          client.glossaries().importCsv(glossary.getFullyQualifiedName(), csvContent, false);
+      assertNotNull(result, "Import should return result");
+      // Result is a JSON string of CsvImportResult
+    } catch (Exception e) {
+      fail("CSV import failed: " + e.getMessage());
+    }
+
+    // Step 4: Verify version incremented to 0.2
+    Glossary updatedGlossary = client.glossaries().get(glossary.getId().toString());
+    assertEquals(
+        0.2,
+        updatedGlossary.getVersion(),
+        0.001,
+        "Glossary version should increment to 0.2 after bulk import");
+
+    // Step 5: Retrieve version history
+    EntityHistory versionHistory = client.glossaries().getVersionList(glossary.getId());
+    assertNotNull(versionHistory, "Version history should exist");
+    assertNotNull(versionHistory.getVersions(), "Version list should exist");
+    assertTrue(
+        versionHistory.getVersions().size() >= 2, "Should have at least 2 versions (0.1 and 0.2)");
+
+    // Step 6: Get version 0.2 and verify it has change description
+    Glossary version0_2 = client.glossaries().getVersion(glossary.getId().toString(), 0.2);
+    assertNotNull(version0_2, "Version 0.2 should exist");
+    assertNotNull(version0_2.getChangeDescription(), "Version 0.2 should have change description");
+
+    // Step 7: Verify change description contains 'bulkImport' field change
+    boolean hasBulkImportChange =
+        version0_2.getChangeDescription().getFieldsUpdated().stream()
+            .anyMatch(fc -> "bulkImport".equals(fc.getName()));
+    assertTrue(hasBulkImportChange, "Change description should contain 'bulkImport' field change");
+
+    // Step 8: Verify bulkImport field has statistics
+    FieldChange bulkImportField =
+        version0_2.getChangeDescription().getFieldsUpdated().stream()
+            .filter(fc -> "bulkImport".equals(fc.getName()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(bulkImportField, "bulkImport field change should exist");
+    assertNotNull(
+        bulkImportField.getNewValue(),
+        "bulkImport field should contain import statistics (CsvImportResult)");
+
+    // Step 9: Verify glossary terms were actually created
+    try {
+      // Get all glossary terms and filter by glossary
+      List<org.openmetadata.schema.entity.data.GlossaryTerm> allTerms =
+          client.glossaryTerms().list().getData();
+
+      // Filter terms belonging to this glossary
+      List<org.openmetadata.schema.entity.data.GlossaryTerm> terms =
+          allTerms.stream()
+              .filter(
+                  t -> t.getGlossary() != null && glossary.getId().equals(t.getGlossary().getId()))
+              .toList();
+
+      assertNotNull(terms, "Glossary terms should be returned");
+      assertEquals(3, terms.size(), "Should have imported 3 glossary terms");
+    } catch (Exception e) {
+      fail("Failed to verify imported glossary terms: " + e.getMessage());
+    }
+  }
+
+  /**
+   * Helper method to create CSV content for glossary terms import.
+   * Returns CSV with header and 3 glossary terms with all required columns.
+   *
+   * CSV Format (14 columns):
+   * parent,name*,displayName,description,synonyms,relatedTerms,references,tags,
+   * reviewers,owner,glossaryStatus,color,iconURL,extension
+   *
+   * Note: parent column is for PARENT GLOSSARY TERM, not glossary.
+   * For top-level terms, leave parent EMPTY.
+   *
+   * @param glossaryFqn Fully qualified name of the parent glossary (not used in CSV)
+   * @param ns Test namespace for unique naming
+   * @return CSV string ready for import
+   */
+  private String buildGlossaryTermsCsv(String glossaryFqn, TestNamespace ns) {
+    StringBuilder csv = new StringBuilder();
+    // CSV header with all 14 columns as expected by GlossaryCsv.addRecord()
+    // Note: 'owner' (singular) NOT 'owners', and 'glossaryStatus' NOT 'status'
+    csv.append(
+        "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension\n");
+
+    // Add 3 top-level glossary terms with EMPTY parent column
+    // Columns: parent, name, displayName, description, synonyms, relatedTerms, references,
+    //          tags, reviewers, owner, glossaryStatus, color, iconURL, extension
+    csv.append(
+        String.format(
+            ",\"%s\",\"Term 1\",\"First test term for bulk import\",,,,,,,,,,\n",
+            ns.prefix("bulkTerm1")));
+    csv.append(
+        String.format(
+            ",\"%s\",\"Term 2\",\"Second test term for bulk import\",,,,,,,,,,\n",
+            ns.prefix("bulkTerm2")));
+    csv.append(
+        String.format(
+            ",\"%s\",\"Term 3\",\"Third test term for bulk import\",,,,,,,,,,\n",
+            ns.prefix("bulkTerm3")));
+
+    return csv.toString();
+  }
+
+  // ===================================================================
   // VERSION HISTORY SUPPORT
   // ===================================================================
 
@@ -898,6 +1031,129 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
       lastCreatedGlossary = createEntity(request);
     }
     return lastCreatedGlossary.getFullyQualifiedName();
+  }
+
+  // ===================================================================
+  // RENAME CONSOLIDATION TESTS
+  // These tests verify that child entities (glossary terms) are preserved
+  // when a glossary is renamed and then other fields are updated within
+  // the same session (which triggers change consolidation).
+  // ===================================================================
+
+  /**
+   * Test that glossary terms are preserved when a glossary is renamed and then the description is
+   * updated. This tests the consolidation logic to ensure it doesn't revert to a previous version
+   * with the old FQN.
+   */
+  @Test
+  void test_renameAndUpdateDescriptionPreservesTerms(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create a glossary with terms
+    CreateGlossary create =
+        new CreateGlossary()
+            .withName(ns.prefix("glossary_rename_consolidate"))
+            .withDescription("Initial description");
+    Glossary glossary = createEntity(create);
+
+    // Add a glossary term
+    org.openmetadata.schema.api.data.CreateGlossaryTerm createTerm =
+        new org.openmetadata.schema.api.data.CreateGlossaryTerm()
+            .withName(ns.prefix("term_for_rename"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Test term");
+    org.openmetadata.schema.entity.data.GlossaryTerm term =
+        client.glossaryTerms().create(createTerm);
+
+    // Verify term count before rename
+    Glossary beforeRename = client.glossaries().get(glossary.getId().toString(), "termCount");
+    assertTrue(beforeRename.getTermCount() >= 1, "Should have at least 1 term before rename");
+
+    // Rename the glossary
+    String newName = "renamed-" + glossary.getName();
+    glossary.setName(newName);
+    Glossary renamed = patchEntity(glossary.getId().toString(), glossary);
+    assertEquals(newName, renamed.getName());
+
+    // Verify terms after rename
+    Glossary afterRename = client.glossaries().get(renamed.getId().toString(), "termCount");
+    assertTrue(afterRename.getTermCount() >= 1, "Should have at least 1 term after rename");
+
+    // Update description (triggers consolidation logic)
+    renamed.setDescription("Updated description after rename");
+    Glossary afterDescUpdate = patchEntity(renamed.getId().toString(), renamed);
+    assertEquals("Updated description after rename", afterDescUpdate.getDescription());
+
+    // Verify terms are preserved after consolidation
+    Glossary afterConsolidation =
+        client.glossaries().get(afterDescUpdate.getId().toString(), "termCount");
+    assertTrue(
+        afterConsolidation.getTermCount() >= 1,
+        "CRITICAL: Terms should be preserved after rename + description update consolidation");
+
+    // Verify the term's glossary reference has the updated FQN
+    org.openmetadata.schema.entity.data.GlossaryTerm updatedTerm =
+        client.glossaryTerms().get(term.getId().toString(), "glossary");
+    assertEquals(
+        afterDescUpdate.getFullyQualifiedName(),
+        updatedTerm.getGlossary().getFullyQualifiedName(),
+        "Term's glossary reference should have updated FQN after consolidation");
+  }
+
+  /**
+   * Test multiple renames followed by updates within the same session. This is a more complex
+   * scenario that tests the robustness of the consolidation fix.
+   */
+  @Test
+  void test_multipleRenamesWithUpdatesPreservesTerms(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateGlossary create =
+        new CreateGlossary()
+            .withName(ns.prefix("glossary_multi_rename"))
+            .withDescription("Initial description");
+    Glossary glossary = createEntity(create);
+
+    // Add a glossary term
+    org.openmetadata.schema.api.data.CreateGlossaryTerm createTerm =
+        new org.openmetadata.schema.api.data.CreateGlossaryTerm()
+            .withName(ns.prefix("term_multi_rename"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Test term");
+    org.openmetadata.schema.entity.data.GlossaryTerm term =
+        client.glossaryTerms().create(createTerm);
+
+    Glossary fetched = client.glossaries().get(glossary.getId().toString(), "termCount");
+    assertTrue(fetched.getTermCount() >= 1);
+
+    String[] names = {"renamed-first", "renamed-second", "renamed-third"};
+
+    for (int i = 0; i < names.length; i++) {
+      String newName = names[i] + "-" + UUID.randomUUID().toString().substring(0, 8);
+
+      glossary.setName(newName);
+      glossary = patchEntity(glossary.getId().toString(), glossary);
+      assertEquals(newName, glossary.getName());
+
+      fetched = client.glossaries().get(glossary.getId().toString(), "termCount");
+      assertTrue(fetched.getTermCount() >= 1, "Terms should be preserved after rename " + (i + 1));
+
+      glossary.setDescription("Description after rename " + (i + 1));
+      glossary = patchEntity(glossary.getId().toString(), glossary);
+
+      fetched = client.glossaries().get(glossary.getId().toString(), "termCount");
+      assertTrue(
+          fetched.getTermCount() >= 1,
+          "Terms should be preserved after rename + update iteration " + (i + 1));
+    }
+
+    // Verify the term's glossary reference has the final updated FQN
+    org.openmetadata.schema.entity.data.GlossaryTerm updatedTerm =
+        client.glossaryTerms().get(term.getId().toString(), "glossary");
+    assertEquals(
+        glossary.getFullyQualifiedName(),
+        updatedTerm.getGlossary().getFullyQualifiedName(),
+        "Term's glossary reference should have final updated FQN");
   }
 
   /**

@@ -1,9 +1,9 @@
 package org.openmetadata.service.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import io.dropwizard.web.conf.WebConfiguration;
 import lombok.Getter;
 import lombok.Setter;
+import org.openmetadata.service.config.web.WebConfiguration;
 
 @Setter
 @Getter

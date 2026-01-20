@@ -68,6 +68,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -128,7 +129,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         : findTo(schema.getId(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS, TABLE);
   }
 
-  public void setFields(DatabaseSchema schema, Fields fields) {
+  @Override
+  public void setFields(DatabaseSchema schema, Fields fields, RelationIncludes relationIncludes) {
     setDefaultFields(schema);
     schema.setTables(fields.contains("tables") ? getTables(schema) : null);
     schema.setDatabaseSchemaProfilerConfig(

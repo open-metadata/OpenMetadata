@@ -15,10 +15,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.powerbi.metadata import PowerbiSource
 from metadata.ingestion.source.dashboard.powerbi.models import (
     Dataflow,
+    DataflowEntity,
+    DataflowEntityAttribute,
+    DataflowExportResponse,
     Dataset,
     PowerBIDashboard,
     PowerBIReport,
@@ -498,23 +502,6 @@ class PowerBIUnitTest(TestCase):
         )
         self.assertEqual(result, None)
 
-    @pytest.mark.order(11)
-    @patch.object(
-        PowerbiSource,
-        "_fetch_dataset_from_workspace",
-        return_value=MOCK_DATASET_FROM_WORKSPACE_V3,
-    )
-    def test_parse_dataset_expressions_v2(self, *_):
-        # test with valid snowflake source but no
-        # dataset expression value
-        result = self.powerbi._parse_snowflake_source(
-            MOCK_SNOWFLAKE_EXP_V3, MOCK_DASHBOARD_DATA_MODEL
-        )
-        result = result[0]
-        self.assertEqual(result["database"], "MANUFACTURING_BUSINESS_DATA_PRODUCTS")
-        self.assertEqual(result["schema"], "INVENTORY_BY_PURPOSE")
-        self.assertEqual(result["table"], "CUSTOMER_TABLE")
-
     @pytest.mark.order(4)
     @patch.object(
         PowerbiSource,
@@ -693,6 +680,23 @@ class PowerBIUnitTest(TestCase):
 
             # Should return None when exception occurs
             self.assertIsNone(result)
+
+    @pytest.mark.order(11)
+    @patch.object(
+        PowerbiSource,
+        "_fetch_dataset_from_workspace",
+        return_value=MOCK_DATASET_FROM_WORKSPACE_V3,
+    )
+    def test_parse_dataset_expressions_v2(self, *_):
+        # test with valid snowflake source but no
+        # dataset expression value
+        result = self.powerbi._parse_snowflake_source(
+            MOCK_SNOWFLAKE_EXP_V3, MOCK_DASHBOARD_DATA_MODEL
+        )
+        result = result[0]
+        self.assertEqual(result["database"], "MANUFACTURING_BUSINESS_DATA_PRODUCTS")
+        self.assertEqual(result["schema"], "INVENTORY_BY_PURPOSE")
+        self.assertEqual(result["table"], "CUSTOMER_TABLE")
 
     @pytest.mark.order(12)
     def test_create_dataset_upstream_dataset_column_lineage(self):
@@ -923,3 +927,325 @@ class PowerBIUnitTest(TestCase):
             group_id, report_id
         )
         self.assertIsNone(result)
+
+    @pytest.mark.order(15)
+    def test_paginate_project_filter_pattern_none(self):
+        """
+        Test _paginate_project_filter_pattern when filter_pattern is None
+        Should return default filter pattern that includes all workspaces
+        """
+        result = self.powerbi._paginate_project_filter_pattern(None)
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].includes, [".*"])
+        self.assertIsNone(result[0].excludes)
+
+    @pytest.mark.order(16)
+    def test_paginate_project_filter_pattern_only_excludes(self):
+        """
+        Test _paginate_project_filter_pattern with only exclude filters
+        Should return the original filter pattern without pagination
+        """
+        filter_pattern = FilterPattern(excludes=["workspace1", "workspace2"])
+
+        result = self.powerbi._paginate_project_filter_pattern(filter_pattern)
+
+        self.assertEqual(len(result), 1)
+        self.assertIsNone(result[0].includes)
+        self.assertEqual(result[0].excludes, ["workspace1", "workspace2"])
+
+    @pytest.mark.order(17)
+    def test_paginate_project_filter_pattern_includes_under_limit(self):
+        """
+        Test _paginate_project_filter_pattern with include filters under the limit (20)
+        Should return a single batch with all include filters
+        """
+        includes = [f"workspace{i}" for i in range(15)]
+        filter_pattern = FilterPattern(includes=includes)
+
+        result = self.powerbi._paginate_project_filter_pattern(filter_pattern)
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].includes, includes)
+
+    @pytest.mark.order(18)
+    def test_paginate_project_filter_pattern_includes_at_limit(self):
+        """
+        Test _paginate_project_filter_pattern with exactly 20 include filters
+        Should return a single batch
+        """
+        includes = [f"workspace{i}" for i in range(20)]
+        filter_pattern = FilterPattern(includes=includes)
+
+        result = self.powerbi._paginate_project_filter_pattern(filter_pattern)
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(len(result[0].includes), 20)
+
+    @pytest.mark.order(19)
+    def test_paginate_project_filter_pattern_includes_over_limit(self):
+        """
+        Test _paginate_project_filter_pattern with include filters over the limit (20)
+        Should paginate into multiple batches
+        """
+        includes = [f"workspace{i}" for i in range(45)]
+        filter_pattern = FilterPattern(includes=includes)
+
+        result = self.powerbi._paginate_project_filter_pattern(filter_pattern)
+
+        self.assertEqual(len(result), 3)
+        self.assertEqual(len(result[0].includes), 20)
+        self.assertEqual(len(result[1].includes), 20)
+        self.assertEqual(len(result[2].includes), 5)
+        self.assertEqual(result[0].includes, includes[:20])
+        self.assertEqual(result[1].includes, includes[20:40])
+        self.assertEqual(result[2].includes, includes[40:45])
+
+    @pytest.mark.order(20)
+    def test_paginate_project_filter_pattern_with_includes_and_excludes(self):
+        """
+        Test _paginate_project_filter_pattern with both includes and excludes
+        Excludes should be preserved across all paginated batches
+        """
+        includes = [f"workspace{i}" for i in range(25)]
+        excludes = ["excluded1", "excluded2"]
+        filter_pattern = FilterPattern(includes=includes, excludes=excludes)
+
+        result = self.powerbi._paginate_project_filter_pattern(filter_pattern)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(len(result[0].includes), 20)
+        self.assertEqual(len(result[1].includes), 5)
+        self.assertEqual(result[0].excludes, excludes)
+        self.assertEqual(result[1].excludes, excludes)
+
+    @pytest.mark.order(21)
+    def test_paginate_project_filter_pattern_empty_includes(self):
+        """
+        Test _paginate_project_filter_pattern with empty includes list
+        Should return the original filter pattern
+        """
+        filter_pattern = FilterPattern(includes=[], excludes=["excluded1"])
+
+        result = self.powerbi._paginate_project_filter_pattern(filter_pattern)
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].includes, [])
+        self.assertEqual(result[0].excludes, ["excluded1"])
+
+    @pytest.mark.order(22)
+    def test_paginate_project_filter_pattern_large_batch(self):
+        """
+        Test _paginate_project_filter_pattern with a large number of includes
+        Should correctly paginate into multiple batches
+        """
+        includes = [f"workspace{i}" for i in range(100)]
+        filter_pattern = FilterPattern(includes=includes)
+
+        result = self.powerbi._paginate_project_filter_pattern(filter_pattern)
+
+        self.assertEqual(len(result), 5)
+        for i in range(4):
+            self.assertEqual(len(result[i].includes), 20)
+        total_includes = sum(len(batch.includes) for batch in result)
+        self.assertEqual(total_includes, 100)
+
+    @pytest.mark.order(23)
+    def test_table_name_fallback_when_source_expression_parsing_fails(self):
+        """
+        Test that when _parse_table_info_from_source_exp returns None,
+        the _get_table_and_datamodel_lineage method falls back to using
+        the PowerBI table name for lineage.
+        """
+        from unittest.mock import MagicMock
+
+        table = PowerBiTable(
+            name="my_powerbi_table",
+            source=[],
+            columns=[],
+        )
+
+        mock_table_entity = MagicMock()
+        mock_table_entity.id = uuid.uuid4()
+        mock_table_entity.fullyQualifiedName = (
+            "service.database.schema.my_powerbi_table"
+        )
+
+        with patch.object(
+            self.powerbi, "_parse_table_info_from_source_exp", return_value=None
+        ), patch.object(
+            self.powerbi.metadata,
+            "search_in_any_service",
+            return_value=mock_table_entity,
+        ) as mock_search, patch.object(
+            self.powerbi, "_get_column_lineage", return_value=[]
+        ), patch.object(
+            self.powerbi, "_get_add_lineage_request"
+        ) as mock_lineage_request:
+            mock_lineage_request.return_value = MagicMock()
+
+            list(
+                self.powerbi._get_table_and_datamodel_lineage(
+                    db_service_prefix=None,
+                    table=table,
+                    datamodel_entity=MOCK_DASHBOARD_DATA_MODEL,
+                )
+            )
+
+            mock_search.assert_called_once()
+            call_args = mock_search.call_args
+            fqn_search_string = call_args.kwargs.get("fqn_search_string") or call_args[
+                1
+            ].get("fqn_search_string")
+            self.assertIn("my_powerbi_table", fqn_search_string)
+
+    @pytest.mark.order(24)
+    def test_table_name_fallback_with_valid_source_expression(self):
+        """
+        Test that when _parse_table_info_from_source_exp returns valid table info,
+        the parsed table name is used instead of the PowerBI table name.
+        """
+        from unittest.mock import MagicMock
+
+        table = PowerBiTable(
+            name="powerbi_table_name",
+            source=[PowerBITableSource(expression=MOCK_REDSHIFT_EXP)],
+            columns=[],
+        )
+
+        mock_table_entity = MagicMock()
+        mock_table_entity.id = uuid.uuid4()
+        mock_table_entity.fullyQualifiedName = (
+            "service.dev.demo_dbt_jaffle.customers_clean"
+        )
+
+        with patch.object(
+            self.powerbi.metadata,
+            "search_in_any_service",
+            return_value=mock_table_entity,
+        ) as mock_search, patch.object(
+            self.powerbi, "_get_column_lineage", return_value=[]
+        ), patch.object(
+            self.powerbi, "_get_add_lineage_request"
+        ) as mock_lineage_request:
+            mock_lineage_request.return_value = MagicMock()
+
+            list(
+                self.powerbi._get_table_and_datamodel_lineage(
+                    db_service_prefix=None,
+                    table=table,
+                    datamodel_entity=MOCK_DASHBOARD_DATA_MODEL,
+                )
+            )
+
+            mock_search.assert_called_once()
+            call_args = mock_search.call_args
+            fqn_search_string = call_args.kwargs.get("fqn_search_string") or call_args[
+                1
+            ].get("fqn_search_string")
+            self.assertIn("customers_clean", fqn_search_string)
+            self.assertNotIn("powerbi_table_name", fqn_search_string)
+
+    @pytest.mark.order(25)
+    def test_get_dataflow_column_info(self):
+        """
+        Test that _get_dataflow_column_info correctly extracts tables and columns
+        from the dataflow export API response
+        """
+        dataflow_export = DataflowExportResponse(
+            name="test_dataflow",
+            description="Test dataflow description",
+            version="1.0",
+            entities=[
+                DataflowEntity(
+                    name="queryinsights exec_requests_history",
+                    description="Query insights table",
+                    attributes=[
+                        DataflowEntityAttribute(
+                            name="distributed_statement_id",
+                            dataType="string",
+                            description="Statement ID",
+                        ),
+                        DataflowEntityAttribute(
+                            name="submit_time",
+                            dataType="dateTime",
+                        ),
+                        DataflowEntityAttribute(
+                            name="total_elapsed_time_ms",
+                            dataType="int64",
+                        ),
+                    ],
+                ),
+                DataflowEntity(
+                    name="Query",
+                    description="",
+                    attributes=[
+                        DataflowEntityAttribute(
+                            name="Column1",
+                            dataType="string",
+                        ),
+                        DataflowEntityAttribute(
+                            name="Column2",
+                            dataType="string",
+                        ),
+                    ],
+                ),
+            ],
+        )
+
+        result = self.powerbi._get_dataflow_column_info(dataflow_export)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 2)
+
+        first_table = result[0]
+        self.assertEqual(first_table.name.root, "queryinsights exec_requests_history")
+        self.assertEqual(first_table.dataType, DataType.TABLE)
+        self.assertEqual(first_table.description.root, "Query insights table")
+        self.assertEqual(len(first_table.children), 3)
+
+        first_column = first_table.children[0]
+        self.assertEqual(first_column.name.root, "distributed_statement_id")
+        self.assertEqual(first_column.description.root, "Statement ID")
+
+        second_table = result[1]
+        self.assertEqual(second_table.name.root, "Query")
+        self.assertEqual(len(second_table.children), 2)
+
+    @pytest.mark.order(26)
+    def test_get_dataflow_column_info_empty_entities(self):
+        """
+        Test that _get_dataflow_column_info handles empty entities list
+        """
+        dataflow_export = DataflowExportResponse(
+            name="empty_dataflow",
+            entities=[],
+        )
+
+        result = self.powerbi._get_dataflow_column_info(dataflow_export)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 0)
+
+    @pytest.mark.order(27)
+    def test_get_dataflow_column_info_entity_without_attributes(self):
+        """
+        Test that _get_dataflow_column_info handles entities without attributes
+        """
+        dataflow_export = DataflowExportResponse(
+            name="dataflow_no_attrs",
+            entities=[
+                DataflowEntity(
+                    name="EmptyTable",
+                    description="Table with no columns",
+                    attributes=[],
+                ),
+            ],
+        )
+
+        result = self.powerbi._get_dataflow_column_info(dataflow_export)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].name.root, "EmptyTable")
+        self.assertEqual(len(result[0].children), 0)

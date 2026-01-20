@@ -46,6 +46,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.services.security.SecurityServiceResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -108,10 +109,13 @@ public class SecurityServiceRepository
   }
 
   @Override
-  public void setFields(SecurityService securityService, EntityUtil.Fields fields) {
+  public void setFields(
+      SecurityService securityService,
+      EntityUtil.Fields fields,
+      RelationIncludes relationIncludes) {
     // Set fields based on the requested fields
     // Call parent to handle standard service fields like pipelines
-    super.setFields(securityService, fields);
+    super.setFields(securityService, fields, relationIncludes);
   }
 
   @Override

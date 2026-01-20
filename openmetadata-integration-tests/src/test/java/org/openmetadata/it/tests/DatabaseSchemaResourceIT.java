@@ -48,9 +48,9 @@ import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 @Execution(ExecutionMode.CONCURRENT)
 public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, CreateDatabaseSchema> {
 
-  // Enable import/export for database schemas
   {
     supportsImportExport = true;
+    supportsLifeCycle = true;
   }
 
   // Store last created schema for import/export tests

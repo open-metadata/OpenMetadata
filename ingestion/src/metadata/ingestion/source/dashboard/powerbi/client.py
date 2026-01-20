@@ -30,6 +30,7 @@ from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.source.dashboard.powerbi.file_client import PowerBiFileClient
 from metadata.ingestion.source.dashboard.powerbi.models import (
     DashboardsResponse,
+    DataflowExportResponse,
     Dataset,
     DatasetResponse,
     Group,
@@ -635,6 +636,33 @@ class PowerBiApiClient:
             poll += 1
 
         return False
+
+    def fetch_dataflow_export(
+        self, dataflow_id: str
+    ) -> Optional[DataflowExportResponse]:
+        """Method to export dataflow definition using admin API
+        API: https://api.powerbi.com/v1.0/myorg/admin/dataflows/{dataflowId}/export
+        API doc: https://learn.microsoft.com/en-us/rest/api/power-bi/admin/dataflows-export-dataflow-as-admin
+        Args:
+            dataflow_id: The ID of the dataflow to export
+        Returns:
+            DataflowExportResponse containing entities and their attributes
+        """
+        try:
+            logger.debug(
+                f"Calling the API({str(self.client._base_url)}/myorg/admin/dataflows/{dataflow_id}/export)"  # pylint: disable=protected-access
+                " to export dataflow definition"
+            )
+            response_data = self.client.get(
+                f"/myorg/admin/dataflows/{dataflow_id}/export"
+            )
+            if response_data:
+                return DataflowExportResponse(**response_data)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error exporting dataflow {dataflow_id}: {exc}")
+
+        return None
 
 
 class PowerBiClient(BaseModel):

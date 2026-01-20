@@ -1122,6 +1122,10 @@ export interface AccessDetails {
  */
 export interface PipelineObservability {
     /**
+     * Average runtime of the pipeline in milliseconds.
+     */
+    averageRunTime?: number;
+    /**
      * End time of the pipeline schedule.
      */
     endTime?: number;
@@ -1285,6 +1289,7 @@ export enum DatabaseServiceType {
     DeltaLake = "DeltaLake",
     DomoDatabase = "DomoDatabase",
     Doris = "Doris",
+    Dremio = "Dremio",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
     Epic = "Epic",
@@ -1313,6 +1318,7 @@ export enum DatabaseServiceType {
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
     Ssas = "SSAS",
+    StarRocks = "StarRocks",
     Synapse = "Synapse",
     Teradata = "Teradata",
     Timescale = "Timescale",
@@ -1554,6 +1560,7 @@ export enum TableType {
     Partitioned = "Partitioned",
     Regular = "Regular",
     SecureView = "SecureView",
+    Stage = "Stage",
     Stream = "Stream",
     Transient = "Transient",
     View = "View",
