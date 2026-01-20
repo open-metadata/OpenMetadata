@@ -1,0 +1,75 @@
+# OpenMetadata Server 2 Configuration for Local Development
+# Run with: java -Dconfig=local/server2.yaml -jar openmetadata-service/target/openmetadata-service-*.jar server
+
+clusterName: distributed-test
+
+swagger:
+  resourcePackage: org.openmetadata.service.resources
+
+server:
+  applicationContextPath: /
+  rootPath: /api/*
+  applicationConnectors:
+    - type: http
+      port: 8587
+  adminConnectors:
+    - type: http
+      port: 8588
+
+logging:
+  level: INFO
+  appenders:
+    - type: console
+      threshold: INFO
+      logFormat: "[SERVER-2] %level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
+
+database:
+  driverClass: com.mysql.cj.jdbc.Driver
+  user: openmetadata_user
+  password: openmetadata_password
+  url: jdbc:mysql://localhost:3306/openmetadata_db?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+
+migrationConfiguration:
+  flywayPath: "./bootstrap/sql/migrations/flyway"
+  nativePath: "./bootstrap/sql/migrations/native"
+
+authorizerConfiguration:
+  className: org.openmetadata.service.security.DefaultAuthorizer
+  containerRequestFilter: org.openmetadata.service.security.JwtFilter
+  adminPrincipals: [admin]
+  allowedEmailRegistrationDomains: ["all"]
+  principalDomain: "open-metadata.org"
+
+authenticationConfiguration:
+  provider: basic
+  publicKeyUrls: [http://localhost:8587/api/v1/system/config/jwks]
+  enableSelfSignup: true
+
+jwtTokenConfiguration:
+  rsapublicKeyFilePath: "./conf/public_key.der"
+  rsaprivateKeyFilePath: "./conf/private_key.der"
+  jwtissuer: "open-metadata.org"
+  keyId: "Gb389a-9f76-gdjs-a92j-0242bk94356"
+
+elasticsearch:
+  searchType: opensearch
+  host: localhost
+  port: 9200
+  scheme: http
+
+pipelineServiceClientConfiguration:
+  enabled: false
+  className: "org.openmetadata.service.clients.pipeline.noop.NoopClient"
+
+fernetConfiguration:
+  fernetKey: "jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA="
+
+secretsManagerConfiguration:
+  secretsManager: db
+
+health:
+  delayedShutdownHandlerEnabled: true
+  shutdownWaitPeriod: 1s
+  healthChecks:
+    - name: OpenMetadataServerHealthCheck
+      critical: true
