@@ -786,3 +786,130 @@ test.describe(
     });
   }
 );
+
+test.describe(
+  `Query Multiple Domain Inheritance`,
+  {
+    tag: '@dataAssetRules',
+  },
+  () => {
+    test('Query inherits all domains from table with multiple domains', async ({
+      page,
+      browser,
+    }) => {
+      test.slow(true);
+
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      const testDomain1 = new Domain();
+      const testDomain2 = new Domain();
+      const testTable = new TableClass();
+
+      try {
+        // Create two domains and a table
+        await testDomain1.create(apiContext);
+        await testDomain2.create(apiContext);
+        await testTable.create(apiContext);
+
+        // Store table FQN before patch
+        const tableFqn = testTable.entityResponseData.fullyQualifiedName;
+
+        // Assign BOTH domains to the same table in a single patch call
+        // (only works when entity rules are disabled)
+        await testTable.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'add',
+              path: '/domains/0',
+              value: {
+                id: testDomain1.responseData.id,
+                type: 'domain',
+              },
+            },
+            {
+              op: 'add',
+              path: '/domains/1',
+              value: {
+                id: testDomain2.responseData.id,
+                type: 'domain',
+              },
+            },
+          ],
+        });
+
+        // Create query referencing the table
+        // Query should inherit BOTH domains from the table
+        await testTable.createQuery(apiContext);
+
+        await redirectToHomePage(page);
+
+        // Helper to navigate to table by URL
+        const visitTableByUrl = async (fqn: string) => {
+          await page.goto(`/table/${encodeURIComponent(fqn)}`);
+          await page.waitForLoadState('networkidle');
+          await waitForAllLoadersToDisappear(page);
+        };
+
+        // Helper to select domain from navbar
+        const selectDomainFromNavbar = async (domainData: {
+          displayName: string;
+          fullyQualifiedName?: string;
+        }) => {
+          await page.getByTestId('domain-dropdown').click();
+          await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
+            state: 'visible',
+          });
+
+          const searchDomainRes = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/search/query') &&
+              response.url().includes('domain_search_index')
+          );
+          await page
+            .getByTestId('domain-selectable-tree')
+            .getByTestId('searchbar')
+            .fill(domainData.displayName);
+          await searchDomainRes;
+
+          const tagSelector = page.getByTestId(
+            `tag-${domainData.fullyQualifiedName ?? ''}`
+          );
+          await tagSelector.waitFor({ state: 'visible' });
+          await tagSelector.click();
+          await waitForAllLoadersToDisappear(page);
+          await page.waitForLoadState('networkidle');
+        };
+
+        // Helper to navigate to queries tab
+        const navigateToQueriesTab = async () => {
+          await page.click('[data-testid="table_queries"]');
+          await waitForAllLoadersToDisappear(page);
+        };
+
+        // Query should be visible when domain1 is selected
+        await visitTableByUrl(tableFqn);
+        await selectDomainFromNavbar(testDomain1.responseData);
+        await visitTableByUrl(tableFqn);
+        await navigateToQueriesTab();
+
+        await expect(
+          page.locator('[data-testid="query-card"]')
+        ).toBeVisible();
+
+        // Query should also be visible when domain2 is selected
+        await selectDomainFromNavbar(testDomain2.responseData);
+        await visitTableByUrl(tableFqn);
+        await navigateToQueriesTab();
+
+        await expect(
+          page.locator('[data-testid="query-card"]')
+        ).toBeVisible();
+      } finally {
+        await testTable.delete(apiContext);
+        await testDomain1.delete(apiContext);
+        await testDomain2.delete(apiContext);
+        await afterAction();
+      }
+    });
+  }
+);
