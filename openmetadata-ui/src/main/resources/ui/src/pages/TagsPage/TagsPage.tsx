@@ -164,50 +164,48 @@ const TagsPage = () => {
     }
   };
 
-  const fetchCurrentClassification = async (fqn: string, update?: boolean) => {
-    if (currentClassification?.fullyQualifiedName !== fqn || update) {
-      setIsLoading(true);
-      try {
-        const currentClassification = await getClassificationByName(fqn, {
-          fields: [
-            TabSpecificField.OWNERS,
-            TabSpecificField.USAGE_COUNT,
-            TabSpecificField.TERM_COUNT,
-            TabSpecificField.DOMAINS,
-            ...tagClassBase.getClassificationFields(),
-          ],
-        });
-        if (currentClassification) {
-          setClassifications((prevClassifications) =>
-            prevClassifications.map((data) => {
-              if (data.fullyQualifiedName === fqn) {
-                return {
-                  ...data,
-                  termCount: currentClassification.termCount,
-                };
-              }
+  const fetchCurrentClassification = async (fqn: string) => {
+    setIsLoading(true);
+    try {
+      const currentClassification = await getClassificationByName(fqn, {
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.USAGE_COUNT,
+          TabSpecificField.TERM_COUNT,
+          TabSpecificField.DOMAINS,
+          ...tagClassBase.getClassificationFields(),
+        ],
+      });
+      if (currentClassification) {
+        setClassifications((prevClassifications) =>
+          prevClassifications.map((data) => {
+            if (data.fullyQualifiedName === fqn) {
+              return {
+                ...data,
+                termCount: currentClassification.termCount,
+              };
+            }
 
-              return data;
-            })
-          );
-          setCurrentClassification(currentClassification);
-
-          setIsLoading(false);
-        } else {
-          showErrorToast(t('server.unexpected-response'));
-        }
-      } catch (err) {
-        const errMsg = getErrorText(
-          err as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.tag-category-lowercase'),
+            return data;
           })
         );
-        showErrorToast(errMsg);
-        setError(errMsg);
-        setCurrentClassification(undefined);
+        setCurrentClassification(currentClassification);
+
         setIsLoading(false);
+      } else {
+        showErrorToast(t('server.unexpected-response'));
       }
+    } catch (err) {
+      const errMsg = getErrorText(
+        err as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.tag-category-lowercase'),
+        })
+      );
+      showErrorToast(errMsg);
+      setError(errMsg);
+      setCurrentClassification(undefined);
+      setIsLoading(false);
     }
   };
 
@@ -505,8 +503,6 @@ const TagsPage = () => {
   }, []);
 
   const onClickClassifications = (category: Classification) => {
-    setCurrentClassification(category);
-
     navigate(getTagPath(category.fullyQualifiedName));
   };
 
