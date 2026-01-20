@@ -23,9 +23,10 @@ public class DBSecretsManager extends SecretsManager {
     super(secretsManagerProvider, secretsConfig);
   }
 
-  public static DBSecretsManager getInstance(SecretsConfig secretsConfig) {
+  public static DBSecretsManager getInstance(
+      SecretsManagerProvider provider, SecretsConfig secretsConfig) {
     if (instance == null) {
-      instance = new DBSecretsManager(SecretsManagerProvider.DB, secretsConfig);
+      instance = new DBSecretsManager(provider, secretsConfig);
     }
     return instance;
   }

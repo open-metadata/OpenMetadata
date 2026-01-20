@@ -38,9 +38,9 @@ public class SecretsManagerFactory {
     switch (secretsManagerProvider) {
       case DB, AWS_SSM, AWS, AZURE_KV ->
       /*
-      We handle AWS and AWS_SSM as a NoopSecretsManager since we don't
+      We handle AWS, AWS_SSM, and AZURE_KV as a NoopSecretsManager since we don't
       need to WRITE any secrets. We will be just reading them out of the
-      AWS instance on the INGESTION side, but the server does not need
+      external secrets manager on the INGESTION side, but the server does not need
       to do anything here.
 
       If for example we want to set the AWS SSM (non-managed) we configure
@@ -48,7 +48,7 @@ public class SecretsManagerFactory {
       to connect to AWS SSM as specified in the docs:
       https://docs.open-metadata.org/deployment/secrets-manager/supported-implementations/aws-ssm-parameter-store
       */
-      secretsManager = DBSecretsManager.getInstance(secretsConfig);
+      secretsManager = DBSecretsManager.getInstance(secretsManagerProvider, secretsConfig);
       case MANAGED_AWS -> secretsManager = AWSSecretsManager.getInstance(secretsConfig);
       case MANAGED_AWS_SSM -> secretsManager = AWSSSMSecretsManager.getInstance(secretsConfig);
       case IN_MEMORY -> secretsManager = InMemorySecretsManager.getInstance(secretsConfig);
