@@ -34,6 +34,7 @@ import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.learning.LearningResourceResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -102,7 +103,7 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
   }
 
   @Override
-  protected void setFields(LearningResource entity, Fields fields) {
+  protected void setFields(LearningResource entity, Fields fields, RelationIncludes relationIncludes) {
     // No additional field resolution for now
   }
 
