@@ -33,6 +33,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.Users;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.util.TestUtils;
 
 /**
  * Base class for all entity integration tests.
@@ -117,7 +118,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    * Used for making raw HTTP calls to endpoints not exposed through the SDK.
    */
   protected String getResourcePath() {
-    return "/v1/" + getEntityType() + "s/";
+    return "/v1/" + TestUtils.plurializeEntityType(getEntityType()) + "/";
   }
 
   /**

@@ -1184,16 +1184,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private int getVersionCountCached(
-      String tableName, long startTs, long endTs, String extensionPrefix) {
-    String cacheKey = String.format("%s:%d:%d:%s", tableName, startTs, endTs, extensionPrefix);
+      String tableName, long startTs, long endTs, String entityType) {
+    String cacheKey = String.format("%s:%d:%d:%s", tableName, startTs, endTs, entityType);
     try {
       return COUNT_CACHE.get(
           cacheKey,
           () ->
               daoCollection
                   .entityExtensionDAO()
-                  .getEntityHistoryByTimestampRangeCount(
-                      tableName, startTs, endTs, extensionPrefix));
+                  .getEntityHistoryByTimestampRangeCount(tableName, startTs, endTs, entityType));
     } catch (ExecutionException e) {
       throw new RuntimeException("Failed to get version count from cache", e);
     }
@@ -1201,7 +1200,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final ResultList<T> listEntityHistoryByTimestamp(
       long startTs, long endTs, String afterCursor, String beforeCursor, int limit) {
-    String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityType);
     String tableName = dao.getTableName();
     int fetchLimit = limit + 1;
 
@@ -1233,7 +1231,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 startTs,
                 endTs,
                 cursorCondition,
-                extensionPrefix,
+                entityType,
                 cursorUpdatedAt,
                 cursorId,
                 fetchLimit);
@@ -1241,7 +1239,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<T> entities = JsonUtils.readObjects(jsons, getEntityClass());
     setFieldsInBulk(putFields, entities);
 
-    int total = getVersionCountCached(tableName, startTs, endTs, extensionPrefix);
+    int total = getVersionCountCached(tableName, startTs, endTs, entityType);
 
     String beforeCursorValue = null;
     String afterCursorValue = null;
@@ -1253,8 +1251,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         entities = entities.subList(0, limit);
       }
 
-      T first = entities.get(0);
-      T last = entities.get(entities.size() - 1);
+      T first = entities.getFirst();
+      T last = entities.getLast();
       String firstCursor = first.getUpdatedAt() + ":" + first.getId().toString();
       String lastCursor = last.getUpdatedAt() + ":" + last.getId().toString();
 

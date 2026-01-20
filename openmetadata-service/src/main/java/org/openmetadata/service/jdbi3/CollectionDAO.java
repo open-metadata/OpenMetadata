@@ -1333,7 +1333,7 @@ public interface CollectionDAO {
                 + "SELECT id, updatedAt, json FROM entity_extension "
                 + "WHERE updatedAt >= :startTs "
                 + "AND updatedAt <= :endTs "
-                + "AND extension LIKE CONCAT (:extensionPrefix, '.%') "
+                + "AND jsonSchema = :entityType "
                 + "UNION ALL "
                 + "SELECT id, updatedAt, json FROM <table> "
                 + "WHERE updatedAt >= :startTs AND "
@@ -1349,8 +1349,8 @@ public interface CollectionDAO {
                 + "SELECT id, updatedAt, json FROM entity_extension "
                 + "WHERE updatedAt >= :startTs "
                 + "AND updatedAt <= :endTs "
-                + "AND extension LIKE CONCAT (:extensionPrefix, '.%') "
-                + "UNION ALL "
+                + "AND jsonSchema = :entityType "
+                + "UNION "
                 + "SELECT id, updatedAt, json::jsonb FROM <table> "
                 + "WHERE updatedAt >= :startTs AND "
                 + "updatedAt <= :endTs "
@@ -1365,7 +1365,7 @@ public interface CollectionDAO {
         @Bind("startTs") long startTs,
         @Bind("endTs") long endTs,
         @Define("cursorCondition") String cursorCondition,
-        @Bind("extensionPrefix") String extensionPrefix,
+        @Bind("entityType") String entityType,
         @Bind("cursorUpdatedAt") Long cursorUpdatedAt,
         @Bind("cursorId") String cursorId,
         @Bind("limit") int limit);
@@ -1376,8 +1376,8 @@ public interface CollectionDAO {
                 + "SELECT COUNT(*) AS cnt FROM entity_extension "
                 + "WHERE updatedAt >= :startTs "
                 + "AND updatedAt <= :endTs "
-                + "AND extension LIKE CONCAT (:extensionPrefix, '.%')"
-                + "UNION ALL "
+                + "AND jsonSchema = :entityType "
+                + "UNION "
                 + "SELECT COUNT(*) AS cnt FROM <table> "
                 + "WHERE updatedAt >= :startTs AND "
                 + "updatedAt <= :endTs"
@@ -1386,7 +1386,7 @@ public interface CollectionDAO {
         @Define("table") String table,
         @Bind("startTs") long startTs,
         @Bind("endTs") long endTs,
-        @Bind("extensionPrefix") String extensionPrefix);
+        @Bind("entityType") String entityType);
 
     @RegisterRowMapper(ExtensionMapper.class)
     @SqlQuery(

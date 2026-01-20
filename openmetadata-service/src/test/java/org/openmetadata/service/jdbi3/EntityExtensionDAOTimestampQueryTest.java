@@ -41,7 +41,7 @@ import org.openmetadata.service.OpenMetadataApplicationTest;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class EntityExtensionDAOTimestampQueryTest extends OpenMetadataApplicationTest {
 
-  private static final String EXTENSION_PREFIX = "testExtension";
+  private static final String ENTITY_TYPE = "testEntityType";
   private static final String TABLE_NAME = "table_entity";
   private static final List<UUID> testExtensionIds = new ArrayList<>();
   private static final List<Long> testExtensionTimestamps = new ArrayList<>();
@@ -58,10 +58,10 @@ public class EntityExtensionDAOTimestampQueryTest extends OpenMetadataApplicatio
     for (int i = 0; i < 3; i++) {
       UUID id = UUID.randomUUID();
       long timestamp = System.currentTimeMillis();
-      String extension = EXTENSION_PREFIX + ".batch1_" + i;
+      String extension = ENTITY_TYPE + ".batch1_" + i;
       String json = createExtensionJson(id, timestamp, "batch1_value_" + i);
 
-      extensionDAO.insert(id, extension, "{}", json);
+      extensionDAO.insert(id, extension, ENTITY_TYPE, json);
       testExtensionIds.add(id);
       testExtensionTimestamps.add(timestamp);
     }
@@ -76,10 +76,10 @@ public class EntityExtensionDAOTimestampQueryTest extends OpenMetadataApplicatio
     for (int i = 0; i < 2; i++) {
       UUID id = UUID.randomUUID();
       long timestamp = System.currentTimeMillis();
-      String extension = EXTENSION_PREFIX + ".batch2_" + i;
+      String extension = ENTITY_TYPE + ".batch2_" + i;
       String json = createExtensionJson(id, timestamp, "batch2_value_" + i);
 
-      extensionDAO.insert(id, extension, "{}", json);
+      extensionDAO.insert(id, extension, ENTITY_TYPE, json);
       testExtensionIds.add(id);
       testExtensionTimestamps.add(timestamp);
     }
@@ -94,7 +94,7 @@ public class EntityExtensionDAOTimestampQueryTest extends OpenMetadataApplicatio
     for (int i = 0; i < testExtensionIds.size(); i++) {
       UUID id = testExtensionIds.get(i);
       String extension =
-          i < 3 ? EXTENSION_PREFIX + ".batch1_" + i : EXTENSION_PREFIX + ".batch2_" + (i - 3);
+          i < 3 ? ENTITY_TYPE + ".batch1_" + i : ENTITY_TYPE + ".batch2_" + (i - 3);
       extensionDAO.delete(id, extension);
     }
   }
@@ -114,7 +114,7 @@ public class EntityExtensionDAOTimestampQueryTest extends OpenMetadataApplicatio
             beforeCreationTs,
             afterAllCreationTs,
             "",
-            EXTENSION_PREFIX,
+            ENTITY_TYPE,
             null,
             null,
             100);
@@ -130,7 +130,7 @@ public class EntityExtensionDAOTimestampQueryTest extends OpenMetadataApplicatio
 
     List<String> firstBatchResults =
         extensionDAO.getEntityHistoryByTimestampRange(
-            TABLE_NAME, beforeCreationTs, afterFirstBatchTs, "", EXTENSION_PREFIX, null, null, 100);
+            TABLE_NAME, beforeCreationTs, afterFirstBatchTs, "", ENTITY_TYPE, null, null, 100);
 
     assertNotNull(firstBatchResults);
     assertTrue(
@@ -154,7 +154,7 @@ public class EntityExtensionDAOTimestampQueryTest extends OpenMetadataApplicatio
             beforeCreationTs,
             afterAllCreationTs,
             "",
-            EXTENSION_PREFIX,
+            ENTITY_TYPE,
             null,
             null,
             100);
@@ -183,7 +183,7 @@ public class EntityExtensionDAOTimestampQueryTest extends OpenMetadataApplicatio
 
     List<String> page1 =
         extensionDAO.getEntityHistoryByTimestampRange(
-            TABLE_NAME, beforeCreationTs, afterAllCreationTs, "", EXTENSION_PREFIX, null, null, 2);
+            TABLE_NAME, beforeCreationTs, afterAllCreationTs, "", ENTITY_TYPE, null, null, 2);
 
     assertNotNull(page1);
     assertEquals(2, page1.size(), "First page should have exactly 2 extensions");
@@ -204,7 +204,7 @@ public class EntityExtensionDAOTimestampQueryTest extends OpenMetadataApplicatio
             beforeCreationTs,
             afterAllCreationTs,
             cursorCondition,
-            EXTENSION_PREFIX,
+            ENTITY_TYPE,
             cursorUpdatedAt,
             cursorId,
             2);
@@ -230,7 +230,7 @@ public class EntityExtensionDAOTimestampQueryTest extends OpenMetadataApplicatio
 
     int count =
         extensionDAO.getEntityHistoryByTimestampRangeCount(
-            TABLE_NAME, beforeCreationTs, afterAllCreationTs, EXTENSION_PREFIX);
+            TABLE_NAME, beforeCreationTs, afterAllCreationTs, ENTITY_TYPE);
 
     assertTrue(count >= 5, "Count should be at least 5 (the extensions we created)");
 
@@ -240,7 +240,7 @@ public class EntityExtensionDAOTimestampQueryTest extends OpenMetadataApplicatio
             beforeCreationTs,
             afterAllCreationTs,
             "",
-            EXTENSION_PREFIX,
+            ENTITY_TYPE,
             null,
             null,
             10000);
@@ -258,11 +258,11 @@ public class EntityExtensionDAOTimestampQueryTest extends OpenMetadataApplicatio
 
     int firstBatchCount =
         extensionDAO.getEntityHistoryByTimestampRangeCount(
-            TABLE_NAME, beforeCreationTs, afterFirstBatchTs, EXTENSION_PREFIX);
+            TABLE_NAME, beforeCreationTs, afterFirstBatchTs, ENTITY_TYPE);
 
     int fullRangeCount =
         extensionDAO.getEntityHistoryByTimestampRangeCount(
-            TABLE_NAME, beforeCreationTs, afterAllCreationTs, EXTENSION_PREFIX);
+            TABLE_NAME, beforeCreationTs, afterAllCreationTs, ENTITY_TYPE);
 
     assertTrue(
         fullRangeCount >= firstBatchCount, "Full range count should be >= first batch count");
@@ -270,7 +270,7 @@ public class EntityExtensionDAOTimestampQueryTest extends OpenMetadataApplicatio
 
   @Test
   @Order(7)
-  void test_getEntityHistoryByTimestampRange_filtersCorrectlyByExtensionPrefix() {
+  void test_getEntityHistoryByTimestampRange_filtersCorrectlyByEntityType() {
     CollectionDAO.EntityExtensionDAO extensionDAO = Entity.getCollectionDAO().entityExtensionDAO();
 
     List<String> ourExtensions =
@@ -279,7 +279,7 @@ public class EntityExtensionDAOTimestampQueryTest extends OpenMetadataApplicatio
             beforeCreationTs,
             afterAllCreationTs,
             "",
-            EXTENSION_PREFIX,
+            ENTITY_TYPE,
             null,
             null,
             100);
@@ -290,13 +290,13 @@ public class EntityExtensionDAOTimestampQueryTest extends OpenMetadataApplicatio
             beforeCreationTs,
             afterAllCreationTs,
             "",
-            "nonExistentPrefix",
+            "nonExistentEntityType",
             null,
             null,
             100);
 
     assertTrue(ourExtensions.size() >= 5, "Should find our test extensions");
-    assertTrue(otherExtensions.isEmpty(), "Should not find extensions with non-existent prefix");
+    assertTrue(otherExtensions.isEmpty(), "Should not find extensions with non-existent entity type");
   }
 
   @Test
@@ -309,14 +309,14 @@ public class EntityExtensionDAOTimestampQueryTest extends OpenMetadataApplicatio
 
     List<String> results =
         extensionDAO.getEntityHistoryByTimestampRange(
-            TABLE_NAME, futureStart, futureEnd, "", EXTENSION_PREFIX, null, null, 100);
+            TABLE_NAME, futureStart, futureEnd, "", ENTITY_TYPE, null, null, 100);
 
     assertNotNull(results);
     assertTrue(results.isEmpty(), "Should return empty list for future timestamp range");
 
     int count =
         extensionDAO.getEntityHistoryByTimestampRangeCount(
-            TABLE_NAME, futureStart, futureEnd, EXTENSION_PREFIX);
+            TABLE_NAME, futureStart, futureEnd, ENTITY_TYPE);
     assertEquals(0, count, "Count should be 0 for future timestamp range");
   }
 
@@ -327,14 +327,14 @@ public class EntityExtensionDAOTimestampQueryTest extends OpenMetadataApplicatio
 
     List<String> results1 =
         extensionDAO.getEntityHistoryByTimestampRange(
-            TABLE_NAME, beforeCreationTs, afterAllCreationTs, "", EXTENSION_PREFIX, null, null, 1);
+            TABLE_NAME, beforeCreationTs, afterAllCreationTs, "", ENTITY_TYPE, null, null, 1);
 
     assertNotNull(results1);
     assertEquals(1, results1.size(), "Should return exactly 1 extension when limit is 1");
 
     List<String> results3 =
         extensionDAO.getEntityHistoryByTimestampRange(
-            TABLE_NAME, beforeCreationTs, afterAllCreationTs, "", EXTENSION_PREFIX, null, null, 3);
+            TABLE_NAME, beforeCreationTs, afterAllCreationTs, "", ENTITY_TYPE, null, null, 3);
 
     assertNotNull(results3);
     assertEquals(3, results3.size(), "Should return exactly 3 extensions when limit is 3");
@@ -349,7 +349,7 @@ public class EntityExtensionDAOTimestampQueryTest extends OpenMetadataApplicatio
 
     List<String> results =
         extensionDAO.getEntityHistoryByTimestampRange(
-            TABLE_NAME, knownTimestamp, knownTimestamp, "", EXTENSION_PREFIX, null, null, 100);
+            TABLE_NAME, knownTimestamp, knownTimestamp, "", ENTITY_TYPE, null, null, 100);
 
     assertTrue(
         results.size() >= 1,
@@ -357,7 +357,7 @@ public class EntityExtensionDAOTimestampQueryTest extends OpenMetadataApplicatio
 
     int count =
         extensionDAO.getEntityHistoryByTimestampRangeCount(
-            TABLE_NAME, knownTimestamp, knownTimestamp, EXTENSION_PREFIX);
+            TABLE_NAME, knownTimestamp, knownTimestamp, ENTITY_TYPE);
     assertTrue(count >= 1, "Count should be >= 1 at exact timestamp boundary");
   }
 

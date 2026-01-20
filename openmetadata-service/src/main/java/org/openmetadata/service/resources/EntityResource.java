@@ -1096,7 +1096,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       @Parameter(description = "Limit the number of entity returned (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(value = 1, message = "must be greater than or equal to 1")
-          @Max(value = 1000000, message = "must be less than or equal to 1000000")
+          @Max(value = 500, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
           int limitParam,
       @Parameter(description = "Returns list of entity versions before this cursor")

@@ -16,6 +16,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.TestUtils;
 
 /**
  * Base class for Service entity integration tests.
@@ -39,7 +40,7 @@ public abstract class BaseServiceIT<T extends EntityInterface, K extends CreateE
 
   @Override
   protected String getResourcePath() {
-    return "/v1/services/" + getEntityType() + "s/";
+    return "/v1/services/" + TestUtils.plurializeEntityType(getEntityType()) + "/";
   }
 
   @Test
