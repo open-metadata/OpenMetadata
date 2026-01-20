@@ -255,8 +255,10 @@ const MuiDatePickerMenu = ({
         sx={{
           height: BUTTON_HEIGHTS[size],
           textTransform: 'none',
-          color: theme.palette.grey[900],
-          fontWeight: 600,
+          color: selectedTimeRangeKey
+            ? theme.palette.grey[900]
+            : theme.palette.grey[400],
+          fontWeight: selectedTimeRangeKey ? 600 : 400,
           fontSize: theme.typography.pxToRem(12),
           boxShadow: 'none',
           border: `1px solid ${theme.palette.grey[200]}`,

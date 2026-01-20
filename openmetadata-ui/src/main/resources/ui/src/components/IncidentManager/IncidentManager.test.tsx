@@ -14,7 +14,6 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import QueryString from 'qs';
 import { act } from 'react';
 import { Table } from '../../generated/entity/data/table';
-import { MOCK_PERMISSIONS } from '../../mocks/Glossary.mock';
 import { getListTestCaseIncidentStatusFromSearch } from '../../rest/incidentManagerAPI';
 import '../../test/unit/mocks/mui.mock';
 import IncidentManager from './IncidentManager.component';
@@ -22,7 +21,14 @@ import IncidentManager from './IncidentManager.component';
 jest.mock('../common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
-jest.mock('../common/DatePickerMenu/DatePickerMenu.component', () => {
+jest.mock('../DataQuality/IncidentManager/Severity/Severity.component', () => {
+  return jest.fn().mockImplementation(({ onSubmit }) => (
+    <button data-testid="severity-update" onClick={() => onSubmit('Severity2')}>
+      Update Severity
+    </button>
+  ));
+});
+jest.mock('../common/MuiDatePickerMenu/MuiDatePickerMenu', () => {
   return jest.fn().mockImplementation(({ handleDateRangeChange }) => (
     <div>
       <p>DatePickerMenu.component</p>
@@ -41,26 +47,94 @@ jest.mock('../common/DatePickerMenu/DatePickerMenu.component', () => {
     </div>
   ));
 });
-
+jest.mock('../common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest.fn().mockImplementation(() => <div>OwnerLabel</div>),
+}));
+jest.mock(
+  '../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(() => <div>TestCaseIncidentManagerStatus</div>);
+  }
+);
 jest.mock('../../pages/TasksPage/shared/Assignees', () => {
-  return jest.fn().mockImplementation(() => <div>Assignees.component</div>);
+  return jest.fn().mockImplementation(({ onChange }) => (
+    <div>
+      <p>Assignees.component</p>
+      <button
+        data-testid="assignee-change-btn"
+        onClick={() => onChange([{ name: 'user1' }])}>
+        Change Assignee
+      </button>
+    </div>
+  ));
 });
 jest.mock('../common/AsyncSelect/AsyncSelect', () => ({
   AsyncSelect: jest
     .fn()
-    .mockImplementation(() => <div>AsyncSelect.component</div>),
+    .mockImplementation(({ 'data-testid': testId }) => (
+      <div data-testid={testId}>AsyncSelect.component</div>
+    )),
 }));
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
   useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
+
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: {
-      testCase: MOCK_PERMISSIONS,
+      testCase: {
+        Create: true,
+        Delete: true,
+        EditAll: true,
+        EditCustomFields: true,
+        EditDataProfile: true,
+        EditDescription: true,
+        EditDisplayName: true,
+        EditLineage: true,
+        EditOwner: true,
+        EditQueries: true,
+        EditSampleData: true,
+        EditSelect: true,
+        EditTags: true,
+        EditTests: true,
+        EditTier: true,
+        ViewAll: true,
+        ViewBasic: true,
+        ViewDataProfile: true,
+        ViewQueries: true,
+        ViewSampleData: true,
+        ViewTests: true,
+        ViewUsage: true,
+      },
     },
-    getEntityPermissionByFqn: jest.fn().mockReturnValue(MOCK_PERMISSIONS),
+    getEntityPermissionByFqn: jest.fn().mockResolvedValue({
+      Create: true,
+      Delete: true,
+      EditAll: true,
+      EditCustomFields: true,
+      EditDataProfile: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditLineage: true,
+      EditOwner: true,
+      EditQueries: true,
+      EditSampleData: true,
+      EditSelect: true,
+      EditTags: true,
+      EditTests: true,
+      EditTier: true,
+      ViewAll: true,
+      ViewBasic: true,
+      ViewDataProfile: true,
+      ViewQueries: true,
+      ViewSampleData: true,
+      ViewTests: true,
+      ViewUsage: true,
+    }),
   }),
 }));
 
@@ -120,6 +194,28 @@ jest.mock('../../utils/date-time/DateTimeUtils', () => {
   };
 });
 
+jest.mock('../../utils/EntityUtils', () => ({
+  getEntityName: jest.fn().mockReturnValue('EntityName'),
+}));
+
+jest.mock('../../utils/CommonUtils', () => ({
+  getNameFromFQN: jest.fn().mockReturnValue('NameFromFQN'),
+  getPartialNameFromTableFQN: jest.fn().mockReturnValue('PartialName'),
+}));
+
+jest.mock('../../utils/RouterUtils', () => ({
+  getTestCaseDetailPagePath: jest.fn().mockReturnValue('test-case-path'),
+  getEntityDetailsPath: jest.fn().mockReturnValue('entity-details-path'),
+}));
+
+jest.mock('../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
+jest.mock('../common/DateTimeDisplay/DateTimeDisplay', () => {
+  return jest.fn().mockImplementation(() => <div>DateTimeDisplay</div>);
+});
+
 describe('IncidentManagerPage', () => {
   it('should render component', async () => {
     await act(async () => {
@@ -140,6 +236,141 @@ describe('IncidentManagerPage', () => {
     expect(
       await screen.findByText('NextPrevious.component')
     ).toBeInTheDocument();
+  });
+
+  it('should call list incident API on page load', async () => {
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    expect(getListTestCaseIncidentStatusFromSearch).toHaveBeenCalledWith({
+      limit: 10,
+      latest: true,
+      include: 'non-deleted',
+      originEntityFQN: undefined,
+      domain: undefined,
+      startTs: 1709556624254,
+      endTs: 1710161424255,
+    });
+  });
+
+  it('should handle test case search', async () => {
+    const mockSearchQuery = require('../../rest/searchAPI').searchQuery;
+    mockSearchQuery.mockResolvedValue({
+      hits: {
+        hits: [
+          {
+            _source: {
+              fullyQualifiedName: 'test_case_1',
+              name: 'test_case_1',
+              entityType: 'testCase',
+            },
+          },
+        ],
+      },
+    });
+
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    const select = await screen.findByTestId('test-case-select');
+
+    expect(select).toBeInTheDocument();
+  });
+
+  it('should handle status change', async () => {
+    const mockUseNavigate = require('react-router-dom').useNavigate;
+    const navigate = jest.fn();
+    mockUseNavigate.mockReturnValue(navigate);
+
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    const select = await screen.findByTestId('status-select');
+    const selectBox = select.querySelector('.ant-select-selector');
+
+    expect(selectBox).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.mouseDown(selectBox!);
+    });
+
+    const resolvedOption = await screen.findByText('label.resolved');
+
+    await act(async () => {
+      fireEvent.click(resolvedOption);
+    });
+
+    expect(navigate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        search: expect.stringContaining(
+          'testCaseResolutionStatusType=Resolved'
+        ),
+      }),
+      expect.anything()
+    );
+  });
+
+  it('should handle assignee change', async () => {
+    const mockUseNavigate = require('react-router-dom').useNavigate;
+    const navigate = jest.fn();
+    mockUseNavigate.mockReturnValue(navigate);
+
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    const assigneeBtn = await screen.findByTestId('assignee-change-btn');
+
+    await act(async () => {
+      fireEvent.click(assigneeBtn);
+    });
+
+    expect(navigate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        search: expect.stringContaining('assignee=user1'),
+      }),
+      expect.anything()
+    );
+  });
+
+  it('should handle severity update', async () => {
+    const mockGetList = getListTestCaseIncidentStatusFromSearch as jest.Mock;
+    const updateTestCaseIncidentById =
+      require('../../rest/incidentManagerAPI').updateTestCaseIncidentById;
+
+    mockGetList.mockResolvedValue({
+      data: [
+        {
+          id: 'test-id',
+          testCaseReference: {
+            fullyQualifiedName:
+              'sample_service.sample_db.sample_schema.sample_table.test_case',
+            name: 'test-name',
+          },
+          testCaseResolutionStatusType: 'New',
+          severity: 'Severity1',
+        },
+      ],
+      paging: { total: 1 },
+    });
+
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    const severityBtn = await screen.findByTestId('severity-update');
+
+    await act(async () => {
+      fireEvent.click(severityBtn);
+    });
+
+    expect(updateTestCaseIncidentById).toHaveBeenCalledWith(
+      'test-id',
+      expect.anything() // json patch
+    );
   });
 
   it('Incident should be fetch with updated time', async () => {

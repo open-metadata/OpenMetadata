@@ -26,7 +26,6 @@ import {
   DEFAULT_DOMAIN_VALUE,
   PAGE_SIZE_BASE,
 } from '../../constants/constants';
-import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -63,24 +62,17 @@ import {
   getNameFromFQN,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
-import {
-  getCurrentMillis,
-  getEndOfDayInMillis,
-  getEpochMillisForPastDays,
-  getStartOfDayInMillis,
-} from '../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import {
   getEntityDetailsPath,
   getTestCaseDetailPagePath,
 } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { AsyncSelect } from '../common/AsyncSelect/AsyncSelect';
-import DatePickerMenu from '../common/DatePickerMenu/DatePickerMenu.component';
 import DateTimeDisplay from '../common/DateTimeDisplay/DateTimeDisplay';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import MuiDatePickerMenu from '../common/MuiDatePickerMenu/MuiDatePickerMenu';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import Table from '../common/Table/Table';
@@ -102,17 +94,6 @@ const IncidentManager = ({
   const { activeDomain } = useDomainStore();
   const theme = useTheme();
 
-  const defaultRange = useMemo(
-    () => ({
-      key: 'last30days',
-      title: translateWithNestedKeys(
-        PROFILER_FILTER_RANGE.last30days.title,
-        PROFILER_FILTER_RANGE.last30days.titleData
-      ),
-    }),
-    []
-  );
-
   const allParams = useMemo(() => {
     const param = location.search;
     const searchData = QueryString.parse(
@@ -125,18 +106,12 @@ const IncidentManager = ({
   const filters = useMemo(() => {
     const urlParams = omit(allParams, ['key', 'title']);
 
-    let params: TestCaseIncidentStatusParams = {
+    const params: TestCaseIncidentStatusParams = {
       ...urlParams,
     };
 
-    // Only add default time range if date range picker is visible and no explicit time params in URL
-    if (isDateRangePickerVisible && !urlParams.startTs && !urlParams.endTs) {
-      params.startTs = getStartOfDayInMillis(
-        getEpochMillisForPastDays(PROFILER_FILTER_RANGE.last30days.days)
-      );
-      params.endTs = getEndOfDayInMillis(getCurrentMillis());
-    } else if (urlParams.startTs || urlParams.endTs) {
-      // If time params exist in URL, ensure they are numbers
+    // Only use date params if they exist in the URL
+    if (urlParams.startTs || urlParams.endTs) {
       if (urlParams.startTs && isString(urlParams.startTs)) {
         params.startTs = parseInt(urlParams.startTs as string, 10);
       }
@@ -146,10 +121,11 @@ const IncidentManager = ({
     }
 
     return params;
-  }, [allParams, isDateRangePickerVisible]);
+  }, [allParams]);
 
   const dateRangeKey = useMemo(() => {
-    if (allParams.key) {
+    // Only return date range if URL has explicit date params
+    if (allParams.key && filters.startTs && filters.endTs) {
       return {
         key: allParams.key as string,
         title: allParams.title as string,
@@ -158,12 +134,9 @@ const IncidentManager = ({
       };
     }
 
-    return {
-      ...defaultRange,
-      startTs: filters.startTs,
-      endTs: filters.endTs,
-    };
-  }, [allParams, defaultRange, filters.startTs, filters.endTs]);
+    // No date range selected - show placeholder
+    return undefined;
+  }, [allParams.key, allParams.title, filters.startTs, filters.endTs]);
 
   const [testCaseListData, setTestCaseListData] =
     useState<TestCaseIncidentStatusData>({
@@ -440,6 +413,23 @@ const IncidentManager = ({
       updateFilters(updatedFilter, dateRangeParams);
     }
   };
+
+  const handleDateRangeClear = useCallback(() => {
+    const updatedFilters = omit(allParams, [
+      'startTs',
+      'endTs',
+      'key',
+      'title',
+    ]);
+    navigate(
+      {
+        search: QueryString.stringify(updatedFilters),
+      },
+      {
+        replace: true,
+      }
+    );
+  }, [allParams, navigate]);
 
   const handleStatusSubmit = useCallback(
     (value: TestCaseResolutionStatus) => {
@@ -762,16 +752,20 @@ const IncidentManager = ({
                 ))}
               </Select>
             </Form.Item>
+            {isDateRangePickerVisible && (
+              <Form.Item className="m-b-0" label={t('label.date')}>
+                <MuiDatePickerMenu
+                  allowClear
+                  showSelectedCustomRange
+                  defaultDateRange={dateRangeKey}
+                  handleDateRangeChange={handleDateRangeChange}
+                  size="small"
+                  onClear={handleDateRangeClear}
+                />
+              </Form.Item>
+            )}
           </Box>
         </Stack>
-        {isDateRangePickerVisible && (
-          <DatePickerMenu
-            showSelectedCustomRange
-            defaultDateRange={dateRangeKey}
-            handleDateRangeChange={handleDateRangeChange}
-            size="small"
-          />
-        )}
       </Box>
 
       <Table

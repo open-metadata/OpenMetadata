@@ -12,9 +12,11 @@
  */
 import { expect } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
+import { SidebarItem } from '../../../constant/sidebar';
 import { TableClass } from '../../../support/entity/TableClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage } from '../../../utils/common';
+import { sidebarClick } from '../../../utils/sidebar';
 import { test } from '../../fixtures/pages';
 
 const table = new TableClass();
@@ -218,6 +220,88 @@ test.describe(
 
       const url = new URL(page.url());
       expect(url.searchParams.get('key')).toBe('last7days');
+    });
+  }
+);
+
+/**
+ * Incident Manager Date Filter - Sidebar Navigation
+ * @description Tests the date filter functionality when accessing Incident Manager from the sidebar.
+ */
+test.describe(
+  'Incident Manager Date Filter - Sidebar',
+  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Incident_Manager` },
+  () => {
+    test.beforeEach(async ({ page }) => {
+      await redirectToHomePage(page);
+      const incidentListResponse = page.waitForResponse((response) =>
+        response
+          .url()
+          .includes(
+            '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list'
+          )
+      );
+      await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
+      const response = await incidentListResponse;
+      expect(response.status()).toBe(200);
+    });
+
+    test('Date picker shows placeholder by default on Incident Manager page', async ({
+      page,
+    }) => {
+      const datePicker = page.getByTestId('mui-date-picker-menu');
+      await expect(datePicker).toBeVisible();
+      await expect(datePicker).toContainText('Select Date');
+
+      // Clear button should not be visible when no date is selected
+      await expect(page.getByTestId('clear-date-picker')).not.toBeVisible();
+    });
+
+    test('Select and clear date range on Incident Manager page', async ({
+      page,
+    }) => {
+      const datePicker = page.getByTestId('mui-date-picker-menu');
+      await datePicker.click();
+
+      // Select Last 7 days
+      const dateFilterRes = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list'
+            ) && response.url().includes('startTs')
+      );
+      await page.getByTestId('date-range-option-last7days').click();
+      await dateFilterRes;
+
+      await expect(datePicker).toContainText('Last 7 days');
+      await expect(page).toHaveURL(/key=last7days/);
+
+      // Clear button should be visible
+      const clearButton = page.getByTestId('clear-date-picker');
+      await expect(clearButton).toBeVisible();
+
+      // Clear the selection
+      const clearRes = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list'
+            ) && !response.url().includes('startTs')
+      );
+      await clearButton.click();
+      await clearRes;
+
+      // Verify reset to placeholder
+      await expect(datePicker).toContainText('Select Date');
+      await expect(clearButton).not.toBeVisible();
+
+      // Verify URL params removed
+      const pageUrl = new URL(page.url());
+      expect(pageUrl.searchParams.has('startTs')).toBeFalsy();
+      expect(pageUrl.searchParams.has('key')).toBeFalsy();
     });
   }
 );
