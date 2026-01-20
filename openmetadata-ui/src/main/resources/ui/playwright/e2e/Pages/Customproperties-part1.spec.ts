@@ -13,7 +13,7 @@
 import { test } from '../../support/fixtures/userPages';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import { TableClass } from '../../support/entity/TableClass';
-import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
+import { redirectToHomePage, uuid } from '../../utils/common';
 import {
   addCustomPropertiesForEntity,
   deleteCreatedProperty,
@@ -22,6 +22,7 @@ import {
   verifyTableColumnCustomPropertyPersistence,
 } from '../../utils/customProperty';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
+import { performAdminLogin } from '../../utils/admin';
 
 const propertiesList = [
   'Integer',
@@ -35,6 +36,8 @@ const propertiesList = [
   'Timestamp',
 ];
 
+const TABLE_COLUMN_ENTITY_NAME = 'tableColumn';
+
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -42,29 +45,15 @@ const adminTestEntity = new TableClass();
 
 test.describe('Custom properties without custom property config', () => {
   test.beforeAll('Setup test data', async ({ browser }) => {
-    const context = await browser.newContext({
-      storageState: 'playwright/.auth/admin.json',
-    });
-    const page = await context.newPage();
-    await redirectToHomePage(page);
-    const { apiContext, afterAction } = await getApiContext(page);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
     await adminTestEntity.create(apiContext);
     await afterAction();
-    await page.close();
-    await context.close();
   });
 
   test.afterAll('Cleanup test data', async ({ browser }) => {
-    const context = await browser.newContext({
-      storageState: 'playwright/.auth/admin.json',
-    });
-    const page = await context.newPage();
-    await redirectToHomePage(page);
-    const { apiContext, afterAction } = await getApiContext(page);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
     await adminTestEntity.delete(apiContext);
     await afterAction();
-    await page.close();
-    await context.close();
   });
 
   test.beforeEach('Visit Home Page', async ({ page }) => {
@@ -103,15 +92,18 @@ test.describe('Custom properties without custom property config', () => {
             entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
           );
 
-          if (entity.name === 'tableColumn') {
+          if (entity.name === TABLE_COLUMN_ENTITY_NAME) {
             await test.step(
               'Verify Custom Property Persistence on Reload',
               async () => {
+                const tableName = adminTestEntity.entity.name ?? '';
+                const tableFqn =
+                  adminTestEntity.entityResponseData.fullyQualifiedName ?? '';
+
                 await verifyTableColumnCustomPropertyPersistence({
                   page,
-                  tableName: adminTestEntity.entity.name!,
-                  tableFqn:
-                    adminTestEntity.entityResponseData.fullyQualifiedName!,
+                  tableName,
+                  tableFqn,
                   propertyName,
                   propertyType: property,
                 });

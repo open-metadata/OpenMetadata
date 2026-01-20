@@ -22,24 +22,9 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { FormInstance } from 'antd';
-import { FC, ReactNode, useRef, useState } from 'react';
+import { FC, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-
-export interface MuiDrawerProps {
-  open: boolean;
-  onClose: () => void;
-  title: string;
-  formRef?: FormInstance;
-  isLoading?: boolean;
-  isFormInvalid?: boolean;
-  submitBtnLabel?: string;
-  cancelBtnLabel?: string;
-  children: ReactNode;
-  headerWidget?: ReactNode;
-  sidePanel?: ReactNode;
-  hasSidePanel?: boolean;
-}
+import { MuiDrawerProps } from './MuiDrawer.interface';
 
 const MuiDrawer: FC<MuiDrawerProps> = ({
   open,
@@ -75,9 +60,6 @@ const MuiDrawer: FC<MuiDrawerProps> = ({
       }}
       anchor="right"
       open={open}
-      sx={{
-        zIndex: 1000,
-      }}
       onClose={onClose}>
       <Box
         ref={drawerContentRef}
