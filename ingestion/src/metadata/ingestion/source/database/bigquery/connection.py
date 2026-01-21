@@ -80,33 +80,33 @@ def get_connection_url(connection: BigQueryConnection) -> str:
     """
 
     if isinstance(connection.credentials.gcpConfig, GcpCredentialsValues):
-          if isinstance(  # pylint: disable=no-else-return
-              connection.credentials.gcpConfig.projectId, SingleProjectId
-          ):
-              if not connection.credentials.gcpConfig.projectId.root:
-                  url = (
+        if isinstance(  # pylint: disable=no-else-return
+            connection.credentials.gcpConfig.projectId, SingleProjectId
+        ):
+            if not connection.credentials.gcpConfig.projectId.root:
+                url = (
                       f"{connection.scheme.value}://"
                       f"{connection.credentials.gcpConfig.projectId.root or ''}"
-                  )
-                  return _add_location(url, connection)
-              if (
-                  not connection.credentials.gcpConfig.privateKey
-                  and connection.credentials.gcpConfig.projectId.root
-              ):
-                  project_id = connection.credentials.gcpConfig.projectId.root
-                  os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
-              url = f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root}"
-              return _add_location(url, connection)
-          elif isinstance(connection.credentials.gcpConfig.projectId, MultipleProjectId):
-              for project_id in connection.credentials.gcpConfig.projectId.root:
-                  if not connection.credentials.gcpConfig.privateKey and project_id:
-                      # Setting environment variable based on project id given by user / set in ADC
-                      os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
-                  url = f"{connection.scheme.value}://{project_id}"
-                  return _add_location(url, connection)
-              url = f"{connection.scheme.value}://"
-              return _add_location(url, connection)
-
+                )
+                return _add_location(url, connection)
+            if (
+                not connection.credentials.gcpConfig.privateKey
+                and connection.credentials.gcpConfig.projectId.root
+            ):
+                project_id = connection.credentials.gcpConfig.projectId.root
+                os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
+            url = f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root}"
+            return _add_location(url, connection)
+        elif isinstance(connection.credentials.gcpConfig.projectId, MultipleProjectId):
+            for project_id in connection.credentials.gcpConfig.projectId.root:
+                if not connection.credentials.gcpConfig.privateKey and project_id:
+                    # Setting environment variable based on project id given by user / set in ADC
+                    os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
+                url = f"{connection.scheme.value}://{project_id}"
+                return _add_location(url, connection)
+            url = f"{connection.scheme.value}://"
+            return _add_location(url, connection)
+            
     # If gcpConfig is the JSON key path and projectId is defined, we use it by default
     elif (
         isinstance(connection.credentials.gcpConfig, GcpCredentialsPath)
@@ -118,11 +118,11 @@ def get_connection_url(connection: BigQueryConnection) -> str:
             url = f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root}"
             return _add_location(url, connection)
 
-      elif isinstance(connection.credentials.gcpConfig.projectId, MultipleProjectId):
-          for project_id in connection.credentials.gcpConfig.projectId.root:
-              url = f"{connection.scheme.value}://{project_id}"
-              return _add_location(url, connection)
-
+        elif isinstance(connection.credentials.gcpConfig.projectId, MultipleProjectId):
+            for project_id in connection.credentials.gcpConfig.projectId.root:
+                url = f"{connection.scheme.value}://{project_id}"
+                return _add_location(url, connection)
+                
     # If gcpConfig is the GCP ADC and projectId is defined, we use it by default
     elif (
         isinstance(connection.credentials.gcpConfig, GcpADC)
@@ -133,12 +133,12 @@ def get_connection_url(connection: BigQueryConnection) -> str:
         ):
             url = f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root}"
             return _add_location(url, connection)
-  
+
         elif isinstance(connection.credentials.gcpConfig.projectId, MultipleProjectId):
             for project_id in connection.credentials.gcpConfig.projectId.root:
                 url = f"{connection.scheme.value}://{project_id}"
                 return _add_location(url, connection)
-  
+
     url = f"{connection.scheme.value}://"
     return _add_location(url, connection)
 
@@ -151,7 +151,7 @@ def get_connection(connection: BigQueryConnection) -> Engine:
     kwargs = {}
     if connection.billingProjectId:
         kwargs["billing_project_id"] = connection.billingProjectId
-  
+
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url,
@@ -171,7 +171,7 @@ def test_connection(
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
-  
+
     def get_tags(taxonomies):
         for taxonomy in taxonomies:
             policy_tags = PolicyTagManagerClient().list_policy_tags(
@@ -183,7 +183,7 @@ def test_connection(
         if not service_connection.includePolicyTags:
             logger.info("'includePolicyTags' is set to false, so skipping this test.")
             return None
-  
+
         taxonomy_project_ids = []
         if engine.url.host:
             taxonomy_project_ids.append(engine.url.host)
@@ -192,12 +192,12 @@ def test_connection(
         if not taxonomy_project_ids:
             logger.info("'taxonomyProjectID' is not set, so skipping this test.")
             return None
-  
+
         taxonomy_location = service_connection.taxonomyLocation
         if not taxonomy_location:
             logger.info("'taxonomyLocation' is not set, so skipping this test.")
             return None
-  
+
         taxonomies = []
         for project_id in taxonomy_project_ids:
             taxonomies.extend(
@@ -223,7 +223,7 @@ def test_connection(
                 ),
             ),
         }
-  
+
         return test_connection_steps(
             metadata=metadata,
             test_fn=test_fn,
@@ -231,7 +231,7 @@ def test_connection(
             automation_workflow=automation_workflow,
             timeout_seconds=timeout_seconds,
         )
-  
+
     return test_connection_inner(engine)
 
 
@@ -245,7 +245,7 @@ def get_table_view_names(connection, schema=None):
         for dataset in datasets:
             if current_schema is not None and current_schema != dataset.dataset_id:
                 continue
-  
+
             try:
                 tables = client.list_tables(dataset.reference, page_size=1)
                 for table in tables:
