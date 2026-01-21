@@ -485,7 +485,7 @@ describe('CustomPropertyItem', () => {
       });
     });
   });
-  
+
   it('should handle clearing entity reference property', async () => {
     const propertyWithValues = {
       ...mockEntityReferenceProperty,
@@ -520,7 +520,9 @@ describe('CustomPropertyItem', () => {
       // or explicitly undefined if that's how the component handles it when empty.
       // Based on code: isEmpty(updatedExtension) ? undefined : updatedExtension
       // If we only have one property and we remove it -> undefined.
-      expect(mockOnExtensionUpdate).toHaveBeenCalledWith(undefined);
+      expect(mockOnExtensionUpdate).toHaveBeenCalledWith({
+        testEntityReferenceProperty: null,
+      });
     });
   });
 });
