@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,20 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 
-export interface DataProductsDetailsPageProps {
-  dataProduct: DataProduct;
-  isVersionsView?: boolean;
-  onUpdate: (dataProductDetails: DataProduct) => Promise<void>;
-  onDelete: () => Promise<void>;
-  onRefresh?: () => Promise<void>;
-  isFollowing?: boolean;
-  isFollowingLoading?: boolean;
-  handleFollowingClick?: () => void;
-}
-
-export enum DataProductTabs {
-  DOCUMENTATION = 'documentation',
-  ASSETS = 'assets',
-}
+export { default as PortsLineageView } from './PortsLineageView.component';
+export * from './PortsLineageView.types';
