@@ -43,6 +43,7 @@ import org.openmetadata.sdk.fluent.DataContracts;
 import org.openmetadata.sdk.fluent.DataContracts.FluentDataContract;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.resources.data.DataContractResource;
 
 /**
  * Integration tests for DataContract entity operations.
@@ -71,6 +72,12 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     supportsLineage = false;
     supportsLifeCycle = false;
     supportsCertification = false;
+    supportsListHistoryByTimestamp = true;
+  }
+
+  @Override
+  protected String getResourcePath() {
+    return DataContractResource.COLLECTION_PATH;
   }
 
   // ===================================================================
