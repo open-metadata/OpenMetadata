@@ -19,7 +19,7 @@ import {
     redirectToHomePage,
     uuid,
 } from '../../utils/common';
-import { performBulkDownload } from '../../utils/importUtils';
+import { fillDescriptionDetails, performBulkDownload } from '../../utils/importUtils';
 import { visitServiceDetailsPage } from '../../utils/service';
 
 // use the admin user to login
@@ -668,20 +668,13 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       await expect(page.locator('.rdg-header-row')).toBeVisible();
 
       // Click on a cell to edit - find the first row's description cell
-      const firstRow = page.locator('.rdg-row').first();
-      await firstRow.click();
-
       // Navigate to description column (3rd column) and edit
-      await page.keyboard.press('ArrowRight');
-      await page.keyboard.press('ArrowRight');
-      await page.keyboard.press('Enter');
+      await page.locator('.rdg-row').nth(0).click();
+      const descriptionCell1 = page.locator('.rdg-row').nth(0).locator('[aria-colindex="3"]');
+      await descriptionCell1.dblclick();
 
       // Type new description
-        await expect(page.locator('.description-markdown-editor')).toBeVisible();
-        await page.locator('.om-block-editor').fill('Updated description via bulk edit');
-        await page.click('[data-testid="save"]');
-        await expect(page.locator('.description-markdown-editor')).not.toBeVisible();
-
+      await fillDescriptionDetails(page, 'Updated description via bulk edit');
 
       // Validate - this reconstructs CSV with edited data
       await page.getByRole('button', { name: 'Next' }).click();

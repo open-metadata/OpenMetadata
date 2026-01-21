@@ -22,8 +22,10 @@ import { ENTITY_BULK_EDIT_STEPS } from '../../constants/BulkEdit.constants';
 import { ExportTypes } from '../../constants/Export.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { useFqn } from '../../hooks/useFqn';
-import { getBulkEditCSVExportEntityApi } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
-import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import {
+  getBulkEditCSVExportEntityApi,
+  getBulkEntityNavigationPath,
+} from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import Banner from '../common/Banner/Banner';
 import { ImportStatus } from '../common/EntityImport/ImportStatus/ImportStatus.component';
@@ -49,6 +51,7 @@ const BulkEditEntity = ({
   handleCopy,
   handlePaste,
   handleOnRowsChange,
+  sourceEntityType,
 }: BulkEditEntityProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -68,7 +71,7 @@ const BulkEditEntity = ({
 
   const handleCancel = () => {
     clearCSVExportData();
-    navigate(entityUtilClassBase.getEntityLink(entityType, fqn));
+    navigate(getBulkEntityNavigationPath(entityType, fqn, sourceEntityType));
   };
 
   useEffect(() => {

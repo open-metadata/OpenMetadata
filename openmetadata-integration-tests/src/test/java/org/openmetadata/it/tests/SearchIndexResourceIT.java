@@ -41,8 +41,9 @@ import org.openmetadata.sdk.models.ListResponse;
 public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearchIndex> {
 
   {
-    supportsSearchIndex = false; // SearchIndex entity doesn't have its own search index
-    supportsDomains = false; // SearchIndex doesn't support domains field
+    supportsSearchIndex = false;
+    supportsDomains = false;
+    supportsLifeCycle = true;
   }
 
   // ===================================================================

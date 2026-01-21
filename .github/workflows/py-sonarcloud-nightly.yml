@@ -79,5 +79,20 @@ jobs:
         with:
           projectBaseDir: ${{ env.PROJECT_BASE_DIR }}/
           args: >
-            -Dproject.settings=${{ env.PROJECT_BASE_DIR }}/sonar-project.properties
+            -Dsonar.branch.name=${{ env.BRANCH_NAME }}
+
+      - name: Wait to retry 'Push Results to Sonar'
+        if: ${{ steps.push-to-sonar.outcome != 'success' }}
+        run: sleep 20s
+        shell: bash
+
+      - name: Retry 'Push Results to Sonar'
+        if: ${{ steps.push-to-sonar.outcome != 'success' }}
+        uses: SonarSource/sonarqube-scan-action@v7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
+        with:
+          projectBaseDir: ${{ env.PROJECT_BASE_DIR }}/
+          args: >
             -Dsonar.branch.name=${{ env.BRANCH_NAME }}

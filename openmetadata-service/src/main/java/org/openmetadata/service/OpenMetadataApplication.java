@@ -99,6 +99,7 @@ import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.BulkExecutor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
@@ -239,6 +240,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     Entity.setCollectionDAO(getDao(jdbi));
+    Entity.setEntityRelationshipRepository(
+        new EntityRelationshipRepository(Entity.getCollectionDAO()));
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.setJdbi(jdbi);
 
@@ -402,10 +405,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private void registerHealthCheckJobs(OpenMetadataApplicationConfig catalogConfig) {
     ServicesStatusJobHandler healthCheckStatusHandler =
         ServicesStatusJobHandler.create(
-            catalogConfig.getEventMonitorConfiguration(),
-            catalogConfig.getPipelineServiceClientConfiguration(),
-            catalogConfig.getClusterName());
-    healthCheckStatusHandler.addPipelineServiceStatusJob();
+            catalogConfig.getEventMonitorConfiguration(), catalogConfig.getClusterName());
     healthCheckStatusHandler.addDatabaseAndSearchStatusJobs();
   }
 

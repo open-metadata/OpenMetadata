@@ -36,9 +36,12 @@ export const useUserProfile = ({
   name: string;
   isTeam?: boolean;
 }): [string | null, boolean, User | undefined] => {
-  const { userProfilePics, updateUserProfilePics } = useApplicationStore();
+  const user = useApplicationStore((state) => state.userProfilePics[name]);
 
-  const user = userProfilePics[name];
+  const updateUserProfilePics = useApplicationStore(
+    (state) => state.updateUserProfilePics
+  );
+
   const [profilePic, setProfilePic] = useState(
     getImageWithResolutionAndFallback(
       ImageQuality['6x'],
@@ -59,17 +62,21 @@ export const useUserProfile = ({
   }, [user, profilePic]);
 
   const fetchProfileIfRequired = useCallback(async () => {
-    if (isTeam || userProfilePics[name]) {
+    const lowerCasedName = name.toLowerCase();
+    const currentUserProfilePics =
+      useApplicationStore.getState().userProfilePics;
+
+    if (isTeam || currentUserProfilePics[lowerCasedName]) {
       isTeam && setProfilePic(IconTeams);
 
       return;
     }
 
-    if (userProfilePicsLoading.includes(name)) {
+    if (userProfilePicsLoading.includes(lowerCasedName)) {
       return;
     }
 
-    userProfilePicsLoading = [...userProfilePicsLoading, name];
+    userProfilePicsLoading = [...userProfilePicsLoading, lowerCasedName];
 
     try {
       let user = await getUserByName(name, {
@@ -82,10 +89,11 @@ export const useUserProfile = ({
         user,
       });
 
-      userProfilePicsLoading = userProfilePicsLoading.filter((p) => p !== name);
+      userProfilePicsLoading = userProfilePicsLoading.filter(
+        (p) => p !== lowerCasedName
+      );
     } catch (error) {
       if ((error as AxiosError)?.response?.status === ClientErrors.NOT_FOUND) {
-        // If user not found, add empty user to prevent further requests and infinite loading
         updateUserProfilePics({
           id: name,
           user: {
@@ -96,15 +104,11 @@ export const useUserProfile = ({
         });
       }
 
-      userProfilePicsLoading = userProfilePicsLoading.filter((p) => p !== name);
+      userProfilePicsLoading = userProfilePicsLoading.filter(
+        (p) => p !== lowerCasedName
+      );
     }
-  }, [
-    updateUserProfilePics,
-    userProfilePics,
-    name,
-    isTeam,
-    userProfilePicsLoading,
-  ]);
+  }, [name, isTeam, updateUserProfilePics]);
 
   useEffect(() => {
     if (!permission) {
