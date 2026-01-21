@@ -25,6 +25,10 @@ import org.openmetadata.sdk.models.ListResponse;
 @Execution(ExecutionMode.CONCURRENT)
 public class StorageServiceResourceIT extends BaseServiceIT<StorageService, CreateStorageService> {
 
+  {
+    supportsListHistoryByTimestamp = true;
+  }
+
   @Override
   protected CreateStorageService createMinimalRequest(TestNamespace ns) {
     AWSCredentials awsCreds = new AWSCredentials().withAwsRegion("us-east-1");

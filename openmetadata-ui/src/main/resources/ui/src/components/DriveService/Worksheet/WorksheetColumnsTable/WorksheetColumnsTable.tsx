@@ -173,7 +173,7 @@ function WorksheetColumnsTable() {
                   columnConstraint: record.constraint,
                 })}
                 <Typography.Text
-                  className={classNames('m-b-0 d-block break-word', {
+                  className={classNames('m-b-0 d-block break-word text-link-color', {
                     'text-grey-600': !isEmpty(displayName),
                   })}
                   data-testid="column-name">
@@ -315,7 +315,7 @@ function WorksheetColumnsTable() {
         dataSource={schema}
         defaultVisibleColumns={DEFAULT_WORKSHEET_DATA_MODEL_VISIBLE_COLUMNS}
         expandable={{
-          ...getTableExpandableConfig<Column>(),
+          ...getTableExpandableConfig<Column>(false, 'text-link-color'),
           rowExpandable: (record) => !isEmpty(record.children),
         }}
         pagination={false}
