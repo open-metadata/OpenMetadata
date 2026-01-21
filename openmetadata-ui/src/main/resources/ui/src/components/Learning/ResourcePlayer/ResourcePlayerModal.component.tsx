@@ -22,7 +22,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_CATEGORIES } from '../Learning.interface';
 import { ArticleViewer } from './ArticleViewer.component';
-import './resource-player-modal.style.less';
+import './resource-player-modal.less';
 import { ResourcePlayerModalProps } from './ResourcePlayerModal.interface';
 import { StorylaneTour } from './StorylaneTour.component';
 import { VideoPlayer } from './VideoPlayer.component';

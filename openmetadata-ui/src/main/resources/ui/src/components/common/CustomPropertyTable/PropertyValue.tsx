@@ -814,7 +814,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                     <Link
                       to={entityUtilClassBase.getEntityLink(
                         item.type,
-                        item.fullyQualifiedName ?? item.name
+                        item.fullyQualifiedName ?? item.name ?? ''
                       )}>
                       <Button
                         className="entity-button flex-center p-0"

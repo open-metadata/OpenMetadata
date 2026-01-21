@@ -14,7 +14,7 @@
 import { Spin } from 'antd';
 import React, { useCallback, useMemo, useState } from 'react';
 import { LearningResource } from '../../../rest/learningResourceAPI';
-import './video-player.style.less';
+import './video-player.less';
 
 interface VideoPlayerProps {
   resource: LearningResource;

@@ -27,7 +27,7 @@ import {
   updateLearningResource,
 } from '../../rest/learningResourceAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import './LearningResourceForm.less';
+import './learning-resource-form.less';
 const { TextArea } = Input;
 const { Text } = Typography;
 

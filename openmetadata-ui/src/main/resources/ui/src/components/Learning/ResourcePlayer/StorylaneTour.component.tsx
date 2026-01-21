@@ -14,7 +14,7 @@
 import { Spin } from 'antd';
 import React, { useCallback, useState } from 'react';
 import { LearningResource } from '../../../rest/learningResourceAPI';
-import './storylane-tour.style.less';
+import './storylane-tour.less';
 
 interface StorylaneTourProps {
   resource: LearningResource;

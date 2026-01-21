@@ -21,7 +21,7 @@ import {
 } from '../../../rest/learningResourceAPI';
 import { LearningResourceCard } from '../LearningResourceCard/LearningResourceCard.component';
 import { ResourcePlayerModal } from '../ResourcePlayer/ResourcePlayerModal.component';
-import './learning-drawer.style.less';
+import './learning-drawer.less';
 import { LearningDrawerProps } from './LearningDrawer.interface';
 
 const { Title } = Typography;

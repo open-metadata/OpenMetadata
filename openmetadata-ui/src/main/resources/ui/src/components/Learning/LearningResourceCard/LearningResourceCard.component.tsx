@@ -20,7 +20,7 @@ import { ReactComponent as ArticalIcon } from '../../../assets/svg/artical.svg';
 import { ReactComponent as StoryLaneIcon } from '../../../assets/svg/story-lane.svg';
 import { ReactComponent as VideoIcon } from '../../../assets/svg/video.svg';
 import { LEARNING_CATEGORIES } from '../Learning.interface';
-import './learning-resource-card.style.less';
+import './learning-resource-card.less';
 import { LearningResourceCardProps } from './LearningResourceCard.interface';
 
 const { Text, Paragraph, Link } = Typography;

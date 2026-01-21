@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as LearningIconSvg } from '../../../assets/svg/ic-learning.svg';
 import { getLearningResourcesByContext } from '../../../rest/learningResourceAPI';
 import { LearningDrawer } from '../LearningDrawer/LearningDrawer.component';
-import './learning-icon.style.less';
+import './learning-icon.less';
 import { LearningIconProps } from './LearningIcon.interface';
 
 export const LearningIcon: React.FC<LearningIconProps> = ({

@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { LearningResource } from '../../../rest/learningResourceAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
-import './article-viewer.style.less';
+import './article-viewer.less';
 
 interface ArticleViewerProps {
   resource: LearningResource;
