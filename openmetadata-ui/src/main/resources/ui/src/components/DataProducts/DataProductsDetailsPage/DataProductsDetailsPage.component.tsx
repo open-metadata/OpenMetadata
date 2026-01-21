@@ -58,6 +58,9 @@ import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { getContractByEntityId } from '../../../rest/contractAPI';
+import {
+  getDataProductPortsView,
+} from '../../../rest/dataProductAPI';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import {
@@ -116,6 +119,7 @@ const DataProductsDetailsPage = ({
   isVersionsView = false,
   onUpdate,
   onDelete,
+  onRefresh,
   isFollowing,
   isFollowingLoading,
   handleFollowingClick,
@@ -152,6 +156,8 @@ const DataProductsDetailsPage = ({
     useState<boolean>(false);
   const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
   const [dataContract, setDataContract] = useState<DataContract>();
+  const [inputPortsCount, setInputPortsCount] = useState(0);
+  const [outputPortsCount, setOutputPortsCount] = useState(0);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -336,6 +342,27 @@ const DataProductsDetailsPage = ({
     }
   }, [dataProduct, enqueueSnackbar]);
 
+  const fetchPortCounts = useCallback(async () => {
+    try {
+      const data = await getDataProductPortsView(
+        dataProduct.fullyQualifiedName ?? '',
+        {
+          inputLimit: 1,
+          inputOffset: 0,
+          outputLimit: 1,
+          outputOffset: 0,
+        }
+      );
+      setInputPortsCount(data.inputPorts.paging.total);
+      setOutputPortsCount(data.outputPorts.paging.total);
+    } catch (error) {
+      showNotistackError(enqueueSnackbar, error as AxiosError, undefined, {
+        vertical: 'top',
+        horizontal: 'center',
+      });
+    }
+  }, [dataProduct.fullyQualifiedName, enqueueSnackbar]);
+
   const manageButtonContent: ItemType[] = [
     ...(editAllPermission
       ? ([
@@ -431,6 +458,8 @@ const DataProductsDetailsPage = ({
   const handleAssetSave = () => {
     fetchDataProductAssets();
     assetTabRef.current?.refreshAssets();
+    fetchPortCounts();
+    onRefresh?.();
   };
 
   const onNameSave = async (obj: { name: string; displayName?: string }) => {
@@ -533,6 +562,8 @@ const DataProductsDetailsPage = ({
       isVersionsView,
       dataProductPermission,
       assetCount,
+      inputPortsCount,
+      outputPortsCount,
       activeTab: activeTab as EntityTabs,
       assetTabRef,
       previewAsset,
@@ -560,6 +591,8 @@ const DataProductsDetailsPage = ({
     assetCount,
     activeTab,
     feedCount,
+    inputPortsCount,
+    outputPortsCount,
   ]);
 
   const iconData = useMemo(() => {
@@ -587,7 +620,8 @@ const DataProductsDetailsPage = ({
     getEntityFeedCount();
     fetchActiveAnnouncement();
     fetchDataProductContract();
-  }, [dataProductFqn]);
+    fetchPortCounts();
+  }, [dataProductFqn, fetchPortCounts]);
 
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);

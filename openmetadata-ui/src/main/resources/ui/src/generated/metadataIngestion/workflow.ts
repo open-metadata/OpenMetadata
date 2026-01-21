@@ -4993,6 +4993,11 @@ export interface Pipeline {
      */
     useStatistics?: boolean;
     /**
+     * Language to use for auto classification recognizers. Only recognizers that support this
+     * language will be used.
+     */
+    classificationLanguage?: ClassificationLanguage;
+    /**
      * Set the Confidence value for which you want the column to be tagged as PII. Confidence
      * value ranges from 0 to 100. A higher number will yield less false positives but more
      * false negatives. A lower number will yield more false positives but less false negatives.
@@ -6259,6 +6264,96 @@ export interface AppLimitsConfig {
      * LimitsConfiguration in openmetadata.yaml
      */
     billingCycleStart?: Date;
+}
+
+/**
+ * Language to use for auto classification recognizers. Only recognizers that support this
+ * language will be used.
+ *
+ * Supported languages for auto classification recognizers (ISO 639-1 codes)
+ */
+export enum ClassificationLanguage {
+    AF = "af",
+    Am = "am",
+    Ar = "ar",
+    Az = "az",
+    Be = "be",
+    Bg = "bg",
+    Bn = "bn",
+    Bs = "bs",
+    CA = "ca",
+    CS = "cs",
+    Cy = "cy",
+    Da = "da",
+    De = "de",
+    El = "el",
+    En = "en",
+    Es = "es",
+    Et = "et",
+    Eu = "eu",
+    Fa = "fa",
+    Fi = "fi",
+    Fr = "fr",
+    Ga = "ga",
+    Gl = "gl",
+    Gu = "gu",
+    HT = "ht",
+    He = "he",
+    Hi = "hi",
+    Hr = "hr",
+    Hu = "hu",
+    Hy = "hy",
+    ID = "id",
+    Is = "is",
+    It = "it",
+    Ja = "ja",
+    KM = "km",
+    Ka = "ka",
+    Kk = "kk",
+    Kn = "kn",
+    Ko = "ko",
+    Ku = "ku",
+    Ky = "ky",
+    LV = "lv",
+    Lo = "lo",
+    Lt = "lt",
+    MS = "ms",
+    MT = "mt",
+    Mi = "mi",
+    Mk = "mk",
+    Ml = "ml",
+    Mn = "mn",
+    Mr = "mr",
+    My = "my",
+    Ne = "ne",
+    Nl = "nl",
+    No = "no",
+    PS = "ps",
+    Pa = "pa",
+    Pl = "pl",
+    Pt = "pt",
+    Ro = "ro",
+    Ru = "ru",
+    Si = "si",
+    Sk = "sk",
+    Sl = "sl",
+    So = "so",
+    Sq = "sq",
+    Sr = "sr",
+    Sv = "sv",
+    Sw = "sw",
+    Ta = "ta",
+    Te = "te",
+    Th = "th",
+    Tl = "tl",
+    Tr = "tr",
+    Uk = "uk",
+    Ur = "ur",
+    Uz = "uz",
+    Vi = "vi",
+    Yi = "yi",
+    Zh = "zh",
+    Zu = "zu",
 }
 
 /**

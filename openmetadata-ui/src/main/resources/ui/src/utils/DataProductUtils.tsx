@@ -28,6 +28,7 @@ import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { DataProductDomainWidget } from '../components/DataProducts/DataProductDomainWidget/DataProductDomainWidget';
+import { InputOutputPortsTab } from '../components/DataProducts/InputOutputPortsTab';
 import EntitySummaryPanel from '../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../components/Explore/ExplorePage.interface';
 import AssetsTabs, {
@@ -47,6 +48,7 @@ import {
   convertDataProductsToEntityReferences as convertDataProductsToEntityReferencesUtil,
   convertEntityReferencesToDataProducts as convertEntityReferencesToDataProductsUtil,
 } from './EntityReferenceUtils';
+
 import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 import {
@@ -59,6 +61,8 @@ export interface DataProductDetailPageTabProps {
   isVersionsView: boolean;
   dataProductPermission: OperationPermission;
   assetCount: number;
+  inputPortsCount?: number;
+  outputPortsCount?: number;
   activeTab: EntityTabs;
   assetTabRef: React.RefObject<AssetsTabRef>;
   previewAsset?: EntityDetailsObjectInterface;
@@ -110,6 +114,8 @@ export const getDataProductDetailTabs = ({
   isVersionsView,
   dataProductPermission,
   assetCount,
+  inputPortsCount,
+  outputPortsCount,
   activeTab,
   assetTabRef,
   previewAsset,
@@ -121,6 +127,8 @@ export const getDataProductDetailTabs = ({
   getEntityFeedCount,
   labelMap,
 }: DataProductDetailPageTabProps) => {
+  const totalPortsCount = (inputPortsCount ?? 0) + (outputPortsCount ?? 0);
+
   return [
     {
       label: (
@@ -163,6 +171,59 @@ export const getDataProductDetailTabs = ({
                   onUpdateEntityDetails={noop}
                 />
               </ActivityFeedProvider>
+            ),
+          },
+          {
+            label: (
+              <TabsLabel
+                count={totalPortsCount}
+                id={EntityTabs.INPUT_OUTPUT_PORTS}
+                isActive={activeTab === EntityTabs.INPUT_OUTPUT_PORTS}
+                name={
+                  labelMap?.[EntityTabs.INPUT_OUTPUT_PORTS] ??
+                  t('label.input-output-port-plural')
+                }
+              />
+            ),
+            key: EntityTabs.INPUT_OUTPUT_PORTS,
+            children: (
+              <ResizablePanels
+                className="h-full domain-height-with-resizable-panel"
+                firstPanel={{
+                  className: 'domain-resizable-panel-container',
+                  wrapInCard: false,
+                  children: (
+                    <InputOutputPortsTab
+                      dataProduct={dataProduct}
+                      dataProductFqn={dataProduct.fullyQualifiedName ?? ''}
+                      permissions={dataProductPermission}
+                      onPortClick={handleAssetClick}
+                      onPortsUpdate={handleAssetSave}
+                    />
+                  ),
+                  minWidth: 800,
+                  flex: 0.67,
+                }}
+                hideSecondPanel={!previewAsset}
+                pageTitle={t('label.data-product')}
+                secondPanel={{
+                  wrapInCard: false,
+                  children: previewAsset && (
+                    <EntitySummaryPanel
+                      entityDetails={previewAsset}
+                      handleClosePanel={() => setPreviewAsset(undefined)}
+                      key={
+                        previewAsset.details.id ??
+                        previewAsset.details.fullyQualifiedName
+                      }
+                    />
+                  ),
+                  minWidth: 400,
+                  flex: 0.33,
+                  className:
+                    'entity-summary-resizable-right-panel-container domain-resizable-panel-container',
+                }}
+              />
             ),
           },
           {
