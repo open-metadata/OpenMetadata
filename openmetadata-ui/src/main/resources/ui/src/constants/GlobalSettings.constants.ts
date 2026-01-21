@@ -99,4 +99,5 @@ export enum GlobalSettingOptions {
   WORKSHEETS = 'worksheets',
   COLUMN_BULK_OPERATIONS = 'columnBulkOperations',
   AUDIT_LOGS = 'audit-logs',
+  COLUMN = 'column',
 }
