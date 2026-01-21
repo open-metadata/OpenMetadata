@@ -165,60 +165,72 @@ public class DataContractValidationApp extends AbstractNativeApplication {
               dataProduct.getName(),
               dpContract.getName());
 
-          // Get assets using the paginated API (uses search)
-          ResultList<EntityReference> assetsResult =
-              dataProductRepository.getDataProductAssets(dataProduct.getId(), 1000, 0);
+          // Paginate through all assets
+          int assetLimit = 100;
+          int assetOffset = 0;
+          boolean hasMoreAssets = true;
 
-          if (nullOrEmpty(assetsResult.getData())) {
-            continue;
-          }
+          while (hasMoreAssets) {
+            ResultList<EntityReference> assetsResult =
+                dataProductRepository.getDataProductAssets(
+                    dataProduct.getId(), assetLimit, assetOffset);
 
-          // Process each asset
-          for (EntityReference assetRef : assetsResult.getData()) {
-            try {
-              // Get the asset entity
-              EntityInterface asset =
-                  Entity.getEntity(assetRef.getType(), assetRef.getId(), "*", Include.NON_DELETED);
-
-              // Check if asset has its own direct (non-inherited) contract
-              DataContract assetContract = contractRepository.getEntityDataContractSafely(asset);
-              if (assetContract != null && !Boolean.TRUE.equals(assetContract.getInherited())) {
-                // Asset has its own direct contract, skip (it was validated in Phase 1)
-                continue;
-              }
-
-              // Asset only has inherited contract - materialize and validate
-              LOG.debug(
-                  "Materializing inherited contract for asset {} from Data Product {}",
-                  asset.getName(),
-                  dataProduct.getName());
-
-              DataContract materializedContract =
-                  contractRepository.materializeInheritedContract(
-                      asset, dpContract.getName(), "system");
-
-              // Get effective contract for validation (includes inherited rules)
-              DataContract effectiveContract = contractRepository.getEffectiveDataContract(asset);
-
-              // Validate using effective contract, store results in materialized contract
-              RestUtil.PutResponse<DataContractResult> validationResponse =
-                  contractRepository.validateContractWithEffective(
-                      materializedContract, effectiveContract);
-
-              LOG.debug(
-                  "Materialized and validated contract for {}: Status = {}",
-                  asset.getName(),
-                  validationResponse.getEntity().getContractExecutionStatus());
-              totalProcessed++;
-            } catch (Exception e) {
-              String msg =
-                  String.format(
-                      "Failed to process asset %s from Data Product %s: %s",
-                      assetRef.getName(), dataProduct.getName(), e.getMessage());
-              LOG.error(msg, e);
-              failureDetails.put(assetRef.getFullyQualifiedName(), msg);
-              totalErrors++;
+            if (nullOrEmpty(assetsResult.getData())) {
+              break;
             }
+
+            // Process each asset in this batch
+            for (EntityReference assetRef : assetsResult.getData()) {
+              try {
+                // Get the asset entity
+                EntityInterface asset =
+                    Entity.getEntity(
+                        assetRef.getType(), assetRef.getId(), "*", Include.NON_DELETED);
+
+                // Check if asset has its own direct (non-inherited) contract
+                DataContract assetContract = contractRepository.getEntityDataContractSafely(asset);
+                if (assetContract != null && !Boolean.TRUE.equals(assetContract.getInherited())) {
+                  // Asset has its own direct contract, skip (it was validated in Phase 1)
+                  continue;
+                }
+
+                // Asset only has inherited contract - materialize and validate
+                LOG.debug(
+                    "Materializing inherited contract for asset {} from Data Product {}",
+                    asset.getName(),
+                    dataProduct.getName());
+
+                DataContract materializedContract =
+                    contractRepository.materializeInheritedContract(
+                        asset, dpContract.getName(), "system");
+
+                // Get effective contract for validation (includes inherited rules)
+                DataContract effectiveContract = contractRepository.getEffectiveDataContract(asset);
+
+                // Validate using effective contract, store results in materialized contract
+                RestUtil.PutResponse<DataContractResult> validationResponse =
+                    contractRepository.validateContractWithEffective(
+                        materializedContract, effectiveContract);
+
+                LOG.debug(
+                    "Materialized and validated contract for {}: Status = {}",
+                    asset.getName(),
+                    validationResponse.getEntity().getContractExecutionStatus());
+                totalProcessed++;
+              } catch (Exception e) {
+                String msg =
+                    String.format(
+                        "Failed to process asset %s from Data Product %s: %s",
+                        assetRef.getName(), dataProduct.getName(), e.getMessage());
+                LOG.error(msg, e);
+                failureDetails.put(assetRef.getFullyQualifiedName(), msg);
+                totalErrors++;
+              }
+            }
+
+            // Move to next batch if we received a full batch
+            assetOffset += assetLimit;
+            hasMoreAssets = assetsResult.getData().size() == assetLimit;
           }
         } catch (Exception e) {
           String msg =

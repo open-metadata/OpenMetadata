@@ -47,7 +47,7 @@ export const ContractTermsOfService: React.FC<{
     }
     const content = termsOfUse.content;
 
-    return content === '<p></p>' ? undefined : content;
+    return !content || content === '<p></p>' ? undefined : content;
   }, [initialValues?.termsOfUse]);
 
   const handleContentOnChange = (value: string) => {
