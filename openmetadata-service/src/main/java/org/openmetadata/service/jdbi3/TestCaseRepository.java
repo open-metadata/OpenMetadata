@@ -1457,7 +1457,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       throws IOException {
     TestSuite targetBundleSuite =
         TEST_SUITE.equals(targetEntityType)
-            ? Entity.getEntityByName(TEST_SUITE, name, "", Include.NON_DELETED)
+            ? Entity.getEntityByName(TEST_SUITE, name, "", Include.ALL)
             : null;
     return new TestCaseCsv(user, targetBundleSuite).importCsv(csv, dryRun);
   }
