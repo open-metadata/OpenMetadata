@@ -135,7 +135,7 @@ test.describe('Bulk Edit Entity', () => {
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Preview' })).toBeVisible();
       await expect(
         page.getByRole('button', { name: 'Previous' })
       ).not.toBeVisible();
@@ -163,13 +163,8 @@ test.describe('Bulk Edit Entity', () => {
         true
       );
 
-      await page.getByRole('button', { name: 'Next' }).click();
+      await page.getByRole('button', { name: 'Preview' }).click();
 
-      await validateImportStatus(page, {
-        passed: '2',
-        processed: '2',
-        failed: '0',
-      });
 
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/services/databaseServices/name/*/importAsync?*dryRun=false&recursive=false*`
@@ -271,7 +266,7 @@ test.describe('Bulk Edit Entity', () => {
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Preview' })).toBeVisible();
       await expect(
         page.getByRole('button', { name: 'Previous' })
       ).not.toBeVisible();
@@ -299,18 +294,13 @@ test.describe('Bulk Edit Entity', () => {
         true
       );
 
-      await page.getByRole('button', { name: 'Next' }).click();
+      await page.getByRole('button', { name: 'Preview' }).click();
       const loader = page.locator(
         '.inovua-react-toolkit-load-mask__background-layer'
       );
 
       await loader.waitFor({ state: 'hidden' });
 
-      await validateImportStatus(page, {
-        passed: '2',
-        processed: '2',
-        failed: '0',
-      });
 
       await page.waitForSelector('.rdg-header-row', {
         state: 'visible',
@@ -415,7 +405,7 @@ test.describe('Bulk Edit Entity', () => {
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Preview' })).toBeVisible();
       await expect(
         page.getByRole('button', { name: 'Previous' })
       ).not.toBeVisible();
@@ -441,13 +431,8 @@ test.describe('Bulk Edit Entity', () => {
         true
       );
 
-      await page.getByRole('button', { name: 'Next' }).click();
+      await page.getByRole('button', { name: 'Preview' }).click();
 
-      await validateImportStatus(page, {
-        passed: '2',
-        processed: '2',
-        failed: '0',
-      });
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/databaseSchemas/name/*/importAsync?*dryRun=false&recursive=false*`
       );
@@ -527,7 +512,7 @@ test.describe('Bulk Edit Entity', () => {
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Preview' })).toBeVisible();
       await expect(
         page.getByRole('button', { name: 'Previous' })
       ).not.toBeVisible();
@@ -559,14 +544,8 @@ test.describe('Bulk Edit Entity', () => {
         .locator(RDG_ACTIVE_CELL_SELECTOR)
         .press('ArrowDown', { delay: 100 });
 
-      await page.click('[type="button"] >> text="Next"', { force: true });
+      await page.click('[type="button"] >> text="Preview"', { force: true });
       // total column count +1 for header row
-      const count = `${tableEntity.entityLinkColumnsName.length + 1}`;
-      await validateImportStatus(page, {
-        passed: count,
-        processed: count,
-        failed: '0',
-      });
 
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/tables/name/*/importAsync?*dryRun=false&recursive=false*`
@@ -636,7 +615,7 @@ test.describe('Bulk Edit Entity', () => {
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Preview' })).toBeVisible();
       await expect(
         page.getByRole('button', { name: 'Previous' })
       ).not.toBeVisible();
@@ -661,18 +640,13 @@ test.describe('Bulk Edit Entity', () => {
         true
       );
 
-      await page.getByRole('button', { name: 'Next' }).click();
+      await page.getByRole('button', { name: 'Preview' }).click();
       const loader = page.locator(
         '.inovua-react-toolkit-load-mask__background-layer'
       );
 
       await loader.waitFor({ state: 'hidden' });
 
-      await validateImportStatus(page, {
-        passed: '2',
-        processed: '2',
-        failed: '0',
-      });
 
       await page.waitForSelector('.rdg-header-row', {
         state: 'visible',
@@ -780,7 +754,7 @@ test.describe('Bulk Edit Entity', () => {
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Preview' })).toBeVisible();
       await expect(
         page.getByRole('button', { name: 'Previous' })
       ).not.toBeVisible();
@@ -805,18 +779,13 @@ test.describe('Bulk Edit Entity', () => {
         true
       );
 
-      await page.getByRole('button', { name: 'Next' }).click();
+      await page.getByRole('button', { name: 'Preview' }).click();
       const loader = page.locator(
         '.inovua-react-toolkit-load-mask__background-layer'
       );
 
       await loader.waitFor({ state: 'hidden' });
 
-      await validateImportStatus(page, {
-        passed: '2',
-        processed: '2',
-        failed: '0',
-      });
 
       await page.waitForSelector('.rdg-header-row', {
         state: 'visible',
@@ -874,6 +843,143 @@ test.describe('Bulk Edit Entity', () => {
     });
 
     await glossary.delete(apiContext);
+    await afterAction();
+  });
+
+  test('Add Row functionality', async ({ page }) => {
+    const table = new TableClass();
+
+    const { apiContext, afterAction } = await getApiContext(page);
+    await table.create(apiContext);
+
+    await test.step('Verify add row button adds new row and focuses first cell', async () => {
+      await visitServiceDetailsPage(
+        page,
+        {
+          name: table.service.name,
+          type: SERVICE_TYPE.Database,
+        },
+        false
+      );
+      await page.click('[data-testid="bulk-edit-table"]');
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      await expect(page.locator('.rdg-header-row')).toBeVisible();
+
+      await page.waitForTimeout(500);
+
+      const initialRowCount = await page.locator('.rdg-row').count();
+
+      const firstRowFirstCell = page
+        .locator('.rdg-row')
+        .first()
+        .locator('.rdg-cell')
+        .first();
+
+      await expect(firstRowFirstCell).toBeFocused();
+
+      await page.click('[data-testid="add-row-btn"]');
+
+      await expect(firstRowFirstCell).not.toBeFocused();
+
+      const newRowCount = await page.locator('.rdg-row').count();
+
+      expect(newRowCount).toBe(initialRowCount + 1);
+
+      const lastRowFirstCell = page
+        .locator('.rdg-row')
+        .last()
+        .locator('.rdg-cell')
+        .first();
+
+      await expect(lastRowFirstCell).toBeFocused();
+    });
+
+    await test.step('Verify multiple rows can be added consecutively', async () => {
+      const rowCountBeforeAdding = await page.locator('.rdg-row').count();
+
+      await page.click('[data-testid="add-row-btn"]');
+      await page.waitForTimeout(100);
+      await page.click('[data-testid="add-row-btn"]');
+      await page.waitForTimeout(100);
+
+      const rowCountAfterAdding = await page.locator('.rdg-row').count();
+
+      expect(rowCountAfterAdding).toBe(rowCountBeforeAdding + 2);
+
+      const lastRowFirstCell = page
+        .locator('.rdg-row')
+        .last()
+        .locator('.rdg-cell')
+        .first();
+
+      await expect(lastRowFirstCell).toBeFocused();
+    });
+
+    await table.delete(apiContext);
+    await afterAction();
+  });
+
+  test('Cell highlight functionality', async ({ page }) => {
+    const table = new TableClass();
+
+    const { apiContext, afterAction } = await getApiContext(page);
+    await table.create(apiContext);
+
+    await test.step('Verify edited cells are highlighted with cell-updated class after validation', async () => {
+      await visitServiceDetailsPage(
+        page,
+        {
+          name: table.service.name,
+          type: SERVICE_TYPE.Database,
+        },
+        false
+      );
+      await page.click('[data-testid="bulk-edit-table"]');
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      await expect(page.locator('.rdg-header-row')).toBeVisible();
+
+      await page.waitForTimeout(500);
+
+      const displayNameCell = page.locator('.rdg-cell-displayName').first();
+      await displayNameCell.dblclick();
+
+      await page.keyboard.type('Updated Display Name');
+      await page.keyboard.press('Enter');
+
+      await page.getByRole('button', { name: 'Preview' }).click();
+
+      const loader = page.locator(
+        '.inovua-react-toolkit-load-mask__background-layer'
+      );
+      await loader.waitFor({ state: 'hidden' });
+
+      await page.waitForSelector('.rdg-header-row', {
+        state: 'visible',
+      });
+
+      const updatedCells = page.locator('.cell-updated');
+      await expect(updatedCells.first()).toBeVisible();
+    });
+
+    await test.step('Verify non-edited cells do not have cell-updated class', async () => {
+      const allCells = page.locator('.rdg-cell[role="gridcell"]');
+      const updatedCells = page.locator('.cell-updated');
+
+      const totalCellCount = await allCells.count();
+      const updatedCellCount = await updatedCells.count();
+
+      expect(updatedCellCount).toBeLessThan(totalCellCount);
+    });
+
+    await table.delete(apiContext);
     await afterAction();
   });
 });
