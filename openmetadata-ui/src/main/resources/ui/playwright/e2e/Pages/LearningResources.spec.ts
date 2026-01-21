@@ -245,6 +245,109 @@ test.describe('Learning Resources Admin Page', () => {
   });
 });
 
+test.describe('Learning Resources Admin Page - Additional Tests', () => {
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+    await settingClick(page, GlobalSettingOptions.LEARNING_RESOURCES);
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await page.waitForSelector('.ant-table-tbody');
+  });
+
+  test('should filter resources by category', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const uniqueId = uuid();
+    const resource = new LearningResourceClass({
+      name: `PW_Category_Resource_${uniqueId}`,
+      displayName: `PW Category Resource ${uniqueId}`,
+      categories: ['DataGovernance'],
+    });
+
+    await resource.create(apiContext);
+
+    await page.reload();
+    await page.waitForSelector('.ant-table-tbody');
+
+    await test.step('Filter by Governance category', async () => {
+      await page.locator('.filter-select').filter({ hasText: 'Category' }).click();
+      await selectDropdownOption(page, 'Governance');
+
+      await searchResource(page, uniqueId);
+      await expect(page.getByText(`PW Category Resource ${uniqueId}`)).toBeVisible({ timeout: 10000 });
+    });
+
+    await resource.delete(apiContext);
+    await afterAction();
+  });
+
+  test('should filter resources by status', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const uniqueId = uuid();
+    const resource = new LearningResourceClass({
+      name: `PW_Status_Resource_${uniqueId}`,
+      displayName: `PW Status Resource ${uniqueId}`,
+      status: 'Draft',
+    });
+
+    await resource.create(apiContext);
+
+    await page.reload();
+    await page.waitForSelector('.ant-table-tbody');
+
+    await test.step('Filter by Draft status', async () => {
+      await page.locator('.filter-select').filter({ hasText: 'Status' }).click();
+      await selectDropdownOption(page, 'Draft');
+
+      await searchResource(page, uniqueId);
+      await expect(page.getByText(`PW Status Resource ${uniqueId}`)).toBeVisible({ timeout: 10000 });
+    });
+
+    await resource.delete(apiContext);
+    await afterAction();
+  });
+
+  test('should edit and save resource changes via UI', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const uniqueId = uuid();
+    const resource = new LearningResourceClass({
+      name: `PW_Edit_Save_Resource_${uniqueId}`,
+      displayName: `PW Edit Save Resource ${uniqueId}`,
+      description: 'Original description',
+    });
+
+    await resource.create(apiContext);
+
+    await page.reload();
+    await page.waitForSelector('.ant-table-tbody');
+
+    await searchResource(page, uniqueId);
+    await expect(page.getByText(resource.data.displayName ?? '')).toBeVisible({ timeout: 10000 });
+
+    await test.step('Open edit drawer and modify display name', async () => {
+      await page.getByTestId(`edit-${resource.data.name}`).click();
+      await expect(page.locator('.drawer-title')).toContainText('Edit Resource');
+
+      // Clear and update display name
+      await page.locator('#displayName').clear();
+      await page.locator('#displayName').fill(`Updated Resource ${uniqueId}`);
+    });
+
+    await test.step('Save changes', async () => {
+      await page.getByTestId('save-resource').click();
+      await expect(page.locator('.drawer-title')).not.toBeVisible({ timeout: 10000 });
+    });
+
+    await test.step('Verify updated display name in list', async () => {
+      await page.reload();
+      await page.waitForSelector('.ant-table-tbody');
+      await searchResource(page, uniqueId);
+      await expect(page.getByText(`Updated Resource ${uniqueId}`)).toBeVisible({ timeout: 10000 });
+    });
+
+    await resource.delete(apiContext);
+    await afterAction();
+  });
+});
+
 test.describe('Learning Icon on Pages', () => {
   test('should display learning icon on glossary page when resources exist', async ({ page }) => {
     // Navigate to home first to ensure auth context is established
@@ -299,6 +402,117 @@ test.describe('Learning Icon on Pages', () => {
 
     await test.step('Close drawer', async () => {
       await page.keyboard.press('Escape');
+    });
+
+    await resource.delete(apiContext);
+    await afterAction();
+  });
+
+  test('should NOT show draft resources on target pages', async ({ page }) => {
+    // Navigate to home first to ensure auth context is established
+    await redirectToHomePage(page);
+
+    const { apiContext, afterAction } = await getApiContext(page);
+    const uniqueId = uuid();
+    const draftResource = new LearningResourceClass({
+      name: `PW_Draft_Resource_${uniqueId}`,
+      displayName: `PW Draft Resource ${uniqueId}`,
+      contexts: [{ pageId: 'glossary' }],
+      status: 'Draft', // Draft status should NOT appear on pages
+    });
+
+    await draftResource.create(apiContext);
+
+    await page.goto('/glossary');
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await page.waitForTimeout(2000);
+
+    // Check if learning icon exists
+    const learningIcon = page.locator('[data-testid="learning-icon"]');
+    const isIconVisible = await learningIcon.isVisible().catch(() => false);
+
+    if (isIconVisible) {
+      // If icon is visible, our draft resource should NOT be in the drawer
+      await learningIcon.click();
+      await expect(page.locator('.learning-drawer')).toBeVisible();
+      await expect(page.getByText(`PW Draft Resource ${uniqueId}`)).not.toBeVisible();
+      await page.keyboard.press('Escape');
+    }
+    // If icon is not visible, that's also valid (no active resources)
+
+    await draftResource.delete(apiContext);
+    await afterAction();
+  });
+
+  test('should show learning icon on lineage page when resources exist', async ({ page }) => {
+    // Navigate to home first to ensure auth context is established
+    await redirectToHomePage(page);
+
+    const { apiContext, afterAction } = await getApiContext(page);
+    const resource = new LearningResourceClass({
+      name: `PW_Lineage_Resource_${uuid()}`,
+      displayName: `PW Lineage Resource`,
+      contexts: [{ pageId: 'lineage' }],
+      status: 'Active',
+    });
+
+    await resource.create(apiContext);
+
+    await page.goto('/lineage');
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    const learningIcon = page.locator('[data-testid="learning-icon"]');
+    await expect(learningIcon).toBeVisible({ timeout: 15000 });
+
+    // Click and verify resource is shown
+    await learningIcon.click();
+    await expect(page.locator('.learning-drawer')).toBeVisible();
+    await expect(page.getByText('PW Lineage Resource')).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    await resource.delete(apiContext);
+    await afterAction();
+  });
+
+  test('should open resource player when clicking on resource card in drawer', async ({ page }) => {
+    // Navigate to home first to ensure auth context is established
+    await redirectToHomePage(page);
+
+    const { apiContext, afterAction } = await getApiContext(page);
+    const uniqueId = uuid();
+    const resource = new LearningResourceClass({
+      name: `PW_Player_Resource_${uniqueId}`,
+      displayName: `PW Player Resource ${uniqueId}`,
+      contexts: [{ pageId: 'glossary' }],
+      status: 'Active',
+      source: {
+        url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        provider: 'YouTube',
+      },
+    });
+
+    await resource.create(apiContext);
+
+    await page.goto('/glossary');
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    await test.step('Open learning drawer', async () => {
+      const learningIcon = page.locator('[data-testid="learning-icon"]');
+      await expect(learningIcon).toBeVisible({ timeout: 15000 });
+      await learningIcon.click();
+      await expect(page.locator('.learning-drawer')).toBeVisible();
+    });
+
+    await test.step('Click on resource card to open player', async () => {
+      // Click on the resource card
+      await page.getByText(`PW Player Resource ${uniqueId}`).click();
+      // Verify player modal opens
+      await expect(page.locator('.ant-modal')).toBeVisible({ timeout: 10000 });
+    });
+
+    await test.step('Close player modal', async () => {
+      await page.locator('.close-button').click();
+      await expect(page.locator('.ant-modal')).not.toBeVisible({ timeout: 5000 });
     });
 
     await resource.delete(apiContext);
