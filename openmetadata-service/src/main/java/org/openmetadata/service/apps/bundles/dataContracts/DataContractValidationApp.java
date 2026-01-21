@@ -124,10 +124,13 @@ public class DataContractValidationApp extends AbstractNativeApplication {
           totalErrors++;
         }
       }
-      after = dataContracts.getPaging() != null ? dataContracts.getPaging().getAfter() : null;
-      hasMore = after != null;
-
-      setStats(dataContracts.getPaging().getTotal(), totalProcessed, totalErrors);
+      if (dataContracts.getPaging() != null) {
+        setStats(dataContracts.getPaging().getTotal(), totalProcessed, totalErrors);
+        after = dataContracts.getPaging().getAfter();
+        hasMore = after != null;
+      } else {
+        hasMore = false;
+      }
       updateStatsRecord(AppRunRecord.Status.RUNNING);
     }
 

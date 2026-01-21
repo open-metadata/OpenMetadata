@@ -17,16 +17,13 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 import { EntityType } from '../../../enums/entity.enum';
-import { DataContract } from '../../../generated/entity/data/dataContract';
+import {
+  DataContract,
+  TermsOfUse,
+} from '../../../generated/entity/data/dataContract';
 import { useFqn } from '../../../hooks/useFqn';
 import BlockEditor from '../../BlockEditor/BlockEditor';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-
-// Type for the new termsOfUse structure (object with content and inherited)
-interface TermsOfUseObject {
-  content?: string;
-  inherited?: boolean;
-}
 
 export const ContractTermsOfService: React.FC<{
   initialValues?: DataContract;
@@ -42,28 +39,20 @@ export const ContractTermsOfService: React.FC<{
   const { fqn } = useFqn();
   const { t } = useTranslation();
 
-  // Handle both old string format and new object format for termsOfUse
+  // Extract content from termsOfUse object
   const termsOfUseContent = useMemo(() => {
     const termsOfUse = initialValues?.termsOfUse;
-    if (!termsOfUse || termsOfUse === '<p></p>') {
+    if (!termsOfUse) {
       return undefined;
     }
-    // Handle new object format
-    if (typeof termsOfUse === 'object') {
-      const content = (termsOfUse as unknown as TermsOfUseObject)?.content;
+    const content = termsOfUse.content;
 
-      return content === '<p></p>' ? undefined : content;
-    }
-
-    // Handle old string format
-    return termsOfUse;
+    return content === '<p></p>' ? undefined : content;
   }, [initialValues?.termsOfUse]);
 
   const handleContentOnChange = (value: string) => {
-    // Always save in the new object format
-    onChange({
-      termsOfUse: { content: value } as unknown as string,
-    });
+    const termsOfUse: TermsOfUse = { content: value };
+    onChange({ termsOfUse });
   };
 
   return (
