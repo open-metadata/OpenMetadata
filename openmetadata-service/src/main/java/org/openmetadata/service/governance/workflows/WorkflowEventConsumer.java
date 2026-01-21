@@ -9,7 +9,6 @@ import static org.openmetadata.service.governance.workflows.WorkflowVariableHand
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.entity.events.EventSubscription;
@@ -23,7 +22,6 @@ import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 @Slf4j
@@ -97,8 +95,7 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
   }
 
   @Override
-  public void sendMessage(ChangeEvent event, Set<Recipient> recipients)
-      throws EventPublisherException {
+  public void sendMessage(ChangeEvent event) throws EventPublisherException {
     // NOTE: We are only consuming ENTITY related events.
     try {
       EventType eventType = event.getEventType();
@@ -197,10 +194,5 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
   @Override
   public boolean getEnabled() {
     return subscriptionDestination.getEnabled();
-  }
-
-  @Override
-  public boolean requiresRecipients() {
-    return false;
   }
 }

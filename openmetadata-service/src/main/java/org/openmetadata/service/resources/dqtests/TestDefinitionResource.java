@@ -64,7 +64,7 @@ import org.openmetadata.service.security.Authorizer;
 public class TestDefinitionResource
     extends EntityResource<TestDefinition, TestDefinitionRepository> {
   private final TestDefinitionMapper mapper = new TestDefinitionMapper();
-  public static final String COLLECTION_PATH = "/v1/dataQuality/testDefinitions/";
+  public static final String COLLECTION_PATH = "/v1/dataQuality/testDefinitions";
   static final String FIELDS = "owners";
 
   public TestDefinitionResource(Authorizer authorizer, Limits limits) {

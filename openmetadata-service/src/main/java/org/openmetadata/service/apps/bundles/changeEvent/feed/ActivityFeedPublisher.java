@@ -16,7 +16,6 @@ package org.openmetadata.service.apps.bundles.changeEvent.feed;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.ACTIVITY_FEED;
 
-import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
@@ -31,7 +30,6 @@ import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.jdbi3.FeedRepository;
-import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.FeedUtils;
 
@@ -54,8 +52,7 @@ public class ActivityFeedPublisher implements Destination<ChangeEvent> {
   }
 
   @Override
-  public void sendMessage(ChangeEvent changeEvent, Set<Recipient> recipients)
-      throws EventPublisherException {
+  public void sendMessage(ChangeEvent changeEvent) throws EventPublisherException {
     try {
       // Thread are created in FeedRepository Directly
       if (!changeEvent.getEntityType().equals(Entity.THREAD)) {
@@ -92,11 +89,6 @@ public class ActivityFeedPublisher implements Destination<ChangeEvent> {
   @Override
   public boolean getEnabled() {
     return subscriptionDestination.getEnabled();
-  }
-
-  @Override
-  public boolean requiresRecipients() {
-    return false;
   }
 
   public void close() {

@@ -93,7 +93,7 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "TestCases")
 public class TestCaseResource extends EntityResource<TestCase, TestCaseRepository> {
-  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/";
+  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
   private final TestCaseMapper mapper = new TestCaseMapper();
   private final TestCaseResultMapper testCaseResultMapper = new TestCaseResultMapper();
   static final String FIELDS =
@@ -1267,15 +1267,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @DefaultValue("true")
           @QueryParam("dryRun")
           boolean dryRun,
-      @Parameter(
-              description =
-                  "The entity type for which the TestCase are being added (e.g., 'testSuite' or 'table')",
-              schema = @Schema(type = "string"))
-          @QueryParam("targetEntityType")
-          String targetEntityType,
       String csv)
       throws IOException {
-    return importCsvInternal(uriInfo, securityContext, name, csv, dryRun, false, targetEntityType);
+    return importCsvInternal(uriInfo, securityContext, name, csv, dryRun, false);
   }
 
   @PUT
@@ -1312,15 +1306,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @DefaultValue("true")
           @QueryParam("dryRun")
           boolean dryRun,
-      @Parameter(
-              description =
-                  "The entity type for which the TestCase are being added (e.g., 'testSuite' or 'table')",
-              schema = @Schema(type = "string"))
-          @QueryParam("targetEntityType")
-          String targetEntityType,
       String csv) {
-    return importCsvInternalAsync(
-        uriInfo, securityContext, name, csv, dryRun, false, targetEntityType);
+    return importCsvInternalAsync(uriInfo, securityContext, name, csv, dryRun, false);
   }
 
   protected static ResourceContextInterface getResourceContext(

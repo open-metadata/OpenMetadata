@@ -108,7 +108,7 @@ import org.quartz.SchedulerException;
 @Collection(name = "events/subscriptions", order = 7) // needs to initialize before applications
 public class EventSubscriptionResource
     extends EntityResource<EventSubscription, EventSubscriptionRepository> {
-  public static final String COLLECTION_PATH = "/v1/events/subscriptions/";
+  public static final String COLLECTION_PATH = "/v1/events/subscriptions";
   public static final String FIELDS = "owners,filteringRules";
   private final EventSubscriptionMapper mapper = new EventSubscriptionMapper();
 
@@ -121,23 +121,6 @@ public class EventSubscriptionResource
     this.allowedFields.add("statusDetails");
     addViewOperation("filteringRules", MetadataOperation.VIEW_BASIC);
     return null;
-  }
-
-  @GET
-  @Path("/history")
-  @Operation(hidden = true)
-  @Override
-  public ResultList<EventSubscription> listEntityHistoryByTimestamp(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @QueryParam("startTs") long startTs,
-      @QueryParam("endTs") long endTs,
-      @QueryParam("limit") int limitParam,
-      @QueryParam("before") String before,
-      @QueryParam("after") String after) {
-    throw new WebApplicationException(
-        "History endpoint is not supported for Event Subscriptions",
-        Response.Status.NOT_IMPLEMENTED);
   }
 
   public static class EventSubscriptionList extends ResultList<EventSubscription> {

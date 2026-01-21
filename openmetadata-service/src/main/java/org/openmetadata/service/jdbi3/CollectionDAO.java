@@ -1327,67 +1327,6 @@ public interface CollectionDAO {
     List<ExtensionRecord> getExtensions(
         @BindUUID("id") UUID id, @Bind("extensionPrefix") String extensionPrefix);
 
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM ("
-                + "SELECT id, updatedAt, json FROM entity_extension "
-                + "WHERE updatedAt >= :startTs "
-                + "AND updatedAt <= :endTs "
-                + "AND jsonSchema = :entityType "
-                + "UNION "
-                + "SELECT id, updatedAt, json FROM <table> "
-                + "WHERE updatedAt >= :startTs AND "
-                + "updatedAt <= :endTs "
-                + ") combined WHERE 1=1 "
-                + "<cursorCondition> "
-                + "ORDER BY updatedAt DESC, id DESC "
-                + "LIMIT :limit",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM ("
-                + "SELECT id, updatedAt, json FROM entity_extension "
-                + "WHERE updatedAt >= :startTs "
-                + "AND updatedAt <= :endTs "
-                + "AND jsonSchema = :entityType "
-                + "UNION "
-                + "SELECT id, updatedAt, json::jsonb FROM <table> "
-                + "WHERE updatedAt >= :startTs AND "
-                + "updatedAt <= :endTs "
-                + ") combined WHERE 1=1 "
-                + "<cursorCondition> "
-                + "ORDER BY updatedAt DESC, id DESC "
-                + "LIMIT :limit",
-        connectionType = POSTGRES)
-    @RegisterRowMapper(ExtensionMapper.class)
-    List<String> getEntityHistoryByTimestampRange(
-        @Define("table") String table,
-        @Bind("startTs") long startTs,
-        @Bind("endTs") long endTs,
-        @Define("cursorCondition") String cursorCondition,
-        @Bind("entityType") String entityType,
-        @Bind("cursorUpdatedAt") Long cursorUpdatedAt,
-        @Bind("cursorId") String cursorId,
-        @Bind("limit") int limit);
-
-    @SqlQuery(
-        value =
-            "SELECT SUM(cnt) FROM ("
-                + "SELECT COUNT(*) AS cnt FROM entity_extension "
-                + "WHERE updatedAt >= :startTs "
-                + "AND updatedAt <= :endTs "
-                + "AND jsonSchema = :entityType "
-                + "UNION ALL "
-                + "SELECT COUNT(*) AS cnt FROM <table> "
-                + "WHERE updatedAt >= :startTs AND "
-                + "updatedAt <= :endTs"
-                + ") total_counts")
-    int getEntityHistoryByTimestampRangeCount(
-        @Define("table") String table,
-        @Bind("startTs") long startTs,
-        @Bind("endTs") long endTs,
-        @Bind("entityType") String entityType);
-
     @RegisterRowMapper(ExtensionMapper.class)
     @SqlQuery(
         "SELECT extension, json FROM entity_extension WHERE id = :id AND extension "
@@ -3862,22 +3801,6 @@ public interface CollectionDAO {
     List<String> searchGlossaryTerms(
         @Bind("parentHash") String parentHash,
         @Bind("searchTerm") String searchTerm,
-        @Bind("limit") int limit,
-        @Bind("offset") int offset);
-
-    // Search glossary terms with entity status filter
-    @SqlQuery(
-        "SELECT json FROM glossary_term_entity WHERE deleted = FALSE "
-            + "AND fqnHash LIKE :parentHash "
-            + "AND (LOWER(name) LIKE LOWER(:searchTerm) "
-            + "OR LOWER(COALESCE(displayName, '')) LIKE LOWER(:searchTerm)) "
-            + "<statusCondition> "
-            + "ORDER BY name "
-            + "LIMIT :limit OFFSET :offset")
-    List<String> searchGlossaryTermsWithStatus(
-        @Bind("parentHash") String parentHash,
-        @Bind("searchTerm") String searchTerm,
-        @Define("statusCondition") String statusCondition,
         @Bind("limit") int limit,
         @Bind("offset") int offset);
   }

@@ -40,6 +40,7 @@ import org.openmetadata.service.formatter.decorators.MSTeamsMessageDecorator;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.notifications.HandlebarsNotificationMessageEngine;
 import org.openmetadata.service.notifications.channels.NotificationMessage;
+import org.openmetadata.service.notifications.recipients.RecipientResolver;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
 
@@ -70,10 +71,9 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
   }
 
   @Override
-  public void sendMessage(ChangeEvent event, Set<Recipient> recipients)
-      throws EventPublisherException {
+  public void sendMessage(ChangeEvent event) throws EventPublisherException {
     try {
-      // Generate message using Handlebars
+      // Generate message using new Handlebars pipeline
       NotificationMessage message =
           messageEngine.generateMessage(event, eventSubscription, subscriptionDestination);
       TeamsMessage teamsMessage = (TeamsMessage) message;
@@ -81,12 +81,16 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
       // Convert to JSON
       String json = JsonUtils.pojoToJson(teamsMessage);
 
+      // Resolve recipients using new RecipientResolver framework
+      RecipientResolver recipientResolver = new RecipientResolver();
+      Set<Recipient> recipients =
+          recipientResolver.resolveRecipients(event, subscriptionDestination, webhook);
+
       // Convert type-agnostic Recipient objects to configured webhook requests
       List<Invocation.Builder> targets =
           recipients.stream()
-              .filter(WebhookRecipient.class::isInstance)
-              .map(WebhookRecipient.class::cast)
-              .map(r -> r.getConfiguredRequest(client, json))
+              .filter(r -> r instanceof WebhookRecipient)
+              .map(r -> ((WebhookRecipient) r).getConfiguredRequest(client, json))
               .filter(Objects::nonNull)
               .toList();
 

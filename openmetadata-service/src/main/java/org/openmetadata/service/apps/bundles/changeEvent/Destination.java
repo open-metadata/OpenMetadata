@@ -17,7 +17,6 @@ import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AC
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AWAITING_RETRY;
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.FAILED;
 
-import java.util.Set;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.StatusContext;
@@ -26,24 +25,11 @@ import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.entity.events.TestDestinationStatus;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertUtil;
-import org.openmetadata.service.notifications.recipients.context.Recipient;
 
 public interface Destination<T> {
-  void sendMessage(T event, Set<Recipient> recipients) throws EventPublisherException;
+  void sendMessage(T event) throws EventPublisherException;
 
   void sendTestMessage() throws EventPublisherException;
-
-  /**
-   * Indicates whether this destination requires resolved recipients to send notifications.
-   * Most destinations (Email, Slack, Teams, etc.) require recipients.
-   * Some destinations (ActivityFeed, GovernanceWorkflow) handle their own delivery mechanism
-   * and don't use recipient resolution.
-   *
-   * @return true if recipients must be resolved before sending, false otherwise
-   */
-  default boolean requiresRecipients() {
-    return true;
-  }
 
   SubscriptionDestination getSubscriptionDestination();
 

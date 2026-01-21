@@ -21,11 +21,9 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -34,15 +32,12 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FailedEvent;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
-import org.openmetadata.service.notifications.recipients.RecipientResolver;
-import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.util.DIContainer;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
@@ -228,46 +223,14 @@ public abstract class AbstractEventConsumer
       return;
     }
 
-    // Filter events based on subscription configuration (entity type, conditions, etc.)
     Map<ChangeEvent, Set<UUID>> filteredEvents = getFilteredEvents(eventSubscription, events);
-    RecipientResolver resolver = new RecipientResolver();
 
     for (var eventWithReceivers : filteredEvents.entrySet()) {
-      ChangeEvent event = eventWithReceivers.getKey();
-      Set<UUID> destinationIds = eventWithReceivers.getValue();
-
-      // Group destinations by type to enable cross-destination recipient deduplication
-      Map<SubscriptionType, List<Destination<ChangeEvent>>> destinationsByType =
-          groupDestinationsByType(destinationIds);
-
-      for (var entry : destinationsByType.entrySet()) {
-        List<Destination<ChangeEvent>> destinations = entry.getValue();
-        Destination<ChangeEvent> publisher = destinations.getFirst();
-
-        // Resolve recipients from all destinations of this type for deduplication
-        Set<Recipient> recipients = Set.of();
-        if (publisher.requiresRecipients()) {
-          List<SubscriptionDestination> subDestinations =
-              destinations.stream().map(Destination::getSubscriptionDestination).toList();
-          recipients = resolver.resolveRecipients(event, subDestinations);
-        }
-
-        // Send via primary destination only, with deduplicated recipients (one send per type)
-        boolean status = true;
-        if (!publisher.requiresRecipients() || !recipients.isEmpty()) {
-          try {
-            publisher.sendMessage(event, recipients);
-          } catch (EventPublisherException e) {
-            LOG.error("Failed to send alert: {}", e.getMessage());
-            handleFailedEvent(e, true);
-            status = false;
-          }
-        }
-
+      for (UUID receiverId : eventWithReceivers.getValue()) {
+        boolean status = sendAlert(receiverId, eventWithReceivers.getKey());
         if (status) {
           // Collect successful events instead of writing immediately
           // Batch write happens in commit() to reduce connection pool contention
-          // Note: Empty recipients is treated as successful (no-op send)
           successfulEvents.add(eventWithReceivers.getKey());
           alertMetrics.withSuccessEvents(alertMetrics.getSuccessEvents() + 1);
         } else {
@@ -275,15 +238,6 @@ public abstract class AbstractEventConsumer
         }
       }
     }
-  }
-
-  private Map<SubscriptionType, List<Destination<ChangeEvent>>> groupDestinationsByType(
-      Set<UUID> destinationIds) {
-    return destinationIds.stream()
-        .map(destinationMap::get)
-        .filter(Objects::nonNull)
-        .filter(Destination::getEnabled)
-        .collect(Collectors.groupingBy(dest -> dest.getSubscriptionDestination().getType()));
   }
 
   @Override

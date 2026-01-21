@@ -86,7 +86,7 @@ import org.openmetadata.service.util.RestUtil;
 public class NotificationTemplateResource
     extends EntityResource<NotificationTemplate, NotificationTemplateRepository> {
 
-  public static final String COLLECTION_PATH = "/v1/notificationTemplates/";
+  public static final String COLLECTION_PATH = "/v1/notificationTemplates";
   public static final String FIELDS = "";
 
   private final NotificationTemplateMapper mapper = new NotificationTemplateMapper();

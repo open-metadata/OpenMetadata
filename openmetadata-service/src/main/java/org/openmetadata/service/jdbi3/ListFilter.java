@@ -9,7 +9,6 @@ import java.util.stream.Collectors;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
@@ -139,12 +138,10 @@ public class ListFilter extends Filter<ListFilter> {
       return "";
     }
 
-    String inCondition = getValidatedInConditionFromString(entityStatus, EntityStatus.class);
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-      return String.format(
-          "JSON_UNQUOTE(JSON_EXTRACT(json, '$.entityStatus')) IN (%s)", inCondition);
+      return "json->>'$.entityStatus' = :entityStatus";
     } else {
-      return String.format("json->>'entityStatus' IN (%s)", inCondition);
+      return "json->>'entityStatus' = :entityStatus";
     }
   }
 
@@ -594,19 +591,6 @@ public class ListFilter extends Filter<ListFilter> {
     return Arrays.stream(condition.split(","))
         .map(String::trim)
         .filter(s -> !s.isEmpty())
-        .map(s -> String.format("'%s'", s))
-        .collect(Collectors.joining(","));
-  }
-
-  private <T extends Enum<T>> String getValidatedInConditionFromString(
-      String condition, Class<T> enumClass) {
-    List<String> validValues =
-        Arrays.stream(enumClass.getEnumConstants()).map(Enum::name).collect(Collectors.toList());
-
-    return Arrays.stream(condition.split(","))
-        .map(String::trim)
-        .filter(s -> !s.isEmpty())
-        .filter(s -> validValues.contains(s.toUpperCase().replace(" ", "_")))
         .map(s -> String.format("'%s'", s))
         .collect(Collectors.joining(","));
   }

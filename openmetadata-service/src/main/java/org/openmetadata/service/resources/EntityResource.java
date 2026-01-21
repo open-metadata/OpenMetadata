@@ -21,19 +21,7 @@ import static org.openmetadata.schema.type.MetadataOperation.VIEW_BASIC;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 import static org.openmetadata.service.util.EntityUtil.createOrUpdateOperation;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.json.JsonPatch;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
-import jakarta.ws.rs.DefaultValue;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.QueryParam;
-import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -343,20 +331,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return repository.listVersions(id);
-  }
-
-  protected ResultList<T> listEntityHistoryByTimestampInternal(
-      SecurityContext securityContext,
-      long startTs,
-      long endTs,
-      String before,
-      String after,
-      int limit) {
-
-    ResourceContext resourceContext = getResourceContext();
-    OperationContext operationContext = new OperationContext(entityType, VIEW_BASIC);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.listEntityHistoryByTimestamp(startTs, endTs, after, before, limit);
   }
 
   public T getByNameInternal(
@@ -851,17 +825,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String csv,
       boolean dryRun,
       boolean recursive) {
-    return importCsvInternalAsync(uriInfo, securityContext, name, csv, dryRun, recursive, null);
-  }
-
-  public Response importCsvInternalAsync(
-      UriInfo uriInfo,
-      SecurityContext securityContext,
-      String name,
-      String csv,
-      boolean dryRun,
-      boolean recursive,
-      String versioningEntityType) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
@@ -875,8 +838,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
           try {
             WebsocketNotificationHandler.sendCsvImportStartedNotification(jobId, securityContext);
             CsvImportResult result =
-                importCsvInternal(
-                    uriInfo, securityContext, name, csv, dryRun, recursive, versioningEntityType);
+                importCsvInternal(uriInfo, securityContext, name, csv, dryRun, recursive);
             WebsocketNotificationHandler.sendCsvImportCompleteNotification(
                 jobId, securityContext, result);
           } catch (Exception e) {
@@ -905,56 +867,26 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       boolean dryRun,
       boolean recursive)
       throws IOException {
-    return importCsvInternal(uriInfo, securityContext, name, csv, dryRun, recursive, null);
-  }
-
-  protected CsvImportResult importCsvInternal(
-      UriInfo uriInfo,
-      SecurityContext securityContext,
-      String name,
-      String csv,
-      boolean dryRun,
-      boolean recursive,
-      String versioningEntityType)
-      throws IOException {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     CsvImportResult result =
-        nullOrEmpty(versioningEntityType)
-            ? repository.importFromCsv(
-                name, csv, dryRun, securityContext.getUserPrincipal().getName(), recursive)
-            : repository.importFromCsv(
-                name,
-                csv,
-                dryRun,
-                securityContext.getUserPrincipal().getName(),
-                recursive,
-                versioningEntityType);
+        repository.importFromCsv(
+            name, csv, dryRun, securityContext.getUserPrincipal().getName(), recursive);
 
     // Create version history for bulk import (same logic as async import)
-    String effectiveVersioningEntityType =
-        nullOrEmpty(versioningEntityType) ? entityType : versioningEntityType;
     if (result.getStatus() != ApiStatus.ABORTED
         && result.getNumberOfRowsProcessed() > 1
-        && !dryRun) {
-      EntityRepository<EntityInterface> versioningRepo =
-          (EntityRepository<EntityInterface>)
-              Entity.getEntityRepository(effectiveVersioningEntityType);
-
+        && !dryRun
+        && repository.supportsBulkImportVersioning()) {
       // Only repositories that support versioning (indicated by flag) will execute this
-      if (versioningRepo.supportsBulkImportVersioning()) {
-        versioningRepo.createChangeEventForBulkOperation(
-            versioningRepo.getByName(
-                uriInfo,
-                name,
-                new Fields(versioningRepo.getAllowedFields(), ""),
-                Include.NON_DELETED,
-                false),
-            result,
-            securityContext.getUserPrincipal().getName());
-      }
+      repository.createChangeEventForBulkOperation(
+          repository.getByName(
+              uriInfo, name, new Fields(allowedFields, ""), Include.NON_DELETED, false),
+          result,
+          securityContext.getUserPrincipal().getName());
     }
+
     return result;
   }
 
@@ -1107,47 +1039,5 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
       }
     }
-  }
-
-  @GET
-  @Path("/history")
-  @Operation(
-      operationId = "listAllEntityVersionsByTimestamp",
-      summary = "List all entity versions within a time range",
-      description =
-          "Get a paginated list of all entity versions within a given time range "
-              + "specified by `startTs` and `endTs` in milliseconds since epoch. ",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List of all versions",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = ResultList.class)))
-      })
-  public ResultList<T> listEntityHistoryByTimestamp(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Start timestamp in milliseconds since epoch", required = true)
-          @QueryParam("startTs")
-          long startTs,
-      @Parameter(description = "End timestamp in milliseconds since epoch", required = true)
-          @QueryParam("endTs")
-          long endTs,
-      @Parameter(description = "Limit the number of entity returned (1 to 1000000, default = 10)")
-          @DefaultValue("10")
-          @Min(value = 1, message = "must be greater than or equal to 1")
-          @Max(value = 500, message = "must be less than or equal to 500")
-          @QueryParam("limit")
-          int limitParam,
-      @Parameter(description = "Returns list of entity versions before this cursor")
-          @QueryParam("before")
-          String before,
-      @Parameter(description = "Returns list of entity versions after this cursor")
-          @QueryParam("after")
-          String after) {
-    return listEntityHistoryByTimestampInternal(
-        securityContext, startTs, endTs, before, after, limitParam);
   }
 }

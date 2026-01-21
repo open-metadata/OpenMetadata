@@ -255,7 +255,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           .withDisplayName(csvRecord.get(2))
           .withDescription(csvRecord.get(3))
           .withSynonyms(CsvUtil.fieldToStrings(csvRecord.get(4)))
-          .withRelatedTerms(getEntityReferencesForGlossaryTerms(printer, csvRecord, 5))
+          .withRelatedTerms(getEntityReferences(printer, csvRecord, 5, GLOSSARY_TERM))
           .withReferences(getTermReferences(printer, csvRecord))
           .withTags(
               getTagLabels(

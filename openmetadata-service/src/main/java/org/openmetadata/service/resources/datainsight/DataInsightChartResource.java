@@ -66,7 +66,7 @@ public class DataInsightChartResource
     extends EntityResource<DataInsightChart, DataInsightChartRepository> {
 
   private final DataInsightChartMapper mapper = new DataInsightChartMapper();
-  public static final String COLLECTION_PATH = "/v1/analytics/dataInsights/charts/";
+  public static final String COLLECTION_PATH = "/v1/analytics/dataInsights/charts";
   public static final String FIELDS = "owners";
   private final SearchRepository searchRepository;
 
