@@ -999,7 +999,7 @@ test('Tag Page Activity Feed', async ({ page }) => {
       // 1. Verify description update entry
       // Look for description in either the message container or the header text
       const descriptionUpdateEntry = page
-        .locator('[data-testid="markdown-parser"],')
+        .locator('[data-testid="markdown-parser"]')
         .filter({ hasText: /description|Description|updated description/i })
         .first();
       
@@ -1008,7 +1008,7 @@ test('Tag Page Activity Feed', async ({ page }) => {
       // 2. Verify rename entry (if rename was performed)
       if (renamePerformed) {
         const renameEntry = page
-          .locator('[data-testid="markdown-parser""], [data-testid="headerText"]')
+          .locator('[data-testid="markdown-parser""]')
           .filter({ hasText: /rename|Rename|displayName|display name/i })
           .first();
         await expect(renameEntry).toBeVisible({ timeout: 15000 });
@@ -1016,7 +1016,7 @@ test('Tag Page Activity Feed', async ({ page }) => {
 
       // 3. Verify style change entry (icon/color update)
       const styleUpdateEntry = page
-        .locator('[data-testid="markdown-parser"], [data-testid="headerText"]')
+        .locator('[data-testid="markdown-parser"]')
         .filter({ hasText: /style|Style|icon|Icon|color|Color/i })
         .first();
       await expect(styleUpdateEntry).toBeVisible({ timeout: 15000 });
@@ -1024,7 +1024,7 @@ test('Tag Page Activity Feed', async ({ page }) => {
       // 4. Verify asset add entry (if asset was added)
       if (assetAdded) {
         const assetAddEntry = page
-          .locator('[data-testid="markdown-parser"], [data-testid="headerText"]')
+          .locator('[data-testid="markdown-parser"]')
           .filter({ hasText: /asset|Asset|added|Added/i })
           .first();
         await expect(assetAddEntry).toBeVisible({ timeout: 15000 });
