@@ -67,7 +67,7 @@ ON audit_log_event (service_name, event_ts DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_log_created_at
 ON audit_log_event (created_at);
 
-<<<<<<< HEAD
+
 
 -- Create Learning Resource Entity Table
 CREATE TABLE IF NOT EXISTS learning_resource_entity (
@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS learning_resource_entity (
     PRIMARY KEY (id),
     UNIQUE (fqnhash)
 );
-=======
+
 -- Add updatedAt generated column to entity_extension table for efficient timestamp-based queries
 -- This supports the listEntityHistoryByTimestamp API endpoint for retrieving entity versions within a time range
 ALTER TABLE entity_extension
