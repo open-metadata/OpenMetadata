@@ -326,6 +326,12 @@ class SnowflakeSource(
 
             for row in results:
                 schema_name = row.SCHEMA_NAME
+                if not row.TAG_VALUE:
+                    logger.warning(
+                        f"Skipping tag '{row.TAG_NAME}' for schema '{schema_name}' - "
+                        "TAG_VALUE is empty. Snowflake tags require a value to be ingested."
+                    )
+                    continue
                 if schema_name not in self.schema_tags_map:
                     self.schema_tags_map[schema_name] = []
                 self.schema_tags_map[schema_name].append(
@@ -523,6 +529,14 @@ class SnowflakeSource(
 
             for res in result:
                 row = list(res)
+                # row[0] = TAG_NAME, row[1] = TAG_VALUE
+                if not row[1]:
+                    fqn_elements = [name for name in row[2:] if name]
+                    logger.warning(
+                        f"Skipping tag '{row[0]}' for '{'.'.join(fqn_elements)}' - "
+                        "TAG_VALUE is empty. Snowflake tags require a value to be ingested."
+                    )
+                    continue
                 fqn_elements = [name for name in row[2:] if name]
                 yield from get_ometa_tag_and_classification(
                     tag_fqn=FullyQualifiedEntityName(
