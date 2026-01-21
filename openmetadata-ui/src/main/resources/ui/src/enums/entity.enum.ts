@@ -237,6 +237,7 @@ export enum EntityTabs {
   TERMS = 'terms',
   GLOSSARY_TERMS = 'glossary_terms',
   ASSETS = 'assets',
+  INPUT_OUTPUT_PORTS = 'input_output_ports',
   EXPRESSION = 'expression',
   INSIGHTS = 'insights',
   DASHBOARD = 'dashboard',

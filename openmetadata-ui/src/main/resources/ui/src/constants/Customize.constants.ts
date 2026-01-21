@@ -63,6 +63,7 @@ export const TAB_LABEL_MAP = {
   [EntityTabs.WORKSHEETS]: 'label.worksheet-plural',
   [EntityTabs.FILES]: 'label.file-plural',
   [EntityTabs.SPREADSHEETS]: 'label.spreadsheet-plural',
+  [EntityTabs.INPUT_OUTPUT_PORTS]: 'label.input-output-port-plural',
 } as Record<EntityTabs, TFunctionKeys>;
 
 export type CustomizeEntityType =

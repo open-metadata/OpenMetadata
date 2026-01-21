@@ -158,7 +158,7 @@ const TestSuiteSummaryContainer = ({ node }: LineageNodeLabelPropsExtended) => {
 
   const { showDataObservability } = useMemo(() => {
     return {
-      showDataObservability: activeLayer.includes(
+      showDataObservability: activeLayer?.includes(
         LineageLayer.DataObservability
       ),
     };

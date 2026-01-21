@@ -39,6 +39,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.resources.dqtests.TestSuiteResource;
 
 /**
  * Integration tests for TestSuite entity operations.
@@ -54,6 +55,12 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
   {
     supportsFollowers = false; // TestSuite doesn't support followers
     supportsDataProducts = false; // TestSuite doesn't support dataProducts
+    supportsListHistoryByTimestamp = true;
+  }
+
+  @Override
+  protected String getResourcePath() {
+    return TestSuiteResource.COLLECTION_PATH;
   }
 
   // ===================================================================
