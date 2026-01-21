@@ -54,6 +54,10 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   const [isOptionsLoading, setIsOptionsLoading] = useState<boolean>(false);
   const [tierOptions, setTierOptions] = useState<SearchDropdownOption[]>();
   const { queryFilter } = useAdvanceSearch();
+  const getStaticOptions = useCallback(
+    (key: string) => fields.find((item) => item.key === key)?.options,
+    [fields]
+  );
 
   const { showDeleted, quickFilter } = useMemo(() => {
     const parsed = Qs.parse(
@@ -83,6 +87,13 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     index: SearchIndex | SearchIndex[],
     key: string
   ) => {
+    const staticOptions = getStaticOptions(key);
+    if (staticOptions) {
+      setOptions(staticOptions);
+
+      return;
+    }
+
     let buckets: Bucket[] = [];
     if (aggregations?.[key] && key !== TIER_FQN_KEY) {
       buckets = aggregations[key].buckets;
@@ -127,6 +138,13 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   };
 
   const getInitialOptions = async (key: string) => {
+    const staticOptions = getStaticOptions(key);
+    if (staticOptions) {
+      setOptions(staticOptions);
+
+      return;
+    }
+
     setIsOptionsLoading(true);
     setOptions([]);
     try {
@@ -139,6 +157,18 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   };
 
   const getFilterOptions = async (value: string, key: string) => {
+    const staticOptions = getStaticOptions(key);
+    if (staticOptions) {
+      const filteredOptions = value
+        ? staticOptions.filter((option) =>
+            option.label.toLowerCase().includes(value.toLowerCase())
+          )
+        : staticOptions;
+      setOptions(filteredOptions);
+
+      return;
+    }
+
     setIsOptionsLoading(true);
     setOptions([]);
     try {
@@ -185,6 +215,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         const hasNullOption = fieldsWithNullValues.includes(
           field.key as EntityFields
         );
+        const dropdownOptions = field.options ?? options ?? [];
         const selectedKeys =
           field.key === TIER_FQN_KEY && options?.length
             ? field.value?.map((value) => {
@@ -200,12 +231,13 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             fixedOrderOptions={field.key === TIER_FQN_KEY}
             hasNullOption={hasNullOption}
             hideCounts={field.hideCounts ?? false}
+            hideSearchBar={field.hideSearchBar ?? false}
             independent={independent}
             index={index as ExploreSearchIndex}
             isSuggestionsLoading={isOptionsLoading}
             key={field.key}
             label={translateWithNestedKeys(field.label, field.labelKeyOptions)}
-            options={options ?? []}
+            options={dropdownOptions}
             searchKey={field.key}
             selectedKeys={selectedKeys ?? []}
             showSelectedCounts={showSelectedCounts}

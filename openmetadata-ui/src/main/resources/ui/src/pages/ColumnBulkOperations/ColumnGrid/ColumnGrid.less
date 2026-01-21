@@ -132,19 +132,33 @@
 
 // Stats Row - 3 cards in a row matching Figma design
 .stats-row {
-  display: flex;
-  gap: @size-md;
   margin-bottom: @size-xs;
+}
+
+.stat-card-group {
+  display: flex;
+  gap: 0;
+  width: 100%;
+  padding: 0;
+  background: @white;
+  border: 1px solid @grey-200;
+  border-radius: @border-rad-xs;
+  overflow: hidden;
+  box-shadow: 0 1px 2px 0 rgba(10, 13, 18, 0.05);
+  padding: @size-lg;
 
   .stat-card {
     flex: 1;
     display: flex;
     align-items: center;
     gap: @size-md;
-    padding: @size-mlg @size-lg;
+    margin-right: @size-lg;
     background: @white;
-    border: 1px solid @grey-200;
-    border-radius: @border-rad-xs;
+    border-right: 1px solid @grey-200;
+
+    &:last-child {
+      border-right: none;
+    }
 
     .stat-icon {
       flex-shrink: 0;
@@ -535,22 +549,22 @@
 
 // Coverage status in description column
 .coverage-full {
-  color: @green-500;
+  color: @green-600;
   font-weight: @font-medium;
 }
 
 .coverage-partial {
-  color: @warning-400;
+  color: @yellow-13;
   font-weight: @font-medium;
 }
 
 .coverage-missing {
-  color: @grey-400;
+  color: @grey-500;
   font-weight: @font-medium;
 }
 
 .coverage-inconsistent {
-  color: @red-21;
+  color: @red-14;
   font-weight: @font-medium;
 }
 

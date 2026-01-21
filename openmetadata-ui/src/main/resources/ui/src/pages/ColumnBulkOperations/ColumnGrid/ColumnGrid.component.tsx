@@ -34,7 +34,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ReactComponent as OccurrencesIcon } from '../../../assets/svg/ic-occurences.svg';
 import { ReactComponent as PendingChangesIcon } from '../../../assets/svg/ic-pending-changes.svg';
 import { ReactComponent as UniqueColumnsIcon } from '../../../assets/svg/ic-unique-column.svg';
@@ -53,12 +53,9 @@ import { useDataTable } from '../../../components/common/atoms/table/useDataTabl
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../components/common/RichTextEditor/RichTextEditor.interface';
-import SearchDropdown from '../../../components/SearchDropdown/SearchDropdown';
-import { SearchDropdownOption } from '../../../components/SearchDropdown/SearchDropdown.interface';
 import { SOCKET_EVENTS } from '../../../constants/constants';
 import { DRAWER_HEADER_STYLING } from '../../../constants/DomainsListPage.constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
-import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import {
@@ -85,11 +82,6 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ColumnGridProps, ColumnGridRowData } from './ColumnGrid.interface';
 import './ColumnGrid.less';
 import { ColumnGridTableRow } from './components/ColumnGridTableRow';
-import {
-  ASSET_TYPE_OPTIONS,
-  DATA_TYPE_OPTIONS,
-  METADATA_STATUS_OPTIONS,
-} from './constants/ColumnGrid.constants';
 import { useColumnGridFilters } from './hooks/useColumnGridFilters';
 import { useColumnGridListingData } from './hooks/useColumnGridListingData';
 // Removed React Data Grid - using MUI Table instead
@@ -102,106 +94,11 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   const { t } = useTranslation();
   const theme = useTheme();
   const { socket } = useWebSocketConnector();
-  const [searchParams, setSearchParams] = useSearchParams();
   const [isUpdating, setIsUpdating] = useState(false);
   const [viewSelectedOnly, setViewSelectedOnly] = useState(false);
   const editorRef = React.useRef<EditorContentRef>(null);
   const activeJobIdRef = useRef<string | null>(null);
   const closeDrawerRef = useRef<() => void>(() => {});
-
-  // Get current filter values from URL
-  const currentDataType = useMemo(() => {
-    const dataTypeParam = searchParams.get('dataType');
-
-    if (!dataTypeParam) {
-      return [];
-    }
-
-    return [{ key: dataTypeParam, label: dataTypeParam }];
-  }, [searchParams]);
-
-  const currentMetadataStatus = useMemo(() => {
-    const statusParam = searchParams.get('metadataStatus');
-
-    if (!statusParam) {
-      return [];
-    }
-
-    return statusParam
-      .split(',')
-      .filter(Boolean)
-      .map((status) => {
-        const option = METADATA_STATUS_OPTIONS.find(
-          (opt) => opt.key === status
-        );
-
-        return option || { key: status, label: status };
-      });
-  }, [searchParams]);
-
-  const currentAssetType = useMemo(() => {
-    const assetTypeParam = searchParams.get(EntityFields.ENTITY_TYPE);
-
-    if (!assetTypeParam) {
-      return [];
-    }
-
-    return assetTypeParam
-      .split(',')
-      .filter(Boolean)
-      .map((type) => {
-        const option = ASSET_TYPE_OPTIONS.find((opt) => opt.key === type);
-
-        return option || { key: type, label: type };
-      });
-  }, [searchParams]);
-
-  // Handle data type filter change
-  const handleDataTypeChange = useCallback(
-    (values: SearchDropdownOption[]) => {
-      const newParams = new URLSearchParams(searchParams);
-      if (values.length > 0) {
-        // For dataType, we only allow single selection
-        newParams.set('dataType', values[0].key);
-      } else {
-        newParams.delete('dataType');
-      }
-      newParams.delete('page'); // Reset to page 1
-      setSearchParams(newParams);
-    },
-    [searchParams, setSearchParams]
-  );
-
-  // Handle metadata status filter change
-  const handleMetadataStatusChange = useCallback(
-    (values: SearchDropdownOption[]) => {
-      const newParams = new URLSearchParams(searchParams);
-      if (values.length > 0) {
-        const statusValues = values.map((v) => v.key).join(',');
-        newParams.set('metadataStatus', statusValues);
-      } else {
-        newParams.delete('metadataStatus');
-      }
-      newParams.delete('page'); // Reset to page 1
-      setSearchParams(newParams);
-    },
-    [searchParams, setSearchParams]
-  );
-
-  const handleAssetTypeChange = useCallback(
-    (values: SearchDropdownOption[]) => {
-      const newParams = new URLSearchParams(searchParams);
-      if (values.length > 0) {
-        const assetTypeValues = values.map((v) => v.key).join(',');
-        newParams.set(EntityFields.ENTITY_TYPE, assetTypeValues);
-      } else {
-        newParams.delete(EntityFields.ENTITY_TYPE);
-      }
-      newParams.delete('page'); // Reset to page 1
-      setSearchParams(newParams);
-    },
-    [searchParams, setSearchParams]
-  );
 
   // Helper function to build path from occurrence
   const buildPath = (occurrence: ColumnOccurrenceRef): string => {
@@ -616,6 +513,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
   // Define render functions with correct CellRenderer signature
   const renderPathCellAdapter = useCallback((entity: ColumnGridRowData) => {
+    const additionalPathsCount = entity.additionalPathsCount ?? 0;
+
     if (!entity.path) {
       return <Text type="secondary">-</Text>;
     }
@@ -623,9 +522,9 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     return (
       <Box className="path-cell">
         <Text className="path-text">{entity.path}</Text>
-        {entity.additionalPathsCount && entity.additionalPathsCount > 0 && (
+        {additionalPathsCount > 0 && (
           <Text className="path-more" type="secondary">
-            +{entity.additionalPathsCount} more
+            +{additionalPathsCount} more
           </Text>
         )}
       </Box>
@@ -1670,7 +1569,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       selectedCount > 0 ? String(selectedCount).padStart(2, '0') : ''
     }`,
     anchor: 'right',
-    width: 500,
+    width: '40%',
     closeOnEscape: false,
     header: {
       sx: DRAWER_HEADER_STYLING,
@@ -1722,74 +1621,69 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
   return (
     <div className="column-grid-container" data-testid="column-grid-container">
-      {/* Summary Stats Cards */}
-      <Stack className="stats-row" direction="row" spacing={2}>
-        <Paper
-          className="stat-card"
-          data-testid="total-unique-columns-card"
-          elevation={0}>
-          <UniqueColumnsIcon className="stat-icon" />
-          <Box className="stat-content">
-            <Typography
-              color={theme.palette.grey[900]}
-              data-testid="total-unique-columns-value"
-              fontSize="18px"
-              fontWeight={600}>
-              {columnGridListing.totalUniqueColumns.toLocaleString()}
-            </Typography>
-            <Typography
-              color={theme.palette.grey[700]}
-              fontSize="14px"
-              fontWeight={400}>
-              {t('label.total-unique-columns')}
-            </Typography>
+      {/* Summary Stats Cards - combined in single container */}
+      <Box className="stats-row">
+        <Paper className="stat-card-group" elevation={0}>
+          <Box className="stat-card" data-testid="total-unique-columns-card">
+            <UniqueColumnsIcon className="stat-icon" />
+            <Box className="stat-content">
+              <Typography
+                color={theme.palette.grey[900]}
+                data-testid="total-unique-columns-value"
+                fontSize="18px"
+                fontWeight={600}>
+                {columnGridListing.totalUniqueColumns.toLocaleString()}
+              </Typography>
+              <Typography
+                color={theme.palette.grey[700]}
+                fontSize="14px"
+                fontWeight={400}>
+                {t('label.total-unique-columns')}
+              </Typography>
+            </Box>
+          </Box>
+
+          <Box className="stat-card" data-testid="total-occurrences-card">
+            <OccurrencesIcon className="stat-icon" />
+            <Box className="stat-content">
+              <Typography
+                color={theme.palette.grey[900]}
+                data-testid="total-occurrences-value"
+                fontSize="18px"
+                fontWeight={600}>
+                {columnGridListing.totalOccurrences.toLocaleString()}
+              </Typography>
+              <Typography
+                color={theme.palette.grey[700]}
+                fontSize="14px"
+                fontWeight={400}>
+                {t('label.total-occurrences')}
+              </Typography>
+            </Box>
+          </Box>
+
+          <Box className="stat-card" data-testid="pending-changes-card">
+            <PendingChangesIcon className="stat-icon" />
+            <Box className="stat-content">
+              <Typography
+                color={theme.palette.grey[900]}
+                data-testid="pending-changes-value"
+                fontSize="18px"
+                fontWeight={600}>
+                {editedCount > 0
+                  ? `${editedCount}/${selectedCount || editedCount}`
+                  : '0'}
+              </Typography>
+              <Typography
+                color={theme.palette.grey[700]}
+                fontSize="14px"
+                fontWeight={400}>
+                {t('label.pending-changes')}
+              </Typography>
+            </Box>
           </Box>
         </Paper>
-        <Paper
-          className="stat-card"
-          data-testid="total-occurrences-card"
-          elevation={0}>
-          <OccurrencesIcon className="stat-icon" />
-          <Box className="stat-content">
-            <Typography
-              color={theme.palette.grey[900]}
-              data-testid="total-occurrences-value"
-              fontSize="18px"
-              fontWeight={600}>
-              {columnGridListing.totalOccurrences.toLocaleString()}
-            </Typography>
-            <Typography
-              color={theme.palette.grey[700]}
-              fontSize="14px"
-              fontWeight={400}>
-              {t('label.total-occurrences')}
-            </Typography>
-          </Box>
-        </Paper>
-        <Paper
-          className="stat-card"
-          data-testid="pending-changes-card"
-          elevation={0}>
-          <PendingChangesIcon className="stat-icon" />
-          <Box className="stat-content">
-            <Typography
-              color={theme.palette.grey[900]}
-              data-testid="pending-changes-value"
-              fontSize="18px"
-              fontWeight={600}>
-              {editedCount > 0
-                ? `${editedCount}/${selectedCount || editedCount}`
-                : '0'}
-            </Typography>
-            <Typography
-              color={theme.palette.grey[700]}
-              fontSize="14px"
-              fontWeight={400}>
-              {t('label.pending-changes')}
-            </Typography>
-          </Box>
-        </Paper>
-      </Stack>
+      </Box>
 
       {/* Table Container - Same structure as DomainListPage */}
       <TableContainer component={Paper} sx={{ mb: 5 }}>
@@ -1805,49 +1699,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           }}>
           <Box sx={{ display: 'flex', gap: 5, alignItems: 'center' }}>
             {search}
-            <SearchDropdown
-              hideCounts
-              highlight
-              independent
-              label={t('label.asset-type')}
-              options={ASSET_TYPE_OPTIONS}
-              searchKey={EntityFields.ENTITY_TYPE}
-              selectedKeys={currentAssetType}
-              showSelectedCounts={false}
-              triggerButtonSize="middle"
-              onChange={handleAssetTypeChange}
-              onGetInitialOptions={() => {}}
-              onSearch={() => {}}
-            />
             {quickFilters}
-            <SearchDropdown
-              hideCounts
-              highlight
-              independent
-              label={t('label.data-type')}
-              options={DATA_TYPE_OPTIONS}
-              searchKey="dataType"
-              selectedKeys={currentDataType}
-              showSelectedCounts={false}
-              triggerButtonSize="middle"
-              onChange={handleDataTypeChange}
-              onGetInitialOptions={() => {}}
-              onSearch={() => {}}
-            />
-            <SearchDropdown
-              hideCounts
-              highlight
-              independent
-              label={t('label.metadata-status')}
-              options={METADATA_STATUS_OPTIONS}
-              searchKey="metadataStatus"
-              selectedKeys={currentMetadataStatus}
-              showSelectedCounts={false}
-              triggerButtonSize="middle"
-              onChange={handleMetadataStatusChange}
-              onGetInitialOptions={() => {}}
-              onSearch={() => {}}
-            />
             <Box ml="auto" />
             {/* View Selected Toggle */}
             {hasSelection && (

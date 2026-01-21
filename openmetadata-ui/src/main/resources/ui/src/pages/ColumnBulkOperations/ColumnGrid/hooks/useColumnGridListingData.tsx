@@ -27,6 +27,10 @@ import { ColumnGridItem } from '../../../../generated/api/data/columnGridRespons
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { getColumnGrid } from '../../../../rest/columnAPI';
 import { ColumnGridFilters, ColumnGridRowData } from '../ColumnGrid.interface';
+import {
+  COLUMN_GRID_FILTERS,
+  convertFilterValuesToOptions,
+} from '../constants/ColumnGrid.constants';
 
 const PAGE_SIZE = TABLE_CARD_PAGE_SIZE;
 
@@ -92,48 +96,41 @@ export const useColumnGridListingData = (
     );
 
     const filters: Record<string, string[]> = {};
-    const filterKeys = [EntityFields.ENTITY_TYPE, EntityFields.SERVICE];
+    const filterKeys = [
+      EntityFields.ENTITY_TYPE,
+      EntityFields.SERVICE,
+      'dataType',
+      'metadataStatus',
+    ];
     filterKeys.forEach((key) => {
       const filterValue = searchParams.get(key);
       filters[key] = filterValue ? filterValue.split(',').filter(Boolean) : [];
     });
-
-    // Get dataType and metadataStatus from URL params (not EntityFields, so handled separately)
-    const dataType = searchParams.get('dataType') || undefined;
-    const metadataStatusParam = searchParams.get('metadataStatus');
-    const metadataStatus = metadataStatusParam
-      ? metadataStatusParam.split(',').filter(Boolean)
-      : undefined;
 
     return {
       searchQuery,
       filters,
       currentPage,
       pageSize,
-      dataType,
-      metadataStatus,
     };
   }, [searchParams]);
 
   const parsedFilters: ExploreQuickFilterField[] = useMemo(() => {
-    return [
-      {
-        key: EntityFields.ENTITY_TYPE,
-        label: 'label.asset-type',
-        value: (urlState.filters[EntityFields.ENTITY_TYPE] || []).map((v) => ({
-          key: v,
-          label: v,
-        })),
-      },
-      {
-        key: EntityFields.SERVICE,
-        label: 'label.service',
-        value: (urlState.filters[EntityFields.SERVICE] || []).map((v) => ({
-          key: v,
-          label: v,
-        })),
-      },
-    ];
+    return COLUMN_GRID_FILTERS.map((filter) => ({
+      ...filter,
+      value: convertFilterValuesToOptions(
+        filter.key,
+        filter.key === EntityFields.ENTITY_TYPE
+          ? urlState.filters[EntityFields.ENTITY_TYPE] || []
+          : filter.key === EntityFields.SERVICE
+          ? urlState.filters[EntityFields.SERVICE] || []
+          : filter.key === 'dataType'
+          ? urlState.filters['dataType'] || []
+          : filter.key === 'metadataStatus'
+          ? urlState.filters['metadataStatus'] || []
+          : []
+      ),
+    }));
   }, [urlState.filters]);
 
   // Selection state
@@ -164,17 +161,12 @@ export const useColumnGridListingData = (
       ...serverFilters,
       entityTypes: urlState.filters[EntityFields.ENTITY_TYPE],
       serviceName: urlState.filters[EntityFields.SERVICE]?.[0],
-      dataType: urlState.dataType,
-      metadataStatus: urlState.metadataStatus,
+      dataType: urlState.filters['dataType']?.[0],
+      metadataStatus: urlState.filters['metadataStatus'],
     };
 
     return filters;
-  }, [
-    serverFilters,
-    urlState.filters,
-    urlState.dataType,
-    urlState.metadataStatus,
-  ]);
+  }, [serverFilters, urlState.filters]);
 
   // Load data function - adapts cursor-based to page-based
   // Backend API: Uses cursor-based pagination
@@ -293,10 +285,10 @@ export const useColumnGridListingData = (
       }
 
       // Apply dataType filter (client-side for multi-select support)
-      if (urlState.dataType) {
+      const dataTypeFilter = urlState.filters['dataType']?.[0];
+      if (dataTypeFilter) {
         filtered = filtered.filter(
-          (row) =>
-            row.dataType?.toUpperCase() === urlState.dataType?.toUpperCase()
+          (row) => row.dataType?.toUpperCase() === dataTypeFilter?.toUpperCase()
         );
       }
 
@@ -306,7 +298,7 @@ export const useColumnGridListingData = (
 
       return filtered;
     },
-    [urlState.searchQuery, urlState.dataType]
+    [urlState.searchQuery, urlState.filters]
   );
 
   // Ref to track edited values across row regenerations
@@ -357,7 +349,7 @@ export const useColumnGridListingData = (
   }, [
     gridItems,
     urlState.searchQuery,
-    urlState.dataType,
+    urlState.filters,
     expandedRows,
     expandedStructRows,
     props.transformGridItemsToRows,
@@ -388,11 +380,7 @@ export const useColumnGridListingData = (
   // Load data when filters or page changes - similar to domain list pattern
   useEffect(() => {
     // Check if filters have changed by comparing stringified version
-    const currentFiltersString = JSON.stringify({
-      ...columnGridFilters,
-      dataType: urlState.dataType,
-      metadataStatus: urlState.metadataStatus,
-    });
+    const currentFiltersString = JSON.stringify(columnGridFilters);
     const filtersChanged = previousFiltersRef.current !== currentFiltersString;
 
     // Reset cursors, items, and edited values when filters change
@@ -455,14 +443,23 @@ export const useColumnGridListingData = (
   const handleFilterChange = useCallback(
     (filters: ExploreQuickFilterField[]) => {
       const newParams = new URLSearchParams(searchParams);
+
+      // Get the filter keys that are being updated
+      const filterKeysToUpdate = filters.map((f) => f.key);
+
+      // Clear only the filters that are being updated
+      filterKeysToUpdate.forEach((key) => {
+        newParams.delete(key);
+      });
+
+      // Then set the new filter values
       filters.forEach((filter) => {
         const values = filter.value?.map((v) => v.key) || [];
         if (values.length > 0) {
           newParams.set(filter.key, values.join(','));
-        } else {
-          newParams.delete(filter.key);
         }
       });
+
       newParams.delete('page');
       setSearchParams(newParams);
     },

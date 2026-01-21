@@ -70,6 +70,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   hasNullOption = false,
   showSelectedCounts = false,
   triggerButtonSize = 'small',
+  hideSearchBar = false,
 }) => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const { t } = useTranslation();
@@ -243,19 +244,21 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
         className="custom-dropdown-render"
         data-testid="drop-down-menu">
         <Space className="w-full" direction="vertical" size={0}>
-          <div className="p-t-sm p-x-sm">
-            <Input
-              autoFocus
-              data-testid="search-input"
-              placeholder={`${t('label.search-entity', {
-                entity: label,
-              })}...`}
-              onChange={(e) => {
-                const { value } = e.target;
-                debouncedOnSearch(value);
-              }}
-            />
-          </div>
+          {!hideSearchBar && (
+            <div className="p-t-sm p-x-sm">
+              <Input
+                autoFocus
+                data-testid="search-input"
+                placeholder={`${t('label.search-entity', {
+                  entity: label,
+                })}...`}
+                onChange={(e) => {
+                  const { value } = e.target;
+                  debouncedOnSearch(value);
+                }}
+              />
+            </div>
+          )}
           {showClearAllBtn && (
             <>
               <Divider className="m-t-xs m-b-0" />
@@ -319,6 +322,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       getDropdownBody,
       handleUpdate,
       handleDropdownClose,
+      hideSearchBar,
     ]
   );
 

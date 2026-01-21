@@ -12,56 +12,81 @@
  */
 
 import { ExploreQuickFilterField } from '../../../../components/Explore/ExplorePage.interface';
+import { SearchDropdownOption } from '../../../../components/SearchDropdown/SearchDropdown.interface';
 import { EntityFields } from '../../../../enums/AdvancedSearch.enum';
-
-export const COLUMN_GRID_DEFAULT_QUICK_FILTERS = [EntityFields.SERVICE];
+import i18n from '../../../../utils/i18next/LocalUtil';
 
 export const COLUMN_GRID_FILTERS: ExploreQuickFilterField[] = [
   {
-    label: 'label.service',
+    label: i18n.t('label.service'),
     key: EntityFields.SERVICE,
+  },
+  {
+    label: i18n.t('label.asset-type'),
+    key: EntityFields.ENTITY_TYPE,
+    hideCounts: true,
+    hideSearchBar: true,
+    options: [
+      { key: 'table', label: 'Table' },
+      { key: 'dashboardDataModel', label: 'Dashboard Data Model' },
+      { key: 'topic', label: 'Topic' },
+      { key: 'container', label: 'Container' },
+      { key: 'searchIndex', label: 'Search Index' },
+    ],
+  },
+  {
+    label: i18n.t('label.data-type'),
+    key: 'dataType',
+    hideCounts: true,
+    hideSearchBar: true,
+    options: [
+      { key: 'STRING', label: 'STRING' },
+      { key: 'VARCHAR', label: 'VARCHAR' },
+      { key: 'INT', label: 'INT' },
+      { key: 'BIGINT', label: 'BIGINT' },
+      { key: 'FLOAT', label: 'FLOAT' },
+      { key: 'DOUBLE', label: 'DOUBLE' },
+      { key: 'BOOLEAN', label: 'BOOLEAN' },
+      { key: 'DATE', label: 'DATE' },
+      { key: 'TIMESTAMP', label: 'TIMESTAMP' },
+      { key: 'DECIMAL', label: 'DECIMAL' },
+      { key: 'NUMERIC', label: 'NUMERIC' },
+      { key: 'TEXT', label: 'TEXT' },
+      { key: 'CHAR', label: 'CHAR' },
+      { key: 'BINARY', label: 'BINARY' },
+      { key: 'ARRAY', label: 'ARRAY' },
+      { key: 'MAP', label: 'MAP' },
+      { key: 'STRUCT', label: 'STRUCT' },
+      { key: 'JSON', label: 'JSON' },
+      { key: 'UUID', label: 'UUID' },
+    ],
+  },
+  {
+    label: i18n.t('label.metadata-status'),
+    hideCounts: true,
+    hideSearchBar: true,
+    key: 'metadataStatus',
+    options: [
+      { key: 'MISSING', label: 'Missing' },
+      { key: 'INCOMPLETE', label: 'Incomplete' },
+      { key: 'INCONSISTENT', label: 'Inconsistent' },
+      { key: 'COMPLETE', label: 'Complete' },
+    ],
   },
 ];
 
-// Common data types for filter
-export const DATA_TYPE_OPTIONS = [
-  { key: 'STRING', label: 'STRING' },
-  { key: 'VARCHAR', label: 'VARCHAR' },
-  { key: 'INT', label: 'INT' },
-  { key: 'BIGINT', label: 'BIGINT' },
-  { key: 'FLOAT', label: 'FLOAT' },
-  { key: 'DOUBLE', label: 'DOUBLE' },
-  { key: 'BOOLEAN', label: 'BOOLEAN' },
-  { key: 'DATE', label: 'DATE' },
-  { key: 'TIMESTAMP', label: 'TIMESTAMP' },
-  { key: 'DECIMAL', label: 'DECIMAL' },
-  { key: 'NUMERIC', label: 'NUMERIC' },
-  { key: 'TEXT', label: 'TEXT' },
-  { key: 'CHAR', label: 'CHAR' },
-  { key: 'BINARY', label: 'BINARY' },
-  { key: 'ARRAY', label: 'ARRAY' },
-  { key: 'MAP', label: 'MAP' },
-  { key: 'STRUCT', label: 'STRUCT' },
-  { key: 'JSON', label: 'JSON' },
-  { key: 'UUID', label: 'UUID' },
-];
-
-// Metadata status options - matches API values in ColumnResource.java
-// MISSING: No description AND no tags
-// INCOMPLETE: Has description OR tags, but not both
-// INCONSISTENT: Metadata varies across occurrences (different descriptions, tags, etc.)
-// COMPLETE: Has both description AND tags, and is consistent across all occurrences
-export const METADATA_STATUS_OPTIONS = [
-  { key: 'MISSING', label: 'Missing' },
-  { key: 'INCOMPLETE', label: 'Incomplete' },
-  { key: 'INCONSISTENT', label: 'Inconsistent' },
-  { key: 'COMPLETE', label: 'Complete' },
-];
-
-export const ASSET_TYPE_OPTIONS = [
-  { key: 'table', label: 'Table' },
-  { key: 'dashboardDataModel', label: 'Dashboard Data Model' },
-  { key: 'topic', label: 'Topic' },
-  { key: 'container', label: 'Container' },
-  { key: 'searchIndex', label: 'Search Index' },
-];
+/**
+ * Helper function to convert string filter values to SearchDropdownOption objects
+ * @param filterKey - The filter key to look up in COLUMN_GRID_FILTERS
+ * @param filterValues - Array of string values from URL state
+ * @returns Array of SearchDropdownOption objects
+ */
+export const convertFilterValuesToOptions = (
+  filterKey: string,
+  filterValues: string[]
+): SearchDropdownOption[] => {
+  return filterValues.map((v) => ({
+    key: v,
+    label: v,
+  }));
+};
