@@ -101,12 +101,14 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.ValidatorUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
@@ -1766,8 +1768,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           testCase.setUpdatedBy(importedBy);
         }
 
-          if (!importResult.getDryRun()) {
-            // Use createOrUpdateForImport which handles both create and update
+        if (!importResult.getDryRun()) {
+          // Use enhanced method that handles create/update AND change tracking
+          if (processRecord) {
+            createEntityWithChangeDescription(printer, csvRecord, testCase);
+            // Collect IDs for Bundle Suite attachment after successful creation
+            if (targetBundleSuite != null && testCase.getId() != null) {
+              importedTestCaseIds.add(testCase.getId());
+            }
+          } else {
+            // Fallback for when processRecord is false
             RestUtil.PutResponse<TestCase> response =
                 repository.createOrUpdateForImport(null, testCase, importedBy);
             if (targetBundleSuite != null) {
@@ -1778,13 +1788,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             } else {
               importSuccess(printer, csvRecord, ENTITY_UPDATED);
             }
-          } else {
-            // Dry run - just validate
-            repository.prepareInternal(testCase, true);
-            importSuccess(printer, csvRecord, ENTITY_CREATED);
           }
-        if (processRecord) {
-          createEntityWithChangeDescription(printer, csvRecord, testCase);
+        } else {
+          // Dry run - just validate
+          repository.prepareInternal(testCase, true);
+          importSuccess(printer, csvRecord, ENTITY_CREATED);
         }
 
       } catch (Exception ex) {
@@ -1949,6 +1957,66 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       }
 
       return parameterValues;
+    }
+
+    @Override
+    protected void createEntityWithChangeDescription(
+        CSVPrinter printer, CSVRecord csvRecord, TestCase testCase) throws IOException {
+      int recordIndex = getRecordIndex(csvRecord);
+      ChangeDescription changeDescription = getRecordFieldChanges(recordIndex);
+
+      if (!Boolean.TRUE.equals(importResult.getDryRun())) {
+        try {
+          // Ensure entity has proper ID and metadata
+          if (testCase.getId() == null) {
+            testCase.setId(UUID.randomUUID());
+          }
+          testCase.setUpdatedBy(importedBy);
+          testCase.setUpdatedAt(System.currentTimeMillis());
+
+          // Validate entity after setting ID
+          String violations = ValidatorUtil.validate(testCase);
+          if (violations != null) {
+            importFailure(printer, violations, csvRecord);
+            return;
+          }
+
+          TestCaseRepository repository =
+              (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
+          boolean update = repository.isUpdateForImport(testCase);
+          repository.prepareInternal(testCase, update);
+          RestUtil.PutResponse<TestCase> response =
+              repository.createOrUpdateForImport(null, testCase, importedBy);
+
+          // Update the testCase reference with the created/updated entity to ensure ID is set
+          TestCase createdEntity = response.getEntity();
+          testCase.setId(createdEntity.getId());
+          testCase.setVersion(createdEntity.getVersion());
+
+          String status =
+              response.getStatus() == Response.Status.CREATED ? ENTITY_CREATED : ENTITY_UPDATED;
+
+          AsyncService.getInstance()
+              .getExecutorService()
+              .submit(() -> createChangeEventAndUpdateInES(response, importedBy));
+
+          importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
+        } catch (Exception ex) {
+          importFailure(printer, ex.getMessage(), csvRecord);
+          importResult.setStatus(ApiStatus.FAILURE);
+        }
+      } else {
+        // For dry run, determine if it would be created or updated
+        TestCaseRepository repository = (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
+        repository.setFullyQualifiedName(testCase);
+        TestCase existing = repository.findByNameOrNull(testCase.getFullyQualifiedName(), ALL);
+        String status = existing == null ? ENTITY_CREATED : ENTITY_UPDATED;
+
+        // Track the dryRun created entities
+        dryRunCreatedEntities.put(testCase.getFullyQualifiedName(), testCase);
+
+        importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
+      }
     }
   }
 }

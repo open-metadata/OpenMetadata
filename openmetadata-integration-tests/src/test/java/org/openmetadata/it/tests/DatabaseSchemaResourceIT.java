@@ -1527,13 +1527,14 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
           resultLines[i].contains("fieldsUpdated"),
           "Record " + i + " should have fieldsUpdated in changeDescription: " + resultLines[i]);
     }
+  }
+
   /**
    * Test that importing a table with unapproved (IN_REVIEW) glossary terms as tags fails with
    * appropriate error message.
    */
   @Test
-  void test_importCsv_withUnapprovedGlossaryTerm_fails(TestNamespace ns)
-      throws InterruptedException, com.fasterxml.jackson.core.JsonProcessingException {
+  void test_importCsv_withUnapprovedGlossaryTerm_fails(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     Database database = createDatabase(ns, service);

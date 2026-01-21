@@ -927,7 +927,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return getNextRecord(resultsPrinter, csvHeaders, csvRecords);
   }
 
-  private void createChangeEventAndUpdateInES(PutResponse<T> response, String importedBy) {
+  protected void createChangeEventAndUpdateInES(PutResponse<T> response, String importedBy) {
     if (!response.getChangeType().equals(EventType.ENTITY_NO_CHANGE)) {
       ChangeEvent changeEvent =
           FormatterUtil.createChangeEventForEntity(
@@ -2425,7 +2425,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
   }
 
-  private ChangeDescription getRecordFieldChanges(int recordIndex) {
+  protected ChangeDescription getRecordFieldChanges(int recordIndex) {
     return recordFieldChangesArray != null
             && recordIndex >= 0
             && recordIndex < recordFieldChangesArray.length

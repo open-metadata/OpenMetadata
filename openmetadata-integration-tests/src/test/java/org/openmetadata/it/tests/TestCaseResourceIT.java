@@ -357,6 +357,44 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   // ===================================================================
+  // TESTCASE-SPECIFIC IMPORT/EXPORT OVERRIDES
+  // ===================================================================
+
+  /**
+   * Override base class importCsv to use TestCase-specific method with targetEntityType
+   */
+  @Override
+  protected org.openmetadata.schema.type.csv.CsvImportResult importCsv(
+      String entityName, String csv, boolean dryRun) throws Exception {
+    org.openmetadata.sdk.services.tests.TestCaseService service =
+        (org.openmetadata.sdk.services.tests.TestCaseService) getEntityService();
+    if (service == null) {
+      throw new UnsupportedOperationException("TestCase service not available for import");
+    }
+    // TestCase CSV import requires targetEntityType - using "table" as default for table context
+    String jsonResponse = service.importCsv(entityName, csv, dryRun, "table");
+    return org.openmetadata.schema.utils.JsonUtils.readValue(
+        jsonResponse, org.openmetadata.schema.type.csv.CsvImportResult.class);
+  }
+
+  /**
+   * Override base class importCsvRecursive to use TestCase-specific method with targetEntityType
+   */
+  @Override
+  protected org.openmetadata.schema.type.csv.CsvImportResult importCsvRecursive(
+      String entityName, String csv, boolean dryRun) throws Exception {
+    org.openmetadata.sdk.services.tests.TestCaseService service =
+        (org.openmetadata.sdk.services.tests.TestCaseService) getEntityService();
+    if (service == null) {
+      throw new UnsupportedOperationException("TestCase service not available for import");
+    }
+    // TestCase CSV import requires targetEntityType - using "table" as default for table context
+    String jsonResponse = service.importCsv(entityName, csv, dryRun, "table");
+    return org.openmetadata.schema.utils.JsonUtils.readValue(
+        jsonResponse, org.openmetadata.schema.type.csv.CsvImportResult.class);
+  }
+
+  // ===================================================================
   // TEST CASE SPECIFIC TESTS
   // ===================================================================
 
