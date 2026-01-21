@@ -150,8 +150,16 @@ public class CreateRecognizerFeedbackApprovalTaskImpl implements TaskListener {
       thread = feedRepository.getTask(about, TaskType.RecognizerFeedbackApproval, TaskStatus.Open);
       WorkflowHandler.getInstance()
           .terminateTaskProcessInstance(thread.getId(), "A Newer Process Instance is Running.");
+      LOG.info(
+          "Open task with type [{}] for [{}] terminated to create a newer instance.",
+          TaskType.RecognizerFeedbackApproval,
+          about.getLinkString());
       thread = null;
     } catch (EntityNotFoundException ex) {
+      LOG.info(
+          "Creating a new task with type [{}] for [{}]",
+          TaskType.RecognizerFeedbackApproval,
+          about.getLinkString());
       thread = null;
     }
 

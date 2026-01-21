@@ -56,7 +56,12 @@ public class RejectRecognizerFeedbackImpl implements JavaDelegate {
       RecognizerFeedback feedback = repo.get(feedbackId);
       repo.rejectFeedback(feedback, reviewedBy, comment);
 
-      LOG.info("Rejected RecognizerFeedback {} by {}", feedbackId, reviewedBy);
+      LOG.info(
+          "Rejected RecognizerFeedback {} for {} on {} by {}",
+          feedbackId,
+          feedback.getTagFQN(),
+          feedback.getEntityLink(),
+          reviewedBy);
 
     } catch (Exception exc) {
       LOG.error(

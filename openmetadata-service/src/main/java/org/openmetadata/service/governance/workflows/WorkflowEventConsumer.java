@@ -189,6 +189,7 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
     }
 
     if (variables != null && !variables.isEmpty()) {
+        LOG.info("WorkflowEventConsumer - Triggering with signal: {}", signal);
       Retry.decorateRunnable(
               retry, () -> WorkflowHandler.getInstance().triggerWithSignal(signal, variables))
           .run();

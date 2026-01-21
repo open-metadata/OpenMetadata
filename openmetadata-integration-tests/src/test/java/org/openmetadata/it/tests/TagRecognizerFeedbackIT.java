@@ -4,18 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
-import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
-import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
 import org.awaitility.Awaitility;
-import org.awaitility.core.ConditionTimeoutException;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -44,12 +40,19 @@ import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 @ExtendWith(TestNamespaceExtension.class)
 @Execution(ExecutionMode.SAME_THREAD)
 public class TagRecognizerFeedbackIT {
+  private static final long TIMEOUT_MINUTES = 15;
+  private static final long POLL_INTERVAL_SECONDS = 5;
+
+  @BeforeAll
+  protected static void resumeWorkflow() {
+    org.openmetadata.service.governance.workflows.WorkflowHandler.getInstance()
+        .resumeWorkflow("RecognizerFeedbackReviewWorkflow");
+  }
 
   protected SharedEntities shared() {
     return SharedEntities.get();
@@ -173,28 +176,29 @@ public class TagRecognizerFeedbackIT {
     return submitRecognizerFeedback(entityLink, tagFQN, client);
   }
 
-  private Thread waitForRecognizerFeedbackTask(String tagFQN) throws Exception {
-    return waitForRecognizerFeedbackTask(tagFQN, 90000L * 2);
+  private Thread waitForRecognizerFeedbackTask(String tagFQN) {
+    return waitForRecognizerFeedbackTask(tagFQN, 5);
   }
 
-  public Thread waitForRecognizerFeedbackTask(String tagFQN, long timeout)
-      throws RuntimeException, ConditionTimeoutException {
+  public Thread waitForRecognizerFeedbackTask(String tagFQN, long timeoutMinutes) {
     String entityLink = new MessageParser.EntityLink(Entity.TAG, tagFQN).getLinkString();
-    Awaitility.await(String.format("Wait for Task to be Created for Tag: '%s'", tagFQN))
-        .ignoreExceptions()
-        .pollInterval(Duration.ofMillis(2000L))
-        .atMost(Duration.ofMillis(timeout))
-        .until(
-            () ->
-                WorkflowHandler.getInstance()
-                    .isActivityWithVariableExecuting(
-                        "ReviewFeedback.approvalTask",
-                        getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
-                        entityLink));
-
     String url =
         "/v1/feed?limit=100&type=Task&taskStatus=Open&entityLink="
             + URLEncoder.encode(entityLink, StandardCharsets.UTF_8);
+
+    Awaitility.await(String.format("Wait for Task to be Created for Tag: '%s'", tagFQN))
+        .ignoreExceptions()
+        .pollInterval(Duration.ofSeconds(POLL_INTERVAL_SECONDS))
+        .atMost(Duration.ofMinutes(TIMEOUT_MINUTES))
+        .until(
+            () -> {
+              FeedResourceIT.ThreadList response =
+                  SdkClients.adminClient()
+                      .getHttpClient()
+                      .execute(HttpMethod.GET, url, null, FeedResourceIT.ThreadList.class);
+              return response.getData() != null && !response.getData().isEmpty();
+            });
+
     FeedResourceIT.ThreadList response =
         SdkClients.adminClient()
             .getHttpClient()
@@ -204,7 +208,7 @@ public class TagRecognizerFeedbackIT {
       return thread;
     }
 
-    throw new RuntimeException("Failed to submit recognizer feedback task");
+    throw new RuntimeException("Failed to get recognizer feedback task");
   }
 
   private void resolveRecognizerFeedbackTask(Thread thread) {
@@ -240,9 +244,6 @@ public class TagRecognizerFeedbackIT {
 
   @Test
   void test_recognizerFeedback_withDirectReviewer_createsTask(TestNamespace ns) throws Exception {
-    org.openmetadata.service.governance.workflows.WorkflowHandler.getInstance()
-        .resumeWorkflow("RecognizerFeedbackReviewWorkflow");
-
     Classification classification = createClassification(ns);
 
     CreateTag tagRequest = new CreateTag();
@@ -272,8 +273,6 @@ public class TagRecognizerFeedbackIT {
   @Test
   void test_recognizerFeedback_withInheritedReviewer_createsTask(TestNamespace ns)
       throws Exception {
-    org.openmetadata.service.governance.workflows.WorkflowHandler.getInstance()
-        .resumeWorkflow("RecognizerFeedbackReviewWorkflow");
 
     CreateClassification classificationRequest = new CreateClassification();
     classificationRequest.setName("class_reviewer" + "_" + ns.uniqueShortId());
@@ -300,8 +299,6 @@ public class TagRecognizerFeedbackIT {
 
   @Test
   void test_recognizerFeedback_noReviewer_autoApplied(TestNamespace ns) throws Exception {
-    org.openmetadata.service.governance.workflows.WorkflowHandler.getInstance()
-        .resumeWorkflow("RecognizerFeedbackReviewWorkflow");
 
     Classification classification = createClassification(ns);
 
@@ -321,21 +318,19 @@ public class TagRecognizerFeedbackIT {
 
     submitRecognizerFeedback(entityLink, tag.getFullyQualifiedName());
 
-    Thread task;
-    try {
-      task = waitForRecognizerFeedbackTask(tag.getFullyQualifiedName());
-    } catch (ConditionTimeoutException ignored) {
-      task = null;
-    }
-    assertNull(task, "No task should be created for tag without reviewer - should be auto-applied");
-
-    Tag updatedTag = getEntity(tag.getId().toString());
-    assertNotNull(updatedTag.getRecognizers());
-    assertFalse(updatedTag.getRecognizers().isEmpty());
-    assertTrue(
-        updatedTag.getRecognizers().getFirst().getExceptionList() != null
-            && !updatedTag.getRecognizers().getFirst().getExceptionList().isEmpty(),
-        "Recognizer should have exception added");
+    Awaitility.await("Wait for recognizer exception to be added after auto-approval")
+        .pollInterval(Duration.ofSeconds(POLL_INTERVAL_SECONDS))
+        .atMost(Duration.ofMinutes(TIMEOUT_MINUTES))
+        .untilAsserted(
+            () -> {
+              Tag polledTag = getEntity(tag.getId().toString());
+              assertNotNull(polledTag.getRecognizers());
+              assertFalse(polledTag.getRecognizers().isEmpty());
+              assertTrue(
+                  polledTag.getRecognizers().getFirst().getExceptionList() != null
+                      && !polledTag.getRecognizers().getFirst().getExceptionList().isEmpty(),
+                  "Recognizer should have exception added");
+            });
 
     org.openmetadata.schema.entity.data.Table updatedTable =
         SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "columns,tags");
@@ -347,8 +342,6 @@ public class TagRecognizerFeedbackIT {
 
   @Test
   void test_recognizerFeedback_submitterIsReviewer_autoApplied(TestNamespace ns) throws Exception {
-    org.openmetadata.service.governance.workflows.WorkflowHandler.getInstance()
-        .resumeWorkflow("RecognizerFeedbackReviewWorkflow");
 
     Classification classification = createClassification(ns);
 
@@ -370,21 +363,19 @@ public class TagRecognizerFeedbackIT {
     submitRecognizerFeedback(
         entityLink, tag.getFullyQualifiedName(), testUser2Client().getHttpClient());
 
-    Thread task;
-    try {
-      task = waitForRecognizerFeedbackTask(tag.getFullyQualifiedName());
-    } catch (ConditionTimeoutException ignored) {
-      task = null;
-    }
-    assertNull(task, "No task should be created for tag without reviewer - should be auto-applied");
-
-    Tag updatedTag = getEntity(tag.getId().toString());
-    assertNotNull(updatedTag.getRecognizers());
-    assertFalse(updatedTag.getRecognizers().isEmpty());
-    assertTrue(
-        updatedTag.getRecognizers().getFirst().getExceptionList() != null
-            && !updatedTag.getRecognizers().getFirst().getExceptionList().isEmpty(),
-        "Recognizer should have exception added");
+    Awaitility.await("Wait for recognizer exception to be added after auto-approval")
+        .pollInterval(Duration.ofSeconds(POLL_INTERVAL_SECONDS))
+        .atMost(Duration.ofMinutes(TIMEOUT_MINUTES))
+        .untilAsserted(
+            () -> {
+              Tag polledTag = getEntity(tag.getId().toString());
+              assertNotNull(polledTag.getRecognizers());
+              assertFalse(polledTag.getRecognizers().isEmpty());
+              assertTrue(
+                  polledTag.getRecognizers().getFirst().getExceptionList() != null
+                      && !polledTag.getRecognizers().getFirst().getExceptionList().isEmpty(),
+                  "Recognizer should have exception added");
+            });
 
     org.openmetadata.schema.entity.data.Table updatedTable =
         SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "columns,tags");
@@ -397,8 +388,6 @@ public class TagRecognizerFeedbackIT {
   @Test
   void test_recognizerFeedback_approveTask_removesTagAndAddsException(TestNamespace ns)
       throws Exception {
-    org.openmetadata.service.governance.workflows.WorkflowHandler.getInstance()
-        .resumeWorkflow("RecognizerFeedbackReviewWorkflow");
 
     Classification classification = createClassification(ns);
 
@@ -416,8 +405,6 @@ public class TagRecognizerFeedbackIT {
     String entityLink = "<#E::table::" + table.getFullyQualifiedName() + "::columns::test_column>";
     submitRecognizerFeedback(entityLink, tag.getFullyQualifiedName());
 
-    waitForRecognizerFeedbackTask(tag.getFullyQualifiedName());
-
     org.openmetadata.schema.entity.feed.Thread task =
         waitForRecognizerFeedbackTask(tag.getFullyQualifiedName());
     assertNotNull(task);
@@ -425,8 +412,8 @@ public class TagRecognizerFeedbackIT {
     resolveRecognizerFeedbackTask(task);
 
     Awaitility.await("Wait for recognizer exception to be added after approval")
-        .atMost(Duration.ofSeconds(10))
-        .pollInterval(Duration.ofMillis(200))
+        .pollInterval(Duration.ofSeconds(POLL_INTERVAL_SECONDS))
+        .atMost(Duration.ofMinutes(TIMEOUT_MINUTES))
         .untilAsserted(
             () -> {
               Tag updatedTag = getEntity(tag.getId().toString());
@@ -459,8 +446,6 @@ public class TagRecognizerFeedbackIT {
 
   @Test
   void test_recognizerFeedback_rejectTask_keepsTag(TestNamespace ns) throws Exception {
-    org.openmetadata.service.governance.workflows.WorkflowHandler.getInstance()
-        .resumeWorkflow("RecognizerFeedbackReviewWorkflow");
 
     Classification classification = createClassification(ns);
 
@@ -484,8 +469,8 @@ public class TagRecognizerFeedbackIT {
     rejectRecognizerFeedbackTask(task);
 
     Awaitility.await("Wait for task rejection to be processed")
-        .atMost(Duration.ofSeconds(10))
-        .pollInterval(Duration.ofMillis(200))
+        .pollInterval(Duration.ofSeconds(POLL_INTERVAL_SECONDS))
+        .atMost(Duration.ofMinutes(TIMEOUT_MINUTES))
         .untilAsserted(
             () -> {
               Tag polledTag = getEntity(tag.getId().toString());

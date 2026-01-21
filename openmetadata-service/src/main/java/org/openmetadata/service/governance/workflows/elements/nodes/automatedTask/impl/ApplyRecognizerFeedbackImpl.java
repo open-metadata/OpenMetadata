@@ -53,7 +53,12 @@ public class ApplyRecognizerFeedbackImpl implements JavaDelegate {
       RecognizerFeedback feedback = repo.get(feedbackId);
       repo.applyFeedback(feedback, reviewedBy);
 
-      LOG.info("Applied RecognizerFeedback {} by {}", feedbackId, reviewedBy);
+      LOG.info(
+          "Applied RecognizerFeedback {} for {} on {} by {}",
+          feedbackId,
+          feedback.getTagFQN(),
+          feedback.getEntityLink(),
+          reviewedBy);
 
     } catch (Exception exc) {
       LOG.error(
