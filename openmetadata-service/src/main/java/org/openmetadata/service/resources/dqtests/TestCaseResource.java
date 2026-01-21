@@ -75,6 +75,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
@@ -92,7 +93,7 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "TestCases")
 public class TestCaseResource extends EntityResource<TestCase, TestCaseRepository> {
-  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
+  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/";
   private final TestCaseMapper mapper = new TestCaseMapper();
   private final TestCaseResultMapper testCaseResultMapper = new TestCaseResultMapper();
   static final String FIELDS =
@@ -1017,7 +1018,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         new OperationContext(entityType, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     TestCase testCase = repository.find(id, Include.NON_DELETED);
-    repository.setFields(testCase, new Fields(Set.of("testCaseResult")));
+    repository.setFields(
+        testCase, new Fields(Set.of("testCaseResult")), RelationIncludes.fromInclude(ALL));
     if (testCase.getTestCaseResult() == null
         || !testCase.getTestCaseResult().getTestCaseStatus().equals(TestCaseStatus.Failed)) {
       throw new IllegalArgumentException("Failed rows can only be added to a failed test case.");
@@ -1251,6 +1253,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public CsvImportResult importCsv(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Name parameter (currently not used, reserved for future use)",
@@ -1264,9 +1267,15 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @DefaultValue("true")
           @QueryParam("dryRun")
           boolean dryRun,
+      @Parameter(
+              description =
+                  "The entity type for which the TestCase are being added (e.g., 'testSuite' or 'table')",
+              schema = @Schema(type = "string"))
+          @QueryParam("targetEntityType")
+          String targetEntityType,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun, false);
+    return importCsvInternal(uriInfo, securityContext, name, csv, dryRun, false, targetEntityType);
   }
 
   @PUT
@@ -1289,6 +1298,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
                     schema = @Schema(implementation = Response.class)))
       })
   public Response importCsvAsync(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Name parameter (currently not used, reserved for future use)",
@@ -1302,8 +1312,15 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @DefaultValue("true")
           @QueryParam("dryRun")
           boolean dryRun,
+      @Parameter(
+              description =
+                  "The entity type for which the TestCase are being added (e.g., 'testSuite' or 'table')",
+              schema = @Schema(type = "string"))
+          @QueryParam("targetEntityType")
+          String targetEntityType,
       String csv) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun, false);
+    return importCsvInternalAsync(
+        uriInfo, securityContext, name, csv, dryRun, false, targetEntityType);
   }
 
   protected static ResourceContextInterface getResourceContext(

@@ -53,9 +53,9 @@ import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
-import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useSub } from '../../../hooks/usePubSub';
+import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { useTableFilters } from '../../../hooks/useTableFilters';
 import {
   getTableColumnsByFQN,
@@ -216,7 +216,7 @@ const SchemaTable = () => {
           q: searchQuery,
           limit: pageSize,
           offset: offset,
-          fields: 'tags,customMetrics',
+          fields: 'tags,customMetrics,extension',
         });
 
         setTableColumns(pruneEmptyChildren(response.data) || []);
@@ -248,7 +248,7 @@ const SchemaTable = () => {
         const response = await getTableColumnsByFQN(tableFqn, {
           limit: pageSize,
           offset: offset,
-          fields: 'tags,customMetrics',
+          fields: 'tags,customMetrics,extension',
         });
 
         setTableColumns(pruneEmptyChildren(response.data) || []);
@@ -316,6 +316,25 @@ const SchemaTable = () => {
     if (!columnsChanged) {
       return;
     }
+
+    const updatedColumns = table.columns;
+    setTableColumns((prev) => {
+      // Create a deep clone to avoid mutation of the previous state during updates
+      let newColumns = [...prev];
+      updatedColumns?.forEach((updatedCol) => {
+        // Recursively remove empty children from the update object
+        const [cleanUpdate] = pruneEmptyChildren([updatedCol]);
+
+        // Use the utility to recursively find and update the column in the nested structure
+        newColumns = updateColumnInNestedStructure(
+          newColumns,
+          updatedCol.fullyQualifiedName ?? '',
+          cleanUpdate as Column
+        );
+      });
+
+      return newColumns;
+    });
 
     setPrevTableColumns(table.columns);
   }, [table?.columns, hasInitialLoad]);
@@ -484,10 +503,9 @@ const SchemaTable = () => {
       </>
     );
   };
-
   const expandableConfig: ExpandableConfig<Column> = useMemo(
     () => ({
-      ...getTableExpandableConfig<Column>(),
+      ...getTableExpandableConfig<Column>(false, 'text-link-color'),
       rowExpandable: (record) => !isEmpty(record.children),
       expandedRowKeys,
       onExpand: (expanded, record) => {
@@ -583,7 +601,7 @@ const SchemaTable = () => {
                   })}
                   <Typography.Text
                     className={classNames(
-                      'm-b-0 d-block break-word cursor-pointer',
+                      'm-b-0 d-block break-word cursor-pointer text-link-color',
                       {
                         'text-grey-600': !isEmpty(displayName),
                       }

@@ -26,6 +26,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.source.database.mysql.metadata import MysqlSource
 from metadata.ingestion.source.database.mysql.models import MysqlRoutine
 
@@ -144,6 +145,15 @@ class MysqlUnitTest(TestCase):
                     "description": "Test function",
                 }
             ),
+            MagicMock(
+                _mapping={
+                    "routine_name": "exclude_procedure",
+                    "schema_name": "test_schema",
+                    "definition": "BEGIN RETURN 1; END",
+                    "routine_type": "PROCEDURE",
+                    "description": "Test exclude",
+                }
+            ),
         ]
 
         mock_engine.execute.return_value.all.return_value = mock_results
@@ -151,6 +161,9 @@ class MysqlUnitTest(TestCase):
 
         # Enable stored procedures in config
         self.mysql_source.source_config.includeStoredProcedures = True
+        self.mysql_source.source_config.storedProcedureFilterPattern = FilterPattern(
+            excludes=["exclude_procedure"]
+        )
 
         # Get stored procedures
         stored_procedures = list(self.mysql_source.get_stored_procedures())

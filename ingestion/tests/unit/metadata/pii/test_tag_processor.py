@@ -48,6 +48,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.type.classificationLanguages import (
+    ClassificationLanguage,
+)
 from metadata.generated.schema.type.piiEntity import PIIEntity
 from metadata.generated.schema.type.recognizer import RecognizerException, Target
 from metadata.generated.schema.type.tagLabel import (
@@ -99,7 +102,7 @@ class TestTagProcessor:
             patterns=[email_pattern],
             supportedEntity=PIIEntity.EMAIL_ADDRESS,
             context=[],
-            supportedLanguage="en",
+            supportedLanguage=ClassificationLanguage.en,
         )
         email_recognizer = RecognizerFactory.create(
             name="EmailRecognizer",
@@ -129,7 +132,7 @@ class TestTagProcessor:
             patterns=[phone_pattern],
             supportedEntity=PIIEntity.PHONE_NUMBER,
             context=[],
-            supportedLanguage="en",
+            supportedLanguage=ClassificationLanguage.en,
         )
         phone_recognizer = RecognizerFactory.create(
             name="PhoneRecognizer",
@@ -305,7 +308,7 @@ class TestTagProcessor:
             patterns=[email_pattern, name_pattern],
             supportedEntity=PIIEntity.EMAIL_ADDRESS,
             context=[],
-            supportedLanguage="en",
+            supportedLanguage=ClassificationLanguage.en,
         )
         mixed_recognizer = RecognizerFactory.create(
             name="MixedRecognizer",
@@ -400,7 +403,7 @@ class TestTagProcessor:
             patterns=[ssn_pattern],
             supportedEntity=PIIEntity.US_SSN,
             context=[],
-            supportedLanguage="en",
+            supportedLanguage=ClassificationLanguage.en,
         )
         ssn_recognizer = RecognizerFactory.create(
             name="SSNRecognizer",

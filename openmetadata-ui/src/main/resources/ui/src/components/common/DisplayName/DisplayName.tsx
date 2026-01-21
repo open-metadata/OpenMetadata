@@ -18,10 +18,10 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
-import CopyLinkButton from '../CopyLinkButton/CopyLinkButton';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
+import CopyLinkButton from '../CopyLinkButton/CopyLinkButton';
 import { DisplayNameProps } from './DisplayName.interface';
 
 interface DisplayNamePropsWithParent extends DisplayNameProps {
@@ -89,7 +89,7 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
   return (
     <div className="d-inline-flex flex-column hover-icon-group w-max-full vertical-align-inherit">
       <div className="d-inline-flex items-center gap-2">
-        <Typography.Text className="m-b-0 d-block" data-testid="column-name">
+        <Typography.Text className="m-b-0 d-block text-link-color" data-testid="column-name">
           {renderMainContent}
         </Typography.Text>
 

@@ -83,6 +83,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
@@ -442,7 +443,7 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
-  public void setFields(Tag tag, Fields fields) {
+  public void setFields(Tag tag, Fields fields, RelationIncludes relationIncludes) {
     tag.withClassification(getClassification(tag)).withParent(getParent(tag));
     if (fields.contains("usageCount")) {
       tag.withUsageCount(getUsageCount(tag));

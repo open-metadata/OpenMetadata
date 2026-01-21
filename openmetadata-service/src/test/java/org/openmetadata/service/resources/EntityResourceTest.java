@@ -1945,6 +1945,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     Map<String, String> queryParams = new HashMap<>();
     for (Include include : List.of(Include.DELETED, Include.ALL)) {
       queryParams.put("include", include.value());
+      queryParams.put(
+          "includeRelations",
+          String.format("owners:%s,followers:%s", include.value(), include.value()));
       T entityAfterDeletion = getEntity(entity.getId(), queryParams, allFields, ADMIN_AUTH_HEADERS);
       validateDeletedEntity(create, entityBeforeDeletion, entityAfterDeletion, ADMIN_AUTH_HEADERS);
       entityAfterDeletion =
@@ -3053,6 +3056,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     if (supportsSoftDelete) {
       Map<String, String> queryParams = new HashMap<>();
       queryParams.put("include", "deleted");
+      queryParams.put("includeRelations", "followers:all");
       entity = getEntity(entityId, queryParams, FIELD_FOLLOWERS, ADMIN_AUTH_HEADERS);
       TestUtils.existsInEntityReferenceList(entity.getFollowers(), user1.getId(), true);
     }
@@ -4935,6 +4939,18 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Just use WebTarget directly
     WebTarget target = getResource(id);
     target = target.queryParam("fields", fields);
+    target = target.queryParam("includeRelations", "owners:all,followers:all");
+    return TestUtils.get(target, entityClass, authHeaders);
+  }
+
+  public final T getEntityWithIncludeRelations(
+      UUID id, String fields, String includeRelations, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    // Temporarily disable SDK usage in main test flow to avoid version conflicts
+    // Just use WebTarget directly
+    WebTarget target = getResource(id);
+    target = target.queryParam("fields", fields);
+    target = target.queryParam("includeRelations", includeRelations);
     return TestUtils.get(target, entityClass, authHeaders);
   }
 

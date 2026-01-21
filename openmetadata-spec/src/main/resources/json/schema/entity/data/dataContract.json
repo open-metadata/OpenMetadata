@@ -316,6 +316,14 @@
       },
       "default": null
     },
+    "odcsQualityRules": {
+      "description": "ODCS quality rules stored during import for round-trip compatibility with ODCS export.",
+      "type": "array",
+      "items": {
+        "$ref": "../datacontract/odcs/odcsDataContract.json#/definitions/odcsQualityRule"
+      },
+      "default": null
+    },
     "contractUpdates": {
       "description": "History of updates to the data contract.",
       "type": "array",
