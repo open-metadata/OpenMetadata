@@ -5,6 +5,9 @@ from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.classificationLanguages import (
+    ClassificationLanguage,
+)
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
@@ -49,6 +52,11 @@ class TagProcessor(AutoClassificationProcessor):
         self.confidence_threshold = self.source_config.confidence / 100
         self.classification_filter = classification_filter
         self.max_tags_per_column = max_tags_per_column
+        self.classification_language: ClassificationLanguage = (
+            self.source_config.classificationLanguage
+            if self.source_config.classificationLanguage
+            else ClassificationLanguage.en
+        )
 
         # Initialize new components
         if classification_manager is None:
@@ -70,13 +78,17 @@ class TagProcessor(AutoClassificationProcessor):
         # Service that runs analyzers
         if score_tags_for_column is None:
             score_tags_for_column = ScoreTagsForColumnService(
-                nlp_engine=load_nlp_engine()
+                nlp_engine=load_nlp_engine(
+                    classification_language=self.classification_language
+                ),
+                language=self.classification_language,
             )
         self.score_tags_for_column = score_tags_for_column
 
         logger.info(
             f"TagProcessor initialized with {len(self.enabled_classifications)} "
-            f"classifications and {len(self.candidate_tags)} candidate tags"
+            f"classifications and {len(self.candidate_tags)} candidate tags "
+            f"using language '{self.classification_language.value}'"
         )
 
     @staticmethod

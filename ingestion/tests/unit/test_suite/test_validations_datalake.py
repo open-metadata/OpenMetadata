@@ -20,6 +20,7 @@ from datetime import datetime, timedelta
 import pytest
 from pandas import DataFrame
 
+from metadata.data_quality.validations.base_test_handler import PandasRunner
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.utils.importer import import_test_case_class
 
@@ -1234,7 +1235,12 @@ def test_suite_validation_datalake(
     )
 
     test_handler = test_handler_obj(
-        [DATALAKE_DATA_FRAME(1_000), DATALAKE_DATA_FRAME(1_000)],
+        PandasRunner(
+            dataset=lambda: iter(
+                (DATALAKE_DATA_FRAME(1_000), DATALAKE_DATA_FRAME(1_000))
+            ),
+            raw_dataset=None,
+        ),
         test_case=test_case,
         execution_date=EXECUTION_DATE.timestamp(),
     )

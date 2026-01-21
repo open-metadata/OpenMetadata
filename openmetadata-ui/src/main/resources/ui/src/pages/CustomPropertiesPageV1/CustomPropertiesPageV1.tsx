@@ -11,19 +11,18 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row, Tabs } from 'antd';
+import { Card, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import SchemaEditor from '../../components/Database/SchemaEditor/SchemaEditor';
-import PageHeader from '../../components/PageHeader/PageHeader.component';
+import { usePageHeader } from '../../components/common/atoms/navigation/usePageHeader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { CustomPropertyTable } from '../../components/Settings/CustomProperty/CustomPropertyTable';
 import { ENTITY_PATH } from '../../constants/constants';
@@ -33,22 +32,24 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityTabs } from '../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Type } from '../../generated/entity/type';
 import { getTypeByFQN, updateType } from '../../rest/metadataTypeAPI';
 import { getCustomPropertyPageHeaderFromEntity } from '../../utils/CustomProperty.utils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getAddCustomPropertyPath } from '../../utils/RouterUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { addPropertyToEntity } from '../../rest/metadataTypeAPI';
+import { useForm } from 'antd/lib/form/Form';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './custom-properties-pageV1.less';
+import AddCustomProperty from '../../components/Settings/CustomProperty/AddCustomProperty/AddCustomProperty';
+import { CustomProperty } from '../../generated/type/customProperty';
 
 const CustomEntityDetailV1 = () => {
   const { t } = useTranslation();
   const { tab } = useRequiredParams<{ tab: keyof typeof ENTITY_PATH }>();
-  const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<EntityTabs>(
     EntityTabs.CUSTOM_PROPERTIES
@@ -93,7 +94,7 @@ const CustomEntityDetailV1 = () => {
     [propertyPermission, tab]
   );
 
-  const fetchTypeDetail = async (typeFQN: string) => {
+  const fetchTypeDetail = useCallback(async (typeFQN: string) => {
     setIsLoading(true);
     try {
       const data = await getTypeByFQN(typeFQN);
@@ -103,16 +104,51 @@ const CustomEntityDetailV1 = () => {
       setIsError(true);
     }
     setIsLoading(false);
-  };
+  }, []);
 
   const onTabChange = useCallback((activeKey: string) => {
     setActiveTab(activeKey as EntityTabs);
   }, []);
 
+  const [form] = useForm();
+
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
   const handleAddProperty = useCallback(() => {
-    const path = getAddCustomPropertyPath(tabAttributePath);
-    navigate(path);
-  }, [tabAttributePath, history]);
+    setIsDrawerOpen(true);
+  }, []);
+
+  const handleDrawerClose = useCallback(() => {
+    setIsDrawerOpen(false);
+    form.resetFields();
+  }, [form]);
+
+  const handleDrawerSubmit = useCallback(
+    async (data: CustomProperty) => {
+      setIsButtonLoading(true);
+      try {
+        await addPropertyToEntity(selectedEntityTypeDetail.id ?? '', data);
+        showSuccessToast(
+          t('server.create-entity-success', {
+            entity: t('label.custom-property'),
+          })
+        );
+        handleDrawerClose();
+        fetchTypeDetail(tabAttributePath);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsButtonLoading(false);
+      }
+    },
+    [
+      selectedEntityTypeDetail.id,
+      handleDrawerClose,
+      fetchTypeDetail,
+      tabAttributePath,
+      t,
+    ]
+  );
 
   const updateEntityType = useCallback(
     async (properties: Type['customProperties']) => {
@@ -138,7 +174,9 @@ const CustomEntityDetailV1 = () => {
   );
 
   const customPageHeader = useMemo(() => {
-    const pageHeader = getCustomPropertyPageHeaderFromEntity(tabAttributePath);
+    const pageHeader = getCustomPropertyPageHeaderFromEntity(
+      tabAttributePath
+    );
 
     return {
       header: t(pageHeader.header),
@@ -148,6 +186,16 @@ const CustomEntityDetailV1 = () => {
       ),
     };
   }, [tabAttributePath, t]);
+
+  const { pageHeader } = usePageHeader({
+    titleKey: customPageHeader.header,
+    descriptionMessageKey: customPageHeader.subHeader,
+    createPermission:
+      activeTab === EntityTabs.CUSTOM_PROPERTIES && editPermission,
+    addButtonLabelKey: t('label.add-entity', { entity: t('label.property') }),
+    addButtonTestId: 'add-field-button',
+    onAddClick: handleAddProperty,
+  });
 
   useEffect(() => {
     if (!isUndefined(tab)) {
@@ -179,20 +227,6 @@ const CustomEntityDetailV1 = () => {
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
           <Card data-testid="entity-custom-fields">
-            <div className="flex justify-end">
-              {editPermission && (
-                <Button
-                  className="m-b-md"
-                  data-testid="add-field-button"
-                  size="middle"
-                  type="primary"
-                  onClick={handleAddProperty}>
-                  {t('label.add-entity', {
-                    entity: t('label.property'),
-                  })}
-                </Button>
-              )}
-            </div>
             <CustomPropertyTable
               customProperties={customProperties ?? []}
               hasAccess={editPermission}
@@ -236,9 +270,7 @@ const CustomEntityDetailV1 = () => {
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
-        <Col span={24}>
-          <PageHeader data={customPageHeader} />
-        </Col>
+        <Col span={24}>{pageHeader}</Col>
         <Col className="global-settings-tabs" span={24}>
           <Tabs
             className="tabs-new"
@@ -248,6 +280,14 @@ const CustomEntityDetailV1 = () => {
           />
         </Col>
       </Row>
+      <AddCustomProperty
+        entityType={selectedEntityTypeDetail.name as EntityType}
+        formRef={form}
+        loading={isButtonLoading}
+        open={isDrawerOpen}
+        onClose={handleDrawerClose}
+        onSubmit={handleDrawerSubmit}
+      />
     </PageLayoutV1>
   );
 };

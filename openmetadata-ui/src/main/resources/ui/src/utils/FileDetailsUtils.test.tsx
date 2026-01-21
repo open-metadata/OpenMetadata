@@ -48,13 +48,9 @@ jest.mock('../components/DataAssets/CommonWidgets/CommonWidgets', () => ({
     )),
 }));
 
-jest.mock('./i18next/LocalUtil', () => ({
-  __esModule: true,
-  default: {
-    t: jest.fn((key: string) => key),
-  },
-  t: jest.fn((key: string) => key),
-  detectBrowserLanguage: jest.fn(() => 'en-US'),
+jest.mock('../utils/i18next/LocalUtil', () => ({
+  t: (key: string) => key,
+  detectBrowserLanguage: jest.fn().mockReturnValue('en-US'),
 }));
 
 jest.mock('../components/DataContract/ContractTab/ContractTab.tsx', () => {

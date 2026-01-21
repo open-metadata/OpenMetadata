@@ -29,6 +29,8 @@ from metadata.utils.logger import profiler_logger
 if TYPE_CHECKING:
     import pandas as pd
 
+    from metadata.profiler.processor.runner import PandasRunner
+
 logger = profiler_logger()
 
 
@@ -74,10 +76,12 @@ class UniqueCount(QueryMetric):
         only_once_sub = unique_count_query.subquery("only_once")
         return session.query(func.count().label(self.name())).select_from(only_once_sub)
 
-    def df_fn(self, dfs=None):
+    def df_fn(self, dfs: Optional["PandasRunner"] = None):
         """
         Build the Unique Count metric
         """
+        if dfs is None:
+            return None
         try:
             computation = self.get_pandas_computation()
             accumulator = computation.create_accumulator()
