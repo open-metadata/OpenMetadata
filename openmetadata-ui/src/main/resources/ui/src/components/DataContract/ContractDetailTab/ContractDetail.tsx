@@ -818,25 +818,9 @@ const ContractDetail: React.FC<{
                   />
                 </Col>
               );
-            })()}
-            {/* Terms of Use Component */}
-            {!isDescriptionContentEmpty(contract.termsOfUse ?? '') && (
-              <Col className="contract-card-items" span={24}>
-                <div className="contract-card-header-container">
-                  <Typography.Text className="contract-card-header">
-                    {t('label.terms-of-service')}
-                  </Typography.Text>
-                  <Divider className="contract-dash-separator" />
-                </div>
+              })()}
 
-                <RichTextEditorPreviewerV1
-                  enableSeeMoreVariant
-                  markdown={contract.termsOfUse ?? ''}
-                />
-              </Col>
-            )}
-
-            {/* SLA Component */}
+              {/* SLA Component */}
             <ContractSLA contract={contract} />
 
             {/* Schema Component */}
@@ -895,25 +879,9 @@ const ContractDetail: React.FC<{
                     <ContractSecurityCard security={contract.security} />
                   </Col>
                 );
-              })()}
-            {/* Security Component */}
-            {!isEmpty(contract.security) && (
-              <Col
-                className="contract-card-items"
-                data-testid="security-card"
-                span={24}>
-                <div className="contract-card-header-container">
-                  <Typography.Text className="contract-card-header">
-                    {t('label.security')}
-                  </Typography.Text>
-                  <Divider className="contract-dash-separator" />
-                </div>
+                })()}
 
-                <ContractSecurityCard security={contract.security} />
-              </Col>
-            )}
-
-            {/* Semantics Component */}
+              {/* Semantics Component */}
             {contract?.semantics && contract?.semantics.length > 0 && (
               <Col
                 className="contract-card-items"
