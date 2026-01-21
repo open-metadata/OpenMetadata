@@ -45,6 +45,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.resources.dqtests.TestCaseResource;
 
 /**
  * Integration tests for TestCase entity operations.
@@ -63,6 +64,12 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     supportsDataProducts = false; // TestCase doesn't support dataProducts
     supportsNameLengthValidation = false; // TestCase FQN includes table FQN, no strict name length
     supportsImportExport = true;
+    supportsListHistoryByTimestamp = true;
+  }
+
+  @Override
+  protected String getResourcePath() {
+    return TestCaseResource.COLLECTION_PATH;
   }
 
   private TestSuite lastCreatedTestSuite;

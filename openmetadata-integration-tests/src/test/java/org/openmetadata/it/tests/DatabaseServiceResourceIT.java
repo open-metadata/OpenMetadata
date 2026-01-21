@@ -49,8 +49,8 @@ import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
 public class DatabaseServiceResourceIT
     extends BaseServiceIT<DatabaseService, CreateDatabaseService> {
 
-  // Enable CSV import/export testing for database services
   {
+    supportsListHistoryByTimestamp = true;
     supportsImportExport = true;
   }
 

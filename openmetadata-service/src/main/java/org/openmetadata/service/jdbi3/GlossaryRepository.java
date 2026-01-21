@@ -447,16 +447,18 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       glossaryTerm
           .withParent(parent)
           .withFullyQualifiedName(glossaryTermFqn)
-          .withDisplayName(displayName)
-          .withDescription(description)
-          .withSynonyms(synonyms)
-          .withRelatedTerms(relatedTerms)
-          .withReferences(references)
-          .withTags(tags)
-          .withReviewers(reviewers)
-          .withOwners(owners)
-          .withEntityStatus(status)
-          .withStyle(style)
+          .withDisplayName(csvRecord.get(2))
+          .withDescription(csvRecord.get(3))
+          .withSynonyms(CsvUtil.fieldToStrings(csvRecord.get(4)))
+          .withRelatedTerms(getEntityReferencesForGlossaryTerms(printer, csvRecord, 5))
+          .withReferences(getTermReferences(printer, csvRecord))
+          .withTags(
+              getTagLabels(
+                  printer, csvRecord, List.of(Pair.of(7, TagLabel.TagSource.CLASSIFICATION))))
+          .withReviewers(getReviewers(printer, csvRecord, 8))
+          .withOwners(getOwners(printer, csvRecord, 9))
+          .withEntityStatus(getTermStatus(printer, csvRecord))
+          .withStyle(getStyle(csvRecord))
           .withExtension(getExtension(printer, csvRecord, 13));
 
       // Validate during dry run to catch logical errors early

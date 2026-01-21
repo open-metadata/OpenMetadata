@@ -13,11 +13,14 @@
 
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityDetailsObjectInterface } from '../../../Explore/ExplorePage.interface';
+import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 
 export enum AssetsOfEntity {
   GLOSSARY = 'GLOSSARY',
   DOMAIN = 'DOMAIN',
   DATA_PRODUCT = 'DATA_PRODUCT',
+  DATA_PRODUCT_INPUT_PORT = 'DATA_PRODUCT_INPUT_PORT',
+  DATA_PRODUCT_OUTPUT_PORT = 'DATA_PRODUCT_OUTPUT_PORT',
   TEAM = 'TEAM',
   MY_DATA = 'MY_DATA',
   FOLLOWING = 'FOLLOWING',
@@ -38,6 +41,8 @@ export interface AssetsTabsProps {
   type?: AssetsOfEntity;
   queryFilter?: string | Record<string, unknown>;
   noDataPlaceholder?: string | AssetNoDataPlaceholderProps;
+  preloadedData?: SearchedDataProps['data'];
+  skipSearch?: boolean;
 }
 
 export interface AssetNoDataPlaceholderProps {

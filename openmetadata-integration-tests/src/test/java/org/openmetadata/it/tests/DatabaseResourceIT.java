@@ -80,6 +80,7 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
   {
     supportsImportExport = true;
     supportsLifeCycle = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   // Store last created database for import/export tests

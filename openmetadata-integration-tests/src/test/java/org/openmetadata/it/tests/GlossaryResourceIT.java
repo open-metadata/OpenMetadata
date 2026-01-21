@@ -44,6 +44,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
+import org.openmetadata.service.resources.glossary.GlossaryResource;
 
 /**
  * Integration tests for Glossary entity operations.
@@ -55,6 +56,8 @@ import org.openmetadata.service.jdbi3.GlossaryRepository;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
+  private static final org.slf4j.Logger log =
+      org.slf4j.LoggerFactory.getLogger(GlossaryResourceIT.class);
 
   {
     supportsImportExport = true;
@@ -70,6 +73,12 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     supportsSoftDelete = true;
     supportsPatch = true;
     supportsOwners = true;
+    supportsListHistoryByTimestamp = true;
+  }
+
+  @Override
+  protected String getResourcePath() {
+    return GlossaryResource.COLLECTION_PATH;
   }
 
   @Override
@@ -1252,5 +1261,136 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
         glossary.getFullyQualifiedName(),
         updatedTerm.getGlossary().getFullyQualifiedName(),
         "Term's glossary reference should have final updated FQN");
+  }
+
+  /**
+   * Test that importing a glossary with unapproved (IN_REVIEW) glossary terms as related terms
+   * fails with appropriate error message.
+   */
+  @Test
+  void test_importCsv_withUnapprovedRelatedTerm_fails(TestNamespace ns)
+      throws InterruptedException, com.fasterxml.jackson.core.JsonProcessingException {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create a glossary
+    CreateGlossary createGlossary = createMinimalRequest(ns);
+    Glossary glossary = createEntity(createGlossary);
+
+    // Create an IN_REVIEW glossary term by creating it first, then patching the status
+    // (You cannot create a term with IN_REVIEW status directly)
+    EntityReference reviewerRef = testUser1().getEntityReference();
+    org.openmetadata.schema.api.data.CreateGlossaryTerm createInReviewTerm =
+        new org.openmetadata.schema.api.data.CreateGlossaryTerm()
+            .withName(ns.prefix("inReviewTerm"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term in review status")
+            .withReviewers(List.of(reviewerRef));
+    org.openmetadata.schema.entity.data.GlossaryTerm inReviewTerm =
+        client.glossaryTerms().create(createInReviewTerm);
+
+    // Now update the term to set it to IN_REVIEW status
+    inReviewTerm.setEntityStatus(org.openmetadata.schema.type.EntityStatus.IN_REVIEW);
+    inReviewTerm = client.glossaryTerms().update(inReviewTerm.getId(), inReviewTerm);
+
+    // Wait for the term to be updated to IN_REVIEW status
+    final UUID termId = inReviewTerm.getId();
+    org.awaitility.Awaitility.await()
+        .atMost(10, java.util.concurrent.TimeUnit.SECONDS)
+        .pollInterval(500, java.util.concurrent.TimeUnit.MILLISECONDS)
+        .until(
+            () -> {
+              org.openmetadata.schema.entity.data.GlossaryTerm term =
+                  client.glossaryTerms().get(termId.toString());
+              return term.getEntityStatus() == org.openmetadata.schema.type.EntityStatus.IN_REVIEW;
+            });
+
+    // Create a CSV trying to import a new term with the IN_REVIEW term as a related term
+    String csv =
+        "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension\n"
+            + ","
+            + ns.prefix("newTerm")
+            + ",New Term,Test Term,,\""
+            + inReviewTerm.getFullyQualifiedName()
+            + "\",,,,,,,,";
+    log.info("TEST: Attempting CSV import for glossary: {}", glossary.getName());
+    String resultCsv = client.glossaries().importCsv(glossary.getName(), csv, false);
+
+    // Verify import failed with appropriate error message
+    assertNotNull(resultCsv);
+    // The result should indicate failure
+    boolean hasStatusMessage = resultCsv.contains("must have APPROVED status");
+    boolean hasInReview = resultCsv.contains("IN_REVIEW") || resultCsv.contains("Reviewed");
+    boolean hasFailure = resultCsv.contains("failure");
+
+    assertTrue(
+        hasFailure,
+        "Import should fail when trying to link an unapproved glossary term. Result: " + resultCsv);
+    assertTrue(
+        hasStatusMessage || hasInReview || resultCsv.contains(inReviewTerm.getFullyQualifiedName()),
+        "Error message should mention the unapproved term and status requirement. Result: "
+            + resultCsv);
+  }
+
+  /**
+   * Test that importing a glossary with APPROVED glossary terms as related terms succeeds.
+   */
+  @Test
+  void test_importCsv_withApprovedRelatedTerm_succeeds(TestNamespace ns)
+      throws com.fasterxml.jackson.core.JsonProcessingException {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create a glossary
+    CreateGlossary createGlossary = createMinimalRequest(ns);
+    Glossary glossary = createEntity(createGlossary);
+
+    // Create an APPROVED glossary term
+    org.openmetadata.schema.api.data.CreateGlossaryTerm createApprovedTerm =
+        new org.openmetadata.schema.api.data.CreateGlossaryTerm()
+            .withName(ns.prefix("approvedTerm"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term with approved status");
+    org.openmetadata.schema.entity.data.GlossaryTerm approvedTerm =
+        client.glossaryTerms().create(createApprovedTerm);
+
+    // Verify the term is APPROVED
+    org.openmetadata.schema.entity.data.GlossaryTerm fetchedTerm =
+        client.glossaryTerms().get(approvedTerm.getId().toString());
+    assertEquals(org.openmetadata.schema.type.EntityStatus.APPROVED, fetchedTerm.getEntityStatus());
+
+    // Create a CSV importing a new term with the APPROVED term as a related term
+    String csv =
+        "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension\n"
+            + ","
+            + ns.prefix("newTermWithApproved")
+            + ",New Term With Approved,Test Term,,\""
+            + approvedTerm.getFullyQualifiedName()
+            + "\",,,,,,,,";
+
+    String resultCsv = client.glossaries().importCsv(glossary.getName(), csv, false);
+
+    // Verify import succeeded
+    assertNotNull(resultCsv);
+    // Check the result doesn't contain failure
+    boolean hasFailure = resultCsv.contains("failure");
+    assertFalse(
+        hasFailure,
+        "Import should succeed when linking an APPROVED glossary term. Result: " + resultCsv);
+
+    // If there were no failures, verify the term was created with the related term
+    if (!hasFailure && resultCsv.contains("success")) {
+      // Verify the term was created with the related term
+      org.openmetadata.schema.entity.data.GlossaryTerm createdTerm =
+          client
+              .glossaryTerms()
+              .getByName(
+                  glossary.getFullyQualifiedName() + "." + ns.prefix("newTermWithApproved"),
+                  "relatedTerms");
+
+      assertNotNull(createdTerm.getRelatedTerms());
+      assertEquals(1, createdTerm.getRelatedTerms().size());
+      assertEquals(
+          approvedTerm.getFullyQualifiedName(),
+          createdTerm.getRelatedTerms().getFirst().getFullyQualifiedName());
+    }
   }
 }
