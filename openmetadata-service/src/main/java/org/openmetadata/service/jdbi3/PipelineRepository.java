@@ -920,7 +920,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       if (origTask != null
           && ((origTask.getDescription() != null
                   && !origTask.getDescription().equals(updatedTask.getDescription()))
-              || updatedTask.getDescription() != null)) {
+              || !nullOrEmpty(updatedTask.getDescription()))) {
         recordChange(
             "tasks." + origTask.getName() + ".description",
             origTask.getDescription(),
