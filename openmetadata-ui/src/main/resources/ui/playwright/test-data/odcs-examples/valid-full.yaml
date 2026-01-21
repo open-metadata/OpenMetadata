@@ -1,0 +1,37 @@
+# Copyright 2026 Collate.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+apiVersion: v3.1.0
+kind: DataContract
+id: full-contract
+name: Complete ODCS Contract
+version: "2.0.0"
+status: active
+description:
+  purpose: Comprehensive data contract for customer analytics.
+  limitations: Historical data only, no PII exposed.
+  usage: For internal analytics dashboards and ML models.
+slaProperties:
+  - property: freshness
+    value: "12"
+    unit: hour
+  - property: latency
+    value: "2"
+    unit: hour
+  - property: retention
+    value: "365"
+    unit: day
+roles:
+  - name: data_admin
+    description: Full access to all data
+    access: readWrite
+  - name: analyst
+    description: Read-only access for analysis
+    access: read

@@ -31,6 +31,9 @@ from metadata.generated.schema.entity.classification.classification import (
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import Column, ColumnName, DataType
 from metadata.generated.schema.type.basic import EntityName
+from metadata.generated.schema.type.classificationLanguages import (
+    ClassificationLanguage,
+)
 from metadata.generated.schema.type.piiEntity import PIIEntity
 from metadata.generated.schema.type.recognizer import RecognizerException, Target
 from metadata.pii.algorithms.tag_scoring import TagScorer
@@ -78,7 +81,7 @@ class TestTagScorer:
             patterns=[email_pattern],
             supportedEntity=PIIEntity.EMAIL_ADDRESS,
             context=[],
-            supportedLanguage="en",
+            supportedLanguage=ClassificationLanguage.en,
         )
         email_recognizer = RecognizerFactory.create(
             name="EmailRecognizer",
@@ -103,7 +106,7 @@ class TestTagScorer:
             patterns=[column_name_pattern],
             supportedEntity=PIIEntity.EMAIL_ADDRESS,
             context=[],
-            supportedLanguage="en",
+            supportedLanguage=ClassificationLanguage.en,
         )
         column_name_recognizer = RecognizerFactory.create(
             name="EmailColumnNameRecognizer",
@@ -134,7 +137,7 @@ class TestTagScorer:
             patterns=[phone_pattern],
             supportedEntity=PIIEntity.PHONE_NUMBER,
             context=[],
-            supportedLanguage="en",
+            supportedLanguage=ClassificationLanguage.en,
         )
         phone_recognizer = RecognizerFactory.create(
             name="PhoneRecognizer",
@@ -303,7 +306,7 @@ class TestTagAnalyzer:
             patterns=[email_pattern],
             supportedEntity=PIIEntity.EMAIL_ADDRESS,
             context=[],
-            supportedLanguage="en",
+            supportedLanguage=ClassificationLanguage.en,
         )
         email_recognizer = RecognizerFactory.create(
             name="EmailRecognizer",
@@ -371,7 +374,7 @@ class TestTagAnalyzer:
             supportedEntity=PIIEntity.EMAIL_ADDRESS,
             regexFlags__ignoreCase=True,
             context=[],
-            supportedLanguage="en",
+            supportedLanguage=ClassificationLanguage.en,
         )
         column_name_recognizer = RecognizerFactory.create(
             name="EmailColumnRecognizer",
@@ -412,7 +415,7 @@ class TestTagAnalyzer:
             patterns=[test_pattern],
             supportedEntity=PIIEntity.EMAIL_ADDRESS,
             context=[],
-            supportedLanguage="en",
+            supportedLanguage=ClassificationLanguage.en,
         )
         test_recognizer = RecognizerFactory.create(
             name="TestRecognizer",

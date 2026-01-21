@@ -21,6 +21,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 @Slf4j
@@ -128,8 +129,18 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
         String signal = String.format("%s-%s", entityType, eventTypeStr);
         LOG.debug("WorkflowEventConsumer - Generated Signal: {}", signal);
 
-        EntityReference entityReference =
-            Entity.getEntityReferenceById(entityType, event.getEntityId(), Include.ALL);
+        EntityReference entityReference;
+        try {
+          entityReference =
+              Entity.getEntityReferenceById(entityType, event.getEntityId(), Include.ALL);
+        } catch (EntityNotFoundException e) {
+          // Entity was deleted between event creation and processing - skip workflow trigger
+          LOG.debug(
+              "Skipping workflow trigger for {} - entity {} no longer exists",
+              signal,
+              event.getEntityFullyQualifiedName());
+          return;
+        }
         MessageParser.EntityLink entityLink =
             new MessageParser.EntityLink(entityType, entityReference.getFullyQualifiedName());
 
