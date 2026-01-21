@@ -192,8 +192,18 @@ test.describe('Data Contract Inheritance', () => {
   const tableWithoutContract = new TableClass();
   const tableWithContract = new TableClass();
   const tableForSLAEditTest = new TableClass();
+  const tableForEditInheritedTest = new TableClass();
+  const tableForDeleteDisabledTest = new TableClass();
+  const tableForRunValidationTest = new TableClass();
+  const tableForRemoveAssetTest = new TableClass();
+  const tableForDeleteFallbackTest = new TableClass();
   const dataProductForPartialInheritance = new DataProduct([domain]);
   const dataProductForSLAEditTest = new DataProduct([domain]);
+  const dataProductForEditInheritedTest = new DataProduct([domain]);
+  const dataProductForDeleteDisabledTest = new DataProduct([domain]);
+  const dataProductForRunValidationTest = new DataProduct([domain]);
+  const dataProductForRemoveAssetTest = new DataProduct([domain]);
+  const dataProductForDeleteFallbackTest = new DataProduct([domain]);
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -204,8 +214,18 @@ test.describe('Data Contract Inheritance', () => {
     await tableWithoutContract.create(apiContext);
     await tableWithContract.create(apiContext);
     await tableForSLAEditTest.create(apiContext);
+    await tableForEditInheritedTest.create(apiContext);
+    await tableForDeleteDisabledTest.create(apiContext);
+    await tableForRunValidationTest.create(apiContext);
+    await tableForRemoveAssetTest.create(apiContext);
+    await tableForDeleteFallbackTest.create(apiContext);
     await dataProductForPartialInheritance.create(apiContext);
     await dataProductForSLAEditTest.create(apiContext);
+    await dataProductForEditInheritedTest.create(apiContext);
+    await dataProductForDeleteDisabledTest.create(apiContext);
+    await dataProductForRunValidationTest.create(apiContext);
+    await dataProductForRemoveAssetTest.create(apiContext);
+    await dataProductForDeleteFallbackTest.create(apiContext);
 
     // Assign tables to domain so they appear in data product asset selection
     await tableWithoutContract.patch({
@@ -250,6 +270,76 @@ test.describe('Data Contract Inheritance', () => {
       ],
     });
 
+    await tableForEditInheritedTest.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/domains/0',
+          value: {
+            id: domain.responseData.id,
+            type: 'domain',
+          },
+        },
+      ],
+    });
+
+    await tableForDeleteDisabledTest.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/domains/0',
+          value: {
+            id: domain.responseData.id,
+            type: 'domain',
+          },
+        },
+      ],
+    });
+
+    await tableForRunValidationTest.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/domains/0',
+          value: {
+            id: domain.responseData.id,
+            type: 'domain',
+          },
+        },
+      ],
+    });
+
+    await tableForRemoveAssetTest.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/domains/0',
+          value: {
+            id: domain.responseData.id,
+            type: 'domain',
+          },
+        },
+      ],
+    });
+
+    await tableForDeleteFallbackTest.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/domains/0',
+          value: {
+            id: domain.responseData.id,
+            type: 'domain',
+          },
+        },
+      ],
+    });
+
     await afterAction();
   });
 
@@ -259,9 +349,19 @@ test.describe('Data Contract Inheritance', () => {
     await tableWithoutContract.delete(apiContext);
     await tableWithContract.delete(apiContext);
     await tableForSLAEditTest.delete(apiContext);
+    await tableForEditInheritedTest.delete(apiContext);
+    await tableForDeleteDisabledTest.delete(apiContext);
+    await tableForRunValidationTest.delete(apiContext);
+    await tableForRemoveAssetTest.delete(apiContext);
+    await tableForDeleteFallbackTest.delete(apiContext);
     await dataProduct.delete(apiContext);
     await dataProductForPartialInheritance.delete(apiContext);
     await dataProductForSLAEditTest.delete(apiContext);
+    await dataProductForEditInheritedTest.delete(apiContext);
+    await dataProductForDeleteDisabledTest.delete(apiContext);
+    await dataProductForRunValidationTest.delete(apiContext);
+    await dataProductForRemoveAssetTest.delete(apiContext);
+    await dataProductForDeleteFallbackTest.delete(apiContext);
     await domain.delete(apiContext);
     await user.delete(apiContext);
 
@@ -673,6 +773,515 @@ test.describe('Data Contract Inheritance', () => {
       await expect(
         page.getByText(ASSET_SLA_EDIT.refreshFrequencyInterval)
       ).toBeVisible();
+    });
+  });
+
+  test('Edit Inherited Contract - Creates new asset contract instead of modifying parent', async ({
+    page,
+  }) => {
+    test.setTimeout(300000);
+
+    const NEW_ASSET_CONTRACT_DETAILS = {
+      name: `new_asset_contract_${uuid()}`,
+      description: 'New contract created from editing inherited contract',
+    };
+
+    const DP_CONTRACT_DETAILS = {
+      name: `dp_for_edit_inherited_${uuid()}`,
+      description: 'Data Product contract that should NOT be modified',
+      termsOfService: 'Original Data Product Terms of Service - should remain unchanged.',
+    };
+
+    await test.step('Create Data Product with contract', async () => {
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dataProductForEditInheritedTest.data);
+
+      await openContractTab(page);
+      await startAddingContract(page);
+
+      await fillContractDetailsForm(
+        page,
+        DP_CONTRACT_DETAILS.name,
+        DP_CONTRACT_DETAILS.description
+      );
+
+      await fillTermsOfServiceForm(page, DP_CONTRACT_DETAILS.termsOfService);
+
+      await saveContract(page);
+
+      // Verify contract was saved
+      await expect(page.getByTestId('contract-title')).toContainText(
+        DP_CONTRACT_DETAILS.name
+      );
+    });
+
+    await test.step('Add asset to Data Product', async () => {
+      await addAssetsToDataProduct(
+        page,
+        dataProductForEditInheritedTest.responseData.fullyQualifiedName ?? '',
+        [tableForEditInheritedTest]
+      );
+    });
+
+    await test.step('Navigate to asset and verify inherited contract', async () => {
+      await tableForEditInheritedTest.visitEntityPage(page);
+      await openContractTab(page);
+
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      // Verify the inherited contract is displayed
+      await expect(page.getByTestId('contract-title')).toContainText(
+        DP_CONTRACT_DETAILS.name
+      );
+
+      // Verify the inherited icon is shown
+      await expect(
+        page.locator('.contract-header-container .inherit-icon')
+      ).toBeVisible();
+    });
+
+    await test.step('Click Edit on inherited contract - should open ADD form, not EDIT', async () => {
+      await page.getByTestId('manage-contract-actions').click();
+      await page.waitForSelector('.contract-action-dropdown', { state: 'visible' });
+      await page.getByTestId('contract-edit-button').click();
+
+      // Wait for form to load
+      await expect(page.getByTestId('add-contract-card')).toBeVisible();
+
+      // The contract name field should be EMPTY (not pre-filled with DP contract name)
+      // because we're creating a NEW contract, not editing the inherited one
+      const contractNameInput = page.getByTestId('contract-name');
+      const contractNameValue = await contractNameInput.inputValue();
+
+      // Contract name should be empty for a new contract
+      expect(contractNameValue).toBe('');
+    });
+
+    await test.step('Fill new asset contract details', async () => {
+      await fillContractDetailsForm(
+        page,
+        NEW_ASSET_CONTRACT_DETAILS.name,
+        NEW_ASSET_CONTRACT_DETAILS.description
+      );
+    });
+
+    await test.step('Save new asset contract - should create, not update', async () => {
+      // Listen for POST request (create), NOT PATCH (update)
+      const createResponse = page.waitForResponse((response) => {
+        return (
+          response.url().includes('/api/v1/dataContracts') &&
+          response.request().method() === 'POST'
+        );
+      });
+
+      await page.getByTestId('save-contract-btn').click();
+      const response = await createResponse;
+
+      // Verify POST succeeded (201 Created)
+      expect(response.status()).toBe(201);
+
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    });
+
+    await test.step('Verify asset now has its own contract (non-inherited)', async () => {
+      // Verify the new contract is displayed
+      await expect(page.getByTestId('contract-title')).toContainText(
+        NEW_ASSET_CONTRACT_DETAILS.name
+      );
+
+      // Verify the inherited icon is NOT shown (asset has its own contract now)
+      await expect(
+        page.locator('.contract-header-container .inherit-icon')
+      ).not.toBeVisible();
+    });
+
+    await test.step('Verify Data Product contract was NOT modified', async () => {
+      // Navigate back to Data Product
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dataProductForEditInheritedTest.data);
+
+      await openContractTab(page);
+
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      // Verify the Data Product contract still has its original name
+      await expect(page.getByTestId('contract-title')).toContainText(
+        DP_CONTRACT_DETAILS.name
+      );
+
+      // Verify the Terms of Service content is unchanged
+      await expect(
+        page.locator('.contract-card-items').filter({ hasText: 'Terms of Service' })
+      ).toBeVisible();
+      await expect(page.getByText(DP_CONTRACT_DETAILS.termsOfService)).toBeVisible();
+    });
+  });
+
+  test('Delete Button Disabled - Fully inherited contracts cannot be deleted', async ({
+    page,
+  }) => {
+    test.setTimeout(300000);
+
+    const DP_CONTRACT_DETAILS = {
+      name: `dp_delete_disabled_${uuid()}`,
+      description: 'Data Product contract for delete disabled test',
+    };
+
+    await test.step('Create Data Product with contract', async () => {
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dataProductForDeleteDisabledTest.data);
+
+      await openContractTab(page);
+      await startAddingContract(page);
+
+      await fillContractDetailsForm(
+        page,
+        DP_CONTRACT_DETAILS.name,
+        DP_CONTRACT_DETAILS.description
+      );
+
+      await saveContract(page);
+
+      await expect(page.getByTestId('contract-title')).toContainText(
+        DP_CONTRACT_DETAILS.name
+      );
+    });
+
+    await test.step('Add asset to Data Product', async () => {
+      await addAssetsToDataProduct(
+        page,
+        dataProductForDeleteDisabledTest.responseData.fullyQualifiedName ?? '',
+        [tableForDeleteDisabledTest]
+      );
+    });
+
+    await test.step('Navigate to asset and verify delete is disabled for inherited contract', async () => {
+      await tableForDeleteDisabledTest.visitEntityPage(page);
+      await openContractTab(page);
+
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      // Verify the inherited contract is displayed
+      await expect(page.getByTestId('contract-title')).toContainText(
+        DP_CONTRACT_DETAILS.name
+      );
+
+      // Verify the inherited icon is shown
+      await expect(
+        page.locator('.contract-header-container .inherit-icon')
+      ).toBeVisible();
+
+      // Open the contract actions menu
+      await page.getByTestId('manage-contract-actions').click();
+      await page.waitForSelector('.contract-action-dropdown', { state: 'visible' });
+
+      // Verify delete button is disabled for inherited contract
+      const deleteButton = page.getByTestId('delete-contract-button');
+      await expect(deleteButton).toBeVisible();
+
+      // The delete button should have the 'disabled' class or be visually disabled
+      const deleteMenuItem = page.locator('.contract-action-dropdown .ant-dropdown-menu-item').filter({ hasText: 'Delete' });
+      const isDisabled = await deleteMenuItem.getAttribute('aria-disabled');
+      expect(isDisabled).toBe('true');
+    });
+  });
+
+  test('Run Validation - Inherited contract validation uses entity-based validation', async ({
+    page,
+  }) => {
+    test.setTimeout(300000);
+
+    const DP_CONTRACT_DETAILS = {
+      name: `dp_run_validation_${uuid()}`,
+      description: 'Data Product contract for run validation test',
+    };
+
+    await test.step('Create Data Product with contract', async () => {
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dataProductForRunValidationTest.data);
+
+      await openContractTab(page);
+      await startAddingContract(page);
+
+      await fillContractDetailsForm(
+        page,
+        DP_CONTRACT_DETAILS.name,
+        DP_CONTRACT_DETAILS.description
+      );
+
+      await saveContract(page);
+
+      await expect(page.getByTestId('contract-title')).toContainText(
+        DP_CONTRACT_DETAILS.name
+      );
+    });
+
+    await test.step('Add asset to Data Product', async () => {
+      await addAssetsToDataProduct(
+        page,
+        dataProductForRunValidationTest.responseData.fullyQualifiedName ?? '',
+        [tableForRunValidationTest]
+      );
+    });
+
+    await test.step('Navigate to asset and run validation on inherited contract', async () => {
+      await tableForRunValidationTest.visitEntityPage(page);
+      await openContractTab(page);
+
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      // Verify the inherited contract is displayed
+      await expect(page.getByTestId('contract-title')).toContainText(
+        DP_CONTRACT_DETAILS.name
+      );
+
+      // Open the contract actions menu
+      await page.getByTestId('manage-contract-actions').click();
+      await page.waitForSelector('.contract-action-dropdown', { state: 'visible' });
+
+      // Click Run Now - this should trigger entity-based validation for inherited contracts
+      const validateResponse = page.waitForResponse((response) => {
+        const url = response.url();
+        // For inherited contracts, validation should use the entity-based endpoint
+        return (
+          (url.includes('/api/v1/dataContracts/validate/entity/') ||
+            url.includes('/api/v1/dataContracts/') && url.includes('/validate')) &&
+          response.request().method() === 'POST'
+        );
+      });
+
+      await page.getByTestId('contract-run-now-button').click();
+
+      const response = await validateResponse;
+
+      // Verify validation request succeeded
+      expect(response.status()).toBeLessThan(400);
+
+      // Wait for success toast
+      await expect(
+        page.getByText(/contract validation.*trigger.*successfully/i)
+      ).toBeVisible({ timeout: 10000 });
+    });
+  });
+
+  test('Remove Asset - Inherited contract no longer shown when asset is removed from Data Product', async ({
+    page,
+  }) => {
+    test.setTimeout(300000);
+
+    const DP_CONTRACT_DETAILS = {
+      name: `dp_remove_asset_${uuid()}`,
+      description: 'Data Product contract for remove asset test',
+    };
+
+    await test.step('Create Data Product with contract', async () => {
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dataProductForRemoveAssetTest.data);
+
+      await openContractTab(page);
+      await startAddingContract(page);
+
+      await fillContractDetailsForm(
+        page,
+        DP_CONTRACT_DETAILS.name,
+        DP_CONTRACT_DETAILS.description
+      );
+
+      await saveContract(page);
+
+      await expect(page.getByTestId('contract-title')).toContainText(
+        DP_CONTRACT_DETAILS.name
+      );
+    });
+
+    await test.step('Add asset to Data Product', async () => {
+      await addAssetsToDataProduct(
+        page,
+        dataProductForRemoveAssetTest.responseData.fullyQualifiedName ?? '',
+        [tableForRemoveAssetTest]
+      );
+    });
+
+    await test.step('Verify asset shows inherited contract', async () => {
+      await tableForRemoveAssetTest.visitEntityPage(page);
+      await openContractTab(page);
+
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      // Verify the inherited contract is displayed
+      await expect(page.getByTestId('contract-title')).toContainText(
+        DP_CONTRACT_DETAILS.name
+      );
+
+      // Verify the inherited icon is shown
+      await expect(
+        page.locator('.contract-header-container .inherit-icon')
+      ).toBeVisible();
+    });
+
+    await test.step('Remove asset from Data Product', async () => {
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dataProductForRemoveAssetTest.data);
+
+      await page.getByTestId('assets').click();
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      // Select the asset checkbox
+      const assetFqn = tableForRemoveAssetTest.entityResponseData.fullyQualifiedName;
+      await page.locator(`[data-testid="table-data-card_${assetFqn}"] input`).check();
+
+      // Click delete button
+      const removeResponse = page.waitForResponse(
+        '/api/v1/dataProducts/*/assets/remove'
+      );
+      await page.getByTestId('delete-all-button').click();
+      await removeResponse;
+
+      await page.waitForLoadState('networkidle');
+    });
+
+    await test.step('Verify asset no longer shows inherited contract', async () => {
+      await tableForRemoveAssetTest.visitEntityPage(page);
+      await openContractTab(page);
+
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      // Verify no contract is displayed (empty state)
+      await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
+      await expect(page.getByTestId('add-contract-button')).toBeVisible();
+    });
+  });
+
+  test('Delete Asset Contract - Falls back to showing inherited contract from Data Product', async ({
+    page,
+  }) => {
+    test.setTimeout(300000);
+
+    const DP_CONTRACT_DETAILS = {
+      name: `dp_delete_fallback_${uuid()}`,
+      description: 'Data Product contract for delete fallback test',
+      termsOfService: 'Data Product Terms of Service for delete fallback test.',
+    };
+
+    const ASSET_CONTRACT_DETAILS = {
+      name: `asset_delete_fallback_${uuid()}`,
+      description: 'Asset contract to be deleted for fallback test',
+    };
+
+    await test.step('Create Data Product with contract', async () => {
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dataProductForDeleteFallbackTest.data);
+
+      await openContractTab(page);
+      await startAddingContract(page);
+
+      await fillContractDetailsForm(
+        page,
+        DP_CONTRACT_DETAILS.name,
+        DP_CONTRACT_DETAILS.description
+      );
+
+      await fillTermsOfServiceForm(page, DP_CONTRACT_DETAILS.termsOfService);
+
+      await saveContract(page);
+
+      await expect(page.getByTestId('contract-title')).toContainText(
+        DP_CONTRACT_DETAILS.name
+      );
+    });
+
+    await test.step('Add asset to Data Product', async () => {
+      await addAssetsToDataProduct(
+        page,
+        dataProductForDeleteFallbackTest.responseData.fullyQualifiedName ?? '',
+        [tableForDeleteFallbackTest]
+      );
+    });
+
+    await test.step('Create asset own contract', async () => {
+      await tableForDeleteFallbackTest.visitEntityPage(page);
+      await openContractTab(page);
+
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      // Click edit to add asset's own contract
+      await page.getByTestId('manage-contract-actions').click();
+      await page.waitForSelector('.contract-action-dropdown', { state: 'visible' });
+      await page.getByTestId('contract-edit-button').click();
+
+      await expect(page.getByTestId('add-contract-card')).toBeVisible();
+
+      await fillContractDetailsForm(
+        page,
+        ASSET_CONTRACT_DETAILS.name,
+        ASSET_CONTRACT_DETAILS.description
+      );
+
+      await saveContract(page);
+
+      // Verify asset's own contract is displayed
+      await expect(page.getByTestId('contract-title')).toContainText(
+        ASSET_CONTRACT_DETAILS.name
+      );
+
+      // Verify no inherited icon on contract header (asset has its own contract)
+      await expect(
+        page.locator('.contract-header-container .inherit-icon')
+      ).not.toBeVisible();
+    });
+
+    await test.step('Delete asset own contract', async () => {
+      await page.getByTestId('manage-contract-actions').click();
+      await page.waitForSelector('.contract-action-dropdown', { state: 'visible' });
+
+      // Click delete
+      const deleteResponse = page.waitForResponse((response) => {
+        return (
+          response.url().includes('/api/v1/dataContracts/') &&
+          response.request().method() === 'DELETE'
+        );
+      });
+
+      await page.getByTestId('delete-contract-button').click();
+
+      // Confirm deletion in modal
+      await page.waitForSelector('[data-testid="delete-modal"]', { state: 'visible' });
+      await page.getByTestId('confirm-button').click();
+
+      await deleteResponse;
+
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Verify asset now shows inherited contract from Data Product', async () => {
+      // Wait for contract to reload after deletion
+      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+      // Verify the inherited contract from Data Product is now displayed
+      await expect(page.getByTestId('contract-title')).toContainText(
+        DP_CONTRACT_DETAILS.name
+      );
+
+      // Verify the inherited icon is shown
+      await expect(
+        page.locator('.contract-header-container .inherit-icon')
+      ).toBeVisible();
+
+      // Verify Terms of Service from Data Product is shown
+      await expect(
+        page.locator('.contract-card-items').filter({ hasText: 'Terms of Service' })
+      ).toBeVisible();
+      await expect(page.getByText(DP_CONTRACT_DETAILS.termsOfService)).toBeVisible();
     });
   });
 });
