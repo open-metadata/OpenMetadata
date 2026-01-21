@@ -13,6 +13,7 @@ import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.glossary.GlossaryMapper;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -60,9 +61,13 @@ public class GlossaryTool implements McpTool {
 
     glossaryRepository.prepare(glossary, true);
     glossaryRepository.setFullyQualifiedName(glossary);
+
+    // Get impersonatedBy from thread-local context set by McpAuthFilter
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+
     RestUtil.PutResponse<Glossary> response =
         glossaryRepository.createOrUpdate(
-            null, glossary, securityContext.getUserPrincipal().getName());
+            null, glossary, securityContext.getUserPrincipal().getName(), impersonatedBy);
     return JsonUtils.convertValue(response.getEntity(), Map.class);
   }
 
