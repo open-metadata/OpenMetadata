@@ -50,7 +50,7 @@ export const SIDEBAR_LIST_ITEMS = {
   [SidebarItem.DOMAIN]: [SidebarItem.DOMAINS, SidebarItem.DOMAIN],
   [SidebarItem.DATA_PRODUCT]: [SidebarItem.DOMAINS, SidebarItem.DATA_PRODUCT],
   [SidebarItem.COLUMN_BULK_OPERATIONS]: [
-    SidebarItem.DOMAINS,
+    SidebarItem.GOVERNANCE,
     SidebarItem.COLUMN_BULK_OPERATIONS,
   ],
 

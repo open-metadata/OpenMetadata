@@ -25,6 +25,7 @@ import { test } from '../fixtures/pages';
 const COLUMN_BULK_OPERATIONS_URL = '/column-bulk-operations';
 
 async function visitColumnBulkOperationsPage(page: Page) {
+  await redirectToHomePage(page);
   const dataRes = page.waitForResponse('/api/v1/columns/grid?size=9');
   await sidebarClick(page, SidebarItem.COLUMN_BULK_OPERATIONS);
   await dataRes;
@@ -62,8 +63,7 @@ async function searchColumnWithRetry(
       // Wait and retry - search index may need time to index new data
       await page.waitForTimeout(retryDelayMs);
       // Refresh the page to get fresh data
-      await page.reload();
-      await waitForPageReady(page);
+      await visitColumnBulkOperationsPage(page);
     }
   }
 
