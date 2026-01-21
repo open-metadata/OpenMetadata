@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
-import { Modal, Tag, Typography } from 'antd';
+import {
+  CloseOutlined,
+  ExpandAltOutlined,
+  ShrinkOutlined,
+} from '@ant-design/icons';
+import { Button, Modal, Tag, Typography } from 'antd';
 import { DateTime } from 'luxon';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,7 +27,7 @@ import { ResourcePlayerModalProps } from './ResourcePlayerModal.interface';
 import { StorylaneTour } from './StorylaneTour.component';
 import { VideoPlayer } from './VideoPlayer.component';
 
-const { Text, Paragraph, Link } = Typography;
+const { Link, Paragraph, Text } = Typography;
 
 const MAX_VISIBLE_TAGS = 3;
 
@@ -34,6 +38,8 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [isDescriptionTruncated, setIsDescriptionTruncated] = useState(false);
 
   const formattedDuration = useMemo(() => {
     if (!resource.estimatedDuration) {
@@ -78,6 +84,10 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
     setIsDescriptionExpanded(!isDescriptionExpanded);
   }, [isDescriptionExpanded]);
 
+  const handleFullScreenToggle = useCallback(() => {
+    setIsFullScreen((prev) => !prev);
+  }, []);
+
   const renderPlayer = useMemo(() => {
     switch (resource.resourceType) {
       case 'Video':
@@ -95,11 +105,11 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
     <Modal
       centered
       destroyOnClose
-      className="resource-player-modal"
+      className={`resource-player-modal ${isFullScreen ? 'fullscreen' : ''}`}
       closable={false}
       footer={null}
       open={open}
-      width="90vw"
+      width={isFullScreen ? '100vw' : '1143px'}
       onCancel={onClose}>
       <div className="resource-player-header">
         <div className="resource-player-info">
@@ -112,15 +122,19 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
               <Paragraph
                 className="resource-description"
                 ellipsis={
-                  isDescriptionExpanded ? false : { rows: 2, suffix: '... ' }
+                  isDescriptionExpanded
+                    ? false
+                    : { rows: 2, onEllipsis: setIsDescriptionTruncated }
                 }>
                 {resource.description}
               </Paragraph>
-              <Link className="view-more-link" onClick={handleViewMoreClick}>
-                {isDescriptionExpanded
-                  ? t('label.view-less')
-                  : t('label.view-more')}
-              </Link>
+              {(isDescriptionTruncated || isDescriptionExpanded) && (
+                <Link className="view-more-link" onClick={handleViewMoreClick}>
+                  {isDescriptionExpanded
+                    ? t('label.view-less')
+                    : t('label.view-more')}
+                </Link>
+              )}
             </div>
           )}
 
@@ -165,9 +179,22 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
           </div>
         </div>
 
-        <button className="close-button" onClick={onClose}>
-          <CloseOutlined />
-        </button>
+        <div className="header-actions flex gap-4">
+          <Button
+            className="expand-button remove-button-default-styling"
+            onClick={handleFullScreenToggle}>
+            {isFullScreen ? (
+              <ShrinkOutlined width={20} />
+            ) : (
+              <ExpandAltOutlined width={20} />
+            )}
+          </Button>
+          <Button
+            className="close-button remove-button-default-styling"
+            onClick={onClose}>
+            <CloseOutlined />
+          </Button>
+        </div>
       </div>
 
       <div className="resource-player-content">{renderPlayer}</div>

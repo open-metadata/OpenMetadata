@@ -11,16 +11,14 @@
  *  limitations under the License.
  */
 
-import {
-  FileTextOutlined,
-  PlayCircleOutlined,
-  RocketOutlined,
-} from '@ant-design/icons';
 import { Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import { DateTime } from 'luxon';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as ArticalIcon } from '../../../assets/svg/artical.svg';
+import { ReactComponent as StoryLaneIcon } from '../../../assets/svg/story-lane.svg';
+import { ReactComponent as VideoIcon } from '../../../assets/svg/video.svg';
 import { LEARNING_CATEGORIES } from '../Learning.interface';
 import './learning-resource-card.style.less';
 import { LearningResourceCardProps } from './LearningResourceCard.interface';
@@ -35,17 +33,18 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
 }) => {
   const { t } = useTranslation();
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [isDescriptionTruncated, setIsDescriptionTruncated] = useState(false);
 
   const resourceTypeIcon = useMemo(() => {
     switch (resource.resourceType) {
       case 'Video':
-        return <PlayCircleOutlined className="resource-type-icon video-icon" />;
+        return <VideoIcon className="resource-type-icon video-icon" />;
       case 'Storylane':
-        return <RocketOutlined className="resource-type-icon storylane-icon" />;
+        return <StoryLaneIcon className="resource-type-icon storylane-icon" />;
       case 'Article':
-        return <FileTextOutlined className="resource-type-icon article-icon" />;
+        return <ArticalIcon className="resource-type-icon article-icon" />;
       default:
-        return <FileTextOutlined className="resource-type-icon article-icon" />;
+        return <ArticalIcon className="resource-type-icon article-icon" />;
     }
   }, [resource.resourceType]);
 
@@ -109,15 +108,19 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
             <Paragraph
               className="learning-resource-description"
               ellipsis={
-                isDescriptionExpanded ? false : { rows: 2, suffix: '...' }
+                isDescriptionExpanded
+                  ? false
+                  : { rows: 2, onEllipsis: setIsDescriptionTruncated }
               }>
               {resource.description}
             </Paragraph>
-            <Link className="view-more-link" onClick={handleViewMoreClick}>
-              {isDescriptionExpanded
-                ? t('label.view-less')
-                : t('label.view-more')}
-            </Link>
+            {(isDescriptionTruncated || isDescriptionExpanded) && (
+              <Link className="view-more-link" onClick={handleViewMoreClick}>
+                {isDescriptionExpanded
+                  ? t('label.view-less')
+                  : t('label.view-more')}
+              </Link>
+            )}
           </div>
         )}
 

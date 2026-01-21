@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Badge, Tooltip } from 'antd';
+import { ArrowRightOutlined } from '@ant-design/icons';
+import { Badge, Button, Popover } from 'antd';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -66,13 +67,29 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
     return null;
   }
 
-  const tooltipTitle = `${resourceCount} ${t('label.resource-plural')} ${t(
-    'label.available'
-  ).toLowerCase()}`;
+  const popoverContent = (
+    <div className="learning-tooltip-content">
+      <span className="learning-tooltip-text">
+        {t('label.learn-how-this-feature-works')}
+      </span>
+      <Button
+        className="learning-tooltip-button"
+        size="small"
+        type="default"
+        onClick={handleClick}>
+        {resourceCount} {t('label.resource-plural').toLowerCase()}{' '}
+        <ArrowRightOutlined />
+      </Button>
+    </div>
+  );
 
   return (
     <>
-      <Tooltip placement="bottom" title={tooltipTitle}>
+      <Popover
+        content={popoverContent}
+        overlayClassName="learning-tooltip-popover"
+        placement="bottom"
+        trigger="hover">
         <Badge
           className={classNames('learning-icon-badge', className)}
           count={resourceCount}
@@ -82,10 +99,10 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
             className="learning-icon-container"
             data-testid="learning-icon"
             onClick={handleClick}>
-            <LearningIconSvg className="learning-icon-svg" />
+            <LearningIconSvg height={16} width={16} />
           </div>
         </Badge>
-      </Tooltip>
+      </Popover>
 
       <LearningDrawer
         open={drawerOpen}

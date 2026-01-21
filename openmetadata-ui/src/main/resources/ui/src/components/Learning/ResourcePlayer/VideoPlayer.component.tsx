@@ -87,22 +87,24 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ resource }) => {
   }, []);
 
   return (
-    <div className="video-player-container">
-      {isLoading && (
-        <div className="video-player-loading">
-          <Spin size="large" />
-        </div>
-      )}
-      <iframe
-        allowFullScreen
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-        className="video-player-iframe"
-        frameBorder="0"
-        sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
-        src={embedUrl}
-        title={resource.displayName || resource.name}
-        onLoad={handleLoad}
-      />
+    <div className="video-player-wrapper">
+      <div className="video-player-container">
+        {isLoading && (
+          <div className="video-player-loading">
+            <Spin size="large" />
+          </div>
+        )}
+        <iframe
+          allowFullScreen
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+          className="video-player-iframe"
+          frameBorder="0"
+          sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
+          src={embedUrl}
+          title={resource.displayName || resource.name}
+          onLoad={handleLoad}
+        />
+      </div>
     </div>
   );
 };

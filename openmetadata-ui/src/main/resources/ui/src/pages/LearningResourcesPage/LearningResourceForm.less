@@ -100,10 +100,17 @@
     border-radius: @border-rad-xs;
   }
 
-  .ant-select-selection-item {
-    display: flex;
-    align-items: center;
-    gap: @size-xs;
+  .ant-select-selection-item,
+  .ant-select-item-option-content {
+    .ant-space {
+      display: flex;
+      align-items: center;
+
+      .ant-space-item {
+        display: flex;
+        align-items: center;
+      }
+    }
   }
 
   .embedded-content-hint {

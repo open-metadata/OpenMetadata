@@ -11,16 +11,14 @@
  *  limitations under the License.
  */
 
-import {
-  CloseOutlined,
-  FileTextOutlined,
-  PlayCircleOutlined,
-  RocketOutlined,
-} from '@ant-design/icons';
+import { CloseOutlined } from '@ant-design/icons';
 import { Button, Drawer, Form, Input, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as ArticalIcon } from '../../assets/svg/artical.svg';
+import { ReactComponent as StoryLaneIcon } from '../../assets/svg/story-lane.svg';
+import { ReactComponent as VideoIcon } from '../../assets/svg/video.svg';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import {
   createLearningResource,
@@ -30,7 +28,6 @@ import {
 } from '../../rest/learningResourceAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './LearningResourceForm.less';
-
 const { TextArea } = Input;
 const { Text } = Typography;
 
@@ -41,9 +38,21 @@ interface LearningResourceFormProps {
 }
 
 const RESOURCE_TYPES = [
-  { value: 'Video', label: 'Video', icon: <PlayCircleOutlined /> },
-  { value: 'Storylane', label: 'Storylane', icon: <RocketOutlined /> },
-  { value: 'Article', label: 'Article', icon: <FileTextOutlined /> },
+  {
+    value: 'Video',
+    label: 'Video',
+    icon: <VideoIcon height={16} width={16} />,
+  },
+  {
+    value: 'Storylane',
+    label: 'Storylane',
+    icon: <StoryLaneIcon height={16} width={16} />,
+  },
+  {
+    value: 'Article',
+    label: 'Article',
+    icon: <ArticalIcon height={16} width={16} />,
+  },
 ];
 const CATEGORIES = [
   { value: 'Discovery', label: 'Discovery' },
@@ -218,7 +227,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
       } else {
         await createLearningResource(payload);
         showSuccessToast(
-          t('message.entity-created-successfully', {
+          t('server.create-entity-success', {
             entity: t('label.learning-resource'),
           })
         );
@@ -283,7 +292,14 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
           className="form-item-required"
           label={t('label.name')}
           name="name"
-          rules={[{ message: t('label.field-required'), required: true }]}>
+          rules={[
+            {
+              message: t('label.field-required', {
+                field: t('label.name'),
+              }),
+              required: true,
+            },
+          ]}>
           <Input
             placeholder={t('label.enter-entity', { entity: t('label.name') })}
           />
@@ -293,7 +309,14 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
           className="form-item-required"
           label={t('label.description')}
           name="description"
-          rules={[{ message: t('label.field-required'), required: true }]}>
+          rules={[
+            {
+              message: t('label.field-required', {
+                field: t('label.description'),
+              }),
+              required: true,
+            },
+          ]}>
           <TextArea placeholder={t('message.enter-description')} rows={3} />
         </Form.Item>
 
@@ -302,18 +325,21 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
           data-testid="resource-type-form-item"
           label={t('label.type')}
           name="resourceType"
-          rules={[{ message: t('label.field-required'), required: true }]}>
+          rules={[
+            {
+              message: t('label.field-required', {
+                field: t('label.type'),
+              }),
+              required: true,
+            },
+          ]}>
           <Select
             data-testid="resource-type-select"
-            optionLabelProp="label"
             placeholder={t('label.select-field', { field: t('label.type') })}
             onChange={setResourceType}>
             {RESOURCE_TYPES.map((type) => (
-              <Select.Option
-                key={type.value}
-                label={type.label}
-                value={type.value}>
-                <Space>
+              <Select.Option key={type.value} value={type.value}>
+                <Space align="center">
                   {type.icon}
                   {type.label}
                 </Space>
@@ -325,14 +351,16 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
         <Form.Item
           className="form-item-required"
           data-testid="categories-form-item"
-          extra={
-            <Text type="secondary">
-              {t('message.learning-resource-category-description')}
-            </Text>
-          }
           label={t('label.category-plural')}
           name="categories"
-          rules={[{ message: t('label.field-required'), required: true }]}>
+          rules={[
+            {
+              message: t('label.field-required', {
+                field: t('label.category-plural'),
+              }),
+              required: true,
+            },
+          ]}>
           <Select
             data-testid="categories-select"
             mode="multiple"
@@ -344,18 +372,19 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
         <Form.Item
           className="form-item-required"
           data-testid="contexts-form-item"
-          extra={
-            <Text type="secondary">
-              {t('message.learning-resource-context-description')}
-            </Text>
-          }
           label={t('label.page-plural')}
           name="contexts"
           rules={[
             {
               validator: async (_, contexts) => {
                 if (!contexts || contexts.length < 1) {
-                  return Promise.reject(new Error(t('label.field-required')));
+                  return Promise.reject(
+                    new Error(
+                      t('label.field-required', {
+                        field: t('label.page-plural'),
+                      })
+                    )
+                  );
                 }
               },
             },
@@ -372,7 +401,12 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
           label={t('label.source-url')}
           name="sourceUrl"
           rules={[
-            { message: t('label.field-required'), required: true },
+            {
+              message: t('label.field-required', {
+                field: t('label.source-url'),
+              }),
+              required: true,
+            },
             { message: t('message.invalid-url'), type: 'url' },
           ]}>
           <Input placeholder="https://www.youtube.com/watch?v=..." />

@@ -16,11 +16,8 @@ import {
   DeleteOutlined,
   DownOutlined,
   EditOutlined,
-  FileTextOutlined,
   MenuOutlined,
-  PlayCircleFilled,
   PlusOutlined,
-  RocketFilled,
   SearchOutlined,
 } from '@ant-design/icons';
 import { Button, Input, Modal, Select, Space, Table, Tag, Tooltip } from 'antd';
@@ -29,9 +26,13 @@ import { AxiosError } from 'axios';
 import { DateTime } from 'luxon';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as ArticalIcon } from '../../assets/svg/artical.svg';
+import { ReactComponent as StoryLaneIcon } from '../../assets/svg/story-lane.svg';
+import { ReactComponent as VideoIcon } from '../../assets/svg/video.svg';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { LEARNING_CATEGORIES } from '../../components/Learning/Learning.interface';
 import { ResourcePlayerModal } from '../../components/Learning/ResourcePlayer/ResourcePlayerModal.component';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
   deleteLearningResource,
@@ -242,25 +243,25 @@ export const LearningResourcesPage: React.FC = () => {
       case 'Video':
         return (
           <div className="type-icon-wrapper video-icon">
-            <PlayCircleFilled />
+            <VideoIcon />
           </div>
         );
       case 'Storylane':
         return (
           <div className="type-icon-wrapper storylane-icon">
-            <RocketFilled />
+            <StoryLaneIcon />
           </div>
         );
       case 'Article':
         return (
           <div className="type-icon-wrapper article-icon">
-            <FileTextOutlined />
+            <ArticalIcon />
           </div>
         );
       default:
         return (
           <div className="type-icon-wrapper article-icon">
-            <FileTextOutlined />
+            <ArticalIcon />
           </div>
         );
     }
@@ -434,153 +435,155 @@ export const LearningResourcesPage: React.FC = () => {
   ];
 
   return (
-    <div
-      className="learning-resources-page"
-      data-testid="learning-resources-page">
-      <TitleBreadcrumb titleLinks={breadcrumbs} />
+    <PageLayoutV1 pageTitle={t('label.learning-resource')}>
+      <div
+        className="learning-resources-page"
+        data-testid="learning-resources-page">
+        <TitleBreadcrumb titleLinks={breadcrumbs} />
 
-      <div className="page-header">
-        <div className="page-header-title">
-          <h4 className="page-title" data-testid="page-title">
-            {t('label.learning-resource')}
-          </h4>
-          <p className="page-description">
-            {t('message.learning-resource-page-description')}
-          </p>
-        </div>
-        <Button
-          data-testid="create-resource"
-          icon={<PlusOutlined />}
-          type="primary"
-          onClick={handleCreate}>
-          {t('label.add-entity', { entity: t('label.resource') })}
-        </Button>
-      </div>
-
-      <div className="content-card">
-        <div className="filter-bar">
-          <Input
-            allowClear
-            className="search-input"
-            placeholder={t('label.search-entity', {
-              entity: t('label.resource'),
-            })}
-            prefix={<SearchOutlined className="search-icon" />}
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-          />
-
-          <Select
-            allowClear
-            className="filter-select"
-            dropdownStyle={{ minWidth: 120 }}
-            options={RESOURCE_TYPES.map((type) => ({
-              label: type,
-              value: type,
-            }))}
-            placeholder={t('label.type')}
-            popupMatchSelectWidth={false}
-            suffixIcon={<DownOutlined className="filter-arrow" />}
-            value={filterType}
-            variant="borderless"
-            onChange={setFilterType}
-          />
-
-          <Select
-            allowClear
-            className="filter-select"
-            dropdownStyle={{ minWidth: 140 }}
-            options={CATEGORIES.map((cat) => ({
-              label:
-                LEARNING_CATEGORIES[cat as keyof typeof LEARNING_CATEGORIES]
-                  ?.label ?? cat,
-              value: cat,
-            }))}
-            placeholder={t('label.category')}
-            popupMatchSelectWidth={false}
-            suffixIcon={<DownOutlined className="filter-arrow" />}
-            value={filterCategory}
-            variant="borderless"
-            onChange={setFilterCategory}
-          />
-
-          <Select
-            allowClear
-            className="filter-select"
-            dropdownStyle={{ minWidth: 160 }}
-            options={CONTENT_CONTEXTS}
-            placeholder={t('label.context')}
-            popupMatchSelectWidth={false}
-            suffixIcon={<DownOutlined className="filter-arrow" />}
-            value={filterContent}
-            variant="borderless"
-            onChange={setFilterContent}
-          />
-
-          <Select
-            allowClear
-            className="filter-select"
-            dropdownStyle={{ minWidth: 120 }}
-            options={STATUSES.map((status) => ({
-              label: status,
-              value: status,
-            }))}
-            placeholder={t('label.status')}
-            popupMatchSelectWidth={false}
-            suffixIcon={<DownOutlined className="filter-arrow" />}
-            value={filterStatus}
-            variant="borderless"
-            onChange={setFilterStatus}
-          />
-
-          <div className="view-toggle">
-            <Button
-              className={viewMode === 'list' ? 'active' : ''}
-              icon={<MenuOutlined />}
-              type="text"
-              onClick={() => setViewMode('list')}
-            />
-            <Button
-              className={viewMode === 'card' ? 'active' : ''}
-              icon={<AppstoreOutlined />}
-              type="text"
-              onClick={() => setViewMode('card')}
-            />
+        <div className="page-header">
+          <div className="page-header-title">
+            <h4 className="page-title" data-testid="page-title">
+              {t('label.learning-resource')}
+            </h4>
+            <p className="page-description">
+              {t('message.learning-resources-management-description')}
+            </p>
           </div>
+          <Button
+            data-testid="create-resource"
+            icon={<PlusOutlined />}
+            type="primary"
+            onClick={handleCreate}>
+            {t('label.add-entity', { entity: t('label.resource') })}
+          </Button>
         </div>
 
-        <Table
-          columns={columns}
-          dataSource={filteredResources}
-          loading={isLoading}
-          pagination={{
-            current: currentPage,
-            pageSize: pageSize,
-            showSizeChanger: false,
-            onChange: (page: number) => {
-              setCurrentPage(page);
-            },
-          }}
-          rowKey="id"
-          scroll={{ x: 1000 }}
-        />
+        <div className="content-card">
+          <div className="filter-bar">
+            <Input
+              allowClear
+              className="search-input"
+              placeholder={t('label.search-entity', {
+                entity: t('label.resource'),
+              })}
+              prefix={<SearchOutlined className="search-icon" />}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+            />
+
+            <Select
+              allowClear
+              className="filter-select"
+              dropdownStyle={{ minWidth: 120 }}
+              options={RESOURCE_TYPES.map((type) => ({
+                label: type,
+                value: type,
+              }))}
+              placeholder={t('label.type')}
+              popupMatchSelectWidth={false}
+              suffixIcon={<DownOutlined className="filter-arrow" />}
+              value={filterType}
+              variant="borderless"
+              onChange={setFilterType}
+            />
+
+            <Select
+              allowClear
+              className="filter-select"
+              dropdownStyle={{ minWidth: 140 }}
+              options={CATEGORIES.map((cat) => ({
+                label:
+                  LEARNING_CATEGORIES[cat as keyof typeof LEARNING_CATEGORIES]
+                    ?.label ?? cat,
+                value: cat,
+              }))}
+              placeholder={t('label.category')}
+              popupMatchSelectWidth={false}
+              suffixIcon={<DownOutlined className="filter-arrow" />}
+              value={filterCategory}
+              variant="borderless"
+              onChange={setFilterCategory}
+            />
+
+            <Select
+              allowClear
+              className="filter-select"
+              dropdownStyle={{ minWidth: 160 }}
+              options={CONTENT_CONTEXTS}
+              placeholder={t('label.context')}
+              popupMatchSelectWidth={false}
+              suffixIcon={<DownOutlined className="filter-arrow" />}
+              value={filterContent}
+              variant="borderless"
+              onChange={setFilterContent}
+            />
+
+            <Select
+              allowClear
+              className="filter-select"
+              dropdownStyle={{ minWidth: 120 }}
+              options={STATUSES.map((status) => ({
+                label: status,
+                value: status,
+              }))}
+              placeholder={t('label.status')}
+              popupMatchSelectWidth={false}
+              suffixIcon={<DownOutlined className="filter-arrow" />}
+              value={filterStatus}
+              variant="borderless"
+              onChange={setFilterStatus}
+            />
+
+            <div className="view-toggle">
+              <Button
+                className={viewMode === 'list' ? 'active' : ''}
+                icon={<MenuOutlined />}
+                type="text"
+                onClick={() => setViewMode('list')}
+              />
+              <Button
+                className={viewMode === 'card' ? 'active' : ''}
+                icon={<AppstoreOutlined />}
+                type="text"
+                onClick={() => setViewMode('card')}
+              />
+            </div>
+          </div>
+
+          <Table
+            columns={columns}
+            dataSource={filteredResources}
+            loading={isLoading}
+            pagination={{
+              current: currentPage,
+              pageSize: pageSize,
+              showSizeChanger: false,
+              onChange: (page: number) => {
+                setCurrentPage(page);
+              },
+            }}
+            rowKey="id"
+            scroll={{ x: 1000 }}
+          />
+        </div>
+
+        {isFormOpen && (
+          <LearningResourceForm
+            open={isFormOpen}
+            resource={editingResource}
+            onClose={handleFormClose}
+          />
+        )}
+
+        {selectedResource && (
+          <ResourcePlayerModal
+            open={isPlayerOpen}
+            resource={selectedResource}
+            onClose={handlePlayerClose}
+          />
+        )}
       </div>
-
-      {isFormOpen && (
-        <LearningResourceForm
-          open={isFormOpen}
-          resource={editingResource}
-          onClose={handleFormClose}
-        />
-      )}
-
-      {selectedResource && (
-        <ResourcePlayerModal
-          open={isPlayerOpen}
-          resource={selectedResource}
-          onClose={handlePlayerClose}
-        />
-      )}
-    </div>
+    </PageLayoutV1>
   );
 };

@@ -65,43 +65,49 @@ export const ArticleViewer: React.FC<ArticleViewerProps> = ({ resource }) => {
 
   if (isLoading) {
     return (
-      <div className="article-viewer-loading">
-        <Spin size="large" tip={t('label.loading-article')} />
+      <div className="article-viewer-wrapper">
+        <div className="article-viewer-loading">
+          <Spin size="large" tip={t('label.loading-article')} />
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="article-viewer-error">
-        <Alert
-          showIcon
-          action={
-            <Button
-              href={resource.source.url}
-              icon={<LinkOutlined />}
-              rel="noopener noreferrer"
-              size="small"
-              target="_blank"
-              type="link">
-              {t('label.open-original')}
-            </Button>
-          }
-          description={error}
-          message={t('message.failed-to-load-article')}
-          type="error"
-        />
+      <div className="article-viewer-wrapper">
+        <div className="article-viewer-error">
+          <Alert
+            showIcon
+            action={
+              <Button
+                href={resource.source.url}
+                icon={<LinkOutlined />}
+                rel="noopener noreferrer"
+                size="small"
+                target="_blank"
+                type="link">
+                {t('label.open-original')}
+              </Button>
+            }
+            description={error}
+            message={t('message.failed-to-load-article')}
+            type="error"
+          />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="article-viewer-container">
-      <div className="article-viewer-content">
-        <RichTextEditorPreviewer
-          enableSeeMoreVariant={false}
-          markdown={content}
-        />
+    <div className="article-viewer-wrapper">
+      <div className="article-viewer-container">
+        <div className="article-viewer-content">
+          <RichTextEditorPreviewer
+            enableSeeMoreVariant={false}
+            markdown={content}
+          />
+        </div>
       </div>
     </div>
   );

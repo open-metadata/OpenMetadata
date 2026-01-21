@@ -11,12 +11,26 @@
  *  limitations under the License.
  */
 
+.storylane-tour-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px 48px;
+}
+
 .storylane-tour-container {
   position: relative;
   width: 100%;
-  height: 70vh;
+  max-width: 1200px;
+  aspect-ratio: 16 / 9;
+  max-height: 532.6875px;
+  border-radius: 8px;
+  overflow: hidden;
 
   .storylane-tour-iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
     border: none;

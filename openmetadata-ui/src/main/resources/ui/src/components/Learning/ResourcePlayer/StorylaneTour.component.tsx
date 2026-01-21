@@ -28,22 +28,24 @@ export const StorylaneTour: React.FC<StorylaneTourProps> = ({ resource }) => {
   }, []);
 
   return (
-    <div className="storylane-tour-container">
-      {isLoading && (
-        <div className="storylane-tour-loading">
-          <Spin size="large" />
-        </div>
-      )}
-      <iframe
-        allowFullScreen
-        allow="fullscreen"
-        className="storylane-tour-iframe"
-        frameBorder="0"
-        sandbox="allow-scripts allow-same-origin allow-presentation allow-popups allow-forms"
-        src={resource.source.url}
-        title={resource.displayName || resource.name}
-        onLoad={handleLoad}
-      />
+    <div className="storylane-tour-wrapper">
+      <div className="storylane-tour-container">
+        {isLoading && (
+          <div className="storylane-tour-loading">
+            <Spin size="large" />
+          </div>
+        )}
+        <iframe
+          allowFullScreen
+          allow="fullscreen"
+          className="storylane-tour-iframe"
+          frameBorder="0"
+          sandbox="allow-scripts allow-same-origin allow-presentation allow-popups allow-forms"
+          src={resource.source.url}
+          title={resource.displayName || resource.name}
+          onLoad={handleLoad}
+        />
+      </div>
     </div>
   );
 };

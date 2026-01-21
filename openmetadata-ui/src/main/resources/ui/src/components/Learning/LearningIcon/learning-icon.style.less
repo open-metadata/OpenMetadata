@@ -22,25 +22,19 @@
   &:hover {
     transform: scale(1.1);
   }
-
-  .learning-icon-svg {
-    width: 20px;
-    height: 20px;
-    display: block;
-  }
 }
 
-.learning-icon-badge {
+.ant-badge.learning-icon-badge {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   vertical-align: middle;
   position: relative;
-  margin-left: 8px;
-  margin-right: 12px;
+  border-radius: 16px;
+  padding: 4px !important;
 
   .ant-badge-count {
-    background-color: #f04438;
+    background-color: @red-14;
     font-size: 10px;
     min-width: 16px;
     height: 16px;
@@ -48,8 +42,35 @@
     padding: 0 4px;
     box-shadow: 0 0 0 1px @white;
     position: absolute !important;
-    top: -6px !important;
-    right: -10px !important;
+    top: -4px !important;
+    right: -6px !important;
     transform: none !important;
+  }
+}
+
+.learning-tooltip-popover {
+  .ant-popover-inner {
+    padding: 0;
+    border-radius: @border-rad-sm;
+    background-color: @grey-50;
+  }
+}
+
+.learning-tooltip-content {
+  display: flex;
+  align-items: center;
+  gap: @size-sm;
+
+  .learning-tooltip-text {
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .learning-tooltip-button {
+    font-size: 12px;
+    border-radius: @border-rad-sm;
+    background-color: @white;
+    border: none;
+    color: @grey-700;
   }
 }
