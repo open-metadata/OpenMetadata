@@ -1604,7 +1604,13 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     GlossaryTerm parentTerm =
         Entity.getEntity(GLOSSARY_TERM, parentId, "id,name,fullyQualifiedName,glossary", include);
     return searchGlossaryTermsInternal(
-        parentTerm.getFullyQualifiedName(), query, limit, offset, fieldsParam, include, entityStatus);
+        parentTerm.getFullyQualifiedName(),
+        query,
+        limit,
+        offset,
+        fieldsParam,
+        include,
+        entityStatus);
   }
 
   public ResultList<GlossaryTerm> searchGlossaryTermsByParentFQN(
