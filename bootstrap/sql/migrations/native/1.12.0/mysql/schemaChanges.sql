@@ -51,7 +51,7 @@ UPDATE test_definition
   SET json = JSON_SET(json, '$.enabled', true)
   WHERE json_extract(json, '$.enabled') IS NULL;
 
-<<<<<<< HEAD
+
 -- Create Learning Resource Entity Table
 CREATE TABLE IF NOT EXISTS learning_resource_entity (
   id varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,'$.id'))) STORED NOT NULL,
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS learning_resource_entity (
   PRIMARY KEY (id),
   UNIQUE KEY fqnHash (fqnHash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-=======
+
 -- Add updatedAt generated column to entity_extension table for efficient timestamp-based queries
 -- This supports the listEntityHistoryByTimestamp API endpoint for retrieving entity versions within a time range
 ALTER TABLE entity_extension
