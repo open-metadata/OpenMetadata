@@ -66,8 +66,8 @@ def _add_location(url: str, connection: BigQueryConnection) -> str:
     if not location:
           return url
 
-    if "location=" in url:
-          return url
+    if "?location=" in url or "&location=" in url:
+        return url
 
     separator = "&" if "?" in url else "?"
     return f"{url}{separator}location={location}"
