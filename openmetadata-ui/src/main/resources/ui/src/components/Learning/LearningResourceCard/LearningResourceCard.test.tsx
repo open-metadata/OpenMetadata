@@ -96,23 +96,15 @@ describe('LearningResourceCard', () => {
     ).toBeInTheDocument();
   });
 
-  it('should render View More link for description', () => {
+  it('should render description with ellipsis configuration', () => {
     render(<LearningResourceCard resource={mockVideoResource} />);
 
-    expect(screen.getByText('View More')).toBeInTheDocument();
-  });
+    const descriptionElement = screen.getByLabelText(
+      /A test video learning resource/i
+    );
 
-  it('should toggle description expansion when View More is clicked', () => {
-    render(<LearningResourceCard resource={mockVideoResource} />);
-
-    const viewMoreLink = screen.getByText('View More');
-    fireEvent.click(viewMoreLink);
-
-    expect(screen.getByText('View Less')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByText('View Less'));
-
-    expect(screen.getByText('View More')).toBeInTheDocument();
+    expect(descriptionElement).toBeInTheDocument();
+    expect(descriptionElement).toHaveClass('learning-resource-description');
   });
 
   it('should render category tag', () => {
@@ -231,6 +223,8 @@ describe('LearningResourceCard', () => {
     };
     render(<LearningResourceCard resource={resourceWithoutDescription} />);
 
-    expect(screen.queryByText('View More')).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText(/learning resource/i)
+    ).not.toBeInTheDocument();
   });
 });

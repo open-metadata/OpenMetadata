@@ -195,10 +195,12 @@ describe('ResourcePlayerModal', () => {
       <ResourcePlayerModal open resource={resource} onClose={mockOnClose} />
     );
 
-    expect(screen.queryByText('label.view-more')).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText(/test resource description/i)
+    ).not.toBeInTheDocument();
   });
 
-  it('should toggle description expansion on view more click', () => {
+  it('should render description with ellipsis configuration when description is provided', () => {
     const resource = createMockResource('Video', {
       description: 'A very long description that should be truncated initially',
     });
@@ -206,10 +208,12 @@ describe('ResourcePlayerModal', () => {
       <ResourcePlayerModal open resource={resource} onClose={mockOnClose} />
     );
 
-    const viewMoreLink = screen.getByText('label.view-more');
-    fireEvent.click(viewMoreLink);
+    const descriptionElement = screen.getByLabelText(
+      /A very long description that should be truncated initially/i
+    );
 
-    expect(screen.getByText('label.view-less')).toBeInTheDocument();
+    expect(descriptionElement).toBeInTheDocument();
+    expect(descriptionElement).toHaveClass('resource-description');
   });
 
   it('should display unsupported message for unknown resource type', () => {
