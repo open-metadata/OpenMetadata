@@ -14,10 +14,10 @@ import { APIRequestContext, expect, test } from '@playwright/test';
 
 import { SERVICE_TYPE } from '../../constant/service';
 import {
-  createNewPage,
-  getApiContext,
-  redirectToHomePage,
-  uuid,
+    createNewPage,
+    getApiContext,
+    redirectToHomePage,
+    uuid,
 } from '../../utils/common';
 import { performBulkDownload } from '../../utils/importUtils';
 import { visitServiceDetailsPage } from '../../utils/service';
@@ -677,11 +677,11 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       await page.keyboard.press('Enter');
 
       // Type new description
-      const descriptionInput = page.locator('[data-testid="markdown-editor"]');
-      if (await descriptionInput.isVisible()) {
-        await page.locator('.toastui-editor-contents').fill('Updated description via bulk edit');
+        await expect(page.locator('.description-markdown-editor')).toBeVisible();
+        await page.locator('.om-block-editor').fill('Updated description via bulk edit');
         await page.click('[data-testid="save"]');
-      }
+        await expect(page.locator('.description-markdown-editor')).not.toBeVisible();
+
 
       // Validate - this reconstructs CSV with edited data
       await page.getByRole('button', { name: 'Next' }).click();

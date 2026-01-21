@@ -143,24 +143,38 @@ export const getColumnConfig = (
   } as Column<any>;
 };
 
-const normalizeCSVValue = (value: string, colName?: string): string => {
-  if (typeof value !== 'string') {
-    return value;
+/**
+ * Checks if a column is a special column that requires special quote handling.
+ */
+const isSpecialColumn = (colName?: string): boolean => {
+  if (!colName) {
+    return false;
   }
 
-  let normalized = value.trim();
-  const isSpecialColumn =
-    colName &&
-    (csvUtilsClassBase
+  return (
+    csvUtilsClassBase
       .columnsWithMultipleValuesEscapeNeeded()
       .includes(colName) ||
-      colName === 'tags' ||
-      colName === 'domains' ||
-      colName.endsWith('.tags') ||
-      colName.endsWith('.domains'));
-  const isDomainsColumn =
-    colName === 'domains' || colName?.endsWith('.domains');
+    colName === 'tags' ||
+    colName === 'domains' ||
+    colName.endsWith('.tags') ||
+    colName.endsWith('.domains')
+  );
+};
 
+/**
+ * Checks if a column is a domains column.
+ */
+const isDomainsColumn = (colName?: string): boolean => {
+  return colName === 'domains' || colName?.endsWith('.domains') || false;
+};
+
+/**
+ * Strips all wrapper quotes from a value, handling multiple quote layers.
+ * Continues until no more wrapper quotes are found or length stops decreasing.
+ */
+const stripAllWrapperQuotes = (value: string): string => {
+  let normalized = value.trim();
   let previousLength = normalized.length + 1;
 
   while (
@@ -171,6 +185,7 @@ const normalizeCSVValue = (value: string, colName?: string): string => {
   ) {
     previousLength = normalized.length;
 
+    // Handle triple quotes first ("""value""")
     if (
       normalized.startsWith('"""') &&
       normalized.endsWith('"""') &&
@@ -181,28 +196,43 @@ const normalizeCSVValue = (value: string, colName?: string): string => {
       continue;
     }
 
+    // Handle single quotes ("value")
     const innerValue = normalized.slice(1, -1);
 
     if (innerValue.length === 0) {
       return '';
     }
 
-    if (isDomainsColumn) {
+    if (!innerValue.startsWith('"') || !innerValue.endsWith('"')) {
       normalized = innerValue;
+    } else {
+      const doubleStripped = innerValue.slice(1, -1);
 
-      break;
+      if (doubleStripped.length > 0) {
+        normalized = doubleStripped;
+      } else {
+        break;
+      }
     }
-
-    if (isSpecialColumn && !innerValue.includes('"')) {
-      break;
-    }
-
-    normalized = innerValue;
   }
 
-  normalized = normalized.replace(/""/g, '"');
-
   return normalized;
+};
+
+/**
+ * Normalizes CSV values during import by stripping wrapper quotes.
+ * All columns use the same stripping logic, then unescape double quotes.
+ * @param colName - Optional column name (kept for backward compatibility)
+ */
+const normalizeCSVValue = (value: string, _colName?: string): string => {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  const normalized = stripAllWrapperQuotes(value);
+
+  // Unescape double quotes ("" -> ")
+  return normalized.replace(/""/g, '"');
 };
 
 export const getEntityColumnsAndDataSourceFromCSV = (
@@ -252,76 +282,34 @@ export const getEntityColumnsAndDataSourceFromCSV = (
   };
 };
 
+/**
+ * Normalizes values before export by stripping all wrapper quotes.
+ * This prevents quote accumulation when re-exporting previously imported data.
+ */
 const normalizeValueForExport = (value: string): string => {
   if (typeof value !== 'string') {
     return String(value);
   }
 
-  let normalized = value.trim();
-  let previousLength = normalized.length + 1;
-
-  while (
-    normalized.length >= 2 &&
-    normalized.startsWith('"') &&
-    normalized.endsWith('"') &&
-    normalized.length < previousLength
-  ) {
-    previousLength = normalized.length;
-
-    if (
-      normalized.startsWith('"""') &&
-      normalized.endsWith('"""') &&
-      normalized.length > 6
-    ) {
-      normalized = normalized.slice(3, -3);
-
-      continue;
-    }
-
-    const innerValue = normalized.slice(1, -1);
-
-    if (innerValue.length === 0) {
-      return '';
-    }
-
-    const innerStartsEndsWithQuotes =
-      innerValue.startsWith('"') && innerValue.endsWith('"');
-
-    if (!innerStartsEndsWithQuotes) {
-      normalized = innerValue;
-    } else {
-      const doubleStripped = innerValue.slice(1, -1);
-      if (doubleStripped.length > 0) {
-        normalized = doubleStripped;
-      } else {
-        break;
-      }
-    }
-  }
-
-  return normalized;
+  return stripAllWrapperQuotes(value);
 };
 
+/**
+ * Determines if a value needs to be wrapped in quotes for CSV export.
+ */
 const needsWrapping = (value: string, colName: string): boolean => {
   const hasSpecialChars = value.includes(',') || value.includes('\n');
-  const isSpecialColumn =
-    colName.includes('tags') ||
-    colName.includes('domains') ||
-    csvUtilsClassBase.columnsWithMultipleValuesEscapeNeeded().includes(colName);
+  const isSpecialCol = isSpecialColumn(colName);
 
-  return hasSpecialChars || isSpecialColumn || value.includes('"');
+  return hasSpecialChars || isSpecialCol || value.includes('"');
 };
 
 const getQuoteStyle = (value: string, colName: string): 'single' | 'triple' => {
-  if (colName.includes('domains')) {
+  if (isDomainsColumn(colName)) {
     return 'triple';
   }
 
-  const isSpecialColumn = csvUtilsClassBase
-    .columnsWithMultipleValuesEscapeNeeded()
-    .includes(colName);
-
-  if (isSpecialColumn && value.includes('"')) {
+  if (isSpecialColumn(colName) && value.includes('"')) {
     return 'triple';
   }
 
