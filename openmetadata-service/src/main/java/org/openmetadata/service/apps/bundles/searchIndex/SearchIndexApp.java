@@ -312,7 +312,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
     SearchIndexJob finalJob = distributedExecutor.getJobWithFreshStats();
     if (finalJob != null) {
-      updateJobDataFromDistributedJob(finalJob);
+      // Use actual sink stats for accurate success/failure counts
+      // The partition-based stats may be inaccurate because the bulk sink is asynchronous
+      StepStats sinkStats = searchIndexSink != null ? searchIndexSink.getStats() : null;
+      updateJobDataFromDistributedJob(finalJob, sinkStats);
       saveServerStatsToJobDataMap(jobExecutionContext, finalJob);
     }
 
@@ -368,22 +371,48 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   private void updateJobDataFromDistributedJob(SearchIndexJob distributedJob) {
+    updateJobDataFromDistributedJob(distributedJob, null);
+  }
+
+  private void updateJobDataFromDistributedJob(
+      SearchIndexJob distributedJob, StepStats actualSinkStats) {
     Stats stats = jobData.getStats();
     if (stats == null) {
       return;
     }
 
+    // Use actual sink stats if available, otherwise use partition-based aggregates
+    // The actual sink stats are more accurate because the bulk sink is asynchronous
+    // and partition stats count entities as "success" before the sink confirms
+    long successRecords =
+        actualSinkStats != null
+            ? actualSinkStats.getSuccessRecords()
+            : distributedJob.getSuccessRecords();
+    long failedRecords =
+        actualSinkStats != null
+            ? actualSinkStats.getFailedRecords()
+            : distributedJob.getFailedRecords();
+
+    if (actualSinkStats != null) {
+      LOG.info(
+          "Using actual sink stats - partition-based: success={}, failed={}; actual: success={}, failed={}",
+          distributedJob.getSuccessRecords(),
+          distributedJob.getFailedRecords(),
+          actualSinkStats.getSuccessRecords(),
+          actualSinkStats.getFailedRecords());
+    }
+
     StepStats jobStats = stats.getJobStats();
     if (jobStats != null) {
-      jobStats.setSuccessRecords((int) distributedJob.getSuccessRecords());
-      jobStats.setFailedRecords((int) distributedJob.getFailedRecords());
+      jobStats.setSuccessRecords((int) successRecords);
+      jobStats.setFailedRecords((int) failedRecords);
     }
 
     StepStats readerStats = stats.getReaderStats();
     if (readerStats != null) {
       readerStats.setTotalRecords((int) distributedJob.getTotalRecords());
       readerStats.setSuccessRecords((int) distributedJob.getProcessedRecords());
-      long totalProcessed = distributedJob.getSuccessRecords() + distributedJob.getFailedRecords();
+      long totalProcessed = successRecords + failedRecords;
       long readFailures =
           distributedJob.getProcessedRecords() > totalProcessed
               ? distributedJob.getProcessedRecords() - totalProcessed
@@ -394,8 +423,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
     StepStats sinkStats = stats.getSinkStats();
     if (sinkStats != null) {
       sinkStats.setTotalRecords((int) distributedJob.getProcessedRecords());
-      sinkStats.setSuccessRecords((int) distributedJob.getSuccessRecords());
-      sinkStats.setFailedRecords((int) distributedJob.getFailedRecords());
+      sinkStats.setSuccessRecords((int) successRecords);
+      sinkStats.setFailedRecords((int) failedRecords);
     }
 
     if (distributedJob.getEntityStats() != null && stats.getEntityStats() != null) {
@@ -430,13 +459,19 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
       if (distributedJob.getServerStats() != null && !distributedJob.getServerStats().isEmpty()) {
         LOG.info(
-            "Saving serverStats to job data map: {} servers",
-            distributedJob.getServerStats().size());
+            "Saving serverStats to job data map: {} servers with data: {}",
+            distributedJob.getServerStats().size(),
+            distributedJob.getServerStats());
         successContext.withAdditionalProperty("serverStats", distributedJob.getServerStats());
         successContext.withAdditionalProperty(
             "serverCount", distributedJob.getServerStats().size());
         successContext.withAdditionalProperty(
             "distributedJobId", distributedJob.getId().toString());
+      } else {
+        LOG.warn(
+            "No server stats available for distributed job {} - serverStats is {} ",
+            distributedJob.getId(),
+            distributedJob.getServerStats() == null ? "null" : "empty");
       }
 
       if (jobData.getStats() != null) {
