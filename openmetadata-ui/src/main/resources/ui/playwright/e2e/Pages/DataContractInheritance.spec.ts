@@ -178,6 +178,10 @@ const startAddingContract = async (page: Page) => {
 
   await page.getByTestId('add-contract-button').click();
 
+  // PR #25132 introduced a dropdown menu for adding contracts
+  await expect(page.getByTestId('add-contract-menu')).toBeVisible();
+  await page.getByTestId('create-contract-button').click();
+
   await expect(page.getByTestId('add-contract-card')).toBeVisible();
 };
 

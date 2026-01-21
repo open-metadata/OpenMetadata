@@ -5727,20 +5727,26 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     // Verify ODCS structure
     assertNotNull(odcs);
-    assertEquals(ODCSDataContract.OdcsApiVersion.V_3_0_2, odcs.getApiVersion());
+    assertEquals(ODCSDataContract.OdcsApiVersion.V_3_1_0, odcs.getApiVersion());
     assertEquals(ODCSDataContract.OdcsKind.DATA_CONTRACT, odcs.getKind());
     assertEquals(created.getName(), odcs.getName());
     assertNotNull(odcs.getStatus());
     assertNotNull(odcs.getDescription());
     assertEquals("Test contract for ODCS export", odcs.getDescription().getPurpose());
 
-    // Verify schema was converted
+    // Verify schema was converted (ODCS v3.1.0 wraps columns in a parent object)
     assertNotNull(odcs.getSchema());
-    assertEquals(2, odcs.getSchema().size());
-    assertEquals("id", odcs.getSchema().get(0).getName());
-    assertEquals(ODCSSchemaElement.LogicalType.INTEGER, odcs.getSchema().get(0).getLogicalType());
-    assertEquals("name", odcs.getSchema().get(1).getName());
-    assertEquals(ODCSSchemaElement.LogicalType.STRING, odcs.getSchema().get(1).getLogicalType());
+    assertEquals(1, odcs.getSchema().size());
+    ODCSSchemaElement tableObject = odcs.getSchema().get(0);
+    assertEquals(ODCSSchemaElement.LogicalType.OBJECT, tableObject.getLogicalType());
+    assertNotNull(tableObject.getProperties());
+    assertEquals(2, tableObject.getProperties().size());
+    assertEquals("id", tableObject.getProperties().get(0).getName());
+    assertEquals(
+        ODCSSchemaElement.LogicalType.INTEGER, tableObject.getProperties().get(0).getLogicalType());
+    assertEquals("name", tableObject.getProperties().get(1).getName());
+    assertEquals(
+        ODCSSchemaElement.LogicalType.STRING, tableObject.getProperties().get(1).getLogicalType());
   }
 
   @Test
@@ -5757,7 +5763,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     // Verify YAML content
     assertNotNull(yamlContent);
     assertTrue(yamlContent.contains("apiVersion:"));
-    assertTrue(yamlContent.contains("v3.0.2"));
+    assertTrue(yamlContent.contains("v3.1.0"));
     assertTrue(yamlContent.contains("kind:"));
     assertTrue(yamlContent.contains("DataContract"));
     assertTrue(yamlContent.contains("name:"));
@@ -5777,7 +5783,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     // Verify ODCS structure
     assertNotNull(odcs);
-    assertEquals(ODCSDataContract.OdcsApiVersion.V_3_0_2, odcs.getApiVersion());
+    assertEquals(ODCSDataContract.OdcsApiVersion.V_3_1_0, odcs.getApiVersion());
     assertEquals(created.getName(), odcs.getName());
   }
 
@@ -5957,18 +5963,22 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertNotNull(odcs);
     assertEquals(original.getName(), odcs.getName());
     assertEquals(ODCSDataContract.OdcsStatus.ACTIVE, odcs.getStatus()); // APPROVED -> active
-    assertEquals(3, odcs.getSchema().size());
+    // ODCS v3.1.0 wraps columns in a parent object
+    assertEquals(1, odcs.getSchema().size());
+    ODCSSchemaElement tableObject = odcs.getSchema().get(0);
+    assertEquals(ODCSSchemaElement.LogicalType.OBJECT, tableObject.getLogicalType());
+    assertEquals(3, tableObject.getProperties().size());
 
     // Verify type mappings in ODCS
     assertEquals(
         ODCSSchemaElement.LogicalType.INTEGER,
-        odcs.getSchema().get(0).getLogicalType()); // INT -> integer
+        tableObject.getProperties().get(0).getLogicalType()); // INT -> integer
     assertEquals(
         ODCSSchemaElement.LogicalType.STRING,
-        odcs.getSchema().get(1).getLogicalType()); // STRING -> string
+        tableObject.getProperties().get(1).getLogicalType()); // STRING -> string
     assertEquals(
         ODCSSchemaElement.LogicalType.STRING,
-        odcs.getSchema().get(2).getLogicalType()); // STRING -> string
+        tableObject.getProperties().get(2).getLogicalType()); // STRING -> string
 
     // Import back to a new table with a unique name
     Table newTable = createUniqueTable(test.getDisplayName() + "_reimport");
@@ -6016,19 +6026,19 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     // Export to ODCS
     ODCSDataContract odcs = exportDataContractToODCS(created.getId());
 
-    // Verify SLA properties
+    // Verify SLA properties (ODCS uses "freshness" and "latency" naming)
     assertNotNull(odcs.getSlaProperties());
     assertTrue(odcs.getSlaProperties().size() >= 2);
 
-    boolean hasRefreshFrequency =
+    boolean hasFreshness =
         odcs.getSlaProperties().stream()
-            .anyMatch(p -> "refreshFrequency".equals(p.getProperty()) && "1".equals(p.getValue()));
-    assertTrue(hasRefreshFrequency);
+            .anyMatch(p -> "freshness".equals(p.getProperty()) && "1".equals(p.getValue()));
+    assertTrue(hasFreshness);
 
-    boolean hasMaxLatency =
+    boolean hasLatency =
         odcs.getSlaProperties().stream()
-            .anyMatch(p -> "maxLatency".equals(p.getProperty()) && "2".equals(p.getValue()));
-    assertTrue(hasMaxLatency);
+            .anyMatch(p -> "latency".equals(p.getProperty()) && "2".equals(p.getValue()));
+    assertTrue(hasLatency);
   }
 
   // ==================== ODCS Helper Methods ====================
