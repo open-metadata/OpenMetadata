@@ -324,7 +324,8 @@ export const searchGlossaryTermsPaginated = async (
   parentFqn?: string,
   limit = 50,
   offset = 0,
-  fields?: string
+  fields?: string,
+  statuses?: string[]
 ) => {
   const params: Record<string, number | string> = {
     limit,
@@ -348,6 +349,9 @@ export const searchGlossaryTermsPaginated = async (
   }
   if (fields) {
     params.fields = fields;
+  }
+  if (statuses && statuses.length > 0) {
+    params.entityStatus = statuses.join(',');
   }
 
   const response = await APIClient.get<PagingResponse<GlossaryTerm[]>>(

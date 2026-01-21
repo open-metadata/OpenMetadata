@@ -159,7 +159,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     useState<boolean>(false);
   const [statusDropdownSelection, setStatusDropdownSelection] = useState<
     string[]
-  >([EntityStatus.Approved, EntityStatus.Draft, EntityStatus.InReview]);
+  >(['all', ...Object.values(EntityStatus)]);
   const [selectedStatus, setSelectedStatus] = useState<string[]>([
     ...statusDropdownSelection,
   ]);
@@ -273,18 +273,29 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       let data;
       let pagingResponse: Paging | undefined;
 
-      // Use search API if search term is present
-      if (searchTerm) {
+      // Determine if status filter is active (not showing all statuses)
+      // If 'all' is selected, no filtering is needed
+      const isStatusFilterActive = !selectedStatus.includes('all');
+
+      // Use search API when search term OR status filter is active
+      if (searchTerm || isStatusFilterActive) {
         const currentOffset = loadMore ? searchPaging.offset : 0;
+
+        // Filter out 'all' from the statuses list since it's a UI-only option
+        const statusesToFilter = isStatusFilterActive
+          ? selectedStatus.filter((s) => s !== 'all')
+          : undefined;
+
         const response = await searchGlossaryTermsPaginated(
-          searchTerm,
+          searchTerm || undefined,
           undefined,
           activeGlossary?.fullyQualifiedName,
           undefined,
           undefined,
           PAGE_SIZE_LARGE,
           currentOffset,
-          'children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount'
+          'children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount',
+          statusesToFilter
         );
         data = response.data;
         pagingResponse = response.paging;
@@ -301,7 +312,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           hasMore,
         });
       } else {
-        // Use regular listing API when no search term
+        // Use regular listing API when no search term AND no status filter
         const response = await getFirstLevelGlossaryTermsPaginated(
           activeGlossary?.fullyQualifiedName || '',
           PAGE_SIZE_LARGE,
@@ -1430,16 +1441,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       return [];
     }
 
-    const filtered = glossaryTerms.filter((term) => {
-      const matchesStatus = selectedStatus.includes(
-        term.entityStatus as string
-      );
-
-      return matchesStatus;
-    });
-
-    return processTermsWithLoadMore(filtered);
-  }, [glossaryTerms, selectedStatus, processTermsWithLoadMore]);
+    // Status filtering is now done server-side via ES query
+    // No client-side filtering needed
+    return processTermsWithLoadMore(glossaryTerms);
+  }, [glossaryTerms, processTermsWithLoadMore]);
 
   useEffect(() => {
     if (!tableContainerRef.current) {
@@ -1448,60 +1453,33 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     setContainerWidth(tableContainerRef.current.offsetWidth);
   }, []);
 
-  // Trigger new fetch when search term changes
+  // Trigger new fetch when search term or status filter changes
   useEffect(() => {
     if (
       activeGlossary &&
       previousGlossaryFQN === activeGlossary?.fullyQualifiedName
     ) {
       // Only fetch if we're on the same glossary (not switching glossaries)
-      // Reset search pagination when search term changes
-      if (searchTerm) {
-        setSearchPaging({ offset: 0, total: undefined, hasMore: true });
-      }
+      // Reset search pagination when search term or status filter changes
+      setSearchPaging({ offset: 0, total: undefined, hasMore: true });
       fetchAllTerms();
     }
-  }, [searchTerm]);
+  }, [searchTerm, selectedStatus]);
 
-  // Check if this is due to search returning no results
+  // Check if this is due to search or filter returning no results
   const isSearchActive = Boolean(searchTerm && searchTerm.trim().length > 0);
-  const hasNoTerms = isEmpty(glossaryTerms);
+  const isStatusFilterActive = !selectedStatus.includes('all');
 
   const glossaryPlaceholderText = useMemo(() => {
     if (isSearchActive && searchTerm) {
       return `No Glossary Term found for "${searchTerm}"`;
     }
-    if (isSearchActive) {
+    if (isSearchActive || isStatusFilterActive) {
       return 'No Glossary Term found';
     }
 
     return 'No Glossary Terms';
-  }, [isSearchActive, searchTerm]);
-
-  // Special case: if there are truly no terms in the glossary at all (not just search results)
-  // and no search is active, show the full placeholder
-  if (hasNoTerms && !isSearchActive && !isTableLoading) {
-    return (
-      <div className="h-full" ref={tableContainerRef}>
-        <ErrorPlaceHolder
-          className="p-md p-b-lg border-none"
-          doc={GLOSSARIES_DOCS}
-          heading={t('label.glossary-term')}
-          permission={permissions.Create}
-          permissionValue={t('label.create-entity', {
-            entity: t('label.glossary-term'),
-          })}
-          placeholderText={t('message.no-glossary-term')}
-          type={
-            permissions.Create && glossaryTermStatus === EntityStatus.Approved
-              ? ERROR_PLACEHOLDER_TYPE.CREATE
-              : ERROR_PLACEHOLDER_TYPE.NO_DATA
-          }
-          onClick={handleAddGlossaryTermClick}
-        />
-      </div>
-    );
-  }
+  }, [isSearchActive, isStatusFilterActive, searchTerm]);
 
   return (
     <Row className={className} gutter={[0, 16]}>
@@ -1549,7 +1527,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               )}
             </>
           ) : (
-            // Show empty state within the table container when search returns no results
+            // Show empty state within the table container
             // This keeps the search bar and filters visible
             <Table
               resizableColumns
@@ -1563,13 +1541,32 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               extraTableFilters={extraTableFilters}
               loading={isTableLoading}
               locale={{
-                emptyText: (
-                  <ErrorPlaceHolder
-                    className="p-md"
-                    placeholderText={glossaryPlaceholderText}
-                    type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-                  />
-                ),
+                emptyText:
+                  isSearchActive || isStatusFilterActive ? (
+                    <ErrorPlaceHolder
+                      className="p-md"
+                      placeholderText={glossaryPlaceholderText}
+                      type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+                    />
+                  ) : (
+                    <ErrorPlaceHolder
+                      className="p-md p-b-lg border-none"
+                      doc={GLOSSARIES_DOCS}
+                      heading={t('label.glossary-term')}
+                      permission={permissions.Create}
+                      permissionValue={t('label.create-entity', {
+                        entity: t('label.glossary-term'),
+                      })}
+                      placeholderText={t('message.no-glossary-term')}
+                      type={
+                        permissions.Create &&
+                        glossaryTermStatus === EntityStatus.Approved
+                          ? ERROR_PLACEHOLDER_TYPE.CREATE
+                          : ERROR_PLACEHOLDER_TYPE.NO_DATA
+                      }
+                      onClick={handleAddGlossaryTermClick}
+                    />
+                  ),
               }}
               pagination={false}
               rowClassName={getRowClassName}

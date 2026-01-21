@@ -3864,6 +3864,22 @@ public interface CollectionDAO {
         @Bind("searchTerm") String searchTerm,
         @Bind("limit") int limit,
         @Bind("offset") int offset);
+
+    // Search glossary terms with entity status filter
+    @SqlQuery(
+        "SELECT json FROM glossary_term_entity WHERE deleted = FALSE "
+            + "AND fqnHash LIKE :parentHash "
+            + "AND (LOWER(name) LIKE LOWER(:searchTerm) "
+            + "OR LOWER(COALESCE(displayName, '')) LIKE LOWER(:searchTerm)) "
+            + "<statusCondition> "
+            + "ORDER BY name "
+            + "LIMIT :limit OFFSET :offset")
+    List<String> searchGlossaryTermsWithStatus(
+        @Bind("parentHash") String parentHash,
+        @Bind("searchTerm") String searchTerm,
+        @Define("statusCondition") String statusCondition,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
   }
 
   interface IngestionPipelineDAO extends EntityDAO<IngestionPipeline> {

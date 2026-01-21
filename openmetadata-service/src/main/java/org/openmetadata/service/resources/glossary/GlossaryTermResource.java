@@ -337,7 +337,12 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description =
+                  "Filter by entity status (comma-separated: Draft, In Review, Approved, Deprecated, Rejected, Unprocessed)")
+          @QueryParam("entityStatus")
+          String entityStatus) {
 
     Fields fields = getFields(fieldsParam);
     ResourceContextInterface glossaryResourceContext = new ResourceContext<>(GLOSSARY);
@@ -357,22 +362,25 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     if (glossaryId != null) {
       result =
           repository.searchGlossaryTermsById(
-              glossaryId, query, limitParam, offsetParam, fieldsParam, include);
+              glossaryId, query, limitParam, offsetParam, fieldsParam, include, entityStatus);
     } else if (glossaryFqn != null) {
       result =
           repository.searchGlossaryTermsByFQN(
-              glossaryFqn, query, limitParam, offsetParam, fieldsParam, include);
+              glossaryFqn, query, limitParam, offsetParam, fieldsParam, include, entityStatus);
     } else if (parentId != null) {
       result =
           repository.searchGlossaryTermsByParentId(
-              parentId, query, limitParam, offsetParam, fieldsParam, include);
+              parentId, query, limitParam, offsetParam, fieldsParam, include, entityStatus);
     } else if (parentFqn != null) {
       result =
           repository.searchGlossaryTermsByParentFQN(
-              parentFqn, query, limitParam, offsetParam, fieldsParam, include);
+              parentFqn, query, limitParam, offsetParam, fieldsParam, include, entityStatus);
     } else {
       // Search across all glossary terms without parent filter
       ListFilter filter = new ListFilter(include);
+      if (entityStatus != null && !entityStatus.trim().isEmpty()) {
+        filter.addQueryParam("entityStatus", entityStatus);
+      }
       ResultList<GlossaryTerm> allTerms =
           repository.listAfter(uriInfo, fields, filter, Integer.MAX_VALUE, null);
       List<GlossaryTerm> matchingTerms;

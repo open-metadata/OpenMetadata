@@ -16,7 +16,6 @@ import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
 import { DriveServiceType } from '../generated/entity/services/driveService';
 import customDriveConnection from '../jsons/connectionSchemas/connections/drive/customDriveConnection.json';
 import googleDriveConnection from '../jsons/connectionSchemas/connections/drive/googleDriveConnection.json';
-import sftpConnection from '../jsons/connectionSchemas/connections/drive/sftpConnection.json';
 
 export const getDriveConfig = (type: DriveServiceType) => {
   let schema = {};
@@ -30,11 +29,6 @@ export const getDriveConfig = (type: DriveServiceType) => {
     }
     case DriveServiceType.GoogleDrive: {
       schema = googleDriveConnection;
-
-      break;
-    }
-    case DriveServiceType.SFTP: {
-      schema = sftpConnection;
 
       break;
     }

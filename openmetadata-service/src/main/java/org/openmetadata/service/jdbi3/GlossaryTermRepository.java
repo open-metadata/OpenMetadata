@@ -106,6 +106,7 @@ import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.glossary.GlossaryTermResource;
@@ -1567,11 +1568,17 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   public ResultList<GlossaryTerm> searchGlossaryTermsById(
-      UUID glossaryId, String query, int limit, int offset, String fieldsParam, Include include) {
+      UUID glossaryId,
+      String query,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      String entityStatus) {
     Glossary glossary =
         Entity.getEntity(GLOSSARY, glossaryId, "id,name,fullyQualifiedName", include);
     return searchGlossaryTermsInternal(
-        glossary.getFullyQualifiedName(), query, limit, offset, fieldsParam, include);
+        glossary.getFullyQualifiedName(), query, limit, offset, fieldsParam, include, entityStatus);
   }
 
   public ResultList<GlossaryTerm> searchGlossaryTermsByFQN(
@@ -1580,21 +1587,36 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       int limit,
       int offset,
       String fieldsParam,
-      Include include) {
-    return searchGlossaryTermsInternal(glossaryFqn, query, limit, offset, fieldsParam, include);
+      Include include,
+      String entityStatus) {
+    return searchGlossaryTermsInternal(
+        glossaryFqn, query, limit, offset, fieldsParam, include, entityStatus);
   }
 
   public ResultList<GlossaryTerm> searchGlossaryTermsByParentId(
-      UUID parentId, String query, int limit, int offset, String fieldsParam, Include include) {
+      UUID parentId,
+      String query,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      String entityStatus) {
     GlossaryTerm parentTerm =
         Entity.getEntity(GLOSSARY_TERM, parentId, "id,name,fullyQualifiedName,glossary", include);
     return searchGlossaryTermsInternal(
-        parentTerm.getFullyQualifiedName(), query, limit, offset, fieldsParam, include);
+        parentTerm.getFullyQualifiedName(), query, limit, offset, fieldsParam, include, entityStatus);
   }
 
   public ResultList<GlossaryTerm> searchGlossaryTermsByParentFQN(
-      String parentFqn, String query, int limit, int offset, String fieldsParam, Include include) {
-    return searchGlossaryTermsInternal(parentFqn, query, limit, offset, fieldsParam, include);
+      String parentFqn,
+      String query,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      String entityStatus) {
+    return searchGlossaryTermsInternal(
+        parentFqn, query, limit, offset, fieldsParam, include, entityStatus);
   }
 
   private String prepareSearchTerm(String query) {
@@ -1602,8 +1624,30 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return "%" + query.trim() + "%";
   }
 
+  private String buildEntityStatusCondition(String entityStatus) {
+    String inCondition =
+        java.util.Arrays.stream(entityStatus.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .map(s -> String.format("'%s'", s))
+            .collect(Collectors.joining(","));
+
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      return String.format(
+          "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.entityStatus')) IN (%s)", inCondition);
+    } else {
+      return String.format("AND json->>'entityStatus' IN (%s)", inCondition);
+    }
+  }
+
   private ResultList<GlossaryTerm> searchGlossaryTermsInternal(
-      String parentFqn, String query, int limit, int offset, String fieldsParam, Include include) {
+      String parentFqn,
+      String query,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      String entityStatus) {
 
     CollectionDAO.GlossaryTermDAO dao = daoCollection.glossaryTermDAO();
 
@@ -1615,6 +1659,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       ListFilter filter = new ListFilter(include);
       if (parentFqn != null) {
         filter.addQueryParam("parent", parentFqn);
+      }
+      if (entityStatus != null && !entityStatus.trim().isEmpty()) {
+        filter.addQueryParam("entityStatus", entityStatus);
       }
 
       // Use cursor-based pagination with limit and convert offset to cursor
@@ -1639,7 +1686,15 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     String searchTerm = prepareSearchTerm(query.trim());
 
     // Fetch limit+1 records to check if there's a next page
-    List<String> jsons = dao.searchGlossaryTerms(parentHash, searchTerm, limit + 1, offset);
+    List<String> jsons;
+    if (entityStatus != null && !entityStatus.trim().isEmpty()) {
+      String statusCondition = buildEntityStatusCondition(entityStatus);
+      jsons =
+          dao.searchGlossaryTermsWithStatus(
+              parentHash, searchTerm, statusCondition, limit + 1, offset);
+    } else {
+      jsons = dao.searchGlossaryTerms(parentHash, searchTerm, limit + 1, offset);
+    }
 
     // Check if we have more than limit results
     boolean hasMore = jsons.size() > limit;
