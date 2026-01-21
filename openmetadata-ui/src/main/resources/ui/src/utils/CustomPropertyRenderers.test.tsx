@@ -64,22 +64,24 @@ jest.mock(
   })
 );
 
-const mockT = jest.fn((key: string, options?: Record<string, unknown>) => {
-  if (key === 'label.not-set') {
-    return 'Not set';
-  }
-  if (key === 'label.start-entity') {
-    return `Start ${options?.entity || ''}`;
-  }
-  if (key === 'label.end-entity') {
-    return `End ${options?.entity || ''}`;
-  }
-  if (key === 'label.time') {
-    return 'Time';
-  }
+const mockT = jest.fn(
+  (key: string, options?: Record<string, unknown> | undefined) => {
+    if (key === 'label.not-set') {
+      return 'Not set';
+    }
+    if (key === 'label.start-entity') {
+      return `Start ${options?.entity || ''}`;
+    }
+    if (key === 'label.end-entity') {
+      return `End ${options?.entity || ''}`;
+    }
+    if (key === 'label.time') {
+      return 'Time';
+    }
 
-  return key;
-});
+    return key;
+  }
+);
 
 const renderWithRouter = (component: JSX.Element) => {
   return render(<BrowserRouter>{component}</BrowserRouter>);

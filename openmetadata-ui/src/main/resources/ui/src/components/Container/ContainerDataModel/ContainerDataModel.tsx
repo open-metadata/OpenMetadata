@@ -180,7 +180,9 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         render: (_, record: Column) => (
           <div className="d-inline-flex items-center gap-2 hover-icon-group w-max-90">
             <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
-              <Typography.Text>{getEntityName(record)}</Typography.Text>
+              <Typography.Text className="text-link-color">
+                {getEntityName(record)}
+              </Typography.Text>
             </Tooltip>
             {record.fullyQualifiedName && (
               <CopyLinkButton
@@ -311,7 +313,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         dataSource={schema}
         defaultVisibleColumns={DEFAULT_CONTAINER_DATA_MODEL_VISIBLE_COLUMNS}
         expandable={{
-          ...getTableExpandableConfig<Column>(),
+          ...getTableExpandableConfig<Column>(false, 'text-link-color'),
           rowExpandable: (record) => !isEmpty(record.children),
           expandedRowKeys,
           onExpandedRowsChange: (keys) => setExpandedRowKeys(keys as string[]),
