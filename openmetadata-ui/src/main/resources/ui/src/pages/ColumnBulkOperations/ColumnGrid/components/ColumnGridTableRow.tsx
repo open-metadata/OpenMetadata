@@ -18,8 +18,9 @@ import { ColumnGridRowData } from '../ColumnGrid.interface';
 interface ColumnGridTableRowProps {
   entity: ColumnGridRowData;
   isSelected: boolean;
+  isIndeterminate?: boolean;
   onSelect: (id: string, checked: boolean) => void;
-  onEntityClick: (entity: ColumnGridRowData) => void;
+  onGroupSelect?: (groupId: string, checked: boolean) => void;
   renderColumnNameCell: (entity: ColumnGridRowData) => React.ReactNode;
   renderPathCell: (entity: ColumnGridRowData) => React.ReactNode;
   renderDescriptionCell: (entity: ColumnGridRowData) => React.ReactNode;
@@ -30,16 +31,23 @@ interface ColumnGridTableRowProps {
 export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
   entity,
   isSelected,
+  isIndeterminate,
   onSelect,
-  onEntityClick,
+  onGroupSelect,
   renderColumnNameCell,
   renderPathCell,
   renderDescriptionCell,
   renderTagsCell,
   renderGlossaryTermsCell,
 }) => {
-  const handleRowClick = () => {
-    onEntityClick(entity);
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+
+    if (entity.isGroup && entity.occurrenceCount > 1 && onGroupSelect) {
+      onGroupSelect(entity.id, checked);
+    } else {
+      onSelect(entity.id, checked);
+    }
   };
 
   return (
@@ -47,20 +55,13 @@ export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
       hover
       data-testid={`column-row-${entity.columnName}`}
       key={entity.id}
-      selected={isSelected}
-      sx={{ cursor: 'pointer' }}
-      onClick={handleRowClick}>
+      selected={isSelected}>
       <TableCell padding="checkbox">
         <Checkbox
           checked={isSelected}
           data-testid={`column-checkbox-${entity.columnName}`}
-          onChange={(e) => {
-            e.stopPropagation();
-            onSelect(entity.parentId || entity.id, e.target.checked);
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-          }}
+          indeterminate={isIndeterminate}
+          onChange={handleCheckboxChange}
         />
       </TableCell>
       <TableCell data-testid="column-name-cell">

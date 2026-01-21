@@ -20,7 +20,58 @@
   flex-direction: column;
   gap: @size-md;
   padding: 0;
+  height: calc(100vh - 120px);
   overflow: hidden;
+
+  // Stats cards row should not scroll
+  > .stats-row {
+    flex-shrink: 0;
+  }
+
+  // Table container takes remaining space and handles internal scrolling
+  > .MuiPaper-root.MuiTableContainer-root {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+
+    // Header section (filters, search) should not scroll - sticky at top
+    > .MuiBox-root:first-child {
+      flex-shrink: 0;
+      background-color: @white;
+      z-index: 11;
+    }
+
+    // Scrollable table area wrapper - this is where vertical scrolling happens
+    .table-scroll-container {
+      flex: 1;
+      overflow-y: auto;
+      min-height: 0;
+
+      // Table inside scroll container
+      .MuiTable-root {
+        // Table header stays fixed at top when scrolling within container
+        .MuiTableHead-root {
+          position: sticky;
+          top: 0;
+          z-index: 10;
+          background-color: @grey-50;
+
+          .MuiTableCell-root {
+            background-color: @grey-50;
+          }
+        }
+      }
+    }
+
+    // Pagination footer stays fixed at bottom - does not scroll
+    > .MuiBox-root[data-testid='pagination'] {
+      flex-shrink: 0;
+      background-color: @white;
+      z-index: 11;
+    }
+  }
 
   // MUI Table column widths
   .MuiTable-root {

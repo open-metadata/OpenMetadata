@@ -19,11 +19,12 @@ import {
   Stack,
   Switch,
   TableContainer,
+  TextField,
   Typography,
   useTheme,
 } from '@mui/material';
 import { Tag01 as TagIcon } from '@untitledui/icons';
-import { Button, Drawer, Input, Tag, Typography as AntTypography } from 'antd';
+import { Button, Tag, Typography as AntTypography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, {
   useCallback,
@@ -40,6 +41,7 @@ import { ReactComponent as UniqueColumnsIcon } from '../../../assets/svg/ic-uniq
 import AsyncSelectList from '../../../components/common/AsyncSelectList/AsyncSelectList';
 import { SelectOption } from '../../../components/common/AsyncSelectList/AsyncSelectList.interface';
 import TreeAsyncSelectList from '../../../components/common/AsyncSelectList/TreeAsyncSelectList';
+import { useFormDrawerWithRef } from '../../../components/common/atoms/drawer';
 import { useFilterSelection } from '../../../components/common/atoms/filters/useFilterSelection';
 import { useSearch } from '../../../components/common/atoms/navigation/useSearch';
 import { usePaginationControls } from '../../../components/common/atoms/pagination/usePaginationControls';
@@ -54,6 +56,7 @@ import { EditorContentRef } from '../../../components/common/RichTextEditor/Rich
 import SearchDropdown from '../../../components/SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../../../components/SearchDropdown/SearchDropdown.interface';
 import { SOCKET_EVENTS } from '../../../constants/constants';
+import { DRAWER_HEADER_STYLING } from '../../../constants/DomainsListPage.constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -102,18 +105,9 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   const [searchParams, setSearchParams] = useSearchParams();
   const [isUpdating, setIsUpdating] = useState(false);
   const [viewSelectedOnly, setViewSelectedOnly] = useState(false);
-  const [editDrawer, setEditDrawer] = useState<{
-    open: boolean;
-    rowId: string | null;
-  }>({
-    open: false,
-    rowId: null,
-  });
-  // Counter to force re-render of drawer content when it reopens
-  // This ensures defaultValue inputs get fresh values after Cancel
-  const [drawerOpenCount, setDrawerOpenCount] = useState(0);
   const editorRef = React.useRef<EditorContentRef>(null);
   const activeJobIdRef = useRef<string | null>(null);
+  const closeDrawerRef = useRef<() => void>(() => {});
 
   // Get current filter values from URL
   const currentDataType = useMemo(() => {
@@ -884,9 +878,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         return (
           <Box className="column-name-cell">
             {expandButton}
-            <Text strong className="column-link">
-              {nameWithCount}
-            </Text>
+            <Text>{nameWithCount}</Text>
             {structButton}
           </Box>
         );
@@ -1000,20 +992,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
   // Checkbox rendering now handled directly in TableRow - no separate renderers needed
 
-  const openEditDrawer = useCallback(() => {
-    // Increment counter to force new drawer content with fresh defaultValue inputs
-    setDrawerOpenCount((prev) => prev + 1);
-    setEditDrawer({
-      open: true,
-      rowId: null, // We'll edit all selected rows
-    });
-  }, []);
-
-  const closeEditDrawer = useCallback(() => {
-    // Capture selected IDs before state update to avoid stale closure
+  const discardPendingEdits = useCallback(() => {
     const selectedIds = new Set(columnGridListing.selectedEntities);
-
-    // Discard any pending edits for selected rows
     columnGridListing.setAllRows((prev: ColumnGridRowData[]) =>
       prev.map((r: ColumnGridRowData) => {
         if (selectedIds.has(r.id)) {
@@ -1028,10 +1008,6 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         return r;
       })
     );
-    setEditDrawer({
-      open: false,
-      rowId: null,
-    });
   }, [columnGridListing]);
 
   const handleBulkUpdate = useCallback(async () => {
@@ -1140,14 +1116,14 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       activeJobIdRef.current = response.jobId;
 
       showSuccessToast(
-        t('message.bulk-update-initiated', {
+        t('server.bulk-update-initiated', {
           entity: t('label.column-plural'),
           count: cleanedUpdates.length,
         })
       );
 
       setIsUpdating(false);
-      closeEditDrawer();
+      closeDrawerRef.current();
       columnGridListing.clearSelection();
 
       // Clear edited state in both allRows and the editedValuesRef
@@ -1236,27 +1212,140 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     initialSearchQuery: columnGridListing.urlState.searchQuery,
   });
 
+  // Helper function to compute child row IDs from gridItem data (before expansion)
+  const computeChildRowIdsFromGridItem = useCallback(
+    (groupId: string): string[] => {
+      const parentRow = columnGridListing.allRows.find(
+        (row) => row.id === groupId
+      );
+      if (!parentRow?.gridItem) {
+        return [];
+      }
+
+      const gridItem = parentRow.gridItem;
+
+      if (gridItem.hasVariations && gridItem.groups.length > 1) {
+        return gridItem.groups.map(
+          (group) => `${gridItem.columnName}-${group.groupId}`
+        );
+      } else if (gridItem.totalOccurrences > 1 && gridItem.groups[0]) {
+        return gridItem.groups[0].occurrences.map(
+          (occ) => `${gridItem.columnName}-${occ.columnFQN}`
+        );
+      }
+
+      return [];
+    },
+    [columnGridListing.allRows]
+  );
+
+  // Handle group checkbox selection - expands the group and selects all children
+  const handleGroupSelect = useCallback(
+    (groupId: string, checked: boolean) => {
+      const computedChildIds = computeChildRowIdsFromGridItem(groupId);
+
+      if (checked) {
+        columnGridListing.setExpandedRows((prev: Set<string>) => {
+          const newSet = new Set(prev);
+          newSet.add(groupId);
+
+          return newSet;
+        });
+        columnGridListing.handleSelect(groupId, true);
+        computedChildIds.forEach((childId) => {
+          columnGridListing.handleSelect(childId, true);
+        });
+      } else {
+        columnGridListing.handleSelect(groupId, false);
+        computedChildIds.forEach((childId) => {
+          columnGridListing.handleSelect(childId, false);
+        });
+      }
+    },
+    [columnGridListing, computeChildRowIdsFromGridItem]
+  );
+
+  // Calculate indeterminate state for group rows
+  const getGroupIndeterminateState = useCallback(
+    (groupId: string): boolean => {
+      const childIds = computeChildRowIdsFromGridItem(groupId);
+      if (childIds.length === 0) {
+        return false;
+      }
+
+      const selectedChildCount = childIds.filter((childId) =>
+        columnGridListing.isSelected(childId)
+      ).length;
+
+      return selectedChildCount > 0 && selectedChildCount < childIds.length;
+    },
+    [computeChildRowIdsFromGridItem, columnGridListing.isSelected]
+  );
+
+  // Handle child row selection - updates parent group state accordingly
+  const handleChildSelect = useCallback(
+    (childId: string, checked: boolean, parentId: string | undefined) => {
+      columnGridListing.handleSelect(childId, checked);
+
+      if (!parentId) {
+        return;
+      }
+
+      const siblingIds = computeChildRowIdsFromGridItem(parentId);
+
+      if (checked) {
+        const allSiblingsSelected = siblingIds.every(
+          (id) => id === childId || columnGridListing.isSelected(id)
+        );
+        if (allSiblingsSelected) {
+          columnGridListing.handleSelect(parentId, true);
+        }
+      } else {
+        const anySelectedAfter = siblingIds.some(
+          (id) => id !== childId && columnGridListing.isSelected(id)
+        );
+        if (!anySelectedAfter) {
+          columnGridListing.handleSelect(parentId, false);
+        }
+      }
+    },
+    [columnGridListing, computeChildRowIdsFromGridItem]
+  );
+
   // Set up data table with custom row component
   const CustomTableRow = useCallback(
     (props: Record<string, unknown>) => {
-      const { entity, isSelected, onSelect, onEntityClick } = props as {
+      const { entity, isSelected, onSelect } = props as {
         entity: ColumnGridRowData;
         isSelected: boolean;
         onSelect: (id: string, checked: boolean) => void;
-        onEntityClick: (entity: ColumnGridRowData) => void;
+      };
+
+      const isIndeterminate =
+        entity.isGroup && entity.occurrenceCount > 1
+          ? getGroupIndeterminateState(entity.id)
+          : false;
+
+      const wrappedOnSelect = (id: string, checked: boolean) => {
+        if (entity.parentId) {
+          handleChildSelect(id, checked, entity.parentId);
+        } else {
+          onSelect(id, checked);
+        }
       };
 
       return (
         <ColumnGridTableRow
           entity={entity}
+          isIndeterminate={isIndeterminate}
           isSelected={isSelected}
           renderColumnNameCell={renderColumnNameCellFinal}
           renderDescriptionCell={renderDescriptionCellAdapter}
           renderGlossaryTermsCell={renderGlossaryTermsCellAdapter}
           renderPathCell={renderPathCellAdapter}
           renderTagsCell={renderTagsCellAdapter}
-          onEntityClick={onEntityClick}
-          onSelect={onSelect}
+          onGroupSelect={handleGroupSelect}
+          onSelect={wrappedOnSelect}
         />
       );
     },
@@ -1266,6 +1355,9 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       renderDescriptionCellAdapter,
       renderTagsCellAdapter,
       renderGlossaryTermsCellAdapter,
+      handleGroupSelect,
+      handleChildSelect,
+      getGroupIndeterminateState,
     ]
   );
 
@@ -1286,36 +1378,12 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     columnGridListing.selectedEntities,
   ]);
 
-  // Handle row click - for aggregate rows, select and open edit drawer
-  const handleEntityClick = useCallback(
-    (entity: ColumnGridRowData) => {
-      // For aggregate rows (parent rows with multiple occurrences), open edit drawer
-      if (entity.isGroup && entity.occurrenceCount > 1) {
-        // Select the row if not already selected
-        if (!columnGridListing.isSelected(entity.id)) {
-          columnGridListing.handleSelect(entity.id, true);
-        }
-        // Open the edit drawer
-        setEditDrawer({
-          open: true,
-          rowId: entity.id,
-        });
-      }
-      // For child rows, do nothing - they have Links for navigation
-    },
-    [columnGridListing]
-  );
-
   const { dataTable } = useDataTable({
     listing: {
       ...columnGridListing,
       entities: filteredEntities,
       columns,
       renderers: finalRenderers,
-      actionHandlers: {
-        ...columnGridListing.actionHandlers,
-        onEntityClick: handleEntityClick,
-      },
     },
     enableSelection: true,
     entityLabelKey: 'label.column',
@@ -1344,6 +1412,278 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   const selectedCount = columnGridListing.selectedEntities.length;
   const hasSelection = selectedCount > 0;
 
+  const getTagDisplayLabel = useCallback((tag: TagLabel): string => {
+    if (tag.displayName) {
+      return tag.displayName;
+    }
+    if (tag.name) {
+      return tag.name;
+    }
+    const fqn = tag.tagFQN || '';
+    const parts = fqn.split('.');
+
+    return parts[parts.length - 1] || fqn;
+  }, []);
+
+  const drawerContent = useMemo(() => {
+    const selectedRows = columnGridListing.allRows.filter((r) =>
+      columnGridListing.isSelected(r.id)
+    );
+    const firstRow = selectedRows[0];
+    if (!firstRow && selectedCount === 0) {
+      return (
+        <Text type="secondary">{t('message.select-columns-to-edit')}</Text>
+      );
+    }
+
+    const currentDisplayName =
+      selectedCount === 1
+        ? firstRow?.editedDisplayName ?? firstRow?.displayName ?? ''
+        : '';
+    const currentDescription =
+      selectedCount === 1
+        ? firstRow?.editedDescription ?? firstRow?.description ?? ''
+        : '';
+
+    const currentTags =
+      selectedCount === 1 ? firstRow?.editedTags ?? firstRow?.tags ?? [] : [];
+
+    const classificationTagOptions: SelectOption[] = currentTags
+      .filter((tag: TagLabel) => tag.source !== TagSource.Glossary)
+      .map((tag: TagLabel) => {
+        const displayLabel = getTagDisplayLabel(tag);
+
+        return {
+          label: displayLabel,
+          value: tag.tagFQN ?? '',
+          data: {
+            ...tag,
+            displayName: tag.displayName || displayLabel,
+            name: tag.name || displayLabel,
+          },
+        };
+      });
+
+    const glossaryTermOptions: SelectOption[] = currentTags
+      .filter((tag: TagLabel) => tag.source === TagSource.Glossary)
+      .map((tag: TagLabel) => {
+        const displayLabel = getTagDisplayLabel(tag);
+
+        return {
+          label: displayLabel,
+          value: tag.tagFQN ?? '',
+          data: {
+            ...tag,
+            displayName: tag.displayName || displayLabel,
+            name: tag.name || displayLabel,
+          },
+        };
+      });
+
+    const drawerKey = `${columnGridListing.selectedEntities.join('-')}`;
+
+    return (
+      <Box
+        data-testid="drawer-content"
+        key={drawerKey}
+        sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Typography color="text.secondary" fontSize="14px" fontWeight={500}>
+            {t('label.column-name')}
+          </Typography>
+          <TextField
+            disabled
+            fullWidth
+            data-testid="column-name-input"
+            size="small"
+            value={
+              selectedCount === 1
+                ? firstRow?.columnName
+                : `${selectedCount} ${t('label.column-lowercase-plural')} ${t(
+                    'label.selected-lowercase'
+                  )}`
+            }
+          />
+        </Box>
+
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Typography color="text.secondary" fontSize="14px" fontWeight={500}>
+            {t('label.display-name')}
+          </Typography>
+          <TextField
+            fullWidth
+            data-testid="display-name-input"
+            defaultValue={currentDisplayName}
+            key={`displayName-${drawerKey}`}
+            placeholder={t('label.display-name')}
+            size="small"
+            onChange={(e) => {
+              columnGridListing.selectedEntities.forEach((rowId: string) => {
+                updateRowField(rowId, 'displayName', e.target.value);
+              });
+            }}
+          />
+        </Box>
+
+        <Box
+          data-testid="description-field"
+          sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Typography color="text.secondary" fontSize="14px" fontWeight={500}>
+            {t('label.description')}
+          </Typography>
+          <RichTextEditor
+            initialValue={currentDescription}
+            key={`description-${drawerKey}`}
+            placeHolder={t('label.add-entity', {
+              entity: t('label.description'),
+            })}
+            ref={editorRef}
+            onTextChange={(value) => {
+              columnGridListing.selectedEntities.forEach((rowId: string) => {
+                updateRowField(rowId, 'description', value);
+              });
+            }}
+          />
+        </Box>
+
+        <Box
+          data-testid="tags-field"
+          sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Typography color="text.secondary" fontSize="14px" fontWeight={500}>
+            {t('label.tag-plural')}
+          </Typography>
+          <AsyncSelectList
+            autoFocus={false}
+            fetchOptions={tagClassBase.getTags}
+            initialOptions={classificationTagOptions}
+            key={`tags-${drawerKey}`}
+            mode="multiple"
+            placeholder={t('label.select-tags')}
+            onChange={(selectedTags) => {
+              const options = (
+                Array.isArray(selectedTags) ? selectedTags : [selectedTags]
+              ) as SelectOption[];
+              const newTags: TagLabel[] = options
+                .filter((option: SelectOption) => option.data)
+                .map((option: SelectOption) => {
+                  const tagData = option.data as {
+                    fullyQualifiedName?: string;
+                    name?: string;
+                    displayName?: string;
+                    description?: string;
+                  };
+
+                  return {
+                    tagFQN: tagData.fullyQualifiedName ?? option.value,
+                    source: TagSource.Classification,
+                    labelType: LabelType.Manual,
+                    state: State.Confirmed,
+                    name: tagData.name,
+                    displayName: tagData.displayName,
+                    description: tagData.description,
+                  };
+                });
+              columnGridListing.selectedEntities.forEach((rowId: string) => {
+                const row = columnGridListing.allRows.find(
+                  (r: ColumnGridRowData) => r.id === rowId
+                );
+                if (row) {
+                  const existingTags = row.editedTags ?? row.tags ?? [];
+                  const glossaryTerms = existingTags.filter(
+                    (tag: TagLabel) => tag.source === TagSource.Glossary
+                  );
+                  updateRowField(rowId, 'tags', [...newTags, ...glossaryTerms]);
+                }
+              });
+            }}
+          />
+        </Box>
+
+        <Box
+          data-testid="glossary-terms-field"
+          sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Typography color="text.secondary" fontSize="14px" fontWeight={500}>
+            {t('label.glossary-term-plural')}
+          </Typography>
+          <TreeAsyncSelectList
+            hasNoActionButtons
+            initialOptions={glossaryTermOptions}
+            key={`glossaryTerms-${drawerKey}`}
+            open={false}
+            placeholder={t('label.select-tags')}
+            onChange={(selectedTerms) => {
+              const options = (
+                Array.isArray(selectedTerms) ? selectedTerms : [selectedTerms]
+              ) as SelectOption[];
+              const newTerms: TagLabel[] = options
+                .filter((option: SelectOption) => option.data)
+                .map((option: SelectOption) => {
+                  const termData = option.data as {
+                    fullyQualifiedName?: string;
+                    name?: string;
+                    displayName?: string;
+                    description?: string;
+                  };
+
+                  return {
+                    tagFQN: termData.fullyQualifiedName ?? option.value,
+                    source: TagSource.Glossary,
+                    labelType: LabelType.Manual,
+                    state: State.Confirmed,
+                    name: termData.name,
+                    displayName: termData.displayName,
+                    description: termData.description,
+                  };
+                });
+              columnGridListing.selectedEntities.forEach((rowId: string) => {
+                const row = columnGridListing.allRows.find(
+                  (r: ColumnGridRowData) => r.id === rowId
+                );
+                if (row) {
+                  const existingTags = row.editedTags ?? row.tags ?? [];
+                  const classificationTags = existingTags.filter(
+                    (tag: TagLabel) => tag.source !== TagSource.Glossary
+                  );
+                  updateRowField(rowId, 'tags', [
+                    ...classificationTags,
+                    ...newTerms,
+                  ]);
+                }
+              });
+            }}
+          />
+        </Box>
+      </Box>
+    );
+  }, [
+    columnGridListing.allRows,
+    columnGridListing.selectedEntities,
+    columnGridListing.isSelected,
+    selectedCount,
+    t,
+    getTagDisplayLabel,
+    updateRowField,
+  ]);
+
+  const { formDrawer, openDrawer, closeDrawer } = useFormDrawerWithRef({
+    title: `${t('label.edit-entity', { entity: t('label.column') })} ${
+      selectedCount > 0 ? String(selectedCount).padStart(2, '0') : ''
+    }`,
+    anchor: 'right',
+    width: 500,
+    closeOnEscape: false,
+    header: {
+      sx: DRAWER_HEADER_STYLING,
+    },
+    onCancel: discardPendingEdits,
+    form: drawerContent,
+    onSubmit: handleBulkUpdate,
+    submitLabel: t('label.update'),
+    loading: isUpdating,
+  });
+
+  closeDrawerRef.current = closeDrawer;
+
   // Automatically turn off "View Selected" when selection is cleared
   useEffect(() => {
     if (!hasSelection && viewSelectedOnly) {
@@ -1368,7 +1708,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
     return (
       <>
-        {dataTable}
+        <Box className="table-scroll-container">{dataTable}</Box>
         {paginationControls}
       </>
     );
@@ -1550,7 +1890,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                       },
                     }}
                     variant="contained"
-                    onClick={openEditDrawer}>
+                    onClick={openDrawer}>
                     {t('label.edit')}
                   </MUIButton>
                   <MUIButton
@@ -1578,7 +1918,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                   startIcon={<EditOutlined />}
                   sx={{ color: theme.palette.grey[500] }}
                   variant="text"
-                  onClick={openEditDrawer}>
+                  onClick={openDrawer}>
                   {t('label.edit')}
                 </MUIButton>
               )}
@@ -1590,306 +1930,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       </TableContainer>
 
       {/* Edit Drawer */}
-      <Drawer
-        className="edit-column-drawer"
-        data-testid="edit-column-drawer"
-        extra={
-          <Button
-            data-testid="drawer-close-button"
-            icon={<span>×</span>}
-            type="text"
-            onClick={closeEditDrawer}
-          />
-        }
-        footer={
-          <Box className="drawer-footer">
-            <Button
-              data-testid="drawer-cancel-button"
-              onClick={closeEditDrawer}>
-              {t('label.cancel')}
-            </Button>
-            <Button
-              data-testid="drawer-update-button"
-              loading={isUpdating}
-              type="primary"
-              onClick={handleBulkUpdate}>
-              {t('label.update')}
-            </Button>
-          </Box>
-        }
-        open={editDrawer.open}
-        placement="right"
-        title={`${t('label.edit-entity', { entity: t('label.column') })} ${
-          selectedCount > 0 ? String(selectedCount).padStart(2, '0') : ''
-        }`}
-        width="33vw"
-        onClose={closeEditDrawer}>
-        {(() => {
-          const selectedRows = columnGridListing.allRows.filter((r) =>
-            columnGridListing.isSelected(r.id)
-          );
-          const firstRow = selectedRows[0];
-          if (!firstRow && selectedCount === 0) {
-            return (
-              <Text type="secondary">
-                {t('message.select-columns-to-edit')}
-              </Text>
-            );
-          }
-
-          // Get current values for single selection
-          const currentDisplayName =
-            selectedCount === 1
-              ? firstRow?.editedDisplayName ?? firstRow?.displayName ?? ''
-              : '';
-          const currentDescription =
-            selectedCount === 1
-              ? firstRow?.editedDescription ?? firstRow?.description ?? ''
-              : '';
-
-          // Convert existing tags to SelectOption format for display
-          const currentTags =
-            selectedCount === 1
-              ? firstRow?.editedTags ?? firstRow?.tags ?? []
-              : [];
-
-          // Helper to get display label from tag - use displayName, name, or extract from FQN
-          const getTagDisplayLabel = (tag: TagLabel): string => {
-            if (tag.displayName) {
-              return tag.displayName;
-            }
-            if (tag.name) {
-              return tag.name;
-            }
-            // Extract last part from FQN (e.g., "PersonalData.Personal" -> "Personal")
-            const fqn = tag.tagFQN || '';
-            const parts = fqn.split('.');
-
-            return parts[parts.length - 1] || fqn;
-          };
-
-          const classificationTagOptions: SelectOption[] = currentTags
-            .filter((tag: TagLabel) => tag.source !== TagSource.Glossary)
-            .map((tag: TagLabel) => {
-              const displayLabel = getTagDisplayLabel(tag);
-
-              return {
-                label: displayLabel,
-                value: tag.tagFQN ?? '',
-                // Ensure displayName is set for TagsV1 rendering
-                data: {
-                  ...tag,
-                  displayName: tag.displayName || displayLabel,
-                  name: tag.name || displayLabel,
-                },
-              };
-            });
-          const glossaryTermOptions: SelectOption[] = currentTags
-            .filter((tag: TagLabel) => tag.source === TagSource.Glossary)
-            .map((tag: TagLabel) => {
-              const displayLabel = getTagDisplayLabel(tag);
-
-              return {
-                label: displayLabel,
-                value: tag.tagFQN ?? '',
-                // Ensure displayName is set for TagsV1 rendering
-                data: {
-                  ...tag,
-                  displayName: tag.displayName || displayLabel,
-                  name: tag.name || displayLabel,
-                },
-              };
-            });
-
-          // Use a key to force re-render when selection changes
-          // Include drawerOpenCount in key to force new inputs when drawer reopens after Cancel
-          const drawerKey = `${drawerOpenCount}-${columnGridListing.selectedEntities.join(
-            '-'
-          )}`;
-
-          return (
-            <Box
-              className="drawer-content"
-              data-testid="drawer-content"
-              key={drawerKey}>
-              {/* Column Name */}
-              <Box className="form-field">
-                <label className="field-label">{t('label.column-name')}</label>
-                <Input
-                  disabled
-                  className="readonly-input"
-                  data-testid="column-name-input"
-                  value={
-                    selectedCount === 1
-                      ? firstRow?.columnName
-                      : `${selectedCount} columns selected`
-                  }
-                />
-              </Box>
-
-              {/* Display Name */}
-              <Box className="form-field">
-                <label className="field-label">{t('label.display-name')}</label>
-                <Input
-                  data-testid="display-name-input"
-                  defaultValue={currentDisplayName}
-                  key={`displayName-${drawerKey}`}
-                  placeholder={t('label.display-name')}
-                  onChange={(e) => {
-                    columnGridListing.selectedEntities.forEach(
-                      (rowId: string) => {
-                        updateRowField(rowId, 'displayName', e.target.value);
-                      }
-                    );
-                  }}
-                />
-              </Box>
-
-              {/* Description */}
-              <Box className="form-field" data-testid="description-field">
-                <label className="field-label">{t('label.description')}</label>
-                <RichTextEditor
-                  initialValue={currentDescription}
-                  key={`description-${drawerKey}`}
-                  placeHolder={t('label.add-entity', {
-                    entity: t('label.description'),
-                  })}
-                  ref={editorRef}
-                  onTextChange={(value) => {
-                    columnGridListing.selectedEntities.forEach(
-                      (rowId: string) => {
-                        updateRowField(rowId, 'description', value);
-                      }
-                    );
-                  }}
-                />
-              </Box>
-
-              {/* Tags */}
-              <Box className="form-field" data-testid="tags-field">
-                <label className="field-label">{t('label.tag-plural')}</label>
-                <AsyncSelectList
-                  fetchOptions={tagClassBase.getTags}
-                  getPopupContainer={(trigger) =>
-                    trigger.closest('.ant-drawer-body') || document.body
-                  }
-                  initialOptions={classificationTagOptions}
-                  key={`tags-${drawerKey}`}
-                  mode="multiple"
-                  placeholder={t('label.select-tags')}
-                  onChange={(selectedTags) => {
-                    const options = (
-                      Array.isArray(selectedTags)
-                        ? selectedTags
-                        : [selectedTags]
-                    ) as SelectOption[];
-                    // Convert Tag entities to TagLabel format with required fields
-                    const newTags: TagLabel[] = options
-                      .filter((option: SelectOption) => option.data)
-                      .map((option: SelectOption) => {
-                        // option.data is a Tag entity from search results
-                        const tagData = option.data as {
-                          fullyQualifiedName?: string;
-                          name?: string;
-                          displayName?: string;
-                          description?: string;
-                        };
-
-                        return {
-                          tagFQN: tagData.fullyQualifiedName ?? option.value,
-                          source: TagSource.Classification,
-                          labelType: LabelType.Manual,
-                          state: State.Confirmed,
-                          name: tagData.name,
-                          displayName: tagData.displayName,
-                          description: tagData.description,
-                        };
-                      });
-                    columnGridListing.selectedEntities.forEach(
-                      (rowId: string) => {
-                        const row = columnGridListing.allRows.find(
-                          (r: ColumnGridRowData) => r.id === rowId
-                        );
-                        if (row) {
-                          const existingTags = row.editedTags ?? row.tags ?? [];
-                          const glossaryTerms = existingTags.filter(
-                            (tag: TagLabel) => tag.source === TagSource.Glossary
-                          );
-                          updateRowField(rowId, 'tags', [
-                            ...newTags,
-                            ...glossaryTerms,
-                          ]);
-                        }
-                      }
-                    );
-                  }}
-                />
-              </Box>
-
-              {/* Glossary Terms */}
-              <Box className="form-field" data-testid="glossary-terms-field">
-                <label className="field-label">
-                  {t('label.glossary-term-plural')}
-                </label>
-                <TreeAsyncSelectList
-                  getPopupContainer={(trigger) =>
-                    trigger.closest('.ant-drawer-body') || document.body
-                  }
-                  initialOptions={glossaryTermOptions}
-                  key={`glossaryTerms-${drawerKey}`}
-                  placeholder={t('label.select-tags')}
-                  onChange={(selectedTerms) => {
-                    const options = (
-                      Array.isArray(selectedTerms)
-                        ? selectedTerms
-                        : [selectedTerms]
-                    ) as SelectOption[];
-                    // Convert GlossaryTerm entities to TagLabel format with required fields
-                    const newTerms: TagLabel[] = options
-                      .filter((option: SelectOption) => option.data)
-                      .map((option: SelectOption) => {
-                        // option.data is a GlossaryTerm entity from search results
-                        const termData = option.data as {
-                          fullyQualifiedName?: string;
-                          name?: string;
-                          displayName?: string;
-                          description?: string;
-                        };
-
-                        return {
-                          tagFQN: termData.fullyQualifiedName ?? option.value,
-                          source: TagSource.Glossary,
-                          labelType: LabelType.Manual,
-                          state: State.Confirmed,
-                          name: termData.name,
-                          displayName: termData.displayName,
-                          description: termData.description,
-                        };
-                      });
-                    columnGridListing.selectedEntities.forEach(
-                      (rowId: string) => {
-                        const row = columnGridListing.allRows.find(
-                          (r: ColumnGridRowData) => r.id === rowId
-                        );
-                        if (row) {
-                          const existingTags = row.editedTags ?? row.tags ?? [];
-                          const classificationTags = existingTags.filter(
-                            (tag: TagLabel) => tag.source !== TagSource.Glossary
-                          );
-                          updateRowField(rowId, 'tags', [
-                            ...classificationTags,
-                            ...newTerms,
-                          ]);
-                        }
-                      }
-                    );
-                  }}
-                />
-              </Box>
-            </Box>
-          );
-        })()}
-      </Drawer>
+      {formDrawer}
     </div>
   );
 };

@@ -24,6 +24,7 @@ import { ExploreQuickFilterField } from '../../../../components/Explore/ExploreP
 import { TABLE_CARD_PAGE_SIZE } from '../../../../constants/constants';
 import { EntityFields } from '../../../../enums/AdvancedSearch.enum';
 import { ColumnGridItem } from '../../../../generated/api/data/columnGridResponse';
+import { TagLabel } from '../../../../generated/type/tagLabel';
 import { getColumnGrid } from '../../../../rest/columnAPI';
 import { ColumnGridFilters, ColumnGridRowData } from '../ColumnGrid.interface';
 
@@ -53,6 +54,7 @@ export const useColumnGridListingData = (
   setAllRows: React.Dispatch<React.SetStateAction<ColumnGridRowData[]>>;
   gridItems: ColumnGridItem[];
   setGridItems: React.Dispatch<React.SetStateAction<ColumnGridItem[]>>;
+  clearEditedValues: () => void;
 } => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [serverFilters] = useState<ColumnGridFilters>(
@@ -314,7 +316,7 @@ export const useColumnGridListingData = (
       {
         editedDisplayName?: string;
         editedDescription?: string;
-        editedTags?: unknown[];
+        editedTags?: TagLabel[];
       }
     >
   >(new Map());

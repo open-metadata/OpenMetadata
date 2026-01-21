@@ -12,19 +12,33 @@
  */
 
 import { useMemo } from 'react';
-import { CellRenderer } from '../../../../components/common/atoms/shared/types';
+import {
+  CellRenderer,
+  ColumnConfig,
+} from '../../../../components/common/atoms/shared/types';
 import { ColumnGridRowData } from '../ColumnGrid.interface';
 
 interface UseColumnGridRenderersConfig {
-  renderColumnNameCell?: (props: { row: ColumnGridRowData }) => React.ReactNode;
-  renderPathCell?: (props: { row: ColumnGridRowData }) => React.ReactNode;
-  renderDescriptionCell?: (props: {
-    row: ColumnGridRowData;
-  }) => React.ReactNode;
-  renderTagsCell?: (props: { row: ColumnGridRowData }) => React.ReactNode;
-  renderGlossaryTermsCell?: (props: {
-    row: ColumnGridRowData;
-  }) => React.ReactNode;
+  renderColumnNameCell?: (
+    entity: ColumnGridRowData,
+    column?: ColumnConfig<ColumnGridRowData>
+  ) => React.ReactNode;
+  renderPathCell?: (
+    entity: ColumnGridRowData,
+    column?: ColumnConfig<ColumnGridRowData>
+  ) => React.ReactNode;
+  renderDescriptionCell?: (
+    entity: ColumnGridRowData,
+    column?: ColumnConfig<ColumnGridRowData>
+  ) => React.ReactNode;
+  renderTagsCell?: (
+    entity: ColumnGridRowData,
+    column?: ColumnConfig<ColumnGridRowData>
+  ) => React.ReactNode;
+  renderGlossaryTermsCell?: (
+    entity: ColumnGridRowData,
+    column?: ColumnConfig<ColumnGridRowData>
+  ) => React.ReactNode;
 }
 
 export const useColumnGridRenderers = (
@@ -38,13 +52,15 @@ export const useColumnGridRenderers = (
     renderGlossaryTermsCell,
   } = config;
 
+  const defaultRenderer = () => null;
+
   const renderers: CellRenderer<ColumnGridRowData> = useMemo(
     () => ({
-      columnName: renderColumnNameCell || (() => null),
-      path: renderPathCell || (() => null),
-      description: renderDescriptionCell || (() => null),
-      tags: renderTagsCell || (() => null),
-      glossaryTerms: renderGlossaryTermsCell || (() => null),
+      columnName: renderColumnNameCell ?? defaultRenderer,
+      path: renderPathCell ?? defaultRenderer,
+      description: renderDescriptionCell ?? defaultRenderer,
+      tags: renderTagsCell ?? defaultRenderer,
+      glossaryTerms: renderGlossaryTermsCell ?? defaultRenderer,
     }),
     [
       renderColumnNameCell,
