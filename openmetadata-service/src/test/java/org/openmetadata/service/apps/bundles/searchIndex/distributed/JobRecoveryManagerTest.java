@@ -437,6 +437,7 @@ class JobRecoveryManagerTest {
         status.name(),
         JsonUtils.pojoToJson(jobConfig),
         "staged_123_",
+        null, // stagedIndexMapping
         10000,
         0,
         0,
@@ -460,6 +461,7 @@ class JobRecoveryManagerTest {
         status.name(),
         JsonUtils.pojoToJson(jobConfig),
         "staged_123_",
+        null, // stagedIndexMapping
         10000,
         0,
         0,
@@ -484,6 +486,7 @@ class JobRecoveryManagerTest {
         status.name(),
         JsonUtils.pojoToJson(jobConfig),
         "staged_123_",
+        null, // stagedIndexMapping
         10000,
         5000,
         4900,

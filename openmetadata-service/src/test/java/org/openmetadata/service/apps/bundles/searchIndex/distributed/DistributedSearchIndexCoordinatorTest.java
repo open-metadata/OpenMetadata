@@ -148,6 +148,7 @@ class DistributedSearchIndexCoordinatorTest {
             IndexJobStatus.INITIALIZING.name(),
             jobConfigJson,
             "staged_123_",
+            null,
             10000,
             0,
             0,
@@ -243,6 +244,7 @@ class DistributedSearchIndexCoordinatorTest {
             IndexJobStatus.RUNNING.name(), // Wrong state
             jobConfigJson,
             "staged_123_",
+            null, // stagedIndexMapping
             10000,
             0,
             0,
@@ -618,6 +620,7 @@ class DistributedSearchIndexCoordinatorTest {
             IndexJobStatus.RUNNING.name(),
             JsonUtils.pojoToJson(jobConfig),
             "staged_123_",
+            null, // stagedIndexMapping
             5000,
             2500,
             2400,
@@ -674,6 +677,7 @@ class DistributedSearchIndexCoordinatorTest {
             IndexJobStatus.READY.name(),
             JsonUtils.pojoToJson(jobConfig),
             "staged_123_",
+            null, // stagedIndexMapping
             10000,
             0,
             0,
@@ -717,6 +721,7 @@ class DistributedSearchIndexCoordinatorTest {
             IndexJobStatus.INITIALIZING.name(), // Wrong state
             JsonUtils.pojoToJson(jobConfig),
             "staged_123_",
+            null, // stagedIndexMapping
             10000,
             0,
             0,
@@ -747,6 +752,7 @@ class DistributedSearchIndexCoordinatorTest {
             IndexJobStatus.RUNNING.name(),
             JsonUtils.pojoToJson(jobConfig),
             "staged_123_",
+            null, // stagedIndexMapping
             10000,
             5000,
             4900,
@@ -794,6 +800,7 @@ class DistributedSearchIndexCoordinatorTest {
             IndexJobStatus.RUNNING.name(),
             JsonUtils.pojoToJson(jobConfig),
             "staged_123_",
+            null, // stagedIndexMapping
             10000,
             5000,
             4900,
@@ -838,6 +845,7 @@ class DistributedSearchIndexCoordinatorTest {
             IndexJobStatus.RUNNING.name(),
             JsonUtils.pojoToJson(jobConfig),
             "staged_123_",
+            null, // stagedIndexMapping
             15000,
             0,
             0,
@@ -953,6 +961,7 @@ class DistributedSearchIndexCoordinatorTest {
                 IndexJobStatus.RUNNING.name(),
                 "{}",
                 "staged_",
+                null, // stagedIndexMapping
                 10000,
                 5000,
                 4900,
@@ -1061,6 +1070,7 @@ class DistributedSearchIndexCoordinatorTest {
             IndexJobStatus.COMPLETED.name(), // Terminal state
             JsonUtils.pojoToJson(jobConfig),
             "staged_123_",
+            null, // stagedIndexMapping
             10000,
             10000,
             9900,
@@ -1093,6 +1103,7 @@ class DistributedSearchIndexCoordinatorTest {
             IndexJobStatus.RUNNING.name(), // Non-terminal state
             JsonUtils.pojoToJson(jobConfig),
             "staged_123_",
+            null, // stagedIndexMapping
             10000,
             5000,
             4900,
@@ -1149,6 +1160,7 @@ class DistributedSearchIndexCoordinatorTest {
         status.name(),
         JsonUtils.pojoToJson(jobConfig),
         "staged_123_",
+        null, // stagedIndexMapping
         10000,
         status.ordinal() >= IndexJobStatus.COMPLETED.ordinal() ? 10000 : 5000,
         status.ordinal() >= IndexJobStatus.COMPLETED.ordinal() ? 9900 : 4900,
