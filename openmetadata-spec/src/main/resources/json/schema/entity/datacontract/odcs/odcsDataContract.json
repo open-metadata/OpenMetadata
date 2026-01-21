@@ -2,15 +2,15 @@
   "$id": "https://open-metadata.org/schema/entity/datacontract/odcs/odcsDataContract.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ODCSDataContract",
-  "description": "Open Data Contract Standard (ODCS) v3.0.2 data contract representation for import/export.",
+  "description": "Open Data Contract Standard (ODCS) v3.1.0 data contract representation for import/export.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract",
   "definitions": {
     "odcsApiVersion": {
       "description": "ODCS API version.",
       "type": "string",
-      "enum": ["v3.0.2", "v3.0.1", "v3.0.0", "v2.2.2", "v2.2.1", "v2.2.0"],
-      "default": "v3.0.2"
+      "enum": ["v3.1.0", "v3.0.2", "v3.0.1", "v3.0.0", "v2.2.2", "v2.2.1", "v2.2.0"],
+      "default": "v3.1.0"
     },
     "odcsKind": {
       "description": "Kind of ODCS document.",
@@ -124,6 +124,15 @@
         "maxProperties": {
           "description": "Maximum object properties.",
           "type": "integer"
+        },
+        "timezone": {
+          "description": "Whether the timestamp/time defines the timezone or not.",
+          "type": "boolean"
+        },
+        "defaultTimezone": {
+          "description": "Default timezone for timestamp/time types.",
+          "type": "string",
+          "default": "Etc/UTC"
         }
       },
       "additionalProperties": true
@@ -187,9 +196,9 @@
           "default": -1
         },
         "logicalType": {
-          "description": "Logical data type.",
+          "description": "Logical data type per ODCS v3.1.0 spec.",
           "type": "string",
-          "enum": ["string", "date", "number", "integer", "object", "array", "boolean"]
+          "enum": ["string", "text", "date", "timestamp", "time", "number", "integer", "decimal", "float", "double", "long", "object", "array", "boolean", "bytes", "null"]
         },
         "logicalTypeOptions": {
           "description": "Type-specific options.",
@@ -215,9 +224,8 @@
           "default": -1
         },
         "classification": {
-          "description": "Security level.",
-          "type": "string",
-          "enum": ["public", "internal", "restricted", "confidential", "sensitive"]
+          "description": "Data classification tag (e.g., PII, public, internal, restricted, confidential, sensitive).",
+          "type": "string"
         },
         "encryptedName": {
           "description": "Encrypted column reference.",
@@ -284,8 +292,12 @@
           "type": "string"
         },
         "rule": {
-          "description": "Library rule name.",
+          "description": "Library rule name. For type=library, can be one of the standard quality metrics.",
           "type": "string"
+        },
+        "metric": {
+          "description": "Standard quality metric from library (ODCS 3.1.0).",
+          "$ref": "#/definitions/odcsQualityMetric"
         },
         "column": {
           "description": "Column to apply the rule to.",
@@ -351,7 +363,8 @@
             "type": "number"
           },
           "minItems": 2,
-          "maxItems": 2
+          "maxItems": 2,
+          "default": null
         },
         "mustNotBeBetween": {
           "description": "Value must not be between [min, max].",
@@ -360,7 +373,8 @@
             "type": "number"
           },
           "minItems": 2,
-          "maxItems": 2
+          "maxItems": 2,
+          "default": null
         },
         "validValues": {
           "description": "Static value list.",
@@ -398,6 +412,21 @@
         }
       },
       "additionalProperties": true
+    },
+    "odcsQualityMetric": {
+      "description": "Standard quality metrics library supported by ODCS 3.1.0.",
+      "type": "string",
+      "enum": [
+        "rowCount",
+        "nullValues",
+        "invalidValues",
+        "duplicateValues",
+        "missingValues",
+        "uniqueValues",
+        "distinctValues",
+        "completeness",
+        "freshness"
+      ]
     },
     "odcsSupportChannel": {
       "description": "Support and communication channel.",
@@ -510,7 +539,7 @@
         "access": {
           "description": "Access type.",
           "type": "string",
-          "enum": ["read", "write"]
+          "enum": ["read", "write", "readWrite"]
         },
         "firstLevelApprovers": {
           "description": "Initial approval authority.",
