@@ -45,7 +45,7 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 @ExtendWith(TestNamespaceExtension.class)
 @Execution(ExecutionMode.SAME_THREAD)
 public class TagRecognizerFeedbackIT {
-  private static final long TIMEOUT_MINUTES = 15;
+  private static final long TIMEOUT_MINUTES = 5;
   private static final long POLL_INTERVAL_SECONDS = 5;
 
   @BeforeAll
