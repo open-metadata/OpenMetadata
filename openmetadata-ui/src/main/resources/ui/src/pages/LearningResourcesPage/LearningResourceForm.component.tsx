@@ -218,7 +218,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
       };
 
       if (resource) {
-        await updateLearningResource(resource.id, payload);
+        await updateLearningResource(payload);
         showSuccessToast(
           t('message.entity-updated-successfully', {
             entity: t('label.learning-resource'),
@@ -301,7 +301,16 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
             },
           ]}>
           <Input
+            disabled={Boolean(resource)}
             placeholder={t('label.enter-entity', { entity: t('label.name') })}
+          />
+        </Form.Item>
+
+        <Form.Item label={t('label.display-name')} name="displayName">
+          <Input
+            placeholder={t('label.enter-entity', {
+              entity: t('label.display-name'),
+            })}
           />
         </Form.Item>
 

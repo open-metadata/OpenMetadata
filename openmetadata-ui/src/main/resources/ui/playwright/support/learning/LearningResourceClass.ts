@@ -74,6 +74,14 @@ export class LearningResourceClass {
     const response = await apiContext.post('/api/v1/learning/resources', {
       data: this.data,
     });
+
+    if (!response.ok()) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to create learning resource: ${response.status()} ${errorText}`
+      );
+    }
+
     const data = await response.json();
     this.responseData = data;
 
