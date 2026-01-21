@@ -33,6 +33,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import {
   DataContract,
   EntityStatus,
+  TermsOfUse,
 } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
 import { createContract, updateContract } from '../../../rest/contractAPI';
@@ -109,7 +110,7 @@ const AddDataContract: React.FC<{
     // 2. Object with inherited=false/undefined -> keep as object
     // 3. String (legacy format) -> convert to object format for form consistency
     // Note: isInheritedField() returns false for null/undefined/string, so those fall through
-    let filteredTermsOfUse: string | { content?: string } | undefined;
+    let filteredTermsOfUse: TermsOfUse | undefined;
     if (isInheritedField(contract.termsOfUse)) {
       // Case 1: Inherited from Data Product - exclude from editable form
       filteredTermsOfUse = undefined;
@@ -118,7 +119,7 @@ const AddDataContract: React.FC<{
       contract.termsOfUse !== null
     ) {
       // Case 2: Non-inherited object format - keep as-is
-      filteredTermsOfUse = contract.termsOfUse as { content?: string };
+      filteredTermsOfUse = contract.termsOfUse;
     } else if (typeof contract.termsOfUse === 'string') {
       // Case 3: Legacy string format - convert to object for form consistency
       filteredTermsOfUse = { content: contract.termsOfUse };
@@ -239,12 +240,15 @@ const AddDataContract: React.FC<{
       } else {
         // Extract termsOfUse content string for CreateDataContract API
         // The form stores termsOfUse as { content: string } but the API expects just the string
+        // Note: Runtime data may have termsOfUse as string (legacy) or TermsOfUse object
+        const termsOfUseRaw = formValues.termsOfUse as
+          | TermsOfUse
+          | string
+          | undefined;
         const termsOfUseContent =
-          typeof formValues.termsOfUse === 'object' &&
-          formValues.termsOfUse !== null
-            ? (formValues.termsOfUse as unknown as { content?: string })
-                ?.content
-            : (formValues.termsOfUse as unknown as string);
+          typeof termsOfUseRaw === 'string'
+            ? termsOfUseRaw
+            : termsOfUseRaw?.content;
 
         await createContract({
           ...formValues,
