@@ -1,0 +1,43 @@
+# Minimal constraints to keep pip resolver fast on Python 3.12.
+# These packages have massive dependency graphs that otherwise cause hours
+# of backtracking when installing ingestion + Airflow extras.
+gcsfs==2023.12.0
+fsspec==2023.12.0
+google-cloud-storage==2.10.0
+kubernetes==29.0.0
+exasol-integration-test-docker-environment==3.4.0
+
+# gRPC and Protobuf packages
+# Dagster 1.12.2 supports protobuf>=4,<7 which is compatible with opentelemetry-exporter-otlp 1.37.0
+grpcio>=1.63.2
+protobuf>=5.26.1,<7
+
+# Snowflake connector - causes backtracking through many patch versions
+snowflake-connector-python==3.17.4
+# cryptography pinned to <43 due to pyOpenSSL 24.1.0 requirement (used by databricks)
+cryptography>=42.0.0,<43
+pynacl==1.6.0
+
+# Azure packages - prevent backtracking through many versions
+azure-storage-blob==12.25.1
+msal==1.34.0
+
+# SQLAlchemy database adapters - prevent backtracking
+sqlalchemy-hana==3.0.3
+# pyexasol pinned to 0.26.x for compatibility with sqlalchemy-exasol 5.x (requires pyexasol<1)
+pyexasol>=0.26.0,<1
+
+# Authentication and JWT packages - prevent massive backtracking
+PyJWT==2.10.1
+oracledb==1.4.2
+
+# Locust for load testing (Python 3.12+)
+# Pin exact version to prevent backtracking through patch versions
+locust==2.32.10
+
+# Workflow orchestration packages
+# Dagster 1.12.2+ supports protobuf 5/6, making it compatible with opentelemetry-exporter-otlp 1.37.0
+dagster>=1.12.2
+dagster-graphql>=1.12.2
+dagster-webserver>=1.12.2
+dagster-pipes>=1.12.2

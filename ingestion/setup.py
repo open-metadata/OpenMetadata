@@ -26,22 +26,22 @@ VERSIONS = {
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-monitoring": "google-cloud-monitoring>=2.0.0",
-    "google-cloud-storage": "google-cloud-storage>=1.43.0",
-    "gcsfs": "gcsfs>=2023.1.0",
+    "google-cloud-storage": "google-cloud-storage>=2.10.0",
+    "gcsfs": "gcsfs>=2023.12.0",
     "great-expectations": "great-expectations~=0.18.0",
-    "great-expectations-1xx": "great-expectations~=1.0",
+    "great-expectations-1xx": "great-expectations>=1.4",
     "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3",
-    "pandas": "pandas~=2.0.3",
+    "pandas": "pandas~=2.1.1",
     "pyarrow": "pyarrow~=16.0",
     "pydantic": "pydantic~=2.0,>=2.7.0,<2.12",  # Pin down to <2.12 due to breaking changes in 2.12.0
     "pydantic-settings": "pydantic-settings~=2.0,>=2.7.0",
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql~=1.0",
-    "pyodbc": "pyodbc>=4.0.35,<5",
+    "pyodbc": "pyodbc>=5.0.0,<6",
     "numpy": "numpy<2",
-    "scikit-learn": "scikit-learn~=1.0",  # Python 3.7 only goes up to 1.0.2
+    "scikit-learn": "scikit-learn~=1.3",
     "packaging": "packaging",
     "azure-storage-blob": "azure-storage-blob~=12.14",
     "azure-identity": "azure-identity~=1.12",
@@ -147,7 +147,7 @@ base_requirements = {
     "importlib-metadata>=4.13.0",  # From airflow constraints
     "Jinja2>=2.11.3",
     "jsonpatch<2.0, >=1.24",
-    "kubernetes>=21.0.0",  # Kubernetes client for secrets manager
+    "kubernetes>=29.0.0,<35",  # Kubernetes client for secrets manager
     "memory-profiler",
     "mypy_extensions>=0.4.3",
     VERSIONS["pydantic"],
@@ -324,7 +324,11 @@ plugins: Dict[str, Set[str]] = {
     },
     "nifi": {},  # uses requests
     "openlineage": {*COMMONS["kafka"]},
-    "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2", DATA_DIFF["oracle"]},
+    "oracle": {
+        "cx_Oracle>=8.3.0,<9",
+        "oracledb~=1.2",
+        DATA_DIFF["oracle"],
+    },  # oracledb is recommended for Python 3.12+
     "pgspider": {"psycopg2-binary", "sqlalchemy-pgspider"},
     "pinotdb": {"pinotdb~=5.0"},
     "postgres": {*COMMONS["postgres"]},
