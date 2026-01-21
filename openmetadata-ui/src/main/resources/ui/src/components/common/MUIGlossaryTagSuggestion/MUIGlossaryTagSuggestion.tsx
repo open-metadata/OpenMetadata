@@ -41,6 +41,7 @@ export interface MUIGlossaryTagSuggestionProps {
   label?: ReactNode;
   required?: boolean;
   autoFocus?: boolean;
+  'data-testid'?: string;
 }
 
 const MUIGlossaryTagSuggestion: FC<MUIGlossaryTagSuggestionProps> = ({
@@ -50,6 +51,7 @@ const MUIGlossaryTagSuggestion: FC<MUIGlossaryTagSuggestionProps> = ({
   label,
   required = false,
   autoFocus = false,
+  'data-testid': dataTestId,
 }) => {
   const { t } = useTranslation();
 
@@ -233,6 +235,7 @@ const MUIGlossaryTagSuggestion: FC<MUIGlossaryTagSuggestionProps> = ({
       multiple
       searchable
       autoFocus={autoFocus}
+      data-testid={dataTestId}
       fetchData={fetchData}
       filterNode={customFilterNode}
       label={label}
