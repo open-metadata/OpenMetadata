@@ -6716,6 +6716,60 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return childrenMap;
   }
 
+  /**
+   * Batch load domains for a list of entity references. This is used to avoid N+1 queries when
+   * loading inherited domains from multiple teams/parents.
+   *
+   * @param entityRefs List of entity references (e.g., teams or parent teams)
+   * @param entityType The type of entities (e.g., Entity.TEAM)
+   * @param include Include parameter for soft-deleted entities
+   * @return Map from entity ID to list of domain references
+   */
+  protected static Map<UUID, List<EntityReference>> batchLoadDomainsForEntityRefs(
+      List<EntityReference> entityRefs, String entityType, Include include) {
+    Map<UUID, List<EntityReference>> domainsMap = new HashMap<>();
+
+    if (entityRefs == null || entityRefs.isEmpty()) {
+      return domainsMap;
+    }
+
+    // Convert entity references to string IDs
+    List<String> entityIds =
+        entityRefs.stream().map(ref -> ref.getId().toString()).distinct().toList();
+
+    // Batch query all domain relationships in one call
+    // This query finds all domains (fromEntity=DOMAIN) that have HAS relationship TO the teams
+    // (toEntity=entityType)
+    CollectionDAO dao = Entity.getCollectionDAO();
+    List<CollectionDAO.EntityRelationshipObject> records =
+        dao.relationshipDAO().findFromBatch(entityIds, Relationship.HAS.ordinal(), DOMAIN, include);
+
+    // Collect all unique domain IDs
+    var domainIds =
+        records.stream().map(rec -> UUID.fromString(rec.getFromId())).distinct().toList();
+
+    if (domainIds.isEmpty()) {
+      return domainsMap;
+    }
+
+    // Batch fetch all domain entity references in one call
+    var domainRefs = Entity.getEntityReferencesByIds(DOMAIN, domainIds, include);
+    var domainRefMap =
+        domainRefs.stream().collect(Collectors.toMap(EntityReference::getId, ref -> ref));
+
+    // Map domains to their owning entities
+    for (CollectionDAO.EntityRelationshipObject rec : records) {
+      UUID toId = UUID.fromString(rec.getToId());
+      UUID fromId = UUID.fromString(rec.getFromId());
+      EntityReference domainRef = domainRefMap.get(fromId);
+      if (domainRef != null) {
+        domainsMap.computeIfAbsent(toId, k -> new ArrayList<>()).add(domainRef);
+      }
+    }
+
+    return domainsMap;
+  }
+
   List<String> entityListToStrings(List<T> entities) {
     return entities.stream().map(EntityInterface::getId).map(UUID::toString).toList();
   }

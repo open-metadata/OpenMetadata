@@ -336,16 +336,18 @@ public class UserRepository extends EntityRepository<User> {
 
   @Override
   public void setInheritedFields(User user, Fields fields) {
-    // If user does not have domain, then inherit it from parent Team
-    // TODO have default team when a user belongs to multiple teams
     if (fields.contains(FIELD_DOMAINS)) {
       Set<EntityReference> combinedParent = new TreeSet<>(EntityUtil.compareEntityReferenceById);
       List<EntityReference> teams =
           !fields.contains(TEAMS_FIELD) ? getTeams(user) : user.getTeams();
       if (!nullOrEmpty(teams)) {
+        Map<UUID, List<EntityReference>> teamDomainsMap =
+            batchLoadDomainsForEntityRefs(teams, TEAM, ALL);
         for (EntityReference team : teams) {
-          Team parent = Entity.getEntity(TEAM, team.getId(), "domains", ALL);
-          combinedParent.addAll(parent.getDomains());
+          List<EntityReference> domains = teamDomainsMap.get(team.getId());
+          if (domains != null) {
+            combinedParent.addAll(domains);
+          }
         }
       }
       user.setDomains(
