@@ -11,14 +11,7 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import {
-  compact,
-  get,
-  isEmpty,
-  isString,
-  isUndefined,
-  startCase,
-} from 'lodash';
+import { get, isEmpty, isString, isUndefined, startCase } from 'lodash';
 import { parse } from 'papaparse';
 import { Column } from 'react-data-grid';
 import { ReactComponent as SuccessBadgeIcon } from '../..//assets/svg/success-badge.svg';
@@ -153,32 +146,6 @@ export const getColumnConfig = (
 };
 
 /**
- * Checks if a column is a special column that requires special quote handling.
- */
-const isSpecialColumn = (colName?: string): boolean => {
-  if (!colName) {
-    return false;
-  }
-
-  return (
-    csvUtilsClassBase
-      .columnsWithMultipleValuesEscapeNeeded()
-      .includes(colName) ||
-    colName === 'tags' ||
-    colName === 'domains' ||
-    colName.endsWith('.tags') ||
-    colName.endsWith('.domains')
-  );
-};
-
-/**
- * Checks if a column is a domains column.
- */
-const isDomainsColumn = (colName?: string): boolean => {
-  return colName === 'domains' || colName?.endsWith('.domains') || false;
-};
-
-/**
  * Strips all wrapper quotes from a value, handling multiple quote layers.
  * Continues until no more wrapper quotes are found or length stops decreasing.
  */
@@ -291,59 +258,12 @@ export const getEntityColumnsAndDataSourceFromCSV = (
   };
 };
 
-/**
- * Normalizes values before export by stripping all wrapper quotes.
- * This prevents quote accumulation when re-exporting previously imported data.
- */
-const normalizeValueForExport = (value: string): string => {
-  if (typeof value !== 'string') {
-    return String(value);
-  }
+const formatTripleQuotedCSVValue = (value: string): string => {
+  // Step 1: escape inner quotes
+  const escaped = value.replace(/"/g, '""');
 
-  return stripAllWrapperQuotes(value);
-};
-
-/**
- * Determines if a value needs to be wrapped in quotes for CSV export.
- */
-const needsWrapping = (value: string, colName: string): boolean => {
-  const hasSpecialChars = value.includes(',') || value.includes('\n');
-  const isSpecialCol = isSpecialColumn(colName);
-
-  return hasSpecialChars || isSpecialCol || value.includes('"');
-};
-
-const getQuoteStyle = (value: string, colName: string): 'single' | 'triple' => {
-  if (isDomainsColumn(colName)) {
-    return 'triple';
-  }
-
-  if (isSpecialColumn(colName) && value.includes('"')) {
-    return 'triple';
-  }
-
-  return 'single';
-};
-
-const formatValueForCSV = (value: string, colName: string): string => {
-  if (isEmpty(value)) {
-    return '';
-  }
-
-  const normalizedValue = normalizeValueForExport(value);
-  const escapedValue = normalizedValue.replaceAll(/"/g, '""');
-
-  if (!needsWrapping(normalizedValue, colName)) {
-    return normalizedValue;
-  }
-
-  const quoteStyle = getQuoteStyle(normalizedValue, colName);
-
-  if (quoteStyle === 'triple') {
-    return `"""${escapedValue}"""`;
-  }
-
-  return `"${escapedValue}"`;
+  // Step 2: wrap with triple quotes
+  return `"""${escaped}"""`;
 };
 
 export const getCSVStringFromColumnsAndDataSource = (
@@ -351,24 +271,37 @@ export const getCSVStringFromColumnsAndDataSource = (
   dataSource: Record<string, string>[]
 ) => {
   const header = columns.map((col) => col.key).join(',');
-  const rows = dataSource.map((row) => {
-    const compactValues = compact(columns.map((col) => row[col.key ?? '']));
 
-    if (compactValues.length === 0) {
-      return '';
-    }
+  const rows = dataSource
+    .map((row) =>
+      columns
+        .map((col) => {
+          const colName = col.key ?? '';
+          const value = String(get(row, colName, ''));
 
-    return columns
-      .map((col) => {
-        const value = get(row, col.key ?? '', '');
-        const colName = col.key ?? '';
+          if (!value) {
+            return '';
+          }
 
-        return formatValueForCSV(String(value), colName);
-      })
-      .join(',');
-  });
+          if (colName === 'glossaryTerms' || colName === 'domains') {
+            return formatTripleQuotedCSVValue(value);
+          }
 
-  return [header, ...compact(rows)].join('\n');
+          if (colName === 'description') {
+            return `"${value.replace(/"/g, '""')}"`;
+          }
+
+          if (/[,"\n]/.test(value)) {
+            return `"${value.replace(/"/g, '""')}"`;
+          }
+
+          return value;
+        })
+        .join(',')
+    )
+    .filter(Boolean);
+
+  return [header, ...rows].join('\n');
 };
 
 /**
