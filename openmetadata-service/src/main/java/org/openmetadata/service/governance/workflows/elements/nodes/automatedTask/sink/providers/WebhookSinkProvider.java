@@ -13,6 +13,9 @@
 
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.providers;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
@@ -20,6 +23,7 @@ import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -45,6 +49,7 @@ public class WebhookSinkProvider implements SinkProvider {
 
   private static final int DEFAULT_MAX_RETRIES = 3;
   private static final int DEFAULT_RETRY_DELAY_SECONDS = 2;
+  private static final ObjectMapper YAML_MAPPER = new ObjectMapper(new YAMLFactory());
 
   private final WebhookSinkConfig config;
   private final Client client;
@@ -261,6 +266,14 @@ public class WebhookSinkProvider implements SinkProvider {
   }
 
   private String serializeEntity(EntityInterface entity, String format) {
+    if ("yaml".equalsIgnoreCase(format)) {
+      try {
+        return YAML_MAPPER.writeValueAsString(entity);
+      } catch (JsonProcessingException e) {
+        LOG.warn("Failed to serialize entity as YAML, falling back to JSON: {}", e.getMessage());
+        return JsonUtils.pojoToJson(entity);
+      }
+    }
     return JsonUtils.pojoToJson(entity);
   }
 
@@ -305,7 +318,8 @@ public class WebhookSinkProvider implements SinkProvider {
       case BASIC -> {
         if (auth.getUsername() != null && auth.getPassword() != null) {
           String credentials = auth.getUsername() + ":" + auth.getPassword();
-          String encoded = Base64.getEncoder().encodeToString(credentials.getBytes());
+          String encoded =
+              Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
           request.header("Authorization", "Basic " + encoded);
         }
       }

@@ -87,7 +87,7 @@ public class SinkResult {
         .success(true)
         .syncedCount(entityFqns.size())
         .failedCount(0)
-        .syncedEntities(entityFqns)
+        .syncedEntities(new ArrayList<>(entityFqns)) // Defensive copy
         .build();
   }
 
