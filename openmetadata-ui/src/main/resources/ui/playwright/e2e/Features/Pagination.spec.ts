@@ -208,9 +208,7 @@ test.describe('Service Databases page pagination', () => {
     await afterAction();
   });
 
-  test('should test pagination on Service Databases page', async ({
-    page,
-  }) => {
+  test('should test pagination on Service Databases page', async ({ page }) => {
     test.slow(true);
 
     await page.goto(`/service/databaseServices/${databaseFqn}/databases`);
@@ -219,15 +217,13 @@ test.describe('Service Databases page pagination', () => {
     const responsePromise = page.waitForResponse((response) =>
       response
         .url()
-        .includes(
-          '/api/v1/analytics/dataInsights/system/charts/listChartData'
-        )
+        .includes('/api/v1/analytics/dataInsights/system/charts/listChartData')
     );
     await page.getByTestId('insights').click();
     const response = await responsePromise;
     expect(response.status()).toBe(200);
     await page.waitForSelector('.ant-skeleton-active', {
-          state: 'detached',
+      state: 'detached',
     });
 
     const databaseResponsePromise = page.waitForResponse((response) =>
@@ -237,7 +233,9 @@ test.describe('Service Databases page pagination', () => {
     const response2 = await databaseResponsePromise;
     expect(response2.status()).toBe(200);
     await waitForAllLoadersToDisappear(page);
-    await page.waitForSelector('table', { state: 'visible' });
+    await page.waitForSelector('[data-testid="table-container"]', {
+      state: 'visible',
+    });
 
     const paginationText = page.locator('[data-testid="page-indicator"]');
     await expect(paginationText).toBeVisible();
@@ -762,13 +760,11 @@ test.describe('Pagination tests for Drive Service Files page', () => {
     paginationTextContent = await paginationText.textContent();
     expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
 
-    await page.getByTestId('files').click();
-    await page.waitForSelector('table', { state: 'visible' });
-
-    await nextButton.click();
-    const filesPage2Response = await page.waitForResponse((response) =>
+    const filesPage2Promise = page.waitForResponse((response) =>
       response.url().includes('/api/v1/drives/files')
     );
+    await nextButton.click();
+    const filesPage2Response = await filesPage2Promise;
     expect(filesPage2Response.status()).toBe(200);
     await page.waitForSelector('table', { state: 'visible' });
 

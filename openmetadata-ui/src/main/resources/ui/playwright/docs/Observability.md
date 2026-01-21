@@ -2,10 +2,11 @@
 
 # Observability
 
-> **4 Components** | **13 Files** | **61 Tests** | **180 Scenarios** 🚀
+> **5 Components** | **15 Files** | **80 Tests** | **202 Scenarios** 🚀
 
 ## Table of Contents
 - [Data Quality](#data-quality)
+- [Rules Library](#rules-library)
 - [Incident Manager](#incident-manager)
 - [Alerts & Notifications](#alerts-notifications)
 - [Profiler](#profiler)
@@ -240,6 +241,75 @@
 | | ↳ *Display name change* | |
 | | ↳ *Description change* | |
 | | ↳ *Parameter change* | |
+
+</details>
+
+
+---
+
+<div id="rules-library"></div>
+
+## Rules Library
+
+<details open>
+<summary>📄 <b>RulesLibrary.spec.ts</b> (12 tests, 15 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DataQuality/RulesLibrary.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataQuality/RulesLibrary.spec.ts)
+
+### Rules Library
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Rules Library** - should navigate to Rules Library page | Navigate to Rules Library page |
+| 2 | **Rules Library** - should display test definitions table with columns | Display test definitions table with columns |
+| 3 | **Rules Library** - should display system test definitions | Display system test definitions |
+| 4 | **Rules Library** - should create, edit, and delete a test definition | Create, edit, and delete a test definition |
+| | ↳ *Create a new test definition* | |
+| | ↳ *Edit Test Definition* | |
+| | ↳ *should enable/disable test definition* | |
+| | ↳ *should delete a test definition* | |
+| 5 | **Rules Library** - should validate required fields in create form | Validate required fields in create form |
+| 6 | **Rules Library** - should cancel form and close drawer | Cancel form and close drawer |
+| 7 | **Rules Library** - should display pagination when test definitions exceed page size | Display pagination when test definitions exceed page size |
+| 8 | **Rules Library** - should search and filter test definitions | Search and filter test definitions |
+| 9 | **Rules Library** - should display test platform badges correctly | Display test platform badges correctly |
+| 10 | **Rules Library** - should not show edit and delete buttons for system test definitions | Not show edit and delete buttons for system test definitions |
+| 11 | **Rules Library** - should allow enabling/disabling system test definitions | Allow enabling/disabling system test definitions |
+| 12 | **Rules Library** - should display correct provider type for test definitions | Display correct provider type for test definitions |
+
+</details>
+
+<details open>
+<summary>📄 <b>TestDefinitionPermissions.spec.ts</b> (7 tests, 7 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DataQuality/TestDefinitionPermissions.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataQuality/TestDefinitionPermissions.spec.ts)
+
+### Test Definition Permissions - View Only User
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Test Definition Permissions - View Only User** - should allow viewing test definitions but not create, edit, or delete | Allow viewing test definitions but not create, edit, or delete |
+
+### Test Definition Permissions - Data Consumer
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Test Definition Permissions - Data Consumer** - should allow viewing test definitions but not create, edit, or delete | Allow viewing test definitions but not create, edit, or delete |
+
+### Test Definition Permissions - Data Steward
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Test Definition Permissions - Data Steward** - should allow viewing and editing but not creating or deleting test definitions | Allow viewing and editing but not creating or deleting test definitions |
+| 2 | **Test Definition Permissions - Data Steward** - should not be able to edit system test definitions | Not be able to edit system test definitions |
+
+### Test Definition Permissions - API Level Validation
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Test Definition Permissions - API Level Validation** - should prevent unauthorized users from creating test definitions via API | Prevent unauthorized users from creating test definitions via API |
+| 2 | **Test Definition Permissions - API Level Validation** - should prevent unauthorized users from deleting test definitions via API | Prevent unauthorized users from deleting test definitions via API |
+| 3 | **Test Definition Permissions - API Level Validation** - should prevent all users from modifying system test definition entity type via API | Prevent all users from modifying system test definition entity type via API |
 
 </details>
 

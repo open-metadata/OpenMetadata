@@ -1,5 +1,6 @@
 package org.openmetadata.service.secrets;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -15,11 +16,15 @@ import com.google.protobuf.ByteString;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.security.secrets.Parameters;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
@@ -104,5 +109,43 @@ public class GCPSecretsManagerTest extends ExternalSecretsManagerTest {
   @Override
   protected SecretsManagerProvider expectedSecretManagerProvider() {
     return SecretsManagerProvider.GCP;
+  }
+
+  @Test
+  void testEncryptBotTokenRevocationWithEmptyToken() {
+    JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTToken(StringUtils.EMPTY);
+    AuthenticationMechanism authMechanism =
+        new AuthenticationMechanism()
+            .withAuthType(AuthenticationMechanism.AuthType.JWT)
+            .withConfig(jwtAuthMechanism);
+    mockSecretStorage.clear();
+
+    secretsManager.encryptAuthenticationMechanism("ingestion-bot", authMechanism);
+
+    boolean hasEmptyPayload =
+        mockSecretStorage.values().stream().anyMatch(value -> value.isEmpty());
+    assertEquals(
+        false,
+        hasEmptyPayload,
+        "Token revocation with empty string should not create empty secret payloads");
+  }
+
+  @Test
+  void testEncryptBotTokenRevocationWithNullToken() {
+    JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTToken(null);
+    AuthenticationMechanism authMechanism =
+        new AuthenticationMechanism()
+            .withAuthType(AuthenticationMechanism.AuthType.JWT)
+            .withConfig(jwtAuthMechanism);
+    mockSecretStorage.clear();
+
+    secretsManager.encryptAuthenticationMechanism("ingestion-bot", authMechanism);
+
+    boolean hasEmptyPayload =
+        mockSecretStorage.values().stream().anyMatch(value -> value.isEmpty());
+    assertEquals(
+        false,
+        hasEmptyPayload,
+        "Token revocation with null should not create empty secret payloads");
   }
 }

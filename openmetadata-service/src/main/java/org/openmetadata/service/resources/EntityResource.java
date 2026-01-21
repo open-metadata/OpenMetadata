@@ -79,6 +79,7 @@ import org.openmetadata.service.util.CSVImportResponse;
 import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
@@ -249,14 +250,25 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       UUID id,
       String fieldsParam,
       Include include) {
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include, null);
+  }
+
+  public T getInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      String fieldsParam,
+      Include include,
+      String includeRelations) {
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
+    RelationIncludes relationIncludes = new RelationIncludes(include, includeRelations);
     return getInternal(
         uriInfo,
         securityContext,
         id,
         fields,
-        include,
+        relationIncludes,
         operationContext,
         getResourceContextById(id));
   }
@@ -269,8 +281,26 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       Include include,
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
+    return getInternal(
+        uriInfo,
+        securityContext,
+        id,
+        fields,
+        RelationIncludes.fromInclude(include),
+        operationContext,
+        resourceContext);
+  }
+
+  public T getInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      Fields fields,
+      RelationIncludes relationIncludes,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return addHref(uriInfo, repository.get(uriInfo, id, fields, include, false));
+    return addHref(uriInfo, repository.get(uriInfo, id, fields, relationIncludes, false));
   }
 
   public T getVersionInternal(SecurityContext securityContext, UUID id, String version) {
@@ -309,14 +339,25 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String name,
       String fieldsParam,
       Include include) {
+    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include, null);
+  }
+
+  public T getByNameInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      String fieldsParam,
+      Include include,
+      String includeRelations) {
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
+    RelationIncludes relationIncludes = new RelationIncludes(include, includeRelations);
     return getByNameInternal(
         uriInfo,
         securityContext,
         name,
         fields,
-        include,
+        relationIncludes,
         operationContext,
         getResourceContextByName(name));
   }
@@ -329,8 +370,26 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       Include include,
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
+    return getByNameInternal(
+        uriInfo,
+        securityContext,
+        name,
+        fields,
+        RelationIncludes.fromInclude(include),
+        operationContext,
+        resourceContext);
+  }
+
+  public T getByNameInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      Fields fields,
+      RelationIncludes relationIncludes,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return addHref(uriInfo, repository.getByName(uriInfo, name, fields, include, false));
+    return addHref(uriInfo, repository.getByName(uriInfo, name, fields, relationIncludes, false));
   }
 
   public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity) {
@@ -760,7 +819,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public Response importCsvInternalAsync(
-      SecurityContext securityContext, String name, String csv, boolean dryRun, boolean recursive) {
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      String csv,
+      boolean dryRun,
+      boolean recursive) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
@@ -774,7 +838,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
           try {
             WebsocketNotificationHandler.sendCsvImportStartedNotification(jobId, securityContext);
             CsvImportResult result =
-                importCsvInternal(securityContext, name, csv, dryRun, recursive);
+                importCsvInternal(uriInfo, securityContext, name, csv, dryRun, recursive);
             WebsocketNotificationHandler.sendCsvImportCompleteNotification(
                 jobId, securityContext, result);
           } catch (Exception e) {
@@ -796,13 +860,34 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected CsvImportResult importCsvInternal(
-      SecurityContext securityContext, String name, String csv, boolean dryRun, boolean recursive)
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      String csv,
+      boolean dryRun,
+      boolean recursive)
       throws IOException {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return repository.importFromCsv(
-        name, csv, dryRun, securityContext.getUserPrincipal().getName(), recursive);
+    CsvImportResult result =
+        repository.importFromCsv(
+            name, csv, dryRun, securityContext.getUserPrincipal().getName(), recursive);
+
+    // Create version history for bulk import (same logic as async import)
+    if (result.getStatus() != ApiStatus.ABORTED
+        && result.getNumberOfRowsProcessed() > 1
+        && !dryRun
+        && repository.supportsBulkImportVersioning()) {
+      // Only repositories that support versioning (indicated by flag) will execute this
+      repository.createChangeEventForBulkOperation(
+          repository.getByName(
+              uriInfo, name, new Fields(allowedFields, ""), Include.NON_DELETED, false),
+          result,
+          securityContext.getUserPrincipal().getName());
+    }
+
+    return result;
   }
 
   protected ResourceContext<T> getResourceContext() {

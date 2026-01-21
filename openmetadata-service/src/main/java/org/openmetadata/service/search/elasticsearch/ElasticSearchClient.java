@@ -221,6 +221,11 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public void deleteIndexWithBackoff(String indexName) {
+    indexManager.deleteIndexWithBackoff(indexName);
+  }
+
+  @Override
   public Set<String> getAliases(String indexName) {
     return indexManager.getAliases(indexName);
   }
@@ -800,6 +805,16 @@ public class ElasticSearchClient implements SearchClient {
   public void updateAssetDomainsByIds(
       List<UUID> assetIds, List<String> oldDomainFqns, List<EntityReference> newDomains) {
     entityManager.updateAssetDomainsByIds(assetIds, oldDomainFqns, newDomains);
+  }
+
+  @Override
+  public void updateDomainFqnByPrefix(String oldFqn, String newFqn) {
+    entityManager.updateDomainFqnByPrefix(oldFqn, newFqn);
+  }
+
+  @Override
+  public void updateAssetDomainFqnByPrefix(String oldFqn, String newFqn) {
+    entityManager.updateAssetDomainFqnByPrefix(oldFqn, newFqn);
   }
 
   @Override
