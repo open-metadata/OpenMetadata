@@ -47,6 +47,7 @@ public class DataContractMapper {
             .withSecurity(create.getSecurity())
             .withSla(create.getSla())
             .withExtension(create.getExtension())
+            .withOdcsQualityRules(create.getOdcsQualityRules())
             .withUpdatedBy(user)
             .withUpdatedAt(System.currentTimeMillis());
 

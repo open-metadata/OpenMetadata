@@ -67,6 +67,7 @@ public class SinkTaskDelegate implements JavaDelegate {
   private Expression hierarchyConfigExpr;
   private Expression entityFilterExpr;
   private Expression batchModeExpr;
+  private Expression timeoutSecondsExpr;
   private Expression inputNamespaceMapExpr;
 
   @Override
@@ -85,6 +86,10 @@ public class SinkTaskDelegate implements JavaDelegate {
       Object entityFilter =
           JsonUtils.readOrConvertValue(entityFilterExpr.getValue(execution), Object.class);
       boolean batchMode = Boolean.parseBoolean((String) batchModeExpr.getValue(execution));
+      int timeoutSeconds =
+          timeoutSecondsExpr != null
+              ? Integer.parseInt((String) timeoutSecondsExpr.getValue(execution))
+              : 300; // Default 5 minutes
 
       Map<String, String> inputNamespaceMap =
           JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
@@ -121,6 +126,7 @@ public class SinkTaskDelegate implements JavaDelegate {
               .hierarchyConfig(hierarchyConfig)
               .entityFilter(entityFilter)
               .batchMode(batchMode)
+              .timeoutSeconds(timeoutSeconds)
               .workflowExecutionId(execution.getProcessInstanceId())
               .workflowName(getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()))
               .build();

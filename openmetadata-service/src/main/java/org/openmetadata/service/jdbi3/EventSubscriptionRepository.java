@@ -43,6 +43,7 @@ import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 public class EventSubscriptionRepository extends EntityRepository<EventSubscription> {
@@ -61,7 +62,8 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   }
 
   @Override
-  public void setFields(EventSubscription entity, Fields fields) {
+  public void setFields(
+      EventSubscription entity, Fields fields, RelationIncludes relationIncludes) {
     if (fields.contains("statusDetails") && !entity.getDestinations().isEmpty()) {
       List<SubscriptionDestination> destinations = new ArrayList<>();
       entity

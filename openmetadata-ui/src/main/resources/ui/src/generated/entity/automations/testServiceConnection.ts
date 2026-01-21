@@ -145,6 +145,8 @@ export interface TestServiceConnectionConnection {
  *
  * Doris Database Connection Config
  *
+ * StarRocks Database Connection Config
+ *
  * UnityCatalog Connection Config
  *
  * SAS Connection Config
@@ -310,6 +312,8 @@ export interface TestServiceConnectionConnection {
  *
  * SharePoint Connection Config
  *
+ * SFTP Connection Config for secure file transfer protocol servers.
+ *
  * Custom Drive Connection to build a source that is not supported.
  */
 export interface ConfigObject {
@@ -317,6 +321,10 @@ export interface ConfigObject {
      * Regex to only fetch api collections with names matching the pattern.
      */
     apiCollectionFilterPattern?: FilterPattern;
+    /**
+     * Regex to only fetch api endpoints with names matching the pattern.
+     */
+    apiEndpointFilterPattern?: FilterPattern;
     /**
      * Documentation URL for the schema.
      */
@@ -448,6 +456,8 @@ export interface ConfigObject {
      *
      * Host and port of the Doris service.
      *
+     * Host and port of the StarRocks service.
+     *
      * Host and port of the Teradata service.
      *
      * Host and Port of the SAP ERP instance.
@@ -529,6 +539,9 @@ export interface ConfigObject {
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      *
+     * Regex to only include/exclude schemas that matches the pattern. System schemas
+     * (information_schema, _statistics_, sys) are excluded by default.
+     *
      * Regex to include/exclude FHIR resource categories
      *
      * Regex to only include/exclude folders that match the pattern. In Dremio Cloud, folders
@@ -542,7 +555,11 @@ export interface ConfigObject {
      *
      * Couchbase driver scheme options.
      */
-    scheme?:                                ConfigScheme;
+    scheme?: ConfigScheme;
+    /**
+     * Regex to only include/exclude stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?:          FilterPattern;
     supportsDatabase?:                      boolean;
     supportsDataDiff?:                      boolean;
     supportsDBTExtraction?:                 boolean;
@@ -699,6 +716,8 @@ export interface ConfigObject {
      *
      * Password to connect to Doris.
      *
+     * Password to connect to StarRocks.
+     *
      * Password to connect to SAS Viya
      *
      * Password to connect to Teradata.
@@ -801,6 +820,9 @@ export interface ConfigObject {
      * Username to connect to Doris. This user should have privileges to read all the metadata
      * in Doris.
      *
+     * Username to connect to StarRocks. This user should have privileges to read all the
+     * metadata in StarRocks.
+     *
      * Username to connect to SAS Viya.
      *
      * Username to connect to Teradata. This user should have privileges to read all the
@@ -879,6 +901,8 @@ export interface ConfigObject {
      * Types of methods used to authenticate to the alation instance
      *
      * Authentication type to connect to Apache Ranger.
+     *
+     * Authentication method: username/password or SSH private key
      */
     authType?: AuthenticationType | NoConfigAuthenticationTypes;
     /**
@@ -1083,6 +1107,11 @@ export interface ConfigObject {
      * Cost of credit for the Snowflake account.
      */
     creditCost?: number;
+    /**
+     * Optional configuration for ingestion of Snowflake stages (internal and external). By
+     * default, stages are not ingested.
+     */
+    includeStages?: boolean;
     /**
      * Optional configuration for ingestion of streams, By default, it will skip the streams.
      */
@@ -1608,6 +1637,8 @@ export interface ConfigObject {
      * URL to the Dagster instance
      *
      * DBT cloud Access URL.
+     *
+     * SFTP server hostname or IP address
      */
     host?: string;
     /**
@@ -1943,6 +1974,8 @@ export interface ConfigObject {
     delegatedEmail?: string;
     /**
      * Regex to only include/exclude directories that matches the pattern.
+     *
+     * Regex to only include/exclude directories that match the pattern.
      */
     directoryFilterPattern?: FilterPattern;
     /**
@@ -1953,6 +1986,8 @@ export interface ConfigObject {
     driveId?: string;
     /**
      * Regex to only include/exclude files that matches the pattern.
+     *
+     * Regex to only include/exclude files that match the pattern.
      */
     fileFilterPattern?: FilterPattern;
     /**
@@ -1975,6 +2010,25 @@ export interface ConfigObject {
      * SharePoint site URL
      */
     siteUrl?: string;
+    /**
+     * When enabled, extract sample data from structured files (CSV, TSV). This is disabled by
+     * default to avoid performance overhead.
+     */
+    extractSampleData?: boolean;
+    /**
+     * SFTP server port number
+     */
+    port?: number;
+    /**
+     * List of root directories to scan for files and subdirectories. If not specified, defaults
+     * to the user's home directory.
+     */
+    rootDirectories?: string[];
+    /**
+     * When enabled, only catalog structured data files (CSV, TSV) that can have schema
+     * extracted. Non-structured files like images, PDFs, videos, etc. will be skipped.
+     */
+    structuredDataFilesOnly?: boolean;
     [property: string]: any;
 }
 
@@ -1999,11 +2053,18 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to only fetch entities that matches the pattern.
  *
+ * Regex to only fetch api endpoints with names matching the pattern.
+ *
  * Regex to only include/exclude databases that matches the pattern.
  *
  * Regex to only include/exclude schemas that matches the pattern.
  *
+ * Regex to only include/exclude stored procedures that matches the pattern.
+ *
  * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern. System schemas
+ * (information_schema, _statistics_, sys) are excluded by default.
  *
  * Regex to include/exclude FHIR resource categories
  *
@@ -2048,6 +2109,10 @@ export interface UsernamePasswordAuthentication {
  * Regex to only include/exclude spreadsheets that matches the pattern.
  *
  * Regex to only include/exclude worksheets that matches the pattern.
+ *
+ * Regex to only include/exclude directories that match the pattern.
+ *
+ * Regex to only include/exclude files that match the pattern.
  */
 export interface FilterPattern {
     /**
@@ -2182,6 +2247,12 @@ export enum AuthProvider {
  * Authentication type to connect to Apache Ranger.
  *
  * Configuration for connecting to Ranger Basic Auth.
+ *
+ * Authentication method: username/password or SSH private key
+ *
+ * Username and password authentication for SFTP
+ *
+ * SSH private key authentication for SFTP
  */
 export interface AuthenticationType {
     /**
@@ -2221,6 +2292,8 @@ export interface AuthenticationType {
      * Elastic Search Password for Login
      *
      * Ranger password to authenticate to the API.
+     *
+     * SFTP password
      */
     password?:    string;
     awsConfig?:   AWSCredentials;
@@ -2262,6 +2335,8 @@ export interface AuthenticationType {
      * Elastic Search Username for Login
      *
      * Ranger user to authenticate to the API.
+     *
+     * SFTP username
      */
     username?: string;
     /**
@@ -2328,6 +2403,14 @@ export interface AuthenticationType {
      * The name of a profile to use with the boto session.
      */
     profileName?: string;
+    /**
+     * SSH private key content in PEM format. Supports RSA, Ed25519, ECDSA, and DSS keys.
+     */
+    privateKey?: string;
+    /**
+     * Passphrase for the private key (if encrypted)
+     */
+    privateKeyPassphrase?: string;
 }
 
 /**
@@ -3231,16 +3314,20 @@ export interface ConfigConnection {
     /**
      * SQLAlchemy driver scheme options.
      */
-    scheme?:                     ConnectionScheme;
-    sslMode?:                    SSLMode;
-    supportsDatabase?:           boolean;
-    supportsDataDiff?:           boolean;
-    supportsDBTExtraction?:      boolean;
-    supportsLineageExtraction?:  boolean;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    supportsQueryComment?:       boolean;
-    supportsUsageExtraction?:    boolean;
+    scheme?:  ConnectionScheme;
+    sslMode?: SSLMode;
+    /**
+     * Regex to only include/exclude stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?: FilterPattern;
+    supportsDatabase?:             boolean;
+    supportsDataDiff?:             boolean;
+    supportsDBTExtraction?:        boolean;
+    supportsLineageExtraction?:    boolean;
+    supportsMetadataExtraction?:   boolean;
+    supportsProfiler?:             boolean;
+    supportsQueryComment?:         boolean;
+    supportsUsageExtraction?:      boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
@@ -3566,15 +3653,19 @@ export interface DatabaseConnectionClass {
      * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
      * client certificate, and private key for mutual TLS authentication.
      */
-    sslConfig?:                  ConsumerConfigSSLClass;
-    supportsDatabase?:           boolean;
-    supportsDataDiff?:           boolean;
-    supportsDBTExtraction?:      boolean;
-    supportsLineageExtraction?:  boolean;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    supportsQueryComment?:       boolean;
-    supportsUsageExtraction?:    boolean;
+    sslConfig?: ConsumerConfigSSLClass;
+    /**
+     * Regex to only include/exclude stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?: FilterPattern;
+    supportsDatabase?:             boolean;
+    supportsDataDiff?:             boolean;
+    supportsDBTExtraction?:        boolean;
+    supportsLineageExtraction?:    boolean;
+    supportsMetadataExtraction?:   boolean;
+    supportsProfiler?:             boolean;
+    supportsQueryComment?:         boolean;
+    supportsUsageExtraction?:      boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
@@ -3770,16 +3861,20 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * SSL Configuration details.
      */
-    sslConfig?:                  ConsumerConfigSSLClass;
-    sslMode?:                    SSLMode;
-    supportsDatabase?:           boolean;
-    supportsDataDiff?:           boolean;
-    supportsDBTExtraction?:      boolean;
-    supportsLineageExtraction?:  boolean;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    supportsQueryComment?:       boolean;
-    supportsUsageExtraction?:    boolean;
+    sslConfig?: ConsumerConfigSSLClass;
+    sslMode?:   SSLMode;
+    /**
+     * Regex to only include/exclude stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?: FilterPattern;
+    supportsDatabase?:             boolean;
+    supportsDataDiff?:             boolean;
+    supportsDBTExtraction?:        boolean;
+    supportsLineageExtraction?:    boolean;
+    supportsMetadataExtraction?:   boolean;
+    supportsProfiler?:             boolean;
+    supportsQueryComment?:         boolean;
+    supportsUsageExtraction?:      boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
@@ -4341,6 +4436,8 @@ export enum TokenType {
  *
  * SharePoint service type
  *
+ * SFTP service type
+ *
  * Custom Drive service type
  */
 export enum ConfigType {
@@ -4435,6 +4532,7 @@ export enum ConfigType {
     Redshift = "Redshift",
     S3 = "S3",
     SAS = "SAS",
+    SFTP = "Sftp",
     SQLite = "SQLite",
     SageMaker = "SageMaker",
     Salesforce = "Salesforce",
@@ -4451,6 +4549,7 @@ export enum ConfigType {
     Spline = "Spline",
     Ssas = "SSAS",
     Ssis = "SSIS",
+    StarRocks = "StarRocks",
     Stitch = "Stitch",
     Superset = "Superset",
     Synapse = "Synapse",
