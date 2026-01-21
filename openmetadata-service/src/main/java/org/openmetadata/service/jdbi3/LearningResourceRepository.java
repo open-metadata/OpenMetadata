@@ -103,7 +103,8 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
   }
 
   @Override
-  protected void setFields(LearningResource entity, Fields fields, RelationIncludes relationIncludes) {
+  protected void setFields(
+      LearningResource entity, Fields fields, RelationIncludes relationIncludes) {
     // No additional field resolution for now
   }
 

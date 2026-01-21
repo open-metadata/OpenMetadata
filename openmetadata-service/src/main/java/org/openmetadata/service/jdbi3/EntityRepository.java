@@ -2532,7 +2532,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     validateExtension(extension, entityTypeName);
 
     // Apply property type-specific transformations (date formatting, enum sorting, etc.)
-    ObjectNode jsonNode = (ObjectNode) JsonUtils.valueToTree(extension);
+    JsonNode extensionNode = JsonUtils.valueToTree(extension);
+    if (!extensionNode.isObject()) {
+      return null;
+    }
+    ObjectNode jsonNode = (ObjectNode) extensionNode;
     Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
 
     while (customFields.hasNext()) {
@@ -2677,7 +2681,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final void storeExtension(EntityInterface entity) {
+    if (entity.getExtension() == null) {
+      return;
+    }
     JsonNode jsonNode = JsonUtils.valueToTree(entity.getExtension());
+    if (!jsonNode.isObject()) {
+      return;
+    }
     Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
     while (customFields.hasNext()) {
       Entry<String, JsonNode> entry = customFields.next();
@@ -2705,6 +2715,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final void removeExtension(EntityInterface entity) {
+    if (entity.getExtension() == null) {
+      return;
+    }
     JsonNode jsonNode = JsonUtils.valueToTree(entity.getExtension());
     Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
     while (customFields.hasNext()) {
@@ -4628,8 +4641,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       JsonNode origExtensionFields = JsonUtils.valueToTree(origExtension);
       JsonNode updatedExtensionFields = JsonUtils.valueToTree(updatedExtension);
       Set<String> allKeys = new HashSet<>();
-      origExtensionFields.fieldNames().forEachRemaining(allKeys::add);
-      updatedExtensionFields.fieldNames().forEachRemaining(allKeys::add);
+      if (origExtensionFields.isObject()) {
+        origExtensionFields.fieldNames().forEachRemaining(allKeys::add);
+      }
+      if (updatedExtensionFields.isObject()) {
+        updatedExtensionFields.fieldNames().forEachRemaining(allKeys::add);
+      }
 
       for (String key : allKeys) {
         JsonNode origValue = origExtensionFields.get(key);
@@ -4646,21 +4663,34 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       if (!consolidatingChanges) {
-        ObjectNode extensionNode = (ObjectNode) JsonUtils.valueToTree(updated.getExtension());
-        for (JsonNode node : Stream.of(addedFields, updatedFields).flatMap(List::stream).toList()) {
-          node.fields()
-              .forEachRemaining(
-                  field -> {
-                    Map<String, Object> singleField = new HashMap<>();
-                    singleField.put(
-                        field.getKey(), JsonUtils.treeToValue(field.getValue(), Object.class));
-                    Object transformedField =
-                        validateAndTransformExtension(singleField, entityType);
-                    JsonNode transformedNode = JsonUtils.valueToTree(transformedField);
-                    extensionNode.set(field.getKey(), transformedNode.get(field.getKey()));
-                  });
+        JsonNode extensionJsonNode = JsonUtils.valueToTree(updated.getExtension());
+        if (extensionJsonNode.isObject()) {
+          ObjectNode extensionNode = (ObjectNode) extensionJsonNode;
+          for (JsonNode node :
+              Stream.of(addedFields, updatedFields).flatMap(List::stream).toList()) {
+            node.fields()
+                .forEachRemaining(
+                    field -> {
+                      Map<String, Object> singleField = new HashMap<>();
+                      singleField.put(
+                          field.getKey(), JsonUtils.treeToValue(field.getValue(), Object.class));
+                      Object transformedField =
+                          validateAndTransformExtension(singleField, entityType);
+                      JsonNode transformedNode = JsonUtils.valueToTree(transformedField);
+                      if (transformedNode.isObject()) {
+                        extensionNode.set(field.getKey(), transformedNode.get(field.getKey()));
+                      }
+                    });
+          }
+          for (JsonNode node : deletedFields) {
+            node.fields().forEachRemaining(field -> extensionNode.remove(field.getKey()));
+          }
+          if (extensionNode.isEmpty()) {
+            updated.setExtension(null);
+          } else {
+            updated.setExtension(JsonUtils.treeToValue(extensionNode, Object.class));
+          }
         }
-        updated.setExtension(JsonUtils.treeToValue(extensionNode, Object.class));
       }
       if (!addedFields.isEmpty()) {
         fieldAdded(changeDescription, FIELD_EXTENSION, JsonUtils.pojoToJson(addedFields));
