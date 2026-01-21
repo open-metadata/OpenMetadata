@@ -27,11 +27,24 @@ from metadata.generated.schema.entity.data.table import (
     TableType,
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.ingestion.source.database.json_schema_extractor import (
+    infer_json_schema_from_sample,
+)
 from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.helpers import clean_up_starting_ending_double_quotes_in_string
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+JSON_COLUMN_TYPES = {
+    DataType.JSON.value,
+    "JSON",
+    "JSONB",
+    "VARIANT",
+    "OBJECT",
+}
+
+DEFAULT_JSON_SCHEMA_SAMPLE_SIZE = 10
 
 
 class SqlColumnHandlerMixin:
@@ -365,6 +378,13 @@ class SqlColumnHandlerMixin:
                 )
                 continue
             table_columns.append(om_column)
+
+        self._extract_json_schema_for_columns(
+            table_columns=table_columns,
+            schema_name=schema_name,
+            table_name=table_name,
+        )
+
         return table_columns, table_constraints, foreign_columns
 
     @staticmethod
@@ -400,3 +420,130 @@ class SqlColumnHandlerMixin:
 
     def clean_raw_data_type(self, raw_data_type):
         return raw_data_type
+
+    def _is_json_schema_extraction_enabled(self) -> bool:
+        """Check if JSON schema extraction is enabled in source config."""
+        if not hasattr(self, "source_config") or self.source_config is None:
+            return False
+        return getattr(self.source_config, "extractJsonSchema", False)
+
+    def _get_json_schema_sample_size(self) -> int:
+        """Get the sample size for JSON schema extraction."""
+        if not hasattr(self, "source_config") or self.source_config is None:
+            return DEFAULT_JSON_SCHEMA_SAMPLE_SIZE
+        return getattr(
+            self.source_config,
+            "jsonSchemaSampleSize",
+            DEFAULT_JSON_SCHEMA_SAMPLE_SIZE,
+        )
+
+    def _is_json_column(self, column: Column) -> bool:
+        """Check if a column is a JSON type column."""
+        if column.dataType and column.dataType.value in JSON_COLUMN_TYPES:
+            return True
+        if (
+            column.dataTypeDisplay
+            and column.dataTypeDisplay.upper() in JSON_COLUMN_TYPES
+        ):
+            return True
+        return False
+
+    def _extract_json_schema_for_columns(
+        self,
+        table_columns: List[Column],
+        schema_name: str,
+        table_name: str,
+    ) -> None:
+        """
+        Extract JSON schema for JSON columns by sampling data from the table.
+        Updates the columns in-place with jsonSchema and children if extraction succeeds.
+        """
+        if not self._is_json_schema_extraction_enabled():
+            return
+
+        if not hasattr(self, "engine") or self.engine is None:
+            logger.debug("Engine not available for JSON schema extraction, skipping")
+            return
+
+        json_columns = [col for col in table_columns if self._is_json_column(col)]
+        if not json_columns:
+            return
+
+        sample_size = self._get_json_schema_sample_size()
+        column_names = [col.name.root for col in json_columns]
+
+        try:
+            json_values_by_column = self._sample_json_column_data(
+                schema_name=schema_name,
+                table_name=table_name,
+                column_names=column_names,
+                sample_size=sample_size,
+            )
+
+            for column in json_columns:
+                col_name = column.name.root
+                if col_name in json_values_by_column:
+                    json_values = json_values_by_column[col_name]
+                    if json_values:
+                        json_schema_str, children = infer_json_schema_from_sample(
+                            json_values
+                        )
+                        if json_schema_str:
+                            column.jsonSchema = json_schema_str
+                        if children:
+                            column.children = children
+                        logger.debug(
+                            f"Extracted JSON schema for column [{col_name}] "
+                            f"in table [{schema_name}.{table_name}]"
+                        )
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed to extract JSON schema for table [{schema_name}.{table_name}]: {exc}. "
+                f"Continuing without JSON schema information."
+            )
+
+    def _sample_json_column_data(
+        self,
+        schema_name: str,
+        table_name: str,
+        column_names: List[str],
+        sample_size: int,
+    ) -> Dict[str, List]:
+        """
+        Sample data from JSON columns in a table.
+
+        Returns:
+            Dict mapping column names to lists of JSON values
+        """
+        from sqlalchemy import Column as SaColumn
+        from sqlalchemy import MetaData, Table, select
+
+        result = {}
+        try:
+            metadata = MetaData()
+            table = Table(
+                table_name,
+                metadata,
+                *[SaColumn(col_name) for col_name in column_names],
+                schema=schema_name,
+                autoload_with=self.engine,
+            )
+
+            columns_to_select = [table.c[col_name] for col_name in column_names]
+            stmt = select(*columns_to_select).limit(sample_size)
+
+            with self.engine.connect() as connection:
+                rows = connection.execute(stmt).fetchall()
+
+                for i, col_name in enumerate(column_names):
+                    result[col_name] = [row[i] for row in rows if row[i] is not None]
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed to sample JSON column data from [{schema_name}.{table_name}]: {exc}"
+            )
+
+        return result
