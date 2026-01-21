@@ -125,10 +125,15 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   public void setFields(Dashboard dashboard, Fields fields, RelationIncludes relationIncludes) {
     dashboard.setService(getContainer(dashboard.getId()));
     dashboard.setCharts(
-        fields.contains("charts") ? getRelatedEntities(dashboard, Entity.CHART, ALL) : null);
+        fields.contains("charts")
+            ? getRelatedEntities(dashboard, Entity.CHART, relationIncludes.getIncludeFor("charts"))
+            : null);
     dashboard.setDataModels(
         fields.contains("dataModels")
-            ? getRelatedEntities(dashboard, Entity.DASHBOARD_DATA_MODEL, ALL)
+            ? getRelatedEntities(
+                dashboard,
+                Entity.DASHBOARD_DATA_MODEL,
+                relationIncludes.getIncludeFor("dataModels"))
             : null);
     if (dashboard.getUsageSummary() == null) {
       dashboard.withUsageSummary(
