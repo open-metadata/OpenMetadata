@@ -54,6 +54,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -2346,5 +2347,138 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         portsView.getOutputPorts().getData().get(0).getAdditionalProperties();
     assertNotNull(portsViewOutput.get("entityType"), "PortsView output should have entityType");
     assertEquals("topic", portsViewOutput.get("entityType"));
+  }
+
+  @Test
+  void test_invalidFieldsValidation_inputPorts(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_invalid_fields_input"))
+            .withDescription("Data product for invalid fields test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table = createTestTable(ns, "invalid_fields_table", domain);
+
+    bulkAddInputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table.getEntityReference())));
+
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> getInputPorts(dataProduct.getId(), "invalidField", 10, 0),
+            "Should throw exception for invalid field");
+    assertEquals(400, exception.getStatusCode(), "Should return 400 for invalid field");
+    assertTrue(
+        exception.getMessage().contains("Invalid field"),
+        "Error message should mention invalid field");
+  }
+
+  @Test
+  void test_invalidFieldsValidation_outputPorts(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_invalid_fields_output"))
+            .withDescription("Data product for invalid fields test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table = createTestTable(ns, "invalid_fields_output_table", domain);
+
+    bulkAddOutputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table.getEntityReference())));
+
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> getOutputPorts(dataProduct.getId(), "nonExistentField", 10, 0),
+            "Should throw exception for invalid field");
+    assertEquals(400, exception.getStatusCode(), "Should return 400 for invalid field");
+    assertTrue(
+        exception.getMessage().contains("Invalid field"),
+        "Error message should mention invalid field");
+  }
+
+  @Test
+  void test_invalidFieldsValidation_portsView(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_invalid_fields_portsview"))
+            .withDescription("Data product for invalid fields test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> getPortsView(dataProduct.getId(), "badField,anotherBadField", 10, 0, 10, 0),
+            "Should throw exception for invalid fields");
+    assertEquals(400, exception.getStatusCode(), "Should return 400 for invalid fields");
+    assertTrue(
+        exception.getMessage().contains("Invalid field"),
+        "Error message should mention invalid field");
+  }
+
+  @Test
+  void test_validFieldsAccepted(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_valid_fields"))
+            .withDescription("Data product for valid fields test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table = createTestTable(ns, "valid_fields_table", domain);
+
+    bulkAddInputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table.getEntityReference())));
+    bulkAddOutputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table.getEntityReference())));
+
+    ResultList<Map<String, Object>> inputPorts =
+        getInputPorts(dataProduct.getId(), "owners,tags,followers", 10, 0);
+    assertEquals(1, inputPorts.getPaging().getTotal());
+
+    ResultList<Map<String, Object>> outputPorts =
+        getOutputPorts(dataProduct.getId(), "domains,votes,extension", 10, 0);
+    assertEquals(1, outputPorts.getPaging().getTotal());
+
+    DataProductPortsView portsView = getPortsView(dataProduct.getId(), "owners,tags", 10, 0, 10, 0);
+    assertNotNull(portsView.getInputPorts());
+    assertNotNull(portsView.getOutputPorts());
+  }
+
+  @Test
+  void test_mixedValidInvalidFields(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_mixed_fields"))
+            .withDescription("Data product for mixed fields test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> getInputPorts(dataProduct.getId(), "owners,invalidField,tags", 10, 0),
+            "Should throw exception when mix of valid and invalid fields");
+    assertEquals(400, exception.getStatusCode(), "Should return 400 for invalid field");
+    assertTrue(
+        exception.getMessage().contains("invalidField"),
+        "Error message should mention the invalid field name");
   }
 }

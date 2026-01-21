@@ -465,7 +465,7 @@ const DataProductsDetailsPage = ({
             { replace: true }
           );
         }
-      } catch(error) {
+      } catch (error) {
         // Error is already handled by the parent component
       } finally {
         setIsNameEditing(false);

@@ -103,6 +103,7 @@ import {
   SAP_HANA,
   SAS,
   SCIKIT,
+  SFTP,
   SIGMA,
   SINGLESTORE,
   SNOWFLAKE,
@@ -695,6 +696,9 @@ class ServiceUtilClassBase {
 
       case this.DriveServiceTypeSmallCase.GoogleDrive:
         return GOOGLE_DRIVE;
+
+      case this.DriveServiceTypeSmallCase.Sftp:
+        return SFTP;
 
       case this.DatabaseServiceTypeSmallCase.Timescale:
         return TIMESCALE;
