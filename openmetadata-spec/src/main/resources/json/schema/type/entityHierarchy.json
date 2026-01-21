@@ -39,11 +39,6 @@
     "children": {
       "description": "Other entities that are children of this entity.",
       "$ref" : "#/definitions/entityHierarchyList"
-    },
-    "mutuallyExclusive": {
-      "description": "Children of this entity are mutually exclusive. When mutually exclusive is `true` only one child can be used to label an entity.",
-      "type": "boolean",
-      "default": false
     }
   },
   "required": ["id", "name", "description"]

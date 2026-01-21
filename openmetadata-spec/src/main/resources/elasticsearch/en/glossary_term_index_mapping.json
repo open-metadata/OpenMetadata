@@ -295,6 +295,9 @@
           },
           "href": {
             "type": "text"
+          },
+          "mutuallyExclusive": {
+            "type": "boolean"
           }
         }
       },

@@ -3,7 +3,6 @@ package org.openmetadata.service.search.opensearch;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DOMAIN;
-import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
@@ -45,7 +44,6 @@ import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
-import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.Include;
@@ -1405,8 +1403,6 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       termMap.putIfAbsent(term.getFullyQualifiedName(), term);
     }
 
-    enrichGlossaryHierarchyWithMutuallyExclusive(rootTerms);
-
     termMap.putAll(rootTerms);
 
     termMap
@@ -1432,19 +1428,6 @@ public class OpenSearchSearchManager implements SearchManagementClient {
             });
 
     return new ArrayList<>(rootTerms.values());
-  }
-
-  private void enrichGlossaryHierarchyWithMutuallyExclusive(
-      Map<String, EntityHierarchy> rootTerms) {
-    for (EntityHierarchy glossaryHierarchy : rootTerms.values()) {
-      if (glossaryHierarchy.getId() != null) {
-        Glossary glossary =
-            Entity.getEntity(GLOSSARY, glossaryHierarchy.getId(), "", Include.NON_DELETED);
-        if (glossary != null) {
-          glossaryHierarchy.setMutuallyExclusive(glossary.getMutuallyExclusive());
-        }
-      }
-    }
   }
 
   private List<EntityHierarchy> buildDomainSearchHierarchy(
