@@ -57,12 +57,12 @@ public class ScopeInterceptor {
     // Get the current auth context
     AuthContext authContext = AuthContext.getCurrent();
     if (authContext == null) {
-      String message =
-          String.format(
-              "No authentication context available for tool %s. Authentication is required.",
-              toolClass.getSimpleName());
-      LOG.error(message);
-      throw new IllegalStateException(message);
+      // OAuth scope enforcement is optional for backward compatibility with PAT tokens
+      // If AuthContext is not available, skip scope validation and allow tool execution
+      LOG.warn(
+          "No AuthContext available for tool {}, skipping scope validation (OAuth scope enforcement disabled)",
+          toolClass.getSimpleName());
+      return; // Allow execution without scope checking
     }
 
     // Validate scopes
@@ -108,12 +108,11 @@ public class ScopeInterceptor {
 
     AuthContext authContext = AuthContext.getCurrent();
     if (authContext == null) {
-      String message =
-          String.format(
-              "No authentication context available for tool %s. Authentication is required.",
-              toolClass.getSimpleName());
-      LOG.error(message);
-      throw new IllegalStateException(message);
+      // OAuth scope enforcement is optional for backward compatibility with PAT tokens
+      LOG.warn(
+          "No AuthContext available for tool class {}, skipping scope validation (OAuth scope enforcement disabled)",
+          toolClass.getSimpleName());
+      return; // Allow execution without scope checking
     }
 
     String[] requiredScopes = scopeAnnotation.value();

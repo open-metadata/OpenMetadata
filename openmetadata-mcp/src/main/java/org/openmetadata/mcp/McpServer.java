@@ -234,10 +234,84 @@ public class McpServer implements McpServerProvider {
     return new McpStatelessServerFeatures.SyncToolSpecification(
         tool,
         (context, req) -> {
-          CatalogSecurityContext securityContext =
-              jwtFilter.getCatalogSecurityContext((String) context.get("Authorization"));
-          return toolContext.callTool(authorizer, limits, tool.name(), securityContext, req);
+          try {
+            // Extract and populate AuthContext for scope validation in async thread
+            String authHeader = (String) context.get("Authorization");
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+              populateAuthContextFromJWT(authHeader.substring(7));
+            }
+
+            CatalogSecurityContext securityContext =
+                jwtFilter.getCatalogSecurityContext(authHeader);
+            return toolContext.callTool(authorizer, limits, tool.name(), securityContext, req);
+          } finally {
+            // Always clear AuthContext after tool execution
+            org.openmetadata.mcp.server.auth.middleware.AuthContext.clearCurrent();
+          }
         });
+  }
+
+  /**
+   * Populates AuthContext with scopes from JWT for async tool execution.
+   * This is needed because tool execution happens in a different thread (reactive/async)
+   * and ThreadLocal doesn't propagate automatically.
+   */
+  private void populateAuthContextFromJWT(String jwtToken) {
+    try {
+      // Parse JWT to extract claims
+      String[] parts = jwtToken.split("\\.");
+      if (parts.length < 2) {
+        LOG.warn("Invalid JWT format - cannot extract scopes for AuthContext");
+        return;
+      }
+
+      // Decode the payload (second part)
+      String payload = new String(java.util.Base64.getUrlDecoder().decode(parts[1]));
+      com.fasterxml.jackson.databind.JsonNode claims =
+          new com.fasterxml.jackson.databind.ObjectMapper().readTree(payload);
+
+      // Extract username and scopes from JWT claims
+      String username = claims.has("sub") ? claims.get("sub").asText() : null;
+
+      // OAuth scopes are typically stored in a "scope" claim as space-separated string
+      final java.util.List<String> scopes = new java.util.ArrayList<>();
+      if (claims.has("scope")) {
+        String scopeString = claims.get("scope").asText();
+        if (scopeString != null && !scopeString.isEmpty()) {
+          scopes.addAll(java.util.Arrays.asList(scopeString.split(" ")));
+        }
+      } else if (claims.has("scopes")) {
+        // Some JWT implementations use "scopes" array
+        com.fasterxml.jackson.databind.JsonNode scopesNode = claims.get("scopes");
+        if (scopesNode.isArray()) {
+          scopesNode.forEach(scope -> scopes.add(scope.asText()));
+        }
+      }
+
+      // If no explicit scopes in JWT, grant default scopes for backward compatibility
+      if (scopes.isEmpty()) {
+        LOG.debug("No scopes found in JWT, granting default scopes for user: {}", username);
+        scopes.addAll(java.util.Arrays.asList("openid", "profile", "email"));
+      }
+
+      // Create AccessToken and populate AuthContext
+      org.openmetadata.mcp.auth.AccessToken accessToken =
+          new org.openmetadata.mcp.auth.AccessToken();
+      accessToken.setToken(jwtToken);
+      accessToken.setScopes(scopes);
+      accessToken.setClientId(username); // Store username as clientId for context
+
+      org.openmetadata.mcp.server.auth.middleware.AuthContext authContext =
+          new org.openmetadata.mcp.server.auth.middleware.AuthContext(accessToken);
+      org.openmetadata.mcp.server.auth.middleware.AuthContext.setCurrent(authContext);
+
+      LOG.debug(
+          "Populated AuthContext in async thread for user: {} with scopes: {}", username, scopes);
+
+    } catch (Exception e) {
+      LOG.error("Failed to populate AuthContext from JWT in async thread", e);
+      // Don't fail the request - let ScopeInterceptor handle missing AuthContext if needed
+    }
   }
 
   private McpStatelessServerFeatures.SyncPromptSpecification getPrompt(McpSchema.Prompt prompt) {

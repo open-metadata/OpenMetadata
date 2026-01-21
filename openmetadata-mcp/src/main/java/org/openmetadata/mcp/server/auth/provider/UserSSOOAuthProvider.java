@@ -543,7 +543,12 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   private CompletableFuture<String> displayAuthorizationCode(String authCode, HttpSession session)
       throws AuthorizeException {
     try {
-      String html = HtmlTemplates.generateCodeDisplay(authCode);
+      String redirectUri = (String) session.getAttribute(SESSION_MCP_REDIRECT_URI);
+      String state = (String) session.getAttribute(SESSION_MCP_STATE);
+
+      if (redirectUri == null || redirectUri.isEmpty()) {
+        throw new AuthorizeException("server_error", "Redirect URI not found in session");
+      }
 
       session.removeAttribute(SESSION_MCP_PKCE_CHALLENGE);
       session.removeAttribute(SESSION_MCP_PKCE_METHOD);
@@ -554,16 +559,17 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       session.removeAttribute(SESSION_MCP_AUTH_METHOD);
       session.removeAttribute(SESSION_MCP_CSRF_TOKEN);
 
-      currentResponse.get().setContentType("text/html; charset=UTF-8");
-      currentResponse.get().setStatus(HttpServletResponse.SC_OK);
-      currentResponse.get().getWriter().write(html);
+      String redirectUrl = redirectUri + "?code=" + authCode;
+      if (state != null && !state.isEmpty()) {
+        redirectUrl += "&state=" + state;
+      }
 
-      LOG.debug("Displayed authorization code to user");
-      return CompletableFuture.completedFuture("CODE_DISPLAYED");
+      LOG.info("Redirecting to client redirect_uri with authorization code");
+      return CompletableFuture.completedFuture(redirectUrl);
 
-    } catch (IOException e) {
-      LOG.error("Failed to display authorization code", e);
-      throw new AuthorizeException("server_error", "Failed to display authorization code");
+    } catch (Exception e) {
+      LOG.error("Failed to redirect with authorization code", e);
+      throw new AuthorizeException("server_error", "Failed to complete authorization");
     }
   }
 

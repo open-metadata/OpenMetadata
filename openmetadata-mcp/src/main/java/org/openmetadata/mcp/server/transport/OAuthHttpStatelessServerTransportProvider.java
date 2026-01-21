@@ -250,6 +250,12 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     try {
       validatePrefixedTokenRequest(jwtFilter, tokenWithType);
 
+      // After JWT validation, populate AuthContext with scopes for tool authorization
+      if (tokenWithType != null && tokenWithType.startsWith("Bearer ")) {
+        String jwtToken = tokenWithType.substring(7); // Remove "Bearer " prefix
+        populateAuthContext(jwtToken);
+      }
+
       return true;
     } catch (Exception e) {
       // Clear auth context in case of failure
@@ -258,6 +264,72 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       String message = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
       sendAuthErrorWithChallenge(response, message, HttpServletResponse.SC_UNAUTHORIZED);
       return false;
+    }
+  }
+
+  /**
+   * Populates the AuthContext with OAuth scopes from the JWT token.
+   * This allows ScopeInterceptor to enforce @RequireScope annotations on MCP tools.
+   *
+   * @param jwtToken The JWT access token (without "Bearer " prefix)
+   */
+  private void populateAuthContext(String jwtToken) {
+    try {
+      // Parse JWT to extract claims
+      String[] parts = jwtToken.split("\\.");
+      if (parts.length < 2) {
+        logger.warn("Invalid JWT format - cannot extract scopes");
+        return;
+      }
+
+      // Decode the payload (second part)
+      String payload = new String(java.util.Base64.getUrlDecoder().decode(parts[1]));
+      com.fasterxml.jackson.databind.JsonNode claims = getObjectMapper().readTree(payload);
+
+      // Extract username and scopes from JWT claims
+      String username = claims.has("sub") ? claims.get("sub").asText() : null;
+      String email = claims.has("email") ? claims.get("email").asText() : null;
+
+      // OAuth scopes are typically stored in a "scope" claim as space-separated string
+      final java.util.List<String> scopes = new java.util.ArrayList<>();
+      if (claims.has("scope")) {
+        String scopeString = claims.get("scope").asText();
+        if (scopeString != null && !scopeString.isEmpty()) {
+          scopes.addAll(java.util.Arrays.asList(scopeString.split(" ")));
+        }
+      } else if (claims.has("scopes")) {
+        // Some JWT implementations use "scopes" array
+        com.fasterxml.jackson.databind.JsonNode scopesNode = claims.get("scopes");
+        if (scopesNode.isArray()) {
+          scopesNode.forEach(scope -> scopes.add(scope.asText()));
+        }
+      }
+
+      // If no explicit scopes in JWT, grant default scopes for backward compatibility
+      if (scopes.isEmpty()) {
+        logger.debug("No scopes found in JWT, granting default scopes for user: {}", username);
+        scopes.addAll(java.util.Arrays.asList("openid", "profile", "email"));
+      }
+
+      // Create AccessToken and populate AuthContext
+      // Note: We only need scopes for ScopeInterceptor validation
+      // clientId is not typically in JWT for user tokens, it's tracked separately in OAuth flow
+      org.openmetadata.mcp.auth.AccessToken accessToken =
+          new org.openmetadata.mcp.auth.AccessToken();
+      accessToken.setToken(jwtToken);
+      accessToken.setScopes(scopes);
+      accessToken.setClientId(username); // Store username as clientId for context
+
+      org.openmetadata.mcp.server.auth.middleware.AuthContext authContext =
+          new org.openmetadata.mcp.server.auth.middleware.AuthContext(accessToken);
+      org.openmetadata.mcp.server.auth.middleware.AuthContext.setCurrent(authContext);
+
+      logger.debug("Populated AuthContext for user: {} with scopes: {}", username, scopes);
+
+    } catch (Exception e) {
+      logger.error("Failed to populate AuthContext from JWT", e);
+      // Don't fail the request - JWT validation already passed
+      // Missing AuthContext will be caught by ScopeInterceptor if needed
     }
   }
 
