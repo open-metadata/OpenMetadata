@@ -13,7 +13,7 @@
 
 import { Button, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isArray, isEmpty, isUndefined, omitBy, toNumber } from 'lodash';
+import { isArray, isEmpty, isNil, isUndefined, omitBy, toNumber } from 'lodash';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIconComponent } from '../../../../assets/svg/edit-new.svg';
@@ -60,9 +60,16 @@ const CustomPropertyItem: FC<{
     const isEnum = property.propertyType.name === 'enum';
     const isArrayType = isArray(updatedValue);
     const enumValue = isArrayType ? updatedValue : [updatedValue];
-    const propertyValue = isEnum
+    let propertyValue: PropertyValueType | undefined = isEnum
       ? (enumValue as string[]).filter(Boolean)
       : updatedValue;
+
+    if (
+      property.propertyType.name === 'entityReference' &&
+      (isNil(propertyValue) || isEmpty(propertyValue))
+    ) {
+      propertyValue = undefined;
+    }
 
     try {
       const updatedExtension = omitBy(

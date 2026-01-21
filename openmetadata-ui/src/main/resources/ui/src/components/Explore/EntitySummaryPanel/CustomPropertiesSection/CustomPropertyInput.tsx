@@ -12,7 +12,15 @@
  */
 
 import { Form, Input, Select, TimePicker } from 'antd';
-import { isArray, isString, isUndefined, noop, omitBy, toNumber } from 'lodash';
+import {
+  isArray,
+  isNil,
+  isString,
+  isUndefined,
+  noop,
+  omitBy,
+  toNumber,
+} from 'lodash';
 import { DateTime } from 'luxon';
 import moment, { Moment } from 'moment';
 import { CSSProperties, FC } from 'react';
@@ -469,7 +477,7 @@ const CustomPropertyInput: FC<{
       let initialOptions: DataAssetOption[] = [];
       let initialValue: string[] | string | undefined;
 
-      if (!isUndefined(value)) {
+      if (!isNil(value)) {
         if (isArray(value)) {
           initialOptions = value.map((item: EntityReference) => {
             return {
