@@ -11,23 +11,23 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { TableClass } from '../../support/entity/TableClass';
+import { SidebarItem } from '../../constant/sidebar';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage, uuid } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
 const COLUMN_BULK_OPERATIONS_URL = '/column-bulk-operations';
 
-async function waitForPageReady(page: Page) {
-  // Wait for the page to load by checking for the stats card text
-  await page.waitForSelector('text=Total Unique Columns', {
-    state: 'visible',
-    timeout: 60000,
-  });
+async function visitColumnBulkOperationsPage(page: Page) {
+  const dataRes = page.waitForResponse('/api/v1/columns/grid?size=9');
+  await sidebarClick(page, SidebarItem.COLUMN_BULK_OPERATIONS);
+  await dataRes;
 }
 
 // Helper function to search for a column with retry logic for search index timing
@@ -45,7 +45,6 @@ async function searchColumnWithRetry(
     await searchInput.fill(columnName);
 
     // Wait for search to complete
-    await page.waitForTimeout(2000);
 
     // Check if any rows are visible
     const rows = page.locator('tbody tr');
@@ -73,8 +72,7 @@ async function searchColumnWithRetry(
 
 test.describe('Column Bulk Operations Page', () => {
   test('should load the page with stats cards', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Verify stats cards are visible by their content
     await expect(page.getByText('Total Unique Columns')).toBeVisible();
@@ -86,9 +84,7 @@ test.describe('Column Bulk Operations Page', () => {
   });
 
   test('should display column grid with data', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-
+    await visitColumnBulkOperationsPage(page);
     // Verify the table has rows
     const tableBody = page.locator('tbody');
     await expect(tableBody).toBeVisible();
@@ -102,8 +98,7 @@ test.describe('Column Bulk Operations Page', () => {
 
 test.describe('Column Bulk Operations - Metadata Status Filters', () => {
   test('should filter by MISSING metadata status', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Find and click the Metadata Status filter button
     const metadataStatusButton = page.getByRole('button', {
@@ -126,9 +121,7 @@ test.describe('Column Bulk Operations - Metadata Status Filters', () => {
   });
 
   test('should filter by INCOMPLETE metadata status', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-
+    await visitColumnBulkOperationsPage(page);
     // Find and click the Metadata Status filter button
     const metadataStatusButton = page.getByRole('button', {
       name: 'Metadata Status',
@@ -150,8 +143,7 @@ test.describe('Column Bulk Operations - Metadata Status Filters', () => {
   });
 
   test('should filter by INCONSISTENT metadata status', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Find and click the Metadata Status filter button
     const metadataStatusButton = page.getByRole('button', {
@@ -174,8 +166,7 @@ test.describe('Column Bulk Operations - Metadata Status Filters', () => {
   });
 
   test('should filter by COMPLETE metadata status', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Find and click the Metadata Status filter button
     const metadataStatusButton = page.getByRole('button', {
@@ -197,9 +188,10 @@ test.describe('Column Bulk Operations - Metadata Status Filters', () => {
     await expect(page).toHaveURL(/metadataStatus=COMPLETE/);
   });
 
-  test('should make API call when filtering by metadata status', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+  test('should make API call when filtering by metadata status', async ({
+    page,
+  }) => {
+    await visitColumnBulkOperationsPage(page);
 
     // Set up request interception to verify API call
     const apiCallPromise = page.waitForRequest(
@@ -230,8 +222,7 @@ test.describe('Column Bulk Operations - Metadata Status Filters', () => {
 
 test.describe('Column Bulk Operations - Data Type Filters', () => {
   test('should filter by VARCHAR data type', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Find and click the Data Type filter button
     const dataTypeButton = page.getByRole('button', { name: 'Data Type' });
@@ -256,11 +247,9 @@ test.describe('Column Bulk Operations - Selection and Edit', () => {
   test('should show disabled edit button when no columns are selected', async ({
     page,
   }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Wait for grid data to load
-    await page.waitForTimeout(2000);
 
     // Check for the disabled Edit button
     const editButton = page.getByRole('button', { name: /edit/i });
@@ -274,14 +263,15 @@ test.describe('Column Bulk Operations - Selection and Edit', () => {
   test('should enable edit button when columns are selected', async ({
     page,
   }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Wait for grid data to load
-    await page.waitForTimeout(2000);
 
     // Get the first row checkbox in tbody
-    const firstCheckbox = page.locator('tbody tr').first().locator('input[type="checkbox"]');
+    const firstCheckbox = page
+      .locator('tbody tr')
+      .first()
+      .locator('input[type="checkbox"]');
 
     if ((await firstCheckbox.count()) > 0) {
       await firstCheckbox.click();
@@ -295,14 +285,15 @@ test.describe('Column Bulk Operations - Selection and Edit', () => {
   test('should open edit drawer when edit button is clicked', async ({
     page,
   }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Wait for grid data to load
-    await page.waitForTimeout(2000);
 
     // Get the first row checkbox
-    const firstCheckbox = page.locator('tbody tr').first().locator('input[type="checkbox"]');
+    const firstCheckbox = page
+      .locator('tbody tr')
+      .first()
+      .locator('input[type="checkbox"]');
 
     if ((await firstCheckbox.count()) > 0) {
       await firstCheckbox.click();
@@ -311,8 +302,8 @@ test.describe('Column Bulk Operations - Selection and Edit', () => {
       const editButton = page.getByRole('button', { name: /edit/i }).first();
       await editButton.click();
 
-      // Verify drawer opens - look for the drawer by class
-      const drawer = page.locator('.ant-drawer');
+      // Verify drawer opens - look for the drawer by data-testid
+      const drawer = page.getByTestId('column-bulk-operations-form-drawer');
       await expect(drawer).toBeVisible();
 
       // Verify drawer has expected content - use drawer scoped selectors
@@ -321,17 +312,16 @@ test.describe('Column Bulk Operations - Selection and Edit', () => {
     }
   });
 
-  test('should be able to dismiss drawer', async ({
-    page,
-  }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+  test('should be able to dismiss drawer', async ({ page }) => {
+    await visitColumnBulkOperationsPage(page);
 
     // Wait for grid data to load
-    await page.waitForTimeout(2000);
 
     // Get the first row checkbox
-    const firstCheckbox = page.locator('tbody tr').first().locator('input[type="checkbox"]');
+    const firstCheckbox = page
+      .locator('tbody tr')
+      .first()
+      .locator('input[type="checkbox"]');
 
     if ((await firstCheckbox.count()) > 0) {
       await firstCheckbox.click();
@@ -341,7 +331,7 @@ test.describe('Column Bulk Operations - Selection and Edit', () => {
       await editButton.click();
 
       // Verify drawer is open
-      const drawer = page.locator('.ant-drawer');
+      const drawer = page.getByTestId('column-bulk-operations-form-drawer');
       await expect(drawer).toBeVisible();
 
       // Try to close drawer using Escape key
@@ -358,14 +348,15 @@ test.describe('Column Bulk Operations - Selection and Edit', () => {
   test('should clear selection when cancel selection button is clicked', async ({
     page,
   }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Wait for grid data to load
-    await page.waitForTimeout(2000);
 
     // Get the first row checkbox
-    const firstCheckbox = page.locator('tbody tr').first().locator('input[type="checkbox"]');
+    const firstCheckbox = page
+      .locator('tbody tr')
+      .first()
+      .locator('input[type="checkbox"]');
 
     if ((await firstCheckbox.count()) > 0) {
       await firstCheckbox.click();
@@ -539,16 +530,11 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
     page,
   }) => {
     await redirectToHomePage(page);
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-
-    // Wait for grid data to load and search index to update
-    await page.waitForTimeout(3000);
+    await visitColumnBulkOperationsPage(page);
 
     // Search for the shared column name
     const searchInput = page.getByPlaceholder('Search columns');
     await searchInput.fill(sharedColumnName);
-    await page.waitForTimeout(2000);
 
     // Find and click the checkbox for the shared column
     const columnRow = page.locator('tbody tr').first();
@@ -562,7 +548,7 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
       await editButton.click();
 
       // Wait for drawer
-      const drawer = page.locator('.ant-drawer');
+      const drawer = page.getByTestId('column-bulk-operations-form-drawer');
       await expect(drawer).toBeVisible();
 
       const displayName = `SharedDisplayName_${uuid()}`;
@@ -625,16 +611,11 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
     page,
   }) => {
     await redirectToHomePage(page);
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-
-    // Wait for grid data to load
-    await page.waitForTimeout(3000);
+    await visitColumnBulkOperationsPage(page);
 
     // Search for the shared column name
     const searchInput = page.getByPlaceholder('Search columns');
     await searchInput.fill(sharedColumnName);
-    await page.waitForTimeout(2000);
 
     // Find and click the checkbox for the shared column
     const columnRow = page.locator('tbody tr').first();
@@ -648,11 +629,13 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
       await editButton.click();
 
       // Wait for drawer
-      const drawer = page.locator('.ant-drawer');
+      const drawer = page.getByTestId('column-bulk-operations-form-drawer');
       await expect(drawer).toBeVisible();
 
       // Enter description in the rich text editor
-      const descriptionEditor = drawer.locator('[data-testid="description-field"] .editor-input, [data-testid="description-field"] .toastui-editor-contents');
+      const descriptionEditor = drawer.locator(
+        '[data-testid="description-field"] .editor-input, [data-testid="description-field"] .toastui-editor-contents'
+      );
       if ((await descriptionEditor.count()) > 0) {
         await descriptionEditor.click();
         await page.keyboard.type('Bulk updated description for testing');
@@ -709,8 +692,7 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
     page,
   }) => {
     await redirectToHomePage(page);
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Wait for grid data to load
     await page.waitForTimeout(3000);
@@ -718,7 +700,6 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
     // Search for the shared column name
     const searchInput = page.getByPlaceholder('Search columns');
     await searchInput.fill(sharedColumnName);
-    await page.waitForTimeout(2000);
 
     // Find and click the checkbox
     const columnRow = page.locator('tbody tr').first();
@@ -731,7 +712,7 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
       const editButton = page.getByRole('button', { name: /edit/i }).first();
       await editButton.click();
 
-      const drawer = page.locator('.ant-drawer');
+      const drawer = page.getByTestId('column-bulk-operations-form-drawer');
       await expect(drawer).toBeVisible();
 
       const uniqueDisplayName = `BulkTest_${uuid()}`;
@@ -776,9 +757,7 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
 
       // Navigate to one of the test tables to verify the column was actually updated
       // This is the real test - checking the actual entity page, not just the grid
-      await page.goto(
-        `/table/${table1FQN}/schema`
-      );
+      await page.goto(`/table/${table1FQN}/schema`);
 
       // Wait for table page to load (schema tab shows the column table)
       await page.waitForSelector('[data-testid="entity-page-container"]', {
@@ -814,11 +793,9 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
     test.setTimeout(60000); // Shorter timeout for this simple test
 
     await redirectToHomePage(page);
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Wait for grid data to load
-    await page.waitForTimeout(2000);
 
     // Get the first row (any column with data)
     const firstCheckbox = page
@@ -865,95 +842,98 @@ test.describe('Column Bulk Operations - Edit Drawer Pre-population', () => {
   let serviceName: string;
   let tableFQN: string;
 
-  test.beforeAll('Setup column with tags and glossary terms', async ({ browser }) => {
-    test.slow(true);
+  test.beforeAll(
+    'Setup column with tags and glossary terms',
+    async ({ browser }) => {
+      test.slow(true);
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    // Create glossary and glossary term
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
+      // Create glossary and glossary term
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
 
-    // Create classification and tag
-    await classification.create(apiContext);
-    await tag.create(apiContext);
+      // Create classification and tag
+      await classification.create(apiContext);
+      await tag.create(apiContext);
 
-    // Create a service, database, schema, and table with a column
-    serviceName = `pw-tags-service-${uuid()}`;
-    const databaseName = `pw-tags-database-${uuid()}`;
-    const schemaName = `pw-tags-schema-${uuid()}`;
+      // Create a service, database, schema, and table with a column
+      serviceName = `pw-tags-service-${uuid()}`;
+      const databaseName = `pw-tags-database-${uuid()}`;
+      const schemaName = `pw-tags-schema-${uuid()}`;
 
-    // Create database service
-    await apiContext.post('/api/v1/services/databaseServices', {
-      data: {
-        name: serviceName,
-        serviceType: 'Mysql',
-        connection: {
-          config: {
-            type: 'Mysql',
-            scheme: 'mysql+pymysql',
-            username: 'username',
-            authType: { password: 'password' },
-            hostPort: 'mysql:3306',
+      // Create database service
+      await apiContext.post('/api/v1/services/databaseServices', {
+        data: {
+          name: serviceName,
+          serviceType: 'Mysql',
+          connection: {
+            config: {
+              type: 'Mysql',
+              scheme: 'mysql+pymysql',
+              username: 'username',
+              authType: { password: 'password' },
+              hostPort: 'mysql:3306',
+            },
           },
         },
-      },
-    });
+      });
 
-    // Create database
-    await apiContext.post('/api/v1/databases', {
-      data: {
-        name: databaseName,
-        service: serviceName,
-      },
-    });
+      // Create database
+      await apiContext.post('/api/v1/databases', {
+        data: {
+          name: databaseName,
+          service: serviceName,
+        },
+      });
 
-    // Create schema
-    await apiContext.post('/api/v1/databaseSchemas', {
-      data: {
-        name: schemaName,
-        database: `${serviceName}.${databaseName}`,
-      },
-    });
+      // Create schema
+      await apiContext.post('/api/v1/databaseSchemas', {
+        data: {
+          name: schemaName,
+          database: `${serviceName}.${databaseName}`,
+        },
+      });
 
-    const schemaFQN = `${serviceName}.${databaseName}.${schemaName}`;
+      const schemaFQN = `${serviceName}.${databaseName}.${schemaName}`;
 
-    // Create table with column that has tags and glossary terms
-    const tableName = `pw-tags-table-${uuid()}`;
+      // Create table with column that has tags and glossary terms
+      const tableName = `pw-tags-table-${uuid()}`;
 
-    const tableResponse = await apiContext.post('/api/v1/tables', {
-      data: {
-        name: tableName,
-        databaseSchema: schemaFQN,
-        columns: [
-          {
-            name: columnWithTagsName,
-            dataType: 'VARCHAR',
-            dataTypeDisplay: 'varchar',
-            description: 'Column with pre-existing tags',
-            tags: [
-              {
-                tagFQN: tag.responseData.fullyQualifiedName,
-                source: 'Classification',
-                labelType: 'Manual',
-                state: 'Confirmed',
-              },
-              {
-                tagFQN: glossaryTerm.responseData.fullyQualifiedName,
-                source: 'Glossary',
-                labelType: 'Manual',
-                state: 'Confirmed',
-              },
-            ],
-          },
-        ],
-      },
-    });
-    const tableData = await tableResponse.json();
-    tableFQN = tableData.fullyQualifiedName;
+      const tableResponse = await apiContext.post('/api/v1/tables', {
+        data: {
+          name: tableName,
+          databaseSchema: schemaFQN,
+          columns: [
+            {
+              name: columnWithTagsName,
+              dataType: 'VARCHAR',
+              dataTypeDisplay: 'varchar',
+              description: 'Column with pre-existing tags',
+              tags: [
+                {
+                  tagFQN: tag.responseData.fullyQualifiedName,
+                  source: 'Classification',
+                  labelType: 'Manual',
+                  state: 'Confirmed',
+                },
+                {
+                  tagFQN: glossaryTerm.responseData.fullyQualifiedName,
+                  source: 'Glossary',
+                  labelType: 'Manual',
+                  state: 'Confirmed',
+                },
+              ],
+            },
+          ],
+        },
+      });
+      const tableData = await tableResponse.json();
+      tableFQN = tableData.fullyQualifiedName;
 
-    await afterAction();
-  });
+      await afterAction();
+    }
+  );
 
   test.afterAll('Cleanup test data', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -987,8 +967,7 @@ test.describe('Column Bulk Operations - Edit Drawer Pre-population', () => {
     page,
   }) => {
     await redirectToHomePage(page);
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Wait for grid data to load and search index to update
     await page.waitForTimeout(5000);
@@ -996,7 +975,6 @@ test.describe('Column Bulk Operations - Edit Drawer Pre-population', () => {
     // Search for the column with tags
     const searchInput = page.getByPlaceholder('Search columns');
     await searchInput.fill(columnWithTagsName);
-    await page.waitForTimeout(2000);
 
     // Find and click the checkbox for the column
     const columnRow = page.locator('tbody tr').first();
@@ -1010,7 +988,7 @@ test.describe('Column Bulk Operations - Edit Drawer Pre-population', () => {
       await editButton.click();
 
       // Wait for drawer
-      const drawer = page.locator('.ant-drawer');
+      const drawer = page.getByTestId('column-bulk-operations-form-drawer');
       await expect(drawer).toBeVisible();
 
       // Verify Tags field exists
@@ -1038,16 +1016,11 @@ test.describe('Column Bulk Operations - Edit Drawer Pre-population', () => {
     page,
   }) => {
     await redirectToHomePage(page);
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-
-    // Wait for grid data to load
-    await page.waitForTimeout(5000);
+    await visitColumnBulkOperationsPage(page);
 
     // Search for the column with glossary terms
     const searchInput = page.getByPlaceholder('Search columns');
     await searchInput.fill(columnWithTagsName);
-    await page.waitForTimeout(2000);
 
     // Find and click the checkbox for the column
     const columnRow = page.locator('tbody tr').first();
@@ -1061,15 +1034,19 @@ test.describe('Column Bulk Operations - Edit Drawer Pre-population', () => {
       await editButton.click();
 
       // Wait for drawer
-      const drawer = page.locator('.ant-drawer');
+      const drawer = page.getByTestId('column-bulk-operations-form-drawer');
       await expect(drawer).toBeVisible();
 
       // Verify Glossary Terms field exists
-      const glossaryField = drawer.locator('[data-testid="glossary-terms-field"]');
+      const glossaryField = drawer.locator(
+        '[data-testid="glossary-terms-field"]'
+      );
       await expect(glossaryField).toBeVisible();
 
       // Verify the glossary term is shown in the glossary selector
-      const glossarySelector = glossaryField.locator('[data-testid="tag-selector"]');
+      const glossarySelector = glossaryField.locator(
+        '[data-testid="tag-selector"]'
+      );
       await expect(glossarySelector).toBeVisible();
 
       // Check that the glossary term value is pre-selected
@@ -1095,9 +1072,7 @@ test.describe('Column Bulk Operations - Coverage Status Display', () => {
   // - "Full Coverage" for columns with BOTH description AND tags
 
   test('should display coverage indicators in the grid', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(3000);
+    await visitColumnBulkOperationsPage(page);
 
     // Verify the grid displays coverage indicators
     // Coverage can be: "Missing", "Partial Coverage (X/Y)", "Inconsistent", or "Full Coverage (X/Y)"
@@ -1141,8 +1116,7 @@ test.describe('Column Bulk Operations - Coverage Status Display', () => {
       }
     });
 
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
     await page.waitForTimeout(3000);
 
     // Verify the API response contains metadataStatus field
@@ -1160,11 +1134,7 @@ test.describe('Column Bulk Operations - Column Variations', () => {
   test('should show coverage indicator for columns with same name', async ({
     page,
   }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-
-    // Wait for grid data to load
-    await page.waitForTimeout(2000);
+    await visitColumnBulkOperationsPage(page);
 
     // Look for coverage text in the table
     const coverageText = page.getByText(/Coverage/);
@@ -1178,11 +1148,9 @@ test.describe('Column Bulk Operations - Column Variations', () => {
   test('should expand column row to show variations when clicked', async ({
     page,
   }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Wait for grid data to load
-    await page.waitForTimeout(2000);
 
     // Find expand buttons (right arrow buttons)
     const expandButtons = page.getByRole('button', { name: 'right' });
@@ -1206,11 +1174,9 @@ test.describe('Column Bulk Operations - Column Variations', () => {
 
 test.describe('Column Bulk Operations - Search', () => {
   test('should filter columns by search query', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Wait for grid data to load
-    await page.waitForTimeout(2000);
 
     // Find the search input
     const searchInput = page.getByPlaceholder('Search columns');
@@ -1230,11 +1196,9 @@ test.describe('Column Bulk Operations - Search', () => {
 
 test.describe('Column Bulk Operations - Pagination', () => {
   test('should navigate through pages', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Wait for grid data to load
-    await page.waitForTimeout(2000);
 
     // Check if pagination controls exist
     const nextButton = page.getByRole('button', { name: 'Next' });
@@ -1261,11 +1225,9 @@ test.describe('Column Bulk Operations - Pagination', () => {
 
 test.describe('Column Bulk Operations - Multi-select', () => {
   test('should select multiple columns and bulk edit', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Wait for grid data to load
-    await page.waitForTimeout(2000);
 
     // Get row checkboxes
     const checkboxes = page.locator('tbody tr input[type="checkbox"]');
@@ -1285,7 +1247,7 @@ test.describe('Column Bulk Operations - Multi-select', () => {
       await editButton.click();
 
       // Verify drawer opens
-      const drawer = page.locator('.ant-drawer');
+      const drawer = page.getByTestId('column-bulk-operations-form-drawer');
       await expect(drawer).toBeVisible();
 
       // Verify drawer has content
@@ -1294,11 +1256,7 @@ test.describe('Column Bulk Operations - Multi-select', () => {
   });
 
   test('should select all columns using header checkbox', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-
-    // Wait for grid data to load
-    await page.waitForTimeout(2000);
+    await visitColumnBulkOperationsPage(page);
 
     // Find the header checkbox
     const headerCheckbox = page.locator('thead input[type="checkbox"]');
@@ -1322,14 +1280,15 @@ test.describe('Column Bulk Operations - Multi-select', () => {
 
 test.describe('Column Bulk Operations - View Selected Only', () => {
   test('should toggle view selected only mode', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Wait for grid data to load
-    await page.waitForTimeout(2000);
 
     // Get the first row checkbox
-    const firstCheckbox = page.locator('tbody tr').first().locator('input[type="checkbox"]');
+    const firstCheckbox = page
+      .locator('tbody tr')
+      .first()
+      .locator('input[type="checkbox"]');
 
     if ((await firstCheckbox.count()) > 0) {
       // Select a column
@@ -1369,10 +1328,10 @@ test.describe('Column Bulk Operations - View Selected Only', () => {
 });
 
 test.describe('Column Bulk Operations - Aggregate Row Click Behavior', () => {
-  test('should open edit drawer when clicking on aggregate row', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+  test('should open edit drawer when clicking on aggregate row', async ({
+    page,
+  }) => {
+    await visitColumnBulkOperationsPage(page);
 
     // Find a row with expand button (aggregate row with multiple occurrences)
     const expandButton = page.locator('tbody tr button').first();
@@ -1387,7 +1346,7 @@ test.describe('Column Bulk Operations - Aggregate Row Click Behavior', () => {
       await columnNameCell.click();
 
       // Verify edit drawer opens
-      const drawer = page.locator('.ant-drawer');
+      const drawer = page.getByTestId('column-bulk-operations-form-drawer');
 
       // Drawer should be visible (if it's an aggregate row)
       // Note: This may not open drawer for single-occurrence rows
@@ -1395,13 +1354,15 @@ test.describe('Column Bulk Operations - Aggregate Row Click Behavior', () => {
     }
   });
 
-  test('should NOT open edit drawer when clicking expand button', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+  test('should NOT open edit drawer when clicking expand button', async ({
+    page,
+  }) => {
+    await visitColumnBulkOperationsPage(page);
 
     // Find expand buttons
-    const expandButtons = page.locator('tbody tr button.expand-button, tbody tr .anticon-right').first();
+    const expandButtons = page
+      .locator('tbody tr button.expand-button, tbody tr .anticon-right')
+      .first();
 
     if ((await expandButtons.count()) > 0) {
       // Click expand button
@@ -1409,7 +1370,7 @@ test.describe('Column Bulk Operations - Aggregate Row Click Behavior', () => {
       await page.waitForTimeout(500);
 
       // Drawer should NOT be visible
-      const drawer = page.locator('.ant-drawer');
+      const drawer = page.getByTestId('column-bulk-operations-form-drawer');
       const isDrawerVisible = await drawer.isVisible();
 
       // If drawer opened, this is a bug - expansion should not trigger drawer
@@ -1421,8 +1382,7 @@ test.describe('Column Bulk Operations - Aggregate Row Click Behavior', () => {
 
 test.describe('Column Bulk Operations - Combined Filters', () => {
   test('should apply multiple filters together', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Set up request interception for the final request with both filters
     let lastApiUrl = '';
@@ -1433,7 +1393,9 @@ test.describe('Column Bulk Operations - Combined Filters', () => {
     });
 
     // Apply Metadata Status filter
-    const metadataStatusButton = page.getByRole('button', { name: 'Metadata Status' });
+    const metadataStatusButton = page.getByRole('button', {
+      name: 'Metadata Status',
+    });
     await metadataStatusButton.click();
     await page.waitForTimeout(500);
     await page.getByRole('menuitem', { name: 'Missing' }).click();
@@ -1456,13 +1418,16 @@ test.describe('Column Bulk Operations - Combined Filters', () => {
   test('should clear individual filters', async ({ page }) => {
     // Start with a filter applied
     await page.goto(`${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=MISSING`);
-    await waitForPageReady(page);
+    await page.waitForLoadState('domcontentloaded');
+    await waitForAllLoadersToDisappear(page);
 
     // Verify filter is applied
     await expect(page).toHaveURL(/metadataStatus=MISSING/);
 
     // Open metadata status filter and deselect
-    const metadataStatusButton = page.getByRole('button', { name: 'Metadata Status' });
+    const metadataStatusButton = page.getByRole('button', {
+      name: 'Metadata Status',
+    });
     await metadataStatusButton.click();
     await page.waitForTimeout(500);
 
@@ -1480,11 +1445,13 @@ test.describe('Column Bulk Operations - Combined Filters', () => {
 test.describe('Column Bulk Operations - URL State Persistence', () => {
   test('should restore filters from URL on page load', async ({ page }) => {
     // Navigate with filters in URL
-    await page.goto(`${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=INCOMPLETE&dataType=INT`);
-    await waitForPageReady(page);
+    await page.goto(
+      `${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=INCOMPLETE&dataType=INT`
+    );
+    await page.waitForLoadState('domcontentloaded');
+    await waitForAllLoadersToDisappear(page);
 
     // Wait for API call with filters
-    await page.waitForTimeout(2000);
 
     // Verify filters are reflected in UI
     // The filter buttons should show the selected values
@@ -1493,8 +1460,7 @@ test.describe('Column Bulk Operations - URL State Persistence', () => {
   });
 
   test('should persist search query in URL', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Enter search query
     const searchInput = page.getByPlaceholder('Search columns');
@@ -1507,17 +1473,19 @@ test.describe('Column Bulk Operations - URL State Persistence', () => {
 });
 
 test.describe('Column Bulk Operations - Empty State', () => {
-  test('should show no results message when filters match nothing', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+  test('should show no results message when filters match nothing', async ({
+    page,
+  }) => {
+    await visitColumnBulkOperationsPage(page);
 
     // Search for something that doesn't exist
     const searchInput = page.getByPlaceholder('Search columns');
     await searchInput.fill('zzz_nonexistent_column_xyz_12345');
-    await page.waitForTimeout(2000);
 
     // Should show "no records found" or similar message
-    const noRecordsText = page.getByText(/no records found|no data|no results/i);
+    const noRecordsText = page.getByText(
+      /no records found|no data|no results/i
+    );
     const tableRows = page.locator('tbody tr');
 
     // Either no results message or empty table
@@ -1530,13 +1498,16 @@ test.describe('Column Bulk Operations - Empty State', () => {
 });
 
 test.describe('Column Bulk Operations - Edit Drawer Title', () => {
-  test('should show correct title for single column selection', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+  test('should show correct title for single column selection', async ({
+    page,
+  }) => {
+    await visitColumnBulkOperationsPage(page);
 
     // Select single column
-    const firstCheckbox = page.locator('tbody tr').first().locator('input[type="checkbox"]');
+    const firstCheckbox = page
+      .locator('tbody tr')
+      .first()
+      .locator('input[type="checkbox"]');
 
     if ((await firstCheckbox.count()) > 0) {
       await firstCheckbox.click();
@@ -1546,11 +1517,11 @@ test.describe('Column Bulk Operations - Edit Drawer Title', () => {
       await editButton.click();
 
       // Verify drawer title shows column name (not "X columns selected")
-      const drawer = page.locator('.ant-drawer');
+      const drawer = page.getByTestId('column-bulk-operations-form-drawer');
       await expect(drawer).toBeVisible();
 
       // Title should contain "Edit" and either the column name or "Column"
-      const drawerTitle = drawer.locator('.ant-drawer-title');
+      const drawerTitle = drawer.getByRole('heading');
       await expect(drawerTitle).toContainText(/Edit/);
 
       // Close drawer
@@ -1558,10 +1529,10 @@ test.describe('Column Bulk Operations - Edit Drawer Title', () => {
     }
   });
 
-  test('should show correct title for multiple column selection', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+  test('should show correct title for multiple column selection', async ({
+    page,
+  }) => {
+    await visitColumnBulkOperationsPage(page);
 
     // Select multiple columns
     const checkboxes = page.locator('tbody tr input[type="checkbox"]');
@@ -1576,7 +1547,7 @@ test.describe('Column Bulk Operations - Edit Drawer Title', () => {
       await editButton.click();
 
       // Verify drawer shows multiple columns info
-      const drawer = page.locator('.ant-drawer');
+      const drawer = page.getByTestId('column-bulk-operations-form-drawer');
       await expect(drawer).toBeVisible();
 
       // Column name input should show "X columns selected"
@@ -1591,13 +1562,16 @@ test.describe('Column Bulk Operations - Edit Drawer Title', () => {
 });
 
 test.describe('Column Bulk Operations - Cancel Without Saving', () => {
-  test('should discard changes when closing drawer without saving', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+  test('should discard changes when closing drawer without saving', async ({
+    page,
+  }) => {
+    await visitColumnBulkOperationsPage(page);
 
     // Select a column
-    const firstCheckbox = page.locator('tbody tr').first().locator('input[type="checkbox"]');
+    const firstCheckbox = page
+      .locator('tbody tr')
+      .first()
+      .locator('input[type="checkbox"]');
 
     if ((await firstCheckbox.count()) > 0) {
       await firstCheckbox.click();
@@ -1649,9 +1623,10 @@ test.describe('Column Bulk Operations - Cancel Without Saving', () => {
 });
 
 test.describe('Column Bulk Operations - Service Filter', () => {
-  test('should have filter bar with search and filter options', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+  test('should have filter bar with search and filter options', async ({
+    page,
+  }) => {
+    await visitColumnBulkOperationsPage(page);
 
     // The filter bar contains search input and various filter dropdowns
     // Check that the search input is visible (main element of filter bar)
@@ -1668,17 +1643,22 @@ test.describe('Column Bulk Operations - Service Filter', () => {
     await expect(dataTypeFilter).toBeVisible();
 
     // Check that Metadata Status filter is visible
-    const metadataStatusFilter = page.getByRole('button', { name: /metadata status/i });
+    const metadataStatusFilter = page.getByRole('button', {
+      name: /metadata status/i,
+    });
     await expect(metadataStatusFilter).toBeVisible();
 
     // The Service filter is part of quick filters and may not always be visible
     // It depends on aggregation data from the API
     // Look for service-related button
-    const serviceFilterButton = page.locator(
-      'button:has-text("Service"), [data-testid*="service"]'
-    ).first();
+    const serviceFilterButton = page
+      .locator('button:has-text("Service"), [data-testid*="service"]')
+      .first();
 
-    if ((await serviceFilterButton.count()) > 0 && (await serviceFilterButton.isVisible())) {
+    if (
+      (await serviceFilterButton.count()) > 0 &&
+      (await serviceFilterButton.isVisible())
+    ) {
       // Service filter is available, verify it can be clicked
       await serviceFilterButton.click();
       await page.waitForTimeout(500);
@@ -1696,8 +1676,7 @@ test.describe('Column Bulk Operations - Cross Entity Type Support', () => {
   // Columns with the same name across different entity types can be displayed and managed
 
   test('should filter by entity type - Table only', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Set up request interception
     const apiCallPromise = page.waitForRequest(
@@ -1726,9 +1705,10 @@ test.describe('Column Bulk Operations - Cross Entity Type Support', () => {
     }
   });
 
-  test('should filter by entity type - Dashboard Data Model only', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+  test('should filter by entity type - Dashboard Data Model only', async ({
+    page,
+  }) => {
+    await visitColumnBulkOperationsPage(page);
 
     // Set up request interception
     const apiCallPromise = page.waitForRequest(
@@ -1748,7 +1728,9 @@ test.describe('Column Bulk Operations - Cross Entity Type Support', () => {
       await page.waitForTimeout(500);
 
       // Select Dashboard Data Model
-      await page.getByRole('menuitem', { name: 'Dashboard Data Model' }).click();
+      await page
+        .getByRole('menuitem', { name: 'Dashboard Data Model' })
+        .click();
       await page.getByRole('button', { name: 'Update' }).click();
 
       // Verify API was called with entityTypes parameter
@@ -1757,9 +1739,10 @@ test.describe('Column Bulk Operations - Cross Entity Type Support', () => {
     }
   });
 
-  test('should show occurrence count for columns appearing in multiple entities', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+  test('should show occurrence count for columns appearing in multiple entities', async ({
+    page,
+  }) => {
+    await visitColumnBulkOperationsPage(page);
     await page.waitForTimeout(3000);
 
     // Look for occurrence count indicators in the table
@@ -1776,13 +1759,15 @@ test.describe('Column Bulk Operations - Cross Entity Type Support', () => {
     }
   });
 
-  test('should expand row to show entity details for multi-occurrence columns', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+  test('should expand row to show entity details for multi-occurrence columns', async ({
+    page,
+  }) => {
+    await visitColumnBulkOperationsPage(page);
 
     // Find rows with expand buttons (columns that appear in multiple places)
-    const expandButtons = page.locator('tbody tr button[aria-label], tbody tr .anticon-right');
+    const expandButtons = page.locator(
+      'tbody tr button[aria-label], tbody tr .anticon-right'
+    );
     const buttonCount = await expandButtons.count();
 
     if (buttonCount > 0) {
@@ -1820,255 +1805,297 @@ test.describe('Column Bulk Operations - Cross Entity Type Bulk Update', () => {
   let searchIndexFQN: string;
   let dashboardDataModelFQN: string;
 
-  test.beforeAll('Setup entities with shared column name', async ({ browser }) => {
-    test.slow(true);
+  test.beforeAll(
+    'Setup entities with shared column name',
+    async ({ browser }) => {
+      test.slow(true);
 
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    // 1. Create Database Service and Table
-    serviceName = `pw-cross-db-service-${uuid()}`;
-    const databaseName = `pw-cross-database-${uuid()}`;
-    const schemaName = `pw-cross-schema-${uuid()}`;
+      // 1. Create Database Service and Table
+      serviceName = `pw-cross-db-service-${uuid()}`;
+      const databaseName = `pw-cross-database-${uuid()}`;
+      const schemaName = `pw-cross-schema-${uuid()}`;
 
-    await apiContext.post('/api/v1/services/databaseServices', {
-      data: {
-        name: serviceName,
-        serviceType: 'Mysql',
-        connection: {
-          config: {
-            type: 'Mysql',
-            scheme: 'mysql+pymysql',
-            username: 'username',
-            authType: { password: 'password' },
-            hostPort: 'mysql:3306',
-          },
-        },
-      },
-    });
-
-    await apiContext.post('/api/v1/databases', {
-      data: {
-        name: databaseName,
-        service: serviceName,
-      },
-    });
-
-    await apiContext.post('/api/v1/databaseSchemas', {
-      data: {
-        name: schemaName,
-        database: `${serviceName}.${databaseName}`,
-      },
-    });
-
-    const tableResponse = await apiContext.post('/api/v1/tables', {
-      data: {
-        name: `pw-cross-table-${uuid()}`,
-        databaseSchema: `${serviceName}.${databaseName}.${schemaName}`,
-        columns: [
-          {
-            name: sharedColumnName,
-            dataType: 'VARCHAR',
-            dataTypeDisplay: 'varchar',
-            description: 'Column in table',
-          },
-        ],
-      },
-    });
-    const tableData = await tableResponse.json();
-    tableFQN = tableData.fullyQualifiedName;
-
-    // 2. Create Messaging Service and Topic with schema field
-    messagingServiceName = `pw-cross-msg-service-${uuid()}`;
-
-    await apiContext.post('/api/v1/services/messagingServices', {
-      data: {
-        name: messagingServiceName,
-        serviceType: 'Kafka',
-        connection: {
-          config: {
-            type: 'Kafka',
-            bootstrapServers: 'localhost:9092',
-          },
-        },
-      },
-    });
-
-    const topicResponse = await apiContext.post('/api/v1/topics', {
-      data: {
-        name: `pw-cross-topic-${uuid()}`,
-        service: messagingServiceName,
-        partitions: 1,
-        messageSchema: {
-          schemaType: 'JSON',
-          schemaFields: [
-            {
-              name: sharedColumnName,
-              dataType: 'STRING',
-              description: 'Field in topic',
-            },
-          ],
-        },
-      },
-    });
-    const topicData = await topicResponse.json();
-    topicFQN = topicData.fullyQualifiedName;
-
-    // 3. Create Storage Service and Container with data model
-    storageServiceName = `pw-cross-storage-service-${uuid()}`;
-
-    await apiContext.post('/api/v1/services/storageServices', {
-      data: {
-        name: storageServiceName,
-        serviceType: 'S3',
-        connection: {
-          config: {
-            type: 'S3',
-            awsConfig: {
-              awsRegion: 'us-east-1',
+      await apiContext.post('/api/v1/services/databaseServices', {
+        data: {
+          name: serviceName,
+          serviceType: 'Mysql',
+          connection: {
+            config: {
+              type: 'Mysql',
+              scheme: 'mysql+pymysql',
+              username: 'username',
+              authType: { password: 'password' },
+              hostPort: 'mysql:3306',
             },
           },
         },
-      },
-    });
+      });
 
-    const containerResponse = await apiContext.post('/api/v1/containers', {
-      data: {
-        name: `pw-cross-container-${uuid()}`,
-        service: storageServiceName,
-        dataModel: {
-          isPartitioned: false,
+      await apiContext.post('/api/v1/databases', {
+        data: {
+          name: databaseName,
+          service: serviceName,
+        },
+      });
+
+      await apiContext.post('/api/v1/databaseSchemas', {
+        data: {
+          name: schemaName,
+          database: `${serviceName}.${databaseName}`,
+        },
+      });
+
+      const tableResponse = await apiContext.post('/api/v1/tables', {
+        data: {
+          name: `pw-cross-table-${uuid()}`,
+          databaseSchema: `${serviceName}.${databaseName}.${schemaName}`,
           columns: [
             {
               name: sharedColumnName,
-              dataType: 'STRING',
-              description: 'Column in container',
+              dataType: 'VARCHAR',
+              dataTypeDisplay: 'varchar',
+              description: 'Column in table',
             },
           ],
         },
-      },
-    });
-    const containerData = await containerResponse.json();
-    containerFQN = containerData.fullyQualifiedName;
+      });
+      const tableData = await tableResponse.json();
+      tableFQN = tableData.fullyQualifiedName;
 
-    // 4. Create Search Service and Search Index
-    searchServiceName = `pw-cross-search-service-${uuid()}`;
+      // 2. Create Messaging Service and Topic with schema field
+      messagingServiceName = `pw-cross-msg-service-${uuid()}`;
 
-    await apiContext.post('/api/v1/services/searchServices', {
-      data: {
-        name: searchServiceName,
-        serviceType: 'ElasticSearch',
-        connection: {
-          config: {
-            type: 'ElasticSearch',
-            hostPort: 'http://localhost:9200',
-          },
-        },
-      },
-    });
-
-    const searchIndexResponse = await apiContext.post('/api/v1/searchIndexes', {
-      data: {
-        name: `pw-cross-search-index-${uuid()}`,
-        service: searchServiceName,
-        fields: [
-          {
-            name: sharedColumnName,
-            dataType: 'TEXT',
-            description: 'Field in search index',
-          },
-        ],
-      },
-    });
-    const searchIndexData = await searchIndexResponse.json();
-    searchIndexFQN = searchIndexData.fullyQualifiedName;
-
-    // 5. Create Dashboard Service and Dashboard Data Model
-    dashboardServiceName = `pw-cross-dashboard-service-${uuid()}`;
-
-    await apiContext.post('/api/v1/services/dashboardServices', {
-      data: {
-        name: dashboardServiceName,
-        serviceType: 'Superset',
-        connection: {
-          config: {
-            type: 'Superset',
-            hostPort: 'http://localhost:8088',
-            connection: {
-              provider: 'db',
-              username: 'admin',
-              password: 'admin',
+      await apiContext.post('/api/v1/services/messagingServices', {
+        data: {
+          name: messagingServiceName,
+          serviceType: 'Kafka',
+          connection: {
+            config: {
+              type: 'Kafka',
+              bootstrapServers: 'localhost:9092',
             },
           },
         },
-      },
-    });
+      });
 
-    const dataModelResponse = await apiContext.post('/api/v1/dashboard/datamodels', {
-      data: {
-        name: `pw-cross-datamodel-${uuid()}`,
-        service: dashboardServiceName,
-        dataModelType: 'SupersetDataModel',
-        columns: [
-          {
-            name: sharedColumnName,
-            dataType: 'VARCHAR',
-            description: 'Column in dashboard data model',
+      const topicResponse = await apiContext.post('/api/v1/topics', {
+        data: {
+          name: `pw-cross-topic-${uuid()}`,
+          service: messagingServiceName,
+          partitions: 1,
+          messageSchema: {
+            schemaType: 'JSON',
+            schemaFields: [
+              {
+                name: sharedColumnName,
+                dataType: 'STRING',
+                description: 'Field in topic',
+              },
+            ],
           },
-        ],
-      },
-    });
-    const dataModelData = await dataModelResponse.json();
-    dashboardDataModelFQN = dataModelData.fullyQualifiedName;
+        },
+      });
+      const topicData = await topicResponse.json();
+      topicFQN = topicData.fullyQualifiedName;
 
-    await afterAction();
-  });
+      // 3. Create Storage Service and Container with data model
+      storageServiceName = `pw-cross-storage-service-${uuid()}`;
+
+      await apiContext.post('/api/v1/services/storageServices', {
+        data: {
+          name: storageServiceName,
+          serviceType: 'S3',
+          connection: {
+            config: {
+              type: 'S3',
+              awsConfig: {
+                awsRegion: 'us-east-1',
+              },
+            },
+          },
+        },
+      });
+
+      const containerResponse = await apiContext.post('/api/v1/containers', {
+        data: {
+          name: `pw-cross-container-${uuid()}`,
+          service: storageServiceName,
+          dataModel: {
+            isPartitioned: false,
+            columns: [
+              {
+                name: sharedColumnName,
+                dataType: 'STRING',
+                description: 'Column in container',
+              },
+            ],
+          },
+        },
+      });
+      const containerData = await containerResponse.json();
+      containerFQN = containerData.fullyQualifiedName;
+
+      // 4. Create Search Service and Search Index
+      searchServiceName = `pw-cross-search-service-${uuid()}`;
+
+      await apiContext.post('/api/v1/services/searchServices', {
+        data: {
+          name: searchServiceName,
+          serviceType: 'ElasticSearch',
+          connection: {
+            config: {
+              type: 'ElasticSearch',
+              hostPort: 'http://localhost:9200',
+            },
+          },
+        },
+      });
+
+      const searchIndexResponse = await apiContext.post(
+        '/api/v1/searchIndexes',
+        {
+          data: {
+            name: `pw-cross-search-index-${uuid()}`,
+            service: searchServiceName,
+            fields: [
+              {
+                name: sharedColumnName,
+                dataType: 'TEXT',
+                description: 'Field in search index',
+              },
+            ],
+          },
+        }
+      );
+      const searchIndexData = await searchIndexResponse.json();
+      searchIndexFQN = searchIndexData.fullyQualifiedName;
+
+      // 5. Create Dashboard Service and Dashboard Data Model
+      dashboardServiceName = `pw-cross-dashboard-service-${uuid()}`;
+
+      await apiContext.post('/api/v1/services/dashboardServices', {
+        data: {
+          name: dashboardServiceName,
+          serviceType: 'Superset',
+          connection: {
+            config: {
+              type: 'Superset',
+              hostPort: 'http://localhost:8088',
+              connection: {
+                provider: 'db',
+                username: 'admin',
+                password: 'admin',
+              },
+            },
+          },
+        },
+      });
+
+      const dataModelResponse = await apiContext.post(
+        '/api/v1/dashboard/datamodels',
+        {
+          data: {
+            name: `pw-cross-datamodel-${uuid()}`,
+            service: dashboardServiceName,
+            dataModelType: 'SupersetDataModel',
+            columns: [
+              {
+                name: sharedColumnName,
+                dataType: 'VARCHAR',
+                description: 'Column in dashboard data model',
+              },
+            ],
+          },
+        }
+      );
+      const dataModelData = await dataModelResponse.json();
+      dashboardDataModelFQN = dataModelData.fullyQualifiedName;
+
+      await afterAction();
+    }
+  );
 
   test.afterAll('Cleanup cross-entity test data', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     // Delete all created entities
     if (tableFQN) {
-      await apiContext.delete(`/api/v1/tables/name/${tableFQN}?hardDelete=true`).catch(() => {});
+      await apiContext
+        .delete(`/api/v1/tables/name/${tableFQN}?hardDelete=true`)
+        .catch(() => {});
     }
     if (topicFQN) {
-      await apiContext.delete(`/api/v1/topics/name/${topicFQN}?hardDelete=true`).catch(() => {});
+      await apiContext
+        .delete(`/api/v1/topics/name/${topicFQN}?hardDelete=true`)
+        .catch(() => {});
     }
     if (containerFQN) {
-      await apiContext.delete(`/api/v1/containers/name/${containerFQN}?hardDelete=true`).catch(() => {});
+      await apiContext
+        .delete(`/api/v1/containers/name/${containerFQN}?hardDelete=true`)
+        .catch(() => {});
     }
     if (searchIndexFQN) {
-      await apiContext.delete(`/api/v1/searchIndexes/name/${searchIndexFQN}?hardDelete=true`).catch(() => {});
+      await apiContext
+        .delete(`/api/v1/searchIndexes/name/${searchIndexFQN}?hardDelete=true`)
+        .catch(() => {});
     }
     if (dashboardDataModelFQN) {
-      await apiContext.delete(`/api/v1/dashboard/datamodels/name/${dashboardDataModelFQN}?hardDelete=true`).catch(() => {});
+      await apiContext
+        .delete(
+          `/api/v1/dashboard/datamodels/name/${dashboardDataModelFQN}?hardDelete=true`
+        )
+        .catch(() => {});
     }
 
     // Delete services
     if (serviceName) {
-      await apiContext.delete(`/api/v1/services/databaseServices/name/${serviceName}?hardDelete=true&recursive=true`).catch(() => {});
+      await apiContext
+        .delete(
+          `/api/v1/services/databaseServices/name/${serviceName}?hardDelete=true&recursive=true`
+        )
+        .catch(() => {});
     }
     if (messagingServiceName) {
-      await apiContext.delete(`/api/v1/services/messagingServices/name/${messagingServiceName}?hardDelete=true&recursive=true`).catch(() => {});
+      await apiContext
+        .delete(
+          `/api/v1/services/messagingServices/name/${messagingServiceName}?hardDelete=true&recursive=true`
+        )
+        .catch(() => {});
     }
     if (storageServiceName) {
-      await apiContext.delete(`/api/v1/services/storageServices/name/${storageServiceName}?hardDelete=true&recursive=true`).catch(() => {});
+      await apiContext
+        .delete(
+          `/api/v1/services/storageServices/name/${storageServiceName}?hardDelete=true&recursive=true`
+        )
+        .catch(() => {});
     }
     if (searchServiceName) {
-      await apiContext.delete(`/api/v1/services/searchServices/name/${searchServiceName}?hardDelete=true&recursive=true`).catch(() => {});
+      await apiContext
+        .delete(
+          `/api/v1/services/searchServices/name/${searchServiceName}?hardDelete=true&recursive=true`
+        )
+        .catch(() => {});
     }
     if (dashboardServiceName) {
-      await apiContext.delete(`/api/v1/services/dashboardServices/name/${dashboardServiceName}?hardDelete=true&recursive=true`).catch(() => {});
+      await apiContext
+        .delete(
+          `/api/v1/services/dashboardServices/name/${dashboardServiceName}?hardDelete=true&recursive=true`
+        )
+        .catch(() => {});
     }
 
     await afterAction();
   });
 
-  test('should show column appearing in multiple entity types', async ({ page }) => {
+  test('should show column appearing in multiple entity types', async ({
+    page,
+  }) => {
     test.setTimeout(120000); // Extended timeout for search index
 
     await redirectToHomePage(page);
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Use retry helper to wait for search index to index the new entities
     const found = await searchColumnWithRetry(page, sharedColumnName, 10, 5000);
@@ -2093,12 +2120,13 @@ test.describe('Column Bulk Operations - Cross Entity Type Bulk Update', () => {
     }
   });
 
-  test('should update column across all entity types via bulk update', async ({ page }) => {
+  test('should update column across all entity types via bulk update', async ({
+    page,
+  }) => {
     test.setTimeout(120000); // Extended timeout for search index
 
     await redirectToHomePage(page);
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Use retry helper to wait for search index to index the new entities
     const found = await searchColumnWithRetry(page, sharedColumnName, 10, 5000);
@@ -2111,7 +2139,10 @@ test.describe('Column Bulk Operations - Cross Entity Type Bulk Update', () => {
     }
 
     // Select the column
-    const firstCheckbox = page.locator('tbody tr').first().locator('input[type="checkbox"]');
+    const firstCheckbox = page
+      .locator('tbody tr')
+      .first()
+      .locator('input[type="checkbox"]');
 
     if ((await firstCheckbox.count()) > 0) {
       await firstCheckbox.click();
@@ -2120,7 +2151,7 @@ test.describe('Column Bulk Operations - Cross Entity Type Bulk Update', () => {
       const editButton = page.getByRole('button', { name: /edit/i }).first();
       await editButton.click();
 
-      const drawer = page.locator('.ant-drawer');
+      const drawer = page.getByTestId('column-bulk-operations-form-drawer');
       await expect(drawer).toBeVisible();
 
       const uniqueDescription = `Cross-entity bulk update test ${uuid()}`;
@@ -2184,8 +2215,10 @@ test.describe('Column Bulk Operations - Cross Entity Type Bulk Update', () => {
         if (fqn.includes(serviceName)) entityTypesFound.add('table');
         if (fqn.includes(messagingServiceName)) entityTypesFound.add('topic');
         if (fqn.includes(storageServiceName)) entityTypesFound.add('container');
-        if (fqn.includes(searchServiceName)) entityTypesFound.add('searchIndex');
-        if (fqn.includes(dashboardServiceName)) entityTypesFound.add('dashboardDataModel');
+        if (fqn.includes(searchServiceName))
+          entityTypesFound.add('searchIndex');
+        if (fqn.includes(dashboardServiceName))
+          entityTypesFound.add('dashboardDataModel');
       }
 
       // Should have updates for multiple entity types
@@ -2250,7 +2283,8 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
           {
             name: parentColumnName,
             dataType: 'STRUCT',
-            dataTypeDisplay: 'struct<name:string,age:int,address:struct<city:string,zip:string>>',
+            dataTypeDisplay:
+              'struct<name:string,age:int,address:struct<city:string,zip:string>>',
             description: 'Parent STRUCT column',
             children: [
               {
@@ -2301,11 +2335,17 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     if (tableFQN) {
-      await apiContext.delete(`/api/v1/tables/name/${tableFQN}?hardDelete=true`).catch(() => {});
+      await apiContext
+        .delete(`/api/v1/tables/name/${tableFQN}?hardDelete=true`)
+        .catch(() => {});
     }
 
     if (serviceName) {
-      await apiContext.delete(`/api/v1/services/databaseServices/name/${serviceName}?hardDelete=true&recursive=true`).catch(() => {});
+      await apiContext
+        .delete(
+          `/api/v1/services/databaseServices/name/${serviceName}?hardDelete=true&recursive=true`
+        )
+        .catch(() => {});
     }
 
     await afterAction();
@@ -2315,8 +2355,7 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
     test.setTimeout(120000); // Extended timeout for search index
 
     await redirectToHomePage(page);
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Use retry helper to wait for search index
     const found = await searchColumnWithRetry(page, parentColumnName, 10, 5000);
@@ -2334,7 +2373,9 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
 
     // STRUCT columns should have an expand button for nested fields
     // Look for expand button or STRUCT indicator
-    const expandButton = structRow.locator('button.expand-button, .anticon-right');
+    const expandButton = structRow.locator(
+      'button.expand-button, .anticon-right'
+    );
 
     // If there's an expand button, the STRUCT column is properly displayed
     if ((await expandButton.count()) > 0) {
@@ -2342,12 +2383,13 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
     }
   });
 
-  test('should expand STRUCT column to show nested fields', async ({ page }) => {
+  test('should expand STRUCT column to show nested fields', async ({
+    page,
+  }) => {
     test.setTimeout(120000); // Extended timeout for search index
 
     await redirectToHomePage(page);
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Use retry helper to wait for search index
     const found = await searchColumnWithRetry(page, parentColumnName, 10, 5000);
@@ -2360,7 +2402,11 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
     }
 
     // Find expand button for STRUCT
-    const expandButton = page.locator('tbody tr').first().locator('button.expand-button, .anticon-right').first();
+    const expandButton = page
+      .locator('tbody tr')
+      .first()
+      .locator('button.expand-button, .anticon-right')
+      .first();
 
     if ((await expandButton.count()) > 0) {
       const initialRowCount = await page.locator('tbody tr').count();
@@ -2390,8 +2436,7 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
     test.setTimeout(120000); // Extended timeout for search index
 
     await redirectToHomePage(page);
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Use retry helper to wait for search index
     const found = await searchColumnWithRetry(page, parentColumnName, 10, 5000);
@@ -2404,7 +2449,11 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
     }
 
     // Expand to show nested fields
-    const expandButton = page.locator('tbody tr').first().locator('button.expand-button, .anticon-right').first();
+    const expandButton = page
+      .locator('tbody tr')
+      .first()
+      .locator('button.expand-button, .anticon-right')
+      .first();
 
     if ((await expandButton.count()) > 0) {
       await expandButton.click();
@@ -2425,7 +2474,7 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
         // Open edit drawer
         await editButton.click();
 
-        const drawer = page.locator('.ant-drawer');
+        const drawer = page.getByTestId('column-bulk-operations-form-drawer');
         await expect(drawer).toBeVisible();
 
         // Verify drawer shows the nested field
@@ -2437,12 +2486,13 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
     }
   });
 
-  test('should show nested levels with proper indentation', async ({ page }) => {
+  test('should show nested levels with proper indentation', async ({
+    page,
+  }) => {
     test.setTimeout(120000); // Extended timeout for search index
 
     await redirectToHomePage(page);
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Use retry helper to wait for search index
     const found = await searchColumnWithRetry(page, parentColumnName, 10, 5000);
@@ -2455,7 +2505,11 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
     }
 
     // Expand STRUCT column
-    const expandButton = page.locator('tbody tr').first().locator('button.expand-button, .anticon-right').first();
+    const expandButton = page
+      .locator('tbody tr')
+      .first()
+      .locator('button.expand-button, .anticon-right')
+      .first();
 
     if ((await expandButton.count()) > 0) {
       await expandButton.click();
@@ -2478,13 +2532,15 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
 // ============================================================================
 
 test.describe('Column Bulk Operations - Error Handling', () => {
-  test('should maintain page stability during interactions', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+  test('should maintain page stability during interactions', async ({
+    page,
+  }) => {
+    await visitColumnBulkOperationsPage(page);
 
     // Verify page loads correctly
-    const statsCard = page.locator('.stat-card, [data-testid="stats-card"]').first();
+    const statsCard = page
+      .locator('.stat-card, [data-testid="stats-card"]')
+      .first();
     await expect(statsCard).toBeVisible();
 
     // Verify table loads
@@ -2504,12 +2560,13 @@ test.describe('Column Bulk Operations - Error Handling', () => {
   });
 
   test('should handle network timeout gracefully', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+    await visitColumnBulkOperationsPage(page);
 
     // Select a column
-    const firstCheckbox = page.locator('tbody tr').first().locator('input[type="checkbox"]');
+    const firstCheckbox = page
+      .locator('tbody tr')
+      .first()
+      .locator('input[type="checkbox"]');
 
     if ((await firstCheckbox.count()) > 0) {
       await firstCheckbox.click();
@@ -2537,7 +2594,9 @@ test.describe('Column Bulk Operations - Error Handling', () => {
       await updateButton.click();
 
       // Update button should show loading state
-      const loadingIndicator = updateButton.locator('.ant-btn-loading-icon, .MuiCircularProgress-root');
+      const loadingIndicator = updateButton.locator(
+        '.ant-btn-loading-icon, .MuiCircularProgress-root'
+      );
       // Just verify we can interact - the actual timeout handling depends on implementation
       await page.waitForTimeout(1000);
     }
@@ -2546,9 +2605,7 @@ test.describe('Column Bulk Operations - Error Handling', () => {
 
 test.describe('Column Bulk Operations - Tag Operations', () => {
   test('should be able to remove existing tags', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+    await visitColumnBulkOperationsPage(page);
 
     // Find and select a column that has tags
     const rows = page.locator('tbody tr');
@@ -2557,7 +2614,8 @@ test.describe('Column Bulk Operations - Tag Operations', () => {
     for (let i = 0; i < Math.min(rowCount, 10); i++) {
       const row = rows.nth(i);
       const tagCell = row.locator('[data-testid="column-tags-cell"]');
-      const hasTags = (await tagCell.locator('.ant-tag, .grid-tag').count()) > 0;
+      const hasTags =
+        (await tagCell.locator('.ant-tag, .grid-tag').count()) > 0;
 
       if (hasTags) {
         // Select this row
@@ -2573,12 +2631,16 @@ test.describe('Column Bulk Operations - Tag Operations', () => {
 
         // Find tags in the drawer
         const tagsField = page.locator('[data-testid="tags-field"]');
-        const existingTags = tagsField.locator('.ant-tag, [data-testid*="selected-tag"]');
+        const existingTags = tagsField.locator(
+          '.ant-tag, [data-testid*="selected-tag"]'
+        );
         const initialTagCount = await existingTags.count();
 
         if (initialTagCount > 0) {
           // Try to remove a tag by clicking the close button
-          const closeButton = existingTags.first().locator('[data-testid="remove-tags"], .anticon-close');
+          const closeButton = existingTags
+            .first()
+            .locator('[data-testid="remove-tags"], .anticon-close');
 
           if ((await closeButton.count()) > 0) {
             await closeButton.click();
@@ -2598,12 +2660,13 @@ test.describe('Column Bulk Operations - Tag Operations', () => {
   });
 
   test('should be able to add multiple tags at once', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+    await visitColumnBulkOperationsPage(page);
 
     // Select a column
-    const firstCheckbox = page.locator('tbody tr').first().locator('input[type="checkbox"]');
+    const firstCheckbox = page
+      .locator('tbody tr')
+      .first()
+      .locator('input[type="checkbox"]');
 
     if ((await firstCheckbox.count()) > 0) {
       await firstCheckbox.click();
@@ -2617,7 +2680,9 @@ test.describe('Column Bulk Operations - Tag Operations', () => {
 
       // Find the tags selector
       const tagsField = page.locator('[data-testid="tags-field"]');
-      const tagSelector = tagsField.locator('[data-testid="tag-selector"], .ant-select');
+      const tagSelector = tagsField.locator(
+        '[data-testid="tag-selector"], .ant-select'
+      );
 
       if ((await tagSelector.count()) > 0) {
         // Click to open dropdown
@@ -2625,7 +2690,9 @@ test.describe('Column Bulk Operations - Tag Operations', () => {
         await page.waitForTimeout(500);
 
         // Try to select multiple tags from dropdown
-        const tagOptions = page.locator('[data-testid^="tag-"], .ant-select-item-option');
+        const tagOptions = page.locator(
+          '[data-testid^="tag-"], .ant-select-item-option'
+        );
         const optionCount = await tagOptions.count();
 
         if (optionCount >= 2) {
@@ -2647,12 +2714,13 @@ test.describe('Column Bulk Operations - Tag Operations', () => {
   });
 
   test('should be able to clear all tags from a column', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+    await visitColumnBulkOperationsPage(page);
 
     // Select a column
-    const firstCheckbox = page.locator('tbody tr').first().locator('input[type="checkbox"]');
+    const firstCheckbox = page
+      .locator('tbody tr')
+      .first()
+      .locator('input[type="checkbox"]');
 
     if ((await firstCheckbox.count()) > 0) {
       await firstCheckbox.click();
@@ -2666,13 +2734,17 @@ test.describe('Column Bulk Operations - Tag Operations', () => {
 
       // Find tags in the drawer
       const tagsField = page.locator('[data-testid="tags-field"]');
-      const existingTags = tagsField.locator('.ant-tag, [data-testid*="selected-tag"]');
+      const existingTags = tagsField.locator(
+        '.ant-tag, [data-testid*="selected-tag"]'
+      );
 
       // Remove all tags if any exist
       let tagCount = await existingTags.count();
 
       while (tagCount > 0) {
-        const closeButton = existingTags.first().locator('[data-testid="remove-tags"], .anticon-close');
+        const closeButton = existingTags
+          .first()
+          .locator('[data-testid="remove-tags"], .anticon-close');
 
         if ((await closeButton.count()) > 0) {
           await closeButton.click();
@@ -2691,12 +2763,13 @@ test.describe('Column Bulk Operations - Tag Operations', () => {
 
 test.describe('Column Bulk Operations - Keyboard Accessibility', () => {
   test('should close drawer with Escape key', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+    await visitColumnBulkOperationsPage(page);
 
     // Select a column
-    const firstCheckbox = page.locator('tbody tr').first().locator('input[type="checkbox"]');
+    const firstCheckbox = page
+      .locator('tbody tr')
+      .first()
+      .locator('input[type="checkbox"]');
 
     if ((await firstCheckbox.count()) > 0) {
       await firstCheckbox.click();
@@ -2717,12 +2790,13 @@ test.describe('Column Bulk Operations - Keyboard Accessibility', () => {
   });
 
   test('should navigate form fields with Tab key', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+    await visitColumnBulkOperationsPage(page);
 
     // Select a column
-    const firstCheckbox = page.locator('tbody tr').first().locator('input[type="checkbox"]');
+    const firstCheckbox = page
+      .locator('tbody tr')
+      .first()
+      .locator('input[type="checkbox"]');
 
     if ((await firstCheckbox.count()) > 0) {
       await firstCheckbox.click();
@@ -2743,7 +2817,10 @@ test.describe('Column Bulk Operations - Keyboard Accessibility', () => {
 
       // Verify focus has moved (active element should change)
       const activeElement = page.locator(':focus');
-      await expect(activeElement).not.toHaveAttribute('placeholder', 'Display Name');
+      await expect(activeElement).not.toHaveAttribute(
+        'placeholder',
+        'Display Name'
+      );
 
       // Close drawer
       await page.keyboard.press('Escape');
@@ -2751,12 +2828,13 @@ test.describe('Column Bulk Operations - Keyboard Accessibility', () => {
   });
 
   test('should select checkbox with Space key', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+    await visitColumnBulkOperationsPage(page);
 
     // Focus on first checkbox
-    const firstCheckbox = page.locator('tbody tr').first().locator('input[type="checkbox"]');
+    const firstCheckbox = page
+      .locator('tbody tr')
+      .first()
+      .locator('input[type="checkbox"]');
 
     if ((await firstCheckbox.count()) > 0) {
       await firstCheckbox.focus();
@@ -2777,18 +2855,21 @@ test.describe('Column Bulk Operations - Keyboard Accessibility', () => {
 
 test.describe('Column Bulk Operations - Selection Edge Cases', () => {
   test('should maintain selection after scrolling', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+    await visitColumnBulkOperationsPage(page);
 
     // Select first row
-    const firstCheckbox = page.locator('tbody tr').first().locator('input[type="checkbox"]');
+    const firstCheckbox = page
+      .locator('tbody tr')
+      .first()
+      .locator('input[type="checkbox"]');
 
     if ((await firstCheckbox.count()) > 0) {
       await firstCheckbox.click();
 
       // Scroll down in the table
-      const tableContainer = page.locator('.MuiTableContainer-root, .column-grid-wrapper');
+      const tableContainer = page.locator(
+        '.MuiTableContainer-root, .column-grid-wrapper'
+      );
 
       if ((await tableContainer.count()) > 0) {
         await tableContainer.evaluate((el) => {
@@ -2809,9 +2890,7 @@ test.describe('Column Bulk Operations - Selection Edge Cases', () => {
   });
 
   test('should allow selecting non-adjacent rows', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+    await visitColumnBulkOperationsPage(page);
 
     const rows = page.locator('tbody tr');
     const rowCount = await rows.count();
@@ -2842,11 +2921,12 @@ test.describe('Column Bulk Operations - Selection Edge Cases', () => {
   });
 
   test('should re-select same row after deselecting', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+    await visitColumnBulkOperationsPage(page);
 
-    const firstCheckbox = page.locator('tbody tr').first().locator('input[type="checkbox"]');
+    const firstCheckbox = page
+      .locator('tbody tr')
+      .first()
+      .locator('input[type="checkbox"]');
 
     if ((await firstCheckbox.count()) > 0) {
       // Select
@@ -2868,119 +2948,139 @@ test.describe('Column Bulk Operations - Selection Edge Cases', () => {
   });
 });
 
-test.describe('Column Bulk Operations - Special Characters & Long Content', () => {
-  test('should handle search with special characters', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+test.describe(
+  'Column Bulk Operations - Special Characters & Long Content',
+  () => {
+    test('should handle search with special characters', async ({ page }) => {
+      await visitColumnBulkOperationsPage(page);
 
-    const searchInput = page.getByPlaceholder('Search columns');
+      const searchInput = page.getByPlaceholder('Search columns');
 
-    // Search with special characters
-    const specialChars = ['user_id', 'user-name', 'user.email', 'user@domain'];
+      // Search with special characters
+      const specialChars = [
+        'user_id',
+        'user-name',
+        'user.email',
+        'user@domain',
+      ];
 
-    for (const query of specialChars) {
-      await searchInput.clear();
-      await searchInput.fill(query);
-      await page.waitForTimeout(1000);
+      for (const query of specialChars) {
+        await searchInput.clear();
+        await searchInput.fill(query);
+        await page.waitForTimeout(1000);
 
-      // Should not crash - page should still be functional
-      await expect(searchInput).toHaveValue(query);
-    }
-  });
-
-  test('should display long column names with truncation', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
-
-    // Check that column name cells exist and have proper styling
-    const nameCells = page.locator('[data-testid="column-name-cell"], .column-name-cell');
-
-    if ((await nameCells.count()) > 0) {
-      // Cells should have overflow handling
-      const firstCell = nameCells.first();
-      await expect(firstCell).toBeVisible();
-
-      // Cell should have text content
-      const text = await firstCell.textContent();
-      expect(text).toBeTruthy();
-    }
-  });
-
-  test('should allow entering long description in edit drawer', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
-
-    const firstCheckbox = page.locator('tbody tr').first().locator('input[type="checkbox"]');
-
-    if ((await firstCheckbox.count()) > 0) {
-      await firstCheckbox.click();
-
-      // Open edit drawer
-      const editButton = page.getByRole('button', { name: /edit/i }).first();
-      await editButton.click();
-
-      const drawerContent = page.locator('[data-testid="drawer-content"]');
-      await expect(drawerContent).toBeVisible();
-
-      // Find description editor
-      const descriptionField = page.locator('[data-testid="description-field"]');
-      const editor = descriptionField.locator('.toce-editor, [contenteditable="true"], textarea');
-
-      if ((await editor.count()) > 0) {
-        // Enter a long description
-        const longDescription = 'A'.repeat(500);
-        await editor.first().fill(longDescription);
-        await page.waitForTimeout(300);
-
-        // Should accept the long text without error
-        await expect(editor.first()).toBeVisible();
+        // Should not crash - page should still be functional
+        await expect(searchInput).toHaveValue(query);
       }
+    });
 
-      // Close drawer
-      await page.keyboard.press('Escape');
-    }
-  });
+    test('should display long column names with truncation', async ({
+      page,
+    }) => {
+      await visitColumnBulkOperationsPage(page);
 
-  test('should handle display name with special characters', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+      // Check that column name cells exist and have proper styling
+      const nameCells = page.locator(
+        '[data-testid="column-name-cell"], .column-name-cell'
+      );
 
-    const firstCheckbox = page.locator('tbody tr').first().locator('input[type="checkbox"]');
+      if ((await nameCells.count()) > 0) {
+        // Cells should have overflow handling
+        const firstCell = nameCells.first();
+        await expect(firstCell).toBeVisible();
 
-    if ((await firstCheckbox.count()) > 0) {
-      await firstCheckbox.click();
+        // Cell should have text content
+        const text = await firstCell.textContent();
+        expect(text).toBeTruthy();
+      }
+    });
 
-      // Open edit drawer
-      const editButton = page.getByRole('button', { name: /edit/i }).first();
-      await editButton.click();
+    test('should allow entering long description in edit drawer', async ({
+      page,
+    }) => {
+      await visitColumnBulkOperationsPage(page);
 
-      const drawerContent = page.locator('[data-testid="drawer-content"]');
-      await expect(drawerContent).toBeVisible();
+      const firstCheckbox = page
+        .locator('tbody tr')
+        .first()
+        .locator('input[type="checkbox"]');
 
-      // Enter display name with special characters
-      const displayNameInput = page.getByPlaceholder('Display Name');
-      const specialName = 'Test <Name> & "Quotes" © ™';
-      await displayNameInput.fill(specialName);
+      if ((await firstCheckbox.count()) > 0) {
+        await firstCheckbox.click();
 
-      // Should accept the input
-      await expect(displayNameInput).toHaveValue(specialName);
+        // Open edit drawer
+        const editButton = page.getByRole('button', { name: /edit/i }).first();
+        await editButton.click();
 
-      // Close drawer
-      await page.keyboard.press('Escape');
-    }
-  });
-});
+        const drawerContent = page.locator('[data-testid="drawer-content"]');
+        await expect(drawerContent).toBeVisible();
+
+        // Find description editor
+        const descriptionField = page.locator(
+          '[data-testid="description-field"]'
+        );
+        const editor = descriptionField.locator(
+          '.toce-editor, [contenteditable="true"], textarea'
+        );
+
+        if ((await editor.count()) > 0) {
+          // Enter a long description
+          const longDescription = 'A'.repeat(500);
+          await editor.first().fill(longDescription);
+          await page.waitForTimeout(300);
+
+          // Should accept the long text without error
+          await expect(editor.first()).toBeVisible();
+        }
+
+        // Close drawer
+        await page.keyboard.press('Escape');
+      }
+    });
+
+    test('should handle display name with special characters', async ({
+      page,
+    }) => {
+      await visitColumnBulkOperationsPage(page);
+
+      const firstCheckbox = page
+        .locator('tbody tr')
+        .first()
+        .locator('input[type="checkbox"]');
+
+      if ((await firstCheckbox.count()) > 0) {
+        await firstCheckbox.click();
+
+        // Open edit drawer
+        const editButton = page.getByRole('button', { name: /edit/i }).first();
+        await editButton.click();
+
+        const drawerContent = page.locator('[data-testid="drawer-content"]');
+        await expect(drawerContent).toBeVisible();
+
+        // Enter display name with special characters
+        const displayNameInput = page.getByPlaceholder('Display Name');
+        const specialName = 'Test <Name> & "Quotes" © ™';
+        await displayNameInput.fill(specialName);
+
+        // Should accept the input
+        await expect(displayNameInput).toHaveValue(specialName);
+
+        // Close drawer
+        await page.keyboard.press('Escape');
+      }
+    });
+  }
+);
 
 test.describe('Column Bulk Operations - Async Job Status', () => {
   test('should show loading state during update', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+    await visitColumnBulkOperationsPage(page);
 
-    const firstCheckbox = page.locator('tbody tr').first().locator('input[type="checkbox"]');
+    const firstCheckbox = page
+      .locator('tbody tr')
+      .first()
+      .locator('input[type="checkbox"]');
 
     if ((await firstCheckbox.count()) > 0) {
       await firstCheckbox.click();
@@ -3007,7 +3107,9 @@ test.describe('Column Bulk Operations - Async Job Status', () => {
       await updateButton.click();
 
       // Should show loading indicator on button
-      const loadingButton = updateButton.locator('.ant-btn-loading-icon, .MuiCircularProgress-root, .ant-spin');
+      const loadingButton = updateButton.locator(
+        '.ant-btn-loading-icon, .MuiCircularProgress-root, .ant-spin'
+      );
 
       // Button should be in loading state or disabled
       const isLoading =
@@ -3022,9 +3124,7 @@ test.describe('Column Bulk Operations - Async Job Status', () => {
   });
 
   test('should allow selecting and editing columns', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+    await visitColumnBulkOperationsPage(page);
 
     const rows = page.locator('tbody tr');
     const rowCount = await rows.count();
@@ -3045,7 +3145,7 @@ test.describe('Column Bulk Operations - Async Job Status', () => {
         await page.waitForTimeout(1000);
 
         // Drawer should open
-        const drawer = page.locator('.ant-drawer');
+        const drawer = page.getByTestId('column-bulk-operations-form-drawer');
         if ((await drawer.count()) > 0) {
           await expect(drawer).toBeVisible({ timeout: 10000 });
 
@@ -3060,11 +3160,12 @@ test.describe('Column Bulk Operations - Async Job Status', () => {
 
 test.describe('Column Bulk Operations - Empty/Edge Values', () => {
   test('should allow clearing display name', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+    await visitColumnBulkOperationsPage(page);
 
-    const firstCheckbox = page.locator('tbody tr').first().locator('input[type="checkbox"]');
+    const firstCheckbox = page
+      .locator('tbody tr')
+      .first()
+      .locator('input[type="checkbox"]');
 
     if ((await firstCheckbox.count()) > 0) {
       await firstCheckbox.click();
@@ -3089,11 +3190,12 @@ test.describe('Column Bulk Operations - Empty/Edge Values', () => {
   });
 
   test('should allow clearing description', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+    await visitColumnBulkOperationsPage(page);
 
-    const firstCheckbox = page.locator('tbody tr').first().locator('input[type="checkbox"]');
+    const firstCheckbox = page
+      .locator('tbody tr')
+      .first()
+      .locator('input[type="checkbox"]');
 
     if ((await firstCheckbox.count()) > 0) {
       await firstCheckbox.click();
@@ -3106,8 +3208,12 @@ test.describe('Column Bulk Operations - Empty/Edge Values', () => {
       await expect(drawerContent).toBeVisible();
 
       // Find description editor
-      const descriptionField = page.locator('[data-testid="description-field"]');
-      const editor = descriptionField.locator('.toce-editor, [contenteditable="true"], textarea');
+      const descriptionField = page.locator(
+        '[data-testid="description-field"]'
+      );
+      const editor = descriptionField.locator(
+        '.toce-editor, [contenteditable="true"], textarea'
+      );
 
       if ((await editor.count()) > 0) {
         // Clear description
@@ -3124,22 +3230,27 @@ test.describe('Column Bulk Operations - Empty/Edge Values', () => {
   });
 
   test('should handle column with no existing metadata', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Filter by MISSING metadata status to find columns without metadata
-    const metadataStatusButton = page.getByRole('button', { name: /metadata status/i });
+    const metadataStatusButton = page.getByRole('button', {
+      name: /metadata status/i,
+    });
     await metadataStatusButton.click();
     await page.waitForTimeout(500);
 
-    const missingOption = page.locator('[title="Missing"], [data-testid="Missing"]');
+    const missingOption = page.locator(
+      '[title="Missing"], [data-testid="Missing"]'
+    );
 
     if ((await missingOption.count()) > 0) {
       await missingOption.click();
-      await page.waitForTimeout(2000);
 
       // Select first column (should have no metadata)
-      const firstCheckbox = page.locator('tbody tr').first().locator('input[type="checkbox"]');
+      const firstCheckbox = page
+        .locator('tbody tr')
+        .first()
+        .locator('input[type="checkbox"]');
 
       if ((await firstCheckbox.count()) > 0) {
         await firstCheckbox.click();
@@ -3167,18 +3278,11 @@ test.describe('Column Bulk Operations - Empty/Edge Values', () => {
 
 test.describe('Column Bulk Operations - Browser Behavior', () => {
   test('should maintain functionality after page refresh', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
-
-    // Verify page loads with grid
-    const rows = page.locator('tbody tr');
-    const initialRowCount = await rows.count();
+    await visitColumnBulkOperationsPage(page);
 
     // Refresh page
-    await page.reload();
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+    await redirectToHomePage(page);
+    await visitColumnBulkOperationsPage(page);
 
     // Verify page still works after refresh
     const rowsAfterRefresh = page.locator('tbody tr');
@@ -3194,30 +3298,29 @@ test.describe('Column Bulk Operations - Browser Behavior', () => {
 
   test('should handle multiple visits to the page', async ({ page }) => {
     // First visit
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+    await visitColumnBulkOperationsPage(page);
 
     // Verify page loads
     const searchInput = page.getByPlaceholder('Search columns');
     await expect(searchInput).toBeVisible();
 
     // Second visit (reload)
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+    await visitColumnBulkOperationsPage(page);
 
     // Page should still be functional
     const searchInputAfter = page.getByPlaceholder('Search columns');
     await expect(searchInputAfter).toBeVisible();
   });
 
-  test('should warn before closing page with unsaved changes', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+  test('should warn before closing page with unsaved changes', async ({
+    page,
+  }) => {
+    await visitColumnBulkOperationsPage(page);
 
-    const firstCheckbox = page.locator('tbody tr').first().locator('input[type="checkbox"]');
+    const firstCheckbox = page
+      .locator('tbody tr')
+      .first()
+      .locator('input[type="checkbox"]');
 
     if ((await firstCheckbox.count()) > 0) {
       await firstCheckbox.click();
@@ -3248,13 +3351,13 @@ test.describe('Column Bulk Operations - Browser Behavior', () => {
 
 test.describe('Column Bulk Operations - Filter Edge Cases', () => {
   test('should allow interacting with filters', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+    await visitColumnBulkOperationsPage(page);
 
     // Verify filter buttons exist
     const dataTypeButton = page.getByRole('button', { name: /data type/i });
-    const metadataStatusButton = page.getByRole('button', { name: /metadata status/i });
+    const metadataStatusButton = page.getByRole('button', {
+      name: /metadata status/i,
+    });
     const assetTypeButton = page.getByRole('button', { name: /asset type/i });
 
     // At least one filter button should be visible
@@ -3262,7 +3365,9 @@ test.describe('Column Bulk Operations - Filter Edge Cases', () => {
     const metadataStatusExists = (await metadataStatusButton.count()) > 0;
     const assetTypeExists = (await assetTypeButton.count()) > 0;
 
-    expect(dataTypeExists || metadataStatusExists || assetTypeExists).toBe(true);
+    expect(dataTypeExists || metadataStatusExists || assetTypeExists).toBe(
+      true
+    );
 
     // Search should be functional
     const searchInput = page.getByPlaceholder('Search columns');
@@ -3275,9 +3380,7 @@ test.describe('Column Bulk Operations - Filter Edge Cases', () => {
   });
 
   test('should reset search filter properly', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
-    await page.waitForTimeout(2000);
+    await visitColumnBulkOperationsPage(page);
 
     // Apply search
     const searchInput = page.getByPlaceholder('Search columns');
@@ -3293,12 +3396,15 @@ test.describe('Column Bulk Operations - Filter Edge Cases', () => {
     await expect(searchInput).toHaveValue('');
   });
 
-  test('should show correct count when combining search and filters', async ({ page }) => {
-    await page.goto(COLUMN_BULK_OPERATIONS_URL);
-    await waitForPageReady(page);
+  test('should show correct count when combining search and filters', async ({
+    page,
+  }) => {
+    await visitColumnBulkOperationsPage(page);
 
     // Get initial stats
-    const statsCard = page.locator('.stat-card, [data-testid="stats-card"]').first();
+    const statsCard = page
+      .locator('.stat-card, [data-testid="stats-card"]')
+      .first();
     await expect(statsCard).toBeVisible();
 
     // Apply search
@@ -3307,11 +3413,15 @@ test.describe('Column Bulk Operations - Filter Edge Cases', () => {
     await page.waitForTimeout(1500);
 
     // Apply metadata filter
-    const metadataStatusButton = page.getByRole('button', { name: /metadata status/i });
+    const metadataStatusButton = page.getByRole('button', {
+      name: /metadata status/i,
+    });
     await metadataStatusButton.click();
     await page.waitForTimeout(300);
 
-    const option = page.locator('[title="Incomplete"], [data-testid="Incomplete"]');
+    const option = page.locator(
+      '[title="Incomplete"], [data-testid="Incomplete"]'
+    );
 
     if ((await option.count()) > 0) {
       await option.click();
@@ -3320,7 +3430,9 @@ test.describe('Column Bulk Operations - Filter Edge Cases', () => {
 
     // Grid should show results (or empty state if no matches)
     const rows = page.locator('tbody tr');
-    const emptyState = page.locator('[data-testid="no-data-placeholder"], .ant-empty');
+    const emptyState = page.locator(
+      '[data-testid="no-data-placeholder"], .ant-empty'
+    );
 
     // Either we have rows or empty state - both are valid
     const hasRows = (await rows.count()) > 0;

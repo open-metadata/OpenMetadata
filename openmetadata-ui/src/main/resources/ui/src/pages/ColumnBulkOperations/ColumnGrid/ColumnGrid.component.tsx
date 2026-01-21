@@ -1571,6 +1571,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     anchor: 'right',
     width: '40%',
     closeOnEscape: false,
+    testId: 'column-bulk-operations-form-drawer',
     header: {
       sx: DRAWER_HEADER_STYLING,
     },
