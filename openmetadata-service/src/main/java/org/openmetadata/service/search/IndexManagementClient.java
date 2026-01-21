@@ -72,6 +72,14 @@ public interface IndexManagementClient {
   void deleteIndex(String indexName);
 
   /**
+   * Delete an index with exponential backoff retry strategy.
+   * This method retries deletion if it fails due to snapshot operations or transient errors.
+   *
+   * @param indexName the name of the index to delete
+   */
+  void deleteIndexWithBackoff(String indexName);
+
+  /**
    * Add aliases to an index.
    *
    * @param indexName the name of the index

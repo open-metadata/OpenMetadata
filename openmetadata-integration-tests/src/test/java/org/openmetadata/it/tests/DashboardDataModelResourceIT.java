@@ -46,6 +46,10 @@ import org.openmetadata.sdk.models.ListResponse;
 public class DashboardDataModelResourceIT
     extends BaseEntityIT<DashboardDataModel, CreateDashboardDataModel> {
 
+  {
+    supportsLifeCycle = true;
+  }
+
   // ===================================================================
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
   // ===================================================================

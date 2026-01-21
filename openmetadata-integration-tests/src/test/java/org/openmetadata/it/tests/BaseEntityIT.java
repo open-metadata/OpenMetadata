@@ -2194,6 +2194,150 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   }
 
   /**
+   * Test: Verify lifecycle updates do NOT cause version pollution
+   * This test verifies the fix for https://github.com/open-metadata/OpenMetadata/issues/21326
+   *
+   * The bug was: Every time usage ingestion runs, it updates the lifecycle "accessed" timestamp,
+   * which caused the entity version to increment. Over time, this led to entities with
+   * extremely high version numbers (e.g., version 598.4), making the version history UI
+   * slow and potentially causing crashes.
+   *
+   * The fix: Lifecycle-only changes should NOT increment the entity version.
+   */
+  @Test
+  void patch_entityLifeCycle_noVersionPollution(TestNamespace ns) {
+    if (!supportsLifeCycle || !supportsPatch) return;
+
+    // Create entity without lifecycle
+    K createRequest = createMinimalRequest(ns);
+    T entity = createEntity(createRequest);
+    Double initialVersion = entity.getVersion();
+
+    // Add initial lifecycle with accessed timestamp
+    org.openmetadata.schema.type.AccessDetails accessed =
+        new org.openmetadata.schema.type.AccessDetails()
+            .withTimestamp(1695059900L)
+            .withAccessedBy(testUser2Ref());
+
+    org.openmetadata.schema.type.LifeCycle lifeCycle =
+        new org.openmetadata.schema.type.LifeCycle().withAccessed(accessed);
+
+    entity.setLifeCycle(lifeCycle);
+    T updated = patchEntity(entity.getId().toString(), entity);
+    Double versionAfterFirstLifeCycleUpdate = updated.getVersion();
+
+    // Verify lifecycle was set but version did not change
+    assertEquals(
+        initialVersion,
+        versionAfterFirstLifeCycleUpdate,
+        "Lifecycle-only changes should NOT increment version");
+
+    // Simulate usage run updating accessed time with a newer timestamp
+    // This is what happens when usage ingestion runs repeatedly
+    T fetched = getEntityWithFields(updated.getId().toString(), "lifeCycle");
+    org.openmetadata.schema.type.AccessDetails accessedNewer =
+        new org.openmetadata.schema.type.AccessDetails()
+            .withTimestamp(1695060000L)
+            .withAccessedBy(testUser2Ref());
+
+    org.openmetadata.schema.type.LifeCycle lifeCycleNewer =
+        new org.openmetadata.schema.type.LifeCycle().withAccessed(accessedNewer);
+
+    fetched.setLifeCycle(lifeCycleNewer);
+    T updated2 = patchEntity(fetched.getId().toString(), fetched);
+    Double versionAfterSecondLifeCycleUpdate = updated2.getVersion();
+
+    // Verify version did NOT increment for lifecycle-only change
+    assertEquals(
+        versionAfterFirstLifeCycleUpdate,
+        versionAfterSecondLifeCycleUpdate,
+        "Lifecycle-only changes should NOT increment version");
+
+    // Simulate another usage run with even newer timestamp
+    T fetched2 = getEntityWithFields(updated2.getId().toString(), "lifeCycle");
+    org.openmetadata.schema.type.AccessDetails accessedEvenNewer =
+        new org.openmetadata.schema.type.AccessDetails()
+            .withTimestamp(1695060100L)
+            .withAccessedBy(testUser2Ref());
+
+    org.openmetadata.schema.type.LifeCycle lifeCycleEvenNewer =
+        new org.openmetadata.schema.type.LifeCycle().withAccessed(accessedEvenNewer);
+
+    fetched2.setLifeCycle(lifeCycleEvenNewer);
+    T updated3 = patchEntity(fetched2.getId().toString(), fetched2);
+    Double versionAfterThirdLifeCycleUpdate = updated3.getVersion();
+
+    // Verify version still did NOT increment
+    assertEquals(
+        versionAfterSecondLifeCycleUpdate,
+        versionAfterThirdLifeCycleUpdate,
+        "Lifecycle-only changes should NOT increment version");
+
+    // Verify the lifecycle data was actually updated even though version didn't change
+    T finalEntity = getEntityWithFields(updated3.getId().toString(), "lifeCycle");
+    assertNotNull(finalEntity.getLifeCycle(), "Lifecycle should still be present");
+    assertEquals(
+        1695060100L,
+        finalEntity.getLifeCycle().getAccessed().getTimestamp(),
+        "Lifecycle accessed timestamp should be updated to latest value");
+  }
+
+  /**
+   * Test: When lifecycle AND other fields change together, version SHOULD increment
+   * This ensures that the fix for lifecycle version pollution doesn't break
+   * normal versioning when real changes occur alongside lifecycle updates.
+   */
+  @Test
+  void patch_entityLifeCycleWithOtherChanges_versionIncrements(TestNamespace ns) {
+    if (!supportsLifeCycle || !supportsPatch) return;
+
+    // Create entity without lifecycle
+    K createRequest = createMinimalRequest(ns);
+    T entity = createEntity(createRequest);
+    Double initialVersion = entity.getVersion();
+
+    // Add lifecycle AND change description at the same time
+    org.openmetadata.schema.type.AccessDetails accessed =
+        new org.openmetadata.schema.type.AccessDetails()
+            .withTimestamp(1695059900L)
+            .withAccessedBy(testUser2Ref());
+
+    org.openmetadata.schema.type.LifeCycle lifeCycle =
+        new org.openmetadata.schema.type.LifeCycle().withAccessed(accessed);
+
+    entity.setLifeCycle(lifeCycle);
+    entity.setDescription("Updated description for version test");
+    T updated = patchEntity(entity.getId().toString(), entity);
+
+    // Version SHOULD increment because description changed (not because of lifecycle)
+    assertTrue(
+        updated.getVersion() > initialVersion,
+        "Version should increment when description changes alongside lifecycle. "
+            + "Initial: "
+            + initialVersion
+            + ", After: "
+            + updated.getVersion());
+
+    // Now update ONLY lifecycle (no description change) - version should NOT increment
+    T fetched = getEntityWithFields(updated.getId().toString(), "lifeCycle");
+    Double versionAfterDescriptionChange = fetched.getVersion();
+
+    org.openmetadata.schema.type.AccessDetails accessedNewer =
+        new org.openmetadata.schema.type.AccessDetails()
+            .withTimestamp(1695060000L)
+            .withAccessedBy(testUser2Ref());
+
+    fetched.setLifeCycle(new org.openmetadata.schema.type.LifeCycle().withAccessed(accessedNewer));
+    T updated2 = patchEntity(fetched.getId().toString(), fetched);
+
+    // Version should NOT increment since only lifecycle changed
+    assertEquals(
+        versionAfterDescriptionChange,
+        updated2.getVersion(),
+        "Version should NOT increment when only lifecycle changes");
+  }
+
+  /**
    * Helper method to get entity with lifecycle field.
    * Subclasses should override getEntityWithFields to include lifecycle.
    */

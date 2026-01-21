@@ -222,7 +222,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       }
     },
     [
-      data.fullyQualifiedName,
+      data?.fullyQualifiedName,
       type,
       tab,
       navigate,
@@ -235,7 +235,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     setSelectedColumn(null);
 
     // Update URL to remove column FQN
-    if (data.fullyQualifiedName) {
+    if (data?.fullyQualifiedName) {
       const newPath = getEntityDetailsPath(type, data.fullyQualifiedName, tab);
       navigate(newPath, { replace: true });
     } else if (location.hash) {
@@ -245,7 +245,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
         { replace: true }
       );
     }
-  }, [data.fullyQualifiedName, type, tab, location, navigate]);
+  }, [data?.fullyQualifiedName, type, tab, location, navigate]);
 
   // Wrapper for onColumnFieldUpdate that updates selectedColumn after the update completes
   const handleColumnFieldUpdate = useCallback(
