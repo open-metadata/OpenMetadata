@@ -28,6 +28,9 @@ public class CheckFeedbackSubmitterIsReviewerImpl implements JavaDelegate {
 
   @Override
   public void execute(DelegateExecution execution) {
+    LOG.debug(
+        "[Process: {}] Checking if feedback submitter is reviewer",
+        execution.getProcessInstanceId());
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
     try {
       Map<String, String> inputNamespaceMap =
@@ -49,6 +52,21 @@ public class CheckFeedbackSubmitterIsReviewerImpl implements JavaDelegate {
       List<String> assignees =
           JsonUtils.readValue(assigneesJson, new TypeReference<List<String>>() {});
 
+      LOG.debug(
+          "[Process: {}] Feedback entity: {}",
+          execution.getProcessInstanceId(),
+          feedback.getEntityLink());
+      LOG.debug(
+          "[Process: {}] Feedback tag: {}", execution.getProcessInstanceId(), feedback.getTagFQN());
+      LOG.debug(
+          "[Process: {}] Feedback created by: {}",
+          execution.getProcessInstanceId(),
+          feedback.getCreatedBy());
+      LOG.debug(
+          "[Process: {}] Assignees: {}",
+          execution.getProcessInstanceId(),
+          assignees != null ? assignees.toString() : "None");
+
       boolean submitterIsReviewer = false;
 
       if (feedback.getCreatedBy() != null && assignees != null && !assignees.isEmpty()) {
@@ -57,7 +75,7 @@ public class CheckFeedbackSubmitterIsReviewerImpl implements JavaDelegate {
         for (String assigneeLink : assignees) {
           if (assigneeLink.contains(submitterFqn)) {
             submitterIsReviewer = true;
-            LOG.info(
+            LOG.debug(
                 "Feedback submitter {} is a reviewer, auto-approving for process instance {}",
                 submitterFqn,
                 execution.getProcessInstanceId());
@@ -69,9 +87,10 @@ public class CheckFeedbackSubmitterIsReviewerImpl implements JavaDelegate {
       execution.setVariable("submitterIsReviewer", submitterIsReviewer);
 
       LOG.debug(
-          "Set submitterIsReviewer={} for process instance {}",
+          "[Process: {}] ✓ Set submitterIsReviewer={}, flow will {}",
+          execution.getProcessInstanceId(),
           submitterIsReviewer,
-          execution.getProcessInstanceId());
+          submitterIsReviewer ? "AUTO-APPROVE" : "continue to assignee check");
     } catch (Exception exc) {
       LOG.error(
           String.format(

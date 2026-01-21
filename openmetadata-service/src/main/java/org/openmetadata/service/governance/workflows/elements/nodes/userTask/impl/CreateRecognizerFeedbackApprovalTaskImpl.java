@@ -48,6 +48,10 @@ public class CreateRecognizerFeedbackApprovalTaskImpl implements TaskListener {
 
   @Override
   public void notify(DelegateTask delegateTask) {
+    LOG.debug(
+        "[Process: {}] Creating RecognizerFeedback approval task, task ID: {}",
+        delegateTask.getProcessInstanceId(),
+        delegateTask.getId());
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(delegateTask);
     try {
       Map<String, String> inputNamespaceMap =
@@ -93,6 +97,11 @@ public class CreateRecognizerFeedbackApprovalTaskImpl implements TaskListener {
           createRecognizerFeedbackApprovalTask(
               tag, feedback, assignees, approvalThreshold, rejectionThreshold);
       WorkflowHandler.getInstance().setCustomTaskId(delegateTask.getId(), task.getId());
+      LOG.debug(
+          "[Process: {}] ✓ Created approval task thread ID: {}, flowable task ID: {}",
+          delegateTask.getProcessInstanceId(),
+          task.getId(),
+          delegateTask.getId());
 
       delegateTask.setVariable("approvalThreshold", approvalThreshold);
       delegateTask.setVariable("rejectionThreshold", rejectionThreshold);
@@ -150,13 +159,13 @@ public class CreateRecognizerFeedbackApprovalTaskImpl implements TaskListener {
       thread = feedRepository.getTask(about, TaskType.RecognizerFeedbackApproval, TaskStatus.Open);
       WorkflowHandler.getInstance()
           .terminateTaskProcessInstance(thread.getId(), "A Newer Process Instance is Running.");
-      LOG.info(
+      LOG.debug(
           "Open task with type [{}] for [{}] terminated to create a newer instance.",
           TaskType.RecognizerFeedbackApproval,
           about.getLinkString());
       thread = null;
     } catch (EntityNotFoundException ex) {
-      LOG.info(
+      LOG.debug(
           "Creating a new task with type [{}] for [{}]",
           TaskType.RecognizerFeedbackApproval,
           about.getLinkString());
