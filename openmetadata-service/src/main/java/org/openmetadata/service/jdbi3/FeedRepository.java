@@ -179,15 +179,43 @@ public class FeedRepository {
       this.thread = thread;
       this.about = EntityLink.parse(thread.getAbout());
       if (event.getEventType().equals(ENTITY_DELETED)) {
-        String json = (String) event.getEntity();
-        this.aboutEntity =
-            JsonUtils.readValue(json, Entity.getEntityClassFromType(event.getEntityType()));
+        // For hard delete, entity no longer exists in DB - use embedded entity from event
+        this.aboutEntity = getEntityFromEvent(event);
       } else {
-        this.aboutEntity = Entity.getEntity(about, getFields(), ALL);
+        // Try to fetch from DB for the latest state with required fields (owners, tags, etc.)
+        // Fall back to embedded entity if entity was deleted between event creation and processing
+        try {
+          this.aboutEntity = Entity.getEntity(about, getFields(), ALL);
+        } catch (EntityNotFoundException e) {
+          LOG.debug(
+              "Entity {} not found in DB, using embedded entity from ChangeEvent",
+              about.getFullyQualifiedFieldValue());
+          this.aboutEntity = getEntityFromEvent(event);
+        }
       }
       this.createdBy =
           Entity.getEntityReferenceByName(Entity.USER, thread.getCreatedBy(), NON_DELETED);
-      thread.withEntityRef(aboutEntity.getEntityReference()); // Add entity id to thread
+      if (this.aboutEntity != null) {
+        thread.withEntityRef(aboutEntity.getEntityReference());
+      }
+    }
+
+    public boolean isValid() {
+      return aboutEntity != null;
+    }
+
+    private EntityInterface getEntityFromEvent(ChangeEvent event) {
+      try {
+        String json =
+            event.getEntity() instanceof String str ? str : JsonUtils.pojoToJson(event.getEntity());
+        return JsonUtils.readValue(json, Entity.getEntityClassFromType(event.getEntityType()));
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to parse entity from ChangeEvent for {}: {}",
+            event.getEntityFullyQualifiedName(),
+            e.getMessage());
+        return null;
+      }
     }
 
     public TaskWorkflow getTaskWorkflow() {
@@ -371,6 +399,12 @@ public class FeedRepository {
   @Transaction
   public void create(Thread thread, ChangeEvent event) {
     ThreadContext threadContext = getThreadContext(thread, event);
+    if (!threadContext.isValid()) {
+      LOG.debug(
+          "Skipping feed creation for {} - entity no longer available",
+          event.getEntityFullyQualifiedName());
+      return;
+    }
     createThread(threadContext);
   }
 

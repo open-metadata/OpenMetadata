@@ -593,6 +593,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public CsvImportResult importCsv(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Database", schema = @Schema(type = "string"))
           @PathParam("name")
@@ -610,7 +611,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           boolean recursive,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun, recursive);
+    return importCsvInternal(uriInfo, securityContext, name, csv, dryRun, recursive);
   }
 
   @PUT
@@ -633,6 +634,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public Response importCsvAsync(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Database", schema = @Schema(type = "string"))
           @PathParam("name")
@@ -649,7 +651,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           @QueryParam("recursive")
           boolean recursive,
       String csv) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun, recursive);
+    return importCsvInternalAsync(uriInfo, securityContext, name, csv, dryRun, recursive);
   }
 
   @PUT
