@@ -22,11 +22,13 @@ import static org.openmetadata.csv.CsvUtil.addOwners;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.service.Entity.DIRECTORY;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
+import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.FILE;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
@@ -37,15 +39,18 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.data.File;
 import org.openmetadata.schema.entity.services.DriveService;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FileType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.drives.FileResource;
@@ -55,14 +60,19 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class FileRepository extends EntityRepository<File> {
+  public static final String COLUMN_FIELD = "columns";
+  public static final String FILE_SAMPLE_DATA_EXTENSION = "file.sampleData";
+  static final String PATCH_FIELDS = "columns";
+  static final String UPDATE_FIELDS = "columns";
+
   public FileRepository() {
     super(
         FileResource.COLLECTION_PATH,
         Entity.FILE,
         File.class,
         Entity.getCollectionDAO().fileDAO(),
-        "",
-        "");
+        PATCH_FIELDS,
+        UPDATE_FIELDS);
     supportsSearch = true;
   }
 
@@ -111,8 +121,15 @@ public class FileRepository extends EntityRepository<File> {
 
   @Override
   public void storeEntity(File file, boolean update) {
-    // Store the entity
+    // Don't store column tags as JSON but build it on the fly based on relationships
+    List<Column> columnsWithTags = file.getColumns();
+    file.setColumns(ColumnUtil.cloneWithoutTags(columnsWithTags));
+    if (file.getColumns() != null) {
+      file.getColumns().forEach(column -> column.setTags(null));
+    }
     store(file, update);
+    // Restore columns with tags
+    file.withColumns(columnsWithTags);
   }
 
   @Override
@@ -149,12 +166,38 @@ public class FileRepository extends EntityRepository<File> {
   @Override
   public void clearFields(File file, EntityUtil.Fields fields) {
     file.withUsageSummary(fields.contains("usageSummary") ? file.getUsageSummary() : null);
+    file.withColumns(fields.contains(COLUMN_FIELD) ? file.getColumns() : null);
+    file.withSampleData(fields.contains("sampleData") ? file.getSampleData() : null);
   }
 
   @Override
   public void setFields(File file, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     file.withService(getService(file));
     file.withDirectory(getDirectory(file));
+    if (fields.contains(COLUMN_FIELD) && file.getColumns() != null) {
+      ColumnUtil.setColumnFQN(file.getFullyQualifiedName(), file.getColumns());
+      Entity.populateEntityFieldTags(
+          entityType, file.getColumns(), file.getFullyQualifiedName(), fields.contains(FIELD_TAGS));
+    }
+    if (fields.contains("sampleData")) {
+      file.withSampleData(getSampleData(file));
+    }
+  }
+
+  private TableData getSampleData(File file) {
+    return JsonUtils.readValue(
+        daoCollection.entityExtensionDAO().getExtension(file.getId(), FILE_SAMPLE_DATA_EXTENSION),
+        TableData.class);
+  }
+
+  @Override
+  public void applyTags(File file) {
+    // Add file level tags by adding tag to file relationship
+    super.applyTags(file);
+    // Apply tags to columns if present
+    if (file.getColumns() != null) {
+      applyColumnTags(file.getColumns());
+    }
   }
 
   @Override
@@ -174,6 +217,67 @@ public class FileRepository extends EntityRepository<File> {
 
   private EntityReference getService(File file) {
     return getFromEntityRef(file.getId(), Relationship.CONTAINS, Entity.DRIVE_SERVICE, true);
+  }
+
+  @Transaction
+  public File addSampleData(UUID fileId, TableData tableData) {
+    File file = find(fileId, Include.NON_DELETED);
+
+    // Validate columns match if file has columns defined
+    if (file.getColumns() != null && !file.getColumns().isEmpty()) {
+      for (String columnName : tableData.getColumns()) {
+        validateColumn(file, columnName);
+      }
+    }
+
+    // Make sure each row has values for all columns
+    for (List<Object> row : tableData.getRows()) {
+      if (row.size() != tableData.getColumns().size()) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Number of columns is %d but row has %d sample values",
+                tableData.getColumns().size(), row.size()));
+      }
+    }
+
+    daoCollection
+        .entityExtensionDAO()
+        .insert(fileId, FILE_SAMPLE_DATA_EXTENSION, "tableData", JsonUtils.pojoToJson(tableData));
+    setFieldsInternal(file, EntityUtil.Fields.EMPTY_FIELDS);
+    return file.withSampleData(tableData);
+  }
+
+  public File getSampleData(UUID fileId) {
+    File file = find(fileId, Include.NON_DELETED);
+    TableData sampleData =
+        JsonUtils.readValue(
+            daoCollection
+                .entityExtensionDAO()
+                .getExtension(file.getId(), FILE_SAMPLE_DATA_EXTENSION),
+            TableData.class);
+    file.setSampleData(sampleData);
+    setFieldsInternal(file, EntityUtil.Fields.EMPTY_FIELDS);
+    return file;
+  }
+
+  @Transaction
+  public File deleteSampleData(UUID fileId) {
+    File file = find(fileId, Include.NON_DELETED);
+    daoCollection.entityExtensionDAO().delete(fileId, FILE_SAMPLE_DATA_EXTENSION);
+    setFieldsInternal(file, EntityUtil.Fields.EMPTY_FIELDS);
+    return file;
+  }
+
+  private void validateColumn(File file, String columnName) {
+    if (file.getColumns() == null) {
+      return;
+    }
+    boolean found =
+        file.getColumns().stream().anyMatch(column -> column.getName().equals(columnName));
+    if (!found) {
+      throw new IllegalArgumentException(
+          String.format("Column '%s' not found in file columns", columnName));
+    }
   }
 
   @Override
@@ -336,7 +440,7 @@ public class FileRepository extends EntityRepository<File> {
     }
   }
 
-  public class FileUpdater extends EntityUpdater {
+  public class FileUpdater extends ColumnEntityUpdater {
     public FileUpdater(File original, File updated, Operation operation) {
       super(original, updated, operation);
     }
@@ -344,7 +448,6 @@ public class FileRepository extends EntityRepository<File> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      recordChange("description", original.getDescription(), updated.getDescription());
       recordChange("fileType", original.getFileType(), updated.getFileType());
       recordChange("mimeType", original.getMimeType(), updated.getMimeType());
       recordChange("fileExtension", original.getFileExtension(), updated.getFileExtension());
@@ -355,6 +458,9 @@ public class FileRepository extends EntityRepository<File> {
       recordChange("downloadLink", original.getDownloadLink(), updated.getDownloadLink());
       recordChange("isShared", original.getIsShared(), updated.getIsShared());
       recordChange("fileVersion", original.getFileVersion(), updated.getFileVersion());
+      // Handle columns with proper column handling including tags
+      updateColumns(
+          COLUMN_FIELD, original.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
     }
   }
 }

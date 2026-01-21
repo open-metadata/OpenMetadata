@@ -98,7 +98,7 @@ class ColumnValuesToMatchRegexValidator(
         try:
             regex = test_params[BaseColumnValuesToMatchRegexValidator.REGEX]
 
-            dfs = self.runner if isinstance(self.runner, list) else [self.runner]
+            dfs = self.runner
             regex_count_impl = add_props(expression=regex)(Metrics.REGEX_COUNT.value)(
                 column
             ).get_pandas_computation()

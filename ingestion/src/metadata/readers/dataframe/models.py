@@ -33,7 +33,8 @@ class DatalakeColumnWrapper(BaseModel):
     ]
     # pandas.Dataframe does not have any validators
     dataframes: Annotated[
-        Optional[List[Any]], Field(None, description="List of dataframes")
+        Optional[Any],
+        Field(None, description="Iterator or list of dataframes"),
     ]
     raw_data: Annotated[
         Any,
