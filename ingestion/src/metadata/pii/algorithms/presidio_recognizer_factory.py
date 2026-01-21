@@ -123,7 +123,7 @@ class PresidioRecognizerFactory:
             supported_entity=config.supportedEntity.value,
             patterns=patterns,
             name=recognizer_config.name.root,
-            supported_language=config.supportedLanguage,
+            supported_language=config.supportedLanguage.value,
             global_regex_flags=PresidioRecognizerFactory._get_regex_flags(
                 config.regexFlags
             ),
@@ -151,7 +151,7 @@ class PresidioRecognizerFactory:
             supported_entity=config.supportedEntity.value,
             patterns=patterns,
             name=recognizer_config.name.root,
-            supported_language=config.supportedLanguage,
+            supported_language=config.supportedLanguage.value,
             global_regex_flags=PresidioRecognizerFactory._get_regex_flags(
                 config.regexFlags
             ),
@@ -184,7 +184,7 @@ class PresidioRecognizerFactory:
             supported_entity=config.supportedEntity.value,
             patterns=context_patterns,
             name=recognizer_config.name.root,
-            supported_language=config.supportedLanguage,
+            supported_language=config.supportedLanguage.value,
         )
 
     @staticmethod
@@ -219,7 +219,7 @@ class PresidioRecognizerFactory:
 
         args = {}
         if supported_language := config.supportedLanguage:
-            args["supported_language"] = supported_language
+            args["supported_language"] = supported_language.value
         if context := config.context:
             args["context"] = context
         if supported_entities := config.supportedEntities:
