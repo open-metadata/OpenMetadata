@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.TaskListener;
@@ -81,7 +82,8 @@ public class CreateRecognizerFeedbackApprovalTaskImpl implements TaskListener {
       if (approvalThresholdExpr != null) {
         String thresholdStr = (String) approvalThresholdExpr.getValue(delegateTask);
         if (thresholdStr != null && !thresholdStr.isEmpty()) {
-          approvalThreshold = Integer.parseInt(thresholdStr);
+
+          approvalThreshold = NumberUtils.toInt(thresholdStr, approvalThreshold);
         }
       }
 
@@ -89,7 +91,7 @@ public class CreateRecognizerFeedbackApprovalTaskImpl implements TaskListener {
       if (rejectionThresholdExpr != null) {
         String thresholdStr = (String) rejectionThresholdExpr.getValue(delegateTask);
         if (thresholdStr != null && !thresholdStr.isEmpty()) {
-          rejectionThreshold = Integer.parseInt(thresholdStr);
+          rejectionThreshold = NumberUtils.toInt(thresholdStr, rejectionThreshold);
         }
       }
 
@@ -126,7 +128,7 @@ public class CreateRecognizerFeedbackApprovalTaskImpl implements TaskListener {
       for (IdentityLink candidate : candidates) {
         assignees.add(getEntityReferenceFromLinkString(candidate.getUserId()));
       }
-    } else {
+    } else if (delegateTask.getAssignee() != null) {
       assignees.add(getEntityReferenceFromLinkString(delegateTask.getAssignee()));
     }
     return assignees;

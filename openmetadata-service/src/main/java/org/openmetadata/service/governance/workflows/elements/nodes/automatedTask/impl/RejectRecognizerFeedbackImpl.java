@@ -29,7 +29,7 @@ public class RejectRecognizerFeedbackImpl implements JavaDelegate {
   public void execute(DelegateExecution execution) {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
     try {
-      Map<String, Object> inputNamespaceMap =
+      Map<String, String> inputNamespaceMap =
           JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
 
       UUID feedbackId =
