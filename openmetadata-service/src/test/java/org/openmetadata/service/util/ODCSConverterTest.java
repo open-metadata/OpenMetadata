@@ -1541,24 +1541,17 @@ class ODCSConverterTest {
     DataContract contract = ODCSConverter.fromODCS(odcs, entityRef);
 
     assertNotNull(contract);
-    assertNotNull(contract.getExtension());
-    assertTrue(contract.getExtension() instanceof Map);
+    assertNotNull(contract.getOdcsQualityRules());
+    assertEquals(3, contract.getOdcsQualityRules().size());
 
-    @SuppressWarnings("unchecked")
-    Map<String, Object> extension = (Map<String, Object>) contract.getExtension();
-    assertTrue(extension.containsKey("odcsQualityRules"));
-
-    @SuppressWarnings("unchecked")
-    List<Map<String, Object>> storedRules =
-        (List<Map<String, Object>>) extension.get("odcsQualityRules");
-    assertEquals(3, storedRules.size());
-    assertEquals("email_not_null_check", storedRules.get(0).get("name"));
-    assertEquals("nullValues", storedRules.get(0).get("metric"));
-    assertEquals("email", storedRules.get(0).get("column"));
+    ODCSQualityRule storedRule1 = contract.getOdcsQualityRules().get(0);
+    assertEquals("email_not_null_check", storedRule1.getName());
+    assertEquals(ODCSQualityRule.OdcsQualityMetric.NULL_VALUES, storedRule1.getMetric());
+    assertEquals("email", storedRule1.getColumn());
   }
 
   @Test
-  void testToODCS_WithQualityRulesInExtension() {
+  void testToODCS_WithQualityRules() {
     DataContract contract = new DataContract();
     contract.setId(UUID.randomUUID());
     contract.setName("quality_export_test");
@@ -1569,25 +1562,23 @@ class ODCSConverterTest {
     entity.setType("table");
     contract.setEntity(entity);
 
-    // Store quality rules in extension
-    List<Map<String, Object>> rulesData = new ArrayList<>();
-    Map<String, Object> rule1 =
-        Map.of(
-            "type", "library",
-            "metric", "nullValues",
-            "column", "user_id",
-            "name", "user_id_not_null");
-    rulesData.add(rule1);
+    // Store quality rules in dedicated field
+    List<ODCSQualityRule> qualityRules = new ArrayList<>();
 
-    Map<String, Object> rule2 =
-        Map.of(
-            "type", "library",
-            "metric", "rowCount",
-            "name", "minimum_rows");
-    rulesData.add(rule2);
+    ODCSQualityRule rule1 = new ODCSQualityRule();
+    rule1.setType(ODCSQualityRule.Type.LIBRARY);
+    rule1.setMetric(ODCSQualityRule.OdcsQualityMetric.NULL_VALUES);
+    rule1.setColumn("user_id");
+    rule1.setName("user_id_not_null");
+    qualityRules.add(rule1);
 
-    Map<String, Object> extension = Map.of("odcsQualityRules", rulesData);
-    contract.setExtension(extension);
+    ODCSQualityRule rule2 = new ODCSQualityRule();
+    rule2.setType(ODCSQualityRule.Type.LIBRARY);
+    rule2.setMetric(ODCSQualityRule.OdcsQualityMetric.ROW_COUNT);
+    rule2.setName("minimum_rows");
+    qualityRules.add(rule2);
+
+    contract.setOdcsQualityRules(qualityRules);
 
     ODCSDataContract odcs = ODCSConverter.toODCS(contract);
 
