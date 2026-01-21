@@ -36,6 +36,11 @@ export interface EntityHierarchy {
      */
     id: string;
     /**
+     * Children of this entity are mutually exclusive. When mutually exclusive is `true` only
+     * one child can be used to label an entity.
+     */
+    mutuallyExclusive?: boolean;
+    /**
      * Preferred name for the entity hierarchy.
      */
     name: string;
@@ -69,6 +74,11 @@ export interface ChildElement {
      * Unique identifier of an entity hierarchy instance.
      */
     id: string;
+    /**
+     * Children of this entity are mutually exclusive. When mutually exclusive is `true` only
+     * one child can be used to label an entity.
+     */
+    mutuallyExclusive?: boolean;
     /**
      * Preferred name for the entity hierarchy.
      */
