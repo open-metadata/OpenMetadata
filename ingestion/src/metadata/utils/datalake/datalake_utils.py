@@ -17,6 +17,7 @@ import ast
 import json
 import random
 import traceback
+from collections.abc import Iterator
 from typing import Any, Dict, List, Optional, Union, cast
 
 from metadata.generated.schema.entity.data.table import Column, DataType
@@ -38,7 +39,7 @@ def fetch_dataframe(
     file_fqn: DatalakeTableSchemaWrapper,
     fetch_raw_data: bool = False,
     **kwargs,
-) -> Optional[List["DataFrame"]]:
+) -> Optional[Iterator["DataFrame"]]:
     """
     Method to get dataframe generator for profiling.
     Returns a generator that yields DataFrame chunks.
