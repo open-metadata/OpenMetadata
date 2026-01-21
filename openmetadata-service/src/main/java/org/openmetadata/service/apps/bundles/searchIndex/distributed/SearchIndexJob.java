@@ -43,6 +43,12 @@ public class SearchIndexJob {
   /** Prefix for staged indices during recreation */
   private String targetIndexPrefix;
 
+  /**
+   * Mapping of entity type to staged index name. Used during index recreation to allow participant
+   * servers to write to the correct staged indices.
+   */
+  private Map<String, String> stagedIndexMapping;
+
   /** Total records across all partitions */
   private long totalRecords;
 

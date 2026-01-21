@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS search_index_job (
     status VARCHAR(32) NOT NULL,
     jobConfiguration JSONB NOT NULL,
     targetIndexPrefix VARCHAR(255),
+    stagedIndexMapping JSONB,
     totalRecords BIGINT NOT NULL DEFAULT 0,
     processedRecords BIGINT NOT NULL DEFAULT 0,
     successRecords BIGINT NOT NULL DEFAULT 0,

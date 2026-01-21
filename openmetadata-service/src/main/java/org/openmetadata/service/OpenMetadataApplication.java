@@ -83,6 +83,7 @@ import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.McpServerProvider;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedJobParticipant;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.audit.AuditLogEventPublisher;
 import org.openmetadata.service.audit.AuditLogRepository;
@@ -1030,8 +1031,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     try {
       CollectionDAO collectionDAO = jdbi.onDemand(CollectionDAO.class);
       SearchRepository searchRepository = Entity.getSearchRepository();
-      String serverId =
-          java.net.InetAddress.getLocalHost().getHostName() + System.currentTimeMillis();
+      String serverId = ServerIdentityResolver.getInstance().getServerId();
 
       DistributedJobParticipant participant =
           new DistributedJobParticipant(collectionDAO, searchRepository, serverId, cacheConfig);

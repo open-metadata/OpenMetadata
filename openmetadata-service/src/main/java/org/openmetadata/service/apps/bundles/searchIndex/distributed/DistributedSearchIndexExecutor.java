@@ -15,6 +15,7 @@ package org.openmetadata.service.apps.bundles.searchIndex.distributed;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -761,6 +762,20 @@ public class DistributedSearchIndexExecutor {
       return null;
     }
     return coordinator.getJobWithAggregatedStats(currentJob.getId());
+  }
+
+  /**
+   * Update the staged index mapping for the current job. This mapping tells participant servers
+   * which staged index to write to for each entity type during index recreation.
+   *
+   * @param stagedIndexMapping Map of entity type to staged index name
+   */
+  public void updateStagedIndexMapping(Map<String, String> stagedIndexMapping) {
+    if (currentJob == null) {
+      LOG.warn("Cannot update staged index mapping - no current job");
+      return;
+    }
+    coordinator.updateStagedIndexMapping(currentJob.getId(), stagedIndexMapping);
   }
 
   /**

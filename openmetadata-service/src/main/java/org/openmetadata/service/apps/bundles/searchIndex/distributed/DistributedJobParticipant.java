@@ -212,8 +212,24 @@ public class DistributedJobParticipant implements Managed {
               ? job.getJobConfiguration().getBatchSize()
               : 100;
 
-      // Create partition worker
-      PartitionWorker worker = new PartitionWorker(coordinator, bulkSink, batchSize, null, false);
+      // Check if this job is doing index recreation
+      boolean recreateIndex = Boolean.TRUE.equals(job.getJobConfiguration().getRecreateIndex());
+      org.openmetadata.service.search.ReindexContext recreateContext = null;
+
+      if (recreateIndex && job.getStagedIndexMapping() != null) {
+        // Reconstruct context from job's staged index mapping
+        recreateContext =
+            org.openmetadata.service.search.ReindexContext.fromStagedIndexMapping(
+                job.getStagedIndexMapping());
+        LOG.info(
+            "Participant using staged index mapping from job {}: {}",
+            job.getId(),
+            job.getStagedIndexMapping());
+      }
+
+      // Create partition worker with recreate context if available
+      PartitionWorker worker =
+          new PartitionWorker(coordinator, bulkSink, batchSize, recreateContext, recreateIndex);
 
       int partitionsProcessed = 0;
 

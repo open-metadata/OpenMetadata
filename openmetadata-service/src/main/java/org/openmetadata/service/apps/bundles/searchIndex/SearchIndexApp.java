@@ -97,7 +97,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
   public void init(App app) {
     super.init(app);
     jobData = JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class);
-    cleanupOrphanedIndices();
   }
 
   private void cleanupOrphanedIndices() {
@@ -129,6 +128,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
       handleExecutionException(ex);
     } finally {
       finalizeJobExecution(jobExecutionContext);
+      cleanupOrphanedIndices();
     }
   }
 
@@ -178,12 +178,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
       if (Boolean.TRUE.equals(jobData.getUseDistributedIndexing())) {
         runDistributedReindexing(jobExecutionContext);
         success = jobData != null && jobData.getStatus() == EventPublisherJob.Status.COMPLETED;
-        return;
+      } else {
+        ExecutionResult result = runSingleServerReindexing(jobExecutionContext);
+        success = result.isSuccessful();
+        updateJobDataFromResult(result);
       }
-
-      ExecutionResult result = runSingleServerReindexing(jobExecutionContext);
-      success = result.isSuccessful();
-      updateJobDataFromResult(result);
     } finally {
       finalizeAllEntityReindex(success);
     }
@@ -291,6 +290,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
     if (Boolean.TRUE.equals(jobData.getRecreateIndex())) {
       recreateContext = recreateIndexHandler.reCreateIndexes(jobData.getEntities());
+      // Share staged index mapping with participant servers
+      if (recreateContext != null && !recreateContext.isEmpty()) {
+        distributedExecutor.updateStagedIndexMapping(recreateContext.getStagedIndexMapping());
+      }
     }
 
     updateJobStatus(EventPublisherJob.Status.RUNNING);

@@ -846,6 +846,21 @@ public class DistributedSearchIndexCoordinator {
   }
 
   /**
+   * Update the staged index mapping for a job. This mapping tells participant servers which staged
+   * index to write to for each entity type during index recreation.
+   *
+   * @param jobId The job ID
+   * @param stagedIndexMapping Map of entity type to staged index name
+   */
+  public void updateStagedIndexMapping(UUID jobId, Map<String, String> stagedIndexMapping) {
+    SearchIndexJobDAO jobDAO = collectionDAO.searchIndexJobDAO();
+    String mappingJson =
+        stagedIndexMapping != null ? JsonUtils.pojoToJson(stagedIndexMapping) : null;
+    jobDAO.updateStagedIndexMapping(jobId.toString(), mappingJson, System.currentTimeMillis());
+    LOG.info("Updated staged index mapping for job {}: {}", jobId, stagedIndexMapping);
+  }
+
+  /**
    * Delete a job and all its partitions.
    *
    * @param jobId The job ID
@@ -925,9 +940,18 @@ public class DistributedSearchIndexCoordinator {
         JsonUtils.readValue(record.jobConfiguration(), EventPublisherJob.class);
 
     Map<String, SearchIndexJob.EntityTypeStats> entityStats = null;
+    Map<String, String> stagedIndexMapping = null;
+
+    // Parse staged index mapping from dedicated column
+    if (record.stagedIndexMapping() != null) {
+      stagedIndexMapping = JsonUtils.readValue(record.stagedIndexMapping(), Map.class);
+    }
+
+    // Parse entity stats
     if (record.stats() != null) {
       Map<String, Object> statsMap = JsonUtils.readValue(record.stats(), Map.class);
       entityStats = new HashMap<>();
+
       for (Map.Entry<String, Object> entry : statsMap.entrySet()) {
         Map<String, Object> es = (Map<String, Object>) entry.getValue();
         entityStats.put(
@@ -951,6 +975,7 @@ public class DistributedSearchIndexCoordinator {
         .status(IndexJobStatus.valueOf(record.status()))
         .jobConfiguration(jobConfig)
         .targetIndexPrefix(record.targetIndexPrefix())
+        .stagedIndexMapping(stagedIndexMapping)
         .totalRecords(record.totalRecords())
         .processedRecords(record.processedRecords())
         .successRecords(record.successRecords())

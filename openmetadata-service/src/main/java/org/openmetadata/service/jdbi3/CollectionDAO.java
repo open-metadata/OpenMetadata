@@ -9057,6 +9057,19 @@ public interface CollectionDAO {
     @SqlQuery("SELECT id FROM search_index_job WHERE status = 'RUNNING'")
     List<String> getRunningJobIds();
 
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE search_index_job SET stagedIndexMapping = :stagedIndexMapping, updatedAt = :updatedAt WHERE id = :id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE search_index_job SET stagedIndexMapping = :stagedIndexMapping::jsonb, updatedAt = :updatedAt WHERE id = :id",
+        connectionType = POSTGRES)
+    void updateStagedIndexMapping(
+        @Bind("id") String id,
+        @Bind("stagedIndexMapping") String stagedIndexMapping,
+        @Bind("updatedAt") long updatedAt);
+
     /** Row mapper for SearchIndexJobRecord */
     class SearchIndexJobMapper implements RowMapper<SearchIndexJobRecord> {
       @Override
@@ -9066,6 +9079,7 @@ public interface CollectionDAO {
             rs.getString("status"),
             rs.getString("jobConfiguration"),
             rs.getString("targetIndexPrefix"),
+            rs.getString("stagedIndexMapping"),
             rs.getLong("totalRecords"),
             rs.getLong("processedRecords"),
             rs.getLong("successRecords"),
@@ -9088,6 +9102,7 @@ public interface CollectionDAO {
         String status,
         String jobConfiguration,
         String targetIndexPrefix,
+        String stagedIndexMapping,
         long totalRecords,
         long processedRecords,
         long successRecords,
@@ -9558,6 +9573,25 @@ public interface CollectionDAO {
         @Bind("lastHeartbeat") long lastHeartbeat,
         @Bind("expiresAt") long expiresAt);
 
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT IGNORE INTO search_reindex_lock (lockKey, jobId, serverId, acquiredAt, lastHeartbeat, expiresAt) "
+                + "VALUES (:lockKey, :jobId, :serverId, :acquiredAt, :lastHeartbeat, :expiresAt)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO search_reindex_lock (lockKey, jobId, serverId, acquiredAt, lastHeartbeat, expiresAt) "
+                + "VALUES (:lockKey, :jobId, :serverId, :acquiredAt, :lastHeartbeat, :expiresAt) "
+                + "ON CONFLICT (lockKey) DO NOTHING",
+        connectionType = POSTGRES)
+    int insertIfNotExists(
+        @Bind("lockKey") String lockKey,
+        @Bind("jobId") String jobId,
+        @Bind("serverId") String serverId,
+        @Bind("acquiredAt") long acquiredAt,
+        @Bind("lastHeartbeat") long lastHeartbeat,
+        @Bind("expiresAt") long expiresAt);
+
     @SqlUpdate(
         "UPDATE search_reindex_lock SET lastHeartbeat = :lastHeartbeat, expiresAt = :expiresAt "
             + "WHERE lockKey = :lockKey AND jobId = :jobId")
@@ -9581,31 +9615,40 @@ public interface CollectionDAO {
     int deleteExpiredLocks(@Bind("now") long now);
 
     /**
-     * Try to acquire a lock using INSERT with conflict handling. Returns true if lock was acquired.
+     * Try to acquire a lock using atomic INSERT with conflict handling. Returns true if lock was
+     * acquired.
+     *
+     * <p>Uses database-level atomicity to prevent race conditions:
+     * <ul>
+     *   <li>PostgreSQL: INSERT ... ON CONFLICT DO NOTHING
+     *   <li>MySQL: INSERT IGNORE
+     * </ul>
+     *
+     * <p>If the insert fails due to a conflict, we check if the existing lock is expired and retry
+     * once after cleaning it up.
      */
     default boolean tryAcquireLock(
         String lockKey, String jobId, String serverId, long acquiredAt, long expiresAt) {
       // First delete any expired locks
       deleteExpiredLocks(System.currentTimeMillis());
 
-      // Check if lock already exists and is not expired
+      // Atomically try to insert the lock - returns 1 if inserted, 0 if conflict
+      int inserted = insertIfNotExists(lockKey, jobId, serverId, acquiredAt, acquiredAt, expiresAt);
+      if (inserted > 0) {
+        return true; // Lock acquired successfully
+      }
+
+      // Insert failed due to conflict - check if existing lock is expired
       SearchReindexLockRecord existing = findByKey(lockKey);
-      if (existing != null && !existing.isExpired()) {
-        return false; // Lock is held by another job
-      }
-
-      // Delete stale lock if exists
-      if (existing != null) {
+      if (existing != null && existing.isExpired()) {
+        // Lock is expired, delete it and retry once
         delete(lockKey);
+        inserted = insertIfNotExists(lockKey, jobId, serverId, acquiredAt, acquiredAt, expiresAt);
+        return inserted > 0;
       }
 
-      // Try to insert new lock
-      try {
-        insert(lockKey, jobId, serverId, acquiredAt, acquiredAt, expiresAt);
-        return true;
-      } catch (Exception e) {
-        return false;
-      }
+      // Lock is held by another active job
+      return false;
     }
 
     /** Release a lock for a specific job */
