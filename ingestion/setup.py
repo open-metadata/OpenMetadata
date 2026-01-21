@@ -69,7 +69,7 @@ VERSIONS = {
     "pyiceberg": "pyiceberg==0.5.1",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "pyathena": "pyathena~=3.0",
-    "s3fs": "s3fs>=2023.12.0,<2024.3.0",
+    "s3fs": "s3fs~=2023.12.0",
     "sqlalchemy-bigquery": "sqlalchemy-bigquery~=1.15.0",
     "presidio-analyzer": "presidio-analyzer==2.2.358",
     "asammdf": "asammdf~=7.4.5",
@@ -90,6 +90,7 @@ COMMONS = {
         # python-snappy does not work well on 3.11 https://github.com/aio-libs/aiokafka/discussions/931
         # Using this as an alternative
         "cramjam~=2.7",
+        "fastavro>=1.2.0",
     },
     "hive": {
         "pure-transport==0.2.0",

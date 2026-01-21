@@ -17,7 +17,6 @@ import ast
 import json
 import random
 import traceback
-from collections.abc import Iterator
 from typing import Any, Dict, List, Optional, Union, cast
 
 from metadata.generated.schema.entity.data.table import Column, DataType
@@ -31,58 +30,6 @@ from metadata.readers.dataframe.reader_factory import SupportedTypes, get_df_rea
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
-
-
-def fetch_dataframe(
-    config_source,
-    client,
-    file_fqn: DatalakeTableSchemaWrapper,
-    fetch_raw_data: bool = False,
-    **kwargs,
-) -> Optional[Iterator["DataFrame"]]:
-    """
-    Method to get dataframe generator for profiling.
-    Returns a generator that yields DataFrame chunks.
-    """
-    # dispatch to handle fetching of data from multiple file formats (csv, tsv, json, avro and parquet)
-    key: str = file_fqn.key
-    bucket_name: str = file_fqn.bucket_name
-    try:
-        file_extension: Optional[SupportedTypes] = file_fqn.file_extension or next(
-            supported_type or None
-            for supported_type in SupportedTypes
-            if key.endswith(supported_type.value)
-        )
-        if file_extension and not key.endswith("/"):
-            df_reader = get_df_reader(
-                type_=file_extension,
-                config_source=config_source,
-                client=client,
-                separator=file_fqn.separator,
-            )
-            try:
-                df_wrapper: DatalakeColumnWrapper = df_reader.read(
-                    key=key, bucket_name=bucket_name, **kwargs
-                )
-                dataframes = df_wrapper.dataframes
-                if callable(dataframes):
-                    dataframes = dataframes()
-                if fetch_raw_data:
-                    return df_wrapper.raw_data
-                return dataframes
-            except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.error(
-                    f"Error fetching file [{bucket_name}/{key}] using "
-                    f"[{config_source.__class__.__name__}] due to: [{err}]"
-                )
-    except Exception as err:
-        logger.debug(traceback.format_exc())
-        logger.error(
-            f"Error fetching file [{bucket_name}/{key}] using [{config_source.__class__.__name__}] due to: [{err}]"
-        )
-        # Here we need to blow things up. Without the dataframe we cannot move forward
-        raise err
 
 
 def fetch_dataframe_generator(

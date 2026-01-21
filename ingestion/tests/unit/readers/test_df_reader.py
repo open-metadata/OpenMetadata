@@ -20,7 +20,7 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 )
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.readers.dataframe.reader_factory import SupportedTypes
-from metadata.utils.datalake.datalake_utils import fetch_dataframe
+from metadata.utils.datalake.datalake_utils import fetch_dataframe_first_chunk
 
 ROOT_PATH = Path(__file__).parent.parent / "resources" / "datalake"
 
@@ -34,7 +34,7 @@ class TestDataFrameReader(TestCase):
     def test_dsv_no_extension_reader(self):
         key = ROOT_PATH / "transactions_1"
 
-        df_iter = fetch_dataframe(
+        df_iter = fetch_dataframe_first_chunk(
             config_source=LocalConfig(),
             client=None,
             file_fqn=DatalakeTableSchemaWrapper(
@@ -54,7 +54,7 @@ class TestDataFrameReader(TestCase):
     def test_dsv_reader(self):
         key = ROOT_PATH / "transactions_1.csv"
 
-        df_iter = fetch_dataframe(
+        df_iter = fetch_dataframe_first_chunk(
             config_source=LocalConfig(),
             client=None,
             file_fqn=DatalakeTableSchemaWrapper(key=str(key), bucket_name="unused"),
@@ -72,7 +72,7 @@ class TestDataFrameReader(TestCase):
     def test_dsv_reader_with_separator(self):
         key = ROOT_PATH / "transactions_separator.csv"
 
-        df_iter = fetch_dataframe(
+        df_iter = fetch_dataframe_first_chunk(
             config_source=LocalConfig(),
             client=None,
             file_fqn=DatalakeTableSchemaWrapper(
@@ -92,7 +92,7 @@ class TestDataFrameReader(TestCase):
     def test_json_reader(self):
         key = ROOT_PATH / "employees.json"
 
-        df_iter = fetch_dataframe(
+        df_iter = fetch_dataframe_first_chunk(
             config_source=LocalConfig(),
             client=None,
             file_fqn=DatalakeTableSchemaWrapper(key=str(key), bucket_name="unused"),
@@ -111,7 +111,7 @@ class TestDataFrameReader(TestCase):
     def test_jsonl_reader(self):
         key = ROOT_PATH / "employees.jsonl"
 
-        df_iter = fetch_dataframe(
+        df_iter = fetch_dataframe_first_chunk(
             config_source=LocalConfig(),
             client=None,
             file_fqn=DatalakeTableSchemaWrapper(key=str(key), bucket_name="unused"),
@@ -130,7 +130,7 @@ class TestDataFrameReader(TestCase):
     def test_avro_reader(self):
         key = ROOT_PATH / "example.avro"
 
-        df_iter = fetch_dataframe(
+        df_iter = fetch_dataframe_first_chunk(
             config_source=LocalConfig(),
             client=None,
             file_fqn=DatalakeTableSchemaWrapper(key=str(key), bucket_name="unused"),
