@@ -144,53 +144,10 @@ server:
 # https://logback.qos.ch/manual/layouts.html#conversionWord
 logging:
   level: ${LOG_LEVEL:-INFO}
-  loggers:
-    org.openmetadata.service.util.OpenMetadataSetup:
-      level: INFO
-      appenders:
-        - type: console
-          logFormat: "%msg%n"
-          timeZone: UTC
-        - type: file
-          logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
-          layout:
-            type: json
-          currentLogFilename: ./logs/openmetadata-operations.log
-          archivedLogFilenamePattern: ./logs/openmetadata-operations-%d{yyyy-MM-dd}-%i.log.gz
-          archivedFileCount: 7
-          timeZone: UTC
-          maxFileSize: 50MB
   appenders:
     - type: console
-      threshold: TRACE
-      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
-      timeZone: UTC
-    - type: file
-      layout:
-        type: json
-        appendLineSeparator: true
-      filterFactories:
-        - type: audit-exclude-filter-factory
-      threshold: TRACE
-      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
-      currentLogFilename: ./logs/openmetadata.log
-      archivedLogFilenamePattern: ./logs/openmetadata-%d{yyyy-MM-dd}-%i.log.gz
-      archivedFileCount: 7
-      timeZone: UTC
-      maxFileSize: 50MB
-    - type: file
-      layout:
-        type: json
-        appendLineSeparator: true
-      filterFactories:
-        - type: audit-only-filter-factory
-      threshold: TRACE
-      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
-      currentLogFilename: ./logs/audit.log
-      archivedLogFilenamePattern: ./logs/audit-%d{yyyy-MM-dd}-%i.log.gz
-      archivedFileCount: 25
-      timeZone: UTC
-      maxFileSize: 50MB
+      threshold: INFO
+      logFormat: "[SERVER-1] %level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
 
 database:
   # the name of the JDBC driver, mysql in our case
