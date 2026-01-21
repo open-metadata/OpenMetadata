@@ -51,6 +51,53 @@ UPDATE test_definition
   SET json = JSON_SET(json, '$.enabled', true)
   WHERE json_extract(json, '$.enabled') IS NULL;
 
+-- Add updatedAt generated column to entity_extension table for efficient timestamp-based queries
+-- This supports the listEntityHistoryByTimestamp API endpoint for retrieving entity versions within a time range
+ALTER TABLE entity_extension
+  ADD COLUMN updatedAt BIGINT UNSIGNED
+  GENERATED ALWAYS AS (CAST(json_unquote(json_extract(json, '$.updatedAt')) AS UNSIGNED))
+  STORED;
+
+-- Create composite index for timestamp-based queries with cursor pagination
+-- This index supports queries that filter by updatedAt range and order by (updatedAt DESC, id DESC)
+CREATE INDEX idx_entity_extension_updated_at_id ON entity_extension(updatedAt DESC, id DESC);
+
+-- Add composite indexes on entity tables for timestamp-based history queries with cursor pagination
+CREATE INDEX idx_table_entity_updated_at_id ON table_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_database_entity_updated_at_id ON database_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_database_schema_entity_updated_at_id ON database_schema_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_dashboard_entity_updated_at_id ON dashboard_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_pipeline_entity_updated_at_id ON pipeline_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_topic_entity_updated_at_id ON topic_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_chart_entity_updated_at_id ON chart_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_ml_model_entity_updated_at_id ON ml_model_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_stored_procedure_entity_updated_at_id ON stored_procedure_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_dashboard_data_model_entity_updated_at_id ON dashboard_data_model_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_storage_container_entity_updated_at_id ON storage_container_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_search_index_entity_updated_at_id ON search_index_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_glossary_entity_updated_at_id ON glossary_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_glossary_term_entity_updated_at_id ON glossary_term_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_tag_updated_at_id ON tag(updatedAt DESC, id DESC);
+CREATE INDEX idx_classification_updated_at_id ON classification(updatedAt DESC, id DESC);
+CREATE INDEX idx_data_product_entity_updated_at_id ON data_product_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_domain_entity_updated_at_id ON domain_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_user_entity_updated_at_id ON user_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_team_entity_updated_at_id ON team_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_dbservice_entity_updated_at_id ON dbservice_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_messaging_service_entity_updated_at_id ON messaging_service_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_dashboard_service_entity_updated_at_id ON dashboard_service_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_pipeline_service_entity_updated_at_id ON pipeline_service_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_storage_service_entity_updated_at_id ON storage_service_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_mlmodel_service_entity_updated_at_id ON mlmodel_service_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_metadata_service_entity_updated_at_id ON metadata_service_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_search_service_entity_updated_at_id ON search_service_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_api_service_entity_updated_at_id ON api_service_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_ingestion_pipeline_entity_updated_at_id ON ingestion_pipeline_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_test_suite_updated_at_id ON test_suite(updatedAt DESC, id DESC);
+CREATE INDEX idx_test_case_updated_at_id ON test_case(updatedAt DESC, id DESC);
+CREATE INDEX idx_api_collection_entity_updated_at_id ON api_collection_entity(updatedAt DESC, id DESC);
+CREATE INDEX idx_api_endpoint_entity_updated_at_id ON api_endpoint_entity(updatedAt DESC, id DESC);
+
 -- Distributed Search Indexing Tables
 
 -- Table to track reindex jobs across distributed servers
