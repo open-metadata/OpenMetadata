@@ -176,6 +176,13 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
     Map<String, Object> variables;
     try {
       variables = handler.apply(event);
+
+      if (variables != null && !variables.isEmpty()) {
+        LOG.info("WorkflowEventConsumer - Triggering with signal: {}", signal);
+        Retry.decorateRunnable(
+                retry, () -> WorkflowHandler.getInstance().triggerWithSignal(signal, variables))
+            .run();
+      }
     } catch (Exception exc) {
       LOG.error("WorkflowEventConsumer - Error processing event", exc);
       String message =
@@ -186,13 +193,6 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
           CatalogExceptionMessage.eventPublisherFailedToPublish(
               GOVERNANCE_WORKFLOW_CHANGE_EVENT, exc.getMessage()),
           Pair.of(subscriptionDestination.getId(), event));
-    }
-
-    if (variables != null && !variables.isEmpty()) {
-      LOG.info("WorkflowEventConsumer - Triggering with signal: {}", signal);
-      Retry.decorateRunnable(
-              retry, () -> WorkflowHandler.getInstance().triggerWithSignal(signal, variables))
-          .run();
     }
   }
 
