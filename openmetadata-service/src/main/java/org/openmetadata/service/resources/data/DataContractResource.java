@@ -91,6 +91,7 @@ import org.openmetadata.service.util.RestUtil;
 public class DataContractResource extends EntityResource<DataContract, DataContractRepository> {
   public static final String COLLECTION_PATH = "/v1/dataContracts/";
   static final String FIELDS = "owners,reviewers,extension";
+  static final String EXPORT_FIELDS = "owners,reviewers,extension,schema,sla,security";
 
   @Override
   public DataContract addHref(UriInfo uriInfo, DataContract dataContract) {
@@ -936,8 +937,9 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam) {
+    String fields = (fieldsParam == null || fieldsParam.isEmpty()) ? EXPORT_FIELDS : fieldsParam;
     DataContract dataContract =
-        getInternal(uriInfo, securityContext, id, fieldsParam, Include.NON_DELETED);
+        getInternal(uriInfo, securityContext, id, fields, Include.NON_DELETED);
     return ODCSConverter.toODCS(dataContract);
   }
 
@@ -967,8 +969,9 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam) {
+    String fields = (fieldsParam == null || fieldsParam.isEmpty()) ? EXPORT_FIELDS : fieldsParam;
     DataContract dataContract =
-        getInternal(uriInfo, securityContext, id, fieldsParam, Include.NON_DELETED);
+        getInternal(uriInfo, securityContext, id, fields, Include.NON_DELETED);
     ODCSDataContract odcs = ODCSConverter.toODCS(dataContract);
     try {
       ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
@@ -1011,8 +1014,9 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam) {
+    String fields = (fieldsParam == null || fieldsParam.isEmpty()) ? EXPORT_FIELDS : fieldsParam;
     DataContract dataContract =
-        getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, Include.NON_DELETED);
+        getByNameInternal(uriInfo, securityContext, fqn, fields, Include.NON_DELETED);
     return ODCSConverter.toODCS(dataContract);
   }
 
@@ -1044,8 +1048,9 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam) {
+    String fields = (fieldsParam == null || fieldsParam.isEmpty()) ? EXPORT_FIELDS : fieldsParam;
     DataContract dataContract =
-        getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, Include.NON_DELETED);
+        getByNameInternal(uriInfo, securityContext, fqn, fields, Include.NON_DELETED);
     ODCSDataContract odcs = ODCSConverter.toODCS(dataContract);
     try {
       ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
@@ -1254,7 +1259,9 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       operationId = "createOrUpdateDataContractFromODCS",
       summary = "Create or update data contract from ODCS format",
       description =
-          "Create or update a data contract from Open Data Contract Standard (ODCS) v3.1.0 JSON format. When updating, performs smart merge preserving existing fields not in the import.",
+          "Create or update a data contract from Open Data Contract Standard (ODCS) v3.1.0 JSON format. "
+              + "Use mode=merge (default) to preserve existing fields not in the import. "
+              + "Use mode=replace to fully overwrite the contract while preserving ID and execution history.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1280,6 +1287,16 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           String entityType,
       @Parameter(
               description =
+                  "Import mode: 'merge' preserves existing fields, 'replace' overwrites all fields",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"merge", "replace"}))
+          @QueryParam("mode")
+          @DefaultValue("merge")
+          String mode,
+      @Parameter(
+              description =
                   "Schema object name to import (for multi-object ODCS contracts). "
                       + "If not specified, auto-selects based on entity name or uses first object.",
               schema = @Schema(type = "string"))
@@ -1288,7 +1305,10 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       @Valid ODCSDataContract odcs) {
     EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
     DataContract imported = ODCSConverter.fromODCS(odcs, entityRef, objectName);
-    DataContract dataContract = applySmartMerge(entityRef, imported);
+    DataContract dataContract =
+        "replace".equalsIgnoreCase(mode)
+            ? applyFullReplace(entityRef, imported)
+            : applySmartMerge(entityRef, imported);
     dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
     dataContract.setUpdatedAt(System.currentTimeMillis());
     return createOrUpdate(uriInfo, securityContext, dataContract);
