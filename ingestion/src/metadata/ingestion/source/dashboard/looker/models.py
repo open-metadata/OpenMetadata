@@ -36,6 +36,10 @@ class LookMlDerivedTableField(BaseModel):
         None,
         description="Defines a SQL CREATE statement",
     )
+    om_transformed_sql: Optional[str] = Field(
+        None,
+        description="Transformed SQL after template processing",
+    )
 
 
 class LookMlView(BaseModel):
@@ -43,6 +47,9 @@ class LookMlView(BaseModel):
     description: Optional[str] = Field(None, description="View description")
     sql_table_name: Optional[str] = Field(
         None, description="To track lineage with the source"
+    )
+    om_transformed_sql_table_name: Optional[str] = Field(
+        None, description="Transformed sql_table_name after template processing"
     )
     measures: List[LookMlField] = Field([], description="Measures to ingest as cols")
     dimensions: List[LookMlField] = Field(
