@@ -93,7 +93,7 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "TestCases")
 public class TestCaseResource extends EntityResource<TestCase, TestCaseRepository> {
-  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
+  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/";
   private final TestCaseMapper mapper = new TestCaseMapper();
   private final TestCaseResultMapper testCaseResultMapper = new TestCaseResultMapper();
   static final String FIELDS =
