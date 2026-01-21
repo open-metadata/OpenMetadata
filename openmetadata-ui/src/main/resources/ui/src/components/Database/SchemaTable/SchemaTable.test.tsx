@@ -326,7 +326,7 @@ describe('Test EntityTable Component', () => {
     expect(getTableColumnsByFQN).toHaveBeenCalledWith(
       MOCK_TABLE.fullyQualifiedName,
       {
-        fields: 'tags,customMetrics',
+        fields: 'tags,customMetrics,extension',
         limit: 50,
         offset: 0,
         sortBy: 'name',
@@ -351,7 +351,7 @@ describe('Test EntityTable Component', () => {
     expect(getTableColumnsByFQN).toHaveBeenCalledWith(
       MOCK_TABLE.fullyQualifiedName,
       {
-        fields: 'tags,customMetrics',
+        fields: 'tags,customMetrics,extension',
         limit: 50,
         offset: 0,
         sortBy: 'name',

@@ -268,7 +268,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             {isVersionView ? (
               <RichTextEditorPreviewerV1 markdown={getEntityName(record)} />
             ) : (
-              getEntityName(record)
+              <span className="text-link-color">{getEntityName(record)}</span>
             )}
           </span>
         </Tooltip>
@@ -467,7 +467,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           }
           defaultVisibleColumns={DEFAULT_API_ENDPOINT_SCHEMA_VISIBLE_COLUMNS}
           expandable={{
-            ...getTableExpandableConfig<Field>(),
+            ...getTableExpandableConfig<Field>(false, 'text-link-color'),
             rowExpandable: (record) => !isEmpty(record.children),
             onExpandedRowsChange: handleExpandedRowsChange,
             expandedRowKeys,

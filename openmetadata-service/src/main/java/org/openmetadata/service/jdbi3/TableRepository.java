@@ -201,6 +201,13 @@ public class TableRepository extends EntityRepository<Table> {
         column.setCustomMetrics(getCustomMetrics(table, column.getName()));
       }
     }
+    if ((fields.contains(COLUMN_FIELD)) && (fields.contains("extension"))) {
+      if (table.getColumns() != null) {
+        for (Column column : table.getColumns()) {
+          column.setExtension(getColumnExtension(table.getId(), column.getFullyQualifiedName()));
+        }
+      }
+    }
   }
 
   @Override
@@ -1615,6 +1622,19 @@ public class TableRepository extends EntityRepository<Table> {
         CustomMetric.class);
   }
 
+  private Object getColumnExtension(UUID tableId, String columnFQN) {
+    try {
+      String extensionKey = FullyQualifiedName.buildHash(columnFQN);
+      String extensionJson = daoCollection.entityExtensionDAO().getExtension(tableId, extensionKey);
+      if (extensionJson != null) {
+        return JsonUtils.readValue(extensionJson, Object.class);
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to get extension for column {}: {}", columnFQN, e.getMessage());
+    }
+    return null;
+  }
+
   private List<CustomMetric> getCustomMetrics(Table table, String columnName) {
     String extension = columnName != null ? TABLE_COLUMN_EXTENSION : TABLE_EXTENSION;
     extension = CUSTOM_METRICS_EXTENSION + extension;
@@ -1857,7 +1877,8 @@ public class TableRepository extends EntityRepository<Table> {
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       // Headers: column.fullyQualifiedName, column.displayName, column.description,
-      // column.dataTypeDisplay,column.dataType, column.arrayDataType, column.dataLength,
+      // column.dataTypeDisplay,column.dataType, column.arrayDataType,
+      // column.dataLength,
       // column.tags, column.glossaryTerms
       Table originalEntity = JsonUtils.deepCopy(table, Table.class);
       while (recordIndex < csvRecords.size()) {
@@ -1897,7 +1918,8 @@ public class TableRepository extends EntityRepository<Table> {
       } else { // Dry run don't create the entity
         repository.setFullyQualifiedName(entity);
         repository.findByNameOrNull(entity.getFullyQualifiedName(), NON_DELETED);
-        // Track the dryRun created entities, as they may be referred by other entities being
+        // Track the dryRun created entities, as they may be referred by other entities
+        // being
         // created
         // during import
         dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
@@ -1981,7 +2003,8 @@ public class TableRepository extends EntityRepository<Table> {
     @Override
     protected void addRecord(CsvFile csvFile, Table entity) {
       // Headers: column.fullyQualifiedName, column.displayName, column.description,
-      // column.dataTypeDisplay,column.dataType, column.arrayDataType, column.dataLength,
+      // column.dataTypeDisplay,column.dataType, column.arrayDataType,
+      // column.dataLength,
       // column.tags, column.glossaryTerms
       for (int i = 0; i < listOrEmpty(entity.getColumns()).size(); i++) {
         addRecord(csvFile, new ArrayList<>(), table.getColumns().get(i));
@@ -2157,6 +2180,12 @@ public class TableRepository extends EntityRepository<Table> {
     if (fieldsParam != null && fieldsParam.contains("customMetrics")) {
       for (Column column : paginatedColumns) {
         column.setCustomMetrics(getCustomMetrics(table, column.getName()));
+      }
+    }
+
+    if (fieldsParam != null && fieldsParam.contains("extension")) {
+      for (Column column : paginatedColumns) {
+        column.setExtension(getColumnExtension(table.getId(), column.getFullyQualifiedName()));
       }
     }
 
