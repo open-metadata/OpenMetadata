@@ -57,6 +57,7 @@ public class ElasticSearchBulkSink implements BulkSink {
   private final AtomicLong totalSubmitted = new AtomicLong(0);
   private final AtomicLong totalSuccess = new AtomicLong(0);
   private final AtomicLong totalFailed = new AtomicLong(0);
+  private final AtomicLong entityBuildFailures = new AtomicLong(0);
 
   // Configuration
   private volatile int batchSize;
@@ -192,9 +193,15 @@ public class ElasticSearchBulkSink implements BulkSink {
 
     } catch (EntityNotFoundException e) {
       LOG.error("Entity Not Found Due to : {}", e.getMessage(), e);
+      entityBuildFailures.incrementAndGet();
+      totalFailed.incrementAndGet();
+      updateStats();
     } catch (Exception e) {
       LOG.error(
           "Encountered Issue while building SearchDoc from Entity Due to : {}", e.getMessage(), e);
+      entityBuildFailures.incrementAndGet();
+      totalFailed.incrementAndGet();
+      updateStats();
     }
   }
 
@@ -214,9 +221,15 @@ public class ElasticSearchBulkSink implements BulkSink {
       bulkProcessor.add(operation);
     } catch (EntityNotFoundException e) {
       LOG.error("Entity Not Found Due to : {}", e.getMessage(), e);
+      entityBuildFailures.incrementAndGet();
+      totalFailed.incrementAndGet();
+      updateStats();
     } catch (Exception e) {
       LOG.error(
           "Encountered Issue while building SearchDoc from Entity Due to : {}", e.getMessage(), e);
+      entityBuildFailures.incrementAndGet();
+      totalFailed.incrementAndGet();
+      updateStats();
     }
   }
 
@@ -269,6 +282,13 @@ public class ElasticSearchBulkSink implements BulkSink {
    */
   public int getConcurrentRequests() {
     return maxConcurrentRequests;
+  }
+
+  /**
+   * Get the count of entity build failures (entities that failed during SearchDoc construction)
+   */
+  public long getEntityBuildFailures() {
+    return entityBuildFailures.get();
   }
 
   /**
@@ -530,11 +550,27 @@ public class ElasticSearchBulkSink implements BulkSink {
       if (errorMessage == null) {
         return true;
       }
-      return errorMessage.contains("rejected_execution_exception")
-          || errorMessage.contains("EsRejectedExecutionException")
-          || errorMessage.contains("RemoteTransportException")
-          || errorMessage.contains("ConnectException")
-          || errorMessage.contains("timeout");
+      String lowerCaseMessage = errorMessage.toLowerCase();
+      return lowerCaseMessage.contains("rejected_execution_exception")
+          || lowerCaseMessage.contains("esrejectedexecutionexception")
+          || lowerCaseMessage.contains("remotetransportexception")
+          || lowerCaseMessage.contains("connectexception")
+          || lowerCaseMessage.contains("timeout")
+          || lowerCaseMessage.contains("request entity too large")
+          || lowerCaseMessage.contains("content too long")
+          || lowerCaseMessage.contains("413")
+          || lowerCaseMessage.contains("circuit_breaking_exception")
+          || lowerCaseMessage.contains("too_many_requests");
+    }
+
+    boolean isPayloadTooLargeError(Throwable error) {
+      if (error == null || error.getMessage() == null) {
+        return false;
+      }
+      String lowerCaseMessage = error.getMessage().toLowerCase();
+      return lowerCaseMessage.contains("request entity too large")
+          || lowerCaseMessage.contains("content too long")
+          || lowerCaseMessage.contains("413");
     }
 
     private long calculateBackoff(int attemptNumber) {

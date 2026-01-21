@@ -380,7 +380,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
     if (readerStats != null) {
       readerStats.setTotalRecords((int) distributedJob.getTotalRecords());
       readerStats.setSuccessRecords((int) distributedJob.getProcessedRecords());
-      readerStats.setFailedRecords(0);
+      long totalProcessed = distributedJob.getSuccessRecords() + distributedJob.getFailedRecords();
+      long readFailures =
+          distributedJob.getProcessedRecords() > totalProcessed
+              ? distributedJob.getProcessedRecords() - totalProcessed
+              : 0;
+      readerStats.setFailedRecords((int) readFailures);
     }
 
     StepStats sinkStats = stats.getSinkStats();
@@ -603,6 +608,17 @@ public class SearchIndexApp extends AbstractNativeApplication {
         searchIndexSink.close();
       } catch (Exception e) {
         LOG.error("Error closing search index sink", e);
+      }
+    }
+
+    if (executor != null && jobData != null) {
+      try {
+        Stats executorStats = executor.getStats().get();
+        if (executorStats != null) {
+          jobData.setStats(executorStats);
+        }
+      } catch (Exception e) {
+        LOG.debug("Could not capture executor stats during exception handling", e);
       }
     }
 

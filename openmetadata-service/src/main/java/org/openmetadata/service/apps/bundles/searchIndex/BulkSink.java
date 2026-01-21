@@ -12,5 +12,13 @@ public interface BulkSink {
 
   StepStats getStats();
 
+  /**
+   * Returns the count of entities that failed during SearchIndex document construction. These are
+   * entities that were passed to write() but failed before being added to the bulk request.
+   */
+  default long getEntityBuildFailures() {
+    return 0;
+  }
+
   void close() throws IOException;
 }

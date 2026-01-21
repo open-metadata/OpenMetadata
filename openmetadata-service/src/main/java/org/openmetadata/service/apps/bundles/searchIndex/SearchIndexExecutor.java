@@ -460,10 +460,20 @@ public class SearchIndexExecutor implements AutoCloseable {
     updateReaderStats(readerSuccessCount, readerFailedCount);
 
     try {
-      writeEntitiesToSink(entityType, entities, contextData);
-      updateSinkTotalSubmitted(readerSuccessCount);
+      long buildFailuresBefore =
+          searchIndexSink != null ? searchIndexSink.getEntityBuildFailures() : 0;
 
-      StepStats currentEntityStats = createEntityStats(entities);
+      writeEntitiesToSink(entityType, entities, contextData);
+
+      long buildFailuresAfter =
+          searchIndexSink != null ? searchIndexSink.getEntityBuildFailures() : 0;
+      int batchBuildFailures = (int) (buildFailuresAfter - buildFailuresBefore);
+
+      int actualSubmitted = readerSuccessCount - batchBuildFailures;
+      updateSinkTotalSubmitted(Math.max(0, actualSubmitted));
+
+      StepStats currentEntityStats =
+          createEntityStatsWithBuildFailures(entities, batchBuildFailures);
       handleTaskSuccess(entityType, entities, currentEntityStats);
 
       long processingTime = System.currentTimeMillis() - taskStartTime;
@@ -506,6 +516,15 @@ public class SearchIndexExecutor implements AutoCloseable {
     StepStats stepStats = new StepStats();
     stepStats.setSuccessRecords(listOrEmpty(entities.getData()).size());
     stepStats.setFailedRecords(listOrEmpty(entities.getErrors()).size());
+    return stepStats;
+  }
+
+  private StepStats createEntityStatsWithBuildFailures(ResultList<?> entities, int buildFailures) {
+    StepStats stepStats = new StepStats();
+    int totalEntities = listOrEmpty(entities.getData()).size();
+    int readerErrors = listOrEmpty(entities.getErrors()).size();
+    stepStats.setSuccessRecords(Math.max(0, totalEntities - buildFailures));
+    stepStats.setFailedRecords(readerErrors + buildFailures);
     return stepStats;
   }
 
@@ -585,27 +604,53 @@ public class SearchIndexExecutor implements AutoCloseable {
   }
 
   private void handleBackpressure(String errorMessage) {
-    if (errorMessage != null && errorMessage.contains("rejected_execution_exception")) {
+    if (errorMessage != null && isBackpressureError(errorMessage)) {
       consecutiveErrors.incrementAndGet();
       consecutiveSuccesses.set(0);
       LOG.warn("Detected backpressure (consecutive errors: {})", consecutiveErrors.get());
 
-      if (consecutiveErrors.get() >= MAX_CONSECUTIVE_ERRORS) {
+      boolean isPayloadTooLarge = isPayloadTooLargeError(errorMessage);
+      int requiredConsecutiveErrors = isPayloadTooLarge ? 1 : MAX_CONSECUTIVE_ERRORS;
+
+      if (consecutiveErrors.get() >= requiredConsecutiveErrors) {
         int currentBatchSize = batchSize.get();
-        int newBatchSize = Math.clamp(currentBatchSize / 2, 50, Integer.MAX_VALUE);
+        int reductionFactor = isPayloadTooLarge ? 4 : 2;
+        int newBatchSize = Math.clamp(currentBatchSize / reductionFactor, 50, Integer.MAX_VALUE);
 
         if (newBatchSize < currentBatchSize) {
           batchSize.set(newBatchSize);
           LOG.info(
-              "Reduced batch size from {} to {} due to backpressure",
+              "Reduced batch size from {} to {} due to {} error",
               currentBatchSize,
-              newBatchSize);
+              newBatchSize,
+              isPayloadTooLarge ? "payload too large" : "backpressure");
           updateSinkBatchSize(newBatchSize);
           consecutiveErrors.set(0);
         }
       }
       lastBackpressureTime = System.currentTimeMillis();
     }
+  }
+
+  private boolean isBackpressureError(String errorMessage) {
+    if (errorMessage == null) {
+      return false;
+    }
+    String lowerCaseMessage = errorMessage.toLowerCase();
+    return lowerCaseMessage.contains("rejected_execution_exception")
+        || lowerCaseMessage.contains("circuit_breaking_exception")
+        || lowerCaseMessage.contains("too_many_requests")
+        || isPayloadTooLargeError(errorMessage);
+  }
+
+  private boolean isPayloadTooLargeError(String errorMessage) {
+    if (errorMessage == null) {
+      return false;
+    }
+    String lowerCaseMessage = errorMessage.toLowerCase();
+    return lowerCaseMessage.contains("request entity too large")
+        || lowerCaseMessage.contains("content too long")
+        || lowerCaseMessage.contains("413");
   }
 
   private void performAdaptiveTuning() {
@@ -767,6 +812,15 @@ public class SearchIndexExecutor implements AutoCloseable {
       LOG.error("Error reading source for {}", entityType, e);
       if (!stopped.get()) {
         listeners.onError(entityType, e.getIndexingError(), stats.get());
+        IndexingError indexingError = e.getIndexingError();
+        int failedCount =
+            indexingError != null && indexingError.getFailedCount() != null
+                ? indexingError.getFailedCount()
+                : batchSize.get();
+        updateReaderStats(0, failedCount);
+        StepStats failedStats =
+            new StepStats().withSuccessRecords(0).withFailedRecords(failedCount);
+        updateStats(entityType, failedStats);
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
