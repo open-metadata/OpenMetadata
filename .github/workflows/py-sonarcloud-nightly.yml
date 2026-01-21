@@ -64,12 +64,14 @@ jobs:
           rm pom.xml
 
       - name: Clean Up
+        if: ${{ !cancelled() }}
         run: |
           cd ./docker/development
           docker compose down --remove-orphans
           sudo rm -rf ${PWD}/docker-volume
 
       - name: Push Results To Sonar
+        if: ${{ !cancelled() }}
         id: push-to-sonar
         continue-on-error: true
         uses: SonarSource/sonarqube-scan-action@v7
@@ -82,12 +84,12 @@ jobs:
             -Dsonar.branch.name=${{ env.BRANCH_NAME }}
 
       - name: Wait to retry 'Push Results to Sonar'
-        if: ${{ steps.push-to-sonar.outcome != 'success' }}
+        if: ${{ !cancelled() && steps.push-to-sonar.outcome != 'success' }}
         run: sleep 20s
         shell: bash
 
       - name: Retry 'Push Results to Sonar'
-        if: ${{ steps.push-to-sonar.outcome != 'success' }}
+        if: ${{ !cancelled() && steps.push-to-sonar.outcome != 'success' }}
         uses: SonarSource/sonarqube-scan-action@v7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
