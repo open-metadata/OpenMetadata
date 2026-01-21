@@ -13,6 +13,7 @@
 
 export enum EntityType {
   TABLE = 'table',
+  TABLE_COLUMN = 'tableColumn',
   TOPIC = 'topic',
   CLASSIFICATION = 'classification',
   DASHBOARD = 'dashboard',
