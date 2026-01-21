@@ -82,7 +82,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   private final DataProductMapper mapper = new DataProductMapper();
   static final String FIELDS = "domains,owners,reviewers,experts,extension,tags,followers";
   static final String PORT_FIELDS =
-      "owners,tags,followers,domain,votes,extension"; // Common fields across all entity types
+      "owners,tags,followers,domains,votes,extension"; // Common fields across all entity types
 
   public DataProductResource(Authorizer authorizer, Limits limits) {
     super(Entity.DATA_PRODUCT, authorizer, limits);
