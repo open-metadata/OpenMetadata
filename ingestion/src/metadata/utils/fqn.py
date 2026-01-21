@@ -385,21 +385,37 @@ def _(
 
 @fqn_build_registry.add(Container)
 def _(
-    _: Optional[OpenMetadata],  # ES Index not necessary for Container FQN building
+    metadata: Optional[OpenMetadata],
     *,
     service_name: str,
-    parent_container: str,
+    parent_container: Optional[str] = None,
     container_name: str,
-) -> str:
-    if not service_name or not container_name:
-        raise FQNBuildingException(
-            f"Args should be informed, but got service=`{service_name}`, container=`{container_name}``"
+    skip_es_search: bool = False,
+    fetch_multiple_entities: bool = False,
+) -> Union[Optional[str], Optional[List[str]]]:
+    entity: Optional[Union[Container, List[Container]]] = None
+
+    if not skip_es_search:
+        entity = search_container_from_es(
+            metadata=metadata,
+            service_name=service_name,
+            parent_container=parent_container,
+            container_name=container_name,
+            fetch_multiple_entities=fetch_multiple_entities,
         )
-    return (
-        _build(parent_container, container_name, quote=False)
-        if parent_container
-        else (_build(service_name, container_name))
-    )
+
+    if not entity and service_name and container_name:
+        fqn = (
+            _build(service_name, parent_container, container_name, quote=False)
+            if parent_container
+            else _build(service_name, container_name)
+        )
+        return [fqn] if fetch_multiple_entities else fqn
+    if entity and fetch_multiple_entities:
+        return [str(container.fullyQualifiedName.root) for container in entity]
+    if entity:
+        return str(entity.fullyQualifiedName.root)
+    return None
 
 
 @fqn_build_registry.add(SearchIndex)
@@ -861,6 +877,41 @@ def search_topic_from_es(
 
     return get_entity_from_es_result(
         entity_list=es_result, fetch_multiple_entities=False
+    )
+
+
+def search_container_from_es(
+    metadata: OpenMetadata,
+    container_name: str,
+    service_name: Optional[str],
+    parent_container: Optional[str] = None,
+    fetch_multiple_entities: Optional[bool] = False,
+    fields: Optional[str] = None,
+):
+    """
+    Search Container entity from ES
+    """
+
+    if not container_name:
+        raise FQNBuildingException(
+            f"Container Name should be informed, but got container=`{container_name}`"
+        )
+
+    if parent_container:
+        fqn_search_string = _build(
+            service_name or "*", parent_container, container_name, quote=False
+        )
+    else:
+        fqn_search_string = _build(service_name or "*", container_name)
+
+    es_result = metadata.es_search_from_fqn(
+        entity_type=Container,
+        fqn_search_string=fqn_search_string,
+        fields=fields,
+    )
+
+    return get_entity_from_es_result(
+        entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
     )
 
 

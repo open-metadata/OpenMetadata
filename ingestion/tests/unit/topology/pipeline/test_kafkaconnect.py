@@ -15,9 +15,11 @@ Test KafkaConnect client and models
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, patch
 
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.pipeline.kafkaConnectConnection import (
     KafkaConnectConnection,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.pipeline.kafkaconnect.client import KafkaConnectClient
 from metadata.ingestion.source.pipeline.kafkaconnect.models import (
     KafkaConnectColumnMapping,
@@ -25,6 +27,7 @@ from metadata.ingestion.source.pipeline.kafkaconnect.models import (
     KafkaConnectPipelineDetails,
     KafkaConnectTasks,
     KafkaConnectTopics,
+    ServiceResolutionResult,
 )
 
 
@@ -92,7 +95,7 @@ class TestKafkaConnectModels(TestCase):
         self.assertEqual(pipeline.topics, [])
         self.assertEqual(pipeline.config, {})
         self.assertIsNone(pipeline.description)
-        self.assertIsNone(pipeline.dataset)
+        self.assertEqual(pipeline.datasets, [])
 
     def test_kafka_connect_pipeline_details_with_data(self):
         """Test KafkaConnectPipelineDetails with full data"""
@@ -107,7 +110,7 @@ class TestKafkaConnectModels(TestCase):
             topics=topics,
             type="source",  # Using the alias 'type' instead of 'conn_type'
             description="Test connector",
-            dataset=dataset,
+            datasets=[dataset],
             config={"key": "value"},
         )
 
@@ -117,7 +120,7 @@ class TestKafkaConnectModels(TestCase):
         self.assertEqual(len(pipeline.tasks), 1)
         self.assertEqual(len(pipeline.topics), 1)
         self.assertEqual(pipeline.description, "Test connector")
-        self.assertIsNotNone(pipeline.dataset)
+        self.assertIsNotNone(pipeline.datasets)
         self.assertEqual(pipeline.config["key"], "value")
 
 
@@ -158,62 +161,6 @@ class TestKafkaConnectClient(TestCase):
                 url="http://localhost:8083", auth="user:pass", ssl_verify=True
             )
 
-    def test_enrich_connector_details_helper(self):
-        """Test _enrich_connector_details helper method"""
-        with patch(
-            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
-        ):
-            client = KafkaConnectClient(self.mock_config)
-            connector_details = KafkaConnectPipelineDetails(name="test-connector")
-
-            # Mock the methods called by _enrich_connector_details
-            client.get_connector_topics = MagicMock(
-                return_value=[KafkaConnectTopics(name="topic1")]
-            )
-            client.get_connector_config = MagicMock(
-                return_value={"description": "Test connector"}
-            )
-            client.get_connector_dataset_info = MagicMock(
-                return_value=KafkaConnectDatasetDetails(table="users")
-            )
-
-            client._enrich_connector_details(connector_details, "test-connector")
-
-            # Verify method calls
-            client.get_connector_topics.assert_called_once_with(
-                connector="test-connector"
-            )
-            client.get_connector_config.assert_called_once_with(
-                connector="test-connector"
-            )
-            client.get_connector_dataset_info.assert_called_once_with(
-                {"description": "Test connector"}
-            )
-
-            # Verify results
-            self.assertEqual(len(connector_details.topics), 1)
-            self.assertEqual(connector_details.description, "Test connector")
-            self.assertIsNotNone(connector_details.dataset)
-
-    def test_enrich_connector_details_no_config(self):
-        """Test _enrich_connector_details with no config"""
-        with patch(
-            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
-        ):
-            client = KafkaConnectClient(self.mock_config)
-            connector_details = KafkaConnectPipelineDetails(name="test-connector")
-
-            client.get_connector_topics = MagicMock(return_value=[])
-            client.get_connector_config = MagicMock(return_value=None)
-            client.get_connector_dataset_info = MagicMock()
-
-            client._enrich_connector_details(connector_details, "test-connector")
-
-            # Verify dataset info is not called when config is None
-            client.get_connector_dataset_info.assert_not_called()
-            self.assertIsNone(connector_details.description)
-            self.assertIsNone(connector_details.dataset)
-
     def test_get_cluster_info(self):
         """Test get_cluster_info method"""
         with patch(
@@ -227,75 +174,6 @@ class TestKafkaConnectClient(TestCase):
 
             mock_client.get_cluster_info.assert_called_once()
             self.assertEqual(result, {"version": "3.0.0"})
-
-    def test_get_connector_dataset_info_table(self):
-        """Test get_connector_dataset_info with table configuration"""
-        with patch(
-            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
-        ):
-            client = KafkaConnectClient(self.mock_config)
-            config = {"table": "users", "database": "mydb"}
-
-            result = client.get_connector_dataset_info(config)
-
-            self.assertIsInstance(result, KafkaConnectDatasetDetails)
-            self.assertEqual(result.table, "users")
-
-    def test_get_connector_dataset_info_container(self):
-        """Test get_connector_dataset_info with container configuration"""
-        with patch(
-            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
-        ):
-            client = KafkaConnectClient(self.mock_config)
-            config = {"s3.bucket.name": "my-bucket"}
-
-            result = client.get_connector_dataset_info(config)
-
-            self.assertIsInstance(result, KafkaConnectDatasetDetails)
-            self.assertEqual(result.container_name, "my-bucket")
-
-    def test_get_connector_dataset_info_no_match(self):
-        """Test get_connector_dataset_info with no matching configuration"""
-        with patch(
-            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
-        ):
-            client = KafkaConnectClient(self.mock_config)
-            config = {"some.other.config": "value"}
-
-            result = client.get_connector_dataset_info(config)
-
-            self.assertIsNone(result)
-
-    def test_supported_datasets_configuration(self):
-        """Test supported dataset configurations are properly handled"""
-        with patch(
-            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
-        ):
-            client = KafkaConnectClient(self.mock_config)
-
-            # Test various supported dataset configurations
-            # Note: Database-only configs return None (need table or container)
-            test_configs = [
-                # Table configurations (have table name)
-                ({"table": "users", "database": "mydb"}, "table", "users"),
-                ({"collection": "users"}, "table", "users"),
-                ({"snowflake.schema.name": "schema1"}, "table", "schema1"),
-                ({"table.whitelist": "table1,table2"}, "table", "table1,table2"),
-                ({"fields.whitelist": "field1,field2"}, "table", "field1,field2"),
-                # Container configurations (have container name)
-                ({"s3.bucket.name": "my-bucket"}, "container_name", "my-bucket"),
-            ]
-
-            for config, expected_field, expected_value in test_configs:
-                with self.subTest(config=config):
-                    result = client.get_connector_dataset_info(config)
-                    self.assertIsNotNone(result, f"Failed for config: {config}")
-                    actual_value = getattr(result, expected_field)
-                    self.assertEqual(
-                        actual_value,
-                        expected_value,
-                        f"Expected {expected_field}={expected_value}, got {actual_value}",
-                    )
 
 
 class TestConfluentCloudSupport(TestCase):
@@ -369,270 +247,6 @@ class TestConfluentCloudSupport(TestCase):
         self.assertEqual(topics[0].name, "topic1")
         self.assertEqual(topics[1].name, "topic2")
         self.assertEqual(topics[2].name, "topic3")
-
-    def test_confluent_cloud_database_include_list(self):
-        """Test that database-only config returns None (needs table name)"""
-        config = {"database.include.list": "mydb"}
-
-        client_config = Mock(spec=KafkaConnectConnection)
-        client_config.hostPort = "http://localhost:8083"
-        client_config.verifySSL = False
-        client_config.KafkaConnectConfig = None
-
-        client = KafkaConnectClient(client_config)
-        result = client.get_connector_dataset_info(config)
-
-        # Should return None - database alone is not enough
-        self.assertIsNone(result)
-
-    def test_confluent_cloud_table_include_list(self):
-        """Test extracting table from Confluent Cloud table.include.list field"""
-        config = {"table.include.list": "mydb.customers,mydb.orders"}
-
-        client_config = Mock(spec=KafkaConnectConnection)
-        client_config.hostPort = "http://localhost:8083"
-        client_config.verifySSL = False
-        client_config.KafkaConnectConfig = None
-
-        client = KafkaConnectClient(client_config)
-        result = client.get_connector_dataset_info(config)
-
-        self.assertIsNotNone(result)
-        self.assertEqual(result.table, "mydb.customers,mydb.orders")
-
-    def test_confluent_cloud_database_hostname(self):
-        """Test that database-only config returns None (needs table name)"""
-        config = {"database.hostname": "mysql.example.com"}
-
-        client_config = Mock(spec=KafkaConnectConnection)
-        client_config.hostPort = "http://localhost:8083"
-        client_config.verifySSL = False
-        client_config.KafkaConnectConfig = None
-
-        client = KafkaConnectClient(client_config)
-        result = client.get_connector_dataset_info(config)
-
-        # Should return None - database alone is not enough for table lineage
-        self.assertIsNone(result)
-
-    def test_debezium_postgres_database_dbname(self):
-        """Test that database-only config returns None (needs table name)"""
-        config = {"database.dbname": "postgres"}
-
-        client_config = Mock(spec=KafkaConnectConnection)
-        client_config.hostPort = "http://localhost:8083"
-        client_config.verifySSL = False
-        client_config.KafkaConnectConfig = None
-
-        client = KafkaConnectClient(client_config)
-        result = client.get_connector_dataset_info(config)
-
-        # Should return None - database alone is not enough
-        self.assertIsNone(result)
-
-    def test_debezium_topic_prefix(self):
-        """Test that database-only config returns None (needs table name)"""
-        config = {"topic.prefix": "dbserver1"}
-
-        client_config = Mock(spec=KafkaConnectConnection)
-        client_config.hostPort = "http://localhost:8083"
-        client_config.verifySSL = False
-        client_config.KafkaConnectConfig = None
-
-        client = KafkaConnectClient(client_config)
-        result = client.get_connector_dataset_info(config)
-
-        # Should return None - tables discovered via topic parsing for CDC
-        self.assertIsNone(result)
-
-    def test_mysql_cdc_databases_include(self):
-        """Test that database-only config returns None (needs table name)"""
-        config = {"databases.include": "mydb1,mydb2"}
-
-        client_config = Mock(spec=KafkaConnectConnection)
-        client_config.hostPort = "http://localhost:8083"
-        client_config.verifySSL = False
-        client_config.KafkaConnectConfig = None
-
-        client = KafkaConnectClient(client_config)
-        result = client.get_connector_dataset_info(config)
-
-        # Should return None - CDC uses topic parsing
-        self.assertIsNone(result)
-
-    def test_mysql_cdc_tables_include(self):
-        """Test extracting tables from MySQL CDC V2 tables.include field"""
-        config = {"tables.include": "db1.users,db1.orders"}
-
-        client_config = Mock(spec=KafkaConnectConnection)
-        client_config.hostPort = "http://localhost:8083"
-        client_config.verifySSL = False
-        client_config.KafkaConnectConfig = None
-
-        client = KafkaConnectClient(client_config)
-        result = client.get_connector_dataset_info(config)
-
-        self.assertIsNotNone(result)
-        self.assertEqual(result.table, "db1.users,db1.orders")
-
-    def test_snowflake_database_field(self):
-        """Test that database-only config returns None (needs table name)"""
-        config = {"snowflake.database": "ANALYTICS_DB"}
-
-        client_config = Mock(spec=KafkaConnectConnection)
-        client_config.hostPort = "http://localhost:8083"
-        client_config.verifySSL = False
-        client_config.KafkaConnectConfig = None
-
-        client = KafkaConnectClient(client_config)
-        result = client.get_connector_dataset_info(config)
-
-        # Should return None - database alone is not enough
-        self.assertIsNone(result)
-
-    def test_snowflake_schema_field(self):
-        """Test extracting table/schema from Snowflake snowflake.schema field"""
-        config = {"snowflake.schema": "PUBLIC"}
-
-        client_config = Mock(spec=KafkaConnectConnection)
-        client_config.hostPort = "http://localhost:8083"
-        client_config.verifySSL = False
-        client_config.KafkaConnectConfig = None
-
-        client = KafkaConnectClient(client_config)
-        result = client.get_connector_dataset_info(config)
-
-        self.assertIsNotNone(result)
-        self.assertEqual(result.table, "PUBLIC")
-
-    def test_sql_server_database_names(self):
-        """Test that database-only config returns None (needs table name)"""
-        config = {"database.names": "AdventureWorks,Northwind"}
-
-        client_config = Mock(spec=KafkaConnectConnection)
-        client_config.hostPort = "http://localhost:8083"
-        client_config.verifySSL = False
-        client_config.KafkaConnectConfig = None
-
-        client = KafkaConnectClient(client_config)
-        result = client.get_connector_dataset_info(config)
-
-        # Should return None - database alone is not enough
-        self.assertIsNone(result)
-
-    def test_s3_bucket_field(self):
-        """Test extracting bucket from S3 s3.bucket field"""
-        config = {"s3.bucket": "my-data-lake"}
-
-        client_config = Mock(spec=KafkaConnectConnection)
-        client_config.hostPort = "http://localhost:8083"
-        client_config.verifySSL = False
-        client_config.KafkaConnectConfig = None
-
-        client = KafkaConnectClient(client_config)
-        result = client.get_connector_dataset_info(config)
-
-        self.assertIsNotNone(result)
-        self.assertEqual(result.container_name, "my-data-lake")
-
-    def test_gcs_bucket_field(self):
-        """Test extracting bucket from GCS gcs.bucket.name field"""
-        config = {"gcs.bucket.name": "my-gcs-bucket"}
-
-        client_config = Mock(spec=KafkaConnectConnection)
-        client_config.hostPort = "http://localhost:8083"
-        client_config.verifySSL = False
-        client_config.KafkaConnectConfig = None
-
-        client = KafkaConnectClient(client_config)
-        result = client.get_connector_dataset_info(config)
-
-        self.assertIsNotNone(result)
-        self.assertEqual(result.container_name, "my-gcs-bucket")
-
-    def test_postgres_sink_connection_host(self):
-        """Test that database-only config returns None (needs table name)"""
-        config = {"connection.host": "postgres.example.com"}
-
-        client_config = Mock(spec=KafkaConnectConnection)
-        client_config.hostPort = "http://localhost:8083"
-        client_config.verifySSL = False
-        client_config.KafkaConnectConfig = None
-
-        client = KafkaConnectClient(client_config)
-        result = client.get_connector_dataset_info(config)
-
-        # Should return None - database alone is not enough
-        self.assertIsNone(result)
-
-    def test_sink_fields_included(self):
-        """Test extracting fields from Sink connector fields.included field"""
-        config = {"fields.included": "id,name,email,created_at"}
-
-        client_config = Mock(spec=KafkaConnectConnection)
-        client_config.hostPort = "http://localhost:8083"
-        client_config.verifySSL = False
-        client_config.KafkaConnectConfig = None
-
-        client = KafkaConnectClient(client_config)
-        result = client.get_connector_dataset_info(config)
-
-        self.assertIsNotNone(result)
-        self.assertEqual(result.table, "id,name,email,created_at")
-
-    def test_debezium_mysql_database_exclude_list(self):
-        """Test that database-only config returns None (needs table name)"""
-        config = {"database.exclude.list": "test,temp"}
-
-        client_config = Mock(spec=KafkaConnectConnection)
-        client_config.hostPort = "http://localhost:8083"
-        client_config.verifySSL = False
-        client_config.KafkaConnectConfig = None
-
-        client = KafkaConnectClient(client_config)
-        result = client.get_connector_dataset_info(config)
-
-        # Should return None - database alone is not enough
-        self.assertIsNone(result)
-
-    def test_debezium_v1_database_server_name(self):
-        """Test that CDC connectors with only database.server.name return None
-
-        CDC connectors don't have explicit table configs - tables are discovered
-        via topic name parsing instead.
-        """
-        config = {"database.server.name": "mysql-server-1"}
-
-        client_config = Mock(spec=KafkaConnectConnection)
-        client_config.hostPort = "http://localhost:8083"
-        client_config.verifySSL = False
-        client_config.KafkaConnectConfig = None
-
-        client = KafkaConnectClient(client_config)
-        result = client.get_connector_dataset_info(config)
-
-        # Should return None because CDC connectors don't have explicit table names
-        # Tables are discovered via topic parsing instead
-        self.assertIsNone(result)
-
-    def test_debezium_v2_topic_prefix(self):
-        """Test that CDC connectors with only topic.prefix return None
-
-        CDC connectors don't have explicit table configs - tables are discovered
-        via topic name parsing instead.
-        """
-        config = {"topic.prefix": "postgres-server-1"}
-
-        client_config = Mock(spec=KafkaConnectConnection)
-        client_config.hostPort = "http://localhost:8083"
-        client_config.verifySSL = False
-        client_config.KafkaConnectConfig = None
-
-        client = KafkaConnectClient(client_config)
-        result = client.get_connector_dataset_info(config)
-
-        # Should return None - tables discovered via topic parsing
-        self.assertIsNone(result)
 
 
 class TestKafkaConnectColumnLineage(TestCase):
@@ -754,39 +368,9 @@ class TestKafkaConnectColumnLineage(TestCase):
             self.assertEqual(result[0].source_column, "id")
             self.assertEqual(result[0].target_column, "user_id")
 
-    def test_get_connector_dataset_info_includes_column_mappings(self):
-        """Test get_connector_dataset_info includes column mappings"""
-        with patch(
-            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
-        ):
-            mock_config = MagicMock(spec=KafkaConnectConnection)
-            mock_config.hostPort = "http://localhost:8083"
-            mock_config.verifySSL = True
-            mock_config.KafkaConnectConfig = None
-
-            client = KafkaConnectClient(mock_config)
-
-            config = {
-                "table": "users",
-                "database": "mydb",
-                "transforms": "rename",
-                "transforms.rename.type": "org.apache.kafka.connect.transforms.ReplaceField$Value",
-                "transforms.rename.renames": "id:user_id",
-            }
-
-            result = client.get_connector_dataset_info(config)
-
-            self.assertIsNotNone(result)
-            self.assertEqual(result.table, "users")
-            self.assertIsNotNone(result.column_mappings)
-            self.assertEqual(len(result.column_mappings), 1)
-            self.assertEqual(result.column_mappings[0].source_column, "id")
-            self.assertEqual(result.column_mappings[0].target_column, "user_id")
-
     def test_column_lineage_failure_gracefully_handled(self):
         """Test that column lineage building handles errors gracefully"""
         from metadata.generated.schema.entity.data.table import Table
-        from metadata.generated.schema.entity.data.topic import Topic
         from metadata.ingestion.source.pipeline.kafkaconnect.metadata import (
             KafkaconnectSource,
         )
@@ -833,12 +417,15 @@ class TestKafkaConnectColumnLineage(TestCase):
                 conn_type="source",
             )
 
+            dataset_details = KafkaConnectDatasetDetails(table="users", database="mydb")
+
             # Test column lineage build - should return None gracefully without raising
             result = source.build_column_lineage(
                 from_entity=mock_table_entity,
                 to_entity=mock_topic_entity,
                 topic_entity=mock_topic_entity,
                 pipeline_details=pipeline_details,
+                dataset_details=dataset_details,
             )
 
             # Should return None when no column lineage can be built
@@ -1200,3 +787,290 @@ class TestKafkaConnectCDCColumnExtraction(TestCase):
         # Should extract from 'before' field when 'after' only has null
         self.assertIn("field1", columns)
         self.assertIn("field2", columns)
+
+
+class TestKafkaConnectLineageRefactoring(TestCase):
+    """Test refactored lineage methods"""
+
+    def setUp(self):
+        """Set up test fixtures"""
+        from metadata.generated.schema.metadataIngestion.workflow import (
+            Source as WorkflowSource,
+        )
+        from metadata.ingestion.source.pipeline.kafkaconnect.metadata import (
+            KafkaconnectSource,
+        )
+
+        self.mock_metadata = MagicMock()
+        self.mock_config = MagicMock(spec=WorkflowSource)
+        self.mock_service_connection = MagicMock(spec=KafkaConnectConnection)
+        self.mock_service_connection.hostPort = "http://localhost:8083"
+
+        with patch(
+            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
+        ):
+            self.source = object.__new__(KafkaconnectSource)
+            self.source.metadata = self.mock_metadata
+            self.source.service_connection = self.mock_service_connection
+
+    def test_resolve_messaging_service_from_config(self):
+        """Test resolving messaging service from connector config match"""
+        pipeline_details = KafkaConnectPipelineDetails(
+            name="test-connector", conn_type="source"
+        )
+
+        with patch.object(
+            self.source,
+            "get_service_from_connector_config",
+            return_value=ServiceResolutionResult(
+                database_service_name=None,
+                messaging_service_name="matched-kafka-service",
+            ),
+        ):
+            result = self.source._resolve_messaging_service(pipeline_details)
+
+            self.assertEqual(result, "matched-kafka-service")
+
+    def test_resolve_messaging_service_from_connection(self):
+        """Test resolving messaging service from service connection"""
+        pipeline_details = KafkaConnectPipelineDetails(
+            name="test-connector", conn_type="source"
+        )
+
+        self.mock_service_connection.messagingServiceName = "configured-kafka-service"
+
+        with patch.object(
+            self.source,
+            "get_service_from_connector_config",
+            return_value=ServiceResolutionResult(
+                database_service_name=None, messaging_service_name=None
+            ),
+        ):
+            result = self.source._resolve_messaging_service(pipeline_details)
+
+            self.assertEqual(result, "configured-kafka-service")
+
+    def test_resolve_messaging_service_none(self):
+        """Test resolving messaging service when neither config nor connection available"""
+        pipeline_details = KafkaConnectPipelineDetails(
+            name="test-connector", conn_type="source"
+        )
+
+        delattr(self.mock_service_connection, "messagingServiceName")
+
+        with patch.object(
+            self.source,
+            "get_service_from_connector_config",
+            return_value=ServiceResolutionResult(
+                database_service_name=None, messaging_service_name=None
+            ),
+        ):
+            result = self.source._resolve_messaging_service(pipeline_details)
+
+            self.assertIsNone(result)
+
+    def test_parse_and_resolve_topics_explicit_list(self):
+        """Test topic resolution with explicit pipeline_details.topics"""
+
+        topic1 = KafkaConnectTopics(name="test-topic-1")
+        pipeline_details = KafkaConnectPipelineDetails(
+            name="test-connector", conn_type="source", topics=[topic1]
+        )
+
+        mock_topic_entity = MagicMock(spec=Topic)
+        mock_topic_entity.id = "topic-id-1"
+        mock_topic_entity.name = "test-topic-1"
+        mock_topic_entity.fullyQualifiedName = 'KafkaProd."test-topic-1"'
+        mock_topic_entity.service = MagicMock(spec=EntityReference)
+        mock_topic_entity.service.name = "KafkaProd"
+
+        with patch.object(self.source.metadata, "get_by_name", return_value=None):
+            with patch.object(
+                self.source.metadata,
+                "search_in_any_service",
+                return_value=mock_topic_entity,
+            ):
+                result = self.source._parse_and_resolve_topics(
+                    pipeline_details=pipeline_details,
+                    database_server_name=None,
+                    effective_messaging_service=None,
+                    is_storage_sink=False,
+                )
+
+                self.assertEqual(len(result.topics), 1)
+                self.assertEqual(result.topics[0].name, "test-topic-1")
+                self.assertIn("test-topic-1", result.topic_entity_map)
+                self.assertEqual(
+                    result.topic_entity_map["test-topic-1"], mock_topic_entity
+                )
+
+    def test_parse_and_resolve_topics_with_fqn(self):
+        """Test topic resolution using pre-built FQN"""
+
+        topic_with_fqn = KafkaConnectTopics(
+            name="test-topic", fqn='KafkaProd."test-topic"'
+        )
+        pipeline_details = KafkaConnectPipelineDetails(
+            name="test-connector", conn_type="source", topics=[topic_with_fqn]
+        )
+
+        mock_topic_entity = MagicMock(spec=Topic)
+
+        with patch.object(
+            self.source.metadata, "get_by_name", return_value=mock_topic_entity
+        ) as mock_get:
+            result = self.source._parse_and_resolve_topics(
+                pipeline_details=pipeline_details,
+                database_server_name=None,
+                effective_messaging_service=None,
+                is_storage_sink=False,
+            )
+
+            mock_get.assert_called_once()
+            self.assertEqual(result.topic_entity_map["test-topic"], mock_topic_entity)
+
+    def test_parse_and_resolve_topics_with_service(self):
+        """Test topic resolution using messaging service name"""
+
+        topic = KafkaConnectTopics(name="orders-topic")
+        pipeline_details = KafkaConnectPipelineDetails(
+            name="test-connector", conn_type="source", topics=[topic]
+        )
+
+        mock_topic_entity = MagicMock(spec=Topic)
+
+        with patch("metadata.utils.fqn.build", return_value='KafkaProd."orders-topic"'):
+            with patch.object(
+                self.source.metadata, "get_by_name", return_value=mock_topic_entity
+            ) as mock_get:
+                result = self.source._parse_and_resolve_topics(
+                    pipeline_details=pipeline_details,
+                    database_server_name=None,
+                    effective_messaging_service="KafkaProd",
+                    is_storage_sink=False,
+                )
+
+                mock_get.assert_called_once()
+                self.assertEqual(
+                    result.topic_entity_map["orders-topic"], mock_topic_entity
+                )
+
+    def test_parse_and_resolve_topics_cross_service_search(self):
+        """Test topic resolution via cross-service wildcard search"""
+
+        topic = KafkaConnectTopics(name="payments-topic")
+        pipeline_details = KafkaConnectPipelineDetails(
+            name="test-connector", conn_type="source", topics=[topic]
+        )
+
+        mock_topic_entity = MagicMock(spec=Topic)
+        mock_service = MagicMock()
+        mock_service.name = "KafkaDev"
+        mock_topic_entity.service = mock_service
+
+        with patch.object(
+            self.source.metadata,
+            "search_in_any_service",
+            return_value=mock_topic_entity,
+        ) as mock_search:
+            result = self.source._parse_and_resolve_topics(
+                pipeline_details=pipeline_details,
+                database_server_name=None,
+                effective_messaging_service=None,
+                is_storage_sink=False,
+            )
+
+            mock_search.assert_called_once()
+            self.assertEqual(
+                result.topic_entity_map["payments-topic"], mock_topic_entity
+            )
+
+    def test_parse_and_resolve_topics_cdc_from_config(self):
+        """Test CDC topic parsing from table.include.list"""
+        cdc_topics = [
+            KafkaConnectTopics(name="pg.inventory.public.users"),
+            KafkaConnectTopics(name="pg.inventory.public.orders"),
+        ]
+
+        pipeline_details = KafkaConnectPipelineDetails(
+            name="cdc-connector",
+            conn_type="source",
+            config={"table.include.list": "public.users,public.orders"},
+            topics=cdc_topics,
+        )
+
+        with patch.object(self.source.metadata, "get_by_name", return_value=None):
+            with patch.object(
+                self.source.metadata, "search_in_any_service", return_value=None
+            ):
+                result = self.source._parse_and_resolve_topics(
+                    pipeline_details=pipeline_details,
+                    database_server_name="pg.inventory",
+                    effective_messaging_service=None,
+                    is_storage_sink=False,
+                )
+
+                self.assertEqual(len(result.topics), 2)
+                self.assertEqual(result.topics[0].name, "pg.inventory.public.users")
+                self.assertEqual(result.topics[1].name, "pg.inventory.public.orders")
+
+    def test_parse_and_resolve_topics_prefix_search(self):
+        """Test CDC topic discovery by database.server.name prefix"""
+        prefix_topics = [
+            KafkaConnectTopics(name="mysql.db.table1"),
+            KafkaConnectTopics(name="mysql.db.table2"),
+        ]
+
+        pipeline_details = KafkaConnectPipelineDetails(
+            name="cdc-connector", conn_type="source", config={}, topics=prefix_topics
+        )
+
+        with patch.object(self.source.metadata, "get_by_name", return_value=None):
+            with patch.object(
+                self.source.metadata,
+                "search_in_any_service",
+                return_value=None,
+            ):
+                result = self.source._parse_and_resolve_topics(
+                    pipeline_details=pipeline_details,
+                    database_server_name="mysql",
+                    effective_messaging_service="KafkaProd",
+                    is_storage_sink=False,
+                )
+
+                self.assertEqual(len(result.topics), 2)
+                self.assertIn("mysql.db.table1", result.topic_entity_map)
+                self.assertIn("mysql.db.table2", result.topic_entity_map)
+
+    def test_parse_and_resolve_topics_regex_storage_sink(self):
+        """Test storage sink topic discovery by topics.regex"""
+        pipeline_details = KafkaConnectPipelineDetails(
+            name="s3-sink",
+            conn_type="sink",
+            config={"topics.regex": "analytics-.*"},
+        )
+
+        regex_topics = [
+            KafkaConnectTopics(name="analytics-events"),
+            KafkaConnectTopics(name="analytics-metrics"),
+        ]
+
+        with patch.object(
+            self.source, "_search_topics_by_regex", return_value=regex_topics
+        ) as mock_search:
+            with patch.object(self.source.metadata, "get_by_name", return_value=None):
+                with patch.object(
+                    self.source.metadata, "search_in_any_service", return_value=None
+                ):
+                    result = self.source._parse_and_resolve_topics(
+                        pipeline_details=pipeline_details,
+                        database_server_name=None,
+                        effective_messaging_service="KafkaProd",
+                        is_storage_sink=True,
+                    )
+
+                    mock_search.assert_called_once_with(
+                        topics_regex="analytics-.*",
+                        messaging_service_name="KafkaProd",
+                    )
+                    self.assertEqual(len(result.topics), 2)
