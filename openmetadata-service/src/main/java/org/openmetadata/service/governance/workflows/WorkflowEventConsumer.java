@@ -21,6 +21,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 @Slf4j
@@ -100,6 +101,12 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
       EventType eventType = event.getEventType();
       String entityType = event.getEntityType();
 
+      LOG.debug(
+          "WorkflowEventConsumer - Received event for entityType: {}, eventType: {}, entityId: {}",
+          entityType,
+          eventType,
+          event.getEntityId());
+
       // Skip events from governance-bot to prevent infinite loops
       // These are system-initiated workflow changes that shouldn't trigger new workflows
       if (GOVERNANCE_BOT.equals(event.getUserName())
@@ -113,10 +120,27 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
       }
 
       if (validEventTypes.contains(eventType) && validEntityTypes.contains(entityType)) {
-        String signal = String.format("%s-%s", entityType, eventType.toString());
+        LOG.debug(
+            "WorkflowEventConsumer - Generating signal for entityType: {}, eventType: {}",
+            entityType,
+            eventType);
+        String eventTypeStr =
+            eventType.equals(EventType.ENTITY_CREATED) ? "entityCreated" : "entityUpdated";
+        String signal = String.format("%s-%s", entityType, eventTypeStr);
+        LOG.debug("WorkflowEventConsumer - Generated Signal: {}", signal);
 
-        EntityReference entityReference =
-            Entity.getEntityReferenceById(entityType, event.getEntityId(), Include.ALL);
+        EntityReference entityReference;
+        try {
+          entityReference =
+              Entity.getEntityReferenceById(entityType, event.getEntityId(), Include.ALL);
+        } catch (EntityNotFoundException e) {
+          // Entity was deleted between event creation and processing - skip workflow trigger
+          LOG.debug(
+              "Skipping workflow trigger for {} - entity {} no longer exists",
+              signal,
+              event.getEntityFullyQualifiedName());
+          return;
+        }
         MessageParser.EntityLink entityLink =
             new MessageParser.EntityLink(entityType, entityReference.getFullyQualifiedName());
 
@@ -133,9 +157,11 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
               event.getUserName());
         }
 
+        LOG.debug("WorkflowEventConsumer - Triggering with signal: {}", signal);
         WorkflowHandler.getInstance().triggerWithSignal(signal, variables);
       }
     } catch (Exception exc) {
+      LOG.error("WorkflowEventConsumer - Error processing event", exc);
       String message =
           CatalogExceptionMessage.eventPublisherFailedToPublish(
               GOVERNANCE_WORKFLOW_CHANGE_EVENT, event, exc.getMessage());
