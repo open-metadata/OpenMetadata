@@ -16,11 +16,12 @@ import { TableTypePropertyValueType } from '../../common/CustomPropertyTable/Cus
 
 export type ExtensionDataTypes =
   | string
+  | number
   | string[]
   | EntityReference
   | EntityReference[]
   | { start: number; end: number }
-  | Partial<TableTypePropertyValueType>;
+  | TableTypePropertyValueType;
 
 export interface ExtensionDataProps {
   [key: string]: ExtensionDataTypes;
