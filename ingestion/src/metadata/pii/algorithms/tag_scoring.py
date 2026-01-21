@@ -5,6 +5,9 @@ if TYPE_CHECKING:
 
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.type.classificationLanguages import (
+    ClassificationLanguage,
+)
 from metadata.pii.algorithms.preprocessing import preprocess_values
 from metadata.pii.algorithms.presidio_utils import (
     load_nlp_engine,
@@ -96,22 +99,32 @@ class TagScorer:
 
 class ScoreTagsForColumnService:
     _nlp_engine: "NlpEngine"
+    _language: ClassificationLanguage
 
-    def __init__(self, nlp_engine: Optional["NlpEngine"] = None):
+    def __init__(
+        self,
+        nlp_engine: Optional["NlpEngine"] = None,
+        language: ClassificationLanguage = ClassificationLanguage.en,
+    ):
         if nlp_engine is None:
             nlp_engine = load_nlp_engine()
         self._nlp_engine = nlp_engine
+        self._language = language
 
     def __call__(
         self, column: Column, data: Sequence[Any], tags_to_analyze: List[Tag]
     ) -> List[ScoredTag]:
         # Create analyzers for remaining candidate tags
         tag_analyzers = (
-            TagAnalyzer(tag=tag, column=column, nlp_engine=self._nlp_engine)
+            TagAnalyzer(
+                tag=tag,
+                column=column,
+                nlp_engine=self._nlp_engine,
+                language=self._language,
+            )
             for tag in tags_to_analyze
         )
 
-        # Score all tags
         classifier = TagScorer(tag_analyzers=tag_analyzers)
         column_name_str = (
             column.fullyQualifiedName.root if column.fullyQualifiedName else None
