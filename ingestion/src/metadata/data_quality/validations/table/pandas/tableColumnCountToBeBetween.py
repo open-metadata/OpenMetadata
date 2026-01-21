@@ -30,4 +30,4 @@ class TableColumnCountToBeBetweenValidator(
 
     def _run_results(self) -> Optional[int]:
         """compute result of the test case"""
-        return len(self.runner[0].columns)
+        return len(next(self.runner()).columns)
