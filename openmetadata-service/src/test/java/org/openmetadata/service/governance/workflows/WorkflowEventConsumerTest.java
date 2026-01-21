@@ -34,6 +34,7 @@ import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Method;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.ibatis.exceptions.PersistenceException;
@@ -89,7 +90,7 @@ class WorkflowEventConsumerTest {
     try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class)) {
       mockedHandler.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
 
-      assertDoesNotThrow(() -> consumer.sendMessage(event));
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
 
       verify(workflowHandler, never()).triggerWithSignal(anyString(), anyMap());
     }
@@ -103,7 +104,7 @@ class WorkflowEventConsumerTest {
     try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class)) {
       mockedHandler.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
 
-      assertDoesNotThrow(() -> consumer.sendMessage(event));
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
 
       verify(workflowHandler, never()).triggerWithSignal(anyString(), anyMap());
     }
@@ -124,7 +125,7 @@ class WorkflowEventConsumerTest {
 
       doNothing().when(workflowHandler).triggerWithSignal(anyString(), anyMap());
 
-      assertDoesNotThrow(() -> consumer.sendMessage(event));
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
 
       verify(workflowHandler, times(1)).triggerWithSignal(eq("table-entityUpdated"), anyMap());
     }
@@ -157,7 +158,7 @@ class WorkflowEventConsumerTest {
           .when(workflowHandler)
           .triggerWithSignal(anyString(), anyMap());
 
-      assertDoesNotThrow(() -> consumer.sendMessage(event));
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
 
       assertEquals(3, callCount.get());
     }
@@ -189,7 +190,7 @@ class WorkflowEventConsumerTest {
           .when(workflowHandler)
           .triggerWithSignal(anyString(), anyMap());
 
-      assertDoesNotThrow(() -> consumer.sendMessage(event));
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
 
       assertEquals(2, callCount.get());
     }
@@ -212,7 +213,8 @@ class WorkflowEventConsumerTest {
           .when(workflowHandler)
           .triggerWithSignal(anyString(), anyMap());
 
-      assertThrows(EventPublisherException.class, () -> consumer.sendMessage(event));
+      assertThrows(
+          EventPublisherException.class, () -> consumer.sendMessage(event, Collections.emptySet()));
 
       verify(workflowHandler, times(1)).triggerWithSignal(anyString(), anyMap());
     }
@@ -241,7 +243,8 @@ class WorkflowEventConsumerTest {
           .when(workflowHandler)
           .triggerWithSignal(anyString(), anyMap());
 
-      assertThrows(EventPublisherException.class, () -> consumer.sendMessage(event));
+      assertThrows(
+          EventPublisherException.class, () -> consumer.sendMessage(event, Collections.emptySet()));
 
       assertEquals(3, callCount.get());
     }
@@ -254,7 +257,7 @@ class WorkflowEventConsumerTest {
     try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class)) {
       mockedHandler.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
 
-      assertDoesNotThrow(() -> consumer.sendMessage(event));
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
 
       verify(workflowHandler, never()).triggerWithSignal(anyString(), anyMap());
     }
