@@ -43,6 +43,7 @@ import {
   normalizeTags,
   pruneEmptyChildren,
   updateFieldDescription,
+  updateFieldDisplayName,
   updateFieldExtension,
   updateFieldTags,
 } from './TableUtils';
@@ -267,6 +268,10 @@ export const updateTableColumn = (
     updateFieldExtension(fqn, update.extension, columns);
   }
 
+  if (update.displayName !== undefined) {
+    updateFieldDisplayName(fqn, update.displayName, columns);
+  }
+
   const updatedTable: Table = {
     ...table,
     columns: pruneEmptyChildren(columns),
@@ -298,6 +303,10 @@ export const updateDataModelColumn = (
   if (update.tags !== undefined) {
     const normalizedTags = normalizeTags(update.tags);
     updateFieldTags(fqn, toEntityTags(normalizedTags), columns);
+  }
+
+  if (update.displayName !== undefined) {
+    updateFieldDisplayName(fqn, update.displayName, columns);
   }
 
   const updatedDataModel: DashboardDataModel = {
