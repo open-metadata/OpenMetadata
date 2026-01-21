@@ -82,7 +82,7 @@ import org.openmetadata.service.util.CSVExportResponse;
 public class DatabaseServiceResource
     extends ServiceEntityResource<DatabaseService, DatabaseServiceRepository, DatabaseConnection> {
   private final DatabaseServiceMapper mapper = new DatabaseServiceMapper();
-  public static final String COLLECTION_PATH = "v1/services/databaseServices/";
+  public static final String COLLECTION_PATH = "/v1/services/databaseServices/";
   public static final String FIELDS = "pipelines,owners,tags,domains,followers";
 
   @Override
@@ -592,6 +592,7 @@ public class DatabaseServiceResource
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public CsvImportResult importCsv(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Database Service", schema = @Schema(type = "string"))
           @PathParam("name")
@@ -609,7 +610,7 @@ public class DatabaseServiceResource
           boolean recursive,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun, recursive);
+    return importCsvInternal(uriInfo, securityContext, name, csv, dryRun, recursive);
   }
 
   @PUT
@@ -631,6 +632,7 @@ public class DatabaseServiceResource
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public Response importCsvAsync(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Database Service", schema = @Schema(type = "string"))
           @PathParam("name")
@@ -647,7 +649,7 @@ public class DatabaseServiceResource
           @QueryParam("recursive")
           boolean recursive,
       String csv) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun, recursive);
+    return importCsvInternalAsync(uriInfo, securityContext, name, csv, dryRun, recursive);
   }
 
   @DELETE

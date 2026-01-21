@@ -35,6 +35,11 @@ import org.openmetadata.sdk.models.ListResponse;
 @Execution(ExecutionMode.CONCURRENT)
 public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
 
+  {
+    supportsLifeCycle = true;
+    supportsListHistoryByTimestamp = true;
+  }
+
   // ===================================================================
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
   // ===================================================================

@@ -23,6 +23,7 @@ import { Pipeline } from '../generated/entity/data/pipeline';
 import { SearchIndex } from '../generated/entity/data/searchIndex';
 import { Column, Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
+import { Worksheet } from '../generated/entity/data/worksheet';
 import { TagLabel } from '../generated/type/tagLabel';
 
 /**
@@ -37,6 +38,7 @@ export interface EntityDataMap {
   [EntityType.PIPELINE]: Pipeline;
   [EntityType.DASHBOARD_DATA_MODEL]: DashboardDataModel;
   [EntityType.API_ENDPOINT]: APIEndpoint;
+  [EntityType.WORKSHEET]: Worksheet;
 }
 
 /**
@@ -50,7 +52,8 @@ export type EntityDataMapValue =
   | EntityDataMap[EntityType.MLMODEL]
   | EntityDataMap[EntityType.PIPELINE]
   | EntityDataMap[EntityType.DASHBOARD_DATA_MODEL]
-  | EntityDataMap[EntityType.API_ENDPOINT];
+  | EntityDataMap[EntityType.API_ENDPOINT]
+  | EntityDataMap[EntityType.WORKSHEET];
 
 /**
  * Column field update payload
@@ -58,6 +61,7 @@ export type EntityDataMapValue =
 export interface ColumnFieldUpdate {
   description?: string;
   tags?: TagLabel[];
+  extension?: Record<string, unknown>;
 }
 
 /**

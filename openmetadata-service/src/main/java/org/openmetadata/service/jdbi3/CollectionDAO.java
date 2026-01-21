@@ -1327,6 +1327,67 @@ public interface CollectionDAO {
     List<ExtensionRecord> getExtensions(
         @BindUUID("id") UUID id, @Bind("extensionPrefix") String extensionPrefix);
 
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ("
+                + "SELECT id, updatedAt, json FROM entity_extension "
+                + "WHERE updatedAt >= :startTs "
+                + "AND updatedAt <= :endTs "
+                + "AND jsonSchema = :entityType "
+                + "UNION "
+                + "SELECT id, updatedAt, json FROM <table> "
+                + "WHERE updatedAt >= :startTs AND "
+                + "updatedAt <= :endTs "
+                + ") combined WHERE 1=1 "
+                + "<cursorCondition> "
+                + "ORDER BY updatedAt DESC, id DESC "
+                + "LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ("
+                + "SELECT id, updatedAt, json FROM entity_extension "
+                + "WHERE updatedAt >= :startTs "
+                + "AND updatedAt <= :endTs "
+                + "AND jsonSchema = :entityType "
+                + "UNION "
+                + "SELECT id, updatedAt, json::jsonb FROM <table> "
+                + "WHERE updatedAt >= :startTs AND "
+                + "updatedAt <= :endTs "
+                + ") combined WHERE 1=1 "
+                + "<cursorCondition> "
+                + "ORDER BY updatedAt DESC, id DESC "
+                + "LIMIT :limit",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ExtensionMapper.class)
+    List<String> getEntityHistoryByTimestampRange(
+        @Define("table") String table,
+        @Bind("startTs") long startTs,
+        @Bind("endTs") long endTs,
+        @Define("cursorCondition") String cursorCondition,
+        @Bind("entityType") String entityType,
+        @Bind("cursorUpdatedAt") Long cursorUpdatedAt,
+        @Bind("cursorId") String cursorId,
+        @Bind("limit") int limit);
+
+    @SqlQuery(
+        value =
+            "SELECT SUM(cnt) FROM ("
+                + "SELECT COUNT(*) AS cnt FROM entity_extension "
+                + "WHERE updatedAt >= :startTs "
+                + "AND updatedAt <= :endTs "
+                + "AND jsonSchema = :entityType "
+                + "UNION ALL "
+                + "SELECT COUNT(*) AS cnt FROM <table> "
+                + "WHERE updatedAt >= :startTs AND "
+                + "updatedAt <= :endTs"
+                + ") total_counts")
+    int getEntityHistoryByTimestampRangeCount(
+        @Define("table") String table,
+        @Bind("startTs") long startTs,
+        @Bind("endTs") long endTs,
+        @Bind("entityType") String entityType);
+
     @RegisterRowMapper(ExtensionMapper.class)
     @SqlQuery(
         "SELECT extension, json FROM entity_extension WHERE id = :id AND extension "
@@ -3362,6 +3423,28 @@ public interface CollectionDAO {
         @Bind("event_subscription_id") String eventSubscriptionId,
         @Bind("json") String json,
         @Bind("timestamp") long timestamp);
+
+    // Batch insert for successful events - reduces connection pool contention
+    // from N connections to 1 when processing multiple events
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO successful_sent_change_events (change_event_id, event_subscription_id, json, timestamp) "
+                + "VALUES (:change_event_id, :event_subscription_id, :json, :timestamp) "
+                + "ON DUPLICATE KEY UPDATE json = VALUES(json), timestamp = VALUES(timestamp)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO successful_sent_change_events (change_event_id, event_subscription_id, json, timestamp) "
+                + "VALUES (:change_event_id, :event_subscription_id, CAST(:json AS jsonb), :timestamp) "
+                + "ON CONFLICT (change_event_id, event_subscription_id) "
+                + "DO UPDATE SET json = EXCLUDED.json, timestamp = EXCLUDED.timestamp",
+        connectionType = POSTGRES)
+    void batchUpsertSuccessfulChangeEvents(
+        @Bind("change_event_id") List<String> changeEventIds,
+        @Bind("event_subscription_id") List<String> eventSubscriptionIds,
+        @Bind("json") List<String> jsonList,
+        @Bind("timestamp") List<Long> timestamps);
 
     @SqlQuery(
         "SELECT COUNT(*) FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId")
@@ -6286,12 +6369,14 @@ public interface CollectionDAO {
       String testPlatform = filter.getQueryParam("testPlatform");
       String supportedDataType = filter.getQueryParam("supportedDataType");
       String supportedService = filter.getQueryParam("supportedService");
+      String enabled = filter.getQueryParam("enabled");
       String condition = filter.getCondition();
 
       if (entityType == null
           && testPlatform == null
           && supportedDataType == null
-          && supportedService == null) {
+          && supportedService == null
+          && enabled == null) {
         return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
       }
 
@@ -6331,6 +6416,12 @@ public interface CollectionDAO {
                 + "OR json->>'supportedServices' LIKE :supportedServiceLike) ");
       }
 
+      if (enabled != null) {
+        String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
+        mysqlCondition.append("AND enabled=" + enabledValue + " ");
+        psqlCondition.append("AND enabled=" + enabledValue + " ");
+      }
+
       return listBefore(
           getTableName(),
           filter.getQueryParams(),
@@ -6347,12 +6438,14 @@ public interface CollectionDAO {
       String testPlatform = filter.getQueryParam("testPlatform");
       String supportedDataType = filter.getQueryParam("supportedDataType");
       String supportedService = filter.getQueryParam("supportedService");
+      String enabled = filter.getQueryParam("enabled");
       String condition = filter.getCondition();
 
       if (entityType == null
           && testPlatform == null
           && supportedDataType == null
-          && supportedService == null) {
+          && supportedService == null
+          && enabled == null) {
         return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
       }
 
@@ -6392,6 +6485,12 @@ public interface CollectionDAO {
                 + "OR json->>'supportedServices' LIKE :supportedServiceLike) ");
       }
 
+      if (enabled != null) {
+        String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
+        mysqlCondition.append("AND enabled=" + enabledValue + " ");
+        psqlCondition.append("AND enabled=" + enabledValue + " ");
+      }
+
       return listAfter(
           getTableName(),
           filter.getQueryParams(),
@@ -6408,12 +6507,14 @@ public interface CollectionDAO {
       String testPlatform = filter.getQueryParam("testPlatform");
       String supportedDataType = filter.getQueryParam("supportedDataType");
       String supportedService = filter.getQueryParam("supportedService");
+      String enabled = filter.getQueryParam("enabled");
       String condition = filter.getCondition();
 
       if (entityType == null
           && testPlatform == null
           && supportedDataType == null
-          && supportedService == null) {
+          && supportedService == null
+          && enabled == null) {
         return EntityDAO.super.listCount(filter);
       }
 
@@ -6452,6 +6553,13 @@ public interface CollectionDAO {
                 + "OR json->>'supportedServices' IS NULL "
                 + "OR json->>'supportedServices' LIKE :supportedServiceLike) ");
       }
+
+      if (enabled != null) {
+        String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
+        mysqlCondition.append("AND enabled=").append(enabledValue).append(" ");
+        psqlCondition.append("AND enabled=").append(enabledValue).append(" ");
+      }
+
       return listCount(
           getTableName(),
           filter.getQueryParams(),
@@ -8904,9 +9012,9 @@ public interface CollectionDAO {
             "INSERT INTO audit_log_event(change_event_id, event_ts, event_type, user_name, "
                 + "actor_type, impersonated_by, service_name, "
                 + "entity_type, entity_id, entity_fqn, entity_fqn_hash, event_json, created_at) "
-                + "VALUES (:changeEventId, :eventTs, :eventType, :userName, "
+                + "VALUES (:changeEventId::uuid, :eventTs, :eventType, :userName, "
                 + ":actorType, :impersonatedBy, :serviceName, "
-                + ":entityType, :entityId, :entityFQN, :entityFQNHash, :eventJson, :createdAt) "
+                + ":entityType, :entityId::uuid, :entityFQN, :entityFQNHash, :eventJson, :createdAt) "
                 + "ON CONFLICT (change_event_id) DO NOTHING",
         connectionType = POSTGRES)
     @ConnectionAwareSqlUpdate(

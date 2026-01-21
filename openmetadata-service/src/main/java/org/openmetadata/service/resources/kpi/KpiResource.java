@@ -61,7 +61,7 @@ import org.openmetadata.service.security.Authorizer;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "kpi")
 public class KpiResource extends EntityResource<Kpi, KpiRepository> {
-  public static final String COLLECTION_PATH = "/v1/kpi";
+  public static final String COLLECTION_PATH = "/v1/kpi/";
   private final KpiMapper mapper = new KpiMapper();
   static final String FIELDS = "owners,dataInsightChart,kpiResult";
 
@@ -195,8 +195,17 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
   }
 
   @GET

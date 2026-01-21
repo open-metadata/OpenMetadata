@@ -103,12 +103,14 @@ import {
   SAP_HANA,
   SAS,
   SCIKIT,
+  SFTP,
   SIGMA,
   SINGLESTORE,
   SNOWFLAKE,
   SPARK,
   SPLINE,
   SQLITE,
+  STARROCKS,
   SUPERSET,
   SYNAPSE,
   TABLEAU,
@@ -264,6 +266,24 @@ class ServiceUtilClassBase {
 
   public getEditServiceDetails() {
     return this.serviceDetails;
+  }
+
+  public getAddWorkflowData(
+    connectionType: string,
+    serviceType: ServiceType,
+    serviceName?: string,
+    configData?: ConfigData
+  ) {
+    return {
+      name: getTestConnectionName(connectionType),
+      workflowType: WorkflowType.TestConnection,
+      request: {
+        connection: { config: configData as ConfigObject },
+        serviceType,
+        connectionType,
+        serviceName,
+      },
+    };
   }
 
   public getServiceConfigData(data: {
@@ -454,6 +474,9 @@ class ServiceUtilClassBase {
 
       case this.DatabaseServiceTypeSmallCase.Doris:
         return DORIS;
+
+      case this.DatabaseServiceTypeSmallCase.StarRocks:
+        return STARROCKS;
 
       case this.DatabaseServiceTypeSmallCase.Druid:
         return DRUID;
@@ -673,6 +696,9 @@ class ServiceUtilClassBase {
 
       case this.DriveServiceTypeSmallCase.GoogleDrive:
         return GOOGLE_DRIVE;
+
+      case this.DriveServiceTypeSmallCase.Sftp:
+        return SFTP;
 
       case this.DatabaseServiceTypeSmallCase.Timescale:
         return TIMESCALE;

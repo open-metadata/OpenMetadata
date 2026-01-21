@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Column } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
@@ -160,6 +160,8 @@ jest.mock(
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({
     fqn: MOCK_TABLE.fullyQualifiedName,
+    entityFqn: MOCK_TABLE.fullyQualifiedName,
+    columnFqn: '',
   }),
 }));
 
@@ -273,6 +275,12 @@ jest.mock('../../../utils/FeedUtils', () => ({
   getEntityColumnFQN: jest.fn(),
 }));
 
+jest.mock('../../../utils/RouterUtils', () => ({
+  getEntityDetailsPath: jest
+    .fn()
+    .mockImplementation((_entityType, fqn) => `/table/${fqn}`),
+}));
+
 jest.mock('../../../utils/TableColumn.util', () => ({
   columnFilterIcon: jest.fn().mockReturnValue(<p>ColumnFilterIcon</p>),
   descriptionTableObject: jest.fn().mockReturnValue([]),
@@ -283,6 +291,9 @@ jest.mock('../../../utils/TableColumn.util', () => ({
 
 jest.mock('../../../utils/EntityUtilClassBase', () => ({
   getEntityByFqn: jest.fn(),
+  getFqnParts: jest
+    .fn()
+    .mockImplementation((fqn) => ({ entityFqn: fqn, columnFqn: '' })),
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({
@@ -314,7 +325,7 @@ describe('Test EntityTable Component', () => {
 
     expect(getTableColumnsByFQN).toHaveBeenCalledWith(
       MOCK_TABLE.fullyQualifiedName,
-      { fields: 'tags,customMetrics', limit: 50, offset: 0 }
+      { fields: 'tags,customMetrics,extension', limit: 50, offset: 0 }
     );
 
     const entityTable = await screen.findByTestId('entity-table');
@@ -333,7 +344,7 @@ describe('Test EntityTable Component', () => {
 
     expect(getTableColumnsByFQN).toHaveBeenCalledWith(
       MOCK_TABLE.fullyQualifiedName,
-      { fields: 'tags,customMetrics', limit: 50, offset: 0 }
+      { fields: 'tags,customMetrics,extension', limit: 50, offset: 0 }
     );
 
     const tableTags = await screen.findAllByText('TableTags');
@@ -417,5 +428,56 @@ describe('Test EntityTable Component', () => {
     expect(
       screen.queryByTestId('edit-displayName-button')
     ).not.toBeInTheDocument();
+  });
+
+  it('should render copy column link button for each column', async () => {
+    (getTableColumnsByFQN as jest.Mock).mockResolvedValue({
+      data: mockColumns,
+      paging: { total: mockColumns.length },
+    });
+
+    await act(async () => {
+      render(<SchemaTable />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const copyButtons = await screen.findAllByTestId('copy-column-link-button');
+
+    expect(copyButtons).toHaveLength(3);
+  });
+
+  it('should copy column link to clipboard when copy button is clicked', async () => {
+    const mockWriteText = jest.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: mockWriteText,
+      },
+    });
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      writable: true,
+    });
+
+    (getTableColumnsByFQN as jest.Mock).mockResolvedValue({
+      data: mockColumns,
+      paging: { total: mockColumns.length },
+    });
+
+    await act(async () => {
+      render(<SchemaTable />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const copyButtons = await screen.findAllByTestId('copy-column-link-button');
+
+    await act(async () => {
+      fireEvent.click(copyButtons[0]);
+    });
+
+    expect(mockWriteText).toHaveBeenCalledWith(
+      expect.stringContaining(mockColumns[0].fullyQualifiedName ?? '')
+    );
   });
 });

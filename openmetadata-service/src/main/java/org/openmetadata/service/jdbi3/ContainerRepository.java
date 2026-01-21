@@ -42,6 +42,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.storages.ContainerResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class ContainerRepository extends EntityRepository<Container> {
@@ -65,7 +66,8 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   @Override
-  public void setFields(Container container, EntityUtil.Fields fields) {
+  public void setFields(
+      Container container, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     setDefaultFields(container);
     container.setParent(
         fields.contains(FIELD_PARENT) ? getContainerParent(container) : container.getParent());

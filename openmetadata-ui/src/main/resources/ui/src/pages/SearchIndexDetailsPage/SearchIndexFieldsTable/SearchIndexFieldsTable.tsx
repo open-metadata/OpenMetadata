@@ -26,6 +26,8 @@ import {
 import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+
+import CopyLinkButton from '../../../components/common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../../components/common/Table/Table';
@@ -36,7 +38,10 @@ import TableDescription from '../../../components/Database/TableDescription/Tabl
 import TableTags from '../../../components/Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
-import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
+import {
+  HIGHLIGHTED_ROW_SELECTOR,
+  TABLE_SCROLL_VALUE,
+} from '../../../constants/Table.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_SEARCH_INDEX_VISIBLE_COLUMNS,
@@ -49,6 +54,9 @@ import {
 } from '../../../generated/entity/data/searchIndex';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { useFqn } from '../../../hooks/useFqn';
+import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
+import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import {
   getColumnSorter,
   getEntityName,
@@ -62,6 +70,7 @@ import {
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import {
+  getHighlightedRowClassName,
   getTableExpandableConfig,
   searchInFields,
   updateFieldDescription,
@@ -93,8 +102,32 @@ const SearchIndexFieldsTable = ({
   );
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
-  const { openColumnDetailPanel, permissions } =
+  const { openColumnDetailPanel, permissions, selectedColumn } =
     useGenericContext<SearchIndex>();
+
+  // Extract base FQN and column part from URL
+  const { columnFqn: columnPart, fqn } = useFqn({
+    type: EntityType.SEARCH_INDEX,
+  });
+  useFqnDeepLink({
+    data: searchIndexFields,
+    columnPart,
+    fqn,
+    setExpandedRowKeys: setExpandedRowKeys,
+    openColumnDetailPanel,
+    selectedColumn: selectedColumn as SearchIndexField | null,
+  });
+
+  // Scroll to highlighted row when fields are loaded
+  useScrollToElement(
+    HIGHLIGHTED_ROW_SELECTOR,
+    Boolean(fqn && searchedFields?.length)
+  );
+
+  const getRowClassName = useCallback(
+    (record: SearchIndexField) => getHighlightedRowClassName(record, fqn),
+    [fqn]
+  );
 
   const sortByOrdinalPosition = useMemo(
     () => sortBy(searchIndexFields, 'ordinalPosition'),
@@ -176,8 +209,9 @@ const SearchIndexFieldsTable = ({
     (field: SearchIndexField, event: React.MouseEvent) => {
       const target = event.target as HTMLElement;
       const isExpandIcon = target.closest('.table-expand-icon') !== null;
+      const isButton = target.closest('button') !== null;
 
-      if (!isExpandIcon) {
+      if (!isExpandIcon && !isButton) {
         if (hasViewPermission) {
           openColumnDetailPanel(field);
         }
@@ -253,12 +287,16 @@ const SearchIndexFieldsTable = ({
           'data-testid': 'column-name-cell',
         }),
         render: (_, record: SearchIndexField) => (
-          <div className="d-inline-flex w-max-90">
-            <span className="break-word">
+          <div className="d-inline-flex items-center gap-2 hover-icon-group w-max-90">
+            <span className="break-word text-link-color">
               {stringToHTML(
                 highlightSearchText(getEntityName(record), searchText)
               )}
             </span>
+            <CopyLinkButton
+              entityType={EntityType.SEARCH_INDEX}
+              fieldFqn={record.fullyQualifiedName || ''}
+            />
           </div>
         ),
       },
@@ -332,7 +370,6 @@ const SearchIndexFieldsTable = ({
       renderDataTypeDisplay,
       renderDescription,
       tagFilter,
-      searchText,
       handleFieldClick,
       hasViewPermission,
     ]
@@ -344,7 +381,7 @@ const SearchIndexFieldsTable = ({
 
   const expandableConfig: ExpandableConfig<SearchIndexField> = useMemo(
     () => ({
-      ...getTableExpandableConfig<SearchIndexField>(),
+      ...getTableExpandableConfig<SearchIndexField>(false, 'text-link-color'),
       rowExpandable: (record) => !isEmpty(record.children),
       expandedRowKeys,
       onExpand: (expanded, record) => {
@@ -392,6 +429,7 @@ const SearchIndexFieldsTable = ({
           emptyText: <FilterTablePlaceHolder />,
         }}
         pagination={false}
+        rowClassName={getRowClassName}
         rowKey="fullyQualifiedName"
         scroll={TABLE_SCROLL_VALUE}
         searchProps={{

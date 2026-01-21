@@ -307,17 +307,19 @@ class StorageUnitTest(TestCase):
     #  Most of the parsing support are covered in test_datalake unit tests related to the Data lake implementation
     def test_extract_column_definitions(self):
         with patch(
-            "metadata.ingestion.source.storage.storage_service.fetch_dataframe",
+            "metadata.ingestion.source.storage.storage_service.fetch_dataframe_first_chunk",
             return_value=(
-                [
-                    pd.DataFrame.from_dict(
-                        [
-                            {"transaction_id": 1, "transaction_value": 100},
-                            {"transaction_id": 2, "transaction_value": 200},
-                            {"transaction_id": 3, "transaction_value": 300},
-                        ]
-                    )
-                ],
+                iter(
+                    [
+                        pd.DataFrame.from_dict(
+                            [
+                                {"transaction_id": 1, "transaction_value": 100},
+                                {"transaction_id": 2, "transaction_value": 200},
+                                {"transaction_id": 3, "transaction_value": 300},
+                            ]
+                        )
+                    ]
+                ),
                 None,
             ),
         ):

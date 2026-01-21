@@ -597,7 +597,8 @@ export const generateEntityLink = (fqn: string, includeColumn = false) => {
 };
 
 export function getTableExpandableConfig<T>(
-  isDraggable?: boolean
+  isDraggable?: boolean,
+  expandIconClass?: string
 ): ExpandableConfig<T> {
   const expandableConfig: ExpandableConfig<T> = {
     expandIcon: ({ expanded, onExpand, expandable, record }) =>
@@ -605,7 +606,10 @@ export function getTableExpandableConfig<T>(
         <>
           {isDraggable && <IconDrag className="drag-icon" />}
           <Icon
-            className="table-expand-icon vertical-baseline"
+            className={classNames(
+              'table-expand-icon vertical-baseline',
+              expandIconClass
+            )}
             component={expanded ? IconDown : IconRight}
             data-testid="expand-icon"
             onClick={(e) => onExpand(record, e)}
@@ -784,6 +788,24 @@ export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
       updateFieldDescription(
         changedFieldFQN,
         description,
+        field?.children as Array<T>
+      );
+    }
+  });
+};
+
+export const updateFieldExtension = <T extends TableFieldsInfoCommonEntities>(
+  changedFieldFQN: string,
+  extension: Record<string, unknown>,
+  searchIndexFields?: Array<T>
+) => {
+  searchIndexFields?.forEach((field) => {
+    if (field.fullyQualifiedName === changedFieldFQN) {
+      field.extension = extension;
+    } else {
+      updateFieldExtension(
+        changedFieldFQN,
+        extension,
         field?.children as Array<T>
       );
     }
@@ -1532,6 +1554,73 @@ export const findFieldByFQN = <
 };
 
 /**
+ * Checks if a field exists in a nested structure by FQN
+ * Recursively searches through children, including partial matches
+ */
+export const fieldExistsByFQN = <
+  T extends { fullyQualifiedName?: string; children?: T[] }
+>(
+  items: T[],
+  targetFqn: string
+): boolean => {
+  for (const item of items) {
+    if (
+      item.fullyQualifiedName === targetFqn ||
+      targetFqn.startsWith((item.fullyQualifiedName ?? '') + '.')
+    ) {
+      return true;
+    }
+    if (item.children?.length && fieldExistsByFQN(item.children, targetFqn)) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+/**
+ * Gets all parent keys that need to be expanded to show a target field
+ * Returns an array of FQNs representing the path to the target field
+ */
+export const getParentKeysToExpand = <
+  T extends { fullyQualifiedName?: string; children?: T[]; name?: string }
+>(
+  items: T[],
+  targetFqn: string,
+  parentKeys: string[] = []
+): string[] => {
+  for (const item of items) {
+    if (item.fullyQualifiedName === targetFqn) {
+      return parentKeys;
+    }
+
+    // Check if we should explore children
+    const shouldExploreChildren =
+      item.children?.length &&
+      (item.fullyQualifiedName
+        ? targetFqn.startsWith(item.fullyQualifiedName + '.')
+        : true); // If no FQN, always check children
+
+    if (shouldExploreChildren) {
+      const newParentKeys = [
+        ...parentKeys,
+        item.fullyQualifiedName ?? item.name ?? '',
+      ];
+      const result = getParentKeysToExpand(
+        item.children!,
+        targetFqn,
+        newParentKeys
+      );
+      if (result.length > 0) {
+        return result;
+      }
+    }
+  }
+
+  return [];
+};
+
+/**
  * Gets the data type display value for a column/field
  * Returns dataTypeDisplay if available, otherwise falls back to dataType
  */
@@ -1741,7 +1830,22 @@ export const extractColumnsFromData = <T extends Omit<EntityReference, 'type'>>(
       return extractContainerColumns(data);
     case EntityType.SEARCH_INDEX:
       return extractSearchIndexFields(data);
+    case EntityType.WORKSHEET:
+      return extractTableColumns(data);
     default:
       return [];
   }
+};
+
+export const getHighlightedRowClassName = <
+  T extends { fullyQualifiedName?: string }
+>(
+  record: T,
+  highlightedFqn?: string
+): string => {
+  if (highlightedFqn && record.fullyQualifiedName === highlightedFqn) {
+    return 'highlighted-row';
+  }
+
+  return '';
 };

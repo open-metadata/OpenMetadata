@@ -37,6 +37,7 @@ import {
 } from '../../../generated/entity/data/pipeline';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
+import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import {
   columnFilterIcon,
@@ -62,8 +63,13 @@ export const PipelineTaskTab = () => {
     permissions,
     onUpdate,
     openColumnDetailPanel,
+    selectedColumn,
   } = useGenericContext<Pipeline>();
-  const { fqn: pipelineFQN } = useFqn();
+  const {
+    entityFqn: pipelineFQN,
+    columnFqn: columnPart,
+    fqn,
+  } = useFqn({ type: EntityType.PIPELINE });
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState(PIPELINE_TASK_TABS.LIST_VIEW);
   const [selectedExecution] = useState<PipelineStatus | undefined>(
@@ -74,6 +80,16 @@ export const PipelineTaskTab = () => {
     index: number;
   }>();
   const { deleted } = pipelineDetails ?? {};
+  const [_expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+
+  useFqnDeepLink({
+    data: pipelineDetails.tasks ?? [],
+    columnPart,
+    fqn,
+    setExpandedRowKeys,
+    openColumnDetailPanel,
+    selectedColumn: selectedColumn as Task | null,
+  });
 
   const {
     editDescriptionPermission,
@@ -135,8 +151,9 @@ export const PipelineTaskTab = () => {
   const handleTaskClick = (task: Task, event: React.MouseEvent) => {
     const target = event.target as HTMLElement;
     const isExpandIcon = target.closest('.table-expand-icon') !== null;
+    const isButton = target.closest('button') !== null;
 
-    if (!isExpandIcon) {
+    if (!isExpandIcon && !isButton) {
       openColumnDetailPanel(task);
     }
   };
@@ -204,7 +221,7 @@ export const PipelineTaskTab = () => {
         }),
         render: (_, record) =>
           isEmpty(record.sourceUrl) ? (
-            <span>{getEntityName(record)}</span>
+            <span className="text-link-color">{getEntityName(record)}</span>
           ) : (
             <Link
               className="flex items-center gap-2"

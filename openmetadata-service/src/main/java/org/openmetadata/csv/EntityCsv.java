@@ -375,6 +375,50 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return refs.isEmpty() ? null : refs;
   }
 
+  protected final List<EntityReference> getEntityReferencesForGlossaryTerms(
+      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
+    if (!processRecord) {
+      return null;
+    }
+    String fqns = csvRecord.get(fieldNumber);
+    if (nullOrEmpty(fqns)) {
+      return null;
+    }
+    List<String> fqnList = listOrEmpty(CsvUtil.fieldToStrings(fqns));
+    List<EntityReference> refs = new ArrayList<>();
+    for (String fqn : fqnList) {
+      EntityInterface entity = getEntityByName(Entity.GLOSSARY_TERM, fqn);
+      if (entity == null) {
+        importFailure(printer, entityNotFound(fieldNumber, Entity.GLOSSARY_TERM, fqn), csvRecord);
+        processRecord = false;
+        return null;
+      }
+
+      // Validate that the glossary term has APPROVED status
+      org.openmetadata.schema.entity.data.GlossaryTerm term =
+          (org.openmetadata.schema.entity.data.GlossaryTerm) entity;
+      if (term.getEntityStatus() != org.openmetadata.schema.type.EntityStatus.APPROVED) {
+        LOG.error(
+            "[VALIDATION] VALIDATION FAILED! Term '{}' status is {} not APPROVED",
+            fqn,
+            term.getEntityStatus());
+        importFailure(
+            printer,
+            invalidField(
+                fieldNumber,
+                String.format(
+                    "Glossary term '%s' must have APPROVED status to be linked. Current status: %s",
+                    fqn, term.getEntityStatus())),
+            csvRecord);
+        processRecord = false;
+        return null;
+      }
+      refs.add(entity.getEntityReference());
+    }
+    refs.sort(Comparator.comparing(EntityReference::getName));
+    return refs.isEmpty() ? null : refs;
+  }
+
   protected final List<TagLabel> getTagLabels(
       CSVPrinter printer,
       CSVRecord csvRecord,
@@ -390,7 +434,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       List<EntityReference> refs =
           source == TagSource.CLASSIFICATION
               ? getEntityReferences(printer, csvRecord, fieldNumbers, Entity.TAG)
-              : getEntityReferences(printer, csvRecord, fieldNumbers, Entity.GLOSSARY_TERM);
+              : getEntityReferencesForGlossaryTerms(printer, csvRecord, fieldNumbers);
       if (processRecord && !nullOrEmpty(refs)) {
         for (EntityReference ref : refs) {
           tagLabels.add(new TagLabel().withSource(source).withTagFQN(ref.getFullyQualifiedName()));
@@ -745,10 +789,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
       CSVParser parser =
           CSVFormat.DEFAULT
               .withFirstRecordAsHeader()
-              .withIgnoreSurroundingSpaces()
               .withQuote('"')
-              .withIgnoreEmptyLines() // Ignore empty lines
-              .withEscape('\\') // Handle escaped quotes
+              .withIgnoreEmptyLines()
               .parse(in);
 
       List<List<String>> fixedRows = new ArrayList<>();
@@ -775,7 +817,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       records = convertToCSVRecords(fixedRows, headers);
 
     } catch (IOException e) {
-      e.printStackTrace();
+      documentFailure(failed(e.getMessage(), CsvErrorType.PARSER_FAILURE));
     }
 
     return records;
