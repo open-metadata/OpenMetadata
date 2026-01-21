@@ -76,6 +76,41 @@ jest.mock('@mui/material', () => ({
       {children}
     </div>
   ),
+  Select: ({ children, value, onChange, ...props }) => (
+    <select
+      data-testid={props['data-testid']}
+      value={value}
+      onChange={(e) =>
+        onChange && onChange({ target: { value: e.target.value } })
+      }>
+      {children}
+    </select>
+  ),
+  FormControl: ({ children, ...props }) => (
+    <div data-testid={props['data-testid']}>{children}</div>
+  ),
+  InputLabel: ({ children, ...props }) => (
+    <label data-testid={props['data-testid']}>{children}</label>
+  ),
+  Radio: ({ ...props }) => (
+    <input data-testid={props['data-testid']} type="radio" {...props} />
+  ),
+  RadioGroup: ({ children, ...props }) => (
+    <div data-testid={props['data-testid']} role="radiogroup">
+      {children}
+    </div>
+  ),
+  FormControlLabel: ({ label, control, ...props }) => (
+    <label data-testid={props['data-testid']}>
+      {control}
+      {label}
+    </label>
+  ),
+  CircularProgress: ({ ...props }) => (
+    <div data-testid={props['data-testid']}>Loading...</div>
+  ),
+  Modal: ({ children, open, ...props }) =>
+    open ? <div data-testid={props['data-testid']}>{children}</div> : null,
   styled: (component) => () => component,
   useTheme: () => ({
     palette: {
@@ -103,29 +138,74 @@ jest.mock('@mui/material', () => ({
       allShades: {
         white: '#ffffff',
         black: '#000000',
-        success: '#28a745',
-        error: '#dc3545',
-        warning: '#ffc107',
-        info: '#17a2b8',
+        success: {
+          50: '#e8f5e9',
+          100: '#c8e6c9',
+          200: '#a5d6a7',
+          300: '#81c784',
+          400: '#66bb6a',
+          500: '#4caf50',
+          600: '#43a047',
+          700: '#388e3c',
+          800: '#2e7d32',
+          900: '#1b5e20',
+        },
+        error: {
+          50: '#ffebee',
+          100: '#ffcdd2',
+          200: '#ef9a9a',
+          300: '#e57373',
+          400: '#ef5350',
+          500: '#f44336',
+          600: '#e53935',
+          700: '#d32f2f',
+          800: '#c62828',
+          900: '#b71c1c',
+        },
+        warning: {
+          50: '#fff8e1',
+          100: '#ffecb3',
+          500: '#ff9800',
+          700: '#f57c00',
+        },
+        info: {
+          50: '#e3f2fd',
+          500: '#2196f3',
+          700: '#1976d2',
+        },
         blue: {
+          50: '#e3f2fd',
           500: '#1890ff',
           600: '#1976d2',
+          700: '#1565c0',
         },
         green: {
+          50: '#e8f5e9',
           500: '#4caf50',
+          700: '#388e3c',
         },
         red: {
+          50: '#ffebee',
           500: '#f44336',
+          700: '#d32f2f',
         },
         orange: {
+          50: '#fff3e0',
           500: '#ff9800',
+          700: '#f57c00',
         },
         gray: {
+          50: '#fafafa',
+          100: '#f5f5f5',
+          200: '#eeeeee',
           300: '#d1d1d1',
           400: '#bdbdbd',
+          500: '#9e9e9e',
+          600: '#757575',
           700: '#616161',
         },
         brand: {
+          50: '#e8eaf6',
           700: '#d1d1d1',
         },
       },

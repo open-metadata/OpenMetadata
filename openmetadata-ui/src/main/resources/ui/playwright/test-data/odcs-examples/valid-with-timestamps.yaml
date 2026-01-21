@@ -1,0 +1,30 @@
+# Copyright 2026 Collate.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+apiVersion: v3.1.0
+kind: DataContract
+id: timestamp-contract
+name: ODCS Contract with Timestamp Types
+version: "1.0.0"
+status: active
+description:
+  purpose: Contract testing v3.1.0 timestamp and time types
+slaProperties:
+  - property: freshness
+    value: "6"
+    unit: hour
+    timezone: GMT+00:00 UTC
+  - property: latency
+    value: "15"
+    unit: minute
+  - property: availability
+    value: "99.9"
+    unit: percent
+    timezone: GMT-05:00 America/New_York
