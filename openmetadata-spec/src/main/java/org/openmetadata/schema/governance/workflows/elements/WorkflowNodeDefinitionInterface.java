@@ -14,6 +14,7 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityAttributeTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SinkTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.endEvent.EndEventDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.gateway.ParallelGatewayDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.startEvent.StartEventDefinition;
@@ -43,6 +44,7 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.User
       name = "createAndRunIngestionPipelineTask"),
   @JsonSubTypes.Type(value = RunAppTaskDefinition.class, name = "runAppTask"),
   @JsonSubTypes.Type(value = ParallelGatewayDefinition.class, name = "parallelGateway"),
+  @JsonSubTypes.Type(value = SinkTaskDefinition.class, name = "sinkTask"),
 })
 public interface WorkflowNodeDefinitionInterface {
   String getType();

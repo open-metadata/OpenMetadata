@@ -1,5 +1,6 @@
 package org.openmetadata.service.governance.workflows.elements.triggers;
 
+import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
@@ -43,6 +44,7 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
   private final List<Process> processes = new ArrayList<>();
 
   @Getter private final String triggerWorkflowId;
+  private final boolean singleExecutionMode;
   public static String HAS_FINISHED_VARIABLE = "hasFinished";
   public static String CARDINALITY_VARIABLE = "numberOfEntities";
   public static String COLLECTION_VARIABLE = "entityList";
@@ -50,9 +52,17 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
   public PeriodicBatchEntityTrigger(
       String mainWorkflowName,
       String triggerWorkflowId,
-      PeriodicBatchEntityTriggerDefinition triggerDefinition) {
+      PeriodicBatchEntityTriggerDefinition triggerDefinition,
+      boolean singleExecutionMode) {
     this.triggerWorkflowId = triggerWorkflowId;
+    this.singleExecutionMode = singleExecutionMode;
     List<String> entityTypes = getEntityTypesFromConfig(triggerDefinition.getConfig());
+
+    if (singleExecutionMode) {
+      LOG.info(
+          "Workflow {} configured for single execution mode (batch sink detected)",
+          mainWorkflowName);
+    }
 
     for (String entityType : entityTypes) {
       String processId = String.format("%s-%s", triggerWorkflowId, entityType);
@@ -117,9 +127,14 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
 
   private CallActivity getWorkflowTriggerCallActivity(
       String triggerWorkflowId, String mainWorkflowName) {
+    // In single execution mode (batch sink detected), use cardinality = 1 to create
+    // only ONE workflow instance that processes all entities in a single batch.
+    // Otherwise, use numberOfEntities to create N parallel instances (one per entity).
+    String cardinality = singleExecutionMode ? "1" : String.format("${%s}", CARDINALITY_VARIABLE);
+
     MultiInstanceLoopCharacteristics multiInstance =
         new MultiInstanceLoopCharacteristicsBuilder()
-            .loopCardinality(String.format("${%s}", CARDINALITY_VARIABLE))
+            .loopCardinality(cardinality)
             .inputDataItem(COLLECTION_VARIABLE)
             .elementVariable(RELATED_ENTITY_VARIABLE)
             .build();
@@ -135,11 +150,17 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
     inputParameter.setSource(RELATED_ENTITY_VARIABLE);
     inputParameter.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE));
 
+    // Pass the entire entity list to the main workflow for batch sink operations
+    IOParameter entityListParameter = new IOParameter();
+    entityListParameter.setSource(COLLECTION_VARIABLE);
+    entityListParameter.setTarget(
+        getNamespacedVariableName(GLOBAL_NAMESPACE, ENTITY_LIST_VARIABLE));
+
     IOParameter outputParameter = new IOParameter();
     outputParameter.setSource(getNamespacedVariableName(GLOBAL_NAMESPACE, EXCEPTION_VARIABLE));
     outputParameter.setTarget(EXCEPTION_VARIABLE);
 
-    workflowTrigger.setInParameters(List.of(inputParameter));
+    workflowTrigger.setInParameters(List.of(inputParameter, entityListParameter));
     workflowTrigger.setOutParameters(List.of(outputParameter));
     workflowTrigger.setLoopCharacteristics(multiInstance);
 

@@ -95,7 +95,7 @@ class ColumnValuesToBeInSetValidator(
             ]
             match_enum = test_params[BaseColumnValuesToBeInSetValidator.MATCH_ENUM]
 
-            dfs = self.runner if isinstance(self.runner, list) else [self.runner]
+            dfs = self.runner
             count_in_set_impl = add_props(values=allowed_values)(
                 Metrics.COUNT_IN_SET.value
             )(column).get_pandas_computation()
