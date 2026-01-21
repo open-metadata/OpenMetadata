@@ -60,7 +60,7 @@ const CustomPropertyItem: FC<{
     const isEnum = property.propertyType.name === 'enum';
     const isArrayType = isArray(updatedValue);
     const enumValue = isArrayType ? updatedValue : [updatedValue];
-    let propertyValue: PropertyValueType | undefined = isEnum
+    let propertyValue: PropertyValueType | undefined | null = isEnum
       ? (enumValue as string[]).filter(Boolean)
       : updatedValue;
 
@@ -68,7 +68,7 @@ const CustomPropertyItem: FC<{
       property.propertyType.name === 'entityReference' &&
       (isNil(propertyValue) || isEmpty(propertyValue))
     ) {
-      propertyValue = undefined;
+      propertyValue = null;
     }
 
     try {
