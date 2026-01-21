@@ -8951,9 +8951,9 @@ public interface CollectionDAO {
             "INSERT INTO audit_log_event(change_event_id, event_ts, event_type, user_name, "
                 + "actor_type, impersonated_by, service_name, "
                 + "entity_type, entity_id, entity_fqn, entity_fqn_hash, event_json, created_at) "
-                + "VALUES (:changeEventId, :eventTs, :eventType, :userName, "
+                + "VALUES (:changeEventId::uuid, :eventTs, :eventType, :userName, "
                 + ":actorType, :impersonatedBy, :serviceName, "
-                + ":entityType, :entityId, :entityFQN, :entityFQNHash, :eventJson, :createdAt) "
+                + ":entityType, :entityId::uuid, :entityFQN, :entityFQNHash, :eventJson, :createdAt) "
                 + "ON CONFLICT (change_event_id) DO NOTHING",
         connectionType = POSTGRES)
     @ConnectionAwareSqlUpdate(

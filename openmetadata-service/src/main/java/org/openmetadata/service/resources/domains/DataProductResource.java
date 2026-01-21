@@ -28,6 +28,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -81,6 +82,8 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   public static final String COLLECTION_PATH = "/v1/dataProducts/";
   private final DataProductMapper mapper = new DataProductMapper();
   static final String FIELDS = "domains,owners,reviewers,experts,extension,tags,followers";
+  static final String PORT_FIELDS =
+      "owners,tags,followers,domains,votes,extension"; // Common fields across all entity types
 
   public DataProductResource(Authorizer authorizer, Limits limits) {
     super(Entity.DATA_PRODUCT, authorizer, limits);
@@ -90,6 +93,22 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   public DataProduct addHref(UriInfo uriInfo, DataProduct dataProduct) {
     super.addHref(uriInfo, dataProduct);
     return dataProduct;
+  }
+
+  private static final java.util.Set<String> ALLOWED_PORT_FIELDS =
+      java.util.Set.of(PORT_FIELDS.split(","));
+
+  private void validatePortFields(String fieldsParam) {
+    if (nullOrEmpty(fieldsParam)) {
+      return;
+    }
+    for (String field : fieldsParam.split(",")) {
+      String trimmedField = field.trim();
+      if (!trimmedField.isEmpty() && !ALLOWED_PORT_FIELDS.contains(trimmedField)) {
+        throw new BadRequestException(
+            String.format("Invalid field '%s'. Allowed fields are: %s", trimmedField, PORT_FIELDS));
+      }
+    }
   }
 
   public static class DataProductList extends ResultList<DataProduct> {
@@ -1013,6 +1032,11 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @PathParam("id")
           UUID id,
       @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = PORT_FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(
               description = "Limit the number of results returned",
               schema = @Schema(type = "integer", defaultValue = "50"))
           @QueryParam("limit")
@@ -1027,10 +1051,11 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @DefaultValue("0")
           @Min(0)
           int offset) {
+    validatePortFields(fieldsParam);
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return Response.ok(repository.getPaginatedInputPorts(id, limit, offset)).build();
+    return Response.ok(repository.getPaginatedInputPorts(id, fieldsParam, limit, offset)).build();
   }
 
   @GET
@@ -1059,6 +1084,11 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @PathParam("fqn")
           String fqn,
       @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = PORT_FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(
               description = "Limit the number of results returned",
               schema = @Schema(type = "integer", defaultValue = "50"))
           @QueryParam("limit")
@@ -1073,10 +1103,12 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @DefaultValue("0")
           @Min(0)
           int offset) {
+    validatePortFields(fieldsParam);
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return Response.ok(repository.getPaginatedInputPortsByName(fqn, limit, offset)).build();
+    return Response.ok(repository.getPaginatedInputPortsByName(fqn, fieldsParam, limit, offset))
+        .build();
   }
 
   @GET
@@ -1105,6 +1137,11 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @PathParam("id")
           UUID id,
       @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = PORT_FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(
               description = "Limit the number of results returned",
               schema = @Schema(type = "integer", defaultValue = "50"))
           @QueryParam("limit")
@@ -1119,10 +1156,11 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @DefaultValue("0")
           @Min(0)
           int offset) {
+    validatePortFields(fieldsParam);
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return Response.ok(repository.getPaginatedOutputPorts(id, limit, offset)).build();
+    return Response.ok(repository.getPaginatedOutputPorts(id, fieldsParam, limit, offset)).build();
   }
 
   @GET
@@ -1151,6 +1189,11 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @PathParam("fqn")
           String fqn,
       @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = PORT_FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(
               description = "Limit the number of results returned",
               schema = @Schema(type = "integer", defaultValue = "50"))
           @QueryParam("limit")
@@ -1165,10 +1208,12 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @DefaultValue("0")
           @Min(0)
           int offset) {
+    validatePortFields(fieldsParam);
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return Response.ok(repository.getPaginatedOutputPortsByName(fqn, limit, offset)).build();
+    return Response.ok(repository.getPaginatedOutputPortsByName(fqn, fieldsParam, limit, offset))
+        .build();
   }
 
   @GET
@@ -1197,6 +1242,11 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       @Parameter(description = "Id of the data product", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = PORT_FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
       @Parameter(
               description = "Limit the number of input ports returned",
               schema = @Schema(type = "integer", defaultValue = "50"))
@@ -1227,11 +1277,13 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @DefaultValue("0")
           @Min(0)
           int outputOffset) {
+    validatePortFields(fieldsParam);
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     return Response.ok(
-            repository.getPortsView(id, inputLimit, inputOffset, outputLimit, outputOffset))
+            repository.getPortsView(
+                id, fieldsParam, inputLimit, inputOffset, outputLimit, outputOffset))
         .build();
   }
 
@@ -1262,6 +1314,11 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @PathParam("fqn")
           String fqn,
       @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = PORT_FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(
               description = "Limit the number of input ports returned",
               schema = @Schema(type = "integer", defaultValue = "50"))
           @QueryParam("inputLimit")
@@ -1291,11 +1348,13 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @DefaultValue("0")
           @Min(0)
           int outputOffset) {
+    validatePortFields(fieldsParam);
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return Response.ok(
-            repository.getPortsViewByName(fqn, inputLimit, inputOffset, outputLimit, outputOffset))
+            repository.getPortsViewByName(
+                fqn, fieldsParam, inputLimit, inputOffset, outputLimit, outputOffset))
         .build();
   }
 }
