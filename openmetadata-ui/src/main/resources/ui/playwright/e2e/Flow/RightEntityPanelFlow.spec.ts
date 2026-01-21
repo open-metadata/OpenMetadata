@@ -33,11 +33,11 @@ import {
 import { getCurrentMillis } from '../../utils/dateTime';
 import {
   addOwnerWithoutValidation,
-  assignTier,
   updateDescription,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import {
+  assignTierToPanel,
   clickDataQualityStatCard,
   editDomain,
   editGlossaryTerms,
@@ -45,7 +45,11 @@ import {
   navigateToEntityPanelTab,
   navigateToExploreAndSelectTable,
   navigateToIncidentsTab,
+  removeDomainFromPanel,
+  removeGlossaryTermFromPanel,
   removeOwnerFromPanel,
+  removeTagsFromPanel,
+  removeTierFromPanel,
   verifyDeletedEntityNotVisible,
 } from '../../utils/entityPanel';
 import { connectEdgeBetweenNodesViaAPI } from '../../utils/lineage';
@@ -295,10 +299,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       await testUser.create(apiContext);
       const testUserDisplayName = testUser.getUserDisplayName();
 
-      await adminPage
-        .getByTestId('edit-owners')
-        .evaluate((el) => el.scrollIntoView({ block: 'center' }));
-
       await addOwnerWithoutValidation({
         page: adminPage,
         owner: testUserDisplayName,
@@ -337,10 +337,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     try {
       await testTeam.create(apiContext);
       const testTeamDisplayName = testTeam.getTeamDisplayName();
-
-      await adminPage
-        .getByTestId('edit-owners')
-        .evaluate((el) => el.scrollIntoView({ block: 'center' }));
 
       await addOwnerWithoutValidation({
         page: adminPage,
@@ -429,6 +425,57 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     }
   });
 
+  test('Admin - Overview Tab - Remove Tag', async ({ adminPage }) => {
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+    const testClassification = new ClassificationClass();
+    const testTag = new TagClass({
+      classification: testClassification.data.name,
+    });
+
+    try {
+      await testClassification.create(apiContext);
+      await testTag.create(apiContext);
+
+      const testTagDisplayName = testTag.getTagDisplayName();
+
+      await editTags(adminPage, testTagDisplayName);
+
+      await expect(
+        adminPage.getByText(/Tags updated successfully/i)
+      ).toBeVisible();
+
+      await waitForAllLoadersToDisappear(adminPage);
+
+      const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+
+      await expect(
+        summaryPanel.getByTestId(
+          `tag-${testClassification.data.name}.${testTag.data.name}`
+        )
+      ).toBeVisible();
+
+      await removeTagsFromPanel(adminPage, [testTagDisplayName]);
+
+      await expect(
+        adminPage.getByText(/Tags updated successfully/i)
+      ).toBeVisible();
+
+      await navigateToExploreAndSelectTable(
+        adminPage,
+        adminTestEntity.entity.name
+      );
+
+      await expect(
+        summaryPanel.getByTestId(
+          `tag-${testClassification.data.name}.${testTag.data.name}`
+        )
+      ).not.toBeVisible();
+    } finally {
+      await testClassification.delete(apiContext);
+      await afterAction();
+    }
+  });
+
   test('Admin - Overview Tab - Glossary Terms Section - Add Term and Verify Deleted Terms Not Visible', async ({
     adminPage,
   }) => {
@@ -488,6 +535,57 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     }
   });
 
+  test('Admin - Overview Tab - Remove Glossary Term', async ({ adminPage }) => {
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+    const testGlossary = new Glossary();
+    const testTerm = new GlossaryTerm(testGlossary);
+
+    try {
+      await testGlossary.create(apiContext);
+      await testTerm.create(apiContext);
+
+      const testTermDisplayName = testTerm.getTermDisplayName();
+
+      await editGlossaryTerms(adminPage, testTermDisplayName);
+
+      await expect(
+        adminPage.getByText(/Glossary terms updated successfully/i)
+      ).toBeVisible();
+
+      const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+      const glossarySection = summaryPanel.locator('.glossary-terms-section');
+
+      await expect(
+        glossarySection.getByText(testTermDisplayName)
+      ).toBeVisible();
+
+      await removeGlossaryTermFromPanel(adminPage, [testTermDisplayName]);
+
+      await expect(
+        adminPage.getByText(/Glossary terms updated successfully/i)
+      ).toBeVisible();
+
+      await navigateToExploreAndSelectTable(
+        adminPage,
+        adminTestEntity.entity.name
+      );
+
+      const summaryPanelAfterRemove = adminPage.locator(
+        '.entity-summary-panel-container'
+      );
+      const glossarySectionAfterRemove = summaryPanelAfterRemove.locator(
+        '.glossary-terms-section'
+      );
+
+      await expect(
+        glossarySectionAfterRemove.getByText(testTermDisplayName)
+      ).not.toBeVisible();
+    } finally {
+      await testGlossary.delete(apiContext);
+      await afterAction();
+    }
+  });
+
   test('Admin - Overview Tab - Tier Section - Add and Update', async ({
     adminPage,
   }) => {
@@ -496,16 +594,43 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     await expect(tierSection).toBeVisible();
 
-    await assignTier(
-      adminPage,
-      'Tier1',
-      EntityTypeEndpoint.Table,
-      'edit-icon-tier'
-    );
+    await assignTierToPanel(adminPage, 'Tier1');
 
     await expect(
       adminPage.getByText(/Tier updated successfully/i)
     ).toBeVisible();
+  });
+
+  test('Admin - Overview Tab - Remove Tier', async ({ adminPage }) => {
+    await assignTierToPanel(adminPage, 'Tier1');
+
+    await expect(
+      adminPage.getByText(/Tier updated successfully/i)
+    ).toBeVisible();
+
+    const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+    const tierSection = summaryPanel.locator('.tier-section');
+
+    await expect(tierSection.getByText('Tier1')).toBeVisible();
+
+    await removeTierFromPanel(adminPage);
+
+    await expect(
+      adminPage.getByText(/Tier updated successfully/i)
+    ).toBeVisible();
+
+    await navigateToExploreAndSelectTable(
+      adminPage,
+      adminTestEntity.entity.name
+    );
+
+    const summaryPanelAfterRemove = adminPage.locator(
+      '.entity-summary-panel-container'
+    );
+    const tierSectionAfterRemove =
+      summaryPanelAfterRemove.locator('.tier-section');
+
+    await expect(tierSectionAfterRemove.getByText('Tier1')).not.toBeVisible();
   });
 
   test('Admin - Overview Tab - Domains Section - Add and Update', async ({
@@ -521,6 +646,40 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     await expect(
       adminPage.getByText(/Domains updated successfully/i)
     ).toBeVisible();
+  });
+
+  test('Admin - Overview Tab - Remove Domain', async ({ adminPage }) => {
+    await editDomain(adminPage, 'TestDomain');
+
+    await expect(
+      adminPage.getByText(/Domains updated successfully/i)
+    ).toBeVisible();
+
+    const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+    const domainsSection = summaryPanel.locator('.domains-section');
+
+    await expect(domainsSection.getByText('TestDomain')).toBeVisible();
+
+    await removeDomainFromPanel(adminPage, 'TestDomain');
+
+    await expect(
+      adminPage.getByText(/Domains updated successfully/i)
+    ).toBeVisible();
+
+    await navigateToExploreAndSelectTable(
+      adminPage,
+      adminTestEntity.entity.name
+    );
+
+    const summaryPanelAfterRemove = adminPage.locator(
+      '.entity-summary-panel-container'
+    );
+    const domainsSectionAfterRemove =
+      summaryPanelAfterRemove.locator('.domains-section');
+
+    await expect(
+      domainsSectionAfterRemove.getByText('TestDomain')
+    ).not.toBeVisible();
   });
 
   test('Admin - Schema Tab - View Schema', async ({ adminPage }) => {
@@ -1601,12 +1760,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
 
     await expect(tierSection).toBeVisible();
 
-    await assignTier(
-      dataStewardPage,
-      'Tier2',
-      EntityTypeEndpoint.Table,
-      'edit-icon-tier'
-    );
+    await assignTierToPanel(dataStewardPage, 'Tier2');
 
     await expect(
       dataStewardPage.getByText(/Tier updated successfully/i)
@@ -1860,12 +2014,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
 
     await expect(tierSection).toBeVisible();
 
-    await assignTier(
-      dataConsumerPage,
-      'Tier3',
-      EntityTypeEndpoint.Table,
-      'edit-icon-tier'
-    );
+    await assignTierToPanel(dataConsumerPage, 'Tier3');
 
     await expect(
       dataConsumerPage.getByText(/Tier updated successfully/i)
