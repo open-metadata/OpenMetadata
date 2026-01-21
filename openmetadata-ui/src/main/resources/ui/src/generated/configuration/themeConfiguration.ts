@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -19,6 +19,10 @@ export interface ThemeConfiguration {
      */
     errorColor: string;
     /**
+     * Hover color used in the UI, in hex code format or empty.
+     */
+    hoverColor?: string;
+    /**
      * Color used for informational messages in the UI, in hex code format or empty
      */
     infoColor: string;
@@ -26,6 +30,10 @@ export interface ThemeConfiguration {
      * Primary color used in the UI, in hex code format or empty.
      */
     primaryColor: string;
+    /**
+     * Selected color used in the UI, in hex code format or empty.
+     */
+    selectedColor?: string;
     /**
      * Color used to indicate success in the UI, in hex code format or empty
      */

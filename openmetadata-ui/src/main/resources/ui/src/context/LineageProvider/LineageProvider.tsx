@@ -172,6 +172,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     {} as SourceType
   );
   const [activeLayer, setActiveLayer] = useState<LineageLayer[]>([]);
+  const previousLayerRef = useRef(activeLayer);
 
   // Added this ref to compare the previous active layer with the current active layer.
   // We need to redraw the lineage if the column level lineage is added or removed.
@@ -730,7 +731,17 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   );
 
   const onUpdateLayerView = useCallback((layers: LineageLayer[]) => {
+    // Check if column layer is being removed
+    if (
+      previousLayerRef.current.includes(LineageLayer.ColumnLevelLineage) &&
+      !layers.includes(LineageLayer.ColumnLevelLineage)
+    ) {
+      setTracedColumns([]);
+    }
+
     setActiveLayer(layers);
+    previousLayerRef.current = layers;
+
     if (
       layers.includes(LineageLayer.ColumnLevelLineage) ||
       layers.includes(LineageLayer.DataObservability)
@@ -1080,6 +1091,43 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       );
     }
   };
+
+  const updateNodeData = useCallback(
+    (entityId: string, updatedEntity: Partial<SourceType>) => {
+      setNodes((prevNodes) =>
+        prevNodes.map((node) => {
+          if (node.id !== entityId) {
+            return node;
+          }
+
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              node: { ...node.data.node, ...updatedEntity },
+            },
+          };
+        })
+      );
+    },
+    [setNodes]
+  );
+
+  const handleEntityUpdate = useCallback(
+    (updatedEntity: Partial<SourceType>) => {
+      setSelectedNode((prev) => {
+        if (!prev?.id) {
+          return prev;
+        }
+
+        const entityId = updatedEntity.id ?? prev.id;
+        updateNodeData(entityId, updatedEntity);
+
+        return { ...prev, ...updatedEntity };
+      });
+    },
+    [updateNodeData]
+  );
 
   const onNodeClick = useCallback(
     (node: Node) => {
@@ -2040,6 +2088,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               panelPath="lineage"
               pipelineViewMode={lineageConfig.pipelineViewMode}
               upstreamDepth={lineageConfig.upstreamDepth}
+              onEntityUpdate={handleEntityUpdate}
             />
           </Drawer>
         )}

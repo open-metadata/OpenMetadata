@@ -29,9 +29,16 @@ from typing import (
     Type,
     TypeVar,
     Union,
+    get_args,
+    get_origin,
 )
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import (
+    BaseSettings,
+    EnvSettingsSource,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+)
 
 from metadata.generated.schema.api.createBot import CreateBot
 from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
@@ -61,6 +68,7 @@ from metadata.ingestion.ometa.mixins.data_contract_mixin import OMetaDataContrac
 from metadata.ingestion.ometa.mixins.data_insight_mixin import DataInsightMixin
 from metadata.ingestion.ometa.mixins.domain_mixin import OMetaDomainMixin
 from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
+from metadata.ingestion.ometa.mixins.file_mixin import OMetaFileMixin
 from metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin import (
     OMetaIngestionPipelineMixin,
 )
@@ -121,14 +129,134 @@ class EmptyPayloadException(Exception):
     """
 
 
+class CaseInsensitiveEnvSettingsSource(EnvSettingsSource):
+    """
+    Custom environment settings source that handles case-insensitive field names.
+    This allows both exact camelCase (e.g., OPENMETADATA__connection__hostPort)
+    and all uppercase (e.g., OPENMETADATA__CONNECTION_HOSTPORT) to work.
+    """
+
+    @staticmethod
+    def _unwrap_annotation(annotation):
+        """Unwrap Optional and other Union types to get the actual model class."""
+        origin = get_origin(annotation)
+        if origin is Union:
+            args = get_args(annotation)
+            for arg in args:
+                if arg is not type(None) and hasattr(arg, "model_fields"):
+                    return arg
+        return annotation
+
+    def _normalize_env_key_recursive(self, key: str, model_fields: dict) -> str:
+        """
+        Normalize environment variable key to match model field names recursively.
+        Handles case-insensitive matching for deeply nested fields.
+        """
+        if not key or not model_fields:
+            return key
+
+        parts = key.split(self.env_nested_delimiter)
+        if not parts:
+            return key
+
+        first_part = parts[0]
+        first_part_lower = first_part.lower()
+
+        for field_name, field_info in model_fields.items():
+            if field_name.lower() == first_part_lower:
+                if len(parts) == 1:
+                    return field_name
+
+                remaining_key = self.env_nested_delimiter.join(parts[1:])
+
+                field_annotation = self._unwrap_annotation(field_info.annotation)
+                if hasattr(field_annotation, "model_fields"):
+                    normalized_rest = self._normalize_env_key_recursive(
+                        remaining_key, field_annotation.model_fields
+                    )
+                    return f"{field_name}{self.env_nested_delimiter}{normalized_rest}"
+                else:
+                    return f"{field_name}{self.env_nested_delimiter}{remaining_key}"
+
+        return key
+
+    def _build_nested_dict(self, key: str, value: str) -> dict:
+        """Build a nested dictionary from a delimited key."""
+        parts = key.split(self.env_nested_delimiter)
+        if len(parts) == 1:
+            return {parts[0]: value}
+
+        result = {}
+        current = result
+        for part in parts[:-1]:
+            current[part] = {}
+            current = current[part]
+        current[parts[-1]] = value
+        return result
+
+    def _merge_dicts(self, dict1: dict, dict2: dict) -> dict:
+        """Recursively merge two dictionaries."""
+        result = dict1.copy()
+        for key, value in dict2.items():
+            if (
+                key in result
+                and isinstance(result[key], dict)
+                and isinstance(value, dict)
+            ):
+                result[key] = self._merge_dicts(result[key], value)
+            else:
+                result[key] = value
+        return result
+
+    def explode_env_vars(self, field_name: str, field, env_vars: dict) -> dict:
+        """
+        Override to handle case-insensitive nested environment variable names.
+        """
+        prefix = f"{self.env_prefix}{field_name}{self.env_nested_delimiter}"
+        prefix_len = len(prefix)
+
+        result = {}
+        for env_name, env_val in env_vars.items():
+            if env_name.upper().startswith(prefix.upper()):
+                suffix = env_name[prefix_len:]
+
+                field_annotation = self._unwrap_annotation(field.annotation)
+                if hasattr(field_annotation, "model_fields"):
+                    normalized_suffix = self._normalize_env_key_recursive(
+                        suffix, field_annotation.model_fields
+                    )
+                    nested_dict = self._build_nested_dict(normalized_suffix, env_val)
+                    result = self._merge_dicts(result, nested_dict)
+                else:
+                    result[suffix] = env_val
+
+        return result
+
+
 class OpenMetadataSettings(BaseSettings):
     """OpenMetadataConnection settings wrapper"""
 
     model_config = SettingsConfigDict(
-        env_prefix="OPENMETADATA__", env_nested_delimiter="__", case_sensitive=True
+        env_prefix="OPENMETADATA__", env_nested_delimiter="__"
     )
 
     connection: OpenMetadataConnection
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls,
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ):
+        return (
+            init_settings,
+            CaseInsensitiveEnvSettingsSource(settings_cls),
+            dotenv_settings,
+            file_secret_settings,
+        )
 
 
 class OpenMetadata(
@@ -136,6 +264,7 @@ class OpenMetadata(
     OMetaPipelineMixin,
     OMetaMlModelMixin,
     OMetaTableMixin,
+    OMetaFileMixin,
     OMetaTopicMixin,
     OMetaVersionMixin,
     OMetaServiceMixin,

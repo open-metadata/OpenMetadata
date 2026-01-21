@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -77,10 +77,6 @@ export interface DatabaseServiceMetadataPipeline {
      */
     markDeletedTables?: boolean;
     /**
-     * Set the 'Override Lineage' toggle to control whether to override the existing lineage.
-     */
-    overrideLineage?: boolean;
-    /**
      * Set the 'Override Metadata' toggle to control whether to override the existing metadata
      * in the OpenMetadata server with the metadata fetched from the source. If the toggle is
      * set to true, the metadata fetched from the source will override the existing metadata in
@@ -108,6 +104,10 @@ export interface DatabaseServiceMetadataPipeline {
      */
     schemaFilterPattern?: FilterPattern;
     /**
+     * Regex to only include/exclude stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?: FilterPattern;
+    /**
      * Regex to only include/exclude tables that matches the pattern.
      */
     tableFilterPattern?: FilterPattern;
@@ -132,6 +132,8 @@ export interface DatabaseServiceMetadataPipeline {
  * Regex to only fetch entities that matches the pattern.
  *
  * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude stored procedures that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
  */

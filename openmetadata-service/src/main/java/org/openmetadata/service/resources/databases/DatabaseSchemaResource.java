@@ -81,7 +81,7 @@ import org.openmetadata.service.util.CSVExportResponse;
 public class DatabaseSchemaResource
     extends EntityResource<DatabaseSchema, DatabaseSchemaRepository> {
   private final DatabaseSchemaMapper mapper = new DatabaseSchemaMapper();
-  public static final String COLLECTION_PATH = "v1/databaseSchemas/";
+  public static final String COLLECTION_PATH = "/v1/databaseSchemas/";
   static final String FIELDS =
       "owners,tables,usageSummary,tags,certification,extension,domains,sourceHash,followers";
 
@@ -221,8 +221,17 @@ public class DatabaseSchemaResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
   }
 
   @GET
@@ -261,8 +270,17 @@ public class DatabaseSchemaResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include, includeRelations);
   }
 
   @GET
@@ -585,6 +603,7 @@ public class DatabaseSchemaResource
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public CsvImportResult importCsv(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Database schema", schema = @Schema(type = "string"))
           @PathParam("name")
@@ -602,7 +621,7 @@ public class DatabaseSchemaResource
           boolean recursive,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun, recursive);
+    return importCsvInternal(uriInfo, securityContext, name, csv, dryRun, recursive);
   }
 
   @PUT
@@ -624,6 +643,7 @@ public class DatabaseSchemaResource
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public Response importCsvAsync(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Database schema", schema = @Schema(type = "string"))
           @PathParam("name")
@@ -640,7 +660,7 @@ public class DatabaseSchemaResource
           @QueryParam("recursive")
           boolean recursive,
       String csv) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun, recursive);
+    return importCsvInternalAsync(uriInfo, securityContext, name, csv, dryRun, recursive);
   }
 
   @PUT

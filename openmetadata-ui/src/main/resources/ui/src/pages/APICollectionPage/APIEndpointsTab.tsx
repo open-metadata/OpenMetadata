@@ -24,11 +24,7 @@ import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPr
 import TableAntd from '../../components/common/Table/Table';
 import { useGenericContext } from '../../components/Customization/GenericProvider/GenericProvider';
 import { API_COLLECTION_API_ENDPOINTS } from '../../constants/APICollection.constants';
-import {
-  INITIAL_PAGING_VALUE,
-  NO_DATA,
-  PAGE_SIZE,
-} from '../../constants/constants';
+import { INITIAL_PAGING_VALUE, NO_DATA } from '../../constants/constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_API_ENDPOINT_TAB_VISIBLE_COLUMNS,
@@ -102,15 +98,11 @@ function APIEndpointsTab({
   const searchAPIEndpoints = useCallback(
     async (searchValue: string, pageNumber = INITIAL_PAGING_VALUE) => {
       setAPIEndpointsLoading(true);
-      handlePageChange(pageNumber, {
-        cursorType: null,
-        cursorValue: undefined,
-      });
       try {
         const response = await searchQuery({
           query: '',
           pageNumber,
-          pageSize: PAGE_SIZE,
+          pageSize: pageSize,
           queryFilter: buildSchemaQueryFilter(
             'apiCollection.fullyQualifiedName',
             decodedAPICollectionFQN,
@@ -208,14 +200,8 @@ function APIEndpointsTab({
   const handleEndpointsPagination = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (searchValue) {
-        searchAPIEndpoints(searchValue, currentPage);
         handlePageChange(currentPage);
       } else if (cursorType) {
-        getAPICollectionEndpoints({
-          paging: {
-            [cursorType]: paging[cursorType],
-          },
-        });
         handlePageChange(
           currentPage,
           { cursorType, cursorValue: paging[cursorType] },
@@ -223,20 +209,18 @@ function APIEndpointsTab({
         );
       }
     },
-    [paging, getAPICollectionEndpoints, searchAPIEndpoints, searchValue]
+    [paging, handlePageChange, searchValue, pageSize]
   );
 
   const onEndpointSearch = useCallback(
     (value: string) => {
       setFilters({ endpoint: isEmpty(value) ? undefined : value });
-      if (value) {
-        searchAPIEndpoints(value);
-      } else {
-        getAPICollectionEndpoints();
-        handlePageChange(INITIAL_PAGING_VALUE);
-      }
+      handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
     },
-    [setFilters, searchAPIEndpoints, getAPICollectionEndpoints]
+    [setFilters, handlePageChange]
   );
 
   const handleDeleteAction = () => {
@@ -251,6 +235,15 @@ function APIEndpointsTab({
   };
 
   useEffect(() => {
+    if (searchValue) {
+      searchAPIEndpoints(searchValue, currentPage);
+    }
+  }, [searchValue, currentPage, filters.showDeletedEndpoints]);
+
+  useEffect(() => {
+    if (searchValue) {
+      return;
+    }
     const { cursorType, cursorValue } = pagingCursor ?? {};
 
     if (cursorType && cursorValue) {
@@ -260,7 +253,13 @@ function APIEndpointsTab({
     } else {
       getAPICollectionEndpoints({ paging: { limit: pageSize } });
     }
-  }, [apiCollection, pageSize, pagingCursor, getAPICollectionEndpoints]);
+  }, [
+    apiCollection,
+    pageSize,
+    pagingCursor,
+    searchValue,
+    filters.showDeletedEndpoints,
+  ]);
 
   const searchProps = useMemo(
     () => ({

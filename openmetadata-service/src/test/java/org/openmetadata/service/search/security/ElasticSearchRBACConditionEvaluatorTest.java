@@ -30,8 +30,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
@@ -193,8 +196,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     // Evaluate the condition through RBAC evaluator
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
 
     // Verify that the generated query correctly contains reviewer information
     assertTrue(generatedQuery.contains("reviewers.id"), "The query should contain 'reviewers.id'.");
@@ -1288,5 +1291,138 @@ class ElasticSearchRBACConditionEvaluatorTest {
         jsonContext,
         "$.bool.must_not[*].bool.must[?(@.terms._index && @.terms._index[?(@ == 'glossary' || @ == 'glossaryterm')])]",
         "Deny policy should exclude 'glossary' and 'glossaryTerm' in must_not clause");
+  }
+
+  @Test
+  void testHasAnyRoleWithInheritedRoleFromTeam() {
+    setupMockPolicies("hasAnyRole('DataSteward') && matchAnyTag('Sensitive')", "ALLOW");
+
+    when(mockUser.getRoles()).thenReturn(List.of());
+
+    UUID teamId = UUID.randomUUID();
+    EntityReference teamRef = new EntityReference();
+    teamRef.setId(teamId);
+    teamRef.setName("EngineeringTeam");
+    when(mockUser.getTeams()).thenReturn(List.of(teamRef));
+
+    Team mockTeam = mock(Team.class);
+    EntityReference inheritedRole = new EntityReference();
+    inheritedRole.setName("DataSteward");
+    when(mockTeam.getDefaultRoles()).thenReturn(List.of(inheritedRole));
+    when(mockTeam.getParents()).thenReturn(List.of());
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(
+              () -> Entity.getEntity(eq(Entity.TEAM), eq(teamId), anyString(), any(Include.class)))
+          .thenReturn(mockTeam);
+
+      SearchRepository mockSearchRepository = mock(SearchRepository.class);
+      when(mockSearchRepository.getIndexOrAliasName(anyString()))
+          .thenAnswer(invocation -> invocation.getArgument(0).toString().toLowerCase());
+      entityMock.when(Entity::getSearchRepository).thenReturn(mockSearchRepository);
+
+      OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+      Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+      String generatedQuery = serializeQueryToJson(elasticQuery);
+
+      assertTrue(
+          generatedQuery.contains("match_all"),
+          "Query should contain match_all since user inherits DataSteward role from team");
+      assertTrue(generatedQuery.contains("Sensitive"), "Query should contain tag condition");
+      assertFalse(generatedQuery.contains("match_none"), "Query should not be match_none");
+    }
+  }
+
+  @Test
+  void testInAnyTeamWithTeamHierarchy() {
+    setupMockPolicies("inAnyTeam('ParentTeam') && matchAnyTag('Confidential')", "ALLOW");
+
+    UUID childTeamId = UUID.randomUUID();
+    EntityReference childTeamRef = new EntityReference();
+    childTeamRef.setId(childTeamId);
+    childTeamRef.setName("ChildTeam");
+    when(mockUser.getTeams()).thenReturn(List.of(childTeamRef));
+
+    UUID parentTeamId = UUID.randomUUID();
+    Team mockChildTeam = mock(Team.class);
+    when(mockChildTeam.getName()).thenReturn("ChildTeam");
+    EntityReference parentTeamRef = new EntityReference();
+    parentTeamRef.setId(parentTeamId);
+    parentTeamRef.setName("ParentTeam");
+    when(mockChildTeam.getParents()).thenReturn(List.of(parentTeamRef));
+
+    Team mockParentTeam = mock(Team.class);
+    when(mockParentTeam.getName()).thenReturn("ParentTeam");
+    when(mockParentTeam.getParents()).thenReturn(List.of());
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(
+              () ->
+                  Entity.getEntity(
+                      eq(Entity.TEAM), eq(childTeamId), anyString(), any(Include.class)))
+          .thenReturn(mockChildTeam);
+      entityMock
+          .when(
+              () ->
+                  Entity.getEntity(
+                      eq(Entity.TEAM), eq(parentTeamId), anyString(), any(Include.class)))
+          .thenReturn(mockParentTeam);
+
+      SearchRepository mockSearchRepository = mock(SearchRepository.class);
+      when(mockSearchRepository.getIndexOrAliasName(anyString()))
+          .thenAnswer(invocation -> invocation.getArgument(0).toString().toLowerCase());
+      entityMock.when(Entity::getSearchRepository).thenReturn(mockSearchRepository);
+
+      OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+      Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+      String generatedQuery = serializeQueryToJson(elasticQuery);
+
+      assertTrue(
+          generatedQuery.contains("match_all"),
+          "Query should contain match_all since user's team is child of ParentTeam");
+      assertTrue(generatedQuery.contains("Confidential"), "Query should contain tag condition");
+      assertFalse(generatedQuery.contains("match_none"), "Query should not be match_none");
+    }
+  }
+
+  @Test
+  void testHasAnyRoleWithNoMatchingInheritedRole() {
+    setupMockPolicies("hasAnyRole('Admin') && matchAnyTag('Public')", "ALLOW");
+
+    when(mockUser.getRoles()).thenReturn(List.of());
+
+    UUID teamId = UUID.randomUUID();
+    EntityReference teamRef = new EntityReference();
+    teamRef.setId(teamId);
+    teamRef.setName("RegularTeam");
+    when(mockUser.getTeams()).thenReturn(List.of(teamRef));
+
+    Team mockTeam = mock(Team.class);
+    EntityReference nonMatchingRole = new EntityReference();
+    nonMatchingRole.setName("Viewer");
+    when(mockTeam.getDefaultRoles()).thenReturn(List.of(nonMatchingRole));
+    when(mockTeam.getParents()).thenReturn(List.of());
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(
+              () -> Entity.getEntity(eq(Entity.TEAM), eq(teamId), anyString(), any(Include.class)))
+          .thenReturn(mockTeam);
+
+      SearchRepository mockSearchRepository = mock(SearchRepository.class);
+      when(mockSearchRepository.getIndexOrAliasName(anyString()))
+          .thenAnswer(invocation -> invocation.getArgument(0).toString().toLowerCase());
+      entityMock.when(Entity::getSearchRepository).thenReturn(mockSearchRepository);
+
+      OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+      Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+      String generatedQuery = serializeQueryToJson(elasticQuery);
+
+      assertTrue(
+          generatedQuery.contains("must_not") && generatedQuery.contains("match_all"),
+          "Query should result in match_nothing since user doesn't have Admin role");
+    }
   }
 }

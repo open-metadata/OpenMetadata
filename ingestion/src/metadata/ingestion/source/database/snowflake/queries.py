@@ -15,26 +15,38 @@ SQL Queries used during ingestion
 import textwrap
 
 SNOWFLAKE_GET_TABLE_NAMES = """
-    select TABLE_NAME, NULL, TABLE_TYPE from information_schema.tables
+    select
+        TABLE_NAME,
+        NULL as DELETED,
+        CASE
+            WHEN IS_TRANSIENT = 'YES' THEN 'TRANSIENT TABLE'
+            WHEN IS_DYNAMIC = 'YES' THEN 'DYNAMIC TABLE'
+            ELSE TABLE_TYPE
+        END as TABLE_TYPE
+    from information_schema.tables
     where TABLE_SCHEMA = '{schema}'
-    AND COALESCE(IS_TRANSIENT, 'NO') != '{is_transient}'
+    AND {include_transient_tables}
     AND {include_views}
 """
 
 SNOWFLAKE_INCREMENTAL_GET_TABLE_NAMES = """
-select TABLE_NAME, DELETED, TABLE_TYPE
+select TABLE_NAME, DELETED, COMPUTED_TABLE_TYPE as TABLE_TYPE
 from (
     select
         TABLE_NAME,
         DELETED,
-        TABLE_TYPE,
+        CASE
+            WHEN IS_TRANSIENT = 'YES' THEN 'TRANSIENT TABLE'
+            WHEN IS_DYNAMIC = 'YES' THEN 'DYNAMIC TABLE'
+            ELSE TABLE_TYPE
+        END as COMPUTED_TABLE_TYPE,
         ROW_NUMBER() over (
             partition by TABLE_NAME order by LAST_DDL desc
         ) as ROW_NUMBER
     from {account_usage}.tables
     where TABLE_CATALOG = '{database}'
     and TABLE_SCHEMA = '{schema}'
-    and COALESCE(IS_TRANSIENT, 'NO') != '{is_transient}'
+    and {include_transient_tables}
     and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
     and {include_views}
 )
@@ -72,6 +84,7 @@ SNOWFLAKE_FETCH_TABLE_TAGS = textwrap.dedent(
     from {account_usage}.tag_references
     where OBJECT_DATABASE = '{database_name}'
       and OBJECT_SCHEMA = '{schema_name}'
+      and OBJECT_DELETED IS NULL
 """
 )
 
@@ -194,6 +207,10 @@ SHOW STREAMS IN SCHEMA "{schema}"
 
 SNOWFLAKE_GET_STREAM = """
 SHOW STREAMS LIKE '{stream_name}' IN SCHEMA "{schema}"
+"""
+
+SNOWFLAKE_GET_STAGES = """
+SHOW STAGES IN SCHEMA "{schema}"
 """
 
 SNOWFLAKE_GET_TRANSIENT_NAMES = """
@@ -323,7 +340,8 @@ SELECT /* sqlalchemy:_get_schema_columns */
         ic.is_identity,
         ic.comment,
         ic.identity_start,
-        ic.identity_increment
+        ic.identity_increment,
+        ic.ordinal_position
     FROM information_schema.columns ic
     WHERE ic.table_schema=:table_schema
     ORDER BY ic.ordinal_position
@@ -483,4 +501,18 @@ SNOWFLAKE_QUERY_LOG_QUERY = """
         '{merge}'
     )
     AND EXECUTION_STATUS = 'SUCCESS';
+"""
+
+SNOWFLAKE_DYNAMIC_TABLE_REFRESH_HISTORY_QUERY = """
+    SELECT
+        name AS TABLE_NAME,
+        refresh_start_time AS START_TIME,
+        statistics:numInsertedRows::INT AS ROWS_INSERTED,
+        statistics:numDeletedRows::INT AS ROWS_DELETED
+    FROM
+        {account_usage_schema}.DYNAMIC_TABLE_REFRESH_HISTORY
+    WHERE
+        state = 'SUCCEEDED'
+        AND name ILIKE '%{tablename}%'
+        AND refresh_start_time >= DATEADD('DAY', -1, CURRENT_TIMESTAMP);
 """

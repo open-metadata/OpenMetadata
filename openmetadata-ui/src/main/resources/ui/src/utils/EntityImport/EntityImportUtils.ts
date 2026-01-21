@@ -19,6 +19,7 @@ import {
   importGlossaryInCSVFormat,
   importGlossaryTermInCSVFormat,
   importServiceInCSVFormat,
+  importTestCaseInCSVFormat,
 } from '../../rest/importExportAPI';
 import { getEntityBreadcrumbs, getEntityName } from '../EntityUtils';
 import i18n from '../i18next/LocalUtil';
@@ -67,10 +68,12 @@ export const getImportedEntityType = (entityType: EntityType) => {
 export const getBulkEntityBreadcrumbList = (
   entityType: EntityType,
   entity: DataAssetsHeaderProps['dataAsset'],
-  isBulkEdit: boolean
+  isBulkEdit: boolean,
+  additionalBreadCrumb?: TitleBreadcrumbProps['titleLinks']
 ): TitleBreadcrumbProps['titleLinks'] => {
   return [
-    ...(entityType === EntityType.GLOSSARY_TERM || entityType === EntityType.GLOSSARY
+    ...(entityType === EntityType.GLOSSARY_TERM ||
+    entityType === EntityType.GLOSSARY
       ? [
           {
             name: i18n.t('label.glossary-plural'),
@@ -83,6 +86,7 @@ export const getBulkEntityBreadcrumbList = (
           },
         ]
       : getEntityBreadcrumbs(entity, entityType, true)),
+    ...(additionalBreadCrumb ? additionalBreadCrumb : []),
     {
       name: i18n.t(`label.${isBulkEdit ? 'bulk-edit' : 'import'}`),
       url: '',
@@ -98,9 +102,12 @@ export const getImportValidateAPIEntityType = (entityType: EntityType) => {
 
     case EntityType.GLOSSARY_TERM:
       return importGlossaryTermInCSVFormat;
-    
+
     case EntityType.GLOSSARY:
       return importGlossaryInCSVFormat;
+
+    case EntityType.TEST_CASE:
+      return importTestCaseInCSVFormat;
 
     default:
       return importEntityInCSVFormat;

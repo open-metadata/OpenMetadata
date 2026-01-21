@@ -89,6 +89,8 @@ const DataProductsPage = () => {
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
+
+        throw error;
       }
     }
   };
@@ -283,7 +285,7 @@ const DataProductsPage = () => {
         className={classNames('data-product-page-layout', {
           'version-data': version,
         })}
-        pageTitle={t('label.data-product')}>
+        pageTitle={getEntityName(dataProduct)}>
         <DataProductsDetailsPage
           dataProduct={
             version ? selectedVersionData ?? dataProduct : dataProduct

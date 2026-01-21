@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { Domain } from '../../support/domain/Domain';
@@ -320,7 +320,7 @@ test.describe('Tag Page with Admin Roles', () => {
     // Verify toggle is visible and enabled (tag is enabled by default)
     const tagToggle = adminPage.getByTestId(
       `tag-disable-toggle-${tag1.data.name}`
-    );
+    ).getByRole('switch');
 
     await expect(tagToggle).toBeVisible();
     await expect(tagToggle).toBeChecked();
@@ -357,7 +357,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
     const tagToggle = adminPage.getByTestId(
       `tag-disable-toggle-${tag.data.name}`
-    );
+    ).getByRole('switch');
 
     // Verify toggle is enabled when classification is enabled
     await expect(tagToggle).toBeEnabled();
@@ -452,7 +452,7 @@ test.describe('Tag Page with Data Consumer Roles', () => {
     // Verify toggle is visible but disabled for data consumer user (no EditAll permission)
     const tagToggle = dataConsumerPage.getByTestId(
       `tag-disable-toggle-${tag.data.name}`
-    );
+    ).getByRole('switch');
 
     await expect(tagToggle).toBeVisible();
     await expect(tagToggle).toBeDisabled();

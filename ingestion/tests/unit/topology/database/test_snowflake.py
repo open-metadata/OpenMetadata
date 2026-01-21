@@ -25,6 +25,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
@@ -558,3 +559,92 @@ class SnowflakeUnitTest(TestCase):
             tag_fqns = [tag.tagFQN.root for tag in table_labels]
             self.assertIn("SnowflakeTag.SCHEMA_TAG", tag_fqns)
             self.assertIn("SnowflakeTag.TABLE_TAG", tag_fqns)
+
+    def test_table_names_full_query_generation(self):
+        """Test complete SQL query generation for full extraction with different parameters"""
+        from snowflake.sqlalchemy.snowdialect import SnowflakeDialect
+
+        from metadata.ingestion.source.database.snowflake.utils import get_table_names
+
+        dialect = SnowflakeDialect()
+
+        mock_cursor_case1 = Mock()
+        mock_cursor_case1.__iter__ = Mock(return_value=iter([]))
+
+        mock_connection = Mock()
+        mock_connection.execute = Mock(return_value=mock_cursor_case1)
+
+        get_table_names(
+            dialect,
+            mock_connection,
+            schema="TEST_SCHEMA",
+            include_transient_tables=False,
+            include_views=True,
+        )
+
+        call_args = mock_connection.execute.call_args
+        executed_query_case1 = call_args[0][0]
+
+        self.assertIn("COALESCE(IS_TRANSIENT, 'NO') != 'YES'", executed_query_case1)
+        self.assertNotIn("TABLE_TYPE != 'VIEW'", executed_query_case1)
+
+        mock_cursor_case2 = Mock()
+        mock_cursor_case2.__iter__ = Mock(return_value=iter([]))
+        mock_connection.execute = Mock(return_value=mock_cursor_case2)
+
+        get_table_names(
+            dialect,
+            mock_connection,
+            schema="TEST_SCHEMA",
+            include_transient_tables=True,
+            include_views=False,
+        )
+
+        call_args = mock_connection.execute.call_args
+        executed_query_case2 = call_args[0][0]
+
+        self.assertIn("TABLE_TYPE != 'VIEW'", executed_query_case2)
+        self.assertNotIn("COALESCE(IS_TRANSIENT, 'NO') != 'YES'", executed_query_case2)
+
+    def test_get_stored_procedures(self):
+        """
+        Test fetching stored procedures with filter
+        """
+        source = self.sources["not_incremental"]
+        source.source_config.includeStoredProcedures = True
+        source.source_config.storedProcedureFilterPattern = FilterPattern(
+            excludes=["sp_exclude"]
+        )
+        source.context.get().__dict__["database_service"] = "snowflake_source"
+        source.context.get().__dict__["database"] = "test_db"
+        source.context.get().__dict__["database_schema"] = "test_schema"
+
+        mock_engine = Mock()
+        source.engine = mock_engine
+
+        # Mock rows - fields aliased in SnowflakeStoredProcedure
+        row1 = {
+            "NAME": "sp_include",
+            "OWNER": "owner",
+            "LANGUAGE": "SQL",
+            "DEFINITION": "def1",
+            "SIGNATURE": "(VARCHAR)",
+            "COMMENT": "comment",
+            "PROCEDURE_TYPE": "PROCEDURE",
+        }
+        row2 = {
+            "NAME": "sp_exclude",
+            "OWNER": "owner",
+            "LANGUAGE": "SQL",
+            "DEFINITION": "def2",
+            "SIGNATURE": "(VARCHAR)",
+            "COMMENT": "comment",
+            "PROCEDURE_TYPE": "PROCEDURE",
+        }
+
+        mock_engine.execute.return_value.all.return_value = [row1, row2]
+
+        results = list(source.get_stored_procedures())
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].name, "sp_include")

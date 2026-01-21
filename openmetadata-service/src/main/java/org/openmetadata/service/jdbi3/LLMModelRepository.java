@@ -29,6 +29,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.ai.LLMModelResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -60,7 +61,7 @@ public class LLMModelRepository extends EntityRepository<LLMModel> {
   }
 
   @Override
-  public void setFields(LLMModel llmModel, Fields fields) {
+  public void setFields(LLMModel llmModel, Fields fields, RelationIncludes relationIncludes) {
     llmModel.setService(getContainer(llmModel.getId()));
   }
 

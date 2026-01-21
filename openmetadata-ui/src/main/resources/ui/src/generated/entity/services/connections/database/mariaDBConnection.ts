@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -47,7 +47,11 @@ export interface MariaDBConnection {
     /**
      * SQLAlchemy driver scheme options.
      */
-    scheme?:                        MariaDBScheme;
+    scheme?: MariaDBScheme;
+    /**
+     * Regex to only include/exclude stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?:  FilterPattern;
     supportsDBTExtraction?:         boolean;
     supportsMetadataExtraction?:    boolean;
     supportsProfiler?:              boolean;
@@ -74,6 +78,8 @@ export interface MariaDBConnection {
  * Regex to only fetch entities that matches the pattern.
  *
  * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude stored procedures that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
  */

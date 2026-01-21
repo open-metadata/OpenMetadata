@@ -12,6 +12,8 @@
  *  limitations under the License.
  */
 
+import { ThemeProvider } from '@mui/material';
+import { createMuiTheme } from '@openmetadata/ui-core-components';
 import {
   act,
   findAllByTestId,
@@ -26,6 +28,7 @@ import {
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import { deleteTag, getAllClassifications } from '../../rest/tagAPI';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
@@ -55,6 +58,14 @@ jest.mock('react-router-dom', () => ({
     .fn()
     .mockImplementation(({ children, ...rest }) => <a {...rest}>{children}</a>),
 }));
+
+const theme = createMuiTheme();
+
+const Wrapper = ({ children }: { children: React.ReactNode }) => (
+  <ThemeProvider theme={theme}>
+    <MemoryRouter>{children}</MemoryRouter>
+  </ThemeProvider>
+);
 
 const mockProps = {
   pageTitle: 'tags',
@@ -246,7 +257,13 @@ jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () =>
 );
 
 jest.mock('../../hoc/withPageLayout', () => ({
-  withPageLayout: jest.fn().mockImplementation((Component) => Component),
+  withPageLayout: jest.fn().mockImplementation((Component) => {
+    const WrappedComponent = (props: Record<string, unknown>) => (
+      <Component {...props} />
+    );
+
+    return WrappedComponent;
+  }),
 }));
 
 jest.mock(
@@ -354,7 +371,7 @@ jest.mock('../../hooks/useEntityRules', () => ({
 
 describe('Test TagsPage page', () => {
   it('Component should render', async () => {
-    render(<TagsPage {...mockProps} />, { wrapper: MemoryRouter });
+    render(<TagsPage {...mockProps} />, { wrapper: Wrapper });
 
     expect(getAllClassifications).toHaveBeenCalled();
 
@@ -378,7 +395,7 @@ describe('Test TagsPage page', () => {
   });
 
   it('Classification LeftPanel count should render properly', async () => {
-    render(<TagsPage {...mockProps} />);
+    render(<TagsPage {...mockProps} />, { wrapper: Wrapper });
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
     const leftPanelContent = screen.getByTestId('tags-left-panel');
@@ -399,7 +416,7 @@ describe('Test TagsPage page', () => {
   });
 
   it('OnClick of add new tag, Form should display in drawer', async () => {
-    render(<TagsPage {...mockProps} />);
+    render(<TagsPage {...mockProps} />, { wrapper: Wrapper });
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
     const addNewTag = screen.getByTestId('add-new-tag-button');
@@ -415,7 +432,9 @@ describe('Test TagsPage page', () => {
   });
 
   it('OnClick of delete tag, confirmation modal should display', async () => {
-    const { container } = render(<TagsPage {...mockProps} />);
+    const { container } = render(<TagsPage {...mockProps} />, {
+      wrapper: Wrapper,
+    });
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
     const deleteBtn = await findAllByTestId(container, 'delete-tag');
 
@@ -440,7 +459,7 @@ describe('Test TagsPage page', () => {
   });
 
   it('OnClick of add new category, Form should display in drawer', async () => {
-    render(<TagsPage {...mockProps} />);
+    render(<TagsPage {...mockProps} />, { wrapper: Wrapper });
 
     const loader = screen.queryByTestId('loader');
     if (loader) {
@@ -460,7 +479,9 @@ describe('Test TagsPage page', () => {
   });
 
   it('Description should be in document', async () => {
-    const { container } = render(<TagsPage {...mockProps} />);
+    const { container } = render(<TagsPage {...mockProps} />, {
+      wrapper: Wrapper,
+    });
 
     const loader = screen.queryByTestId('loader');
     if (loader) {
@@ -477,7 +498,9 @@ describe('Test TagsPage page', () => {
   });
 
   it('Table with respective header should be render', async () => {
-    const { container } = render(<TagsPage {...mockProps} />);
+    const { container } = render(<TagsPage {...mockProps} />, {
+      wrapper: Wrapper,
+    });
 
     const loader = screen.queryByTestId('loader');
     if (loader) {
@@ -502,7 +525,9 @@ describe('Test TagsPage page', () => {
         },
       })
     );
-    const { container } = render(<TagsPage {...mockProps} />);
+    const { container } = render(<TagsPage {...mockProps} />, {
+      wrapper: Wrapper,
+    });
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
     const errorPlaceholder = await findByTestId(
@@ -514,7 +539,7 @@ describe('Test TagsPage page', () => {
   });
 
   it('System tag category should not be renamed', async () => {
-    render(<TagsPage {...mockProps} />);
+    render(<TagsPage {...mockProps} />, { wrapper: Wrapper });
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
     const tagsComponent = screen.getByTestId('tags-container');
@@ -531,7 +556,7 @@ describe('Test TagsPage page', () => {
     (getClassifications as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({ data: [mockCategory[1]] })
     );
-    render(<TagsPage {...mockProps} />);
+    render(<TagsPage {...mockProps} />, { wrapper: Wrapper });
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
     const tagsComponent = screen.getByTestId('tags-container');
@@ -570,7 +595,9 @@ describe('Test TagsPage page', () => {
   });
 
   it('User tag should be load', async () => {
-    const { container } = render(<TagsPage {...mockProps} />);
+    const { container } = render(<TagsPage {...mockProps} />, {
+      wrapper: Wrapper,
+    });
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
     const tagsComponent = screen.getByTestId('tags-container');
@@ -593,7 +620,7 @@ describe('Test TagsPage page', () => {
   it("Should not render add classification button if doesn't have create permission", async () => {
     (checkPermission as jest.Mock).mockReturnValueOnce(false);
 
-    render(<TagsPage {...mockProps} />);
+    render(<TagsPage {...mockProps} />, { wrapper: Wrapper });
 
     expect(screen.queryByTestId('add-classification')).not.toBeInTheDocument();
   });
@@ -603,7 +630,7 @@ describe('Test TagsPage page', () => {
       (deleteTag as jest.Mock).mockImplementationOnce(() =>
         Promise.reject({ response: { data: 'error!' } })
       );
-      render(<TagsPage {...mockProps} />);
+      render(<TagsPage {...mockProps} />, { wrapper: Wrapper });
       await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
       const deleteBtn = await screen.findAllByTestId('delete-tag');
@@ -623,7 +650,9 @@ describe('Test TagsPage page', () => {
       (deleteTag as jest.Mock).mockImplementationOnce(() =>
         Promise.resolve({ data: '' })
       );
-      const { container } = render(<TagsPage {...mockProps} />);
+      const { container } = render(<TagsPage {...mockProps} />, {
+        wrapper: Wrapper,
+      });
 
       const deleteBtn = await findAllByTestId(container, 'delete-tag');
 
@@ -641,5 +670,24 @@ describe('Test TagsPage page', () => {
         queryByTitle(container, 'confirmation-modal')
       ).not.toBeInTheDocument();
     });
+  });
+
+  it('should pass classification name as pageTitle to withPageLayout', async () => {
+    (getAllClassifications as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(MOCK_ALL_CLASSIFICATIONS)
+    );
+
+    await act(async () => {
+      render(<TagsPage {...mockProps} />, {
+        wrapper: Wrapper,
+      });
+    });
+
+    expect(ResizableLeftPanels).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pageTitle: 'PersonalData',
+      }),
+      expect.anything()
+    );
   });
 });

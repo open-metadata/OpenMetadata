@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 /**
- * Open Data Contract Standard (ODCS) v3.0.2 data contract representation for import/export.
+ * Open Data Contract Standard (ODCS) v3.1.0 data contract representation for import/export.
  */
 export interface OdcsDataContract {
     /**
@@ -121,6 +121,7 @@ export enum OdcsAPIVersion {
     V300 = "v3.0.0",
     V301 = "v3.0.1",
     V302 = "v3.0.2",
+    V310 = "v3.1.0",
 }
 
 /**
@@ -243,6 +244,10 @@ export interface OdcsQualityRule {
      */
     implementation?: string;
     /**
+     * Standard quality metric from library (ODCS 3.1.0).
+     */
+    metric?: OdcsQualityMetric;
+    /**
      * Value must equal.
      */
     mustBe?: number;
@@ -283,7 +288,7 @@ export interface OdcsQualityRule {
      */
     query?: string;
     /**
-     * Library rule name.
+     * Library rule name. For type=library, can be one of the standard quality metrics.
      */
     rule?: string;
     /**
@@ -338,6 +343,23 @@ export enum Dimension {
 }
 
 /**
+ * Standard quality metric from library (ODCS 3.1.0).
+ *
+ * Standard quality metrics library supported by ODCS 3.1.0.
+ */
+export enum OdcsQualityMetric {
+    Completeness = "completeness",
+    DistinctValues = "distinctValues",
+    DuplicateValues = "duplicateValues",
+    Freshness = "freshness",
+    InvalidValues = "invalidValues",
+    MissingValues = "missingValues",
+    NullValues = "nullValues",
+    RowCount = "rowCount",
+    UniqueValues = "uniqueValues",
+}
+
+/**
  * Quality rule type.
  */
 export enum Type {
@@ -383,6 +405,7 @@ export interface OdcsRole {
  */
 export enum Access {
     Read = "read",
+    ReadWrite = "readWrite",
     Write = "write",
 }
 
@@ -401,9 +424,10 @@ export interface OdcsSchemaElement {
      */
     businessName?: string;
     /**
-     * Security level.
+     * Data classification tag (e.g., PII, public, internal, restricted, confidential,
+     * sensitive).
      */
-    classification?: Classification;
+    classification?: string;
     /**
      * CDE designation.
      */
@@ -433,7 +457,7 @@ export interface OdcsSchemaElement {
      */
     items?: OdcsSchemaElement;
     /**
-     * Logical data type.
+     * Logical data type per ODCS v3.1.0 spec.
      */
     logicalType?: LogicalType;
     /**
@@ -500,27 +524,25 @@ export interface OdcsSchemaElement {
 }
 
 /**
- * Security level.
- */
-export enum Classification {
-    Confidential = "confidential",
-    Internal = "internal",
-    Public = "public",
-    Restricted = "restricted",
-    Sensitive = "sensitive",
-}
-
-/**
- * Logical data type.
+ * Logical data type per ODCS v3.1.0 spec.
  */
 export enum LogicalType {
     Array = "array",
     Boolean = "boolean",
+    Bytes = "bytes",
     Date = "date",
+    Decimal = "decimal",
+    Double = "double",
+    Float = "float",
     Integer = "integer",
+    Long = "long",
+    Null = "null",
     Number = "number",
     Object = "object",
     String = "string",
+    Text = "text",
+    Time = "time",
+    Timestamp = "timestamp",
 }
 
 /**
@@ -529,6 +551,10 @@ export enum LogicalType {
  * Type-specific options for schema properties.
  */
 export interface OdcsLogicalTypeOptions {
+    /**
+     * Default timezone for timestamp/time types.
+     */
+    defaultTimezone?: string;
     /**
      * Exclusive maximum value.
      */
@@ -581,6 +607,10 @@ export interface OdcsLogicalTypeOptions {
      * Regex pattern for string validation.
      */
     pattern?: string;
+    /**
+     * Whether the timestamp/time defines the timezone or not.
+     */
+    timezone?: boolean;
     /**
      * Whether array items must be unique.
      */

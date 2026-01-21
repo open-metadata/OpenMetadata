@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -170,6 +170,14 @@ export interface AssetCertification {
  * This schema defines the type for labeling an entity with a Tag.
  */
 export interface TagLabel {
+    /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
     /**
      * Description for the tag label.
      */
@@ -604,6 +612,7 @@ export enum DatabaseServiceType {
     DeltaLake = "DeltaLake",
     DomoDatabase = "DomoDatabase",
     Doris = "Doris",
+    Dremio = "Dremio",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
     Epic = "Epic",
@@ -632,6 +641,7 @@ export enum DatabaseServiceType {
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
     Ssas = "SSAS",
+    StarRocks = "StarRocks",
     Synapse = "Synapse",
     Teradata = "Teradata",
     Timescale = "Timescale",

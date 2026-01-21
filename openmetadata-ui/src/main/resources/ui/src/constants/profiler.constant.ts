@@ -400,14 +400,48 @@ export const TEST_CASE_FILTERS: Record<string, keyof TestCaseSearchParams> = {
   dimension: 'dataQualityDimension',
 };
 
+export const TEST_CASE_FILTERS_LABELS: Record<
+  keyof typeof TEST_CASE_FILTERS,
+  string
+> = {
+  table: t('label.table'),
+  platform: t('label.platform'),
+  type: t('label.type'),
+  status: t('label.status'),
+  lastRun: t('label.last-run'),
+  tier: t('label.tier'),
+  tags: t('label.tag-plural'),
+  service: t('label.service'),
+  dimension: t('label.dimension'),
+};
+
 export const TEST_CASE_PLATFORM_OPTION = values(TestPlatform).map((value) => ({
   label: value,
   value: value,
 }));
 
+export const TEST_CASE_DIMENSION_LABELS: Record<DataQualityDimensions, string> =
+  {
+    [DataQualityDimensions.Accuracy]: t('label.accuracy'),
+    [DataQualityDimensions.Completeness]: t('label.completeness'),
+    [DataQualityDimensions.Consistency]: t('label.consistency'),
+    [DataQualityDimensions.Integrity]: t('label.integrity'),
+    [DataQualityDimensions.NoDimension]: t('label.no-dimension'),
+    [DataQualityDimensions.SQL]: t('label.sql-uppercase'),
+    [DataQualityDimensions.Uniqueness]: t('label.uniqueness'),
+    [DataQualityDimensions.Validity]: t('label.validity'),
+  };
+
+export const TEST_CASE_STATUS_LABELS: Record<TestCaseStatus, string> = {
+  [TestCaseStatus.Aborted]: t('label.aborted'),
+  [TestCaseStatus.Failed]: t('label.failed'),
+  [TestCaseStatus.Queued]: t('label.queued'),
+  [TestCaseStatus.Success]: t('label.success'),
+};
+
 export const TEST_CASE_DIMENSIONS_OPTION = values(DataQualityDimensions).map(
   (value) => ({
-    label: value,
+    label: TEST_CASE_DIMENSION_LABELS[value],
     value: value,
   })
 );

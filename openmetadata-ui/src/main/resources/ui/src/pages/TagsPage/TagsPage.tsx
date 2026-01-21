@@ -676,6 +676,13 @@ const TagsPage = () => {
                   startIcon={<PlusIcon style={{ height: 16, width: 16 }} />}
                   sx={{
                     fontWeight: theme.typography.body2.fontWeight,
+                    border: `1px solid ${theme.palette.allShades.blueGray[100]}`,
+                    boxShadow: 'none',
+                    '&:hover': {
+                      boxShadow: 'none',
+                      backgroundColor: 'transparent',
+                      border: `1px solid ${theme.palette.allShades.brand[500]}`,
+                    },
                   }}
                   variant="outlined"
                   onClick={() => {
@@ -776,7 +783,7 @@ const TagsPage = () => {
           children: leftPanelLayout,
           title: t('label.classification-plural'),
         }}
-        pageTitle={t('label.tag-plural')}
+        pageTitle={getEntityName(currentClassification)}
         secondPanel={{
           children: (
             <>

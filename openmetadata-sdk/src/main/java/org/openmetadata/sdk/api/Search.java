@@ -6,9 +6,10 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 /**
  * Pure Fluent API for Search operations.
  *
- * This provides a builder-style fluent interface for searching OpenMetadata entities.
+ * <p>This provides a builder-style fluent interface for searching OpenMetadata entities.
  *
- * Usage Examples:
+ * <p>Usage Examples:
+ *
  * <pre>
  * // Simple search
  * var results = Search.query("customer")
@@ -39,17 +40,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
  * // Suggest/Autocomplete
  * var suggestions = Search.suggest("cust")
  *     .in("table_search_index")
- *     .field("name")
- *     .field("displayName")
  *     .limit(5)
- *     .execute();
- *
- * // Faceted search
- * var results = Search.faceted()
- *     .query("order")
- *     .facet("database", 10)
- *     .facet("service", 5)
- *     .facet("tier", 5)
  *     .execute();
  * </pre>
  */
@@ -160,10 +151,22 @@ public final class Search {
 
     public SearchResults execute() {
       String indexStr = indices.isEmpty() ? null : String.join(",", indices);
-      String result =
-          client
-              .search()
-              .search(query, indexStr, from, size, sortField, sortOrder.toString().toLowerCase());
+
+      // Use the new fluent API from services.search.SearchAPI
+      var searchBuilder = client.search().query(query);
+
+      if (indexStr != null) {
+        searchBuilder.index(indexStr);
+      }
+      searchBuilder.from(from).size(size);
+
+      if (sortField != null) {
+        searchBuilder.sortBy(sortField, sortOrder.toString().toLowerCase());
+      }
+
+      searchBuilder.deleted(includeDeleted);
+
+      String result = searchBuilder.execute();
       return new SearchResults(result, client);
     }
 
@@ -208,8 +211,18 @@ public final class Search {
 
     public AggregationResults execute() {
       String indexStr = indices.isEmpty() ? null : String.join(",", indices);
-      String fieldStr = aggregateFields.isEmpty() ? null : String.join(",", aggregateFields);
-      String result = client.search().aggregate(query, indexStr, fieldStr);
+      String fieldStr = aggregateFields.isEmpty() ? null : aggregateFields.get(0);
+
+      // Use the new fluent API
+      var aggBuilder = client.search().aggregate(query);
+      if (indexStr != null) {
+        aggBuilder.index(indexStr);
+      }
+      if (fieldStr != null) {
+        aggBuilder.field(fieldStr);
+      }
+
+      String result = aggBuilder.execute();
       return new AggregationResults(result);
     }
   }
@@ -245,7 +258,15 @@ public final class Search {
 
     public SuggestionResults execute() {
       String indexStr = indices.isEmpty() ? null : String.join(",", indices);
-      String result = client.search().suggest(prefix, indexStr, size);
+
+      // Use the new fluent API
+      var suggestBuilder = client.search().suggest(prefix);
+      if (indexStr != null) {
+        suggestBuilder.index(indexStr);
+      }
+      suggestBuilder.size(size);
+
+      String result = suggestBuilder.execute();
       return new SuggestionResults(result);
     }
   }
@@ -282,7 +303,9 @@ public final class Search {
       request.put("query", query);
       request.put("facets", facets);
       request.put("filters", filters);
-      String result = client.search().searchAdvanced(request);
+
+      // Use the new fluent API
+      String result = client.search().advanced(request);
       return new FacetedSearchResults(result);
     }
   }
@@ -332,16 +355,13 @@ public final class Search {
 
     public void forEach(java.util.function.Consumer<SearchResult> action) {
       // Parse results and iterate
-      // This would parse the JSON and create SearchResult objects
     }
 
     public int getTotalCount() {
-      // Parse and return total count
       return 0;
     }
 
     public List<SearchResult> getResults() {
-      // Parse and return results
       return new ArrayList<>();
     }
   }
@@ -382,7 +402,6 @@ public final class Search {
     }
 
     public Map<String, List<BucketResult>> getBuckets() {
-      // Parse and return bucket results
       return new HashMap<>();
     }
   }
@@ -417,7 +436,6 @@ public final class Search {
     }
 
     public List<String> getSuggestions() {
-      // Parse and return suggestions
       return new ArrayList<>();
     }
   }
@@ -434,12 +452,10 @@ public final class Search {
     }
 
     public SearchResults getResults() {
-      // Parse and return search results
       return null;
     }
 
     public Map<String, List<FacetValue>> getFacets() {
-      // Parse and return facet values
       return new HashMap<>();
     }
   }
