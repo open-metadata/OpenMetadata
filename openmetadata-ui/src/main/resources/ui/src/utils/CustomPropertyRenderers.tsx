@@ -22,7 +22,7 @@ import { formatTableCellValue } from './CustomProperty.utils';
 import entityUtilClassBase from './EntityUtilClassBase';
 import { getEntityName } from './EntityUtils';
 import searchClassBase from './SearchClassBase';
-import { isEmpty } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 
 export const isEntityReference = (obj: Record<string, unknown>): boolean => {
   return !!(obj.type && obj.fullyQualifiedName && (obj.id || obj.name));
@@ -209,10 +209,8 @@ export const CustomPropertyValueRenderer: React.FC<CustomPropertyValueRendererPr
     const { t } = useTranslation();
     const propertyTypeName = property.propertyType?.name;
     const isEmptyValue =
-      val === null ||
-      val === undefined ||
-      val === '' ||
-      (typeof val === 'object' && isEmpty(val));
+      isNil(val) ||
+      (typeof val !== 'number' && typeof val !== 'boolean' && isEmpty(val));
 
     if (isEmptyValue) {
       return (
