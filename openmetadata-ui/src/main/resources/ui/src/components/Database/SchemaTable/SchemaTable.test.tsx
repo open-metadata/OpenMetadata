@@ -325,7 +325,7 @@ describe('Test EntityTable Component', () => {
 
     expect(getTableColumnsByFQN).toHaveBeenCalledWith(
       MOCK_TABLE.fullyQualifiedName,
-      { fields: 'tags,customMetrics', limit: 50, offset: 0 }
+      { fields: 'tags,customMetrics,extension', limit: 50, offset: 0 }
     );
 
     const entityTable = await screen.findByTestId('entity-table');
@@ -344,7 +344,7 @@ describe('Test EntityTable Component', () => {
 
     expect(getTableColumnsByFQN).toHaveBeenCalledWith(
       MOCK_TABLE.fullyQualifiedName,
-      { fields: 'tags,customMetrics', limit: 50, offset: 0 }
+      { fields: 'tags,customMetrics,extension', limit: 50, offset: 0 }
     );
 
     const tableTags = await screen.findAllByText('TableTags');
