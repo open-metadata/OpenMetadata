@@ -969,84 +969,20 @@ test('Tag Page Activity Feed', async ({ page }) => {
       assetAdded = true;
     }
 
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+
     // Switch to the "Activity Feed" tab
-    const activityTab = page.getByTestId('activity_feed');
-    if (await activityTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-      // Set up feed response wait with timeout - make it optional
-      const feedResponsePromise = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/feed') &&
-          response.url().includes('entityLink'),
-        { timeout: 10000 }
-      );
-      
-      await activityTab.click();
-      
-      // Wait for feed response if it occurs, but don't block if it times out
-      try {
-        await feedResponsePromise;
-      } catch (error) {
-        // Feed API may not be called immediately, may already be cached, or may timeout
-        // This is acceptable - we'll proceed with the test
-        console.log('Feed API response wait timed out or failed, continuing...');
-      }
-      
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-
-      // Wait for loader to disappear
-      await page
-        .waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-          timeout: 5000,
-        })
-        .catch(() => {
-          // Loader may not appear if data loads quickly
-        });
-
-      // Verify that activity feed is visible
-      const activityFeed = page.locator('#feedData');
-      await expect(activityFeed).toBeVisible({ timeout: 5000 });
-
-      // Refresh the page to ensure activity feed entries are properly loaded
-      await page.reload();
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-
-      // Switch back to the "Activity Feed" tab after refresh
-      const activityTabAfterRefresh = page.getByTestId('activity_feed');
-      if (
-        await activityTabAfterRefresh
-          .isVisible({ timeout: 3000 })
-          .catch(() => false)
-      ) {
-        // Set up feed response wait with timeout - make it optional
-        const feedResponsePromise = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/feed') &&
-            response.url().includes('entityLink'),
-          { timeout: 10000 }
-        );
-        
-        await activityTabAfterRefresh.click();
-        
-        // Wait for feed response if it occurs, but don't block if it times out
-        try {
-          await feedResponsePromise;
-        } catch (error) {
-          // Feed API may not be called immediately, may already be cached, or may timeout
-          // This is acceptable - we'll proceed with the test
-          console.log('Feed API response wait timed out or failed, continuing...');
-        }
-        
-        await page.waitForLoadState('networkidle');
-        await waitForAllLoadersToDisappear(page);
-      }
+    await page.getByTestId('activity_feed').click();
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
 
       // Wait for feed entries to be loaded - check for feed container or message containers
       await page
         .waitForSelector(
-          '[data-testid="message-container"], [data-testid="feed-container"], #feedData',
+          '[data-testid="markdown-parser"]',
           {
             state: 'attached',
             timeout: 15000,
@@ -1063,7 +999,7 @@ test('Tag Page Activity Feed', async ({ page }) => {
       // 1. Verify description update entry
       // Look for description in either the message container or the header text
       const descriptionUpdateEntry = page
-        .locator('[data-testid="message-container"], [data-testid="headerText"]')
+        .locator('[data-testid="markdown-parser"],')
         .filter({ hasText: /description|Description|updated description/i })
         .first();
       
@@ -1072,7 +1008,7 @@ test('Tag Page Activity Feed', async ({ page }) => {
       // 2. Verify rename entry (if rename was performed)
       if (renamePerformed) {
         const renameEntry = page
-          .locator('[data-testid="message-container"], [data-testid="headerText"]')
+          .locator('[data-testid="markdown-parser""], [data-testid="headerText"]')
           .filter({ hasText: /rename|Rename|displayName|display name/i })
           .first();
         await expect(renameEntry).toBeVisible({ timeout: 15000 });
@@ -1080,7 +1016,7 @@ test('Tag Page Activity Feed', async ({ page }) => {
 
       // 3. Verify style change entry (icon/color update)
       const styleUpdateEntry = page
-        .locator('[data-testid="message-container"], [data-testid="headerText"]')
+        .locator('[data-testid="markdown-parser"], [data-testid="headerText"]')
         .filter({ hasText: /style|Style|icon|Icon|color|Color/i })
         .first();
       await expect(styleUpdateEntry).toBeVisible({ timeout: 15000 });
@@ -1088,7 +1024,7 @@ test('Tag Page Activity Feed', async ({ page }) => {
       // 4. Verify asset add entry (if asset was added)
       if (assetAdded) {
         const assetAddEntry = page
-          .locator('[data-testid="message-container"], [data-testid="headerText"]')
+          .locator('[data-testid="markdown-parser"], [data-testid="headerText"]')
           .filter({ hasText: /asset|Asset|added|Added/i })
           .first();
         await expect(assetAddEntry).toBeVisible({ timeout: 15000 });
@@ -1104,11 +1040,16 @@ test('Tag Page Activity Feed', async ({ page }) => {
       if (renamePerformed) expectedMinCount++;
       if (assetAdded) expectedMinCount++;
       expect(messageCount).toBeGreaterThanOrEqual(expectedMinCount);
-    }
-  } finally {
+  }
+  catch (error) {
+    console.error('Error in Tag Page Activity Feed:', error);
+    throw error;
+  }
+  finally {
     await afterAction();
   }
 });
+
 
 test('Tag Actions (Rename, Style, Disable) from Tag Page', async ({ page }) => {
   test.slow();
