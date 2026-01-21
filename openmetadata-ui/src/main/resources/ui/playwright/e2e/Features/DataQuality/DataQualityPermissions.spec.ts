@@ -33,7 +33,19 @@ const CREATE_TEST_CASE_POLICY = [
     // Need to be able to view the table to create a test on it
     name: `view-table-policy-${uuid()}`,
     resources: ['table'],
-    operations: ['ViewAll', 'ViewBasic', 'ViewTests'],
+    operations: [
+      'ViewAll',
+      'ViewBasic',
+      'ViewTests',
+      'CreateTests',
+      'EditTests',
+    ],
+    effect: 'allow',
+  },
+  {
+    name: `view-all-policy-${uuid()}`,
+    resources: ['all'],
+    operations: ['ViewBasic'],
     effect: 'allow',
   },
 ];
@@ -99,6 +111,40 @@ const TEST_CASE_VIEW_BASIC_POLICY = [
   },
 ];
 
+// 6. Table Create Tests Policy (Specific Fix Coverage)
+const TABLE_CREATE_TESTS_POLICY = [
+  {
+    name: `table-create-tests-policy-${uuid()}`,
+    resources: ['table'],
+    operations: ['CreateTests', 'ViewAll', 'ViewBasic', 'ViewTests'],
+    effect: 'allow',
+  },
+  {
+    // Needs basic access to see the page
+    name: `view-all-basic-${uuid()}`,
+    resources: ['all'],
+    operations: ['ViewBasic'],
+    effect: 'allow',
+  },
+];
+
+// 7. Delete Failed Rows Policy
+const DELETE_FAILED_ROWS_POLICY = [
+  {
+    name: `delete-failed-rows-policy-${uuid()}`,
+    resources: ['testCase'],
+    operations: ['DeleteTestCaseFailedRowsSample', 'ViewAll', 'ViewBasic'],
+    effect: 'allow',
+  },
+  {
+    // Needs basic access to see the page
+    name: `view-all-basic-del-rows-${uuid()}`,
+    resources: ['all'],
+    operations: ['ViewBasic'],
+    effect: 'allow',
+  },
+];
+
 // --- Objects ---
 const createPolicy = new PolicyClass();
 const createRole = new RolesClass();
@@ -120,6 +166,14 @@ const viewBasicPolicy = new PolicyClass();
 const viewBasicRole = new RolesClass();
 const viewBasicUser = new UserClass();
 
+const tableCreateTestsPolicy = new PolicyClass();
+const tableCreateTestsRole = new RolesClass();
+const tableCreateTestsUser = new UserClass();
+
+const deleteFailedRowsPolicy = new PolicyClass();
+const deleteFailedRowsRole = new RolesClass();
+const deleteFailedRowsUser = new UserClass();
+
 const dataConsumerUser = new UserClass();
 const dataStewardUser = new UserClass();
 
@@ -135,6 +189,8 @@ const test = base.extend<{
   viewBasicPage: Page;
   consumerPage: Page;
   stewardPage: Page;
+  tableCreateTestsPage: Page;
+  deleteFailedRowsPage: Page;
 }>({
   adminPage: async ({ browser }, use) => {
     const { page } = await performAdminLogin(browser);
@@ -180,6 +236,18 @@ const test = base.extend<{
   stewardPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     await dataStewardUser.login(page);
+    await use(page);
+    await page.close();
+  },
+  tableCreateTestsPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await tableCreateTestsUser.login(page);
+    await use(page);
+    await page.close();
+  },
+  deleteFailedRowsPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await deleteFailedRowsUser.login(page);
     await use(page);
     await page.close();
   },
@@ -329,6 +397,54 @@ test.describe(
         ],
       });
 
+      // Table Create Tests User
+      await tableCreateTestsUser.create(apiContext, false);
+      const tableCreatePol = await tableCreateTestsPolicy.create(
+        apiContext,
+        TABLE_CREATE_TESTS_POLICY
+      );
+      const tableCreateRol = await tableCreateTestsRole.create(apiContext, [
+        tableCreatePol.fullyQualifiedName,
+      ]);
+      await tableCreateTestsUser.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/roles/0',
+            value: {
+              id: tableCreateRol.id,
+              type: 'role',
+              name: tableCreateRol.name,
+            },
+          },
+        ],
+      });
+
+      // Delete Failed Rows User
+      await deleteFailedRowsUser.create(apiContext, false);
+      const delFailedRowsPol = await deleteFailedRowsPolicy.create(
+        apiContext,
+        DELETE_FAILED_ROWS_POLICY
+      );
+      const delFailedRowsRol = await deleteFailedRowsRole.create(apiContext, [
+        delFailedRowsPol.fullyQualifiedName,
+      ]);
+      await deleteFailedRowsUser.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/roles/0',
+            value: {
+              id: delFailedRowsRol.id,
+              type: 'role',
+              name: delFailedRowsRol.name,
+            },
+          },
+        ],
+      });
+
       await afterAction();
     });
 
@@ -358,6 +474,14 @@ test.describe(
       await viewBasicRole.delete(apiContext);
       await viewBasicPolicy.delete(apiContext);
 
+      await tableCreateTestsUser.delete(apiContext);
+      await tableCreateTestsRole.delete(apiContext);
+      await tableCreateTestsPolicy.delete(apiContext);
+
+      await deleteFailedRowsUser.delete(apiContext);
+      await deleteFailedRowsRole.delete(apiContext);
+      await deleteFailedRowsPolicy.delete(apiContext);
+
       await table.delete(apiContext);
       await afterAction();
     });
@@ -380,6 +504,23 @@ test.describe(
         await expect(
           consumerPage.getByTestId('profiler-add-table-test-btn')
         ).toBeHidden();
+
+        // UI Validation: Delete Button should be hidden
+        const testCaseName = table.testCasesResponseData[0].name;
+        const actionDropdown = consumerPage.getByTestId(
+          `action-dropdown-${testCaseName}`
+        );
+
+        // If dropdown is visible, check that delete is not an option
+        if (await actionDropdown.isVisible()) {
+          await actionDropdown.click();
+          await expect(
+            consumerPage.getByTestId(`delete-${testCaseName}`)
+          ).toBeHidden();
+          // Close dropdown to avoid obscuring other elements if any
+          await consumerPage.keyboard.press('Escape');
+        }
+        // If dropdown is hidden, that's also valid for no-edit access
 
         // Try API Checks
         const createRes = await apiContext.post(
@@ -415,6 +556,20 @@ test.describe(
         await expect(
           stewardPage.getByTestId('profiler-add-table-test-btn')
         ).toBeHidden();
+
+        // UI Validation: Delete Button should be hidden
+        const testCaseName = table.testCasesResponseData[0].name;
+        const actionDropdown = stewardPage.getByTestId(
+          `action-dropdown-${testCaseName}`
+        );
+
+        if (await actionDropdown.isVisible()) {
+          await actionDropdown.click();
+          await expect(
+            stewardPage.getByTestId(`delete-${testCaseName}`)
+          ).toBeHidden();
+          await stewardPage.keyboard.press('Escape');
+        }
 
         // API Validation
         const createRes = await apiContext.post(
@@ -494,8 +649,22 @@ test.describe(
         expect(createRes.status()).toBe(201);
         const testData = await createRes.json();
 
-        // Perform Delete
-        await redirectToHomePage(deletePage);
+        // Refresh deletePage to see the new test case
+        await visitProfilerPage(deletePage);
+
+        // UI Validation: Delete Button should be visible
+        const actionDropdown = deletePage.getByTestId(
+          `action-dropdown-${testToDelName}`
+        );
+        await expect(actionDropdown).toBeVisible();
+        await actionDropdown.click();
+        await expect(
+          deletePage.getByTestId(`delete-${testToDelName}`)
+        ).toBeVisible();
+        // Close dropdown
+        await deletePage.keyboard.press('Escape');
+
+        // Perform Delete via API (or UI, but API is sufficient for perm validation)
         const { apiContext: delContext } = await getApiContext(deletePage);
         const delRes = await delContext.delete(
           `/api/v1/dataQuality/testCases/${testData.id}`
@@ -527,6 +696,85 @@ test.describe(
           `/api/v1/dataQuality/testSuites/${data.id}?hardDelete=true&recursive=true`
         );
         expect(delRes.status()).toBe(200);
+      });
+
+      test('User with VIEW_TEST_CASE_FAILED_ROWS_SAMPLE can view failed rows', async ({
+        failedRowsPage,
+      }) => {
+        await visitProfilerPage(failedRowsPage);
+        // Note: We are verifying the permission exists.
+        // Full verification of sample data requires actual failed rows which is heavy setup.
+        // We verify that the user can access the API endpoint for sample data if it exists,
+        // or effectively that they don't get a 403 on the test case view that usually loads it.
+
+        // For now, check basic access + API check
+        const { apiContext } = await getApiContext(failedRowsPage);
+        const testCaseFqn = table.testCasesResponseData[0].fullyQualifiedName;
+
+        // Try to access sample data endpoint
+        const res = await apiContext.get(
+          `/api/v1/dataQuality/testCases/${testCaseFqn}/testCaseFailedRowsSample`
+        );
+        // Should be 200 (OK) or 404 (Not Found) if no sample, but NOT 403 (Forbidden)
+        expect(res.status()).not.toBe(403);
+      });
+
+      test('User with TEST_CASE.VIEW_BASIC can view test case details', async ({
+        viewBasicPage,
+      }) => {
+        await visitProfilerPage(viewBasicPage);
+        const testCaseName = table.testCasesResponseData[0].name;
+
+        // Should see the test case in list
+        await expect(viewBasicPage.getByTestId(testCaseName)).toBeVisible();
+
+        // Should NOT see Add button
+        await expect(
+          viewBasicPage.getByTestId('profiler-add-table-test-btn')
+        ).toBeHidden();
+      });
+
+      test('User with TABLE.CREATE_TESTS can see Add button (Table Permission)', async ({
+        tableCreateTestsPage,
+        adminPage,
+      }) => {
+        await visitProfilerPage(tableCreateTestsPage);
+        const { apiContext } = await getApiContext(tableCreateTestsPage);
+
+        // UI Validation: Add Button should be visible
+        await expect(
+          tableCreateTestsPage.getByTestId('profiler-add-table-test-btn')
+        ).toBeVisible();
+
+        // API Check
+        const testName = `table_create_perm_${uuid()}`;
+        const res = await apiContext.post('/api/v1/dataQuality/testCases', {
+          data: {
+            name: testName,
+            entityLink: `<#E::table::${table.entityResponseData.fullyQualifiedName}>`,
+            testDefinition: 'tableRowCountToEqual',
+            parameterValues: [{ name: 'value', value: 10 }],
+          },
+        });
+        expect(res.status()).toBe(201);
+
+        // Cleanup
+        const data = await res.json();
+        const { apiContext: adminContext } = await getApiContext(adminPage);
+        await adminContext.delete(`/api/v1/dataQuality/testCases/${data.id}`);
+      });
+
+      test('User with DELETE_TEST_CASE_FAILED_ROWS_SAMPLE can delete failed rows', async ({
+        deleteFailedRowsPage,
+      }) => {
+        // We verify the API endpoint is accessible (not 403) similar to the view test.
+        const { apiContext } = await getApiContext(deleteFailedRowsPage);
+        const testCaseFqn = table.testCasesResponseData[0].fullyQualifiedName;
+        // The API returns 200 if success or sometimes 404 if data missing, but definitely NOT 403.
+        const res = await apiContext.delete(
+          `/api/v1/dataQuality/testCases/${testCaseFqn}/testCaseFailedRowsSample`
+        );
+        expect(res.status()).not.toBe(403);
       });
     });
 

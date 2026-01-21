@@ -31,6 +31,7 @@ import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-sett
 import { DEFAULT_RANGE_DATA } from '../../../../../constants/profiler.constant';
 import { useTourProvider } from '../../../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
+import { ResourceEntity } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
 import { Operation } from '../../../../../generated/entity/policies/policy';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
@@ -223,47 +224,51 @@ const TabFilters = () => {
         </Box>
       )}
 
-      {editDataProfile && !isTableDeleted && (
+      {!isTableDeleted && (
         <>
-          <LimitWrapper resource="dataQuality">
-            <>
-              <Button
-                data-testid="profiler-add-table-test-btn"
-                endIcon={<KeyboardArrowDown />}
-                sx={{ height: '32px' }}
-                variant="contained"
-                onClick={handleMenuClick}>
-                {t('label.add')}
-              </Button>
-              <Menu
-                anchorEl={anchorEl}
-                anchorOrigin={{
-                  vertical: 'bottom',
-                  horizontal: 'right',
-                }}
-                open={open}
-                sx={{
-                  '.MuiPaper-root': {
-                    width: 'max-content',
-                  },
-                }}
-                transformOrigin={{
-                  vertical: 'top',
-                  horizontal: 'right',
-                }}
-                onClose={handleMenuClose}>
-                <MenuItem onClick={handleTestCaseClick}>
-                  <TabsLabel id="test-case" name={t('label.test-case')} />
-                </MenuItem>
-                <MenuItem onClick={handleCustomMetricClick}>
-                  <TabsLabel
-                    id="custom-metric"
-                    name={t('label.custom-metric')}
-                  />
-                </MenuItem>
-              </Menu>
-            </>
-          </LimitWrapper>
+          {(editDataProfile ||
+            permissions.CreateTests ||
+            permissions.EditTests) && (
+            <LimitWrapper resource="dataQuality">
+              <>
+                <Button
+                  data-testid="profiler-add-table-test-btn"
+                  endIcon={<KeyboardArrowDown />}
+                  sx={{ height: '32px' }}
+                  variant="contained"
+                  onClick={handleMenuClick}>
+                  {t('label.add')}
+                </Button>
+                <Menu
+                  anchorEl={anchorEl}
+                  anchorOrigin={{
+                    vertical: 'bottom',
+                    horizontal: 'right',
+                  }}
+                  open={open}
+                  sx={{
+                    '.MuiPaper-root': {
+                      width: 'max-content',
+                    },
+                  }}
+                  transformOrigin={{
+                    vertical: 'top',
+                    horizontal: 'right',
+                  }}
+                  onClose={handleMenuClose}>
+                  <MenuItem onClick={handleTestCaseClick}>
+                    <TabsLabel id="test-case" name={t('label.test-case')} />
+                  </MenuItem>
+                  <MenuItem onClick={handleCustomMetricClick}>
+                    <TabsLabel
+                      id="custom-metric"
+                      name={t('label.custom-metric')}
+                    />
+                  </MenuItem>
+                </Menu>
+              </>
+            </LimitWrapper>
+          )}
           <Tooltip placement="top" title={t('label.setting-plural')}>
             <Button
               color="primary"
