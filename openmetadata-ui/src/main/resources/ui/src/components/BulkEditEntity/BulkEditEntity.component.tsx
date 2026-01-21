@@ -29,7 +29,7 @@ import { useFqn } from '../../hooks/useFqn';
 import {
   getBulkEditCSVExportEntityApi,
   getBulkEntityNavigationPath,
-  getUpdatedFields,
+  getColumnsWithUpdatedFlag,
 } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import Banner from '../common/Banner/Banner';
@@ -145,19 +145,7 @@ const BulkEditEntity = ({
   }, [dataSource]);
 
   const columnsUpdated = useMemo(() => {
-    return validateCSVData?.columns
-      .filter((col) => col.key !== 'changeDescription')
-      .map((col) => ({
-        ...col,
-        cellClass: (row: Record<string, string>) => {
-          if (newRowIds.has(row.id)) {
-            return 'cell-updated';
-          }
-          const updatedFields = getUpdatedFields(row);
-
-          return updatedFields.has(col.key) ? 'cell-updated' : '';
-        },
-      }));
+    return getColumnsWithUpdatedFlag(validateCSVData?.columns, newRowIds);
   }, [validateCSVData?.columns, newRowIds]);
 
   return (

@@ -12,6 +12,7 @@
  */
 import Icon from '@ant-design/icons';
 import { Button } from 'antd';
+import { Column } from 'react-data-grid';
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import { ProfilerTabPath } from '../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
@@ -106,18 +107,53 @@ export const getBulkEntityNavigationPath = (
   return entityUtilClassBase.getEntityLink(entityType, fqn);
 };
 
-export const getUpdatedFields = (row: any): Set<string> => {
+/**
+ * Parses the changeDescription JSON from a row and extracts the updated field names.
+ * Returns both the raw field name and prefixed version (e.g., 'description' and 'column.description')
+ * to handle different column key formats in CSV import/export.
+ */
+export const getUpdatedFields = (row: Record<string, string>): Set<string> => {
   if (!row.changeDescription) {
     return new Set();
   }
 
   try {
     const parsed = JSON.parse(row.changeDescription);
+    const fields: string[] = [];
 
-    return new Set(
-      (parsed.fieldsUpdated || []).map((f: any) => `column.${f.name}`)
-    );
+    (parsed.fieldsUpdated || []).forEach((f: { name: string }) => {
+      fields.push(f.name);
+      fields.push(`column.${f.name}`);
+    });
+
+    return new Set(fields);
   } catch {
     return new Set();
   }
+};
+
+/**
+ * Transforms columns to include cellClass for highlighting updated cells.
+ * Used in the validation/preview step of bulk edit to visually indicate:
+ * - Newly added rows (all cells highlighted)
+ * - Updated fields in existing rows (only changed cells highlighted)
+ * Excludes the 'changeDescription' column from the output.
+ */
+export const getColumnsWithUpdatedFlag = (
+  columns: Column<Record<string, string>>[] | undefined,
+  newRowIds: Set<string>
+): Column<Record<string, string>>[] | undefined => {
+  return columns
+    ?.filter((col) => col.key !== 'changeDescription')
+    .map((col) => ({
+      ...col,
+      cellClass: (row: Record<string, string>) => {
+        if (newRowIds.has(row.id)) {
+          return 'cell-updated';
+        }
+        const updatedFields = getUpdatedFields(row);
+
+        return updatedFields.has(col.key) ? 'cell-updated' : '';
+      },
+    }));
 };

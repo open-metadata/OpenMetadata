@@ -30,6 +30,11 @@ import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import Stepper from '../../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import UploadFile from '../../../components/UploadFile/UploadFile';
 import {
+  HEADER_HEIGHT,
+  MAX_HEIGHT,
+  ROW_HEIGHT,
+} from '../../../constants/BulkEdit.constants';
+import {
   ENTITY_IMPORT_STEPS,
   VALIDATION_STEP,
 } from '../../../constants/BulkImport.constant';
@@ -48,6 +53,7 @@ import {
 import csvUtilsClassBase from '../../../utils/CSV/CSVUtilsClassBase';
 import {
   getBulkEntityNavigationPath,
+  getColumnsWithUpdatedFlag,
   isBulkEditRoute,
 } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
@@ -603,6 +609,12 @@ const BulkEntityImportPage = () => {
     Updating store will trigger re-render of the component
     This will cause the owner dropdown or full grid to re-render
   */
+  const gridHeight = useMemo(() => {
+    const contentHeight = dataSource.length * ROW_HEIGHT + HEADER_HEIGHT;
+    const maxHeightPx = window.innerHeight - 280;
+
+    return contentHeight < maxHeightPx ? 'auto' : MAX_HEIGHT;
+  }, [dataSource.length]);
   const editDataGrid = useMemo(() => {
     return (
       <div className="om-rdg" ref={setGridContainer}>
@@ -615,6 +627,7 @@ const BulkEntityImportPage = () => {
             >[]
           }
           rows={dataSource}
+          style={{ height: gridHeight, maxHeight: MAX_HEIGHT }}
           onCopy={handleCopy}
           onPaste={handlePaste}
           onRowsChange={handleOnRowsChange}
@@ -629,6 +642,16 @@ const BulkEntityImportPage = () => {
     handleOnRowsChange,
     setGridContainer,
   ]);
+
+  const newRowIds = useMemo(() => {
+    return new Set(
+      dataSource.filter((row) => row.isNewRow === 'true').map((row) => row.id)
+    );
+  }, [dataSource]);
+
+  const columnsUpdated = useMemo(() => {
+    return getColumnsWithUpdatedFlag(validateCSVData?.columns, newRowIds);
+  }, [validateCSVData?.columns, newRowIds]);
 
   return (
     <PageLayoutV1
@@ -734,8 +757,22 @@ const BulkEntityImportPage = () => {
                       <div className="om-rdg">
                         <DataGrid
                           className="rdg-light"
-                          columns={validateCSVData.columns}
+                          columns={
+                            columnsUpdated as unknown as ColumnOrColumnGroup<
+                              NoInfer<Record<string, string>>,
+                              unknown
+                            >[]
+                          }
                           rows={validateCSVData.dataSource}
+                          style={{
+                            height:
+                              validateCSVData.dataSource.length * ROW_HEIGHT +
+                                HEADER_HEIGHT <
+                              window.innerHeight - 280
+                                ? 'auto'
+                                : MAX_HEIGHT,
+                            maxHeight: MAX_HEIGHT,
+                          }}
                         />
                       </div>
                     )}
