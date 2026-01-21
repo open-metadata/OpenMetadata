@@ -73,6 +73,7 @@ export const defaultColors: ThemeColors = {
     50: '#F8F9FC',
     75: '#EFF4FA', // custom shade for chips
     100: '#EAECF5',
+    125: '#ECEDF7', // custom shade for card header fills
     150: '#D2DBEA', // custom shade for chip borders
     200: '#D5D9EB',
     250: '#DFDFDF', // custom shade for search field borders
