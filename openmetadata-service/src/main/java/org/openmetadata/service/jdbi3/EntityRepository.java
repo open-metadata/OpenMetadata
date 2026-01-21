@@ -289,6 +289,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
           .recordStats()
           .build(new EntityLoaderWithId());
 
+  private static final LoadingCache<String, Integer> COUNT_CACHE =
+      CacheBuilder.newBuilder()
+          .maximumSize(500)
+          .expireAfterWrite(5, TimeUnit.MINUTES)
+          .recordStats()
+          .build(
+              new CacheLoader<String, Integer>() {
+                @Override
+                public Integer load(String key) throws Exception {
+                  throw new UnsupportedOperationException("Use get() method with a custom loader");
+                }
+              });
+
   private final String collectionPath;
   @Getter public final Class<T> entityClass;
   @Getter protected final String entityType;
@@ -1168,6 +1181,114 @@ public abstract class EntityRepository<T extends EntityInterface> {
     allVersions.add(JsonUtils.pojoToJson(latest));
     oldVersions.forEach(version -> allVersions.add(version.getEntityJson()));
     return new EntityHistory().withEntityType(entityType).withVersions(allVersions);
+  }
+
+  private int getVersionCountCached(String tableName, long startTs, long endTs, String entityType) {
+    String cacheKey = String.format("%s:%d:%d:%s", tableName, startTs, endTs, entityType);
+    try {
+      return COUNT_CACHE.get(
+          cacheKey,
+          () ->
+              daoCollection
+                  .entityExtensionDAO()
+                  .getEntityHistoryByTimestampRangeCount(tableName, startTs, endTs, entityType));
+    } catch (ExecutionException e) {
+      throw new RuntimeException("Failed to get version count from cache", e);
+    }
+  }
+
+  public final ResultList<T> listEntityHistoryByTimestamp(
+      long startTs, long endTs, String afterCursor, String beforeCursor, int limit) {
+    String tableName = dao.getTableName();
+    int fetchLimit = limit + 1;
+
+    String cursorCondition = "";
+    Long cursorUpdatedAt = null;
+    String cursorId = null;
+
+    if (beforeCursor != null) {
+      cursorCondition =
+          "AND (updatedAt > :cursorUpdatedAt OR (updatedAt = :cursorUpdatedAt AND id > :cursorId))";
+      String decodedCursor = decodeAndValidateCursor(beforeCursor);
+      String[] parts = decodedCursor.split(":");
+      cursorUpdatedAt = Long.parseLong(parts[0]);
+      cursorId = parts[1];
+    } else if (afterCursor != null) {
+      cursorCondition =
+          "AND (updatedAt < :cursorUpdatedAt OR (updatedAt = :cursorUpdatedAt AND id < :cursorId))";
+      String decodedCursor = decodeAndValidateCursor(afterCursor);
+      String[] parts = decodedCursor.split(":");
+      cursorUpdatedAt = Long.parseLong(parts[0]);
+      cursorId = parts[1];
+    }
+
+    List<String> jsons =
+        daoCollection
+            .entityExtensionDAO()
+            .getEntityHistoryByTimestampRange(
+                tableName,
+                startTs,
+                endTs,
+                cursorCondition,
+                entityType,
+                cursorUpdatedAt,
+                cursorId,
+                fetchLimit);
+
+    List<T> entities = JsonUtils.readObjects(jsons, getEntityClass());
+    setFieldsInBulk(putFields, entities);
+
+    int total = getVersionCountCached(tableName, startTs, endTs, entityType);
+
+    String beforeCursorValue = null;
+    String afterCursorValue = null;
+
+    if (!entities.isEmpty()) {
+      boolean hasMoreInCurrentDirection = entities.size() > limit;
+
+      if (hasMoreInCurrentDirection) {
+        entities = entities.subList(0, limit);
+      }
+
+      T first = entities.getFirst();
+      T last = entities.getLast();
+      String firstCursor = first.getUpdatedAt() + ":" + first.getId().toString();
+      String lastCursor = last.getUpdatedAt() + ":" + last.getId().toString();
+
+      if (beforeCursor != null) {
+        if (hasMoreInCurrentDirection) {
+          beforeCursorValue = firstCursor;
+        }
+        afterCursorValue = lastCursor;
+      } else {
+        if (hasMoreInCurrentDirection) {
+          afterCursorValue = lastCursor;
+        }
+        if (afterCursor != null) {
+          beforeCursorValue = firstCursor;
+        }
+      }
+    }
+
+    return getResultList(entities, beforeCursorValue, afterCursorValue, total);
+  }
+
+  private String decodeAndValidateCursor(String cursor) {
+    if (cursor == null) {
+      throw new RuntimeException("Cursor is null");
+    }
+    String decodedCursor = RestUtil.decodeCursor(cursor);
+    if (!decodedCursor.contains(":")) {
+      throw new RuntimeException("Cursor is not a valid cursor: " + cursor);
+    }
+    String[] parts = decodedCursor.split(":");
+    try {
+      Long.parseLong(parts[0]);
+      UUID.fromString(parts[1]);
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException("Cursor is not a valid cursor: " + cursor);
+    }
+    return decodedCursor;
   }
 
   public final List<T> createMany(UriInfo uriInfo, List<T> entities) {
@@ -4013,6 +4134,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     throw new IllegalArgumentException(csvNotSupported(entityType));
   }
 
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      String targetEntityType)
+      throws IOException {
+    throw new IllegalArgumentException(csvNotSupported(entityType));
+  }
+
   public List<TagLabel> getAllTags(EntityInterface entity) {
     return entity.getTags();
   }
@@ -6387,7 +6519,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
                   return Optional.ofNullable(targetHashToTagLabel.get(targetFQNHash))
                       .filter(list -> !list.isEmpty())
                       .orElseGet(ArrayList::new);
-                }));
+                },
+                (a, b) -> a));
   }
 
   private Map<UUID, List<EntityReference>> batchFetchDomains(List<T> entities) {
