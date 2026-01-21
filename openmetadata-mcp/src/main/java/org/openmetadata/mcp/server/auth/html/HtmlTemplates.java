@@ -9,12 +9,12 @@ public class HtmlTemplates {
       <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>OpenMetadata - MCP Authorization</title>
+          <title>Sign In - OpenMetadata</title>
           <style>
               * { margin: 0; padding: 0; box-sizing: border-box; }
               body {
                   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-                  background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
+                  background: #f8f9fc;
                   min-height: 100vh;
                   display: flex;
                   align-items: center;
@@ -22,71 +22,96 @@ public class HtmlTemplates {
                   padding: 20px;
               }
               .login-container {
-                  background: white;
-                  border-radius: 12px;
-                  padding: 40px;
-                  max-width: 420px;
+                  background: #fff;
+                  border-radius: 20px;
+                  padding: 48px;
+                  max-width: 500px;
                   width: 100%%;
-                  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                  box-shadow: 0px 24px 48px -12px rgba(10, 13, 18, 0.18);
+                  text-align: center;
+              }
+              .logo {
+                  margin-bottom: 36px;
+              }
+              .logo-icon {
+                  width: 80px;
+                  height: 80px;
+                  margin: 0 auto;
+                  background: linear-gradient(135deg, #7147e8 0%%, #5a3dbf 100%%);
+                  border-radius: 16px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  font-size: 48px;
+                  color: white;
+                  font-weight: bold;
               }
               h1 {
-                  color: #333;
-                  margin-bottom: 8px;
-                  font-size: 24px;
+                  color: #262626;
+                  margin-bottom: 36px;
+                  font-size: 32px;
                   font-weight: 600;
               }
               .subtitle {
-                  color: #666;
-                  margin-bottom: 30px;
+                  color: #8c8c8c;
+                  margin-bottom: 24px;
                   font-size: 14px;
                   line-height: 1.5;
               }
-              .client-info {
-                  background: #f8f9fa;
-                  padding: 12px 16px;
-                  border-radius: 8px;
-                  margin-bottom: 24px;
-                  border-left: 3px solid #667eea;
-              }
-              .client-info strong {
-                  color: #667eea;
-              }
               .error {
-                  background: #fee;
-                  color: #c33;
+                  background: #fff1f0;
+                  border: 1px solid #ffccc7;
+                  color: #cf1322;
                   padding: 12px 16px;
                   border-radius: 8px;
                   margin-bottom: 20px;
-                  border-left: 3px solid #c33;
                   font-size: 14px;
+                  text-align: left;
               }
               form {
                   display: flex;
                   flex-direction: column;
+                  text-align: left;
               }
               label {
-                  color: #333;
+                  color: #262626;
                   font-size: 14px;
-                  font-weight: 500;
-                  margin-bottom: 6px;
-                  margin-top: 12px;
+                  font-weight: 600;
+                  margin-bottom: 8px;
+                  margin-top: 16px;
+                  display: flex;
+                  align-items: center;
+              }
+              label:first-of-type {
+                  margin-top: 0;
+              }
+              label .required {
+                  color: #f04438;
+                  margin-left: 4px;
               }
               input[type="text"],
               input[type="password"] {
                   padding: 12px 16px;
-                  border: 1px solid #ddd;
+                  border: 1px solid #d9d9d9;
                   border-radius: 8px;
-                  font-size: 15px;
+                  font-size: 14px;
                   transition: all 0.2s;
+                  color: #262626;
+                  background: #f7f7f7;
+              }
+              input[type="text"]:hover,
+              input[type="password"]:hover {
+                  border-color: #1570ef;
               }
               input[type="text"]:focus,
               input[type="password"]:focus {
                   outline: none;
-                  border-color: #667eea;
-                  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+                  border-color: #1570ef;
+                  background: #fff;
+                  box-shadow: 0 0 0 3px rgba(21, 112, 239, 0.1);
               }
               button {
-                  background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
+                  background: #1570ef;
                   color: white;
                   padding: 14px 24px;
                   border: none;
@@ -94,32 +119,30 @@ public class HtmlTemplates {
                   font-size: 16px;
                   font-weight: 600;
                   cursor: pointer;
-                  margin-top: 24px;
-                  transition: transform 0.2s, box-shadow 0.2s;
+                  margin-top: 36px;
+                  transition: all 0.2s;
+                  height: 48px;
               }
               button:hover {
-                  transform: translateY(-2px);
-                  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+                  background: #175cd3;
               }
               button:active {
-                  transform: translateY(0);
+                  background: #1849a9;
               }
-              .footer {
-                  margin-top: 20px;
-                  text-align: center;
-                  font-size: 12px;
-                  color: #999;
-              }
-              @media (max-width: 480px) {
-                  .login-container { padding: 30px 20px; }
-                  h1 { font-size: 20px; }
+              @media (max-width: 600px) {
+                  .login-container { padding: 36px 24px; }
+                  h1 { font-size: 28px; }
+                  .logo-icon { width: 64px; height: 64px; font-size: 40px; }
               }
           </style>
       </head>
       <body>
           <div class="login-container">
-              <h1>OpenMetadata Authorization</h1>
-              <p class="subtitle">%s is requesting access to your OpenMetadata account.</p>
+              <div class="logo">
+                  <div class="logo-icon">M</div>
+              </div>
+              <h1>Welcome to OpenMetadata</h1>
+              <p class="subtitle">%s is requesting access to your account</p>
               %s
               <form method="POST" action="/mcp/authorize">
                   <input type="hidden" name="client_id" value="%s">
@@ -131,17 +154,14 @@ public class HtmlTemplates {
                   <input type="hidden" name="code_challenge_method" value="S256">
                   <input type="hidden" name="csrf_token" value="%s">
 
-                  <label for="username">Username or Email</label>
-                  <input type="text" id="username" name="username" required autofocus>
+                  <label for="username">Email <span class="required">*</span></label>
+                  <input type="text" id="username" name="username" placeholder="admin@open-metadata.org" required autofocus>
 
-                  <label for="password">Password</label>
-                  <input type="password" id="password" name="password" required>
+                  <label for="password">Password <span class="required">*</span></label>
+                  <input type="password" id="password" name="password" placeholder="\u2022\u2022\u2022\u2022\u2022" required>
 
-                  <button type="submit">Authorize</button>
+                  <button type="submit">Sign In</button>
               </form>
-              <div class="footer">
-                  Powered by OpenMetadata MCP
-              </div>
           </div>
       </body>
       </html>
