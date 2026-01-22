@@ -565,6 +565,15 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       }
 
       LOG.info("Redirecting to client redirect_uri with authorization code");
+
+      // TODO: Future Enhancement - Show success page before redirect
+      // Instead of direct redirect, could display a success page with:
+      // - OpenMetadata branding and confirmation message
+      // - "Authentication Successful" with checkmarks
+      // - Auto-redirect after 2-3 seconds to client callback URL
+      // Challenge: Success page shows before OAuth flow completes on client side,
+      // which may be confusing. Consider showing success only after client confirms.
+
       return CompletableFuture.completedFuture(redirectUrl);
 
     } catch (Exception e) {
@@ -779,7 +788,16 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     // Cleanup pending request
     pendingAuthRepository.delete(authRequestId);
 
-    LOG.info("Redirecting to client with authorization code: {}", requestedRedirectUri);
+    // TODO: Future Enhancement - Show success page before redirect
+    // Instead of direct redirect, could display a success page with:
+    // - OpenMetadata branding and confirmation message
+    // - "Authentication Successful" with checkmarks for SSO login
+    // - Auto-redirect after 2-3 seconds to client callback URL
+    // Challenge: Success page shows before OAuth flow completes on client side,
+    // which may be confusing. Consider showing success only after client confirms.
+
+    // Redirect to client callback URL with authorization code
+    LOG.info("Redirecting to client callback with authorization code: {}", requestedRedirectUri);
     response.sendRedirect(redirectUrl);
   }
 
@@ -881,7 +899,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
               user.getEmail(),
               JWT_EXPIRY_SECONDS,
               false,
-              ServiceTokenType.OM_USER);
+              ServiceTokenType.OM_USER,
+              codeRecord.scopes());
 
       // Generate cryptographically secure refresh token (32 bytes = 256 bits) for long-lived
       // sessions (OAuth 2.0 RFC 6749)
@@ -1057,7 +1076,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
               user.getEmail(),
               JWT_EXPIRY_SECONDS,
               false,
-              ServiceTokenType.OM_USER);
+              ServiceTokenType.OM_USER,
+              requestedScopes);
 
       // Prepare OAuth token response with both new access token and new refresh token
       OAuthToken token = new OAuthToken();
