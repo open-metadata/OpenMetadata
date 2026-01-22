@@ -104,6 +104,9 @@ public class OAuthClientMetadata {
    * @throws InvalidRedirectUriException if the redirect URI is invalid
    */
   public URI validateRedirectUri(URI redirectUri) throws InvalidRedirectUriException {
+    if (redirectUris == null || redirectUris.isEmpty()) {
+      throw new InvalidRedirectUriException("No redirect URIs registered for client");
+    }
     if (redirectUri != null) {
       if (!redirectUris.contains(redirectUri)) {
         throw new InvalidRedirectUriException(

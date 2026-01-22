@@ -4,7 +4,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.mcp.server.auth.annotations.RequireScope;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.Include;
@@ -23,7 +22,6 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
-@RequireScope({"metadata:write"})
 public class GlossaryTermTool implements McpTool {
   private static GlossaryTermMapper glossaryTermMapper = new GlossaryTermMapper();
 

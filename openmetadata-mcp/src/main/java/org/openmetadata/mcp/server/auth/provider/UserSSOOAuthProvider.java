@@ -215,11 +215,6 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       }
 
       // Validate code challenge format: base64url encoded, 43-128 characters (per RFC 7636)
-      // COMMENTED FOR PRODUCTION - Uncomment only for local testing, then re-comment before
-      // committing
-      // boolean isTestValue = "TEST".equals(codeChallenge) ||
-      // "test".equalsIgnoreCase(codeChallenge);
-
       if (!codeChallenge.matches("^[A-Za-z0-9_-]{43,128}$")) {
         LOG.error(
             "Invalid PKCE code challenge format for client: {}: {}",
@@ -229,15 +224,6 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
             "invalid_request",
             "PKCE code_challenge has invalid format (must be base64url encoded, 43-128 characters)");
       }
-
-      // COMMENTED FOR PRODUCTION - Test value warning
-      // if (isTestValue) {
-      //   LOG.warn(
-      //       "SECURITY WARNING: Using test PKCE challenge '{}' for client: {}. "
-      //           + "This should NEVER be used in production!",
-      //       codeChallenge,
-      //       client.getClientId());
-      // }
 
       // Validate redirect URI against registered URIs (OAuth 2.0 security requirement)
       URI validatedRedirectUri;
@@ -445,7 +431,16 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
       session.removeAttribute(SESSION_MCP_CSRF_TOKEN);
 
-      if (submittedCsrfToken == null || !submittedCsrfToken.equals(sessionCsrfToken)) {
+      // Use timing-safe comparison to prevent timing attacks on CSRF tokens
+      byte[] expectedBytes =
+          sessionCsrfToken != null
+              ? sessionCsrfToken.getBytes(StandardCharsets.UTF_8)
+              : new byte[0];
+      byte[] providedBytes =
+          submittedCsrfToken != null
+              ? submittedCsrfToken.getBytes(StandardCharsets.UTF_8)
+              : new byte[0];
+      if (!MessageDigest.isEqual(expectedBytes, providedBytes)) {
         LOG.warn("CSRF token mismatch during Basic Auth login");
         throw new AuthorizeException("invalid_request", "CSRF token validation failed");
       }
@@ -788,13 +783,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     // Cleanup pending request
     pendingAuthRepository.delete(authRequestId);
 
-    // TODO: Future Enhancement - Show success page before redirect
-    // Instead of direct redirect, could display a success page with:
-    // - OpenMetadata branding and confirmation message
-    // - "Authentication Successful" with checkmarks for SSO login
-    // - Auto-redirect after 2-3 seconds to client callback URL
-    // Challenge: Success page shows before OAuth flow completes on client side,
-    // which may be confusing. Consider showing success only after client confirms.
+    // TODO: Future Enhancement - Show success page before redirect (see handleBasicAuthLogin)
 
     // Redirect to client callback URL with authorization code
     LOG.info("Redirecting to client callback with authorization code: {}", requestedRedirectUri);
@@ -959,15 +948,18 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       return CompletableFuture.completedFuture(authCode);
     } catch (Exception e) {
       LOG.error("Failed to load authorization code", e);
-      return CompletableFuture.completedFuture(null);
+      return CompletableFuture.failedFuture(e);
     }
   }
 
   @Override
   public CompletableFuture<RefreshToken> loadRefreshToken(
       OAuthClientInformation client, String refreshToken) {
-    LOG.info("Load refresh token requested");
-    return CompletableFuture.completedFuture(null);
+    // Refresh token validation happens in exchangeRefreshToken which verifies JWT directly
+    // This method is not used in the current implementation
+    return CompletableFuture.failedFuture(
+        new UnsupportedOperationException(
+            "loadRefreshToken not implemented - use exchangeRefreshToken instead"));
   }
 
   @Override
@@ -1100,8 +1092,11 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
   @Override
   public CompletableFuture<AccessToken> loadAccessToken(String token) {
-    LOG.info("Load access token requested");
-    return CompletableFuture.completedFuture(null);
+    // Access token validation happens through JwtFilter which verifies JWT directly
+    // This method is not used in the current implementation
+    return CompletableFuture.failedFuture(
+        new UnsupportedOperationException(
+            "loadAccessToken not implemented - tokens are validated via JwtFilter"));
   }
 
   @Override
@@ -1151,21 +1146,15 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
   private boolean verifyPKCE(String codeVerifier, String codeChallenge) {
     try {
-      // COMMENTED FOR PRODUCTION - Uncomment only for local testing, then re-comment before
-      // committing
-      // SECURITY RISK: This allows bypassing PKCE validation entirely
-      // if ("TEST".equals(codeVerifier) && "TEST".equals(codeChallenge)) {
-      //   LOG.warn(
-      //       "SECURITY WARNING: Using test PKCE verifier/challenge 'TEST'. "
-      //           + "This should NEVER be used in production!");
-      //   return true;
-      // }
-
       MessageDigest digest = MessageDigest.getInstance("SHA-256");
       byte[] hash = digest.digest(codeVerifier.getBytes(StandardCharsets.US_ASCII));
       String computedChallenge = Base64.getUrlEncoder().withoutPadding().encodeToString(hash);
 
-      boolean matches = computedChallenge.equals(codeChallenge);
+      // Use timing-safe comparison to prevent timing attacks on PKCE challenges
+      boolean matches =
+          MessageDigest.isEqual(
+              computedChallenge.getBytes(StandardCharsets.UTF_8),
+              codeChallenge.getBytes(StandardCharsets.UTF_8));
       if (!matches) {
         LOG.warn("PKCE verification failed: computed challenge does not match stored challenge");
       }

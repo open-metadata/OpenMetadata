@@ -8,7 +8,6 @@ import jakarta.json.JsonPatch;
 import java.io.StringReader;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.mcp.server.auth.annotations.RequireScope;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -23,7 +22,6 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
-@RequireScope({"metadata:write"})
 public class PatchEntityTool implements McpTool {
   @Override
   public Map<String, Object> execute(

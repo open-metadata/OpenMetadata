@@ -34,39 +34,51 @@ public class RevocationHandler {
   public CompletableFuture<Void> revokeToken(String token, String tokenTypeHint) {
     return CompletableFuture.runAsync(
         () -> {
-          try {
-            if (token == null || token.trim().isEmpty()) {
-              LOG.debug("Revocation request with empty token");
-              return;
-            }
+          if (token == null || token.trim().isEmpty()) {
+            LOG.debug("Revocation request with empty token");
+            return;
+          }
 
-            boolean revoked = false;
+          boolean revoked = false;
+          Exception lastError = null;
 
-            if ("refresh_token".equals(tokenTypeHint) || tokenTypeHint == null) {
-              try {
-                tokenRepository.revokeRefreshToken(token);
-                LOG.debug("Successfully revoked refresh token");
-                revoked = true;
-              } catch (Exception e) {
-                LOG.debug("Token not found as refresh token: {}", e.getMessage());
-              }
+          if ("refresh_token".equals(tokenTypeHint) || tokenTypeHint == null) {
+            try {
+              tokenRepository.revokeRefreshToken(token);
+              LOG.debug("Successfully revoked refresh token");
+              revoked = true;
+            } catch (IllegalArgumentException e) {
+              // Token not found - expected case per RFC 7009
+              LOG.debug("Token not found as refresh token: {}", e.getMessage());
+            } catch (Exception e) {
+              // Database or other error - unexpected
+              LOG.warn("Database error while revoking refresh token: {}", e.getMessage());
+              lastError = e;
             }
+          }
 
-            if (!revoked && ("access_token".equals(tokenTypeHint) || tokenTypeHint == null)) {
-              try {
-                tokenRepository.deleteAccessToken(token);
-                LOG.debug("Successfully revoked access token");
-                revoked = true;
-              } catch (Exception e) {
-                LOG.debug("Token not found as access token: {}", e.getMessage());
-              }
+          if (!revoked && ("access_token".equals(tokenTypeHint) || tokenTypeHint == null)) {
+            try {
+              tokenRepository.deleteAccessToken(token);
+              LOG.debug("Successfully revoked access token");
+              revoked = true;
+            } catch (IllegalArgumentException e) {
+              // Token not found - expected case per RFC 7009
+              LOG.debug("Token not found as access token: {}", e.getMessage());
+            } catch (Exception e) {
+              // Database or other error - unexpected
+              LOG.warn("Database error while revoking access token: {}", e.getMessage());
+              lastError = e;
             }
+          }
 
-            if (!revoked) {
-              LOG.debug("Token not found in database (RFC 7009 compliance: return success)");
-            }
-          } catch (Exception e) {
-            LOG.error("Error during token revocation: {}", e.getMessage(), e);
+          if (!revoked && lastError != null) {
+            // If we couldn't revoke and had a database error, propagate it
+            throw new RuntimeException("Token revocation failed due to database error", lastError);
+          }
+
+          if (!revoked) {
+            LOG.debug("Token not found in database (RFC 7009 compliance: return success)");
           }
         });
   }

@@ -21,8 +21,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
-import org.openmetadata.mcp.server.auth.middleware.AuthContext;
-import org.openmetadata.mcp.server.auth.middleware.AuthContextProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -35,7 +33,7 @@ import reactor.core.publisher.Mono;
  */
 @WebServlet(asyncSupported = true)
 public class HttpServletStatelessServerTransport extends HttpServlet
-    implements McpStatelessServerTransport, AuthContextProvider {
+    implements McpStatelessServerTransport {
 
   private static final Logger logger =
       LoggerFactory.getLogger(HttpServletStatelessServerTransport.class);
@@ -62,8 +60,6 @@ public class HttpServletStatelessServerTransport extends HttpServlet
 
   private volatile boolean isClosing = false;
 
-  private AuthContext authContext;
-
   HttpServletStatelessServerTransport(
       ObjectMapper objectMapper,
       String mcpEndpoint,
@@ -76,16 +72,6 @@ public class HttpServletStatelessServerTransport extends HttpServlet
     this.jsonMapper = McpJsonMapper.getDefault();
     this.mcpEndpoint = mcpEndpoint;
     this.contextExtractor = contextExtractor;
-  }
-
-  @Override
-  public void setAuthContext(AuthContext authContext) {
-    this.authContext = authContext;
-  }
-
-  @Override
-  public AuthContext getAuthContext() {
-    return authContext;
   }
 
   @Override

@@ -28,6 +28,14 @@ public class MCPConfiguration {
   private String originHeaderUri = "http://localhost";
 
   /**
+   * Base URL for MCP OAuth endpoints. Used for OAuth metadata (issuer, endpoints).
+   * If not set, falls back to system settings (OpenMetadataBaseUrlConfiguration).
+   * For clustered deployments, set this to the external-facing URL of the service.
+   */
+  @JsonProperty("baseUrl")
+  private String baseUrl;
+
+  /**
    * List of allowed origins for CORS on OAuth endpoints.
    * Use specific origins for production security. Wildcard (*) is NOT recommended.
    * Default includes common development origins.

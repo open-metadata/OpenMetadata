@@ -31,11 +31,11 @@ import org.openmetadata.mcp.server.auth.handlers.MetadataHandler;
 import org.openmetadata.mcp.server.auth.handlers.ProtectedResourceMetadataHandler;
 import org.openmetadata.mcp.server.auth.handlers.RegistrationHandler;
 import org.openmetadata.mcp.server.auth.handlers.RevocationHandler;
-import org.openmetadata.mcp.server.auth.middleware.AuthContext;
 import org.openmetadata.mcp.server.auth.middleware.BearerAuthenticator;
 import org.openmetadata.mcp.server.auth.middleware.ClientAuthenticator;
 import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.slf4j.Logger;
@@ -104,13 +104,13 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
     // Create Authorization Server metadata (RFC 8414)
     // Endpoints are relative to /mcp prefix since servlet is mounted there
+    List<String> supportedScopes = getSupportedScopesForProvider();
     OAuthMetadata metadata = new OAuthMetadata();
     metadata.setIssuer(URI.create(baseUrl + mcpEndpoint));
     metadata.setAuthorizationEndpoint(URI.create(baseUrl + mcpEndpoint + "/authorize"));
     metadata.setTokenEndpoint(URI.create(baseUrl + mcpEndpoint + "/token"));
     metadata.setRegistrationEndpoint(URI.create(baseUrl + mcpEndpoint + "/register"));
-    metadata.setScopesSupported(
-        List.of("openid", "profile", "email", "offline_access", "api://apiId/.default"));
+    metadata.setScopesSupported(supportedScopes);
     metadata.setResponseTypesSupported(java.util.Arrays.asList("code"));
     metadata.setGrantTypesSupported(java.util.Arrays.asList("authorization_code", "refresh_token"));
     metadata.setTokenEndpointAuthMethodsSupported(java.util.Arrays.asList("client_secret_post"));
@@ -123,8 +123,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     protectedResourceMetadata.setResource(URI.create(baseUrl));
     protectedResourceMetadata.setAuthorizationServers(
         java.util.Arrays.asList(URI.create(baseUrl + mcpEndpoint)));
-    protectedResourceMetadata.setScopesSupported(
-        List.of("openid", "profile", "email", "offline_access", "api://apiId/.default"));
+    protectedResourceMetadata.setScopesSupported(supportedScopes);
     protectedResourceMetadata.setResourceDocumentation(URI.create(baseUrl + "/docs"));
 
     // Create handlers
@@ -215,24 +214,19 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       throws ServletException, IOException {
 
     logger.info("Handling OAuth GET request: " + request.getRequestURI());
-    try {
-      String path = request.getRequestURI();
+    String path = request.getRequestURI();
 
-      // Handle OAuth GET routes
-      if (path.endsWith("/.well-known/oauth-authorization-server")) {
-        handleMetadataRequest(request, response);
-      } else if (path.endsWith("/.well-known/oauth-protected-resource")) {
-        handleProtectedResourceMetadataRequest(request, response);
-      } else if (path.endsWith("/authorize")) {
-        HttpSession session = getHttpSession(request, true);
-        handleAuthorizeRequest(request, response);
-      } else {
-        // Handle other GET requests using the parent class
-        super.doGet(request, response);
-      }
-    } finally {
-      // Clear thread-local auth context after request is processed
-      AuthContext.clearCurrent();
+    // Handle OAuth GET routes
+    if (path.endsWith("/.well-known/oauth-authorization-server")) {
+      handleMetadataRequest(request, response);
+    } else if (path.endsWith("/.well-known/oauth-protected-resource")) {
+      handleProtectedResourceMetadataRequest(request, response);
+    } else if (path.endsWith("/authorize")) {
+      HttpSession session = getHttpSession(request, true);
+      handleAuthorizeRequest(request, response);
+    } else {
+      // Handle other GET requests using the parent class
+      super.doGet(request, response);
     }
   }
 
@@ -249,18 +243,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
     try {
       validatePrefixedTokenRequest(jwtFilter, tokenWithType);
-
-      // After JWT validation, populate AuthContext with scopes for tool authorization
-      if (tokenWithType != null && tokenWithType.startsWith("Bearer ")) {
-        String jwtToken = tokenWithType.substring(7); // Remove "Bearer " prefix
-        populateAuthContext(jwtToken);
-      }
-
       return true;
     } catch (Exception e) {
-      // Clear auth context in case of failure
-      AuthContext.clearCurrent();
-      // Extract the root cause message
       String message = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
       sendAuthErrorWithChallenge(response, message, HttpServletResponse.SC_UNAUTHORIZED);
       return false;
@@ -268,68 +252,29 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   }
 
   /**
-   * Populates the AuthContext with OAuth scopes from the JWT token.
-   * This allows ScopeInterceptor to enforce @RequireScope annotations on MCP tools.
-   *
-   * @param jwtToken The JWT access token (without "Bearer " prefix)
+   * Returns supported OAuth scopes based on the configured auth provider.
+   * Different providers support different scopes:
+   * - Google: openid, profile, email (no offline_access in OAuth context)
+   * - Okta/Auth0/Cognito: openid, profile, email, offline_access
+   * - Azure: openid, profile, email, offline_access (Azure-specific scopes come from config)
+   * - Basic/LDAP: openid, profile, email
    */
-  private void populateAuthContext(String jwtToken) {
+  private static List<String> getSupportedScopesForProvider() {
     try {
-      // Parse JWT to extract claims
-      String[] parts = jwtToken.split("\\.");
-      if (parts.length < 2) {
-        logger.warn("Invalid JWT format - cannot extract scopes");
-        return;
+      AuthProvider provider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
+      if (provider == null) {
+        return List.of("openid", "profile", "email");
       }
-
-      // Decode the payload (second part)
-      String payload = new String(java.util.Base64.getUrlDecoder().decode(parts[1]));
-      com.fasterxml.jackson.databind.JsonNode claims = getObjectMapper().readTree(payload);
-
-      // Extract username and scopes from JWT claims
-      String username = claims.has("sub") ? claims.get("sub").asText() : null;
-      String email = claims.has("email") ? claims.get("email").asText() : null;
-
-      // OAuth scopes are typically stored in a "scope" claim as space-separated string
-      final java.util.List<String> scopes = new java.util.ArrayList<>();
-      if (claims.has("scope")) {
-        String scopeString = claims.get("scope").asText();
-        if (scopeString != null && !scopeString.isEmpty()) {
-          scopes.addAll(java.util.Arrays.asList(scopeString.split(" ")));
-        }
-      } else if (claims.has("scopes")) {
-        // Some JWT implementations use "scopes" array
-        com.fasterxml.jackson.databind.JsonNode scopesNode = claims.get("scopes");
-        if (scopesNode.isArray()) {
-          scopesNode.forEach(scope -> scopes.add(scope.asText()));
-        }
-      }
-
-      // If no explicit scopes in JWT, grant default scopes for backward compatibility
-      if (scopes.isEmpty()) {
-        logger.debug("No scopes found in JWT, granting default scopes for user: {}", username);
-        scopes.addAll(java.util.Arrays.asList("openid", "profile", "email"));
-      }
-
-      // Create AccessToken and populate AuthContext
-      // Note: We only need scopes for ScopeInterceptor validation
-      // clientId is not typically in JWT for user tokens, it's tracked separately in OAuth flow
-      org.openmetadata.mcp.auth.AccessToken accessToken =
-          new org.openmetadata.mcp.auth.AccessToken();
-      accessToken.setToken(jwtToken);
-      accessToken.setScopes(scopes);
-      accessToken.setClientId(username); // Store username as clientId for context
-
-      org.openmetadata.mcp.server.auth.middleware.AuthContext authContext =
-          new org.openmetadata.mcp.server.auth.middleware.AuthContext(accessToken);
-      org.openmetadata.mcp.server.auth.middleware.AuthContext.setCurrent(authContext);
-
-      logger.debug("Populated AuthContext for user: {} with scopes: {}", username, scopes);
-
+      return switch (provider) {
+        case GOOGLE -> List.of("openid", "profile", "email");
+        case OKTA, AUTH_0, AWS_COGNITO, CUSTOM_OIDC -> List.of(
+            "openid", "profile", "email", "offline_access");
+        case AZURE -> List.of("openid", "profile", "email", "offline_access");
+        default -> List.of("openid", "profile", "email");
+      };
     } catch (Exception e) {
-      logger.error("Failed to populate AuthContext from JWT", e);
-      // Don't fail the request - JWT validation already passed
-      // Missing AuthContext will be caught by ScopeInterceptor if needed
+      logger.warn("Could not determine auth provider for scopes, using default", e);
+      return List.of("openid", "profile", "email");
     }
   }
 
@@ -338,7 +283,6 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
    * @param response The HTTP response
    * @param message The error message
    * @param statusCode The HTTP status code
-   * @param scope The required scope
    */
   private void sendAuthErrorWithChallenge(
       HttpServletResponse response, String message, int statusCode) throws IOException {
@@ -347,11 +291,9 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     StringBuilder challenge = new StringBuilder("Bearer");
     challenge.append(" resource_metadata=\"").append(resourceMetadataUrl).append("\"");
 
-    challenge
-        .append(", scope=\"")
-        .append(
-            "openid profile email offline_access api://0a957c01-29f8-4fce-a1dc-3b9f12447b60/.default")
-        .append("\"");
+    // Use provider-aware scopes
+    List<String> scopes = getSupportedScopesForProvider();
+    challenge.append(", scope=\"").append(String.join(" ", scopes)).append("\"");
 
     if (statusCode == HttpServletResponse.SC_FORBIDDEN) {
       challenge.append(", error=\"insufficient_scope\"");
@@ -385,25 +327,20 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       throws ServletException, IOException {
 
     logger.info("Handling OAuth POST request: " + request.getRequestURI());
-    try {
-      String path = request.getRequestURI();
+    String path = request.getRequestURI();
 
-      // Handle OAuth POST routes
-      if (path.endsWith("/token")) {
-        handleTokenRequest(request, response);
-      } else if (path.endsWith("/authorize")) {
-        handleAuthorizeRequest(request, response);
-      } else if (path.endsWith("/register")) {
-        handleRegistrationRequest(request, response);
-      } else if (path.endsWith("/revoke")) {
-        handleRevocationRequest(request, response);
-      } else {
-        // Handle other POST requests using the parent class
-        super.doPost(request, response);
-      }
-    } finally {
-      // Clear thread-local auth context after request is processed
-      AuthContext.clearCurrent();
+    // Handle OAuth POST routes
+    if (path.endsWith("/token")) {
+      handleTokenRequest(request, response);
+    } else if (path.endsWith("/authorize")) {
+      handleAuthorizeRequest(request, response);
+    } else if (path.endsWith("/register")) {
+      handleRegistrationRequest(request, response);
+    } else if (path.endsWith("/revoke")) {
+      handleRevocationRequest(request, response);
+    } else {
+      // Handle other POST requests using the parent class
+      super.doPost(request, response);
     }
   }
 
@@ -416,7 +353,14 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       response.setStatus(200);
       getObjectMapper().writeValue(response.getOutputStream(), metadata);
     } catch (CompletionException ex) {
+      logger.error("Failed to handle OAuth metadata request", ex);
+      setCorsHeaders(request, response);
+      response.setContentType("application/json");
       response.setStatus(500);
+      Map<String, String> error = new HashMap<>();
+      error.put("error", "server_error");
+      error.put("error_description", "Failed to retrieve OAuth metadata");
+      getObjectMapper().writeValue(response.getOutputStream(), error);
     }
   }
 
@@ -429,7 +373,14 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       response.setStatus(200);
       getObjectMapper().writeValue(response.getOutputStream(), metadata);
     } catch (CompletionException ex) {
+      logger.error("Failed to handle protected resource metadata request", ex);
+      setCorsHeaders(request, response);
+      response.setContentType("application/json");
       response.setStatus(500);
+      Map<String, String> error = new HashMap<>();
+      error.put("error", "server_error");
+      error.put("error_description", "Failed to retrieve protected resource metadata");
+      getObjectMapper().writeValue(response.getOutputStream(), error);
     }
   }
 
@@ -697,15 +648,34 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       logger.info("Token revocation completed successfully");
 
     } catch (CompletionException ex) {
-      logger.error("Token revocation failed", ex);
-      setCorsHeaders(request, response);
-      response.setContentType("application/json");
-      response.setStatus(200);
+      // Per RFC 7009, return 200 for "token not found" to prevent token guessing
+      // But return 500 for actual server errors
+      Throwable cause = ex.getCause();
+      if (cause instanceof IllegalArgumentException) {
+        // Token not found or invalid - this is OK per RFC 7009
+        logger.debug("Token revocation: token not found or invalid", ex);
+        setCorsHeaders(request, response);
+        response.setStatus(200);
+      } else {
+        // Actual server error
+        logger.error("Token revocation failed with server error", ex);
+        setCorsHeaders(request, response);
+        response.setContentType("application/json");
+        response.setStatus(500);
+        Map<String, String> error = new HashMap<>();
+        error.put("error", "server_error");
+        error.put("error_description", "Token revocation failed due to server error");
+        getObjectMapper().writeValue(response.getOutputStream(), error);
+      }
     } catch (Exception ex) {
       logger.error("Unexpected error during token revocation", ex);
       setCorsHeaders(request, response);
       response.setContentType("application/json");
-      response.setStatus(200);
+      response.setStatus(500);
+      Map<String, String> error = new HashMap<>();
+      error.put("error", "server_error");
+      error.put("error_description", "Unexpected error during token revocation");
+      getObjectMapper().writeValue(response.getOutputStream(), error);
     }
   }
 }

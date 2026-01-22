@@ -34,7 +34,7 @@ public class OAuthEndpointsResource {
   public Response getAuthorizationServerMetadata(
       @Context HttpServletRequest request, @Context HttpServletResponse response) {
 
-    LOG.info("OAuth metadata endpoint called via JAX-RS");
+    LOG.debug("OAuth metadata endpoint called via JAX-RS");
     try {
       transport.doGet(request, response);
       return Response.status(response.getStatus()).entity(response.getOutputStream()).build();
@@ -51,7 +51,7 @@ public class OAuthEndpointsResource {
       @Context HttpServletRequest request, @Context HttpServletResponse response)
       throws IOException, ServletException {
 
-    LOG.info("Protected resource metadata endpoint called via JAX-RS");
+    LOG.debug("Protected resource metadata endpoint called via JAX-RS");
     transport.doGet(request, response);
   }
 
@@ -60,7 +60,7 @@ public class OAuthEndpointsResource {
   public void authorize(@Context HttpServletRequest request, @Context HttpServletResponse response)
       throws IOException, ServletException {
 
-    LOG.info("OAuth authorize endpoint called via JAX-RS");
+    LOG.debug("OAuth authorize endpoint called via JAX-RS");
     transport.doGet(request, response);
   }
 
@@ -70,7 +70,7 @@ public class OAuthEndpointsResource {
       @Context HttpServletRequest request, @Context HttpServletResponse response)
       throws IOException, ServletException {
 
-    LOG.info("OAuth authorize POST endpoint called via JAX-RS");
+    LOG.debug("OAuth authorize POST endpoint called via JAX-RS");
     transport.doPost(request, response);
   }
 
@@ -80,7 +80,7 @@ public class OAuthEndpointsResource {
   public void token(@Context HttpServletRequest request, @Context HttpServletResponse response)
       throws IOException, ServletException {
 
-    LOG.info("OAuth token endpoint called via JAX-RS");
+    LOG.debug("OAuth token endpoint called via JAX-RS");
     transport.doPost(request, response);
   }
 
@@ -90,7 +90,7 @@ public class OAuthEndpointsResource {
   public void register(@Context HttpServletRequest request, @Context HttpServletResponse response)
       throws IOException, ServletException {
 
-    LOG.info("OAuth register endpoint called via JAX-RS");
+    LOG.debug("OAuth register endpoint called via JAX-RS");
     transport.doPost(request, response);
   }
 
@@ -99,7 +99,7 @@ public class OAuthEndpointsResource {
   public void revoke(@Context HttpServletRequest request, @Context HttpServletResponse response)
       throws IOException, ServletException {
 
-    LOG.info("OAuth revoke endpoint called via JAX-RS");
+    LOG.debug("OAuth revoke endpoint called via JAX-RS");
     transport.doPost(request, response);
   }
 }
