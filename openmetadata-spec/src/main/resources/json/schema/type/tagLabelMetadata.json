@@ -1,0 +1,15 @@
+{
+  "$id": "https://open-metadata.org/schema/type/tagLabelMetadata.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TagLabelMetadata",
+  "description": "Additional metadata associated with a tag label, including information about how the tag was applied.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.TagLabelMetadata",
+  "properties": {
+    "recognizer": {
+      "description": "Metadata about the recognizer that automatically applied this tag",
+      "$ref": "tagLabelRecognizerMetadata.json"
+    }
+  },
+  "additionalProperties": false
+}
