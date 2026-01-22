@@ -97,3 +97,6 @@ CREATE INDEX idx_test_suite_updated_at_id ON test_suite(updatedAt DESC, id DESC)
 CREATE INDEX idx_test_case_updated_at_id ON test_case(updatedAt DESC, id DESC);
 CREATE INDEX idx_api_collection_entity_updated_at_id ON api_collection_entity(updatedAt DESC, id DESC);
 CREATE INDEX idx_api_endpoint_entity_updated_at_id ON api_endpoint_entity(updatedAt DESC, id DESC);
+
+-- Add metadata column to tag_usage table
+ALTER TABLE tag_usage ADD metadata JSON NULL;
