@@ -168,13 +168,7 @@ const TagsPage = () => {
     setIsLoading(true);
     try {
       const currentClassification = await getClassificationByName(fqn, {
-        fields: [
-          TabSpecificField.OWNERS,
-          TabSpecificField.USAGE_COUNT,
-          TabSpecificField.TERM_COUNT,
-          TabSpecificField.DOMAINS,
-          ...tagClassBase.getClassificationFields(),
-        ],
+        fields: tagClassBase.getClassificationFields(),
       });
       if (currentClassification) {
         setClassifications((prevClassifications) =>

@@ -22,7 +22,7 @@ import {
 } from '../constants/CustomizeWidgets.constants';
 import { queryFilterToRemoveSomeClassification } from '../constants/Tag.constants';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
-import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Tag } from '../generated/entity/classification/tag';
 import { Tab } from '../generated/system/ui/uiCustomization';
@@ -268,7 +268,12 @@ class TagClassBase {
   }
 
   public getClassificationFields(): string[] {
-    return [];
+    return [
+      TabSpecificField.OWNERS,
+      TabSpecificField.USAGE_COUNT,
+      TabSpecificField.TERM_COUNT,
+      TabSpecificField.DOMAINS,
+    ];
   }
 }
 
