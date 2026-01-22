@@ -317,25 +317,55 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     try {
       HttpSession session = getHttpSession(req, true);
 
-      String overrideCallbackUrl = req.getParameter(REDIRECT_URI_KEY);
-      String effectiveCallbackUrl =
-          overrideCallbackUrl != null ? overrideCallbackUrl : client.getCallbackUrl();
+      // Get redirect URI from request parameter
+      String requestedRedirectUri = req.getParameter(REDIRECT_URI_KEY);
 
-      checkAndStoreRedirectUriInSession(session, effectiveCallbackUrl);
+      // Determine Google callback URL and final redirect URI based on the flow:
+      // 1. MCP OAuth flow: requestedRedirectUri is a full URL (e.g., https://ngrok-url/mcp/callback)
+      //    - Use the full URL for Google OAuth callback
+      //    - MCP handles its own final redirect
+      // 2. Web login flow: requestedRedirectUri is a relative path (e.g., /auth/callback)
+      //    - Use the YAML-configured callback URL for Google OAuth
+      //    - Store the relative path for final redirect to frontend
+      String googleCallbackUrl;
+      String finalRedirectUri;
 
-      LOG.debug("Performing Auth Login For User Session: {} ", session.getId());
+      if (requestedRedirectUri != null
+          && (requestedRedirectUri.startsWith("http://")
+              || requestedRedirectUri.startsWith("https://"))) {
+        // MCP flow: use the provided full URL for Google OAuth
+        googleCallbackUrl = requestedRedirectUri;
+        finalRedirectUri = requestedRedirectUri;
+        LOG.info("MCP OAuth flow detected - using provided callback URL for Google OAuth");
+      } else {
+        // Regular web login: use configured callback for Google, store frontend path for redirect
+        googleCallbackUrl = client.getCallbackUrl();
+        finalRedirectUri =
+            requestedRedirectUri != null ? requestedRedirectUri : googleCallbackUrl;
+        LOG.info("Web login flow detected - using configured callback URL for Google OAuth");
+      }
+
+      checkAndStoreRedirectUriInSession(session, finalRedirectUri);
+
+      LOG.info(
+          "Auth Login - Session: {}, requestedRedirectUri: {}, googleCallbackUrl: {}, finalRedirectUri: {}",
+          session.getId(),
+          requestedRedirectUri,
+          googleCallbackUrl,
+          finalRedirectUri);
       Optional<OidcCredentials> credentials = getUserCredentialsFromSession(session);
       if (credentials.isPresent()) {
         LOG.debug("Auth Tokens Located from Session: {} ", session.getId());
         sendRedirectWithToken(session, resp, credentials.get());
       } else {
-        LOG.debug(
-            "Performing Auth Code Flow to Idp with callback URL: {} ",
-            effectiveCallbackUrl,
-            session.getId());
+        LOG.info(
+            "Performing Auth Code Flow to Google with callback URL: {} (frontend will receive final redirect at: {})",
+            googleCallbackUrl,
+            finalRedirectUri);
         Map<String, String> params = buildLoginParams();
 
-        params.put(OidcConfiguration.REDIRECT_URI, effectiveCallbackUrl);
+        // Use the computed callback URL for Google OAuth (MCP URL or configured backend URL)
+        params.put(OidcConfiguration.REDIRECT_URI, googleCallbackUrl);
 
         addStateAndNonceParameters(client, session, params);
 
@@ -377,6 +407,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     }
 
     session.setAttribute(SESSION_REDIRECT_URI, redirectUri);
+    LOG.info("Stored redirect URI in session {}: {}", session.getId(), redirectUri);
   }
 
   // Callback
@@ -388,8 +419,11 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         throw new TechnicalException("No session found for callback, redirecting to login");
       }
 
-      LOG.debug("Performing Auth Callback For User Session: {} ", session.getId());
+      LOG.info("Performing Auth Callback For User Session: {} ", session.getId());
+      // Always use the backend's configured callback URL for token exchange (must match what was sent to Google)
+      // SESSION_REDIRECT_URI now stores the frontend's final redirect URL, not the Google callback URL
       String computedCallbackUrl = client.getCallbackUrl();
+      LOG.info("Token exchange using callback URL: {}", computedCallbackUrl);
       Map<String, List<String>> parameters = retrieveCallbackParameters(req);
       AuthenticationResponse response =
           AuthenticationResponseParser.parse(new URI(computedCallbackUrl), parameters);
@@ -550,14 +584,18 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       HttpSession session, OidcCredentials oidcCredentials, String computedCallbackUrl)
       throws URISyntaxException {
     if (oidcCredentials.getCode() != null) {
-      LOG.debug("Initiating Token Request for User Session: {} ", session.getId());
+      LOG.info(
+          "Initiating Token Request - Session: {}, redirect_uri for token exchange: {}",
+          session.getId(),
+          computedCallbackUrl);
       CodeVerifier verifier =
           (CodeVerifier) session.getAttribute(client.getCodeVerifierSessionAttributeName());
       // Token request
-      TokenRequest request =
-          createTokenRequest(
-              new AuthorizationCodeGrant(
-                  oidcCredentials.getCode(), new URI(computedCallbackUrl), verifier));
+      AuthorizationCodeGrant grant =
+          new AuthorizationCodeGrant(
+              oidcCredentials.getCode(), new URI(computedCallbackUrl), verifier);
+      LOG.info("AuthorizationCodeGrant redirect_uri: {}", grant.getRedirectionURI());
+      TokenRequest request = createTokenRequest(grant);
       executeAuthorizationCodeTokenRequest(session, request, oidcCredentials);
     }
   }
@@ -568,8 +606,19 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       AuthenticationSuccessResponse successResponse) {
     if (client.getConfiguration().isWithState()) {
       // Validate state for CSRF mitigation
-      State requestState = (State) session.getAttribute(client.getStateSessionAttributeName());
+      String stateAttrName = client.getStateSessionAttributeName();
+      State requestState = (State) session.getAttribute(stateAttrName);
+      LOG.info(
+          "State validation - Session: {}, stateAttrName: {}, requestState: {}, session attributes: {}",
+          session.getId(),
+          stateAttrName,
+          requestState,
+          java.util.Collections.list(session.getAttributeNames()));
       if (requestState == null || CommonHelper.isBlank(requestState.getValue())) {
+        LOG.error(
+            "Missing state in session {}. Available attributes: {}",
+            session.getId(),
+            java.util.Collections.list(session.getAttributeNames()));
         getErrorMessage(resp, new TechnicalException("Missing state parameter"));
         return;
       }
