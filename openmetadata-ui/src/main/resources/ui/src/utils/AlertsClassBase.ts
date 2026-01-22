@@ -73,9 +73,8 @@ class AlertsClassBase {
     initialData?: EventSubscription
   ) {
     const destinations = data.destinations?.map((d) => {
-      const initialDestination = initialData?.destinations?.find(
-        (destination) => destination.type === d.type
-      );
+      const initialDestination =
+        d.id && initialData?.destinations?.find((dest) => dest.id === d.id);
 
       return {
         ...(initialDestination ?? {}),

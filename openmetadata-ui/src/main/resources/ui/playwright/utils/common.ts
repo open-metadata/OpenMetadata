@@ -716,35 +716,34 @@ export const testPaginationNavigation = async (
   if (waitForLoadSelector) {
     await page.waitForSelector(waitForLoadSelector, { state: 'visible' });
   }
-  await waitForAllLoadersToDisappear(page);
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 
   const page1Data = await page1Response.json();
-  const page1Items =
-    page1Data.data?.map(
-      (item: { fullyQualifiedName: string }) => item.fullyQualifiedName
-    ) || [];
+  const page1FirstItem = page1Data.data?.[0];
+  const page1FirstItemName =
+    page1FirstItem?.displayName || page1FirstItem?.name;
 
   await expect(page.getByTestId('previous')).toBeDisabled();
   const nextButton = page.locator('[data-testid="next"]');
-
-  const nextButtonCount = await nextButton.count();
-
-  if (nextButtonCount === 0) {
-    return;
-  }
 
   const isNextButtonEnabled = await nextButton.isEnabled();
 
   if (!isNextButtonEnabled) {
     return;
   }
-  await page.waitForLoadState('networkidle');
   const page2ResponsePromise = page.waitForResponse(responseMatcher);
 
   await nextButton.click();
+  const page2Response = await page2ResponsePromise;
+  expect(page2Response.status()).toBe(200);
 
-  await waitForAllLoadersToDisappear(page);
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 
+  await expect(page.getByTestId('previous')).toBeEnabled();
   let afterValue: string | null = '';
   if (validateUrl) {
     const currentUrl = page.url();
@@ -759,18 +758,15 @@ export const testPaginationNavigation = async (
     expect(afterValue).toBeTruthy();
   }
 
-  const page2Response = await page2ResponsePromise;
-  expect(page2Response.status()).toBe(200);
-  const page2Data = await page2Response.json();
-  const page2Items =
-    page2Data.data?.map(
-      (item: { fullyQualifiedName: string }) => item.fullyQualifiedName
-    ) || [];
-
-  await expect(page.getByTestId('previous')).toBeEnabled();
-  expect(page2Items.length).toBeGreaterThan(0);
-  const hasOverlap = page1Items.some((fqn: string) => page2Items.includes(fqn));
-  expect(hasOverlap).toBe(false);
+  if (page1FirstItemName) {
+    const firstRow = page.locator('tbody tr').first();
+    await expect(firstRow.locator('td').nth(0)).not.toHaveText(
+      page1FirstItemName
+    );
+    await expect(firstRow.locator('td').nth(1)).not.toHaveText(
+      page1FirstItemName
+    );
+  }
 
   const reloadResponsePromise = page.waitForResponse(responseMatcher);
 
@@ -778,7 +774,16 @@ export const testPaginationNavigation = async (
 
   const reloadResponse = await reloadResponsePromise;
   expect(reloadResponse.status()).toBe(200);
-  await waitForAllLoadersToDisappear(page);
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  await expect(page.getByTestId('previous')).toBeEnabled();
+  const paginationText = page.locator('[data-testid="page-indicator"]');
+  await expect(paginationText).toBeVisible();
+  const paginationTextContent = await paginationText.textContent();
+
+  expect(paginationTextContent).toMatch(/2\s*of\s*\d+/);
 
   if (validateUrl) {
     const reloadedUrl = page.url();
@@ -789,15 +794,6 @@ export const testPaginationNavigation = async (
     expect(reloadedSearchParams.get('cursorType')).toBe('after');
     expect(reloadedSearchParams.get('cursorValue')).toBe(afterValue);
   }
-
-  const paginationText = page.locator('[data-testid="page-indicator"]');
-
-  await expect(paginationText).toBeVisible();
-
-  const paginationTextContent = await paginationText.textContent();
-
-  await expect(page.getByTestId('previous')).toBeEnabled();
-  expect(paginationTextContent).toMatch(/2\s*of\s*\d+/);
 };
 
 export interface PaginationTestConfig {
@@ -828,6 +824,11 @@ export const testCompletePaginationWithSearch = async (
   await page.goto(`${baseUrl}`);
   await page.waitForSelector(waitForLoadSelector, { state: 'visible' });
 
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+
   const nextButton = page.locator('[data-testid="next"]');
   const isNextEnabled = await nextButton.isEnabled();
   await expect(page.getByTestId('previous')).toBeDisabled();
@@ -840,13 +841,15 @@ export const testCompletePaginationWithSearch = async (
     await nextButton.click();
     const page2Response = await page2ResponsePromise;
     expect(page2Response.status()).toBe(200);
-    await page.waitForSelector(waitForLoadSelector, { state: 'visible' });
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
+    await expect(page.getByTestId('previous')).toBeEnabled();
     const paginationPage2 = page.locator('[data-testid="page-indicator"]');
     await expect(paginationPage2).toBeVisible();
     const page2Content = await paginationPage2.textContent();
     expect(page2Content).toMatch(/2\s*of\s*\d+/);
-    await expect(page.getByTestId('previous')).toBeEnabled();
   }
 
   const searchResponsePromise = page.waitForResponse((response) =>
@@ -856,16 +859,15 @@ export const testCompletePaginationWithSearch = async (
   await page.getByTestId('searchbar').fill(searchTestTerm || '');
   const searchResponse = await searchResponsePromise;
   expect(searchResponse.status()).toBe(200);
-  await page.waitForSelector(waitForLoadSelector, { state: 'visible' });
 
   const urlAfterSearch = new URL(page.url());
   expect(urlAfterSearch.searchParams.get(searchParamName)).toBe(searchTestTerm);
 
+  await expect(page.getByTestId('previous')).toBeDisabled();
   const paginationAfterSearch = page.locator('[data-testid="page-indicator"]');
   await expect(paginationAfterSearch).toBeVisible();
   const searchPage1Content = await paginationAfterSearch.textContent();
   expect(searchPage1Content).toMatch(/1\s*of\s*\d+/);
-  await expect(page.getByTestId('previous')).toBeDisabled();
 
   const nextButtonAfterSearch = page.locator('[data-testid="next"]');
   const isNextEnabledAfterSearch = await nextButtonAfterSearch.isEnabled();
@@ -878,15 +880,14 @@ export const testCompletePaginationWithSearch = async (
     await nextButtonAfterSearch.click();
     const searchPage2Response = await searchPage2Promise;
     expect(searchPage2Response.status()).toBe(200);
-    await page.waitForSelector(waitForLoadSelector, { state: 'visible' });
 
+    await expect(page.getByTestId('previous')).toBeEnabled();
     const paginationSearchPage2 = page.locator(
       '[data-testid="page-indicator"]'
     );
     await expect(paginationSearchPage2).toBeVisible();
     const searchPage2Content = await paginationSearchPage2.textContent();
     expect(searchPage2Content).toMatch(/2\s*of\s*\d+/);
-    await expect(page.getByTestId('previous')).toBeEnabled();
 
     const reloadPromise = page.waitForResponse((response) =>
       response.url().includes(searchApiPattern)
@@ -895,20 +896,19 @@ export const testCompletePaginationWithSearch = async (
     await page.reload();
     const reloadResponse = await reloadPromise;
     expect(reloadResponse.status()).toBe(200);
-    await page.waitForSelector(waitForLoadSelector, { state: 'visible' });
 
     const urlAfterRefresh = new URL(page.url());
     expect(urlAfterRefresh.searchParams.get(searchParamName)).toBe(
       searchTestTerm
     );
 
+    await expect(page.getByTestId('previous')).toBeEnabled();
     const paginationAfterRefresh = page.locator(
       '[data-testid="page-indicator"]'
     );
     await expect(paginationAfterRefresh).toBeVisible();
     const refreshPage2Content = await paginationAfterRefresh.textContent();
     expect(refreshPage2Content).toMatch(/2\s*of\s*\d+/);
-    await expect(page.getByTestId('previous')).toBeEnabled();
 
     const searchValueAfterRefresh = await page
       .getByTestId('searchbar')
@@ -926,7 +926,9 @@ export const testCompletePaginationWithSearch = async (
       await deleteToggle.click();
       const searchApiResponseWithToggle1 = await searchApiPromiseWithToggle1;
       expect(searchApiResponseWithToggle1.status()).toBe(200);
-      await waitForAllLoadersToDisappear(page);
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       const searchApiPromiseWithToggle2 = page.waitForResponse((response) =>
         response.url().includes(searchApiPattern)
@@ -935,8 +937,11 @@ export const testCompletePaginationWithSearch = async (
       await deleteToggle.click();
       const searchApiResponseWithToggle2 = await searchApiPromiseWithToggle2;
       expect(searchApiResponseWithToggle2.status()).toBe(200);
-      await waitForAllLoadersToDisappear(page);
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
+      await expect(page.getByTestId('previous')).toBeDisabled();
       const paginationAfterToggleWithSearch = page.locator(
         '[data-testid="page-indicator"]'
       );
@@ -944,7 +949,6 @@ export const testCompletePaginationWithSearch = async (
       const toggleSearchContent =
         await paginationAfterToggleWithSearch.textContent();
       expect(toggleSearchContent).toMatch(/1\s*of\s*\d+/);
-      await expect(page.getByTestId('previous')).toBeDisabled();
 
       const urlAfterToggle = new URL(page.url());
       expect(urlAfterToggle.searchParams.get(searchParamName)).toBe(

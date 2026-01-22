@@ -1490,6 +1490,9 @@ export interface SP {
  * Token Validation Algorithm to use.
  */
 export enum TokenValidationAlgorithm {
+    Es256 = "ES256",
+    Es384 = "ES384",
+    Es512 = "ES512",
     Rs256 = "RS256",
     Rs384 = "RS384",
     Rs512 = "RS512",
@@ -2079,6 +2082,11 @@ export interface NaturalLanguageSearch {
      */
     enabled?: boolean;
     /**
+     * OpenAI configuration for embedding generation. Supports both OpenAI and Azure OpenAI
+     * endpoints.
+     */
+    openai?: Openai;
+    /**
      * Fully qualified class name of the NLQService implementation to use
      */
     providerClass?: string;
@@ -2151,6 +2159,38 @@ export interface Djl {
      * DJL model name for embedding generation
      */
     embeddingModel?: string;
+}
+
+/**
+ * OpenAI configuration for embedding generation. Supports both OpenAI and Azure OpenAI
+ * endpoints.
+ */
+export interface Openai {
+    /**
+     * API key for authenticating with OpenAI or Azure OpenAI.
+     */
+    apiKey?: string;
+    /**
+     * Azure OpenAI API version. Only used with Azure OpenAI.
+     */
+    apiVersion?: string;
+    /**
+     * Azure OpenAI deployment name. Required when using Azure OpenAI.
+     */
+    deploymentName?: string;
+    /**
+     * Dimension of the embedding vector. Default is 1536 for text-embedding-3-small.
+     */
+    embeddingDimension?: number;
+    /**
+     * OpenAI embedding model identifier (e.g., text-embedding-3-small, text-embedding-ada-002).
+     */
+    embeddingModelId?: string;
+    /**
+     * Custom endpoint URL. For Azure OpenAI, use the Azure resource endpoint (e.g.,
+     * https://your-resource.openai.azure.com). Leave empty for standard OpenAI API.
+     */
+    endpoint?: string;
 }
 
 /**

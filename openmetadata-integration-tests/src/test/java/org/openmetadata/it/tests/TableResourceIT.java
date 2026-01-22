@@ -104,6 +104,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     // Table CSV export exports columns from a specific table, not tables from a schema
     // The test framework expects export from a container (schema), but tables use a different API
     supportsImportExport = false;
+    supportsLifeCycle = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   private DatabaseSchema lastCreatedSchema;

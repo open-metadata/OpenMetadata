@@ -50,6 +50,7 @@ import {
   updateFieldDescription,
   updateFieldTags,
 } from '../../../../utils/TableUtils';
+import CopyLinkButton from '../../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../../common/Table/Table';
@@ -57,7 +58,6 @@ import { useGenericContext } from '../../../Customization/GenericProvider/Generi
 import { ColumnFilter } from '../../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../../Database/TableTags/TableTags.component';
-import CopyLinkButton from '../../../common/CopyLinkButton/CopyLinkButton';
 import { ModalWithMarkdownEditor } from '../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 
 function WorksheetColumnsTable() {
@@ -173,7 +173,7 @@ function WorksheetColumnsTable() {
                   columnConstraint: record.constraint,
                 })}
                 <Typography.Text
-                  className={classNames('m-b-0 d-block break-word', {
+                  className={classNames('m-b-0 d-block break-word text-link-color', {
                     'text-grey-600': !isEmpty(displayName),
                   })}
                   data-testid="column-name">
@@ -315,7 +315,7 @@ function WorksheetColumnsTable() {
         dataSource={schema}
         defaultVisibleColumns={DEFAULT_WORKSHEET_DATA_MODEL_VISIBLE_COLUMNS}
         expandable={{
-          ...getTableExpandableConfig<Column>(),
+          ...getTableExpandableConfig<Column>(false, 'text-link-color'),
           rowExpandable: (record) => !isEmpty(record.children),
         }}
         pagination={false}

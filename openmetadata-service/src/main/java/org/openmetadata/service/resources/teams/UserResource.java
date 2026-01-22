@@ -1727,6 +1727,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public CsvImportResult importCsv(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Name of the team to under which the users are imported to",
@@ -1743,7 +1744,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           boolean dryRun,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, team, csv, dryRun, false);
+    return importCsvInternal(uriInfo, securityContext, team, csv, dryRun, false);
   }
 
   @PUT
@@ -1763,6 +1764,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public Response importCsvAsync(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Name of the team to under which the users are imported to",
@@ -1778,7 +1780,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("dryRun")
           boolean dryRun,
       String csv) {
-    return importCsvInternalAsync(securityContext, team, csv, dryRun, false);
+    return importCsvInternalAsync(uriInfo, securityContext, team, csv, dryRun, false);
   }
 
   public void validateEmailAlreadyExists(String email) {

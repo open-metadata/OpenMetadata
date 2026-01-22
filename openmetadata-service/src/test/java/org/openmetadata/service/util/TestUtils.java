@@ -289,6 +289,16 @@ public final class TestUtils {
     MAJOR_UPDATE // PUT/PATCH made backward incompatible minor version change
   }
 
+  public static String plurializeEntityType(String entityType) {
+    if (entityType.endsWith("s")) {
+      return entityType + "es";
+    } else if (entityType.endsWith("y")) {
+      return entityType.substring(0, entityType.length() - 1) + "ies";
+    } else {
+      return entityType + "s";
+    }
+  }
+
   private TestUtils() {}
 
   public static void readResponseError(Response response) throws HttpResponseException {

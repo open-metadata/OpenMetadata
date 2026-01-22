@@ -74,6 +74,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -95,7 +96,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   @Override
-  public void setFields(Glossary glossary, Fields fields) {
+  public void setFields(Glossary glossary, Fields fields, RelationIncludes relationIncludes) {
     glossary.setTermCount(
         fields.contains("termCount") ? getTermCount(glossary) : glossary.getTermCount());
     glossary.withUsageCount(
@@ -254,7 +255,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           .withDisplayName(csvRecord.get(2))
           .withDescription(csvRecord.get(3))
           .withSynonyms(CsvUtil.fieldToStrings(csvRecord.get(4)))
-          .withRelatedTerms(getEntityReferences(printer, csvRecord, 5, GLOSSARY_TERM))
+          .withRelatedTerms(getEntityReferencesForGlossaryTerms(printer, csvRecord, 5))
           .withReferences(getTermReferences(printer, csvRecord))
           .withTags(
               getTagLabels(
