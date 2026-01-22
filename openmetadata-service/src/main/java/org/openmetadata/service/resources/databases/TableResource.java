@@ -1622,14 +1622,41 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description =
+                  "Sort columns by field. Supported values: 'name' (default), 'ordinalPosition'",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"name", "ordinalPosition"}))
+          @QueryParam("sortBy")
+          @DefaultValue("name")
+          String sortBy,
+      @Parameter(
+              description = "Sort order. Supported values: 'asc' (default), 'desc'",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortOrder")
+          @DefaultValue("asc")
+          String sortOrder) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
 
     ResultList<org.openmetadata.schema.type.Column> result =
         repository.getTableColumns(
-            id, limitParam, offsetParam, fieldsParam, include, authorizer, securityContext);
+            id,
+            limitParam,
+            offsetParam,
+            fieldsParam,
+            include,
+            sortBy,
+            sortOrder,
+            authorizer,
+            securityContext);
     TableColumnList tableColumnList = new TableColumnList();
     tableColumnList.setData(result.getData());
     tableColumnList.setPaging(result.getPaging());
@@ -1681,7 +1708,26 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description =
+                  "Sort columns by field. Supported values: 'name' (default), 'ordinalPosition'",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"name", "ordinalPosition"}))
+          @QueryParam("sortBy")
+          @DefaultValue("name")
+          String sortBy,
+      @Parameter(
+              description = "Sort order. Supported values: 'asc' (default), 'desc'",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortOrder")
+          @DefaultValue("asc")
+          String sortOrder) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     // JAX-RS automatically URL-decodes path parameters, so fqn is already decoded
@@ -1689,7 +1735,15 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
     ResultList<org.openmetadata.schema.type.Column> result =
         repository.getTableColumnsByFQN(
-            fqn, limitParam, offsetParam, fieldsParam, include, authorizer, securityContext);
+            fqn,
+            limitParam,
+            offsetParam,
+            fieldsParam,
+            include,
+            sortBy,
+            sortOrder,
+            authorizer,
+            securityContext);
     TableColumnList tableColumnList = new TableColumnList();
     tableColumnList.setData(result.getData());
     tableColumnList.setPaging(result.getPaging());
@@ -1868,13 +1922,41 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description =
+                  "Sort columns by field. Supported values: 'name' (default), 'ordinalPosition'",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"name", "ordinalPosition"}))
+          @QueryParam("sortBy")
+          @DefaultValue("name")
+          String sortBy,
+      @Parameter(
+              description = "Sort order. Supported values: 'asc' (default), 'desc'",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortOrder")
+          @DefaultValue("asc")
+          String sortOrder) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     ResultList<Column> result =
         repository.searchTableColumnsById(
-            id, query, limitParam, offsetParam, fieldsParam, include, authorizer, securityContext);
+            id,
+            query,
+            limitParam,
+            offsetParam,
+            fieldsParam,
+            include,
+            sortBy,
+            sortOrder,
+            authorizer,
+            securityContext);
     TableColumnList tableColumnList = new TableColumnList();
     tableColumnList.setData(result.getData());
     tableColumnList.setPaging(result.getPaging());
@@ -1929,13 +2011,41 @@ public class TableResource extends EntityResource<Table, TableRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description =
+                  "Sort columns by field. Supported values: 'name' (default), 'ordinalPosition'",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"name", "ordinalPosition"}))
+          @QueryParam("sortBy")
+          @DefaultValue("name")
+          String sortBy,
+      @Parameter(
+              description = "Sort order. Supported values: 'asc' (default), 'desc'",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortOrder")
+          @DefaultValue("asc")
+          String sortOrder) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     ResultList<org.openmetadata.schema.type.Column> result =
         repository.searchTableColumnsByFQN(
-            fqn, query, limitParam, offsetParam, fieldsParam, include, authorizer, securityContext);
+            fqn,
+            query,
+            limitParam,
+            offsetParam,
+            fieldsParam,
+            include,
+            sortBy,
+            sortOrder,
+            authorizer,
+            securityContext);
     TableColumnList tableColumnList = new TableColumnList();
     tableColumnList.setData(result.getData());
     tableColumnList.setPaging(result.getPaging());
