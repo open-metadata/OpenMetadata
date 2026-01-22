@@ -172,6 +172,8 @@ export interface TestServiceConnectionConnection {
  * Dremio Connection Config supporting both Dremio Cloud (SaaS) and Dremio Software
  * (self-hosted)
  *
+ * Microsoft Fabric Warehouse and Lakehouse Connection Config
+ *
  * Looker Connection Config
  *
  * Metabase Connection Config
@@ -264,6 +266,8 @@ export interface TestServiceConnectionConnection {
  * Snowplow Pipeline Connection Config
  *
  * MuleSoft Anypoint Platform Connection Config
+ *
+ * Microsoft Fabric Data Factory Pipeline Connection Config
  *
  * MlFlow Connection Config
  *
@@ -468,6 +472,9 @@ export interface ConfigObject {
      *
      * ServiceNow instance URL (e.g., https://your-instance.service-now.com)
      *
+     * Host and port of the Microsoft Fabric SQL endpoint (e.g.,
+     * your-workspace.datawarehouse.fabric.microsoft.com:1433).
+     *
      * URL to the Looker instance.
      *
      * Host and Port of the Metabase instance.
@@ -644,6 +651,10 @@ export interface ConfigObject {
      *
      * Optional: Restrict metadata ingestion to a specific namespace (source/space). When left
      * blank, all namespaces will be ingested.
+     *
+     * Database of the data source. This is the name of your Fabric Warehouse or Lakehouse. This
+     * is optional parameter, if you would like to restrict the metadata reading to a single
+     * database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.
      */
     database?: string;
     /**
@@ -673,6 +684,9 @@ export interface ConfigObject {
      *
      * Ingest data from all databases in Azure Synapse. You can use databaseFilterPattern on top
      * of this.
+     *
+     * Ingest data from all databases (Warehouses and Lakehouses) in Microsoft Fabric. You can
+     * use databaseFilterPattern on top of this.
      */
     ingestAllDatabases?: boolean;
     /**
@@ -1177,6 +1191,8 @@ export interface ConfigObject {
      *
      * Azure Application (client) ID for service principal authentication.
      *
+     * Azure Application (client) ID for Service Principal authentication.
+     *
      * User's Client ID. This user should have privileges to read all the metadata in Looker.
      *
      * client_id for PowerBI.
@@ -1309,6 +1325,8 @@ export interface ConfigObject {
     /**
      * Azure Application client secret for service principal authentication.
      *
+     * Azure Application client secret for Service Principal authentication.
+     *
      * User's Client Secret.
      *
      * clientSecret for PowerBI.
@@ -1320,6 +1338,8 @@ export interface ConfigObject {
     clientSecret?: string;
     /**
      * Azure Directory (tenant) ID for service principal authentication.
+     *
+     * Azure Directory (tenant) ID for Service Principal authentication.
      *
      * Tenant ID for PowerBI.
      *
@@ -1605,6 +1625,8 @@ export interface ConfigObject {
      * Regex exclude pipelines.
      *
      * Regex to filter MuleSoft applications by name.
+     *
+     * Regex to only include/exclude pipelines that matches the pattern.
      */
     pipelineFilterPattern?: FilterPattern;
     /**
@@ -1751,6 +1773,14 @@ export interface ConfigObject {
      * accessible environments.
      */
     environmentId?: string;
+    /**
+     * Azure Active Directory authority URI. Defaults to https://login.microsoftonline.com/
+     */
+    authorityUri?: string;
+    /**
+     * The Microsoft Fabric workspace ID where the pipelines are located.
+     */
+    workspaceId?: string;
     /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
@@ -2093,6 +2123,8 @@ export interface UsernamePasswordAuthentication {
  * Regex to only fetch containers that matches the pattern.
  *
  * Regex to filter MuleSoft applications by name.
+ *
+ * Regex to only include/exclude pipelines that matches the pattern.
  *
  * Regex to only fetch MlModels with names matching the pattern.
  *
@@ -4506,6 +4538,8 @@ export enum ConfigType {
     Metabase = "Metabase",
     MetadataES = "MetadataES",
     MicroStrategy = "MicroStrategy",
+    MicrosoftFabric = "MicrosoftFabric",
+    MicrosoftFabricPipeline = "MicrosoftFabricPipeline",
     Mlflow = "Mlflow",
     Mode = "Mode",
     MongoDB = "MongoDB",
