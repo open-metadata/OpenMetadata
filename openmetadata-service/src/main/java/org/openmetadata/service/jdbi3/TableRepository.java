@@ -45,6 +45,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -2053,9 +2054,36 @@ public class TableRepository extends EntityRepository<Table> {
       Include include,
       Authorizer authorizer,
       SecurityContext securityContext) {
+    return getTableColumns(
+        tableId, limit, offset, fieldsParam, include, null, authorizer, securityContext);
+  }
+
+  public ResultList<Column> getTableColumns(
+      UUID tableId,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      String sortBy,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    return getTableColumns(
+        tableId, limit, offset, fieldsParam, include, sortBy, "asc", authorizer, securityContext);
+  }
+
+  public ResultList<Column> getTableColumns(
+      UUID tableId,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      String sortBy,
+      String sortOrder,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     Table table = find(tableId, include);
     return getTableColumnsInternal(
-        table, limit, offset, fieldsParam, include, authorizer, securityContext);
+        table, limit, offset, fieldsParam, include, sortBy, sortOrder, authorizer, securityContext);
   }
 
   public ResultList<Column> getTableColumnsByFQN(
@@ -2066,9 +2094,36 @@ public class TableRepository extends EntityRepository<Table> {
       Include include,
       Authorizer authorizer,
       SecurityContext securityContext) {
+    return getTableColumnsByFQN(
+        fqn, limit, offset, fieldsParam, include, null, authorizer, securityContext);
+  }
+
+  public ResultList<Column> getTableColumnsByFQN(
+      String fqn,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      String sortBy,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    return getTableColumnsByFQN(
+        fqn, limit, offset, fieldsParam, include, sortBy, "asc", authorizer, securityContext);
+  }
+
+  public ResultList<Column> getTableColumnsByFQN(
+      String fqn,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      String sortBy,
+      String sortOrder,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     Table table = findByName(fqn, include);
     return getTableColumnsInternal(
-        table, limit, offset, fieldsParam, include, authorizer, securityContext);
+        table, limit, offset, fieldsParam, include, sortBy, sortOrder, authorizer, securityContext);
   }
 
   private ResultList<Column> getTableColumnsInternal(
@@ -2077,6 +2132,8 @@ public class TableRepository extends EntityRepository<Table> {
       int offset,
       String fieldsParam,
       Include include,
+      String sortBy,
+      String sortOrder,
       Authorizer authorizer,
       SecurityContext securityContext) {
     // For paginated column access, we need to load the table with columns
@@ -2088,12 +2145,32 @@ public class TableRepository extends EntityRepository<Table> {
       return new ResultList<>(new ArrayList<>(), "0", String.valueOf(offset + limit), 0);
     }
 
+    // Sort columns based on sortBy and sortOrder parameters
+    List<Column> sortedColumns = new ArrayList<>(allColumns);
+    Comparator<Column> comparator;
+    if ("ordinalPosition".equals(sortBy)) {
+      comparator =
+          Comparator.comparing(
+              Column::getOrdinalPosition, Comparator.nullsLast(Comparator.naturalOrder()));
+    } else {
+      // Default: sort by name
+      comparator =
+          Comparator.comparing(
+              Column::getName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+    }
+
+    // Apply sort order (desc reverses the comparator)
+    if ("desc".equalsIgnoreCase(sortOrder)) {
+      comparator = comparator.reversed();
+    }
+    sortedColumns.sort(comparator);
+
     // Apply pagination
-    int total = allColumns.size();
+    int total = sortedColumns.size();
     int fromIndex = Math.min(offset, total);
     int toIndex = Math.min(offset + limit, total);
 
-    List<Column> paginatedColumns = allColumns.subList(fromIndex, toIndex);
+    List<Column> paginatedColumns = sortedColumns.subList(fromIndex, toIndex);
 
     // Apply field processing if needed
     if (fieldsParam != null && fieldsParam.contains("tags")) {
@@ -2286,9 +2363,24 @@ public class TableRepository extends EntityRepository<Table> {
       Include include,
       Authorizer authorizer,
       SecurityContext securityContext) {
+    return searchTableColumnsById(
+        id, query, limit, offset, fieldsParam, include, "name", "asc", authorizer, securityContext);
+  }
+
+  public ResultList<Column> searchTableColumnsById(
+      UUID id,
+      String query,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      String sortBy,
+      String sortOrder,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     Table table = get(null, id, getFields(fieldsParam), include, false);
     return searchTableColumnsInternal(
-        table, query, limit, offset, fieldsParam, authorizer, securityContext);
+        table, query, limit, offset, fieldsParam, sortBy, sortOrder, authorizer, securityContext);
   }
 
   public ResultList<Column> searchTableColumnsByFQN(
@@ -2300,9 +2392,33 @@ public class TableRepository extends EntityRepository<Table> {
       Include include,
       Authorizer authorizer,
       SecurityContext securityContext) {
+    return searchTableColumnsByFQN(
+        fqn,
+        query,
+        limit,
+        offset,
+        fieldsParam,
+        include,
+        "name",
+        "asc",
+        authorizer,
+        securityContext);
+  }
+
+  public ResultList<Column> searchTableColumnsByFQN(
+      String fqn,
+      String query,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      String sortBy,
+      String sortOrder,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     Table table = getByName(null, fqn, getFields(fieldsParam), include, false);
     return searchTableColumnsInternal(
-        table, query, limit, offset, fieldsParam, authorizer, securityContext);
+        table, query, limit, offset, fieldsParam, sortBy, sortOrder, authorizer, securityContext);
   }
 
   private ResultList<Column> searchTableColumnsInternal(
@@ -2311,6 +2427,8 @@ public class TableRepository extends EntityRepository<Table> {
       int limit,
       int offset,
       String fieldsParam,
+      String sortBy,
+      String sortOrder,
       Authorizer authorizer,
       SecurityContext securityContext) {
     List<Column> allColumns = table.getColumns();
@@ -2323,22 +2441,42 @@ public class TableRepository extends EntityRepository<Table> {
 
     List<Column> matchingColumns;
     if (query == null || query.trim().isEmpty()) {
-      matchingColumns = flattenedColumns;
+      matchingColumns = new ArrayList<>(flattenedColumns);
     } else {
       String searchTerm = query.toLowerCase().trim();
       matchingColumns =
-          flattenedColumns.stream()
-              .filter(
-                  column -> {
-                    if (column.getName() != null
-                        && column.getName().toLowerCase().contains(searchTerm)) {
-                      return true;
-                    }
-                    return column.getDisplayName() != null
-                        && column.getDisplayName().toLowerCase().contains(searchTerm);
-                  })
-              .toList();
+          new ArrayList<>(
+              flattenedColumns.stream()
+                  .filter(
+                      column -> {
+                        if (column.getName() != null
+                            && column.getName().toLowerCase().contains(searchTerm)) {
+                          return true;
+                        }
+                        return column.getDisplayName() != null
+                            && column.getDisplayName().toLowerCase().contains(searchTerm);
+                      })
+                  .toList());
     }
+
+    // Sort matching columns based on sortBy and sortOrder parameters
+    Comparator<Column> comparator;
+    if ("ordinalPosition".equals(sortBy)) {
+      comparator =
+          Comparator.comparing(
+              Column::getOrdinalPosition, Comparator.nullsLast(Comparator.naturalOrder()));
+    } else {
+      // Default: sort by name
+      comparator =
+          Comparator.comparing(
+              Column::getName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+    }
+
+    // Apply sort order (desc reverses the comparator)
+    if ("desc".equalsIgnoreCase(sortOrder)) {
+      comparator = comparator.reversed();
+    }
+    matchingColumns.sort(comparator);
 
     int total = matchingColumns.size();
     int startIndex = Math.min(offset, total);
