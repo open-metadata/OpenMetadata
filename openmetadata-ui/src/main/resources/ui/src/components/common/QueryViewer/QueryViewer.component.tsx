@@ -35,6 +35,10 @@ const QueryViewer = ({
   const hasQuery = !isEmpty(sqlQuery);
 
   const { queryLine, lineCount } = useMemo(() => {
+    if (!hasQuery) {
+      return { queryLine: '', lineCount: 0 };
+    }
+
     const lineCount = split(sqlQuery, '\n').length;
 
     return {
@@ -43,9 +47,9 @@ const QueryViewer = ({
       }`,
       lineCount,
     };
-  }, [sqlQuery]);
+  }, [sqlQuery, hasQuery]);
 
-  const { onCopyToClipBoard } = useClipboard(sqlQuery);
+  const { onCopyToClipBoard } = useClipboard(hasQuery ? sqlQuery : '');
 
   return (
     <Card
