@@ -59,10 +59,10 @@ class SearchIndexFailureIntegrationTest {
     @DisplayName("Sink failures should be recorded via failure callback")
     void testSinkFailuresRecordedViaCallback() {
       String jobId = UUID.randomUUID().toString();
-      String runId = UUID.randomUUID().toString();
+      String serverId = "server-1";
 
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, jobId, runId, 10)) {
+          new IndexingFailureRecorder(collectionDAO, jobId, serverId, 10)) {
 
         // Simulate what happens when BulkSink fails to index entities
         BulkSink.FailureCallback callback =
@@ -83,28 +83,28 @@ class SearchIndexFailureIntegrationTest {
 
       // Verify first failure
       SearchIndexFailureRecord first = capturedFailures.get(0);
-      assertEquals(jobId, first.jobId());
-      assertEquals(runId, first.runId());
-      assertEquals("table", first.entityType());
-      assertEquals("uuid-1", first.entityId());
-      assertEquals("db.schema.table1", first.entityFqn());
-      assertEquals("Mapping error", first.errorMessage());
-      assertEquals("SINK", first.failureStage());
+      assertEquals(jobId, first.getJobId());
+      assertEquals(serverId, first.getServerId());
+      assertEquals("table", first.getEntityType());
+      assertEquals("uuid-1", first.getEntityId());
+      assertEquals("db.schema.table1", first.getEntityFqn());
+      assertEquals("Mapping error", first.getErrorMessage());
+      assertEquals("SINK", first.getFailureStage());
 
       // Verify entity types are correct
-      assertEquals("table", capturedFailures.get(0).entityType());
-      assertEquals("table", capturedFailures.get(1).entityType());
-      assertEquals("dashboard", capturedFailures.get(2).entityType());
+      assertEquals("table", capturedFailures.get(0).getEntityType());
+      assertEquals("table", capturedFailures.get(1).getEntityType());
+      assertEquals("dashboard", capturedFailures.get(2).getEntityType());
     }
 
     @Test
     @DisplayName("Reader failures should be recorded with correct stage")
     void testReaderFailuresRecorded() {
       String jobId = UUID.randomUUID().toString();
-      String runId = UUID.randomUUID().toString();
+      String serverId = "server-1";
 
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, jobId, runId, 10)) {
+          new IndexingFailureRecorder(collectionDAO, jobId, serverId, 10)) {
 
         // Simulate reader failures (e.g., entity deserialization errors)
         recorder.recordReaderFailure("table", "Failed to deserialize entity");
@@ -117,11 +117,11 @@ class SearchIndexFailureIntegrationTest {
       assertEquals(2, capturedFailures.size());
 
       // Reader failures should have READER stage
-      assertTrue(capturedFailures.stream().allMatch(r -> "READER".equals(r.failureStage())));
+      assertTrue(capturedFailures.stream().allMatch(r -> "READER".equals(r.getFailureStage())));
 
       // Reader failures should have null entityId and entityFqn
-      assertTrue(capturedFailures.stream().allMatch(r -> r.entityId() == null));
-      assertTrue(capturedFailures.stream().allMatch(r -> r.entityFqn() == null));
+      assertTrue(capturedFailures.stream().allMatch(r -> r.getEntityId() == null));
+      assertTrue(capturedFailures.stream().allMatch(r -> r.getEntityFqn() == null));
     }
   }
 
@@ -133,12 +133,12 @@ class SearchIndexFailureIntegrationTest {
     @DisplayName("Failure count should match recorded failures")
     void testFailureCountMatchesRecords() {
       String jobId = UUID.randomUUID().toString();
-      String runId = UUID.randomUUID().toString();
+      String serverId = "server-1";
 
       AtomicInteger failureCount = new AtomicInteger(0);
 
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, jobId, runId, 100)) {
+          new IndexingFailureRecorder(collectionDAO, jobId, serverId, 100)) {
 
         // Simulate failures and count them
         for (int i = 0; i < 25; i++) {
@@ -156,10 +156,10 @@ class SearchIndexFailureIntegrationTest {
     @DisplayName("Mixed reader and sink failures should be recorded correctly")
     void testMixedFailures() {
       String jobId = UUID.randomUUID().toString();
-      String runId = UUID.randomUUID().toString();
+      String serverId = "server-1";
 
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, jobId, runId, 100)) {
+          new IndexingFailureRecorder(collectionDAO, jobId, serverId, 100)) {
 
         // Mix of reader and sink failures
         recorder.recordReaderFailure("table", "Read error 1");
@@ -174,9 +174,9 @@ class SearchIndexFailureIntegrationTest {
       assertEquals(5, capturedFailures.size());
 
       long readerFailures =
-          capturedFailures.stream().filter(r -> "READER".equals(r.failureStage())).count();
+          capturedFailures.stream().filter(r -> "READER".equals(r.getFailureStage())).count();
       long sinkFailures =
-          capturedFailures.stream().filter(r -> "SINK".equals(r.failureStage())).count();
+          capturedFailures.stream().filter(r -> "SINK".equals(r.getFailureStage())).count();
 
       assertEquals(2, readerFailures);
       assertEquals(3, sinkFailures);
@@ -191,7 +191,7 @@ class SearchIndexFailureIntegrationTest {
     @DisplayName("Stack traces should be preserved in failure records")
     void testStackTracesPreserved() {
       String jobId = UUID.randomUUID().toString();
-      String runId = UUID.randomUUID().toString();
+      String serverId = "server-1";
 
       String stackTrace =
           "java.lang.RuntimeException: Test error\n"
@@ -199,50 +199,50 @@ class SearchIndexFailureIntegrationTest {
               + "\tat com.example.Test.main(Test.java:5)";
 
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, jobId, runId, 1)) {
+          new IndexingFailureRecorder(collectionDAO, jobId, serverId, 1)) {
 
         recorder.recordReaderFailure("table", "Test error", stackTrace);
       }
 
       assertEquals(1, capturedFailures.size());
-      assertEquals(stackTrace, capturedFailures.get(0).stackTrace());
+      assertEquals(stackTrace, capturedFailures.get(0).getStackTrace());
     }
 
     @Test
     @DisplayName("Error messages with special characters should be recorded")
     void testSpecialCharactersInErrorMessages() {
       String jobId = UUID.randomUUID().toString();
-      String runId = UUID.randomUUID().toString();
+      String serverId = "server-1";
 
       String errorWithSpecialChars =
           "Error: field 'name' contains invalid JSON: {\"key\": \"value with 'quotes'\"}";
 
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, jobId, runId, 1)) {
+          new IndexingFailureRecorder(collectionDAO, jobId, serverId, 1)) {
 
         recorder.recordSinkFailure("table", "id1", "fqn1", errorWithSpecialChars);
       }
 
       assertEquals(1, capturedFailures.size());
-      assertEquals(errorWithSpecialChars, capturedFailures.get(0).errorMessage());
+      assertEquals(errorWithSpecialChars, capturedFailures.get(0).getErrorMessage());
     }
 
     @Test
     @DisplayName("Entity FQN with dots and special chars should be recorded correctly")
     void testEntityFqnWithSpecialChars() {
       String jobId = UUID.randomUUID().toString();
-      String runId = UUID.randomUUID().toString();
+      String serverId = "server-1";
 
       String complexFqn = "production.analytics.user_events.2024-01-15";
 
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, jobId, runId, 1)) {
+          new IndexingFailureRecorder(collectionDAO, jobId, serverId, 1)) {
 
         recorder.recordSinkFailure("table", "id1", complexFqn, "Error");
       }
 
       assertEquals(1, capturedFailures.size());
-      assertEquals(complexFqn, capturedFailures.get(0).entityFqn());
+      assertEquals(complexFqn, capturedFailures.get(0).getEntityFqn());
     }
   }
 
@@ -251,45 +251,47 @@ class SearchIndexFailureIntegrationTest {
   class FailureRecoveryTests {
 
     @Test
-    @DisplayName("Failures should be queryable by runId for troubleshooting")
-    void testFailuresQueryableByRunId() {
+    @DisplayName("Failures should be queryable by serverId for troubleshooting")
+    void testFailuresQueryableByServerId() {
       String jobId = UUID.randomUUID().toString();
-      String runId1 = UUID.randomUUID().toString();
-      String runId2 = UUID.randomUUID().toString();
+      String serverId1 = "server-1";
+      String serverId2 = "server-2";
 
-      // First run
+      // First server
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, jobId, runId1, 10)) {
-        recorder.recordSinkFailure("table", "id1", "fqn1", "Error from run 1");
+          new IndexingFailureRecorder(collectionDAO, jobId, serverId1, 10)) {
+        recorder.recordSinkFailure("table", "id1", "fqn1", "Error from server 1");
         recorder.flush();
       }
 
-      // Second run
+      // Second server
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, jobId, runId2, 10)) {
-        recorder.recordSinkFailure("table", "id2", "fqn2", "Error from run 2");
+          new IndexingFailureRecorder(collectionDAO, jobId, serverId2, 10)) {
+        recorder.recordSinkFailure("table", "id2", "fqn2", "Error from server 2");
         recorder.flush();
       }
 
-      // Verify both runs recorded
+      // Verify both servers recorded
       assertEquals(2, capturedFailures.size());
 
-      // Verify runIds are different
-      long run1Count = capturedFailures.stream().filter(r -> runId1.equals(r.runId())).count();
-      long run2Count = capturedFailures.stream().filter(r -> runId2.equals(r.runId())).count();
+      // Verify serverIds are different
+      long server1Count =
+          capturedFailures.stream().filter(r -> serverId1.equals(r.getServerId())).count();
+      long server2Count =
+          capturedFailures.stream().filter(r -> serverId2.equals(r.getServerId())).count();
 
-      assertEquals(1, run1Count);
-      assertEquals(1, run2Count);
+      assertEquals(1, server1Count);
+      assertEquals(1, server2Count);
     }
 
     @Test
     @DisplayName("Timestamps should allow chronological ordering of failures")
     void testTimestampsForOrdering() throws InterruptedException {
       String jobId = UUID.randomUUID().toString();
-      String runId = UUID.randomUUID().toString();
+      String serverId = "server-1";
 
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, jobId, runId, 10)) {
+          new IndexingFailureRecorder(collectionDAO, jobId, serverId, 10)) {
 
         recorder.recordSinkFailure("table", "id1", "fqn1", "First error");
         Thread.sleep(10); // Small delay to ensure different timestamps
@@ -305,7 +307,7 @@ class SearchIndexFailureIntegrationTest {
       // Verify timestamps are in order
       for (int i = 1; i < capturedFailures.size(); i++) {
         assertTrue(
-            capturedFailures.get(i).timestamp() >= capturedFailures.get(i - 1).timestamp(),
+            capturedFailures.get(i).getTimestamp() >= capturedFailures.get(i - 1).getTimestamp(),
             "Timestamps should be in chronological order");
       }
     }
@@ -319,10 +321,10 @@ class SearchIndexFailureIntegrationTest {
     @DisplayName("Should handle null error message gracefully")
     void testNullErrorMessage() {
       String jobId = UUID.randomUUID().toString();
-      String runId = UUID.randomUUID().toString();
+      String serverId = "server-1";
 
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, jobId, runId, 1)) {
+          new IndexingFailureRecorder(collectionDAO, jobId, serverId, 1)) {
 
         recorder.recordReaderFailure("table", null);
       }
@@ -335,46 +337,46 @@ class SearchIndexFailureIntegrationTest {
     @DisplayName("Should handle empty entity type")
     void testEmptyEntityType() {
       String jobId = UUID.randomUUID().toString();
-      String runId = UUID.randomUUID().toString();
+      String serverId = "server-1";
 
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, jobId, runId, 1)) {
+          new IndexingFailureRecorder(collectionDAO, jobId, serverId, 1)) {
 
         recorder.recordReaderFailure("", "Error with empty entity type");
       }
 
       assertEquals(1, capturedFailures.size());
-      assertEquals("", capturedFailures.get(0).entityType());
+      assertEquals("", capturedFailures.get(0).getEntityType());
     }
 
     @Test
     @DisplayName("Should handle very long FQN")
     void testVeryLongFqn() {
       String jobId = UUID.randomUUID().toString();
-      String runId = UUID.randomUUID().toString();
+      String serverId = "server-1";
 
       // Create a 2000 character FQN (exceeds typical limits)
       String longFqn = "db." + "a".repeat(2000) + ".table";
 
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, jobId, runId, 1)) {
+          new IndexingFailureRecorder(collectionDAO, jobId, serverId, 1)) {
 
         recorder.recordSinkFailure("table", "id1", longFqn, "Error");
       }
 
       assertEquals(1, capturedFailures.size());
       // FQN should be recorded (possibly truncated by the DAO)
-      assertNotNull(capturedFailures.get(0).entityFqn());
+      assertNotNull(capturedFailures.get(0).getEntityFqn());
     }
 
     @Test
     @DisplayName("Should generate unique IDs even for identical failures")
     void testUniqueIdsForIdenticalFailures() {
       String jobId = UUID.randomUUID().toString();
-      String runId = UUID.randomUUID().toString();
+      String serverId = "server-1";
 
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, jobId, runId, 5)) {
+          new IndexingFailureRecorder(collectionDAO, jobId, serverId, 5)) {
 
         // Record 5 identical failures
         for (int i = 0; i < 5; i++) {
@@ -388,7 +390,7 @@ class SearchIndexFailureIntegrationTest {
 
       // All IDs should be unique
       long uniqueIds =
-          capturedFailures.stream().map(SearchIndexFailureRecord::id).distinct().count();
+          capturedFailures.stream().map(SearchIndexFailureRecord::getId).distinct().count();
 
       assertEquals(5, uniqueIds, "Each failure should have a unique ID");
     }
@@ -402,7 +404,7 @@ class SearchIndexFailureIntegrationTest {
     @DisplayName("Should handle database insert failure gracefully")
     void testDatabaseInsertFailure() {
       String jobId = UUID.randomUUID().toString();
-      String runId = UUID.randomUUID().toString();
+      String serverId = "server-1";
 
       // Reset the mock to throw instead of capturing
       org.mockito.Mockito.reset(failureDAO);
@@ -412,7 +414,7 @@ class SearchIndexFailureIntegrationTest {
 
       // Should not throw - errors should be logged and swallowed
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, jobId, runId, 1)) {
+          new IndexingFailureRecorder(collectionDAO, jobId, serverId, 1)) {
 
         recorder.recordSinkFailure("table", "id1", "fqn1", "Error");
         // Auto-flush on batch size reached - should not throw

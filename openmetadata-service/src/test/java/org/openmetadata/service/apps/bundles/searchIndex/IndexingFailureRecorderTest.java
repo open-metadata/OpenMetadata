@@ -29,7 +29,7 @@ class IndexingFailureRecorderTest {
   @Mock private SearchIndexFailureDAO failureDAO;
 
   private static final String JOB_ID = "job-123";
-  private static final String RUN_ID = "run-456";
+  private static final String SERVER_ID = "server-1";
 
   @BeforeEach
   void setUp() {
@@ -44,7 +44,7 @@ class IndexingFailureRecorderTest {
     @DisplayName("Should buffer reader failures")
     void testRecordReaderFailure() {
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, JOB_ID, RUN_ID, 10)) {
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 10)) {
 
         recorder.recordReaderFailure("table", "Error reading entity");
 
@@ -57,7 +57,7 @@ class IndexingFailureRecorderTest {
     @DisplayName("Should buffer sink failures")
     void testRecordSinkFailure() {
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, JOB_ID, RUN_ID, 10)) {
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 10)) {
 
         recorder.recordSinkFailure("table", "entity-id-1", "fqn.path", "Indexing failed");
 
@@ -70,7 +70,7 @@ class IndexingFailureRecorderTest {
     @DisplayName("Should auto-flush when batch is full")
     void testAutoFlushOnBatchFull() {
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, JOB_ID, RUN_ID, 3)) {
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 3)) {
 
         recorder.recordReaderFailure("table", "Error 1");
         recorder.recordReaderFailure("table", "Error 2");
@@ -92,7 +92,7 @@ class IndexingFailureRecorderTest {
       ArgumentCaptor<List<SearchIndexFailureRecord>> captor = ArgumentCaptor.forClass(List.class);
 
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, JOB_ID, RUN_ID, 1)) {
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 1)) {
 
         recorder.recordReaderFailure("table", "Error message", "Stack trace here");
 
@@ -100,7 +100,7 @@ class IndexingFailureRecorderTest {
         List<SearchIndexFailureRecord> records = captor.getValue();
 
         assertEquals(1, records.size());
-        assertEquals("Stack trace here", records.get(0).stackTrace());
+        assertEquals("Stack trace here", records.get(0).getStackTrace());
       }
     }
 
@@ -108,7 +108,7 @@ class IndexingFailureRecorderTest {
     @DisplayName("Should record multiple failures before flush")
     void testRecordMultipleFailures() {
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, JOB_ID, RUN_ID, 10)) {
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 10)) {
 
         recorder.recordReaderFailure("table", "Error 1");
         recorder.recordSinkFailure("dashboard", "id-1", "fqn.1", "Error 2");
@@ -128,7 +128,7 @@ class IndexingFailureRecorderTest {
     @DisplayName("Should flush remaining failures on explicit flush")
     void testExplicitFlush() {
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, JOB_ID, RUN_ID, 100)) {
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 100)) {
 
         recorder.recordReaderFailure("table", "Error 1");
         recorder.recordReaderFailure("table", "Error 2");
@@ -146,7 +146,7 @@ class IndexingFailureRecorderTest {
     @DisplayName("Should flush on close")
     void testFlushOnClose() {
       IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, JOB_ID, RUN_ID, 100);
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 100);
 
       recorder.recordReaderFailure("table", "Error 1");
       recorder.recordReaderFailure("table", "Error 2");
@@ -160,7 +160,7 @@ class IndexingFailureRecorderTest {
     @DisplayName("Should handle empty buffer flush")
     void testEmptyBufferFlush() {
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, JOB_ID, RUN_ID, 100)) {
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 100)) {
 
         recorder.flush();
 
@@ -174,7 +174,7 @@ class IndexingFailureRecorderTest {
       doThrow(new RuntimeException("DB error")).when(failureDAO).insertBatch(anyList());
 
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, JOB_ID, RUN_ID, 1)) {
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 1)) {
 
         recorder.recordReaderFailure("table", "Error 1");
 
@@ -186,7 +186,7 @@ class IndexingFailureRecorderTest {
     @DisplayName("Should not flush again on double close")
     void testDoubleClose() {
       IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, JOB_ID, RUN_ID, 100);
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 100);
 
       recorder.recordReaderFailure("table", "Error 1");
 
@@ -200,7 +200,7 @@ class IndexingFailureRecorderTest {
     @DisplayName("Should not record failures after close")
     void testRecordAfterClose() {
       IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, JOB_ID, RUN_ID, 100);
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 100);
 
       recorder.close();
       recorder.recordReaderFailure("table", "Error 1");
@@ -217,7 +217,7 @@ class IndexingFailureRecorderTest {
     @DisplayName("Should handle concurrent writes safely")
     void testConcurrentWrites() throws InterruptedException {
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, JOB_ID, RUN_ID, 1000)) {
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 1000)) {
 
         Thread[] threads = new Thread[10];
         for (int i = 0; i < threads.length; i++) {
@@ -247,7 +247,7 @@ class IndexingFailureRecorderTest {
     @DisplayName("Should handle concurrent writes with flush threshold")
     void testConcurrentWritesWithFlush() throws InterruptedException {
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, JOB_ID, RUN_ID, 50)) {
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 50)) {
 
         Thread[] threads = new Thread[10];
         for (int i = 0; i < threads.length; i++) {
@@ -285,7 +285,7 @@ class IndexingFailureRecorderTest {
       ArgumentCaptor<List<SearchIndexFailureRecord>> captor = ArgumentCaptor.forClass(List.class);
 
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, JOB_ID, RUN_ID, 1)) {
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 1)) {
 
         String longMessage = "A".repeat(70000);
         recorder.recordReaderFailure("table", longMessage);
@@ -293,8 +293,8 @@ class IndexingFailureRecorderTest {
         verify(failureDAO).insertBatch(captor.capture());
         List<SearchIndexFailureRecord> records = captor.getValue();
 
-        assertEquals(65000, records.get(0).errorMessage().length());
-        assertTrue(records.get(0).errorMessage().endsWith("..."));
+        assertEquals(65000, records.get(0).getErrorMessage().length());
+        assertTrue(records.get(0).getErrorMessage().endsWith("..."));
       }
     }
 
@@ -305,7 +305,7 @@ class IndexingFailureRecorderTest {
       ArgumentCaptor<List<SearchIndexFailureRecord>> captor = ArgumentCaptor.forClass(List.class);
 
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, JOB_ID, RUN_ID, 1)) {
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 1)) {
 
         String shortMessage = "Short error";
         recorder.recordReaderFailure("table", shortMessage);
@@ -313,7 +313,7 @@ class IndexingFailureRecorderTest {
         verify(failureDAO).insertBatch(captor.capture());
         List<SearchIndexFailureRecord> records = captor.getValue();
 
-        assertEquals(shortMessage, records.get(0).errorMessage());
+        assertEquals(shortMessage, records.get(0).getErrorMessage());
       }
     }
 
@@ -324,7 +324,7 @@ class IndexingFailureRecorderTest {
       ArgumentCaptor<List<SearchIndexFailureRecord>> captor = ArgumentCaptor.forClass(List.class);
 
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, JOB_ID, RUN_ID, 1)) {
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 1)) {
 
         String longStackTrace = "B".repeat(70000);
         recorder.recordReaderFailure("table", "Error", longStackTrace);
@@ -332,8 +332,8 @@ class IndexingFailureRecorderTest {
         verify(failureDAO).insertBatch(captor.capture());
         List<SearchIndexFailureRecord> records = captor.getValue();
 
-        assertEquals(65000, records.get(0).stackTrace().length());
-        assertTrue(records.get(0).stackTrace().endsWith("..."));
+        assertEquals(65000, records.get(0).getStackTrace().length());
+        assertTrue(records.get(0).getStackTrace().endsWith("..."));
       }
     }
 
@@ -344,7 +344,7 @@ class IndexingFailureRecorderTest {
       ArgumentCaptor<List<SearchIndexFailureRecord>> captor = ArgumentCaptor.forClass(List.class);
 
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, JOB_ID, RUN_ID, 1)) {
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 1)) {
 
         recorder.recordReaderFailure("table", null);
 
@@ -362,7 +362,7 @@ class IndexingFailureRecorderTest {
       ArgumentCaptor<List<SearchIndexFailureRecord>> captor = ArgumentCaptor.forClass(List.class);
 
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, JOB_ID, RUN_ID, 1)) {
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 1)) {
 
         String boundaryMessage = "A".repeat(65000);
         recorder.recordReaderFailure("table", boundaryMessage);
@@ -370,8 +370,8 @@ class IndexingFailureRecorderTest {
         verify(failureDAO).insertBatch(captor.capture());
         List<SearchIndexFailureRecord> records = captor.getValue();
 
-        assertEquals(65000, records.get(0).errorMessage().length());
-        assertEquals(boundaryMessage, records.get(0).errorMessage());
+        assertEquals(65000, records.get(0).getErrorMessage().length());
+        assertEquals(boundaryMessage, records.get(0).getErrorMessage());
       }
     }
   }
@@ -387,12 +387,12 @@ class IndexingFailureRecorderTest {
       ArgumentCaptor<List<SearchIndexFailureRecord>> captor = ArgumentCaptor.forClass(List.class);
 
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, JOB_ID, RUN_ID, 1)) {
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 1)) {
 
         recorder.recordReaderFailure("table", "Error");
 
         verify(failureDAO).insertBatch(captor.capture());
-        assertEquals("READER", captor.getValue().get(0).failureStage());
+        assertEquals("READER", captor.getValue().get(0).getFailureStage());
       }
     }
 
@@ -403,12 +403,12 @@ class IndexingFailureRecorderTest {
       ArgumentCaptor<List<SearchIndexFailureRecord>> captor = ArgumentCaptor.forClass(List.class);
 
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, JOB_ID, RUN_ID, 1)) {
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 1)) {
 
         recorder.recordSinkFailure("table", "entity-1", "fqn", "Error");
 
         verify(failureDAO).insertBatch(captor.capture());
-        assertEquals("SINK", captor.getValue().get(0).failureStage());
+        assertEquals("SINK", captor.getValue().get(0).getFailureStage());
       }
     }
   }
@@ -418,21 +418,21 @@ class IndexingFailureRecorderTest {
   class RecordContentTests {
 
     @Test
-    @DisplayName("Should set correct job and run IDs")
+    @DisplayName("Should set correct job and server IDs")
     @SuppressWarnings("unchecked")
-    void testJobAndRunIds() {
+    void testJobAndServerIds() {
       ArgumentCaptor<List<SearchIndexFailureRecord>> captor = ArgumentCaptor.forClass(List.class);
 
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, JOB_ID, RUN_ID, 1)) {
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 1)) {
 
         recorder.recordReaderFailure("table", "Error");
 
         verify(failureDAO).insertBatch(captor.capture());
         SearchIndexFailureRecord record = captor.getValue().get(0);
 
-        assertEquals(JOB_ID, record.jobId());
-        assertEquals(RUN_ID, record.runId());
+        assertEquals(JOB_ID, record.getJobId());
+        assertEquals(SERVER_ID, record.getServerId());
       }
     }
 
@@ -443,12 +443,12 @@ class IndexingFailureRecorderTest {
       ArgumentCaptor<List<SearchIndexFailureRecord>> captor = ArgumentCaptor.forClass(List.class);
 
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, JOB_ID, RUN_ID, 1)) {
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 1)) {
 
         recorder.recordReaderFailure("dashboard", "Error");
 
         verify(failureDAO).insertBatch(captor.capture());
-        assertEquals("dashboard", captor.getValue().get(0).entityType());
+        assertEquals("dashboard", captor.getValue().get(0).getEntityType());
       }
     }
 
@@ -459,15 +459,15 @@ class IndexingFailureRecorderTest {
       ArgumentCaptor<List<SearchIndexFailureRecord>> captor = ArgumentCaptor.forClass(List.class);
 
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, JOB_ID, RUN_ID, 1)) {
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 1)) {
 
         recorder.recordSinkFailure("table", "entity-uuid", "database.schema.table", "Error");
 
         verify(failureDAO).insertBatch(captor.capture());
         SearchIndexFailureRecord record = captor.getValue().get(0);
 
-        assertEquals("entity-uuid", record.entityId());
-        assertEquals("database.schema.table", record.entityFqn());
+        assertEquals("entity-uuid", record.getEntityId());
+        assertEquals("database.schema.table", record.getEntityFqn());
       }
     }
 
@@ -478,15 +478,15 @@ class IndexingFailureRecorderTest {
       ArgumentCaptor<List<SearchIndexFailureRecord>> captor = ArgumentCaptor.forClass(List.class);
 
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, JOB_ID, RUN_ID, 1)) {
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 1)) {
 
         recorder.recordReaderFailure("table", "Error");
 
         verify(failureDAO).insertBatch(captor.capture());
         SearchIndexFailureRecord record = captor.getValue().get(0);
 
-        assertEquals(null, record.entityId());
-        assertEquals(null, record.entityFqn());
+        assertEquals(null, record.getEntityId());
+        assertEquals(null, record.getEntityFqn());
       }
     }
 
@@ -498,12 +498,12 @@ class IndexingFailureRecorderTest {
 
       long beforeRecord = System.currentTimeMillis();
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, JOB_ID, RUN_ID, 1)) {
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 1)) {
 
         recorder.recordReaderFailure("table", "Error");
 
         verify(failureDAO).insertBatch(captor.capture());
-        long timestamp = captor.getValue().get(0).timestamp();
+        long timestamp = captor.getValue().get(0).getTimestamp();
         long afterRecord = System.currentTimeMillis();
 
         assertTrue(timestamp >= beforeRecord);
@@ -518,7 +518,7 @@ class IndexingFailureRecorderTest {
       ArgumentCaptor<List<SearchIndexFailureRecord>> captor = ArgumentCaptor.forClass(List.class);
 
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, JOB_ID, RUN_ID, 2)) {
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID, 2)) {
 
         recorder.recordReaderFailure("table", "Error 1");
         recorder.recordReaderFailure("table", "Error 2");
@@ -526,9 +526,9 @@ class IndexingFailureRecorderTest {
         verify(failureDAO).insertBatch(captor.capture());
         List<SearchIndexFailureRecord> records = captor.getValue();
 
-        assertTrue(records.get(0).id() != null && !records.get(0).id().isEmpty());
-        assertTrue(records.get(1).id() != null && !records.get(1).id().isEmpty());
-        assertTrue(!records.get(0).id().equals(records.get(1).id()));
+        assertTrue(records.get(0).getId() != null && !records.get(0).getId().isEmpty());
+        assertTrue(records.get(1).getId() != null && !records.get(1).getId().isEmpty());
+        assertTrue(!records.get(0).getId().equals(records.get(1).getId()));
       }
     }
   }
@@ -541,7 +541,7 @@ class IndexingFailureRecorderTest {
     @DisplayName("Should use default batch size when not specified")
     void testDefaultBatchSize() {
       try (IndexingFailureRecorder recorder =
-          new IndexingFailureRecorder(collectionDAO, JOB_ID, RUN_ID)) {
+          new IndexingFailureRecorder(collectionDAO, JOB_ID, SERVER_ID)) {
 
         for (int i = 0; i < 99; i++) {
           recorder.recordReaderFailure("table", "Error " + i);
