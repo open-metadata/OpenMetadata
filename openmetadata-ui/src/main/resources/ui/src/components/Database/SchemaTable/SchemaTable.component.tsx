@@ -11,7 +11,17 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Form, Row, Select, Tooltip, Typography } from 'antd';
+import {
+  Button,
+  Col,
+  Dropdown,
+  Form,
+  Row,
+  Select,
+  Tooltip,
+  Typography,
+} from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
@@ -22,6 +32,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as IconSortIndicator } from '../../../assets/svg/ic-down-up-arrow.svg';
+import { ReactComponent as IconSort } from '../../../assets/svg/ic-sort-both.svg';
 import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
@@ -53,9 +65,9 @@ import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
-import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useSub } from '../../../hooks/usePubSub';
+import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { useTableFilters } from '../../../hooks/useTableFilters';
 import {
   getTableColumnsByFQN,
@@ -65,7 +77,6 @@ import {
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
-  getColumnSorter,
   getEntityBulkEditPath,
   getEntityName,
   getFrequentlyJoinedColumns,
@@ -113,6 +124,8 @@ const SchemaTable = () => {
   const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [editColumn, setEditColumn] = useState<Column>();
+  const [sortBy, setSortBy] = useState<'name' | 'ordinalPosition'>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const {
     currentPage,
@@ -203,7 +216,12 @@ const SchemaTable = () => {
   );
 
   const searchTableColumns = useCallback(
-    async (searchQuery: string, page = 1) => {
+    async (
+      searchQuery: string,
+      page = 1,
+      columnSortBy?: 'name' | 'ordinalPosition',
+      columnSortOrder?: 'asc' | 'desc'
+    ) => {
       if (!tableFqn) {
         return;
       }
@@ -211,12 +229,16 @@ const SchemaTable = () => {
       setColumnsLoading(true);
       try {
         const offset = (page - 1) * pageSize;
+        const sortByParam = columnSortBy ?? sortBy;
+        const sortOrderParam = columnSortOrder ?? sortOrder;
 
         const response = await searchTableColumnsByFQN(tableFqn, {
           q: searchQuery,
           limit: pageSize,
           offset: offset,
-          fields: 'tags,customMetrics',
+          fields: 'tags,customMetrics,extension',
+          sortBy: sortByParam,
+          sortOrder: sortOrderParam,
         });
 
         setTableColumns(pruneEmptyChildren(response.data) || []);
@@ -236,7 +258,11 @@ const SchemaTable = () => {
   );
 
   const fetchTableColumns = useCallback(
-    async (page = 1) => {
+    async (
+      page = 1,
+      columnSortBy?: 'name' | 'ordinalPosition',
+      columnSortOrder?: 'asc' | 'desc'
+    ) => {
       if (!tableFqn) {
         return;
       }
@@ -244,11 +270,15 @@ const SchemaTable = () => {
       setColumnsLoading(true);
       try {
         const offset = (page - 1) * pageSize;
+        const sortByParam = columnSortBy ?? sortBy;
+        const sortOrderParam = columnSortOrder ?? sortOrder;
 
         const response = await getTableColumnsByFQN(tableFqn, {
           limit: pageSize,
           offset: offset,
-          fields: 'tags,customMetrics',
+          fields: 'tags,customMetrics,extension',
+          sortBy: sortByParam,
+          sortOrder: sortOrderParam,
         });
 
         setTableColumns(pruneEmptyChildren(response.data) || []);
@@ -289,16 +319,24 @@ const SchemaTable = () => {
 
   useEffect(() => {
     if (searchText) {
-      searchTableColumns(searchText, currentPage);
+      searchTableColumns(searchText, currentPage, sortBy, sortOrder);
     }
-  }, [searchText, currentPage, searchTableColumns]);
+  }, [searchText, currentPage, searchTableColumns, sortBy, sortOrder]);
 
   useEffect(() => {
     if (searchText) {
       return;
     }
-    fetchTableColumns(currentPage);
-  }, [tableFqn, pageSize, currentPage, searchText, fetchTableColumns]);
+    fetchTableColumns(currentPage, sortBy, sortOrder);
+  }, [
+    tableFqn,
+    pageSize,
+    currentPage,
+    searchText,
+    fetchTableColumns,
+    sortBy,
+    sortOrder,
+  ]);
 
   useEffect(() => {
     if (!isEmpty(tableColumns)) {
@@ -316,6 +354,25 @@ const SchemaTable = () => {
     if (!columnsChanged) {
       return;
     }
+
+    const updatedColumns = table.columns;
+    setTableColumns((prev) => {
+      // Create a deep clone to avoid mutation of the previous state during updates
+      let newColumns = [...prev];
+      updatedColumns?.forEach((updatedCol) => {
+        // Recursively remove empty children from the update object
+        const [cleanUpdate] = pruneEmptyChildren([updatedCol]);
+
+        // Use the utility to recursively find and update the column in the nested structure
+        newColumns = updateColumnInNestedStructure(
+          newColumns,
+          updatedCol.fullyQualifiedName ?? '',
+          cleanUpdate as Column
+        );
+      });
+
+      return newColumns;
+    });
 
     setPrevTableColumns(table.columns);
   }, [table?.columns, hasInitialLoad]);
@@ -484,10 +541,9 @@ const SchemaTable = () => {
       </>
     );
   };
-
   const expandableConfig: ExpandableConfig<Column> = useMemo(
     () => ({
-      ...getTableExpandableConfig<Column>(),
+      ...getTableExpandableConfig<Column>(false, 'text-link-color'),
       rowExpandable: (record) => !isEmpty(record.children),
       expandedRowKeys,
       onExpand: (expanded, record) => {
@@ -556,15 +612,80 @@ const SchemaTable = () => {
     [openColumnDetailPanel]
   );
 
+  const sortMenuItems: ItemType[] = useMemo(
+    () => [
+      {
+        key: 'name',
+        label: (
+          <span data-testid="sort-alphabetical">
+            {t('label.alphabetical')} (A → Z)
+          </span>
+        ),
+        icon:
+          sortBy === 'name' ? <span className="text-primary">✓</span> : null,
+      },
+      {
+        key: 'ordinalPosition',
+        label: (
+          <span data-testid="sort-original-order">
+            {t('label.original-order')}
+          </span>
+        ),
+        icon:
+          sortBy === 'ordinalPosition' ? (
+            <span className="text-primary">✓</span>
+          ) : null,
+      },
+    ],
+    [sortBy, t]
+  );
+
+  const handleSortMenuClick = useCallback(
+    ({ key }: { key: string }) => {
+      const newSortBy = key as 'name' | 'ordinalPosition';
+      if (newSortBy !== sortBy) {
+        setSortBy(newSortBy);
+        setSortOrder('asc'); // Reset to ascending when changing sort field
+        handlePageChange(1);
+      }
+    },
+    [sortBy, handlePageChange]
+  );
+
+  const handleColumnHeaderSortToggle = useCallback(() => {
+    setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    handlePageChange(1);
+  }, [handlePageChange]);
+
   const columns: ColumnsType<Column> = useMemo(
     () => [
       {
-        title: t('label.name'),
+        title: (
+          <div
+            className="d-flex items-center cursor-pointer"
+            data-testid="name-column-header"
+            onClick={handleColumnHeaderSortToggle}>
+            <span
+              className={sortBy === 'name' ? 'text-primary font-medium' : ''}>
+              {t('label.name')}
+            </span>
+            <IconSortIndicator
+              className="m-l-xss"
+              data-testid="sort-indicator"
+              height={12}
+              style={{
+                color: sortBy === 'name' ? 'var(--primary-color)' : '#6B7280',
+                transform: sortOrder === 'desc' ? 'rotate(180deg)' : 'none',
+                transition: 'transform 0.2s ease',
+              }}
+              width={8}
+            />
+          </div>
+        ),
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
         width: 200,
         fixed: 'left',
-        sorter: getColumnSorter<Column, 'name'>('name'),
         onCell: (record: Column) => ({
           onClick: (event) => handleColumnClick(record, event),
           'data-testid': 'column-name-cell',
@@ -583,7 +704,7 @@ const SchemaTable = () => {
                   })}
                   <Typography.Text
                     className={classNames(
-                      'm-b-0 d-block break-word cursor-pointer',
+                      'm-b-0 d-block break-word cursor-pointer text-link-color',
                       {
                         'text-grey-600': !isEmpty(displayName),
                       }
@@ -728,6 +849,11 @@ const SchemaTable = () => {
       onThreadLinkSelect,
       tagFilter,
       testCaseCounts,
+      searchText,
+      sortBy,
+      sortOrder,
+      handleColumnHeaderSortToggle,
+      t,
     ]
   );
 
@@ -818,10 +944,26 @@ const SchemaTable = () => {
           dataSource={tableColumns}
           defaultVisibleColumns={DEFAULT_SCHEMA_TABLE_VISIBLE_COLUMNS}
           expandable={expandableConfig}
-          extraTableFilters={getBulkEditButton(
-            tablePermissions.EditAll && !deleted,
-            handleEditTable
-          )}
+          extraTableFilters={
+            <div className="d-flex items-center gap-4">
+              <Dropdown
+                menu={{ items: sortMenuItems, onClick: handleSortMenuClick }}
+                trigger={['click']}>
+                <Button
+                  className="flex-center gap-2"
+                  data-testid="sort-dropdown"
+                  icon={<IconSort height={14} width={14} />}
+                  size="small"
+                  type="text">
+                  {t('label.sort')}
+                </Button>
+              </Dropdown>
+              {getBulkEditButton(
+                tablePermissions.EditAll && !deleted,
+                handleEditTable
+              )}
+            </div>
+          }
           loading={columnsLoading}
           locale={{
             emptyText: <FilterTablePlaceHolder />,

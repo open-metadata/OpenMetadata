@@ -94,7 +94,7 @@ class ColumnValuesToBeNotInSetValidator(
                 BaseColumnValuesToBeNotInSetValidator.FORBIDDEN_VALUES
             ]
 
-            dfs = self.runner if isinstance(self.runner, list) else [self.runner]
+            dfs = self.runner
             count_in_set_impl = add_props(values=forbidden_values)(
                 Metrics.COUNT_IN_SET.value
             )(column).get_pandas_computation()

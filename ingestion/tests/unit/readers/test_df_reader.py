@@ -20,7 +20,7 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 )
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.readers.dataframe.reader_factory import SupportedTypes
-from metadata.utils.datalake.datalake_utils import fetch_dataframe
+from metadata.utils.datalake.datalake_utils import fetch_dataframe_first_chunk
 
 ROOT_PATH = Path(__file__).parent.parent / "resources" / "datalake"
 
@@ -34,7 +34,7 @@ class TestDataFrameReader(TestCase):
     def test_dsv_no_extension_reader(self):
         key = ROOT_PATH / "transactions_1"
 
-        df_list = fetch_dataframe(
+        df_iter = fetch_dataframe_first_chunk(
             config_source=LocalConfig(),
             client=None,
             file_fqn=DatalakeTableSchemaWrapper(
@@ -42,7 +42,8 @@ class TestDataFrameReader(TestCase):
             ),
         )
 
-        self.assertIsNotNone(df_list)
+        self.assertIsNotNone(df_iter)
+        df_list = list(df_iter)
         self.assertTrue(len(df_list))
 
         self.assertEqual(df_list[0].shape, (5, 2))
@@ -53,13 +54,14 @@ class TestDataFrameReader(TestCase):
     def test_dsv_reader(self):
         key = ROOT_PATH / "transactions_1.csv"
 
-        df_list = fetch_dataframe(
+        df_iter = fetch_dataframe_first_chunk(
             config_source=LocalConfig(),
             client=None,
             file_fqn=DatalakeTableSchemaWrapper(key=str(key), bucket_name="unused"),
         )
 
-        self.assertIsNotNone(df_list)
+        self.assertIsNotNone(df_iter)
+        df_list = list(df_iter)
         self.assertTrue(len(df_list))
 
         self.assertEqual(df_list[0].shape, (5, 2))
@@ -70,7 +72,7 @@ class TestDataFrameReader(TestCase):
     def test_dsv_reader_with_separator(self):
         key = ROOT_PATH / "transactions_separator.csv"
 
-        df_list = fetch_dataframe(
+        df_iter = fetch_dataframe_first_chunk(
             config_source=LocalConfig(),
             client=None,
             file_fqn=DatalakeTableSchemaWrapper(
@@ -78,7 +80,8 @@ class TestDataFrameReader(TestCase):
             ),
         )
 
-        self.assertIsNotNone(df_list)
+        self.assertIsNotNone(df_iter)
+        df_list = list(df_iter)
         self.assertTrue(len(df_list))
 
         self.assertEqual(df_list[0].shape, (5, 2))
@@ -89,13 +92,14 @@ class TestDataFrameReader(TestCase):
     def test_json_reader(self):
         key = ROOT_PATH / "employees.json"
 
-        df_list = fetch_dataframe(
+        df_iter = fetch_dataframe_first_chunk(
             config_source=LocalConfig(),
             client=None,
             file_fqn=DatalakeTableSchemaWrapper(key=str(key), bucket_name="unused"),
         )
 
-        self.assertIsNotNone(df_list)
+        self.assertIsNotNone(df_iter)
+        df_list = list(df_iter)
         self.assertTrue(len(df_list))
 
         self.assertEqual(df_list[0].shape, (4, 4))
@@ -107,13 +111,14 @@ class TestDataFrameReader(TestCase):
     def test_jsonl_reader(self):
         key = ROOT_PATH / "employees.jsonl"
 
-        df_list = fetch_dataframe(
+        df_iter = fetch_dataframe_first_chunk(
             config_source=LocalConfig(),
             client=None,
             file_fqn=DatalakeTableSchemaWrapper(key=str(key), bucket_name="unused"),
         )
 
-        self.assertIsNotNone(df_list)
+        self.assertIsNotNone(df_iter)
+        df_list = list(df_iter)
         self.assertTrue(len(df_list))
 
         self.assertEqual(df_list[0].shape, (4, 4))
@@ -125,13 +130,14 @@ class TestDataFrameReader(TestCase):
     def test_avro_reader(self):
         key = ROOT_PATH / "example.avro"
 
-        df_list = fetch_dataframe(
+        df_iter = fetch_dataframe_first_chunk(
             config_source=LocalConfig(),
             client=None,
             file_fqn=DatalakeTableSchemaWrapper(key=str(key), bucket_name="unused"),
         )
 
-        self.assertIsNotNone(df_list)
+        self.assertIsNotNone(df_iter)
+        df_list = list(df_iter)
         self.assertTrue(len(df_list))
 
         self.assertEqual(df_list[0].shape, (4, 8))

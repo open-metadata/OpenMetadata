@@ -24,6 +24,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.bots.BotResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 public class BotRepository extends EntityRepository<Bot> {
@@ -41,7 +42,7 @@ public class BotRepository extends EntityRepository<Bot> {
   }
 
   @Override
-  public void setFields(Bot entity, Fields fields) {
+  public void setFields(Bot entity, Fields fields, RelationIncludes relationIncludes) {
     entity.withBotUser(getBotUser(entity));
   }
 

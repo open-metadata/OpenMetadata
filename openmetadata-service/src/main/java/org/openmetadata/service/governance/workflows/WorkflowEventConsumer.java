@@ -6,10 +6,15 @@ import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENT
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -21,11 +26,22 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 @Slf4j
 public class WorkflowEventConsumer implements Destination<ChangeEvent> {
   public static final String GOVERNANCE_BOT = "governance-bot";
+
+  private static final RetryConfig RETRY_CONFIG =
+      RetryConfig.custom()
+          .maxAttempts(3)
+          .waitDuration(Duration.ofMillis(100))
+          .retryOnException(WorkflowEventConsumer::isTransientDatabaseError)
+          .build();
+
+  private final Retry retry = Retry.of("workflow-event-consumer", RETRY_CONFIG);
   private final SubscriptionDestination subscriptionDestination;
   private final EventSubscription eventSubscription;
 
@@ -94,11 +110,18 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
   }
 
   @Override
-  public void sendMessage(ChangeEvent event) throws EventPublisherException {
+  public void sendMessage(ChangeEvent event, Set<Recipient> recipients)
+      throws EventPublisherException {
     // NOTE: We are only consuming ENTITY related events.
     try {
       EventType eventType = event.getEventType();
       String entityType = event.getEntityType();
+
+      LOG.debug(
+          "WorkflowEventConsumer - Received event for entityType: {}, eventType: {}, entityId: {}",
+          entityType,
+          eventType,
+          event.getEntityId());
 
       // Skip events from governance-bot to prevent infinite loops
       // These are system-initiated workflow changes that shouldn't trigger new workflows
@@ -113,10 +136,27 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
       }
 
       if (validEventTypes.contains(eventType) && validEntityTypes.contains(entityType)) {
-        String signal = String.format("%s-%s", entityType, eventType.toString());
+        LOG.debug(
+            "WorkflowEventConsumer - Generating signal for entityType: {}, eventType: {}",
+            entityType,
+            eventType);
+        String eventTypeStr =
+            eventType.equals(EventType.ENTITY_CREATED) ? "entityCreated" : "entityUpdated";
+        String signal = String.format("%s-%s", entityType, eventTypeStr);
+        LOG.debug("WorkflowEventConsumer - Generated Signal: {}", signal);
 
-        EntityReference entityReference =
-            Entity.getEntityReferenceById(entityType, event.getEntityId(), Include.ALL);
+        EntityReference entityReference;
+        try {
+          entityReference =
+              Entity.getEntityReferenceById(entityType, event.getEntityId(), Include.ALL);
+        } catch (EntityNotFoundException e) {
+          // Entity was deleted between event creation and processing - skip workflow trigger
+          LOG.debug(
+              "Skipping workflow trigger for {} - entity {} no longer exists",
+              signal,
+              event.getEntityFullyQualifiedName());
+          return;
+        }
         MessageParser.EntityLink entityLink =
             new MessageParser.EntityLink(entityType, entityReference.getFullyQualifiedName());
 
@@ -133,9 +173,12 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
               event.getUserName());
         }
 
-        WorkflowHandler.getInstance().triggerWithSignal(signal, variables);
+        Retry.decorateRunnable(
+                retry, () -> WorkflowHandler.getInstance().triggerWithSignal(signal, variables))
+            .run();
       }
     } catch (Exception exc) {
+      LOG.error("WorkflowEventConsumer - Error processing event", exc);
       String message =
           CatalogExceptionMessage.eventPublisherFailedToPublish(
               GOVERNANCE_WORKFLOW_CHANGE_EVENT, event, exc.getMessage());
@@ -145,6 +188,19 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
               GOVERNANCE_WORKFLOW_CHANGE_EVENT, exc.getMessage()),
           Pair.of(subscriptionDestination.getId(), event));
     }
+  }
+
+  private static boolean isTransientDatabaseError(Throwable e) {
+    String rootCauseMessage = ExceptionUtils.getRootCauseMessage(e);
+    if (rootCauseMessage == null) {
+      return false;
+    }
+    String lowerMessage = rootCauseMessage.toLowerCase();
+    return lowerMessage.contains("deadlock")
+        || lowerMessage.contains("lock wait timeout")
+        || lowerMessage.contains("try restarting transaction")
+        || lowerMessage.contains("updated by another transaction concurrently")
+        || lowerMessage.contains("optimisticlockingfailureexception");
   }
 
   @Override
@@ -168,5 +224,10 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
   @Override
   public boolean getEnabled() {
     return subscriptionDestination.getEnabled();
+  }
+
+  @Override
+  public boolean requiresRecipients() {
+    return false;
   }
 }

@@ -49,11 +49,34 @@ public class TableService extends EntityServiceBase<Table> {
   public TableColumnList getColumns(
       UUID id, Integer limit, Integer offset, String fields, String include)
       throws OpenMetadataException {
-    return getColumns(id.toString(), limit, offset, fields, include);
+    return getColumns(id.toString(), limit, offset, fields, include, null);
   }
 
   public TableColumnList getColumns(
       String id, Integer limit, Integer offset, String fields, String include)
+      throws OpenMetadataException {
+    return getColumns(id, limit, offset, fields, include, null);
+  }
+
+  /**
+   * Get columns for a table with pagination, filtering, and sorting
+   *
+   * @param id Table UUID
+   * @param limit Number of columns to return (1-1000, default 50)
+   * @param offset Offset for pagination (default 0)
+   * @param fields Optional fields to include
+   * @param include Include deleted columns (default: non-deleted)
+   * @param sortBy Sort columns by field: 'name' (default) or 'ordinalPosition'
+   * @return TableColumnList with pagination info
+   */
+  public TableColumnList getColumns(
+      UUID id, Integer limit, Integer offset, String fields, String include, String sortBy)
+      throws OpenMetadataException {
+    return getColumns(id.toString(), limit, offset, fields, include, sortBy);
+  }
+
+  public TableColumnList getColumns(
+      String id, Integer limit, Integer offset, String fields, String include, String sortBy)
       throws OpenMetadataException {
     try {
       RequestOptions.Builder builder = RequestOptions.builder();
@@ -68,6 +91,9 @@ public class TableService extends EntityServiceBase<Table> {
       }
       if (include != null && !include.isEmpty()) {
         builder.queryParam("include", include);
+      }
+      if (sortBy != null && !sortBy.isEmpty()) {
+        builder.queryParam("sortBy", sortBy);
       }
       String json =
           httpClient.executeForString(

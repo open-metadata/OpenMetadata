@@ -24,6 +24,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.readers.dataframe.reader_factory import SupportedTypes
+from metadata.utils.datalake.datalake_utils import DatalakeColumnWrapper
 
 from .topology.database.test_datalake import mock_datalake_config
 
@@ -34,25 +35,29 @@ resp_parquet_file = (
     .read()
     .to_pandas()
 )
-method_resp_file = [resp_parquet_file]
+method_resp_file = DatalakeColumnWrapper(
+    columns=None,
+    dataframes=lambda: iter((resp_parquet_file,)),
+    raw_data=None,
+)
 
 
 class TestStringMethods(unittest.TestCase):
     def test_dl_column_parser(self):
         with patch(
-            "metadata.utils.datalake.datalake_utils.fetch_dataframe",
+            "metadata.utils.datalake.datalake_utils.fetch_dataframe_generator",
             return_value=method_resp_file,
         ) as exec_mock_method:
             resp = exec_mock_method("key", "string")
-            assert type(resp) == list
+            assert type(resp) == DatalakeColumnWrapper
 
     @patch(
         "metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection"
     )
     def test_get_dataframes(self, test_connection):
         with patch(
-            "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
-            return_value=[resp_parquet_file],
+            "metadata.mixins.pandas.pandas_mixin.fetch_dataframe_generator",
+            return_value=method_resp_file,
         ):
             config = OpenMetadataWorkflowConfig.model_validate(mock_datalake_config)
             datalake_source = DatalakeSource.create(
@@ -76,14 +81,14 @@ class TestStringMethods(unittest.TestCase):
             )
 
             assert resp == method_resp_file
-            assert type(resp) == list
+            assert type(resp) == DatalakeColumnWrapper
 
     @patch(
         "metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection"
     )
     def test_get_dataframes_fail(self, test_connection):
         with patch(
-            "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
+            "metadata.mixins.pandas.pandas_mixin.fetch_dataframe_generator",
             return_value=None,
         ):
             with self.assertRaises(TypeError) as context:
