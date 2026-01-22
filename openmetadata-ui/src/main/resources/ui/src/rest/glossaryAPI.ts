@@ -29,13 +29,22 @@ import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { BulkOperationResult } from '../generated/type/bulkOperationResult';
 import { ChangeEvent } from '../generated/type/changeEvent';
 import { EntityHistory } from '../generated/type/entityHistory';
-import { ListParams } from '../interface/API.interface';
+import { ListParams, ListParamsWithOffset } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export type ListGlossaryTermsParams = ListParams & {
   glossary?: string;
   parent?: string;
+};
+
+export type SearchGlossaryTermsParams = ListParamsWithOffset & {
+  q?: string;
+  glossary?: string;
+  glossaryFqn?: string;
+  parent?: string;
+  parentFqn?: string;
+  entityStatus?: string;
 };
 
 const BASE_URL = '/glossaries';
@@ -317,48 +326,11 @@ export const searchGlossaryTerms = async (search: string, page = 1) => {
 };
 
 export const searchGlossaryTermsPaginated = async (
-  query?: string,
-  glossaryId?: string,
-  glossaryFqn?: string,
-  parentId?: string,
-  parentFqn?: string,
-  limit = 50,
-  offset = 0,
-  fields?: string,
-  statuses?: string[]
+  params: SearchGlossaryTermsParams
 ) => {
-  const params: Record<string, number | string> = {
-    limit,
-    offset,
-  };
-
-  if (query) {
-    params.q = query;
-  }
-  if (glossaryId) {
-    params.glossary = glossaryId;
-  }
-  if (glossaryFqn) {
-    params.glossaryFqn = glossaryFqn;
-  }
-  if (parentId) {
-    params.parent = parentId;
-  }
-  if (parentFqn) {
-    params.parentFqn = parentFqn;
-  }
-  if (fields) {
-    params.fields = fields;
-  }
-  if (statuses && statuses.length > 0) {
-    params.entityStatus = statuses.join(',');
-  }
-
   const response = await APIClient.get<PagingResponse<GlossaryTerm[]>>(
     '/glossaryTerms/search',
-    {
-      params,
-    }
+    { params }
   );
 
   return response.data;

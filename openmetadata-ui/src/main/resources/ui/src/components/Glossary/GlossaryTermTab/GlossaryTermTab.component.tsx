@@ -286,17 +286,15 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           ? selectedStatus.filter((s) => s !== 'all')
           : undefined;
 
-        const response = await searchGlossaryTermsPaginated(
-          searchTerm || undefined,
-          undefined,
-          activeGlossary?.fullyQualifiedName,
-          undefined,
-          undefined,
-          PAGE_SIZE_LARGE,
-          currentOffset,
-          'children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount',
-          statusesToFilter
-        );
+        const response = await searchGlossaryTermsPaginated({
+          q: searchTerm || undefined,
+          glossaryFqn: activeGlossary?.fullyQualifiedName,
+          limit: PAGE_SIZE_LARGE,
+          offset: currentOffset,
+          fields:
+            'children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount',
+          entityStatus: statusesToFilter?.join(','),
+        });
         data = response.data;
         pagingResponse = response.paging;
 

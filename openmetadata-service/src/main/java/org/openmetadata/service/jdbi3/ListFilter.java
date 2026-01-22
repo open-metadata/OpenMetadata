@@ -137,11 +137,11 @@ public class ListFilter extends Filter<ListFilter> {
     if (entityStatus == null || entityStatus.trim().isEmpty()) {
       return "";
     }
-
+    String inCondition = getInConditionFromString(entityStatus);
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-      return "json->>'$.entityStatus' = :entityStatus";
+      return String.format("JSON_UNQUOTE(JSON_EXTRACT(json, '$.entityStatus')) IN (%s)", inCondition);
     } else {
-      return "json->>'entityStatus' = :entityStatus";
+      return String.format("json->>'entityStatus' IN (%s)", inCondition);
     }
   }
 
