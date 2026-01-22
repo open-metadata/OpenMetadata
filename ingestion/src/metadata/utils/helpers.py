@@ -124,14 +124,20 @@ def pretty_print_time_duration(duration: Union[int, float]) -> str:
     duration = duration - hours * 3600
     minutes = divmod(duration, 60)[0]
     duration = duration - minutes * 60
-    seconds = round(divmod(duration, 60)[1], 2)
+    seconds = divmod(duration, 1)[0]
+    duration = duration - seconds
+    milliseconds = duration * 1000
+
+    # Format with proper zero-padding for alignment when part of larger time units
     if days:
-        return f"{days}day(s) {hours}h {minutes}m {seconds}s"
+        return f"{int(days)}day(s) {int(hours):02d}h {int(minutes):02d}m {int(seconds):02d}s {milliseconds:07.3f}ms"
     if hours:
-        return f"{hours}h {minutes}m {seconds}s"
+        return f"{int(hours)}h {int(minutes):02d}m {int(seconds):02d}s {milliseconds:07.3f}ms"
     if minutes:
-        return f"{minutes}m {seconds}s"
-    return f"{seconds}s"
+        return f"{int(minutes)}m {int(seconds):02d}s {milliseconds:07.3f}ms"
+    if seconds:
+        return f"{int(seconds)}s {milliseconds:07.3f}ms"
+    return f"{milliseconds:.3f}ms"
 
 
 def get_start_and_end(duration: int = 0) -> Tuple[datetime, datetime]:
