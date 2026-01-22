@@ -12,7 +12,7 @@
  */
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { capitalize, isEmpty, startCase } from 'lodash';
+import { capitalize, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DataGrid, { Column, ColumnOrColumnGroup } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
@@ -27,17 +27,13 @@ import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb
 import { DataAssetsHeaderProps } from '../../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { ProfilerTabPath } from '../../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import Stepper from '../../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import UploadFile from '../../../components/UploadFile/UploadFile';
 import {
   HEADER_HEIGHT,
   MAX_HEIGHT,
   ROW_HEIGHT,
 } from '../../../constants/BulkEdit.constants';
-import {
-  ENTITY_IMPORT_STEPS,
-  VALIDATION_STEP,
-} from '../../../constants/BulkImport.constant';
+import { VALIDATION_STEP } from '../../../constants/BulkImport.constant';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { SOCKET_EVENTS } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
@@ -112,14 +108,6 @@ const BulkEntityImportPage = () => {
   const [isValidating, setIsValidating] = useState(false);
   const { entityRules } = useEntityRules(entityType);
 
-  const translatedSteps = useMemo(
-    () =>
-      ENTITY_IMPORT_STEPS.map((step) => ({
-        ...step,
-        name: startCase(t(step.name)),
-      })),
-    [t]
-  );
   const [validationData, setValidationData] = useState<CSVImportResult>();
   const [columns, setColumns] = useState<Column<Record<string, string>[]>[]>(
     []
@@ -665,7 +653,7 @@ const BulkEntityImportPage = () => {
       pageTitle={t('label.import-entity', {
         entity: entityType,
       })}>
-      <Row className="p-x-lg" gutter={[16, 16]}>
+      <Row className="p-x-lg" gutter={[8, 8]}>
         {isBulkEdit ? (
           <BulkEditEntity
             activeAsyncImportJob={activeAsyncImportJob}
@@ -692,9 +680,7 @@ const BulkEntityImportPage = () => {
             <Col span={24}>
               <TitleBreadcrumb titleLinks={breadcrumbList} />
             </Col>
-            <Col span={24}>
-              <Stepper activeStep={activeStep} steps={translatedSteps} />
-            </Col>
+
             <Col span={24}>
               {activeAsyncImportJob?.jobId && (
                 <Banner
@@ -711,57 +697,112 @@ const BulkEntityImportPage = () => {
                 />
               )}
             </Col>
-            <Col span={24}>
-              {activeStep === 0 && (
-                <>
-                  {validationData?.abortReason ? (
-                    <Card className="m-t-lg">
-                      <Space
-                        align="center"
-                        className="w-full justify-center p-lg text-center"
-                        direction="vertical"
-                        size={16}>
-                        <Typography.Text
-                          className="text-center"
-                          data-testid="abort-reason">
-                          <strong className="d-block">
-                            {t('label.aborted')}
-                          </strong>{' '}
-                          {validationData.abortReason}
-                        </Typography.Text>
-                        <Space size={16}>
-                          <Button
-                            ghost
-                            data-testid="cancel-button"
-                            type="primary"
-                            onClick={handleRetryCsvUpload}>
-                            {t('label.back')}
-                          </Button>
-                        </Space>
-                      </Space>
-                    </Card>
-                  ) : (
-                    <UploadFile
-                      disabled={Boolean(
-                        activeAsyncImportJob?.jobId &&
-                          isEmpty(activeAsyncImportJob.error)
-                      )}
-                      fileType=".csv"
-                      onCSVUploaded={handleLoadData}
-                    />
-                  )}
-                </>
-              )}
-              {activeStep === 1 && editDataGrid}
-              {activeStep === 2 && validationData && (
-                <Row gutter={[16, 16]}>
-                  <Col span={24}>
-                    <ImportStatus csvImportResult={validationData} />
-                  </Col>
 
-                  <Col span={24}>
+            <Col span={24}>
+              <div className="bg-white rounded-12 bulk-edit-container">
+                {activeStep === 0 && (
+                  <>
+                    {validationData?.abortReason ? (
+                      <Card className="m-t-lg">
+                        <Space
+                          align="center"
+                          className="w-full justify-center p-lg text-center"
+                          direction="vertical"
+                          size={16}>
+                          <Typography.Text
+                            className="text-center"
+                            data-testid="abort-reason">
+                            <strong className="d-block">
+                              {t('label.aborted')}
+                            </strong>{' '}
+                            {validationData.abortReason}
+                          </Typography.Text>
+                          <Space size={16}>
+                            <Button
+                              ghost
+                              data-testid="cancel-button"
+                              type="primary"
+                              onClick={handleRetryCsvUpload}>
+                              {t('label.back')}
+                            </Button>
+                          </Space>
+                        </Space>
+                      </Card>
+                    ) : (
+                      <UploadFile
+                        disabled={Boolean(
+                          activeAsyncImportJob?.jobId &&
+                            isEmpty(activeAsyncImportJob.error)
+                        )}
+                        fileType=".csv"
+                        onCSVUploaded={handleLoadData}
+                      />
+                    )}
+                  </>
+                )}
+                {activeStep === 1 && (
+                  <>
+                    <Row className="m-b-md" justify="space-between">
+                      <Col>
+                        <Typography.Title className="m-b-0" level={5}>
+                          {t('label.edit-entity', {
+                            entity: capitalize(importedEntityType),
+                          })}
+                        </Typography.Title>
+                      </Col>
+                      <Col>
+                        <Button disabled={isValidating} onClick={handleBack}>
+                          {t('label.previous')}
+                        </Button>
+                        <Button
+                          className="m-l-sm"
+                          disabled={isValidating}
+                          type="primary"
+                          onClick={handleValidate}>
+                          {t('label.preview')}
+                        </Button>
+                      </Col>
+                    </Row>
+
+                    {editDataGrid}
+                    <Button
+                      className="p-0 m-t-xs"
+                      data-testid="add-row-btn"
+                      type="link"
+                      onClick={handleAddRow}>
+                      {`+ ${t('label.add-row')}`}
+                    </Button>
+                  </>
+                )}
+
+                {activeStep === 2 && validationData && (
+                  <>
+                    <Row className="m-b-md" justify="space-between">
+                      <Col>
+                        <Typography.Title className="m-b-0" level={5}>
+                          {t('label.edit-entity', {
+                            entity: capitalize(importedEntityType),
+                          })}
+                        </Typography.Title>
+
+                        <ImportStatus csvImportResult={validationData} />
+                      </Col>
+                      <Col>
+                        <Button disabled={isValidating} onClick={handleBack}>
+                          {t('label.back')}
+                        </Button>
+                        <Button
+                          className="m-l-sm"
+                          disabled={isValidating}
+                          type="primary"
+                          onClick={handleValidate}>
+                          {t('label.update')}
+                        </Button>
+                      </Col>
+                    </Row>
+
                     {validateCSVData && (
-                      <div className="om-rdg">
+                      <div className="om-rdg m-t-md">
                         <DataGrid
                           className="rdg-light"
                           columns={
@@ -783,36 +824,10 @@ const BulkEntityImportPage = () => {
                         />
                       </div>
                     )}
-                  </Col>
-                </Row>
-              )}
-            </Col>
-
-            {activeStep > 0 && (
-              <Col span={24}>
-                {activeStep === 1 && (
-                  <Button data-testid="add-row-btn" onClick={handleAddRow}>
-                    {`+ ${t('label.add-row')}`}
-                  </Button>
+                  </>
                 )}
-                <div className="float-right import-footer">
-                  {activeStep > 0 && (
-                    <Button disabled={isValidating} onClick={handleBack}>
-                      {t('label.previous')}
-                    </Button>
-                  )}
-                  {activeStep < 3 && (
-                    <Button
-                      className="m-l-sm"
-                      disabled={isValidating}
-                      type="primary"
-                      onClick={handleValidate}>
-                      {activeStep === 2 ? t('label.update') : t('label.next')}
-                    </Button>
-                  )}
-                </div>
-              </Col>
-            )}
+              </div>
+            </Col>
           </>
         )}
       </Row>

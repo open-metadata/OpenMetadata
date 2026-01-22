@@ -171,10 +171,10 @@ const BulkEditEntity = ({
         <Loader />
       ) : (
         <Col span={24}>
-          <div className="bg-white p-md rounded-12 bulk-edit-container">
+          <div className="bg-white rounded-12 bulk-edit-container">
             {activeStep === 1 && (
               <>
-                <Row align="middle" className="m-b-md" justify="space-between">
+                <Row className="m-b-md" justify="space-between">
                   <Col>
                     <Typography.Title className="m-b-0" level={5}>
                       {t('label.edit-entity', {
@@ -209,7 +209,7 @@ const BulkEditEntity = ({
 
             {activeStep === 2 && validationData && (
               <>
-                <Row align="middle" className="m-b-md" justify="space-between">
+                <Row className="m-b-md" justify="space-between">
                   <Col>
                     <Typography.Title className="m-b-0" level={5}>
                       {t('label.edit-entity', {

@@ -282,7 +282,7 @@ const Table = <T extends Record<string, unknown>>(
           {(rest.extraTableFilters || isCustomizeColumnEnable) && (
             <Col
               className={classNames(
-                'd-flex justify-end items-center gap-5',
+                'd-flex justify-end items-center gap-1',
                 rest.extraTableFiltersClassName
               )}
               span={searchProps ? 12 : 24}>

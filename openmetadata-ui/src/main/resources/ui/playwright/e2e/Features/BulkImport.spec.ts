@@ -171,7 +171,7 @@ test.describe('Bulk Import Export', () => {
         // Adding some assertion to make sure that CSV loaded correctly
         await expect(page.locator('.rdg-header-row')).toBeVisible();
         await expect(page.getByTestId('add-row-btn')).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Preview' })).toBeVisible();
         await expect(
           page.getByRole('button', { name: 'Previous' })
         ).toBeVisible();
@@ -339,7 +339,7 @@ test.describe('Bulk Import Export', () => {
         );
 
         await page.waitForTimeout(100);
-        await page.getByRole('button', { name: 'Next' }).click();
+        await page.getByRole('button', { name: 'Preview' }).click();
 
         const loader = page.locator(
           '.inovua-react-toolkit-load-mask__background-layer'
@@ -426,7 +426,7 @@ test.describe('Bulk Import Export', () => {
         // Adding some assertion to make sure that CSV loaded correctly
         await expect(page.locator('.rdg-header-row')).toBeVisible();
         await expect(page.getByTestId('add-row-btn')).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Preview' })).toBeVisible();
         await expect(
           page.getByRole('button', { name: 'Previous' })
         ).toBeVisible();
@@ -530,7 +530,7 @@ test.describe('Bulk Import Export', () => {
           page
         );
 
-        await page.getByRole('button', { name: 'Next' }).click();
+        await page.getByRole('button', { name: 'Preview' }).click();
         await page.waitForSelector('text=Import is in progress.', {
           state: 'attached',
         });
@@ -629,7 +629,7 @@ test.describe('Bulk Import Export', () => {
         // Adding some assertion to make sure that CSV loaded correctly
         await expect(page.locator('.rdg-header-row')).toBeVisible();
         await expect(page.getByTestId('add-row-btn')).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Preview' })).toBeVisible();
         await expect(
           page.getByRole('button', { name: 'Previous' })
         ).toBeVisible();
@@ -726,7 +726,7 @@ test.describe('Bulk Import Export', () => {
           page
         );
 
-        await page.getByRole('button', { name: 'Next' }).click();
+        await page.getByRole('button', { name: 'Preview' }).click();
 
         await validateImportStatus(page, {
           passed: '5',
@@ -796,7 +796,7 @@ test.describe('Bulk Import Export', () => {
         // Adding some assertion to make sure that CSV loaded correctly
         await expect(page.locator('.rdg-header-row')).toBeVisible();
         await expect(page.getByTestId('add-row-btn')).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Preview' })).toBeVisible();
         await expect(
           page.getByRole('button', { name: 'Previous' })
         ).toBeVisible();
@@ -818,7 +818,7 @@ test.describe('Bulk Import Export', () => {
 
         await fillColumnDetails(columnDetails2, page);
 
-        await page.getByRole('button', { name: 'Next' }).click();
+        await page.getByRole('button', { name: 'Preview' }).click();
         // total column count +1 for header row and +2 for newly added columns
         const count = `${tableEntity.entityLinkColumnsName.length + 3}`;
         await validateImportStatus(page, {
@@ -888,7 +888,7 @@ test.describe('Bulk Import Export', () => {
 
         // Adding some assertion to make sure that CSV loaded correctly
         await expect(page.getByTestId('add-row-btn')).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Preview' })).toBeVisible();
         await expect(
           page.getByRole('button', { name: 'Previous' })
         ).toBeVisible();
@@ -915,7 +915,7 @@ test.describe('Bulk Import Export', () => {
           page
         );
 
-        await page.getByRole('button', { name: 'Next' }).click();
+        await page.getByRole('button', { name: 'Preview' }).click();
 
         await validateImportStatus(page, {
           passed: '9',
@@ -977,7 +977,7 @@ test.describe('Bulk Import Export', () => {
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.getByTestId('add-row-btn')).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Preview' })).toBeVisible();
       await expect(
         page.getByRole('button', { name: 'Previous' })
       ).toBeVisible();
@@ -992,7 +992,7 @@ test.describe('Bulk Import Export', () => {
       // Perform Delete Operation on Edit Operation on Entity
       await performDeleteOperationOnEntity(page);
 
-      await page.getByRole('button', { name: 'Next' }).click();
+      await page.getByRole('button', { name: 'Preview' }).click();
 
       await validateImportStatus(page, {
         passed: '10',
@@ -1060,6 +1060,68 @@ test.describe('Bulk Import Export', () => {
     });
 
     await dbEntity.delete(apiContext);
+    await afterAction();
+  });
+
+  test('Cell highlight functionality', async ({ page }) => {
+    test.slow(true);
+
+    const dbService = new DatabaseServiceClass();
+
+    const { apiContext, afterAction } = await getApiContext(page);
+    await dbService.create(apiContext);
+
+    await test.step('should export data database service details', async () => {
+      await dbService.visitEntityPage(page);
+      await performBulkDownload(page, dbService.entity.name);
+    });
+
+    await test.step('Verify edited cells are highlighted with cell-updated class after validation', async () => {
+      await dbService.visitEntityPage(page);
+      await page.click('[data-testid="manage-button"] > .anticon');
+      await page.click('[data-testid="import-button-title"]');
+      const fileInput = page.getByTestId('upload-file-widget');
+      await fileInput?.setInputFiles([
+        'downloads/' + dbService.entity.name + '.csv',
+      ]);
+
+      await page.waitForTimeout(500);
+
+      await expect(page.locator('.rdg-header-row')).toBeVisible();
+      await expect(page.getByTestId('add-row-btn')).toBeVisible();
+
+      const displayNameCell = page.locator('.rdg-cell-displayName').first();
+      await displayNameCell.dblclick();
+
+      await page.keyboard.type('Updated Display Name');
+      await page.keyboard.press('Enter');
+
+      await page.getByRole('button', { name: 'Preview' }).click();
+
+      const loader = page.locator(
+        '.inovua-react-toolkit-load-mask__background-layer'
+      );
+      await loader.waitFor({ state: 'hidden' });
+
+      await page.waitForSelector('.rdg-header-row', {
+        state: 'visible',
+      });
+
+      const updatedCells = page.locator('.cell-updated');
+      await expect(updatedCells.first()).toBeVisible();
+    });
+
+    await test.step('Verify non-edited cells do not have cell-updated class', async () => {
+      const allCells = page.locator('.rdg-cell[role="gridcell"]');
+      const updatedCells = page.locator('.cell-updated');
+
+      const totalCellCount = await allCells.count();
+      const updatedCellCount = await updatedCells.count();
+
+      expect(updatedCellCount).toBeLessThan(totalCellCount);
+    });
+
+    await dbService.delete(apiContext);
     await afterAction();
   });
 
