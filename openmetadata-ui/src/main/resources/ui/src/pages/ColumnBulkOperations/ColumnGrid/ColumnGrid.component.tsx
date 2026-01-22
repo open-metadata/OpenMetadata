@@ -99,6 +99,10 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   const editorRef = React.useRef<EditorContentRef>(null);
   const activeJobIdRef = useRef<string | null>(null);
   const closeDrawerRef = useRef<() => void>(() => {});
+  const openDrawerRef = useRef<() => void>(() => {});
+  const handleGroupSelectRef = useRef<
+    (groupId: string, checked: boolean) => void
+  >(() => {});
 
   // Helper function to build path from occurrence
   const buildPath = (occurrence: ColumnOccurrenceRef): string => {
@@ -772,12 +776,22 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           />
         ) : null;
 
-        // For aggregate rows (multiple occurrences), don't show a link
-        // Clicking the row will open the edit drawer instead of navigating
+        // Clicking the column name will select all children and open the edit drawer
+        const handleColumnLinkClick = (e: React.MouseEvent) => {
+          e.stopPropagation();
+          handleGroupSelectRef.current(entity.id, true);
+          openDrawerRef.current();
+        };
+
         return (
           <Box className="column-name-cell">
             {expandButton}
-            <Text>{nameWithCount}</Text>
+            <Text
+              strong
+              className="column-link"
+              onClick={handleColumnLinkClick}>
+              {nameWithCount}
+            </Text>
             {structButton}
           </Box>
         );
@@ -1163,6 +1177,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     },
     [columnGridListing, computeChildRowIdsFromGridItem]
   );
+
+  handleGroupSelectRef.current = handleGroupSelect;
 
   // Calculate indeterminate state for group rows
   const getGroupIndeterminateState = useCallback(
@@ -1583,6 +1599,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   });
 
   closeDrawerRef.current = closeDrawer;
+  openDrawerRef.current = openDrawer;
 
   // Automatically turn off "View Selected" when selection is cleared
   useEffect(() => {
