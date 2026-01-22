@@ -147,7 +147,7 @@ public class ListFilter extends Filter<ListFilter> {
             .map(String::trim)
             .filter(s -> !s.isEmpty())
             .filter(validStatuses::contains)
-            .map(s -> String.format("'%s'", s))
+            .map(s -> String.format("'%s'", s.replace("'", "''")))
             .collect(Collectors.joining(","));
 
     if (inCondition.isEmpty()) {

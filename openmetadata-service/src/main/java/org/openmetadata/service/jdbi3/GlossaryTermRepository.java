@@ -1634,9 +1634,13 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     if (entityStatus == null || entityStatus.trim().isEmpty()) {
       return Collections.emptyList();
     }
+    Set<String> validStatuses =
+        Arrays.stream(EntityStatus.values()).map(EntityStatus::value).collect(Collectors.toSet());
+
     return Arrays.stream(entityStatus.split(","))
         .map(String::trim)
         .filter(s -> !s.isEmpty())
+        .filter(validStatuses::contains)
         .collect(Collectors.toList());
   }
 
