@@ -405,51 +405,47 @@ public class SearchIndexApp extends AbstractNativeApplication {
       return;
     }
 
-    // In distributed mode, we need to aggregate stats from ALL servers, not just the local sink.
-    // The local sink (actualSinkStats) only tracks what this server processed, but other servers
-    // have their own sinks.
-    //
-    // Priority order for stats:
-    // 1. Aggregate from distributedJob.getServerStats() (most accurate - tracked per server)
-    // 2. Use partition-based stats from distributedJob (fallback)
-    // 3. Use local sink stats (only if single server)
-    long successRecords = distributedJob.getSuccessRecords();
-    long failedRecords = distributedJob.getFailedRecords();
-    String statsSource = "partition-based";
-
-    // First, try to aggregate from serverStats (most accurate for distributed mode)
-    Map<String, SearchIndexJob.ServerStats> serverStatsMap = distributedJob.getServerStats();
-    if (serverStatsMap != null && !serverStatsMap.isEmpty()) {
-      long serverSuccess = 0;
-      long serverFailed = 0;
-      for (SearchIndexJob.ServerStats serverStat : serverStatsMap.values()) {
-        serverSuccess += serverStat.getSuccessRecords();
-        serverFailed += serverStat.getFailedRecords();
+    // Fetch aggregated server stats once for accurate reader/sink breakdown
+    CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats serverStatsAggr = null;
+    try {
+      serverStatsAggr =
+          Entity.getCollectionDAO()
+              .searchIndexServerStatsDAO()
+              .getAggregatedStats(distributedJob.getId().toString());
+      if (serverStatsAggr != null) {
+        LOG.info(
+            "Fetched aggregated server stats for job {}: readerSuccess={}, readerFailed={}, "
+                + "sinkSuccess={}, sinkFailed={}",
+            distributedJob.getId(),
+            serverStatsAggr.readerSuccess(),
+            serverStatsAggr.readerFailed(),
+            serverStatsAggr.sinkSuccess(),
+            serverStatsAggr.sinkFailed());
       }
+    } catch (Exception e) {
+      LOG.debug("Could not fetch aggregated server stats for job {}", distributedJob.getId(), e);
+    }
 
-      LOG.info(
-          "Using aggregated server stats from {} servers: success={}, failed={} "
-              + "(partition-based: success={}, failed={}, local sink: success={}, failed={})",
-          serverStatsMap.size(),
-          serverSuccess,
-          serverFailed,
-          distributedJob.getSuccessRecords(),
-          distributedJob.getFailedRecords(),
-          actualSinkStats != null ? actualSinkStats.getSuccessRecords() : "N/A",
-          actualSinkStats != null ? actualSinkStats.getFailedRecords() : "N/A");
+    // Determine success/failed from best available source
+    long successRecords;
+    long failedRecords;
+    String statsSource;
 
-      successRecords = serverSuccess;
-      failedRecords = serverFailed;
-      statsSource = "serverStats";
+    if (serverStatsAggr != null && serverStatsAggr.sinkSuccess() > 0) {
+      // Use server stats table (most accurate)
+      successRecords = serverStatsAggr.sinkSuccess();
+      failedRecords = serverStatsAggr.readerFailed() + serverStatsAggr.sinkFailed();
+      statsSource = "serverStatsTable";
     } else if (actualSinkStats != null) {
-      // If no serverStats available, use local sink stats (single server scenario)
-      LOG.info(
-          "Using local sink stats (single server): success={}, failed={}",
-          actualSinkStats.getSuccessRecords(),
-          actualSinkStats.getFailedRecords());
+      // Use local sink stats (single server scenario)
       successRecords = actualSinkStats.getSuccessRecords();
       failedRecords = actualSinkStats.getFailedRecords();
       statsSource = "localSink";
+    } else {
+      // Fallback to partition-based stats
+      successRecords = distributedJob.getSuccessRecords();
+      failedRecords = distributedJob.getFailedRecords();
+      statsSource = "partition-based";
     }
 
     LOG.debug(
@@ -465,19 +461,20 @@ public class SearchIndexApp extends AbstractNativeApplication {
     if (readerStats != null) {
       readerStats.setTotalRecords((int) distributedJob.getTotalRecords());
       readerStats.setSuccessRecords((int) distributedJob.getProcessedRecords());
-      long totalProcessed = successRecords + failedRecords;
-      long readFailures =
-          distributedJob.getProcessedRecords() > totalProcessed
-              ? distributedJob.getProcessedRecords() - totalProcessed
-              : 0;
-      readerStats.setFailedRecords((int) readFailures);
+      readerStats.setFailedRecords(
+          serverStatsAggr != null ? (int) serverStatsAggr.readerFailed() : 0);
     }
 
     StepStats sinkStats = stats.getSinkStats();
     if (sinkStats != null) {
       sinkStats.setTotalRecords((int) distributedJob.getProcessedRecords());
-      sinkStats.setSuccessRecords((int) successRecords);
-      sinkStats.setFailedRecords((int) failedRecords);
+      if (serverStatsAggr != null) {
+        sinkStats.setSuccessRecords((int) serverStatsAggr.sinkSuccess());
+        sinkStats.setFailedRecords((int) serverStatsAggr.sinkFailed());
+      } else {
+        sinkStats.setSuccessRecords((int) successRecords);
+        sinkStats.setFailedRecords((int) failedRecords);
+      }
     }
 
     if (distributedJob.getEntityStats() != null && stats.getEntityStats() != null) {

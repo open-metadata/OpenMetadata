@@ -303,13 +303,14 @@ public class DistributedJobParticipant implements Managed {
           PartitionWorker.PartitionResult result = worker.processPartition(partition);
           partitionsProcessed++;
           totalReaderSuccess += result.successCount();
-          totalReaderFailed += result.failedCount();
+          totalReaderFailed += result.readerFailed();
 
           LOG.info(
-              "Participant completed partition {} (success: {}, failed: {})",
+              "Participant completed partition {} (success: {}, failed: {}, readerFailed: {})",
               partition.getId(),
               result.successCount(),
-              result.failedCount());
+              result.failedCount(),
+              result.readerFailed());
 
           // Persist stats after each partition completion
           persistServerStats(

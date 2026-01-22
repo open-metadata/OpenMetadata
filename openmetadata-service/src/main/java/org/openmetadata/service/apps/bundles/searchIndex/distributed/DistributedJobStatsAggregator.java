@@ -255,6 +255,18 @@ public class DistributedJobStatsAggregator {
   private Stats convertToStats(SearchIndexJob job) {
     Stats stats = new Stats();
 
+    // Try to get aggregated server stats for accurate reader/sink breakdown
+    CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats serverStatsAggr = null;
+    try {
+      serverStatsAggr =
+          coordinator
+              .getCollectionDAO()
+              .searchIndexServerStatsDAO()
+              .getAggregatedStats(job.getId().toString());
+    } catch (Exception e) {
+      LOG.debug("Could not fetch aggregated server stats for job {}", job.getId(), e);
+    }
+
     StepStats jobStats = new StepStats();
     jobStats.setTotalRecords(safeToInt(job.getTotalRecords()));
     jobStats.setSuccessRecords(safeToInt(job.getSuccessRecords()));
@@ -277,14 +289,24 @@ public class DistributedJobStatsAggregator {
 
     StepStats readerStats = new StepStats();
     readerStats.setTotalRecords(safeToInt(job.getTotalRecords()));
-    readerStats.setSuccessRecords(safeToInt(job.getProcessedRecords()));
-    readerStats.setFailedRecords(0);
+    if (serverStatsAggr != null) {
+      readerStats.setSuccessRecords(safeToInt(serverStatsAggr.readerSuccess()));
+      readerStats.setFailedRecords(safeToInt(serverStatsAggr.readerFailed()));
+    } else {
+      readerStats.setSuccessRecords(safeToInt(job.getProcessedRecords()));
+      readerStats.setFailedRecords(0);
+    }
     stats.setReaderStats(readerStats);
 
     StepStats sinkStats = new StepStats();
     sinkStats.setTotalRecords(safeToInt(job.getProcessedRecords()));
-    sinkStats.setSuccessRecords(safeToInt(job.getSuccessRecords()));
-    sinkStats.setFailedRecords(safeToInt(job.getFailedRecords()));
+    if (serverStatsAggr != null) {
+      sinkStats.setSuccessRecords(safeToInt(serverStatsAggr.sinkSuccess()));
+      sinkStats.setFailedRecords(safeToInt(serverStatsAggr.sinkFailed()));
+    } else {
+      sinkStats.setSuccessRecords(safeToInt(job.getSuccessRecords()));
+      sinkStats.setFailedRecords(safeToInt(job.getFailedRecords()));
+    }
     stats.setSinkStats(sinkStats);
 
     return stats;
@@ -297,39 +319,8 @@ public class DistributedJobStatsAggregator {
    * @return AppRunRecord in the format expected by the UI
    */
   private AppRunRecord convertToAppRunRecord(SearchIndexJob job) {
-    Stats stats = new Stats();
-
-    StepStats jobStats = new StepStats();
-    jobStats.setTotalRecords(safeToInt(job.getTotalRecords()));
-    jobStats.setSuccessRecords(safeToInt(job.getSuccessRecords()));
-    jobStats.setFailedRecords(safeToInt(job.getFailedRecords()));
-    stats.setJobStats(jobStats);
-
-    EntityStats entityStats = new EntityStats();
-    if (job.getEntityStats() != null) {
-      for (Map.Entry<String, SearchIndexJob.EntityTypeStats> entry :
-          job.getEntityStats().entrySet()) {
-        SearchIndexJob.EntityTypeStats es = entry.getValue();
-        StepStats stepStats = new StepStats();
-        stepStats.setTotalRecords(safeToInt(es.getTotalRecords()));
-        stepStats.setSuccessRecords(safeToInt(es.getSuccessRecords()));
-        stepStats.setFailedRecords(safeToInt(es.getFailedRecords()));
-        entityStats.getAdditionalProperties().put(entry.getKey(), stepStats);
-      }
-    }
-    stats.setEntityStats(entityStats);
-
-    StepStats readerStats = new StepStats();
-    readerStats.setTotalRecords(safeToInt(job.getTotalRecords()));
-    readerStats.setSuccessRecords(safeToInt(job.getProcessedRecords()));
-    readerStats.setFailedRecords(0);
-    stats.setReaderStats(readerStats);
-
-    StepStats sinkStats = new StepStats();
-    sinkStats.setTotalRecords(safeToInt(job.getProcessedRecords()));
-    sinkStats.setSuccessRecords(safeToInt(job.getSuccessRecords()));
-    sinkStats.setFailedRecords(safeToInt(job.getFailedRecords()));
-    stats.setSinkStats(sinkStats);
+    // Reuse the shared conversion logic for consistent stats
+    Stats stats = convertToStats(job);
 
     // Create AppRunRecord
     AppRunRecord appRecord = new AppRunRecord();

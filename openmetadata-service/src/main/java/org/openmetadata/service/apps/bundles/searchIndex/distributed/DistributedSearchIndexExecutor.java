@@ -603,16 +603,19 @@ public class DistributedSearchIndexExecutor {
         totalFailed.addAndGet(result.failedCount());
 
         // Accumulate into coordinator stats for persistence
+        // readerSuccess = entities successfully processed through reader
+        // readerFailed = specifically reader failures (not sink failures)
         coordinatorReaderSuccess.addAndGet(result.successCount());
-        coordinatorReaderFailed.addAndGet(result.failedCount());
+        coordinatorReaderFailed.addAndGet(result.readerFailed());
         coordinatorPartitionsCompleted.incrementAndGet();
 
         LOG.info(
-            "Worker {} completed partition {} (success: {}, failed: {})",
+            "Worker {} completed partition {} (success: {}, failed: {}, readerFailed: {})",
             workerId,
             partition.getId(),
             result.successCount(),
-            result.failedCount());
+            result.failedCount(),
+            result.readerFailed());
 
         // Persist stats after each partition completion
         persistServerStats(currentJob.getId());
