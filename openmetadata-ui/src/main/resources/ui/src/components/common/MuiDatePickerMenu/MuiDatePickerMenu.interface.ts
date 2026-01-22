@@ -18,6 +18,8 @@ export interface MuiDatePickerMenuProps {
   handleDateRangeChange?: (value: DateRangeObject, days?: number) => void;
   options?: DateFilterType;
   allowCustomRange?: boolean;
+  allowClear?: boolean;
   handleSelectedTimeRange?: (value: string) => void;
+  onClear?: () => void;
   size?: 'small' | 'medium' | 'large';
 }
