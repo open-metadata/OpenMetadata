@@ -80,7 +80,11 @@ export class TableClass extends EntityClass {
   queryResponseData: ResponseDataType[] = [];
   additionalEntityTableResponseData: ResponseDataType[] = [];
 
-  constructor(name?: string, tableType?: string) {
+  constructor(
+    name?: string,
+    tableType?: string,
+    service?: Record<string, unknown>
+  ) {
     super(EntityTypeEndpoint.Table);
     this.serviceCategory = SERVICE_TYPE.Database;
     this.serviceType = ServiceTypes.DATABASE_SERVICES;
@@ -109,6 +113,7 @@ export class TableClass extends EntityClass {
           supportsQueryComment: true,
         },
       },
+      ...service,
     };
 
     this.database = {
@@ -318,9 +323,11 @@ export class TableClass extends EntityClass {
   async visitEntityPage(page: Page, searchTerm?: string) {
     await visitEntityPage({
       page,
-      searchTerm: searchTerm ?? this.entityResponseData.fullyQualifiedName ?? '',
-      dataTestId: `${this.entityResponseData.service?.name ?? this.service.name
-        }-${this.entityResponseData.name ?? this.entity.name}`,
+      searchTerm:
+        searchTerm ?? this.entityResponseData.fullyQualifiedName ?? '',
+      dataTestId: `${
+        this.entityResponseData.service?.name ?? this.service.name
+      }-${this.entityResponseData.name ?? this.entity.name}`,
     });
   }
 
