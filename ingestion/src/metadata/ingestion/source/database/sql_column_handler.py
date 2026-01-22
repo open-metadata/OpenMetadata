@@ -44,6 +44,13 @@ JSON_COLUMN_TYPES = {
     "OBJECT",
 }
 
+STRING_COLUMN_TYPES = {
+    DataType.STRING.value,
+    "STRING",
+    "VARCHAR",
+    "TEXT",
+}
+
 DEFAULT_JSON_SCHEMA_SAMPLE_SIZE = 10
 
 
@@ -383,6 +390,7 @@ class SqlColumnHandlerMixin:
             table_columns=table_columns,
             schema_name=schema_name,
             table_name=table_name,
+            db_name=db_name,
         )
 
         return table_columns, table_constraints, foreign_columns
@@ -448,11 +456,23 @@ class SqlColumnHandlerMixin:
             return True
         return False
 
+    def _is_string_column(self, column: Column) -> bool:
+        """Check if a column is a STRING type column that might contain JSON."""
+        if column.dataType and column.dataType.value in STRING_COLUMN_TYPES:
+            return True
+        if (
+            column.dataTypeDisplay
+            and column.dataTypeDisplay.upper() in STRING_COLUMN_TYPES
+        ):
+            return True
+        return False
+
     def _extract_json_schema_for_columns(
         self,
         table_columns: List[Column],
         schema_name: str,
         table_name: str,
+        db_name: Optional[str] = None,
     ) -> None:
         """
         Extract JSON schema for JSON columns by sampling data from the table.
@@ -466,11 +486,20 @@ class SqlColumnHandlerMixin:
             return
 
         json_columns = [col for col in table_columns if self._is_json_column(col)]
-        if not json_columns:
+        string_columns = [col for col in table_columns if self._is_string_column(col)]
+        columns_to_process = json_columns + string_columns
+
+        if not columns_to_process:
             return
 
+        logger.debug(
+            f"JSON schema extraction for [{schema_name}.{table_name}]: "
+            f"json_columns={[c.name.root for c in json_columns]}, "
+            f"string_columns={[c.name.root for c in string_columns]}"
+        )
+
         sample_size = self._get_json_schema_sample_size()
-        column_names = [col.name.root for col in json_columns]
+        column_names = [col.name.root for col in columns_to_process]
 
         try:
             json_values_by_column = self._sample_json_column_data(
@@ -478,9 +507,9 @@ class SqlColumnHandlerMixin:
                 table_name=table_name,
                 column_names=column_names,
                 sample_size=sample_size,
+                db_name=db_name,
             )
-
-            for column in json_columns:
+            for column in columns_to_process:
                 col_name = column.name.root
                 if col_name in json_values_by_column:
                     json_values = json_values_by_column[col_name]
@@ -510,40 +539,85 @@ class SqlColumnHandlerMixin:
         table_name: str,
         column_names: List[str],
         sample_size: int,
+        db_name: Optional[str] = None,
     ) -> Dict[str, List]:
         """
         Sample data from JSON columns in a table.
-
-        Returns:
-            Dict mapping column names to lists of JSON values
+        Returns: Dict mapping column names to lists of JSON values
         """
-        from sqlalchemy import Column as SaColumn
-        from sqlalchemy import MetaData, Table, select
+        result: Dict[str, List] = {c: [] for c in column_names}
 
-        result = {}
+        if not column_names or sample_size <= 0:
+            return result
+
+        def _rows_to_result(rows):
+            for i, col_name in enumerate(column_names):
+                result[col_name] = [row[i] for row in rows if row[i] is not None]
+            return result
+
+        # Dialect-aware quoting (works for snowflake/mysql/databricks/etc.)
+        preparer = self.engine.dialect.identifier_preparer
+        quote = preparer.quote
+
+        # Build fully qualified table name safely:
+        parts = [p for p in (db_name, schema_name, table_name) if p]
+        full_table_name = ".".join(quote(p) for p in parts)
+
+        # Attempt 1: SQLAlchemy Core reflection + select (option 1)
         try:
+            from sqlalchemy import MetaData, Table, select
+
             metadata = MetaData()
+
+            # Reflection schema handling varies by dialect; keep it simple:
+            # - If db_name is supplied and your dialect expects 3-level names,
+            #   some dialects may require schema="db.schema". If you hit that,
+            #   uncomment the schema_for_reflect line below.
+            schema_for_reflect = schema_name
+            # schema_for_reflect = f"{db_name}.{schema_name}" if db_name else schema_name
+
             table = Table(
                 table_name,
                 metadata,
-                *[SaColumn(col_name) for col_name in column_names],
-                schema=schema_name,
+                schema=schema_for_reflect,
                 autoload_with=self.engine,
             )
 
-            columns_to_select = [table.c[col_name] for col_name in column_names]
-            stmt = select(*columns_to_select).limit(sample_size)
+            cols = [table.c[c] for c in column_names]
+            stmt = select(*cols).limit(sample_size)
 
             with self.engine.connect() as connection:
                 rows = connection.execute(stmt).fetchall()
 
-                for i, col_name in enumerate(column_names):
-                    result[col_name] = [row[i] for row in rows if row[i] is not None]
+            return _rows_to_result(rows)
 
         except Exception as exc:
-            logger.debug(traceback.format_exc())
+            logger.debug("Reflection/select path failed:\n%s", traceback.format_exc())
             logger.warning(
-                f"Failed to sample JSON column data from [{schema_name}.{table_name}]: {exc}"
+                "Failed reflection sampling from [%s.%s]: %s",
+                schema_name,
+                table_name,
+                exc,
             )
+        # Attempt 2: text() fallback (option 2) but dialect-safe
+        try:
+            from sqlalchemy import text
 
+            quoted_columns = ", ".join(quote(c) for c in column_names)
+            query = text(f"SELECT {quoted_columns} FROM {full_table_name} LIMIT :limit")
+
+            with self.engine.connect() as connection:
+                rows = connection.execute(query, {"limit": sample_size}).fetchall()
+
+            return _rows_to_result(rows)
+
+        except Exception as exc:
+            logger.debug("text() fallback path failed:\n%s", traceback.format_exc())
+            logger.warning(
+                "Failed text sampling from [%s.%s] (full: %s): %s",
+                schema_name,
+                table_name,
+                full_table_name,
+                exc,
+            )
         return result
