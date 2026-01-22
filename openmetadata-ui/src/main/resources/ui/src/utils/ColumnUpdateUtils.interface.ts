@@ -61,6 +61,7 @@ export type EntityDataMapValue =
 export interface ColumnFieldUpdate {
   description?: string;
   tags?: TagLabel[];
+  extension?: Record<string, unknown>;
 }
 
 /**

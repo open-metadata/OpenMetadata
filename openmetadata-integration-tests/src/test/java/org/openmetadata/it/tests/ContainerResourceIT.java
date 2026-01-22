@@ -42,6 +42,7 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
 
   {
     supportsLifeCycle = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   // ===================================================================
