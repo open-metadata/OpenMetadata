@@ -840,216 +840,216 @@ test('Asset Management from Tag Page', async ({ page }) => {
   }
 });
 
-//Commented this since the test is failing
-// test('Tag Page Activity Feed', async ({ page }) => {
-//   test.slow();
+// Commented this since the test is failing
+test.skip('Tag Page Activity Feed', async ({ page }) => {
+  test.slow();
 
-//   const { afterAction } = await getApiContext(page);
+  const { afterAction } = await getApiContext(page);
 
-//   try {
-//     // Navigate to the Tag details page
-//     await tag.visitPage(page);
-//     await page.waitForLoadState('networkidle');
-//     await waitForAllLoadersToDisappear(page);
+  try {
+    // Navigate to the Tag details page
+    await tag.visitPage(page);
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
 
-//     // Track which actions were performed for activity feed verification
-//     let renamePerformed = false;
-//     let assetAdded = false;
+    // Track which actions were performed for activity feed verification
+    let renamePerformed = false;
+    let assetAdded = false;
 
-//     // Perform various actions
-//     // 1. Edit Tag description
-//     await page.getByTestId('edit-description').click();
-//     await expect(page.getByRole('dialog')).toBeVisible();
-//     await page.locator(descriptionBox).clear();
-//     await page
-//       .locator(descriptionBox)
-//       .fill('Updated description for activity feed test');
-//     const editDescriptionResponse = page.waitForResponse(
-//       (response) =>
-//         response.url().includes('/api/v1/tags/') &&
-//         response.request().method() === 'PATCH'
-//     );
-//     await page.getByTestId('save').click();
-//     await editDescriptionResponse;
-//     await page.waitForLoadState('networkidle');
-//     await waitForAllLoadersToDisappear(page);
+    // Perform various actions
+    // 1. Edit Tag description
+    await page.getByTestId('edit-description').click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.locator(descriptionBox).clear();
+    await page
+      .locator(descriptionBox)
+      .fill('Updated description for activity feed test');
+    const editDescriptionResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/tags/') &&
+        response.request().method() === 'PATCH'
+    );
+    await page.getByTestId('save').click();
+    await editDescriptionResponse;
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
 
-//     // 2. Rename Tag
-//     let newDisplayName = '';
-//     await page.getByTestId('manage-button').click();
-//     await page.waitForTimeout(500);
-//     const renameMenuItem = page.getByRole('menuitem', { name: /rename/i });
-//     if (await renameMenuItem.isVisible({ timeout: 2000 }).catch(() => false)) {
-//       renamePerformed = true;
-//       await renameMenuItem.click();
-//       await expect(page.getByRole('dialog')).toBeVisible();
+    // 2. Rename Tag
+    let newDisplayName = '';
+    await page.getByTestId('manage-button').click();
+    await page.waitForTimeout(500);
+    const renameMenuItem = page.getByRole('menuitem', { name: /rename/i });
+    if (await renameMenuItem.isVisible({ timeout: 2000 }).catch(() => false)) {
+      renamePerformed = true;
+      await renameMenuItem.click();
+      await expect(page.getByRole('dialog')).toBeVisible();
 
-//       newDisplayName = `Renamed Tag Activity ${uuid()}`;
-//       await page.fill('[id="displayName"]', newDisplayName);
+      newDisplayName = `Renamed Tag Activity ${uuid()}`;
+      await page.fill('[id="displayName"]', newDisplayName);
 
-//       const renameResponse = page.waitForResponse(
-//         (response) =>
-//           response.url().includes('/api/v1/tags/') &&
-//           response.request().method() === 'PATCH'
-//       );
-//       await page.getByTestId('save-button').click();
-//       await renameResponse;
-//       await page.waitForLoadState('networkidle');
-//       await waitForAllLoadersToDisappear(page);
+      const renameResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/tags/') &&
+          response.request().method() === 'PATCH'
+      );
+      await page.getByTestId('save-button').click();
+      await renameResponse;
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
 
-//       // Verify the update in the page header
-//       await expect(
-//         page.getByTestId('entity-header-display-name')
-//       ).toContainText(newDisplayName, { timeout: 5000 });
-//     }
+      // Verify the update in the page header
+      await expect(
+        page.getByTestId('entity-header-display-name')
+      ).toContainText(newDisplayName, { timeout: 5000 });
+    }
 
-//     // 3. Change Tag Style (color/icon)
-//     await page.getByTestId('manage-button').click();
-//     await page.waitForTimeout(500);
-//     const styleMenuItem = page.getByRole('menuitem', { name: /style/i });
-//     await styleMenuItem.waitFor({ state: 'visible' });
-//     await styleMenuItem.click();
-//     await page.waitForTimeout(500);
-//     await page.getByTestId('icon-picker-btn').click();
-//     await page.getByRole('button', { name: 'Select icon Cube01' }).click();
-//     await page.getByRole('button', { name: 'Select color #F14C75' }).click();
-//     const styleResponse = page.waitForResponse(
-//       (response) =>
-//         response.url().includes('/api/v1/tags/') &&
-//         response.request().method() === 'PATCH'
-//     );
-//     await submitForm(page);
-//     await styleResponse;
-//     await page.waitForLoadState('networkidle');
-//     await waitForAllLoadersToDisappear(page);
+    // 3. Change Tag Style (color/icon)
+    await page.getByTestId('manage-button').click();
+    await page.waitForTimeout(500);
+    const styleMenuItem = page.getByRole('menuitem', { name: /style/i });
+    await styleMenuItem.waitFor({ state: 'visible' });
+    await styleMenuItem.click();
+    await page.waitForTimeout(500);
+    await page.getByTestId('icon-picker-btn').click();
+    await page.getByRole('button', { name: 'Select icon Cube01' }).click();
+    await page.getByRole('button', { name: 'Select color #F14C75' }).click();
+    const styleResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/tags/') &&
+        response.request().method() === 'PATCH'
+    );
+    await submitForm(page);
+    await styleResponse;
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
 
-//     // 4. Add an asset
-//     await page.getByTestId('assets').click();
-//     await page.waitForLoadState('networkidle');
-//     await waitForAllLoadersToDisappear(page);
+    // 4. Add an asset
+    await page.getByTestId('assets').click();
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
 
-//     const assetName =
-//       table.entityResponseData?.displayName || table.entityResponseData?.name;
-//     const assetFqn = table.entityResponseData?.fullyQualifiedName;
+    const assetName =
+      table.entityResponseData?.displayName || table.entityResponseData?.name;
+    const assetFqn = table.entityResponseData?.fullyQualifiedName;
 
-//     if (assetName && assetFqn) {
-//       const initialFetchResponse = page.waitForResponse(
-//         '/api/v1/search/query?q=&index=all&from=0&size=25&deleted=false**'
-//       );
-//       await page.getByTestId('data-classification-add-button').click();
-//       await initialFetchResponse;
+    if (assetName && assetFqn) {
+      const initialFetchResponse = page.waitForResponse(
+        '/api/v1/search/query?q=&index=all&from=0&size=25&deleted=false**'
+      );
+      await page.getByTestId('data-classification-add-button').click();
+      await initialFetchResponse;
 
-//       await expect(page.getByTestId('search-bar-container')).toBeVisible();
+      await expect(page.getByTestId('search-bar-container')).toBeVisible();
 
-//       await page
-//         .getByTestId('search-bar-container')
-//         .getByTestId('searchbar')
-//         .fill(assetName);
+      await page
+        .getByTestId('search-bar-container')
+        .getByTestId('searchbar')
+        .fill(assetName);
 
-//       await page.waitForResponse(
-//         `/api/v1/search/query?q=${encodeURIComponent(
-//           assetName
-//         )}&index=all&from=0&size=25&**`
-//       );
+      await page.waitForResponse(
+        `/api/v1/search/query?q=${encodeURIComponent(
+          assetName
+        )}&index=all&from=0&size=25&**`
+      );
 
-//       await waitForAllLoadersToDisappear(page);
+      await waitForAllLoadersToDisappear(page);
 
-//       const assetCard = page.locator(
-//         `[data-testid="table-data-card_${assetFqn}"]`
-//       );
-//       await assetCard.waitFor({ state: 'visible' });
-//       await assetCard.locator('input').check();
+      const assetCard = page.locator(
+        `[data-testid="table-data-card_${assetFqn}"]`
+      );
+      await assetCard.waitFor({ state: 'visible' });
+      await assetCard.locator('input').check();
 
-//       const addAssetsResponse = page.waitForResponse(
-//         `/api/v1/tags/*/assets/add`
-//       );
-//       await page.getByTestId('save-btn').click();
-//       await addAssetsResponse;
-//       await page.waitForLoadState('networkidle');
-//       await waitForAllLoadersToDisappear(page);
-//       assetAdded = true;
-//     }
+      const addAssetsResponse = page.waitForResponse(
+        `/api/v1/tags/*/assets/add`
+      );
+      await page.getByTestId('save-btn').click();
+      await addAssetsResponse;
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+      assetAdded = true;
+    }
 
-//     await page.reload();
-//     await page.waitForLoadState('networkidle');
-//     await waitForAllLoadersToDisappear(page);
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
 
 
-//     // Switch to the "Activity Feed" tab
-//     await page.getByTestId('activity_feed').click();
-//     await page.waitForLoadState('networkidle');
-//     await waitForAllLoadersToDisappear(page);
+    // Switch to the "Activity Feed" tab
+    await page.getByTestId('activity_feed').click();
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
 
-//       // Wait for feed entries to be loaded - check for feed container or message containers
-//       await page
-//         .waitForSelector(
-//           '[data-testid="markdown-parser"]',
-//           {
-//             state: 'attached',
-//             timeout: 15000,
-//           }
-//         )
-//         .catch(() => {
-//           // Feed entries may load asynchronously
-//         });
+      // Wait for feed entries to be loaded - check for feed container or message containers
+      await page
+        .waitForSelector(
+          '[data-testid="markdown-parser"]',
+          {
+            state: 'attached',
+            timeout: 15000,
+          }
+        )
+        .catch(() => {
+          // Feed entries may load asynchronously
+        });
 
-//       // Wait a bit more for feed content to fully render
-//       await page.waitForTimeout(3000);
+      // Wait a bit more for feed content to fully render
+      await page.waitForTimeout(3000);
 
-//       // Verify that all performed actions are listed in the feed
-//       // 1. Verify description update entry
-//       // Look for description in either the message container or the header text
-//       const descriptionUpdateEntry = page
-//         .locator('[data-testid="markdown-parser"]')
-//         .filter({ hasText: /description|Description|updated description/i })
-//         .first();
+      // Verify that all performed actions are listed in the feed
+      // 1. Verify description update entry
+      // Look for description in either the message container or the header text
+      const descriptionUpdateEntry = page
+        .locator('[data-testid="markdown-parser"]')
+        .filter({ hasText: /description|Description|updated description/i })
+        .first();
       
-//       await expect(descriptionUpdateEntry).toBeVisible({ timeout: 15000 });
+      await expect(descriptionUpdateEntry).toBeVisible({ timeout: 15000 });
 
-//       // 2. Verify rename entry (if rename was performed)
-//       if (renamePerformed) {
-//         const renameEntry = page
-//           .locator('[data-testid="markdown-parser"]')
-//           .filter({ hasText: /rename|Rename|displayName|display name/i })
-//           .first();
-//         await expect(renameEntry).toBeVisible({ timeout: 15000 });
-//       }
+      // 2. Verify rename entry (if rename was performed)
+      if (renamePerformed) {
+        const renameEntry = page
+          .locator('[data-testid="markdown-parser"]')
+          .filter({ hasText: /rename|Rename|displayName|display name/i })
+          .first();
+        await expect(renameEntry).toBeVisible({ timeout: 15000 });
+      }
 
-//       // 3. Verify style change entry (icon/color update)
-//       const styleUpdateEntry = page
-//         .locator('[data-testid="markdown-parser"]')
-//         .filter({ hasText: /style|Style|icon|Icon|color|Color/i })
-//         .first();
-//       await expect(styleUpdateEntry).toBeVisible({ timeout: 15000 });
+      // 3. Verify style change entry (icon/color update)
+      const styleUpdateEntry = page
+        .locator('[data-testid="markdown-parser"]')
+        .filter({ hasText: /style|Style|icon|Icon|color|Color/i })
+        .first();
+      await expect(styleUpdateEntry).toBeVisible({ timeout: 15000 });
 
-//       // 4. Verify asset add entry (if asset was added)
-//       if (assetAdded) {
-//         const assetAddEntry = page
-//           .locator('[data-testid="markdown-parser"]')
-//           .filter({ hasText: /asset|Asset|added|Added/i })
-//           .first();
-//         await expect(assetAddEntry).toBeVisible({ timeout: 15000 });
-//       }
+      // 4. Verify asset add entry (if asset was added)
+      if (assetAdded) {
+        const assetAddEntry = page
+          .locator('[data-testid="markdown-parser"]')
+          .filter({ hasText: /asset|Asset|added|Added/i })
+          .first();
+        await expect(assetAddEntry).toBeVisible({ timeout: 15000 });
+      }
 
-//       // Verify the feed contains entries for all performed actions
-//       const messageContainers = page.locator(
-//         '[data-testid="message-container"]'
-//       );
-//       const messageCount = await messageContainers.count();
-//       // At minimum: description + style = 2, plus rename and asset if performed
-//       let expectedMinCount = 2; // description + style
-//       if (renamePerformed) expectedMinCount++;
-//       if (assetAdded) expectedMinCount++;
-//       expect(messageCount).toBeGreaterThanOrEqual(expectedMinCount);
-//   }
-//   catch (error) {
-//     console.error('Error in Tag Page Activity Feed:', error);
-//     throw error;
-//   }
-//   finally {
-//     await afterAction();
-//   }
-// });
+      // Verify the feed contains entries for all performed actions
+      const messageContainers = page.locator(
+        '[data-testid="message-container"]'
+      );
+      const messageCount = await messageContainers.count();
+      // At minimum: description + style = 2, plus rename and asset if performed
+      let expectedMinCount = 2; // description + style
+      if (renamePerformed) expectedMinCount++;
+      if (assetAdded) expectedMinCount++;
+      expect(messageCount).toBeGreaterThanOrEqual(expectedMinCount);
+  }
+  catch (error) {
+    console.error('Error in Tag Page Activity Feed:', error);
+    throw error;
+  }
+  finally {
+    await afterAction();
+  }
+});
 
 
 test('Tag Actions (Rename, Style, Disable) from Tag Page', async ({ page }) => {
