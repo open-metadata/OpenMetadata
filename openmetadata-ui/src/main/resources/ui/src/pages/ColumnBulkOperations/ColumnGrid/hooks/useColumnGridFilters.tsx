@@ -25,6 +25,12 @@ interface UseColumnGridFiltersConfig {
   onFilterChange: (filters: ExploreQuickFilterField[]) => void;
 }
 
+// Indexes that have columns with tags (using columns.tags.tagFQN path)
+const COLUMN_SEARCH_INDEXES = [
+  SearchIndex.TABLE,
+  SearchIndex.DASHBOARD_DATA_MODEL,
+] as SearchIndex[];
+
 export const useColumnGridFilters = (config: UseColumnGridFiltersConfig) => {
   const { aggregations, parsedFilters, onFilterChange } = config;
 
@@ -34,7 +40,7 @@ export const useColumnGridFilters = (config: UseColumnGridFiltersConfig) => {
     defaultFilters,
     aggregations,
     parsedFilters,
-    searchIndex: SearchIndex.TABLE,
+    searchIndex: COLUMN_SEARCH_INDEXES,
     assetType: AssetsOfEntity.COLUMN,
     onFilterChange,
   });

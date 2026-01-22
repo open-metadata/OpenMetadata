@@ -16,10 +16,19 @@ import { SearchDropdownOption } from '../../../../components/SearchDropdown/Sear
 import { EntityFields } from '../../../../enums/AdvancedSearch.enum';
 import i18n from '../../../../utils/i18next/LocalUtil';
 
+export const COLUMN_TAG_FIELD = 'columnTags';
+export const COLUMN_GLOSSARY_FIELD = 'columnGlossaryTerms';
+
 export const COLUMN_GRID_FILTERS: ExploreQuickFilterField[] = [
   {
     label: i18n.t('label.service'),
     key: EntityFields.SERVICE,
+    hideCounts: true,
+  },
+  {
+    label: i18n.t('label.domain-plural'),
+    key: EntityFields.DOMAINS,
+    hideCounts: true,
   },
   {
     label: i18n.t('label.asset-type'),
@@ -35,31 +44,16 @@ export const COLUMN_GRID_FILTERS: ExploreQuickFilterField[] = [
     ],
   },
   {
-    label: i18n.t('label.data-type'),
-    key: 'dataType',
+    label: i18n.t('label.tag-plural'),
+    key: COLUMN_TAG_FIELD,
     hideCounts: true,
-    hideSearchBar: true,
-    options: [
-      { key: 'STRING', label: 'STRING' },
-      { key: 'VARCHAR', label: 'VARCHAR' },
-      { key: 'INT', label: 'INT' },
-      { key: 'BIGINT', label: 'BIGINT' },
-      { key: 'FLOAT', label: 'FLOAT' },
-      { key: 'DOUBLE', label: 'DOUBLE' },
-      { key: 'BOOLEAN', label: 'BOOLEAN' },
-      { key: 'DATE', label: 'DATE' },
-      { key: 'TIMESTAMP', label: 'TIMESTAMP' },
-      { key: 'DECIMAL', label: 'DECIMAL' },
-      { key: 'NUMERIC', label: 'NUMERIC' },
-      { key: 'TEXT', label: 'TEXT' },
-      { key: 'CHAR', label: 'CHAR' },
-      { key: 'BINARY', label: 'BINARY' },
-      { key: 'ARRAY', label: 'ARRAY' },
-      { key: 'MAP', label: 'MAP' },
-      { key: 'STRUCT', label: 'STRUCT' },
-      { key: 'JSON', label: 'JSON' },
-      { key: 'UUID', label: 'UUID' },
-    ],
+    searchKey: 'columns.tags.tagFQN',
+  },
+  {
+    label: i18n.t('label.glossary-term-plural'),
+    key: COLUMN_GLOSSARY_FIELD,
+    hideCounts: true,
+    searchKey: 'columns.tags.tagFQN',
   },
   {
     label: i18n.t('label.metadata-status'),

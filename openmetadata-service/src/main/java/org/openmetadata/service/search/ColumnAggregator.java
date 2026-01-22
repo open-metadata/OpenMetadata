@@ -32,8 +32,9 @@ public interface ColumnAggregator {
     private String domainId;
     private Boolean hasConflicts;
     private Boolean hasMissingMetadata;
-    private List<String> dataTypes;
     private String metadataStatus;
+    private List<String> tags;
+    private List<String> glossaryTerms;
 
     public int getSize() {
       return size;
@@ -115,20 +116,28 @@ public interface ColumnAggregator {
       this.hasMissingMetadata = hasMissingMetadata;
     }
 
-    public List<String> getDataTypes() {
-      return dataTypes;
-    }
-
-    public void setDataTypes(List<String> dataTypes) {
-      this.dataTypes = dataTypes;
-    }
-
     public String getMetadataStatus() {
       return metadataStatus;
     }
 
     public void setMetadataStatus(String metadataStatus) {
       this.metadataStatus = metadataStatus;
+    }
+
+    public List<String> getTags() {
+      return tags;
+    }
+
+    public void setTags(List<String> tags) {
+      this.tags = tags;
+    }
+
+    public List<String> getGlossaryTerms() {
+      return glossaryTerms;
+    }
+
+    public void setGlossaryTerms(List<String> glossaryTerms) {
+      this.glossaryTerms = glossaryTerms;
     }
   }
 }

@@ -207,7 +207,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   const getDropdownBody = useCallback(
     (menuNode: ReactNode) => {
       const entityLabel = index && tabsInfo[index]?.label;
-      const isDomainKey = searchKey.startsWith('domain');
+      const isDomainKey = searchKey?.startsWith('domain') ?? false;
       if (isSuggestionsLoading) {
         return (
           <Row align="middle" className="p-y-sm" justify="center">

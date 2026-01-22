@@ -21,18 +21,20 @@ import {
   ListingData,
 } from '../../../../components/common/atoms/shared/types';
 import { ExploreQuickFilterField } from '../../../../components/Explore/ExplorePage.interface';
-import { TABLE_CARD_PAGE_SIZE } from '../../../../constants/constants';
+import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import { EntityFields } from '../../../../enums/AdvancedSearch.enum';
 import { ColumnGridItem } from '../../../../generated/api/data/columnGridResponse';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { getColumnGrid } from '../../../../rest/columnAPI';
 import { ColumnGridFilters, ColumnGridRowData } from '../ColumnGrid.interface';
 import {
+  COLUMN_GLOSSARY_FIELD,
   COLUMN_GRID_FILTERS,
+  COLUMN_TAG_FIELD,
   convertFilterValuesToOptions,
 } from '../constants/ColumnGrid.constants';
 
-const PAGE_SIZE = TABLE_CARD_PAGE_SIZE;
+const PAGE_SIZE = PAGE_SIZE_MEDIUM;
 
 interface UseColumnGridListingDataProps {
   externalFilters?: ColumnGridFilters;
@@ -99,8 +101,10 @@ export const useColumnGridListingData = (
     const filterKeys = [
       EntityFields.ENTITY_TYPE,
       EntityFields.SERVICE,
-      'dataType',
+      EntityFields.DOMAINS,
       'metadataStatus',
+      COLUMN_TAG_FIELD,
+      COLUMN_GLOSSARY_FIELD,
     ];
     filterKeys.forEach((key) => {
       const filterValue = searchParams.get(key);
@@ -120,15 +124,7 @@ export const useColumnGridListingData = (
       ...filter,
       value: convertFilterValuesToOptions(
         filter.key,
-        filter.key === EntityFields.ENTITY_TYPE
-          ? urlState.filters[EntityFields.ENTITY_TYPE] || []
-          : filter.key === EntityFields.SERVICE
-          ? urlState.filters[EntityFields.SERVICE] || []
-          : filter.key === 'dataType'
-          ? urlState.filters['dataType'] || []
-          : filter.key === 'metadataStatus'
-          ? urlState.filters['metadataStatus'] || []
-          : []
+        urlState.filters[filter.key] || []
       ),
     }));
   }, [urlState.filters]);
@@ -155,14 +151,15 @@ export const useColumnGridListingData = (
   });
 
   // Convert URL filters to ColumnGridFilters
-  // dataType and metadataStatus are now sent to backend for server-side filtering
   const columnGridFilters = useMemo<ColumnGridFilters>(() => {
     const filters: ColumnGridFilters = {
       ...serverFilters,
       entityTypes: urlState.filters[EntityFields.ENTITY_TYPE],
       serviceName: urlState.filters[EntityFields.SERVICE]?.[0],
-      dataType: urlState.filters['dataType']?.[0],
+      domainId: urlState.filters[EntityFields.DOMAINS]?.[0],
       metadataStatus: urlState.filters['metadataStatus'],
+      tags: urlState.filters[COLUMN_TAG_FIELD],
+      glossaryTerms: urlState.filters[COLUMN_GLOSSARY_FIELD],
     };
 
     return filters;
@@ -176,7 +173,7 @@ export const useColumnGridListingData = (
   const loadData = useCallback(
     async (
       page: number,
-      _searchQuery: string,
+      searchQuery: string,
       filters: ColumnGridFilters,
       pageSize: number
     ) => {
@@ -186,12 +183,13 @@ export const useColumnGridListingData = (
         const pageCursor =
           page === 1 ? undefined : cursorsByPageRef.current.get(page - 1);
 
-        // Build API request with all filters
-        const apiParams = {
-          size: pageSize,
-          cursor: pageCursor,
-          ...filters,
-        };
+        const apiParams: ColumnGridFilters & { size: number; cursor?: string } =
+          {
+            size: pageSize,
+            cursor: pageCursor,
+            ...filters,
+            ...(searchQuery && { columnNamePattern: searchQuery }),
+          };
 
         // Log the API request for debugging
         // Uncomment for debugging:
@@ -267,38 +265,11 @@ export const useColumnGridListingData = (
     [] // No dependencies - all values passed as parameters
   );
 
-  // Helper function to apply client-side filters
   const applyClientSideFilters = useCallback(
     (rows: ColumnGridRowData[]): ColumnGridRowData[] => {
-      let filtered = rows;
-
-      // Apply search filter
-      if (urlState.searchQuery) {
-        const searchLower = urlState.searchQuery.toLowerCase();
-        filtered = filtered.filter(
-          (row) =>
-            row.columnName?.toLowerCase().includes(searchLower) ||
-            row.displayName?.toLowerCase().includes(searchLower) ||
-            row.description?.toLowerCase().includes(searchLower) ||
-            row.dataType?.toLowerCase().includes(searchLower)
-        );
-      }
-
-      // Apply dataType filter (client-side for multi-select support)
-      const dataTypeFilter = urlState.filters['dataType']?.[0];
-      if (dataTypeFilter) {
-        filtered = filtered.filter(
-          (row) => row.dataType?.toUpperCase() === dataTypeFilter?.toUpperCase()
-        );
-      }
-
-      // Note: metadataStatus filtering is now handled server-side by the API
-      // The backend filters by MISSING, INCOMPLETE, COMPLETE, and INCONSISTENT
-      // No client-side filtering needed
-
-      return filtered;
+      return rows;
     },
-    [urlState.searchQuery, urlState.filters]
+    []
   );
 
   // Ref to track edited values across row regenerations
@@ -337,11 +308,7 @@ export const useColumnGridListingData = (
           : transformedRows;
 
       setAllRows(rowsWithEdits);
-
-      // Apply filters (search + client-side filters if active)
-      const filtered = applyClientSideFilters(rowsWithEdits);
-
-      setEntities(filtered);
+      setEntities(applyClientSideFilters(rowsWithEdits));
     } else {
       setAllRows([]);
       setEntities([]);
@@ -377,10 +344,11 @@ export const useColumnGridListingData = (
     });
   }, [allRows]);
 
-  // Load data when filters or page changes - similar to domain list pattern
   useEffect(() => {
-    // Check if filters have changed by comparing stringified version
-    const currentFiltersString = JSON.stringify(columnGridFilters);
+    const currentFiltersString = JSON.stringify({
+      ...columnGridFilters,
+      searchQuery: urlState.searchQuery,
+    });
     const filtersChanged = previousFiltersRef.current !== currentFiltersString;
 
     // Reset cursors, items, and edited values when filters change
@@ -396,16 +364,10 @@ export const useColumnGridListingData = (
       previousFiltersRef.current = currentFiltersString;
     }
 
-    // Always use normal backend pagination
-    // Client-side filters (dataType, metadataStatus) are applied to the loaded data only
-    // This prevents infinite API calls
     const cachedItems = itemsByPageRef.current.get(urlState.currentPage);
     if (cachedItems && !filtersChanged) {
-      // Use cached items for this page
       setGridItems(cachedItems);
     } else {
-      // Load data when URL state changes (page, search, filters, pageSize)
-      // Note: dataType and metadataStatus are NOT sent to backend (filtered client-side)
       loadData(
         urlState.currentPage,
         urlState.searchQuery,

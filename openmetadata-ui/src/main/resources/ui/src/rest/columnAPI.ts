@@ -212,8 +212,10 @@ export interface ColumnGridParams {
   databaseName?: string;
   schemaName?: string;
   columnNamePattern?: string;
-  dataType?: string;
   metadataStatus?: string[];
+  domainId?: string;
+  tags?: string[];
+  glossaryTerms?: string[];
 }
 
 export const getColumnGrid = async (
@@ -242,11 +244,17 @@ export const getColumnGrid = async (
   if (params.columnNamePattern) {
     queryParams.append('columnNamePattern', params.columnNamePattern);
   }
-  if (params.dataType) {
-    queryParams.append('dataTypes', params.dataType);
-  }
   if (params.metadataStatus && params.metadataStatus.length > 0) {
     queryParams.append('metadataStatus', params.metadataStatus[0]);
+  }
+  if (params.domainId) {
+    queryParams.append('domainId', params.domainId);
+  }
+  if (params.tags && params.tags.length > 0) {
+    queryParams.append('tags', params.tags.join(','));
+  }
+  if (params.glossaryTerms && params.glossaryTerms.length > 0) {
+    queryParams.append('glossaryTerms', params.glossaryTerms.join(','));
   }
 
   const response = await APIClient.get<ColumnGridResponse>(

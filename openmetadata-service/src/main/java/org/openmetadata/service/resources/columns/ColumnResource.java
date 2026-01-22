@@ -257,11 +257,6 @@ public class ColumnResource {
           @QueryParam("hasMissingMetadata")
           boolean hasMissingMetadata,
       @Parameter(
-              description = "Filter by column data types (comma-separated)",
-              example = "VARCHAR,STRING,TEXT")
-          @QueryParam("dataTypes")
-          String dataTypes,
-      @Parameter(
               description =
                   "Filter by metadata status: MISSING (no description AND no tags), "
                       + "INCOMPLETE (has description OR tags, but not both), "
@@ -271,7 +266,19 @@ public class ColumnResource {
                       type = "string",
                       allowableValues = {"MISSING", "INCOMPLETE", "COMPLETE"}))
           @QueryParam("metadataStatus")
-          String metadataStatus)
+          String metadataStatus,
+      @Parameter(
+              description =
+                  "Filter by classification tags at column level (comma-separated tag FQNs)",
+              example = "PII.Sensitive,PersonalData.Email")
+          @QueryParam("tags")
+          String tags,
+      @Parameter(
+              description =
+                  "Filter by glossary terms at column level (comma-separated glossary term FQNs)",
+              example = "Business.CustomerData,Business.Revenue")
+          @QueryParam("glossaryTerms")
+          String glossaryTerms)
       throws Exception {
 
     ColumnAggregator.ColumnAggregationRequest request =
@@ -288,10 +295,13 @@ public class ColumnResource {
     request.setDomainId(domainId);
     request.setHasConflicts(hasConflicts);
     request.setHasMissingMetadata(hasMissingMetadata);
-    if (dataTypes != null && !dataTypes.isEmpty()) {
-      request.setDataTypes(java.util.Arrays.asList(dataTypes.split(",")));
-    }
     request.setMetadataStatus(metadataStatus);
+    if (tags != null && !tags.isEmpty()) {
+      request.setTags(java.util.Arrays.asList(tags.split(",")));
+    }
+    if (glossaryTerms != null && !glossaryTerms.isEmpty()) {
+      request.setGlossaryTerms(java.util.Arrays.asList(glossaryTerms.split(",")));
+    }
 
     ColumnGridResponse response = repository.getColumnGridPaginated(securityContext, request);
 

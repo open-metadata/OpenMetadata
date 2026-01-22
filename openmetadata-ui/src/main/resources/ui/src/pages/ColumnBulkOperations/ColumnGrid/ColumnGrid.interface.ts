@@ -29,8 +29,10 @@ export interface ColumnGridFilters {
   databaseName?: string;
   schemaName?: string;
   columnNamePattern?: string;
-  dataType?: string;
   metadataStatus?: string[];
+  domainId?: string;
+  tags?: string[];
+  glossaryTerms?: string[];
 }
 
 export interface ColumnGridRowData {
