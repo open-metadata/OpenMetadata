@@ -44,11 +44,13 @@ class SearchClientConfigurationTest {
     config.setSearchType(ElasticSearchConfiguration.SearchType.OPENSEARCH);
 
     AwsConfiguration awsConfig = new AwsConfiguration();
+    awsConfig.setEnabled(true);
     awsConfig.setRegion("us-east-1");
     awsConfig.setServiceName("es");
     config.setAws(awsConfig);
 
     assertDoesNotThrow(() -> validateConfiguration(config));
+    assertTrue(config.getAws().getEnabled());
     assertEquals("us-east-1", config.getAws().getRegion());
   }
 
@@ -63,11 +65,13 @@ class SearchClientConfigurationTest {
     config.setSearchType(ElasticSearchConfiguration.SearchType.OPENSEARCH);
 
     AwsConfiguration awsConfig = new AwsConfiguration();
+    awsConfig.setEnabled(true);
     awsConfig.setRegion("us-east-1");
     awsConfig.setServiceName("aoss");
     config.setAws(awsConfig);
 
     assertDoesNotThrow(() -> validateConfiguration(config));
+    assertTrue(config.getAws().getEnabled());
     assertEquals("aoss", config.getAws().getServiceName());
   }
 
@@ -85,6 +89,27 @@ class SearchClientConfigurationTest {
 
     assertDoesNotThrow(() -> validateConfiguration(config));
     assertEquals("admin", config.getUsername());
+  }
+
+  @Test
+  void testAwsIamAuthDisabledByDefault() {
+    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
+    config.setHost("vpc-my-domain.us-east-1.es.amazonaws.com");
+    config.setPort(443);
+    config.setScheme("https");
+    config.setConnectionTimeoutSecs(5);
+    config.setSocketTimeoutSecs(60);
+    config.setSearchType(ElasticSearchConfiguration.SearchType.OPENSEARCH);
+
+    AwsConfiguration awsConfig = new AwsConfiguration();
+    awsConfig.setRegion("us-east-1");
+    awsConfig.setServiceName("es");
+    config.setAws(awsConfig);
+
+    assertDoesNotThrow(() -> validateConfiguration(config));
+    assertFalse(
+        Boolean.TRUE.equals(config.getAws().getEnabled()),
+        "IAM auth should be disabled by default for backward compatibility");
   }
 
   @Test
@@ -121,6 +146,7 @@ class SearchClientConfigurationTest {
     config.setSearchType(ElasticSearchConfiguration.SearchType.OPENSEARCH);
 
     AwsConfiguration awsConfig = new AwsConfiguration();
+    awsConfig.setEnabled(true);
     awsConfig.setRegion("us-east-1");
     awsConfig.setAccessKeyId("AKIAIOSFODNN7EXAMPLE");
     awsConfig.setSecretAccessKey("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
@@ -143,6 +169,7 @@ class SearchClientConfigurationTest {
     config.setSearchType(ElasticSearchConfiguration.SearchType.OPENSEARCH);
 
     AwsConfiguration awsConfig = new AwsConfiguration();
+    awsConfig.setEnabled(true);
     awsConfig.setRegion("us-east-1");
     awsConfig.setAccessKeyId("AKIAIOSFODNN7EXAMPLE");
     awsConfig.setSecretAccessKey("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");

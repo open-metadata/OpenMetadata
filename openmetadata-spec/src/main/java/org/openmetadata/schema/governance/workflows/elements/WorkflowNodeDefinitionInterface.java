@@ -6,9 +6,11 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.util.List;
 import java.util.Map;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.ApplyRecognizerFeedbackTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CreateAndRunIngestionPipelineTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.DataCompletenessTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RejectRecognizerFeedbackTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RollbackEntityTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RunAppTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityAttributeTaskDefinition;
@@ -18,6 +20,7 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask
 import org.openmetadata.schema.governance.workflows.elements.nodes.endEvent.EndEventDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.gateway.ParallelGatewayDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.startEvent.StartEventDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.CreateRecognizerFeedbackApprovalTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "subType")
@@ -45,6 +48,15 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.User
   @JsonSubTypes.Type(value = RunAppTaskDefinition.class, name = "runAppTask"),
   @JsonSubTypes.Type(value = ParallelGatewayDefinition.class, name = "parallelGateway"),
   @JsonSubTypes.Type(value = SinkTaskDefinition.class, name = "sinkTask"),
+  @JsonSubTypes.Type(
+      value = CreateRecognizerFeedbackApprovalTaskDefinition.class,
+      name = "createRecognizerFeedbackApprovalTask"),
+  @JsonSubTypes.Type(
+      value = ApplyRecognizerFeedbackTaskDefinition.class,
+      name = "applyRecognizerFeedbackTask"),
+  @JsonSubTypes.Type(
+      value = RejectRecognizerFeedbackTaskDefinition.class,
+      name = "rejectRecognizerFeedbackTask")
 })
 public interface WorkflowNodeDefinitionInterface {
   String getType();
