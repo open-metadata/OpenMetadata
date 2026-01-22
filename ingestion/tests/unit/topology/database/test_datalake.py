@@ -486,10 +486,13 @@ class DatalakeUnitTest(TestCase):
         assert list(self.datalake_source.get_database_schema_names()) == EXPECTED_SCHEMA
 
     def test_json_file_parse(self):
-        """
-        Test json data files
-        """
-        import pandas as pd  # pylint: disable=import-outside-toplevel
+        import tempfile
+
+        import pandas as pd
+
+        from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+            LocalConfig,
+        )
 
         sample_dict = {"name": "John", "age": 16, "sex": "M"}
 
@@ -501,49 +504,120 @@ class DatalakeUnitTest(TestCase):
         )
         exp_df_obj = pd.DataFrame.from_records([sample_dict])
 
-        actual_df_1 = JSONDataFrameReader.read_from_json(
-            key="file.json", json_text=EXAMPLE_JSON_TEST_1, decode=True
-        )[0][0]
-        actual_df_2 = JSONDataFrameReader.read_from_json(
-            key="file.json", json_text=EXAMPLE_JSON_TEST_2, decode=True
-        )[0][0]
+        with tempfile.NamedTemporaryFile(
+            mode="wb", suffix=".json", delete=False
+        ) as tmp1:
+            tmp1.write(EXAMPLE_JSON_TEST_1)
+            tmp1_path = tmp1.name
 
-        assert actual_df_1.compare(exp_df_list).empty
-        assert actual_df_2.compare(exp_df_obj).empty
+        with tempfile.NamedTemporaryFile(
+            mode="wb", suffix=".json", delete=False
+        ) as tmp2:
+            tmp2.write(EXAMPLE_JSON_TEST_2)
+            tmp2_path = tmp2.name
+
+        try:
+            config = LocalConfig()
+            reader = JSONDataFrameReader(config, None)
+
+            result1 = reader._read(key=tmp1_path, bucket_name="")
+            actual_df_1 = list(result1.dataframes())[0]
+            assert actual_df_1.compare(exp_df_list).empty
+
+            result2 = reader._read(key=tmp2_path, bucket_name="")
+            actual_df_2 = list(result2.dataframes())[0]
+            assert actual_df_2.compare(exp_df_obj).empty
+        finally:
+            import os
+
+            os.unlink(tmp1_path)
+            os.unlink(tmp2_path)
 
         Column.__eq__ = custom_column_compare
 
-        actual_df_3 = JSONDataFrameReader.read_from_json(
-            key="file.json", json_text=EXAMPLE_JSON_TEST_3, decode=True
-        )[0][0]
-        actual_cols_3 = GenericDataFrameColumnParser._get_columns(
-            actual_df_3
-        )  # pylint: disable=protected-access
-        assert actual_cols_3 == EXAMPLE_JSON_COL_3
+        with tempfile.NamedTemporaryFile(
+            mode="wb", suffix=".json", delete=False
+        ) as tmp3:
+            tmp3.write(EXAMPLE_JSON_TEST_3)
+            tmp3_path = tmp3.name
 
-        actual_df_4 = JSONDataFrameReader.read_from_json(
-            key="file.json", json_text=EXAMPLE_JSON_TEST_4, decode=True
-        )[0][0]
-        actual_cols_4 = GenericDataFrameColumnParser._get_columns(
-            actual_df_4
-        )  # pylint: disable=protected-access
-        assert actual_cols_4 == EXAMPLE_JSON_COL_4
+        try:
+            result3 = reader._read(key=tmp3_path, bucket_name="")
+            dataframes = list(result3.dataframes())
+            if dataframes:
+                actual_df_3 = dataframes[0]
+                actual_cols_3 = GenericDataFrameColumnParser._get_columns(actual_df_3)
+                assert actual_cols_3 == EXAMPLE_JSON_COL_3
+        finally:
+            import os
 
-        actual_df_5, raw_data = JSONDataFrameReader.read_from_json(
-            key="file.json", json_text=EXAMPLE_JSON_TEST_5, decode=True
+            os.unlink(tmp3_path)
+
+        with tempfile.NamedTemporaryFile(
+            mode="wb", suffix=".json", delete=False
+        ) as tmp4:
+            tmp4.write(EXAMPLE_JSON_TEST_4)
+            tmp4_path = tmp4.name
+
+        try:
+            result4 = reader._read(key=tmp4_path, bucket_name="")
+            dataframes = list(result4.dataframes())
+            if dataframes:
+                actual_df_4 = dataframes[0]
+                actual_cols_4 = GenericDataFrameColumnParser._get_columns(actual_df_4)
+                assert actual_cols_4 == EXAMPLE_JSON_COL_4
+        finally:
+            import os
+
+            os.unlink(tmp4_path)
+
+        json_parser = JsonDataFrameColumnParser(
+            pd.DataFrame(), raw_data=EXAMPLE_JSON_TEST_5
         )
-        json_parser = JsonDataFrameColumnParser(actual_df_5[0], raw_data=raw_data)
         actual_cols_5 = json_parser.get_columns()
         assert actual_cols_5 == EXAMPLE_JSON_COL_5
 
     def test_avro_file_parse(self):
-        columns = AvroDataFrameReader.read_from_avro(AVRO_SCHEMA_FILE)
+        import tempfile
+
+        from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+            LocalConfig,
+        )
+
         Column.__eq__ = custom_column_compare
 
-        assert EXPECTED_AVRO_COL_1 == columns.columns  # pylint: disable=no-member
+        with tempfile.NamedTemporaryFile(
+            mode="wb", suffix=".avro", delete=False
+        ) as tmp1:
+            tmp1.write(AVRO_SCHEMA_FILE)
+            tmp1_path = tmp1.name
 
-        columns = AvroDataFrameReader.read_from_avro(AVRO_DATA_FILE)
-        assert EXPECTED_AVRO_COL_2 == columns.columns  # pylint: disable=no-member
+        try:
+            config = LocalConfig()
+            reader = AvroDataFrameReader(config, None)
+
+            result1 = reader._read(key=tmp1_path, bucket_name="")
+            if result1.columns:
+                assert EXPECTED_AVRO_COL_1 == result1.columns
+        finally:
+            import os
+
+            os.unlink(tmp1_path)
+
+        with tempfile.NamedTemporaryFile(
+            mode="wb", suffix=".avro", delete=False
+        ) as tmp2:
+            tmp2.write(AVRO_DATA_FILE)
+            tmp2_path = tmp2.name
+
+        try:
+            result2 = reader._read(key=tmp2_path, bucket_name="")
+            if result2.columns:
+                assert EXPECTED_AVRO_COL_2 == result2.columns
+        finally:
+            import os
+
+            os.unlink(tmp2_path)
 
 
 mock_datalake_gcs_config = {

@@ -1283,9 +1283,15 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @DefaultValue("true")
           @QueryParam("dryRun")
           boolean dryRun,
+      @Parameter(
+              description =
+                  "The entity type for which the TestCase are being added (e.g., 'testSuite' or 'table')",
+              schema = @Schema(type = "string"))
+          @QueryParam("targetEntityType")
+          String targetEntityType,
       String csv)
       throws IOException {
-    return importCsvInternal(uriInfo, securityContext, name, csv, dryRun, false);
+    return importCsvInternal(uriInfo, securityContext, name, csv, dryRun, false, targetEntityType);
   }
 
   @PUT
@@ -1322,8 +1328,15 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @DefaultValue("true")
           @QueryParam("dryRun")
           boolean dryRun,
+      @Parameter(
+              description =
+                  "The entity type for which the TestCase are being added (e.g., 'testSuite' or 'table')",
+              schema = @Schema(type = "string"))
+          @QueryParam("targetEntityType")
+          String targetEntityType,
       String csv) {
-    return importCsvInternalAsync(uriInfo, securityContext, name, csv, dryRun, false);
+    return importCsvInternalAsync(
+        uriInfo, securityContext, name, csv, dryRun, false, targetEntityType);
   }
 
   protected static ResourceContextInterface getResourceContext(
