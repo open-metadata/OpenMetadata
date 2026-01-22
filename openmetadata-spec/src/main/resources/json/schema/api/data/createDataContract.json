@@ -53,6 +53,14 @@
       },
       "default": null
     },
+    "odcsQualityRules": {
+      "description": "ODCS quality rules for round-trip compatibility with ODCS export.",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/datacontract/odcs/odcsDataContract.json#/definitions/odcsQualityRule"
+      },
+      "default": null
+    },
     "owners": {
       "description": "Owners of this data contract.",
       "$ref": "../../type/entityReferenceList.json",

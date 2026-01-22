@@ -2,7 +2,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_SERVICE;
 import static org.openmetadata.service.Entity.STORED_PROCEDURE;
 
@@ -103,8 +102,6 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
       EntityUtil.Fields fields,
       RelationIncludes relationIncludes) {
     setDefaultFields(storedProcedure);
-    storedProcedure.setFollowers(
-        fields.contains(FIELD_FOLLOWERS) ? getFollowers(storedProcedure) : null);
   }
 
   @Override
