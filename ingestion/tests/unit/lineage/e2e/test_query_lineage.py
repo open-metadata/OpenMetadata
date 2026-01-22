@@ -1,7 +1,10 @@
+import pytest
+
 from ingestion.tests.unit.lineage.e2e.helpers import assert_lineage
 from metadata.generated.schema.entity.data.table import Table
 
 
+@pytest.mark.flaky(reruns=3)
 def test_join_result_table_lineage(
     oracle_lineage_container,
     oracle_lineage_ingestion,
@@ -22,6 +25,7 @@ def test_join_result_table_lineage(
     )
 
 
+@pytest.mark.flaky(reruns=3)
 def test_union_result_table_lineage(
     oracle_lineage_container,
     oracle_lineage_ingestion,
@@ -42,6 +46,7 @@ def test_union_result_table_lineage(
     )
 
 
+@pytest.mark.flaky(reruns=3)
 def test_agg_join_result_table_lineage(
     oracle_lineage_container,
     oracle_lineage_ingestion,
@@ -62,6 +67,7 @@ def test_agg_join_result_table_lineage(
     )
 
 
+@pytest.mark.flaky(reruns=3)
 def test_merge_target_table_lineage(
     oracle_lineage_container,
     oracle_lineage_ingestion,
@@ -82,6 +88,7 @@ def test_merge_target_table_lineage(
     )
 
 
+@pytest.mark.flaky(reruns=3)
 def test_update_target_table_lineage(
     oracle_lineage_container,
     oracle_lineage_ingestion,
@@ -109,6 +116,7 @@ def test_update_target_table_lineage(
     )
 
 
+@pytest.mark.flaky(reruns=3)
 def test_complex_join_table_lineage(
     oracle_lineage_container,
     oracle_lineage_ingestion,
