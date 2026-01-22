@@ -28,7 +28,7 @@ import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.bpmn.model.SubProcess;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
-import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.Config__6;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.Config__8;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.EntityFilter;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.HierarchyConfig;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.InputNamespaceMap__8;
@@ -299,10 +299,10 @@ class SinkTaskTest {
     SinkTaskDefinition definition = new SinkTaskDefinition();
     definition.setName("noNamespaceMapSink");
 
-    Config__6 taskConfig = new Config__6();
-    taskConfig.setSinkType(Config__6.SinkType.GIT);
-    taskConfig.setSyncMode(Config__6.SyncMode.OVERWRITE);
-    taskConfig.setOutputFormat(Config__6.OutputFormat.YAML);
+    Config__8 taskConfig = new Config__8();
+    taskConfig.setSinkType(Config__8.SinkType.GIT);
+    taskConfig.setSyncMode(Config__8.SyncMode.OVERWRITE);
+    taskConfig.setOutputFormat(Config__8.OutputFormat.YAML);
     taskConfig.setBatchMode(true);
     taskConfig.setTimeoutSeconds(300);
 
@@ -353,10 +353,10 @@ class SinkTaskTest {
     SinkTaskDefinition definition = new SinkTaskDefinition();
     definition.setName(name);
 
-    Config__6 taskConfig = new Config__6();
-    taskConfig.setSinkType(Config__6.SinkType.fromValue(sinkType));
-    taskConfig.setSyncMode(Config__6.SyncMode.OVERWRITE);
-    taskConfig.setOutputFormat(Config__6.OutputFormat.YAML);
+    Config__8 taskConfig = new Config__8();
+    taskConfig.setSinkType(Config__8.SinkType.fromValue(sinkType));
+    taskConfig.setSyncMode(Config__8.SyncMode.OVERWRITE);
+    taskConfig.setOutputFormat(Config__8.OutputFormat.YAML);
     taskConfig.setBatchMode(true);
     taskConfig.setTimeoutSeconds(300);
 
@@ -379,10 +379,10 @@ class SinkTaskTest {
     definition.setDisplayName("Full Config Sink Task");
     definition.setDescription("A sink task with all configuration options");
 
-    Config__6 taskConfig = new Config__6();
-    taskConfig.setSinkType(Config__6.SinkType.GIT);
-    taskConfig.setSyncMode(Config__6.SyncMode.OVERWRITE);
-    taskConfig.setOutputFormat(Config__6.OutputFormat.YAML);
+    Config__8 taskConfig = new Config__8();
+    taskConfig.setSinkType(Config__8.SinkType.GIT);
+    taskConfig.setSyncMode(Config__8.SyncMode.OVERWRITE);
+    taskConfig.setOutputFormat(Config__8.OutputFormat.YAML);
     taskConfig.setBatchMode(true);
     taskConfig.setTimeoutSeconds(600);
 

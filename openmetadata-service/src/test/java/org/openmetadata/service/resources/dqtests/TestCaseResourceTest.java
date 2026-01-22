@@ -1839,6 +1839,41 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
+  void test_listTestCaseFailureStatusWithoutTimeRange(TestInfo test)
+      throws IOException, ParseException {
+    // Test that incidents can be fetched without specifying startTs and endTs
+    // This ensures all open incidents are shown regardless of time range
+    List<TestCase> testCases = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      TestCase testCaseEntity =
+          createEntity(createRequest(getEntityName(test) + i), ADMIN_AUTH_HEADERS);
+      testCases.add(testCaseEntity);
+      // Adding failed test case, which will create a NEW incident
+      postTestCaseResult(
+          testCaseEntity.getFullyQualifiedName(),
+          new CreateTestCaseResult()
+              .withResult("result")
+              .withTestCaseStatus(TestCaseStatus.Failed)
+              .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+          ADMIN_AUTH_HEADERS);
+    }
+
+    // Get incidents without specifying startTs and endTs
+    ResultList<TestCaseResolutionStatus> entities =
+        getTestCaseFailureStatus(1000, null, false, null, null, null);
+
+    // Verify that the created incidents are present in the results
+    assertTrue(
+        entities.getData().stream()
+            .anyMatch(
+                tcrs -> tcrs.getTestCaseReference().getId().equals(testCases.get(0).getId())));
+    assertTrue(
+        entities.getData().stream()
+            .anyMatch(
+                tcrs -> tcrs.getTestCaseReference().getId().equals(testCases.get(1).getId())));
+  }
+
+  @Test
   void patch_TestCaseResultFailure(TestInfo test) throws IOException {
     // Create a table owned by USER_TABLE_OWNER to test owner permissions
     TableResourceTest tableResourceTest = new TableResourceTest();
@@ -4168,14 +4203,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         latest != null ? target.queryParam("latest", latest) : target.queryParam("latest", false);
     target = testCaseFqn != null ? target.queryParam("entityFQNHash", testCaseFqn) : target;
 
-    target =
-        startTs != null
-            ? target.queryParam("startTs", startTs)
-            : target.queryParam("startTs", System.currentTimeMillis() - 100000);
-    target =
-        endTs != null
-            ? target.queryParam("endTs", endTs)
-            : target.queryParam("endTs", System.currentTimeMillis() + 100000);
+    // Only add timestamps if they are explicitly provided
+    target = startTs != null ? target.queryParam("startTs", startTs) : target;
+    target = endTs != null ? target.queryParam("endTs", endTs) : target;
 
     return TestUtils.get(
         target,
