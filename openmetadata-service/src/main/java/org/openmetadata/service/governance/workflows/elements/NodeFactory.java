@@ -11,6 +11,7 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityAttributeTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SinkTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.endEvent.EndEventDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.gateway.ParallelGatewayDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.startEvent.StartEventDefinition;
@@ -21,6 +22,7 @@ import org.openmetadata.service.governance.workflows.elements.nodes.automatedTas
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SetEntityAttributeTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTask;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SinkTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.createAndRunIngestionPipeline.CreateAndRunIngestionPipelineTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.runApp.RunAppTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.endEvent.EndEvent;
@@ -53,6 +55,7 @@ public class NodeFactory {
           (DataCompletenessTaskDefinition) nodeDefinition, config);
       case PARALLEL_GATEWAY -> new ParallelGateway(
           (ParallelGatewayDefinition) nodeDefinition, config);
+      case SINK_TASK -> new SinkTask((SinkTaskDefinition) nodeDefinition, config);
       default -> throw new IllegalArgumentException(
           "Unsupported node subtype: " + nodeDefinition.getSubType());
     };
