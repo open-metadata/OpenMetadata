@@ -336,10 +336,10 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
               new CsvHeader().withName("columnCount"),
               new CsvHeader().withName("isHidden"),
               new CsvHeader().withName("columns"),
-              new CsvHeader().withName("owners"),
+              new CsvHeader().withName("owner"),
               new CsvHeader().withName("tags"),
               new CsvHeader().withName("glossaryTerms"),
-              new CsvHeader().withName("domain"),
+              new CsvHeader().withName("domains"),
               new CsvHeader().withName("dataProducts"));
 
       DOCUMENTATION = new CsvDocumentation().withHeaders(HEADERS).withSummary("Worksheet");
@@ -453,26 +453,31 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
           fieldsAdded.add(new FieldChange().withName("isHidden").withNewValue(isHidden));
         }
         if (!nullOrEmpty(columns)) {
-          fieldsAdded.add(
-              new FieldChange().withName("columns").withNewValue(JsonUtils.pojoToJson(columns)));
+          fieldsAdded.add(new FieldChange().withName("columns").withNewValue(columns));
         }
         if (!nullOrEmpty(owners)) {
-          fieldsAdded.add(
-              new FieldChange().withName("owners").withNewValue(JsonUtils.pojoToJson(owners)));
+          fieldsAdded.add(new FieldChange().withName("owner").withNewValue(owners));
         }
-        if (!nullOrEmpty(tags)) {
-          fieldsAdded.add(
-              new FieldChange().withName("tags").withNewValue(JsonUtils.pojoToJson(tags)));
+        // Separate tags by type for better UI parsing
+        List<TagLabel> classificationTags =
+            filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, false);
+        List<TagLabel> glossaryTerms = filterTagsBySource(tags, TagLabel.TagSource.GLOSSARY, false);
+        List<TagLabel> tiers = filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, true);
+
+        if (classificationTags != null && !classificationTags.isEmpty()) {
+          fieldsAdded.add(new FieldChange().withName("tags").withNewValue(classificationTags));
+        }
+        if (glossaryTerms != null && !glossaryTerms.isEmpty()) {
+          fieldsAdded.add(new FieldChange().withName("glossaryTerms").withNewValue(glossaryTerms));
+        }
+        if (tiers != null && !tiers.isEmpty()) {
+          fieldsAdded.add(new FieldChange().withName("tiers").withNewValue(tiers));
         }
         if (!nullOrEmpty(domains)) {
-          fieldsAdded.add(
-              new FieldChange().withName("domains").withNewValue(JsonUtils.pojoToJson(domains)));
+          fieldsAdded.add(new FieldChange().withName("domains").withNewValue(domains));
         }
         if (!nullOrEmpty(dataProducts)) {
-          fieldsAdded.add(
-              new FieldChange()
-                  .withName("dataProducts")
-                  .withNewValue(JsonUtils.pojoToJson(dataProducts)));
+          fieldsAdded.add(new FieldChange().withName("dataProducts").withNewValue(dataProducts));
         }
       } else {
         if (CommonUtil.isChanged(newWorksheet.getDisplayName(), displayName)) {
@@ -535,36 +540,72 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("columns")
-                  .withOldValue(JsonUtils.pojoToJson(newWorksheet.getColumns()))
-                  .withNewValue(JsonUtils.pojoToJson(columns)));
+                  .withOldValue(newWorksheet.getColumns())
+                  .withNewValue(columns));
         }
         if (CommonUtil.isChanged(newWorksheet.getOwners(), owners)) {
           fieldsUpdated.add(
               new FieldChange()
-                  .withName("owners")
-                  .withOldValue(JsonUtils.pojoToJson(newWorksheet.getOwners()))
-                  .withNewValue(JsonUtils.pojoToJson(owners)));
+                  .withName("owner")
+                  .withOldValue(newWorksheet.getOwners())
+                  .withNewValue(owners));
         }
-        if (CommonUtil.isChanged(newWorksheet.getTags(), tags)) {
+        // Separate tags by type for better UI parsing
+        List<TagLabel> existingClassificationTags =
+            filterTagsBySource(newWorksheet.getTags(), TagLabel.TagSource.CLASSIFICATION, false);
+        List<TagLabel> existingGlossaryTerms =
+            filterTagsBySource(newWorksheet.getTags(), TagLabel.TagSource.GLOSSARY, false);
+        List<TagLabel> existingTiers =
+            filterTagsBySource(newWorksheet.getTags(), TagLabel.TagSource.CLASSIFICATION, true);
+
+        List<TagLabel> newClassificationTags =
+            filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, false);
+        List<TagLabel> newGlossaryTerms =
+            filterTagsBySource(tags, TagLabel.TagSource.GLOSSARY, false);
+        List<TagLabel> newTiers = filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, true);
+
+        if (CommonUtil.isChanged(existingClassificationTags, newClassificationTags)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("tags")
-                  .withOldValue(JsonUtils.pojoToJson(newWorksheet.getTags()))
-                  .withNewValue(JsonUtils.pojoToJson(tags)));
+                  .withOldValue(existingClassificationTags)
+                  .withNewValue(newClassificationTags));
+        }
+        if (CommonUtil.isChanged(existingGlossaryTerms, newGlossaryTerms)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("glossaryTerms")
+                  .withOldValue(existingGlossaryTerms)
+                  .withNewValue(newGlossaryTerms));
+        }
+        if (CommonUtil.isChanged(existingTiers, newTiers)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("tiers")
+                  .withOldValue(existingTiers)
+                  .withNewValue(newTiers));
+        }
+
+        if (CommonUtil.isChanged(newWorksheet.getDomains(), domains)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("domains")
+                  .withOldValue(newWorksheet.getDomains())
+                  .withNewValue(domains));
         }
         if (CommonUtil.isChanged(newWorksheet.getDomains(), domains)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("domains")
-                  .withOldValue(JsonUtils.pojoToJson(newWorksheet.getDomains()))
-                  .withNewValue(JsonUtils.pojoToJson(domains)));
+                  .withOldValue(newWorksheet.getDomains())
+                  .withNewValue(domains));
         }
         if (CommonUtil.isChanged(newWorksheet.getDataProducts(), dataProducts)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("dataProducts")
-                  .withOldValue(JsonUtils.pojoToJson(newWorksheet.getDataProducts()))
-                  .withNewValue(JsonUtils.pojoToJson(dataProducts)));
+                  .withOldValue(newWorksheet.getDataProducts())
+                  .withNewValue(dataProducts));
         }
       }
 

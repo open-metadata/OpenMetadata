@@ -50,7 +50,6 @@ import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.services.drive.DriveServiceResource;
@@ -218,22 +217,28 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
           fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
         }
         if (!nullOrEmpty(owners)) {
-          fieldsAdded.add(
-              new FieldChange().withName("owners").withNewValue(JsonUtils.pojoToJson(owners)));
+          fieldsAdded.add(new FieldChange().withName("owner").withNewValue(owners));
         }
-        if (!nullOrEmpty(tags)) {
-          fieldsAdded.add(
-              new FieldChange().withName("tags").withNewValue(JsonUtils.pojoToJson(tags)));
+        // Separate tags by type for better UI parsing
+        List<TagLabel> classificationTags =
+            filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, false);
+        List<TagLabel> glossaryTerms = filterTagsBySource(tags, TagLabel.TagSource.GLOSSARY, false);
+        List<TagLabel> tiers = filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, true);
+
+        if (classificationTags != null && !classificationTags.isEmpty()) {
+          fieldsAdded.add(new FieldChange().withName("tags").withNewValue(classificationTags));
+        }
+        if (glossaryTerms != null && !glossaryTerms.isEmpty()) {
+          fieldsAdded.add(new FieldChange().withName("glossaryTerms").withNewValue(glossaryTerms));
+        }
+        if (tiers != null && !tiers.isEmpty()) {
+          fieldsAdded.add(new FieldChange().withName("tiers").withNewValue(tiers));
         }
         if (!nullOrEmpty(domains)) {
-          fieldsAdded.add(
-              new FieldChange().withName("domains").withNewValue(JsonUtils.pojoToJson(domains)));
+          fieldsAdded.add(new FieldChange().withName("domains").withNewValue(domains));
         }
         if (extension != null) {
-          fieldsAdded.add(
-              new FieldChange()
-                  .withName("extension")
-                  .withNewValue(JsonUtils.pojoToJson(extension)));
+          fieldsAdded.add(new FieldChange().withName("extension").withNewValue(extension));
         }
       } else {
         if (CommonUtil.isChanged(directory.getDescription(), description)) {
@@ -253,30 +258,66 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
         if (CommonUtil.isChanged(directory.getOwners(), owners)) {
           fieldsUpdated.add(
               new FieldChange()
-                  .withName("owners")
-                  .withOldValue(JsonUtils.pojoToJson(directory.getOwners()))
-                  .withNewValue(JsonUtils.pojoToJson(owners)));
+                  .withName("owner")
+                  .withOldValue(directory.getOwners())
+                  .withNewValue(owners));
         }
-        if (CommonUtil.isChanged(directory.getTags(), tags)) {
+        // Separate tags by type for better UI parsing
+        List<TagLabel> existingClassificationTags =
+            filterTagsBySource(directory.getTags(), TagLabel.TagSource.CLASSIFICATION, false);
+        List<TagLabel> existingGlossaryTerms =
+            filterTagsBySource(directory.getTags(), TagLabel.TagSource.GLOSSARY, false);
+        List<TagLabel> existingTiers =
+            filterTagsBySource(directory.getTags(), TagLabel.TagSource.CLASSIFICATION, true);
+
+        List<TagLabel> newClassificationTags =
+            filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, false);
+        List<TagLabel> newGlossaryTerms =
+            filterTagsBySource(tags, TagLabel.TagSource.GLOSSARY, false);
+        List<TagLabel> newTiers = filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, true);
+
+        if (CommonUtil.isChanged(existingClassificationTags, newClassificationTags)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("tags")
-                  .withOldValue(JsonUtils.pojoToJson(directory.getTags()))
-                  .withNewValue(JsonUtils.pojoToJson(tags)));
+                  .withOldValue(existingClassificationTags)
+                  .withNewValue(newClassificationTags));
+        }
+        if (CommonUtil.isChanged(existingGlossaryTerms, newGlossaryTerms)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("glossaryTerms")
+                  .withOldValue(existingGlossaryTerms)
+                  .withNewValue(newGlossaryTerms));
+        }
+        if (CommonUtil.isChanged(existingTiers, newTiers)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("tiers")
+                  .withOldValue(existingTiers)
+                  .withNewValue(newTiers));
+        }
+
+        if (CommonUtil.isChanged(directory.getDomains(), domains)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("domains")
+                  .withOldValue(directory.getDomains())
+                  .withNewValue(domains));
         }
         if (CommonUtil.isChanged(directory.getDomains(), domains)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("domains")
-                  .withOldValue(JsonUtils.pojoToJson(directory.getDomains()))
-                  .withNewValue(JsonUtils.pojoToJson(domains)));
+                  .withOldValue(directory.getDomains())
+                  .withNewValue(domains));
         }
         if (CommonUtil.isChanged(directory.getExtension(), extension)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("extension")
-                  .withOldValue(JsonUtils.pojoToJson(directory.getExtension()))
-                  .withNewValue(JsonUtils.pojoToJson(extension)));
+                  .withOldValue(directory.getExtension())
+                  .withNewValue(extension));
         }
       }
 

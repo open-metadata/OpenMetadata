@@ -48,7 +48,6 @@ import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.drives.DirectoryResource;
@@ -319,7 +318,7 @@ public class DirectoryRepository extends EntityRepository<Directory> {
               new CsvHeader().withName("directoryType"),
               new CsvHeader().withName("path"),
               new CsvHeader().withName("isShared"),
-              new CsvHeader().withName("owners"),
+              new CsvHeader().withName("owner"),
               new CsvHeader().withName("tags"),
               new CsvHeader().withName("glossaryTerms"),
               new CsvHeader().withName("domains"),
@@ -412,8 +411,7 @@ public class DirectoryRepository extends EntityRepository<Directory> {
           fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
         }
         if (parentRef != null) {
-          fieldsAdded.add(
-              new FieldChange().withName("parent").withNewValue(JsonUtils.pojoToJson(parentRef)));
+          fieldsAdded.add(new FieldChange().withName("parent").withNewValue(parentRef));
         }
         if (!nullOrEmpty(path)) {
           fieldsAdded.add(new FieldChange().withName("path").withNewValue(path));
@@ -422,22 +420,28 @@ public class DirectoryRepository extends EntityRepository<Directory> {
           fieldsAdded.add(new FieldChange().withName("isShared").withNewValue(isShared));
         }
         if (!nullOrEmpty(owners)) {
-          fieldsAdded.add(
-              new FieldChange().withName("owners").withNewValue(JsonUtils.pojoToJson(owners)));
+          fieldsAdded.add(new FieldChange().withName("owner").withNewValue(owners));
         }
-        if (!nullOrEmpty(tags)) {
-          fieldsAdded.add(
-              new FieldChange().withName("tags").withNewValue(JsonUtils.pojoToJson(tags)));
+        // Separate tags by type for better UI parsing
+        List<TagLabel> classificationTags =
+            filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, false);
+        List<TagLabel> glossaryTerms = filterTagsBySource(tags, TagLabel.TagSource.GLOSSARY, false);
+        List<TagLabel> tiers = filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, true);
+
+        if (classificationTags != null && !classificationTags.isEmpty()) {
+          fieldsAdded.add(new FieldChange().withName("tags").withNewValue(classificationTags));
+        }
+        if (glossaryTerms != null && !glossaryTerms.isEmpty()) {
+          fieldsAdded.add(new FieldChange().withName("glossaryTerms").withNewValue(glossaryTerms));
+        }
+        if (tiers != null && !tiers.isEmpty()) {
+          fieldsAdded.add(new FieldChange().withName("tiers").withNewValue(tiers));
         }
         if (!nullOrEmpty(domains)) {
-          fieldsAdded.add(
-              new FieldChange().withName("domains").withNewValue(JsonUtils.pojoToJson(domains)));
+          fieldsAdded.add(new FieldChange().withName("domains").withNewValue(domains));
         }
         if (!nullOrEmpty(dataProducts)) {
-          fieldsAdded.add(
-              new FieldChange()
-                  .withName("dataProducts")
-                  .withNewValue(JsonUtils.pojoToJson(dataProducts)));
+          fieldsAdded.add(new FieldChange().withName("dataProducts").withNewValue(dataProducts));
         }
       } else {
         if (CommonUtil.isChanged(newDirectory.getDisplayName(), displayName)) {
@@ -458,8 +462,8 @@ public class DirectoryRepository extends EntityRepository<Directory> {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("parent")
-                  .withOldValue(JsonUtils.pojoToJson(newDirectory.getParent()))
-                  .withNewValue(JsonUtils.pojoToJson(parentRef)));
+                  .withOldValue(newDirectory.getParent())
+                  .withNewValue(parentRef));
         }
         if (CommonUtil.isChanged(newDirectory.getPath(), path)) {
           fieldsUpdated.add(
@@ -478,30 +482,66 @@ public class DirectoryRepository extends EntityRepository<Directory> {
         if (CommonUtil.isChanged(newDirectory.getOwners(), owners)) {
           fieldsUpdated.add(
               new FieldChange()
-                  .withName("owners")
-                  .withOldValue(JsonUtils.pojoToJson(newDirectory.getOwners()))
-                  .withNewValue(JsonUtils.pojoToJson(owners)));
+                  .withName("owner")
+                  .withOldValue(newDirectory.getOwners())
+                  .withNewValue(owners));
         }
-        if (CommonUtil.isChanged(newDirectory.getTags(), tags)) {
+        // Separate tags by type for better UI parsing
+        List<TagLabel> existingClassificationTags =
+            filterTagsBySource(newDirectory.getTags(), TagLabel.TagSource.CLASSIFICATION, false);
+        List<TagLabel> existingGlossaryTerms =
+            filterTagsBySource(newDirectory.getTags(), TagLabel.TagSource.GLOSSARY, false);
+        List<TagLabel> existingTiers =
+            filterTagsBySource(newDirectory.getTags(), TagLabel.TagSource.CLASSIFICATION, true);
+
+        List<TagLabel> newClassificationTags =
+            filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, false);
+        List<TagLabel> newGlossaryTerms =
+            filterTagsBySource(tags, TagLabel.TagSource.GLOSSARY, false);
+        List<TagLabel> newTiers = filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, true);
+
+        if (CommonUtil.isChanged(existingClassificationTags, newClassificationTags)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("tags")
-                  .withOldValue(JsonUtils.pojoToJson(newDirectory.getTags()))
-                  .withNewValue(JsonUtils.pojoToJson(tags)));
+                  .withOldValue(existingClassificationTags)
+                  .withNewValue(newClassificationTags));
+        }
+        if (CommonUtil.isChanged(existingGlossaryTerms, newGlossaryTerms)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("glossaryTerms")
+                  .withOldValue(existingGlossaryTerms)
+                  .withNewValue(newGlossaryTerms));
+        }
+        if (CommonUtil.isChanged(existingTiers, newTiers)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("tiers")
+                  .withOldValue(existingTiers)
+                  .withNewValue(newTiers));
+        }
+
+        if (CommonUtil.isChanged(newDirectory.getDomains(), domains)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("domains")
+                  .withOldValue(newDirectory.getDomains())
+                  .withNewValue(domains));
         }
         if (CommonUtil.isChanged(newDirectory.getDomains(), domains)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("domains")
-                  .withOldValue(JsonUtils.pojoToJson(newDirectory.getDomains()))
-                  .withNewValue(JsonUtils.pojoToJson(domains)));
+                  .withOldValue(newDirectory.getDomains())
+                  .withNewValue(domains));
         }
         if (CommonUtil.isChanged(newDirectory.getDataProducts(), dataProducts)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("dataProducts")
-                  .withOldValue(JsonUtils.pojoToJson(newDirectory.getDataProducts()))
-                  .withNewValue(JsonUtils.pojoToJson(dataProducts)));
+                  .withOldValue(newDirectory.getDataProducts())
+                  .withNewValue(dataProducts));
         }
       }
 

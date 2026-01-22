@@ -678,6 +678,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
 
       AssetCertification certification = getCertificationLabels(csvRecord.get(7));
+      List<EntityReference> owners = getOwners(printer, csvRecord, 3);
 
       if (!schemaExists) {
         // For new schemas, all non-null fields are "added"
@@ -687,15 +688,28 @@ public class DatabaseRepository extends EntityRepository<Database> {
         if (!nullOrEmpty(csvRecord.get(2))) {
           fieldsAdded.add(new FieldChange().withName("description").withNewValue(csvRecord.get(2)));
         }
-        if (tagLabels != null && !tagLabels.isEmpty()) {
-          fieldsAdded.add(
-              new FieldChange().withName("tags").withNewValue(JsonUtils.pojoToJson(tagLabels)));
+        if (!nullOrEmpty(owners)) {
+          fieldsAdded.add(new FieldChange().withName("owner").withNewValue(owners));
+        }
+        // Separate tags by type for better UI parsing
+        List<TagLabel> classificationTags =
+            filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, false);
+        List<TagLabel> glossaryTerms =
+            filterTagsBySource(tagLabels, TagLabel.TagSource.GLOSSARY, false);
+        List<TagLabel> tiers =
+            filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, true);
+
+        if (classificationTags != null && !classificationTags.isEmpty()) {
+          fieldsAdded.add(new FieldChange().withName("tags").withNewValue(classificationTags));
+        }
+        if (glossaryTerms != null && !glossaryTerms.isEmpty()) {
+          fieldsAdded.add(new FieldChange().withName("glossaryTerms").withNewValue(glossaryTerms));
+        }
+        if (tiers != null && !tiers.isEmpty()) {
+          fieldsAdded.add(new FieldChange().withName("tiers").withNewValue(tiers));
         }
         if (certification != null) {
-          fieldsAdded.add(
-              new FieldChange()
-                  .withName("certification")
-                  .withNewValue(JsonUtils.pojoToJson(certification)));
+          fieldsAdded.add(new FieldChange().withName("certification").withNewValue(certification));
         }
         if (!nullOrEmpty(csvRecord.get(8))) {
           fieldsAdded.add(
@@ -703,6 +717,11 @@ public class DatabaseRepository extends EntityRepository<Database> {
         }
         if (!nullOrEmpty(csvRecord.get(9))) {
           fieldsAdded.add(new FieldChange().withName("sourceUrl").withNewValue(csvRecord.get(9)));
+        }
+
+        List<EntityReference> newDomains = getDomains(printer, csvRecord, 10);
+        if (!nullOrEmpty(newDomains)) {
+          fieldsAdded.add(new FieldChange().withName("domains").withNewValue(newDomains));
         }
       } else {
         // Compare existing values with CSV values to track changes
@@ -723,29 +742,57 @@ public class DatabaseRepository extends EntityRepository<Database> {
                   .withOldValue(schema.getDescription())
                   .withNewValue(newDescription));
         }
+        if (CommonUtil.isChanged(schema.getOwners(), owners)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("owner")
+                  .withOldValue(schema.getOwners())
+                  .withNewValue(owners));
+        }
 
-        if (CommonUtil.isChanged(schema.getTags(), tagLabels)) {
-          String oldTagsJson =
-              schema.getTags() == null ? null : JsonUtils.pojoToJson(schema.getTags());
-          String newTagsJson = tagLabels == null ? null : JsonUtils.pojoToJson(tagLabels);
+        // Separate tags by type for better UI parsing
+        List<TagLabel> existingClassificationTags =
+            filterTagsBySource(schema.getTags(), TagLabel.TagSource.CLASSIFICATION, false);
+        List<TagLabel> existingGlossaryTerms =
+            filterTagsBySource(schema.getTags(), TagLabel.TagSource.GLOSSARY, false);
+        List<TagLabel> existingTiers =
+            filterTagsBySource(schema.getTags(), TagLabel.TagSource.CLASSIFICATION, true);
+
+        List<TagLabel> newClassificationTags =
+            filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, false);
+        List<TagLabel> newGlossaryTerms =
+            filterTagsBySource(tagLabels, TagLabel.TagSource.GLOSSARY, false);
+        List<TagLabel> newTiers =
+            filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, true);
+
+        if (CommonUtil.isChanged(existingClassificationTags, newClassificationTags)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("tags")
-                  .withOldValue(oldTagsJson)
-                  .withNewValue(newTagsJson));
+                  .withOldValue(existingClassificationTags)
+                  .withNewValue(newClassificationTags));
+        }
+        if (CommonUtil.isChanged(existingGlossaryTerms, newGlossaryTerms)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("glossaryTerms")
+                  .withOldValue(existingGlossaryTerms)
+                  .withNewValue(newGlossaryTerms));
+        }
+        if (CommonUtil.isChanged(existingTiers, newTiers)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("tiers")
+                  .withOldValue(existingTiers)
+                  .withNewValue(newTiers));
         }
 
         if (CommonUtil.isChanged(schema.getCertification(), certification)) {
-          String oldCertJson =
-              schema.getCertification() == null
-                  ? null
-                  : JsonUtils.pojoToJson(schema.getCertification());
-          String newCertJson = certification == null ? null : JsonUtils.pojoToJson(certification);
           fieldsUpdated.add(
               new FieldChange()
                   .withName("certification")
-                  .withOldValue(oldCertJson)
-                  .withNewValue(newCertJson));
+                  .withOldValue(schema.getCertification())
+                  .withNewValue(certification));
         }
 
         String newRetentionPeriod = csvRecord.get(8);
@@ -764,6 +811,15 @@ public class DatabaseRepository extends EntityRepository<Database> {
                   .withName("sourceUrl")
                   .withOldValue(schema.getSourceUrl())
                   .withNewValue(newSourceUrl));
+        }
+
+        List<EntityReference> newDomains = getDomains(printer, csvRecord, 10);
+        if (CommonUtil.isChanged(schema.getDomains(), newDomains)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("domains")
+                  .withOldValue(schema.getDomains())
+                  .withNewValue(newDomains));
         }
       }
 

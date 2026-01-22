@@ -85,7 +85,6 @@ import org.openmetadata.schema.type.csv.CsvErrorType;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -1085,21 +1084,16 @@ public class TeamRepository extends EntityRepository<Team> {
           fieldsAdded.add(new FieldChange().withName("teamType").withNewValue(teamType.value()));
         }
         if (!nullOrEmpty(owners)) {
-          fieldsAdded.add(
-              new FieldChange().withName("owners").withNewValue(JsonUtils.pojoToJson(owners)));
+          fieldsAdded.add(new FieldChange().withName("owner").withNewValue(owners));
         }
         if (isJoinable != null) {
           fieldsAdded.add(new FieldChange().withName("isJoinable").withNewValue(isJoinable));
         }
         if (!nullOrEmpty(defaultRoles)) {
-          fieldsAdded.add(
-              new FieldChange()
-                  .withName("defaultRoles")
-                  .withNewValue(JsonUtils.pojoToJson(defaultRoles)));
+          fieldsAdded.add(new FieldChange().withName("defaultRoles").withNewValue(defaultRoles));
         }
         if (!nullOrEmpty(policies)) {
-          fieldsAdded.add(
-              new FieldChange().withName("policies").withNewValue(JsonUtils.pojoToJson(policies)));
+          fieldsAdded.add(new FieldChange().withName("policies").withNewValue(policies));
         }
       } else {
         if (CommonUtil.isChanged(team.getDisplayName(), displayName)) {
@@ -1126,9 +1120,9 @@ public class TeamRepository extends EntityRepository<Team> {
         if (CommonUtil.isChanged(team.getOwners(), owners)) {
           fieldsUpdated.add(
               new FieldChange()
-                  .withName("owners")
-                  .withOldValue(JsonUtils.pojoToJson(team.getOwners()))
-                  .withNewValue(JsonUtils.pojoToJson(owners)));
+                  .withName("owner")
+                  .withOldValue(team.getOwners())
+                  .withNewValue(owners));
         }
         if (isJoinable != null && CommonUtil.isChanged(team.getIsJoinable(), isJoinable)) {
           fieldsUpdated.add(
@@ -1141,15 +1135,15 @@ public class TeamRepository extends EntityRepository<Team> {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("defaultRoles")
-                  .withOldValue(JsonUtils.pojoToJson(team.getDefaultRoles()))
-                  .withNewValue(JsonUtils.pojoToJson(defaultRoles)));
+                  .withOldValue(team.getDefaultRoles())
+                  .withNewValue(defaultRoles));
         }
         if (CommonUtil.isChanged(team.getPolicies(), policies)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("policies")
-                  .withOldValue(JsonUtils.pojoToJson(team.getPolicies()))
-                  .withNewValue(JsonUtils.pojoToJson(policies)));
+                  .withOldValue(team.getPolicies())
+                  .withNewValue(policies));
         }
       }
 
@@ -1178,18 +1172,15 @@ public class TeamRepository extends EntityRepository<Team> {
       if (processRecord) {
         if (!teamExists) {
           if (!nullOrEmpty(team.getParents())) {
-            fieldsAdded.add(
-                new FieldChange()
-                    .withName("parents")
-                    .withNewValue(JsonUtils.pojoToJson(team.getParents())));
+            fieldsAdded.add(new FieldChange().withName("parents").withNewValue(team.getParents()));
           }
         } else {
           if (CommonUtil.isChanged(originalParents, team.getParents())) {
             fieldsUpdated.add(
                 new FieldChange()
                     .withName("parents")
-                    .withOldValue(JsonUtils.pojoToJson(originalParents))
-                    .withNewValue(JsonUtils.pojoToJson(team.getParents())));
+                    .withOldValue(originalParents)
+                    .withNewValue(team.getParents()));
           }
         }
       }

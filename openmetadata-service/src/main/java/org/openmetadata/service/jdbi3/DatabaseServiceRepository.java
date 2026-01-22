@@ -49,6 +49,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
@@ -56,7 +57,6 @@ import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.services.database.DatabaseServiceResource;
@@ -281,6 +281,7 @@ public class DatabaseServiceRepository
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
 
       AssetCertification certification = getCertificationLabels(csvRecord.get(7));
+      List<EntityReference> owners = getOwners(printer, csvRecord, 3);
 
       String displayName = csvRecord.get(1);
       String description = csvRecord.get(2);
@@ -293,15 +294,35 @@ public class DatabaseServiceRepository
         if (!nullOrEmpty(description)) {
           fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
         }
-        if (tagLabels != null && !tagLabels.isEmpty()) {
-          fieldsAdded.add(
-              new FieldChange().withName("tags").withNewValue(JsonUtils.pojoToJson(tagLabels)));
+        if (!nullOrEmpty(owners)) {
+          fieldsAdded.add(new FieldChange().withName("owner").withNewValue(owners));
         }
+
+        // Separate tags by type for better UI parsing
+        List<TagLabel> classificationTags =
+            filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, false);
+        List<TagLabel> glossaryTerms =
+            filterTagsBySource(tagLabels, TagLabel.TagSource.GLOSSARY, false);
+        List<TagLabel> tiers =
+            filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, true);
+
+        if (classificationTags != null && !classificationTags.isEmpty()) {
+          fieldsAdded.add(new FieldChange().withName("tags").withNewValue(classificationTags));
+        }
+        if (glossaryTerms != null && !glossaryTerms.isEmpty()) {
+          fieldsAdded.add(new FieldChange().withName("glossaryTerms").withNewValue(glossaryTerms));
+        }
+        if (tiers != null && !tiers.isEmpty()) {
+          fieldsAdded.add(new FieldChange().withName("tiers").withNewValue(tiers));
+        }
+
         if (certification != null) {
-          fieldsAdded.add(
-              new FieldChange()
-                  .withName("certification")
-                  .withNewValue(JsonUtils.pojoToJson(certification)));
+          fieldsAdded.add(new FieldChange().withName("certification").withNewValue(certification));
+        }
+
+        List<EntityReference> newDomains = getDomains(printer, csvRecord, 8);
+        if (!nullOrEmpty(newDomains)) {
+          fieldsAdded.add(new FieldChange().withName("domains").withNewValue(newDomains));
         }
       } else {
         // Use meaningful change detection to avoid false positives
@@ -320,29 +341,66 @@ public class DatabaseServiceRepository
                   .withOldValue(database.getDescription())
                   .withNewValue(description));
         }
+        if (CommonUtil.isChanged(database.getOwners(), owners)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("owner")
+                  .withOldValue(database.getOwners())
+                  .withNewValue(owners));
+        }
 
-        if (CommonUtil.isChanged(database.getTags(), tagLabels)) {
-          String oldTagsJson =
-              database.getTags() == null ? null : JsonUtils.pojoToJson(database.getTags());
-          String newTagsJson = tagLabels == null ? null : JsonUtils.pojoToJson(tagLabels);
+        // Separate tags by type for better UI parsing
+        List<TagLabel> existingClassificationTags =
+            filterTagsBySource(database.getTags(), TagLabel.TagSource.CLASSIFICATION, false);
+        List<TagLabel> existingGlossaryTerms =
+            filterTagsBySource(database.getTags(), TagLabel.TagSource.GLOSSARY, false);
+        List<TagLabel> existingTiers =
+            filterTagsBySource(database.getTags(), TagLabel.TagSource.CLASSIFICATION, true);
+
+        List<TagLabel> newClassificationTags =
+            filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, false);
+        List<TagLabel> newGlossaryTerms =
+            filterTagsBySource(tagLabels, TagLabel.TagSource.GLOSSARY, false);
+        List<TagLabel> newTiers =
+            filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, true);
+
+        if (CommonUtil.isChanged(existingClassificationTags, newClassificationTags)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("tags")
-                  .withOldValue(oldTagsJson)
-                  .withNewValue(newTagsJson));
+                  .withOldValue(existingClassificationTags)
+                  .withNewValue(newClassificationTags));
+        }
+        if (CommonUtil.isChanged(existingGlossaryTerms, newGlossaryTerms)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("glossaryTerms")
+                  .withOldValue(existingGlossaryTerms)
+                  .withNewValue(newGlossaryTerms));
+        }
+        if (CommonUtil.isChanged(existingTiers, newTiers)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("tiers")
+                  .withOldValue(existingTiers)
+                  .withNewValue(newTiers));
         }
 
         if (CommonUtil.isChanged(database.getCertification(), certification)) {
-          String oldCertJson =
-              database.getCertification() == null
-                  ? null
-                  : JsonUtils.pojoToJson(database.getCertification());
-          String newCertJson = certification == null ? null : JsonUtils.pojoToJson(certification);
           fieldsUpdated.add(
               new FieldChange()
                   .withName("certification")
-                  .withOldValue(oldCertJson)
-                  .withNewValue(newCertJson));
+                  .withOldValue(database.getCertification())
+                  .withNewValue(certification));
+        }
+
+        List<EntityReference> newDomains = getDomains(printer, csvRecord, 8);
+        if (CommonUtil.isChanged(database.getDomains(), newDomains)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("domains")
+                  .withOldValue(database.getDomains())
+                  .withNewValue(newDomains));
         }
       }
 
@@ -455,15 +513,27 @@ public class DatabaseServiceRepository
         if (!nullOrEmpty(description)) {
           fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
         }
-        if (!nullOrEmpty(tagLabels)) {
-          fieldsAdded.add(
-              new FieldChange().withName("tags").withNewValue(JsonUtils.pojoToJson(tagLabels)));
+
+        // Separate tags by type for better UI parsing
+        List<TagLabel> classificationTags =
+            filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, false);
+        List<TagLabel> glossaryTerms =
+            filterTagsBySource(tagLabels, TagLabel.TagSource.GLOSSARY, false);
+        List<TagLabel> tiers =
+            filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, true);
+
+        if (classificationTags != null && !classificationTags.isEmpty()) {
+          fieldsAdded.add(new FieldChange().withName("tags").withNewValue(classificationTags));
         }
+        if (glossaryTerms != null && !glossaryTerms.isEmpty()) {
+          fieldsAdded.add(new FieldChange().withName("glossaryTerms").withNewValue(glossaryTerms));
+        }
+        if (tiers != null && !tiers.isEmpty()) {
+          fieldsAdded.add(new FieldChange().withName("tiers").withNewValue(tiers));
+        }
+
         if (certification != null && certification.getTagLabel() != null) {
-          fieldsAdded.add(
-              new FieldChange()
-                  .withName("certification")
-                  .withNewValue(JsonUtils.pojoToJson(certification)));
+          fieldsAdded.add(new FieldChange().withName("certification").withNewValue(certification));
         }
         if (!nullOrEmpty(sourceUrl)) {
           fieldsAdded.add(new FieldChange().withName("sourceUrl").withNewValue(sourceUrl));
@@ -484,19 +554,50 @@ public class DatabaseServiceRepository
                   .withOldValue(existingDatabase.getDescription())
                   .withNewValue(description));
         }
-        if (CommonUtil.isChanged(existingDatabase.getTags(), tagLabels)) {
+
+        // Separate tags by type for better UI parsing
+        List<TagLabel> existingClassificationTags =
+            filterTagsBySource(
+                existingDatabase.getTags(), TagLabel.TagSource.CLASSIFICATION, false);
+        List<TagLabel> existingGlossaryTerms =
+            filterTagsBySource(existingDatabase.getTags(), TagLabel.TagSource.GLOSSARY, false);
+        List<TagLabel> existingTiers =
+            filterTagsBySource(existingDatabase.getTags(), TagLabel.TagSource.CLASSIFICATION, true);
+
+        List<TagLabel> newClassificationTags =
+            filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, false);
+        List<TagLabel> newGlossaryTerms =
+            filterTagsBySource(tagLabels, TagLabel.TagSource.GLOSSARY, false);
+        List<TagLabel> newTiers =
+            filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, true);
+
+        if (CommonUtil.isChanged(existingClassificationTags, newClassificationTags)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("tags")
-                  .withOldValue(JsonUtils.pojoToJson(existingDatabase.getTags()))
-                  .withNewValue(JsonUtils.pojoToJson(tagLabels)));
+                  .withOldValue(existingClassificationTags)
+                  .withNewValue(newClassificationTags));
+        }
+        if (CommonUtil.isChanged(existingGlossaryTerms, newGlossaryTerms)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("glossaryTerms")
+                  .withOldValue(existingGlossaryTerms)
+                  .withNewValue(newGlossaryTerms));
+        }
+        if (CommonUtil.isChanged(existingTiers, newTiers)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("tiers")
+                  .withOldValue(existingTiers)
+                  .withNewValue(newTiers));
         }
         if (CommonUtil.isChanged(existingDatabase.getCertification(), certification)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("certification")
-                  .withOldValue(JsonUtils.pojoToJson(existingDatabase.getCertification()))
-                  .withNewValue(JsonUtils.pojoToJson(certification)));
+                  .withOldValue(existingDatabase.getCertification())
+                  .withNewValue(certification));
         }
         if (CommonUtil.isChanged(existingDatabase.getSourceUrl(), sourceUrl)) {
           fieldsUpdated.add(
@@ -618,15 +719,27 @@ public class DatabaseServiceRepository
         if (!nullOrEmpty(description)) {
           fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
         }
-        if (!nullOrEmpty(tagLabels)) {
-          fieldsAdded.add(
-              new FieldChange().withName("tags").withNewValue(JsonUtils.pojoToJson(tagLabels)));
+
+        // Separate tags by type for better UI parsing
+        List<TagLabel> classificationTags =
+            filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, false);
+        List<TagLabel> glossaryTerms =
+            filterTagsBySource(tagLabels, TagLabel.TagSource.GLOSSARY, false);
+        List<TagLabel> tiers =
+            filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, true);
+
+        if (classificationTags != null && !classificationTags.isEmpty()) {
+          fieldsAdded.add(new FieldChange().withName("tags").withNewValue(classificationTags));
         }
+        if (glossaryTerms != null && !glossaryTerms.isEmpty()) {
+          fieldsAdded.add(new FieldChange().withName("glossaryTerms").withNewValue(glossaryTerms));
+        }
+        if (tiers != null && !tiers.isEmpty()) {
+          fieldsAdded.add(new FieldChange().withName("tiers").withNewValue(tiers));
+        }
+
         if (certification != null) {
-          fieldsAdded.add(
-              new FieldChange()
-                  .withName("certification")
-                  .withNewValue(JsonUtils.pojoToJson(certification)));
+          fieldsAdded.add(new FieldChange().withName("certification").withNewValue(certification));
         }
         if (!nullOrEmpty(retentionPeriod)) {
           fieldsAdded.add(
@@ -654,15 +767,15 @@ public class DatabaseServiceRepository
           fieldsUpdated.add(
               new FieldChange()
                   .withName("tags")
-                  .withOldValue(JsonUtils.pojoToJson(schema.getTags()))
-                  .withNewValue(JsonUtils.pojoToJson(tagLabels)));
+                  .withOldValue(schema.getTags())
+                  .withNewValue(tagLabels));
         }
         if (CommonUtil.isChanged(schema.getCertification(), certification)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("certification")
-                  .withOldValue(JsonUtils.pojoToJson(schema.getCertification()))
-                  .withNewValue(JsonUtils.pojoToJson(certification)));
+                  .withOldValue(schema.getCertification())
+                  .withNewValue(certification));
         }
         if (CommonUtil.isChanged(schema.getRetentionPeriod(), retentionPeriod)) {
           fieldsUpdated.add(

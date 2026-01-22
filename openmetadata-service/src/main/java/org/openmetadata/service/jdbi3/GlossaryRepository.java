@@ -306,8 +306,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
       if (!glossaryTermExists) {
         if (parent != null) {
-          fieldsAdded.add(
-              new FieldChange().withName("parent").withNewValue(JsonUtils.pojoToJson(parent)));
+          fieldsAdded.add(new FieldChange().withName("parent").withNewValue(parent));
         }
         if (!nullOrEmpty(displayName)) {
           fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
@@ -316,49 +315,36 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
         }
         if (!nullOrEmpty(synonyms)) {
-          fieldsAdded.add(
-              new FieldChange().withName("synonyms").withNewValue(JsonUtils.pojoToJson(synonyms)));
+          fieldsAdded.add(new FieldChange().withName("synonyms").withNewValue(synonyms));
         }
         if (!nullOrEmpty(relatedTerms)) {
-          fieldsAdded.add(
-              new FieldChange()
-                  .withName("relatedTerms")
-                  .withNewValue(JsonUtils.pojoToJson(relatedTerms)));
+          fieldsAdded.add(new FieldChange().withName("relatedTerms").withNewValue(relatedTerms));
         }
         if (!nullOrEmpty(references)) {
-          fieldsAdded.add(
-              new FieldChange()
-                  .withName("references")
-                  .withNewValue(JsonUtils.pojoToJson(references)));
+          fieldsAdded.add(new FieldChange().withName("references").withNewValue(references));
         }
         if (!nullOrEmpty(tags)) {
-          fieldsAdded.add(
-              new FieldChange().withName("tags").withNewValue(JsonUtils.pojoToJson(tags)));
+          fieldsAdded.add(new FieldChange().withName("tags").withNewValue(tags));
         }
         if (!nullOrEmpty(reviewers)) {
-          fieldsAdded.add(
-              new FieldChange()
-                  .withName("reviewers")
-                  .withNewValue(JsonUtils.pojoToJson(reviewers)));
+          fieldsAdded.add(new FieldChange().withName("reviewers").withNewValue(reviewers));
         }
         if (!nullOrEmpty(owners)) {
-          fieldsAdded.add(
-              new FieldChange().withName("owners").withNewValue(JsonUtils.pojoToJson(owners)));
+          fieldsAdded.add(new FieldChange().withName("owner").withNewValue(owners));
         }
         if (status != null) {
           fieldsAdded.add(new FieldChange().withName("status").withNewValue(status.value()));
         }
         if (style != null) {
-          fieldsAdded.add(
-              new FieldChange().withName("style").withNewValue(JsonUtils.pojoToJson(style)));
+          fieldsAdded.add(new FieldChange().withName("style").withNewValue(style));
         }
       } else {
         if (CommonUtil.isChanged(glossaryTerm.getParent(), parent)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("parent")
-                  .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getParent()))
-                  .withNewValue(JsonUtils.pojoToJson(parent)));
+                  .withOldValue(glossaryTerm.getParent())
+                  .withNewValue(parent));
         }
         if (CommonUtil.isChanged(glossaryTerm.getDisplayName(), displayName)) {
           fieldsUpdated.add(
@@ -378,43 +364,43 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("synonyms")
-                  .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getSynonyms()))
-                  .withNewValue(JsonUtils.pojoToJson(synonyms)));
+                  .withOldValue(glossaryTerm.getSynonyms())
+                  .withNewValue(synonyms));
         }
         if (CommonUtil.isChanged(glossaryTerm.getRelatedTerms(), relatedTerms)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("relatedTerms")
-                  .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getRelatedTerms()))
-                  .withNewValue(JsonUtils.pojoToJson(relatedTerms)));
+                  .withOldValue(glossaryTerm.getRelatedTerms())
+                  .withNewValue(relatedTerms));
         }
         if (CommonUtil.isChanged(glossaryTerm.getReferences(), references)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("references")
-                  .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getReferences()))
-                  .withNewValue(JsonUtils.pojoToJson(references)));
+                  .withOldValue(glossaryTerm.getReferences())
+                  .withNewValue(references));
         }
         if (CommonUtil.isChanged(glossaryTerm.getTags(), tags)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("tags")
-                  .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getTags()))
-                  .withNewValue(JsonUtils.pojoToJson(tags)));
+                  .withOldValue(glossaryTerm.getTags())
+                  .withNewValue(tags));
         }
         if (CommonUtil.isChanged(glossaryTerm.getReviewers(), reviewers)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("reviewers")
-                  .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getReviewers()))
-                  .withNewValue(JsonUtils.pojoToJson(reviewers)));
+                  .withOldValue(glossaryTerm.getReviewers())
+                  .withNewValue(reviewers));
         }
         if (CommonUtil.isChanged(glossaryTerm.getOwners(), owners)) {
           fieldsUpdated.add(
               new FieldChange()
-                  .withName("owners")
-                  .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getOwners()))
-                  .withNewValue(JsonUtils.pojoToJson(owners)));
+                  .withName("owner")
+                  .withOldValue(glossaryTerm.getOwners())
+                  .withNewValue(owners));
         }
         if (status != null && CommonUtil.isChanged(glossaryTerm.getEntityStatus(), status)) {
           fieldsUpdated.add(
@@ -427,8 +413,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("style")
-                  .withOldValue(JsonUtils.pojoToJson(glossaryTerm.getStyle()))
-                  .withNewValue(JsonUtils.pojoToJson(style)));
+                  .withOldValue(glossaryTerm.getStyle())
+                  .withNewValue(style));
         }
       }
 

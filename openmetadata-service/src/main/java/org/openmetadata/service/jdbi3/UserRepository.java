@@ -1028,12 +1028,10 @@ public class UserRepository extends EntityRepository<User> {
           fieldsAdded.add(new FieldChange().withName("isAdmin").withNewValue(isAdmin));
         }
         if (!nullOrEmpty(teams)) {
-          fieldsAdded.add(
-              new FieldChange().withName("teams").withNewValue(JsonUtils.pojoToJson(teams)));
+          fieldsAdded.add(new FieldChange().withName("teams").withNewValue(teams));
         }
         if (!nullOrEmpty(roles)) {
-          fieldsAdded.add(
-              new FieldChange().withName("roles").withNewValue(JsonUtils.pojoToJson(roles)));
+          fieldsAdded.add(new FieldChange().withName("roles").withNewValue(roles));
         }
       } else {
         if (CommonUtil.isChanged(user.getDisplayName(), displayName)) {
@@ -1068,15 +1066,15 @@ public class UserRepository extends EntityRepository<User> {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("teams")
-                  .withOldValue(JsonUtils.pojoToJson(user.getTeams()))
-                  .withNewValue(JsonUtils.pojoToJson(teams)));
+                  .withOldValue(user.getTeams())
+                  .withNewValue(teams));
         }
         if (CommonUtil.isChanged(user.getRoles(), roles)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("roles")
-                  .withOldValue(JsonUtils.pojoToJson(user.getRoles()))
-                  .withNewValue(JsonUtils.pojoToJson(roles)));
+                  .withOldValue(user.getRoles())
+                  .withNewValue(roles));
         }
       }
 

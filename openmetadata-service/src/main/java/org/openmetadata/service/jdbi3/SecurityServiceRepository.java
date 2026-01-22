@@ -41,7 +41,6 @@ import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.services.security.SecurityServiceResource;
@@ -157,7 +156,7 @@ public class SecurityServiceRepository
               new CsvHeader().withName("displayName"),
               new CsvHeader().withName("description"),
               new CsvHeader().withName("serviceType").withRequired(true),
-              new CsvHeader().withName("owners"),
+              new CsvHeader().withName("owner"),
               new CsvHeader().withName("tags"),
               new CsvHeader().withName("domain"),
               new CsvHeader().withName("dataProducts"));
@@ -227,16 +226,27 @@ public class SecurityServiceRepository
               new FieldChange().withName("description").withNewValue(serviceDescription));
         }
         if (!nullOrEmpty(owners)) {
-          fieldsAdded.add(
-              new FieldChange().withName("owners").withNewValue(JsonUtils.pojoToJson(owners)));
+          fieldsAdded.add(new FieldChange().withName("owner").withNewValue(owners));
         }
-        if (!nullOrEmpty(tagLabels)) {
-          fieldsAdded.add(
-              new FieldChange().withName("tags").withNewValue(JsonUtils.pojoToJson(tagLabels)));
+        // Separate tags by type for better UI parsing
+        List<TagLabel> classificationTags =
+            filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, false);
+        List<TagLabel> glossaryTerms =
+            filterTagsBySource(tagLabels, TagLabel.TagSource.GLOSSARY, false);
+        List<TagLabel> tiers =
+            filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, true);
+
+        if (classificationTags != null && !classificationTags.isEmpty()) {
+          fieldsAdded.add(new FieldChange().withName("tags").withNewValue(classificationTags));
+        }
+        if (glossaryTerms != null && !glossaryTerms.isEmpty()) {
+          fieldsAdded.add(new FieldChange().withName("glossaryTerms").withNewValue(glossaryTerms));
+        }
+        if (tiers != null && !tiers.isEmpty()) {
+          fieldsAdded.add(new FieldChange().withName("tiers").withNewValue(tiers));
         }
         if (!nullOrEmpty(domains)) {
-          fieldsAdded.add(
-              new FieldChange().withName("domains").withNewValue(JsonUtils.pojoToJson(domains)));
+          fieldsAdded.add(new FieldChange().withName("domains").withNewValue(domains));
         }
       } else {
         // Existing service - use meaningful change detection
@@ -263,25 +273,25 @@ public class SecurityServiceRepository
             && CommonUtil.isChanged(existingSecurityService.getOwners(), owners)) {
           fieldsUpdated.add(
               new FieldChange()
-                  .withName("owners")
-                  .withOldValue(JsonUtils.pojoToJson(existingSecurityService.getOwners()))
-                  .withNewValue(JsonUtils.pojoToJson(owners)));
+                  .withName("owner")
+                  .withOldValue(existingSecurityService.getOwners())
+                  .withNewValue(owners));
         }
         if (existingSecurityService != null
             && CommonUtil.isChanged(existingSecurityService.getTags(), tagLabels)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("tags")
-                  .withOldValue(JsonUtils.pojoToJson(existingSecurityService.getTags()))
-                  .withNewValue(JsonUtils.pojoToJson(tagLabels)));
+                  .withOldValue(existingSecurityService.getTags())
+                  .withNewValue(tagLabels));
         }
         if (existingSecurityService != null
             && CommonUtil.isChanged(existingSecurityService.getDomains(), domains)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("domains")
-                  .withOldValue(JsonUtils.pojoToJson(existingSecurityService.getDomains()))
-                  .withNewValue(JsonUtils.pojoToJson(domains)));
+                  .withOldValue(existingSecurityService.getDomains())
+                  .withNewValue(domains));
         }
       }
 

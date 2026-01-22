@@ -1618,15 +1618,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           if (!nullOrEmpty(description)) {
             fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
           }
-          fieldsAdded.add(
-              new FieldChange()
-                  .withName("testDefinition")
-                  .withNewValue(JsonUtils.pojoToJson(testDefRef)));
+          fieldsAdded.add(new FieldChange().withName("testDefinition").withNewValue(testDefRef));
           if (!nullOrEmpty(parameterValues)) {
             fieldsAdded.add(
-                new FieldChange()
-                    .withName("parameterValues")
-                    .withNewValue(JsonUtils.pojoToJson(parameterValues)));
+                new FieldChange().withName("parameterValues").withNewValue(parameterValues));
           }
           if (computePassedFailedRowCount != null) {
             fieldsAdded.add(
@@ -1645,8 +1640,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                 new FieldChange().withName("inspectionQuery").withNewValue(inspectionQuery));
           }
           if (!nullOrEmpty(tagLabels)) {
-            fieldsAdded.add(
-                new FieldChange().withName("tags").withNewValue(JsonUtils.pojoToJson(tagLabels)));
+            fieldsAdded.add(new FieldChange().withName("tags").withNewValue(tagLabels));
           }
         } else {
           // Existing test case - compare and track updates
@@ -1668,15 +1662,15 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             fieldsUpdated.add(
                 new FieldChange()
                     .withName("testDefinition")
-                    .withOldValue(JsonUtils.pojoToJson(existingTestCase.getTestDefinition()))
-                    .withNewValue(JsonUtils.pojoToJson(testDefRef)));
+                    .withOldValue(existingTestCase.getTestDefinition())
+                    .withNewValue(testDefRef));
           }
           if (CommonUtil.isChanged(existingTestCase.getParameterValues(), parameterValues)) {
             fieldsUpdated.add(
                 new FieldChange()
                     .withName("parameterValues")
-                    .withOldValue(JsonUtils.pojoToJson(existingTestCase.getParameterValues()))
-                    .withNewValue(JsonUtils.pojoToJson(parameterValues)));
+                    .withOldValue(existingTestCase.getParameterValues())
+                    .withNewValue(parameterValues));
           }
           if (computePassedFailedRowCount != null
               && CommonUtil.isChanged(
@@ -1703,12 +1697,43 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                     .withOldValue(existingTestCase.getInspectionQuery())
                     .withNewValue(inspectionQuery));
           }
-          if (CommonUtil.isChanged(existingTestCase.getTags(), tagLabels)) {
+          // Separate tags by type for better UI parsing
+          List<TagLabel> existingClassificationTags =
+              filterTagsBySource(
+                  existingTestCase.getTags(), TagLabel.TagSource.CLASSIFICATION, false);
+          List<TagLabel> existingGlossaryTerms =
+              filterTagsBySource(existingTestCase.getTags(), TagLabel.TagSource.GLOSSARY, false);
+          List<TagLabel> existingTiers =
+              filterTagsBySource(
+                  existingTestCase.getTags(), TagLabel.TagSource.CLASSIFICATION, true);
+
+          List<TagLabel> newClassificationTags =
+              filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, false);
+          List<TagLabel> newGlossaryTerms =
+              filterTagsBySource(tagLabels, TagLabel.TagSource.GLOSSARY, false);
+          List<TagLabel> newTiers =
+              filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, true);
+
+          if (CommonUtil.isChanged(existingClassificationTags, newClassificationTags)) {
             fieldsUpdated.add(
                 new FieldChange()
                     .withName("tags")
-                    .withOldValue(JsonUtils.pojoToJson(existingTestCase.getTags()))
-                    .withNewValue(JsonUtils.pojoToJson(tagLabels)));
+                    .withOldValue(existingClassificationTags)
+                    .withNewValue(newClassificationTags));
+          }
+          if (CommonUtil.isChanged(existingGlossaryTerms, newGlossaryTerms)) {
+            fieldsUpdated.add(
+                new FieldChange()
+                    .withName("glossaryTerms")
+                    .withOldValue(existingGlossaryTerms)
+                    .withNewValue(newGlossaryTerms));
+          }
+          if (CommonUtil.isChanged(existingTiers, newTiers)) {
+            fieldsUpdated.add(
+                new FieldChange()
+                    .withName("tiers")
+                    .withOldValue(existingTiers)
+                    .withNewValue(newTiers));
           }
         }
 

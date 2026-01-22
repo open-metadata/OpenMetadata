@@ -1872,10 +1872,26 @@ public class TableRepository extends EntityRepository<Table> {
     private final Table table;
     private boolean[] recordCreateStatusArray;
     private ChangeDescription[] recordFieldChangesArray;
+    // Map to store failure messages for deferred writing (ensures correct row order)
+    private final Map<Integer, String> failedRecordMessages = new HashMap<>();
 
     TableCsv(Table table, String user) {
       super(TABLE, HEADERS, user);
       this.table = table;
+    }
+
+    @Override
+    protected void importFailure(CSVPrinter printer, String failedReason, CSVRecord inputRecord) {
+      // Override to defer failure writing for two reasons:
+      // 1. Ensure output row order matches input (interleave failures with successes)
+      // 2. Enable partial success by keeping processRecord=true (don't stop on first error)
+      failedRecordMessages.put(getRecordIndex(inputRecord), failedReason);
+      processRecord = true;
+    }
+
+    private void forceImportFailure(CSVPrinter printer, String failedReason, CSVRecord inputRecord)
+        throws IOException {
+      super.importFailure(printer, failedReason, inputRecord);
     }
 
     @Override
@@ -1902,12 +1918,16 @@ public class TableRepository extends EntityRepository<Table> {
       while (recordIndex < csvRecords.size()) {
         CSVRecord csvRecord = getNextRecord(printer, csvRecords);
         if (csvRecord != null) {
+          // Save table state before adding column
+          Table tableBeforeUpdate = JsonUtils.deepCopy(table, Table.class);
+          // Add column to table
           updateColumnsFromCsv(printer, csvRecord);
+          // Validate the entire table with the new column
           String violations = ValidatorUtil.validate(table);
           if (violations != null) {
-            // JSON schema based validation failed for the entity
+            // Validation failed - rollback to state before this column
+            table.setColumns(tableBeforeUpdate.getColumns());
             importFailure(printer, violations, csvRecord);
-            return;
           }
         }
       }
@@ -1928,7 +1948,12 @@ public class TableRepository extends EntityRepository<Table> {
           repository.patch(null, table.getId(), importedBy, jsonPatch);
         } catch (Exception ex) {
           for (int i = 1; i < records.size(); i++) {
-            importFailure(resultsPrinter, ex.getMessage(), records.get(i));
+            int idx = getRecordIndex(records.get(i));
+            if (failedRecordMessages.containsKey(idx)) {
+              forceImportFailure(resultsPrinter, failedRecordMessages.get(idx), records.get(i));
+            } else {
+              forceImportFailure(resultsPrinter, ex.getMessage(), records.get(i));
+            }
             importResult.setStatus(ApiStatus.FAILURE);
           }
           return;
@@ -1946,6 +1971,13 @@ public class TableRepository extends EntityRepository<Table> {
       for (int i = 1; i < records.size(); i++) {
         CSVRecord record = records.get(i);
         int arrayIndex = getRecordIndex(record);
+
+        // If row failed, write the failure now (in order)
+        if (failedRecordMessages.containsKey(arrayIndex)) {
+          forceImportFailure(resultsPrinter, failedRecordMessages.get(arrayIndex), record);
+          continue;
+        }
+
         boolean isCreated =
             recordCreateStatusArray != null
                 && arrayIndex >= 0
