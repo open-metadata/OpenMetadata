@@ -395,7 +395,7 @@ def _(
 ) -> Union[Optional[str], Optional[List[str]]]:
     entity: Optional[Union[Container, List[Container]]] = None
 
-    if not skip_es_search:
+    if not skip_es_search and metadata is not None:
         entity = search_container_from_es(
             metadata=metadata,
             service_name=service_name,
