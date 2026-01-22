@@ -475,6 +475,20 @@ test.describe('Pagination tests for Stored Procedures page', () => {
       `/databaseSchema/${schemaFqn}/stored_procedure?pageSize=15`
     );
     await testPaginationNavigation(page, '/api/v1/storedProcedures', 'table');
+    const responsePromise = page.waitForResponse((response) =>
+      response.url().includes('/api/v1/tables')
+    );
+    await page.getByTestId('table').click();
+    const response = await responsePromise;
+    expect(response.status()).toBe(200);
+    await waitForAllLoadersToDisappear(page);
+    await page.getByTestId('stored_procedure').click();
+    await page.waitForLoadState('domcontentloaded');
+    const paginationText = page.locator('[data-testid="page-indicator"]');
+    await expect(paginationText).toBeVisible();
+
+    const paginationTextContent = await paginationText.textContent();
+    expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
   });
 
   test('should test Stored Procedures complete flow with search', async ({
@@ -586,6 +600,20 @@ test.describe('Pagination tests for Dashboard Data Models page', () => {
       '/api/v1/dashboard/datamodels',
       'table'
     );
+    const responsePromise = page.waitForResponse((response) =>
+      response.url().includes('/api/v1/dashboard/datamodels')
+    );
+    await page.getByTestId('dashboards').click();
+    const response = await responsePromise;
+    expect(response.status()).toBe(200);
+    await waitForAllLoadersToDisappear(page);
+    await page.getByTestId('data-model').click();
+    await page.waitForLoadState('domcontentloaded');
+    const paginationText = page.locator('[data-testid="page-indicator"]');
+    await expect(paginationText).toBeVisible();
+
+    const paginationTextContent = await paginationText.textContent();
+    expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
   });
 
   test('should test Data Models complete flow with search', async ({
