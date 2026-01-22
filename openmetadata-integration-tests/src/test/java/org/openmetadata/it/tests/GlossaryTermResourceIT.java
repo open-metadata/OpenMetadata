@@ -22,6 +22,8 @@ import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -2145,5 +2147,124 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertNotNull(updated.getOwners());
     assertEquals(1, updated.getOwners().size());
     assertEquals(testUser2().getId(), updated.getOwners().get(0).getId());
+  }
+
+  @Test
+  void test_glossaryTermEntityStatusFiltering(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Step 1: Create a dedicated glossary for this test to avoid interference
+    CreateGlossary createGlossary =
+        new CreateGlossary()
+            .withName(ns.prefix("status_filter_glossary"))
+            .withDescription("Glossary for entityStatus filtering test");
+    Glossary glossary = client.glossaries().create(createGlossary);
+
+    // Step 2: Create two terms - both should start as APPROVED (default status when no reviewers)
+    CreateGlossaryTerm request1 =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("approved_term"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term that will stay approved");
+    GlossaryTerm approvedTerm = client.glossaryTerms().create(request1);
+    assertEquals(EntityStatus.APPROVED, approvedTerm.getEntityStatus());
+
+    CreateGlossaryTerm request2 =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("review_term"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term that will be changed to in review");
+    GlossaryTerm reviewTerm = client.glossaryTerms().create(request2);
+    assertEquals(EntityStatus.APPROVED, reviewTerm.getEntityStatus());
+
+    // Step 3: Update the second term to IN_REVIEW status
+    reviewTerm.setEntityStatus(EntityStatus.IN_REVIEW);
+    GlossaryTerm updatedReviewTerm = client.glossaryTerms().update(reviewTerm.getId(), reviewTerm);
+    assertEquals(EntityStatus.IN_REVIEW, updatedReviewTerm.getEntityStatus());
+
+    // Step 4: Search without entityStatus filter - both terms should be returned
+    ResultList<GlossaryTerm> allTerms =
+        client.glossaryTerms().search(null, glossary.getFullyQualifiedName(), null, 1000, 0);
+
+    assertNotNull(allTerms);
+    assertNotNull(allTerms.getData());
+    // Should contain at least our 2 terms (may contain more if other tests created terms in this
+    // glossary)
+    long ourTermsCount =
+        allTerms.getData().stream()
+            .filter(
+                t ->
+                    t.getName().equals(approvedTerm.getName())
+                        || t.getName().equals(updatedReviewTerm.getName()))
+            .count();
+    assertEquals(2, ourTermsCount, "Both terms should be returned without entityStatus filter");
+
+    // Step 5: Search with APPROVED status - only the first term should be returned
+    ResultList<GlossaryTerm> approvedTerms =
+        client
+            .glossaryTerms()
+            .search(null, glossary.getFullyQualifiedName(), EntityStatus.APPROVED.value(), 1000, 0);
+
+    assertNotNull(approvedTerms);
+    assertNotNull(approvedTerms.getData());
+
+    // Filter to only our test terms and verify only approved term is present
+    java.util.List<GlossaryTerm> ourApprovedTerms =
+        approvedTerms.getData().stream()
+            .filter(
+                t ->
+                    t.getName().equals(approvedTerm.getName())
+                        || t.getName().equals(updatedReviewTerm.getName()))
+            .toList();
+
+    assertEquals(
+        1, ourApprovedTerms.size(), "Only one term should be returned with APPROVED filter");
+    assertEquals(approvedTerm.getName(), ourApprovedTerms.getFirst().getName());
+    assertEquals(EntityStatus.APPROVED, ourApprovedTerms.getFirst().getEntityStatus());
+
+    // Step 6: Search with IN_REVIEW status - only the second term should be returned
+    ResultList<GlossaryTerm> reviewTerms =
+        client
+            .glossaryTerms()
+            .search(
+                null, glossary.getFullyQualifiedName(), EntityStatus.IN_REVIEW.value(), 1000, 0);
+
+    assertNotNull(reviewTerms);
+    assertNotNull(reviewTerms.getData());
+
+    // Filter to only our test terms and verify only under review term is present
+    java.util.List<GlossaryTerm> ourReviewTerms =
+        reviewTerms.getData().stream()
+            .filter(
+                t ->
+                    t.getName().equals(approvedTerm.getName())
+                        || t.getName().equals(updatedReviewTerm.getName()))
+            .toList();
+
+    assertEquals(
+        1, ourReviewTerms.size(), "Only one term should be returned with IN_REVIEW filter");
+    assertEquals(updatedReviewTerm.getName(), ourReviewTerms.getFirst().getName());
+    assertEquals(EntityStatus.IN_REVIEW, ourReviewTerms.getFirst().getEntityStatus());
+
+    // Additional test: Multiple status filter (APPROVED,IN_REVIEW) - both terms should be returned
+    ResultList<GlossaryTerm> multiStatusTerms =
+        client
+            .glossaryTerms()
+            .search(null, glossary.getFullyQualifiedName(), "Approved,In Review", 1000, 0);
+
+    assertNotNull(multiStatusTerms);
+    assertNotNull(multiStatusTerms.getData());
+
+    // Filter to only our test terms - both should be present
+    java.util.List<GlossaryTerm> ourMultiStatusTerms =
+        multiStatusTerms.getData().stream()
+            .filter(
+                t ->
+                    t.getName().equals(approvedTerm.getName())
+                        || t.getName().equals(updatedReviewTerm.getName()))
+            .toList();
+
+    assertEquals(
+        2, ourMultiStatusTerms.size(), "Both terms should be returned with multi-status filter");
   }
 }

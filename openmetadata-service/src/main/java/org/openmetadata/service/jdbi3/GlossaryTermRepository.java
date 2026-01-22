@@ -1630,6 +1630,16 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return "%" + query.trim() + "%";
   }
 
+  private List<String> parseEntityStatusValues(String entityStatus) {
+    if (entityStatus == null || entityStatus.trim().isEmpty()) {
+      return Collections.emptyList();
+    }
+    return Arrays.stream(entityStatus.split(","))
+        .map(String::trim)
+        .filter(s -> !s.isEmpty())
+        .collect(Collectors.toList());
+  }
+
   private ResultList<GlossaryTerm> searchGlossaryTermsInternal(
       String parentFqn,
       String query,
@@ -1675,8 +1685,18 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // Prepare search term for full-text search
     String searchTerm = prepareSearchTerm(query.trim());
 
+    // Parse entityStatus values for safe parameter binding
+    List<String> entityStatusValues = parseEntityStatusValues(entityStatus);
+
     // Fetch limit+1 records to check if there's a next page
-    List<String> jsons = dao.searchGlossaryTerms(parentHash, searchTerm, limit + 1, offset);
+    List<String> jsons;
+    if (entityStatusValues.isEmpty()) {
+      jsons = dao.searchGlossaryTerms(parentHash, searchTerm, limit + 1, offset);
+    } else {
+      jsons =
+          dao.searchGlossaryTermsWithStatus(
+              parentHash, searchTerm, entityStatusValues, limit + 1, offset);
+    }
 
     // Check if we have more than limit results
     boolean hasMore = jsons.size() > limit;
@@ -1689,22 +1709,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     for (String json : jsons) {
       GlossaryTerm term = JsonUtils.readValue(json, GlossaryTerm.class);
       terms.add(term);
-    }
-
-    // Filter by entityStatus if provided
-    if (entityStatus != null && !entityStatus.isEmpty()) {
-      Set<String> allowedStatuses =
-          Arrays.stream(entityStatus.split(","))
-              .map(String::trim)
-              .filter(s -> !s.isEmpty())
-              .collect(Collectors.toSet());
-      terms =
-          terms.stream()
-              .filter(
-                  t ->
-                      t.getEntityStatus() != null
-                          && allowedStatuses.contains(t.getEntityStatus().value()))
-              .collect(Collectors.toList());
     }
 
     // Use bulk method for efficient field fetching

@@ -3852,6 +3852,7 @@ public interface CollectionDAO {
 
     // Search glossary terms by both name and displayName using LIKE queries
     // The displayName column is a generated column added in migration 1.9.3
+    // entityStatus filtering uses generated column added in migration 1.1.7
     @SqlQuery(
         "SELECT json FROM glossary_term_entity WHERE deleted = FALSE "
             + "AND fqnHash LIKE :parentHash "
@@ -3862,6 +3863,21 @@ public interface CollectionDAO {
     List<String> searchGlossaryTerms(
         @Bind("parentHash") String parentHash,
         @Bind("searchTerm") String searchTerm,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
+
+    @SqlQuery(
+        "SELECT json FROM glossary_term_entity WHERE deleted = FALSE "
+            + "AND fqnHash LIKE :parentHash "
+            + "AND (LOWER(name) LIKE LOWER(:searchTerm) "
+            + "OR LOWER(COALESCE(displayName, '')) LIKE LOWER(:searchTerm)) "
+            + "AND entityStatus IN (<entityStatusValues>) "
+            + "ORDER BY name "
+            + "LIMIT :limit OFFSET :offset")
+    List<String> searchGlossaryTermsWithStatus(
+        @Bind("parentHash") String parentHash,
+        @Bind("searchTerm") String searchTerm,
+        @BindList("entityStatusValues") List<String> entityStatusValues,
         @Bind("limit") int limit,
         @Bind("offset") int offset);
   }
