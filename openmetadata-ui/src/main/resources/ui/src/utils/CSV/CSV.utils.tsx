@@ -145,72 +145,6 @@ export const getColumnConfig = (
   } as Column<any>;
 };
 
-/**
- * Strips all wrapper quotes from a value, handling multiple quote layers.
- * Continues until no more wrapper quotes are found or length stops decreasing.
- */
-const stripAllWrapperQuotes = (value: string): string => {
-  let normalized = value.trim();
-  let previousLength = normalized.length + 1;
-
-  while (
-    normalized.length >= 2 &&
-    normalized.startsWith('"') &&
-    normalized.endsWith('"') &&
-    normalized.length < previousLength
-  ) {
-    previousLength = normalized.length;
-
-    // Handle triple quotes first ("""value""")
-    if (
-      normalized.startsWith('"""') &&
-      normalized.endsWith('"""') &&
-      normalized.length > 6
-    ) {
-      normalized = normalized.slice(3, -3);
-
-      continue;
-    }
-
-    // Handle single quotes ("value")
-    const innerValue = normalized.slice(1, -1);
-
-    if (innerValue.length === 0) {
-      return '';
-    }
-
-    if (!innerValue.startsWith('"') || !innerValue.endsWith('"')) {
-      normalized = innerValue;
-    } else {
-      const doubleStripped = innerValue.slice(1, -1);
-
-      if (doubleStripped.length > 0) {
-        normalized = doubleStripped;
-      } else {
-        break;
-      }
-    }
-  }
-
-  return normalized;
-};
-
-/**
- * Normalizes CSV values during import by stripping wrapper quotes.
- * All columns use the same stripping logic, then unescape double quotes.
- * @param colName - Optional column name (kept for backward compatibility)
- */
-const normalizeCSVValue = (value: string, _colName?: string): string => {
-  if (typeof value !== 'string') {
-    return value;
-  }
-
-  const normalized = stripAllWrapperQuotes(value);
-
-  // Unescape double quotes ("" -> ")
-  return normalized.replace(/""/g, '"');
-};
-
 export const getEntityColumnsAndDataSourceFromCSV = (
   csv: string[][],
   entityType: EntityType,
@@ -238,12 +172,7 @@ export const getEntityColumnsAndDataSourceFromCSV = (
     rows.map((row, idx) => {
       return row.reduce(
         (acc: Record<string, string>, value: string, index: number) => {
-          const colName = cols[index];
-          const normalizedValue =
-            typeof value === 'string'
-              ? normalizeCSVValue(value, colName)
-              : value;
-          acc[colName] = normalizedValue;
+          acc[cols[index]] = value;
           acc['id'] = idx + '';
 
           return acc;

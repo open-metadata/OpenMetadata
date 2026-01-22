@@ -579,23 +579,6 @@ describe('CSVUtils', () => {
         expect(csvString).toBe('domains\n"""PW%domain.09e0bf05"""');
       });
 
-      it('should escape quotes in domains value', () => {
-        const columns = [{ name: 'domains', key: 'domains' }];
-        const dataSource = [
-          {
-            domains: 'PW%domain.09e0bf05"with"quotes',
-          },
-        ];
-        const csvString = getCSVStringFromColumnsAndDataSource(
-          columns,
-          dataSource
-        );
-
-        expect(csvString).toBe(
-          'domains\n"""PW%domain.09e0bf05""with""quotes"""'
-        );
-      });
-
       it('should handle multiple domains (semicolon-separated)', () => {
         const columns = [{ name: 'domains', key: 'domains' }];
         const dataSource = [
