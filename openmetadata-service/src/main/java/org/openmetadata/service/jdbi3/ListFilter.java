@@ -5,10 +5,12 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
@@ -137,7 +139,21 @@ public class ListFilter extends Filter<ListFilter> {
     if (entityStatus == null || entityStatus.trim().isEmpty()) {
       return "";
     }
-    String inCondition = getInConditionFromString(entityStatus);
+    Set<String> validStatuses =
+        Arrays.stream(EntityStatus.values()).map(EntityStatus::value).collect(Collectors.toSet());
+
+    String inCondition =
+        Arrays.stream(entityStatus.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .filter(validStatuses::contains)
+            .map(s -> String.format("'%s'", s))
+            .collect(Collectors.joining(","));
+
+    if (inCondition.isEmpty()) {
+      return "";
+    }
+
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
       return String.format(
           "JSON_UNQUOTE(JSON_EXTRACT(json, '$.entityStatus')) IN (%s)", inCondition);
