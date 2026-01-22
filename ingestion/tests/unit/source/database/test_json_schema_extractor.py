@@ -428,3 +428,481 @@ class TestJsonSchemaExtractionEdgeCases:
         schema_str, children = infer_json_schema_from_sample(json_values)
 
         assert schema_str is not None
+
+
+class TestJsonColumnTypeDetection:
+    """Tests for JSON schema extraction with different column types."""
+
+    def test_json_column_type_json_datatype(self):
+        """Test JSON schema extraction for DataType.JSON columns."""
+        json_values = [
+            {"user_id": 123, "preferences": {"theme": "dark"}},
+            {"user_id": 456, "preferences": {"theme": "light", "language": "en"}},
+        ]
+        schema_str, children = infer_json_schema_from_sample(json_values)
+
+        assert schema_str is not None
+        schema = json.loads(schema_str)
+        assert schema["type"] == "object"
+        assert "user_id" in schema["properties"]
+        assert "preferences" in schema["properties"]
+        assert schema["properties"]["preferences"]["type"] == "object"
+
+        assert children is not None
+        child_names = {child.name.root for child in children}
+        assert "user_id" in child_names
+        assert "preferences" in child_names
+
+    def test_json_column_type_jsonb(self):
+        """Test JSON schema extraction for JSONB columns (PostgreSQL)."""
+        json_values = [
+            {"metadata": {"created_at": "2024-01-01", "updated_at": "2024-01-02"}},
+            {"metadata": {"created_at": "2024-02-01", "version": 2}},
+        ]
+        schema_str, children = infer_json_schema_from_sample(json_values)
+
+        assert schema_str is not None
+        schema = json.loads(schema_str)
+        assert "metadata" in schema["properties"]
+        assert children is not None
+
+    def test_json_column_type_variant(self):
+        """Test JSON schema extraction for VARIANT columns (Snowflake)."""
+        json_values = [
+            {"event_type": "click", "payload": {"x": 100, "y": 200}},
+            {"event_type": "scroll", "payload": {"direction": "down", "amount": 50}},
+        ]
+        schema_str, children = infer_json_schema_from_sample(json_values)
+
+        assert schema_str is not None
+        schema = json.loads(schema_str)
+        assert "event_type" in schema["properties"]
+        assert "payload" in schema["properties"]
+        assert children is not None
+
+    def test_json_column_type_object(self):
+        """Test JSON schema extraction for OBJECT columns (Snowflake/Databricks)."""
+        json_values = [
+            {"config": {"enabled": True, "max_retries": 3}},
+            {"config": {"enabled": False, "timeout": 30}},
+        ]
+        schema_str, children = infer_json_schema_from_sample(json_values)
+
+        assert schema_str is not None
+        schema = json.loads(schema_str)
+        assert "config" in schema["properties"]
+        assert children is not None
+
+
+class TestStringColumnTypeAsJson:
+    """Tests for JSON schema extraction from STRING type columns containing JSON data."""
+
+    def test_string_column_with_json_data(self):
+        """Test JSON schema extraction from STRING columns containing JSON."""
+        json_values = [
+            '{"name": "Alice", "score": 95}',
+            '{"name": "Bob", "score": 87}',
+        ]
+        schema_str, children = infer_json_schema_from_sample(json_values)
+
+        assert schema_str is not None
+        schema = json.loads(schema_str)
+        assert schema["type"] == "object"
+        assert "name" in schema["properties"]
+        assert "score" in schema["properties"]
+        assert schema["properties"]["name"]["type"] == "string"
+        assert schema["properties"]["score"]["type"] == "integer"
+
+        assert children is not None
+        child_names = {child.name.root for child in children}
+        assert "name" in child_names
+        assert "score" in child_names
+
+    def test_varchar_column_with_json_data(self):
+        """Test JSON schema extraction from VARCHAR columns containing JSON."""
+        json_values = [
+            '{"product": "laptop", "price": 999.99, "in_stock": true}',
+            '{"product": "mouse", "price": 29.99, "in_stock": false}',
+        ]
+        schema_str, children = infer_json_schema_from_sample(json_values)
+
+        assert schema_str is not None
+        schema = json.loads(schema_str)
+        assert "product" in schema["properties"]
+        assert "price" in schema["properties"]
+        assert "in_stock" in schema["properties"]
+        assert schema["properties"]["price"]["type"] == "number"
+        assert schema["properties"]["in_stock"]["type"] == "boolean"
+
+    def test_text_column_with_json_data(self):
+        """Test JSON schema extraction from TEXT columns containing JSON."""
+        json_values = [
+            '{"log_level": "INFO", "message": "Application started", "timestamp": 1704067200}',
+            '{"log_level": "ERROR", "message": "Connection failed", "details": {"code": 500}}',
+        ]
+        schema_str, children = infer_json_schema_from_sample(json_values)
+
+        assert schema_str is not None
+        schema = json.loads(schema_str)
+        assert "log_level" in schema["properties"]
+        assert "message" in schema["properties"]
+        assert "details" in schema["properties"]
+
+        assert children is not None
+
+    def test_string_column_with_nested_json(self):
+        """Test JSON schema extraction from STRING columns with deeply nested JSON."""
+        json_values = [
+            '{"user": {"profile": {"address": {"city": "NYC", "zip": "10001"}}}}',
+            '{"user": {"profile": {"address": {"city": "LA", "state": "CA"}}}}',
+        ]
+        schema_str, children = infer_json_schema_from_sample(json_values)
+
+        assert schema_str is not None
+        schema = json.loads(schema_str)
+        assert "user" in schema["properties"]
+        user_props = schema["properties"]["user"]
+        assert user_props["type"] == "object"
+        assert "profile" in user_props["properties"]
+
+        assert children is not None
+        user_child = next(c for c in children if c.name.root == "user")
+        assert user_child.dataType == DataType.JSON
+        assert user_child.children is not None
+
+    def test_string_column_with_array_json(self):
+        """Test JSON schema extraction from STRING columns with JSON arrays."""
+        json_values = [
+            '{"items": [{"id": 1, "name": "Item 1"}, {"id": 2, "name": "Item 2"}]}',
+            '{"items": [{"id": 3, "name": "Item 3", "price": 10.99}]}',
+        ]
+        schema_str, children = infer_json_schema_from_sample(json_values)
+
+        assert schema_str is not None
+        schema = json.loads(schema_str)
+        assert "items" in schema["properties"]
+        items_schema = schema["properties"]["items"]
+        assert items_schema["type"] == "array"
+        assert items_schema["items"]["type"] == "object"
+
+        assert children is not None
+        items_child = next(c for c in children if c.name.root == "items")
+        assert items_child.dataType == DataType.ARRAY
+        assert items_child.arrayDataType == DataType.JSON
+
+    def test_string_column_with_mixed_valid_invalid_json(self):
+        """Test STRING column where some values are valid JSON and some are not."""
+        json_values = [
+            '{"valid": true}',
+            "plain text not json",
+            '{"also_valid": 123}',
+            None,
+            "",
+        ]
+        schema_str, children = infer_json_schema_from_sample(json_values)
+
+        assert schema_str is not None
+        schema = json.loads(schema_str)
+        assert "valid" in schema["properties"]
+        assert "also_valid" in schema["properties"]
+
+    def test_string_column_all_invalid_json(self):
+        """Test STRING column where all values are invalid JSON."""
+        json_values = [
+            "plain text",
+            "another plain text",
+            "not json at all",
+        ]
+        schema_str, children = infer_json_schema_from_sample(json_values)
+
+        assert schema_str is None
+        assert children is None
+
+    def test_string_column_with_json_primitives(self):
+        """Test STRING column with JSON primitives (not objects) - should be filtered."""
+        json_values = [
+            '"just a string"',
+            "123",
+            "true",
+            "[1, 2, 3]",
+        ]
+        schema_str, children = infer_json_schema_from_sample(json_values)
+
+        assert schema_str is None
+        assert children is None
+
+
+class TestAllJsonColumnTypes:
+    """Comprehensive tests covering all JSON_COLUMN_TYPES defined in sql_column_handler.py."""
+
+    def test_all_json_types_with_complex_structure(self):
+        """Test that all JSON column types can handle complex nested structures."""
+        complex_json = [
+            {
+                "id": 1,
+                "name": "Test",
+                "attributes": {
+                    "color": "red",
+                    "size": "large",
+                    "tags": ["tag1", "tag2"],
+                },
+                "measurements": [
+                    {"width": 10, "height": 20},
+                    {"width": 15, "height": 25},
+                ],
+                "metadata": {
+                    "created": "2024-01-01",
+                    "nested": {"level1": {"level2": {"value": 42}}},
+                },
+                "active": True,
+                "score": 98.5,
+                "nullable_field": None,
+            }
+        ]
+        schema_str, children = infer_json_schema_from_sample(complex_json)
+
+        assert schema_str is not None
+        schema = json.loads(schema_str)
+
+        assert schema["properties"]["id"]["type"] == "integer"
+        assert schema["properties"]["name"]["type"] == "string"
+        assert schema["properties"]["attributes"]["type"] == "object"
+        assert schema["properties"]["measurements"]["type"] == "array"
+        assert schema["properties"]["metadata"]["type"] == "object"
+        assert schema["properties"]["active"]["type"] == "boolean"
+        assert schema["properties"]["score"]["type"] == "number"
+        assert schema["properties"]["nullable_field"]["type"] == "null"
+
+        assert children is not None
+        child_names = {c.name.root for c in children}
+        assert child_names == {
+            "id",
+            "name",
+            "attributes",
+            "measurements",
+            "metadata",
+            "active",
+            "score",
+            "nullable_field",
+        }
+
+    def test_json_type_with_empty_objects_and_arrays(self):
+        """Test JSON columns with empty objects and arrays."""
+        json_values = [
+            {"empty_obj": {}, "empty_arr": [], "normal": "value"},
+            {"empty_obj": {"key": "value"}, "empty_arr": [1, 2], "normal": "other"},
+        ]
+        schema_str, children = infer_json_schema_from_sample(json_values)
+
+        assert schema_str is not None
+        schema = json.loads(schema_str)
+        assert "empty_obj" in schema["properties"]
+        assert "empty_arr" in schema["properties"]
+        assert "normal" in schema["properties"]
+
+    def test_jsonb_type_with_special_postgres_patterns(self):
+        """Test JSONB columns with patterns common in PostgreSQL."""
+        json_values = [
+            {
+                "audit_log": {
+                    "action": "UPDATE",
+                    "old_values": {"status": "pending"},
+                    "new_values": {"status": "completed"},
+                    "changed_by": "user_123",
+                }
+            },
+            {
+                "audit_log": {
+                    "action": "INSERT",
+                    "new_values": {"id": 456, "name": "New Record"},
+                    "changed_by": "system",
+                }
+            },
+        ]
+        schema_str, children = infer_json_schema_from_sample(json_values)
+
+        assert schema_str is not None
+        schema = json.loads(schema_str)
+        audit_props = schema["properties"]["audit_log"]["properties"]
+        assert "action" in audit_props
+        assert "old_values" in audit_props
+        assert "new_values" in audit_props
+        assert "changed_by" in audit_props
+
+    def test_variant_type_with_semi_structured_data(self):
+        """Test VARIANT columns with semi-structured data (Snowflake pattern)."""
+        json_values = [
+            {
+                "raw_event": {
+                    "event_id": "evt_001",
+                    "timestamp": "2024-01-15T10:30:00Z",
+                    "properties": {"source": "web", "browser": "Chrome"},
+                }
+            },
+            {
+                "raw_event": {
+                    "event_id": "evt_002",
+                    "timestamp": "2024-01-15T10:31:00Z",
+                    "properties": {"source": "mobile", "os": "iOS", "version": "17.0"},
+                }
+            },
+        ]
+        schema_str, children = infer_json_schema_from_sample(json_values)
+
+        assert schema_str is not None
+        schema = json.loads(schema_str)
+        event_props = schema["properties"]["raw_event"]["properties"]
+        assert "event_id" in event_props
+        assert "timestamp" in event_props
+        assert "properties" in event_props
+
+    def test_object_type_with_nested_structures(self):
+        """Test OBJECT columns with nested structures (Databricks/Snowflake pattern)."""
+        json_values = [
+            {
+                "customer": {
+                    "id": 1001,
+                    "details": {
+                        "first_name": "John",
+                        "last_name": "Doe",
+                        "contacts": {
+                            "email": "john@example.com",
+                            "phones": ["+1-555-0100", "+1-555-0101"],
+                        },
+                    },
+                }
+            },
+            {
+                "customer": {
+                    "id": 1002,
+                    "details": {
+                        "first_name": "Jane",
+                        "last_name": "Smith",
+                        "contacts": {"email": "jane@example.com"},
+                    },
+                }
+            },
+        ]
+        schema_str, children = infer_json_schema_from_sample(json_values)
+
+        assert schema_str is not None
+        schema = json.loads(schema_str)
+        customer_schema = schema["properties"]["customer"]
+        assert customer_schema["type"] == "object"
+        details_schema = customer_schema["properties"]["details"]
+        assert "first_name" in details_schema["properties"]
+        assert "contacts" in details_schema["properties"]
+
+
+class TestAllStringColumnTypes:
+    """Comprehensive tests covering all STRING_COLUMN_TYPES defined in sql_column_handler.py."""
+
+    def test_string_datatype_value(self):
+        """Test DataType.STRING.value column with JSON data."""
+        json_values = [
+            {"field1": "value1", "field2": 100},
+            {"field1": "value2", "field2": 200, "field3": True},
+        ]
+        schema_str, children = infer_json_schema_from_sample(json_values)
+
+        assert schema_str is not None
+        schema = json.loads(schema_str)
+        assert "field1" in schema["properties"]
+        assert "field2" in schema["properties"]
+        assert "field3" in schema["properties"]
+
+    def test_string_literal_type(self):
+        """Test literal 'STRING' type column with JSON data."""
+        json_values = [
+            '{"api_response": {"status": 200, "data": {"items": [1, 2, 3]}}}',
+        ]
+        schema_str, children = infer_json_schema_from_sample(json_values)
+
+        assert schema_str is not None
+        schema = json.loads(schema_str)
+        assert "api_response" in schema["properties"]
+        api_response = schema["properties"]["api_response"]
+        assert "status" in api_response["properties"]
+        assert "data" in api_response["properties"]
+
+    def test_varchar_type_with_various_lengths(self):
+        """Test VARCHAR type columns with JSON of various complexities."""
+        short_json = [{"a": 1}]
+        schema_str, children = infer_json_schema_from_sample(short_json)
+        assert schema_str is not None
+
+        long_json = [
+            {
+                "very_long_key_name_that_might_be_stored_in_varchar": {
+                    "nested": {"deeply": {"structured": {"data": "value"}}}
+                }
+            }
+        ]
+        schema_str, children = infer_json_schema_from_sample(long_json)
+        assert schema_str is not None
+        schema = json.loads(schema_str)
+        assert (
+            "very_long_key_name_that_might_be_stored_in_varchar" in schema["properties"]
+        )
+
+    def test_text_type_with_large_json(self):
+        """Test TEXT type columns that might store large JSON documents."""
+        large_json = [
+            {
+                "document": {
+                    "sections": [
+                        {"title": f"Section {i}", "content": f"Content for section {i}"}
+                        for i in range(10)
+                    ],
+                    "metadata": {
+                        "author": "Test Author",
+                        "created": "2024-01-01",
+                        "tags": ["tag1", "tag2", "tag3"],
+                    },
+                }
+            }
+        ]
+        schema_str, children = infer_json_schema_from_sample(large_json)
+
+        assert schema_str is not None
+        schema = json.loads(schema_str)
+        doc_schema = schema["properties"]["document"]
+        assert "sections" in doc_schema["properties"]
+        assert "metadata" in doc_schema["properties"]
+
+    def test_string_types_with_unicode_json(self):
+        """Test STRING types with JSON containing unicode characters."""
+        json_values = [
+            {"name": "日本語テスト", "emoji": "🎉🚀", "special": "café résumé naïve"},
+            {"name": "中文测试", "emoji": "✨💻", "special": "über straße"},
+        ]
+        schema_str, children = infer_json_schema_from_sample(json_values)
+
+        assert schema_str is not None
+        assert children is not None
+
+    def test_string_types_with_escaped_json(self):
+        """Test STRING types with JSON containing escaped characters."""
+        json_values = [
+            '{"path": "C:\\\\Users\\\\test", "quote": "\\"quoted\\"", "newline": "line1\\nline2"}',
+        ]
+        schema_str, children = infer_json_schema_from_sample(json_values)
+
+        assert schema_str is not None
+        schema = json.loads(schema_str)
+        assert "path" in schema["properties"]
+        assert "quote" in schema["properties"]
+        assert "newline" in schema["properties"]
+
+    def test_string_types_with_numeric_keys(self):
+        """Test STRING types with JSON containing numeric-like keys."""
+        json_values = [
+            {"123": "numeric key", "456abc": "mixed key", "normal_key": "value"},
+        ]
+        schema_str, children = infer_json_schema_from_sample(json_values)
+
+        assert schema_str is not None
+        schema = json.loads(schema_str)
+        assert "123" in schema["properties"]
+        assert "456abc" in schema["properties"]
+        assert "normal_key" in schema["properties"]
