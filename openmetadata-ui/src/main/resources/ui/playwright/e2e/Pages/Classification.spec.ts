@@ -212,11 +212,12 @@ test.describe('Classification Page Tests', () => {
 
         // Test changing to 10 per page
         await pageSizeDropdown.click();
-        await page.waitForTimeout(500);
 
         const tenPerPageOption = page.getByRole('menuitem', {
           name: '10 / Page',
         });
+        await expect(tenPerPageOption).toBeVisible();
+
         if (await tenPerPageOption.isVisible().catch(() => false)) {
           const changePageSizeResponse = page.waitForResponse(
             (response) =>
@@ -240,7 +241,6 @@ test.describe('Classification Page Tests', () => {
 
         // Test changing to 25 per page
         await pageSizeDropdown.click();
-        await page.waitForTimeout(500);
 
         const twentyFivePerPageOption = page.getByRole('menuitem', {
           name: '25 / Page',
@@ -269,7 +269,6 @@ test.describe('Classification Page Tests', () => {
 
         // Test changing to 50 per page (if available)
         await pageSizeDropdown.click();
-        await page.waitForTimeout(500);
 
         const fiftyPerPageOption = page.getByRole('menuitem', {
           name: '50 / Page',
