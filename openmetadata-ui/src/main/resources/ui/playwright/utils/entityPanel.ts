@@ -518,3 +518,84 @@ export const removeTierFromPanel = async (page: Page) => {
   await clearButton.click();
   await patchPromise;
 };
+
+/**
+ * Maps entity types to their corresponding left panel asset type titles
+ */
+function getAssetTypeFromEntityType(entityType: string): string {
+  const entityTypeToAssetType: Record<string, string> = {
+    Table: 'Databases',
+    Database: 'Databases',
+    'Database Schema': 'Databases',
+    'Store Procedure': 'Databases',
+    Dashboard: 'Dashboards',
+    DashboardDataModel: 'Dashboards',
+    Chart: 'Dashboards',
+    Pipeline: 'Pipelines',
+    Topic: 'Topics',
+    MlModel: 'ML Models',
+    Container: 'Containers',
+    SearchIndex: 'Search Indexes',
+    ApiEndpoint: 'APIs',
+    'Api Collection': 'APIs',
+    File: 'Drives',
+    Directory: 'Drives',
+    Spreadsheet: 'Drives',
+    Worksheet: 'Drives',
+    Metric: 'Metrics',
+  };
+
+  return entityTypeToAssetType[entityType] || 'Databases';
+}
+
+/**
+ * Navigate to explore page and select asset type from left panel
+ * The right panel will appear automatically when an asset type is selected
+ * @param page - Playwright page instance
+ * @param entityType - Type of entity (e.g., 'Pipeline', 'Topic', 'Table')
+ */
+export async function navigateToExploreAndSelectEntity(
+  page: Page,
+  entityType: string
+) {
+  await redirectToExplorePage(page);
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  const isWelcomeScreenVisible = await page
+    .getByTestId('welcome-screen')
+    .isVisible();
+
+  if (isWelcomeScreenVisible) {
+    await page.getByTestId('welcome-screen-close-btn').click();
+    await page.waitForLoadState('networkidle');
+  }
+
+  // Get the asset type title for the left panel
+  const assetTypeTitle = getAssetTypeFromEntityType(entityType);
+
+  // Wait for the explore tree to be visible
+  await page.waitForSelector('[data-testid="explore-tree-title-Databases"]', {
+    state: 'visible',
+    timeout: 10000,
+  });
+
+  // Click on the asset type in the left panel
+  const assetTypeElement = page.getByTestId(`explore-tree-title-${assetTypeTitle}`);
+  await assetTypeElement.waitFor({ state: 'visible', timeout: 10000 });
+  await assetTypeElement.click();
+
+  // Wait for the search results to load after selecting the asset type
+  const searchResponsePromise = page.waitForResponse((response) =>
+    response.url().includes('/api/v1/search/query')
+  );
+
+  await searchResponsePromise;
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+  await page.waitForLoadState('networkidle');
+
+}
