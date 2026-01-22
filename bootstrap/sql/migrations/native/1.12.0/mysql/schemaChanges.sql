@@ -177,7 +177,7 @@ CREATE TABLE IF NOT EXISTS search_reindex_lock (
 CREATE TABLE IF NOT EXISTS search_index_failures (
     id VARCHAR(36) NOT NULL,
     jobId VARCHAR(36) NOT NULL,
-    runId VARCHAR(36) NOT NULL,
+    serverId VARCHAR(256) NOT NULL,
     entityType VARCHAR(256) NOT NULL,
     entityId VARCHAR(36),
     entityFqn VARCHAR(1024),
@@ -187,7 +187,7 @@ CREATE TABLE IF NOT EXISTS search_index_failures (
     timestamp BIGINT NOT NULL,
     PRIMARY KEY (id),
     INDEX idx_search_index_failures_job_id (jobId),
-    INDEX idx_search_index_failures_run_id (runId),
+    INDEX idx_search_index_failures_server_id (serverId),
     INDEX idx_search_index_failures_entity_type (entityType),
     INDEX idx_search_index_failures_timestamp (timestamp)
 );

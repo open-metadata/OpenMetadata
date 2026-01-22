@@ -9836,27 +9836,31 @@ public interface CollectionDAO {
   /** DAO for search index failure records */
   interface SearchIndexFailureDAO {
 
-    record SearchIndexFailureRecord(
-        String id,
-        String jobId,
-        String runId,
-        String entityType,
-        String entityId,
-        String entityFqn,
-        String failureStage,
-        String errorMessage,
-        String stackTrace,
-        long timestamp) {}
+    /** Bean class for @BindBean compatibility (records use id() not getId()) */
+    @lombok.Getter
+    @lombok.AllArgsConstructor
+    class SearchIndexFailureRecord {
+      private final String id;
+      private final String jobId;
+      private final String serverId;
+      private final String entityType;
+      private final String entityId;
+      private final String entityFqn;
+      private final String failureStage;
+      private final String errorMessage;
+      private final String stackTrace;
+      private final long timestamp;
+    }
 
     @SqlUpdate(
-        "INSERT INTO search_index_failures (id, jobId, runId, entityType, entityId, entityFqn, "
+        "INSERT INTO search_index_failures (id, jobId, serverId, entityType, entityId, entityFqn, "
             + "failureStage, errorMessage, stackTrace, timestamp) "
-            + "VALUES (:id, :jobId, :runId, :entityType, :entityId, :entityFqn, "
+            + "VALUES (:id, :jobId, :serverId, :entityType, :entityId, :entityFqn, "
             + ":failureStage, :errorMessage, :stackTrace, :timestamp)")
     void insert(
         @Bind("id") String id,
         @Bind("jobId") String jobId,
-        @Bind("runId") String runId,
+        @Bind("serverId") String serverId,
         @Bind("entityType") String entityType,
         @Bind("entityId") String entityId,
         @Bind("entityFqn") String entityFqn,
@@ -9866,21 +9870,21 @@ public interface CollectionDAO {
         @Bind("timestamp") long timestamp);
 
     @SqlBatch(
-        "INSERT INTO search_index_failures (id, jobId, runId, entityType, entityId, entityFqn, "
+        "INSERT INTO search_index_failures (id, jobId, serverId, entityType, entityId, entityFqn, "
             + "failureStage, errorMessage, stackTrace, timestamp) "
-            + "VALUES (:id, :jobId, :runId, :entityType, :entityId, :entityFqn, "
+            + "VALUES (:id, :jobId, :serverId, :entityType, :entityId, :entityFqn, "
             + ":failureStage, :errorMessage, :stackTrace, :timestamp)")
     void insertBatch(@BindBean List<SearchIndexFailureRecord> failures);
 
     @SqlQuery(
-        "SELECT * FROM search_index_failures WHERE runId = :runId "
+        "SELECT * FROM search_index_failures WHERE serverId = :serverId "
             + "ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
     @RegisterRowMapper(SearchIndexFailureMapper.class)
-    List<SearchIndexFailureRecord> findByRunId(
-        @Bind("runId") String runId, @Bind("limit") int limit, @Bind("offset") int offset);
+    List<SearchIndexFailureRecord> findByServerId(
+        @Bind("serverId") String serverId, @Bind("limit") int limit, @Bind("offset") int offset);
 
-    @SqlQuery("SELECT COUNT(*) FROM search_index_failures WHERE runId = :runId")
-    int countByRunId(@Bind("runId") String runId);
+    @SqlQuery("SELECT COUNT(*) FROM search_index_failures WHERE serverId = :serverId")
+    int countByServerId(@Bind("serverId") String serverId);
 
     @SqlQuery(
         "SELECT * FROM search_index_failures WHERE jobId = :jobId "
@@ -9904,7 +9908,7 @@ public interface CollectionDAO {
         return new SearchIndexFailureRecord(
             rs.getString("id"),
             rs.getString("jobId"),
-            rs.getString("runId"),
+            rs.getString("serverId"),
             rs.getString("entityType"),
             rs.getString("entityId"),
             rs.getString("entityFqn"),

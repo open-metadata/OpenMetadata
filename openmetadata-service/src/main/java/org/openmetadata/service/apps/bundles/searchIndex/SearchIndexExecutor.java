@@ -129,7 +129,6 @@ public class SearchIndexExecutor implements AutoCloseable {
   private ReindexingJobContext context;
   private long startTime;
   private IndexingFailureRecorder failureRecorder;
-  private String currentRunId;
 
   record IndexingTask<T>(String entityType, ResultList<T> entities, int offset, int retryCount) {
     IndexingTask(String entityType, ResultList<T> entities, int offset) {
@@ -228,9 +227,19 @@ public class SearchIndexExecutor implements AutoCloseable {
 
     stats.set(initializeTotalRecords(entities));
 
-    this.currentRunId = UUID.randomUUID().toString();
-    String jobId = context.getJobId() != null ? context.getJobId().toString() : currentRunId;
-    this.failureRecorder = new IndexingFailureRecorder(collectionDAO, jobId, currentRunId);
+    String serverId =
+        org.openmetadata
+            .service
+            .apps
+            .bundles
+            .searchIndex
+            .distributed
+            .ServerIdentityResolver
+            .getInstance()
+            .getServerId();
+    String jobId =
+        context.getJobId() != null ? context.getJobId().toString() : UUID.randomUUID().toString();
+    this.failureRecorder = new IndexingFailureRecorder(collectionDAO, jobId, serverId);
     cleanupOldFailures();
 
     initializeSink(effectiveConfig);

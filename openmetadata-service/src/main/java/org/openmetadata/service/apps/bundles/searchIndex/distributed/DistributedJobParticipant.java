@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
 import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
@@ -212,7 +213,12 @@ public class DistributedJobParticipant implements Managed {
     LOG.info("Server {} joining distributed job {} to process partitions", serverId, job.getId());
 
     BulkSink bulkSink = null;
+    IndexingFailureRecorder failureRecorder = null;
     try {
+      // Create failure recorder for this participation
+      failureRecorder =
+          new IndexingFailureRecorder(collectionDAO, job.getId().toString(), serverId);
+
       // Create bulk sink for this participation
       bulkSink =
           searchRepository.createBulkSink(
@@ -246,9 +252,19 @@ public class DistributedJobParticipant implements Managed {
             job.getStagedIndexMapping());
       }
 
-      // Create partition worker with recreate context if available
+      // Set up failure callback on bulk sink to record sink failures
+      final IndexingFailureRecorder recorder = failureRecorder;
+      bulkSink.setFailureCallback(
+          (entityType, entityId, entityFqn, errorMessage) -> {
+            if (recorder != null) {
+              recorder.recordSinkFailure(entityType, entityId, entityFqn, errorMessage);
+            }
+          });
+
+      // Create partition worker with recreate context and failure recorder
       PartitionWorker worker =
-          new PartitionWorker(coordinator, bulkSink, batchSize, recreateContext, recreateIndex);
+          new PartitionWorker(
+              coordinator, bulkSink, batchSize, recreateContext, recreateIndex, failureRecorder);
 
       int partitionsProcessed = 0;
       long totalReaderSuccess = 0;
@@ -347,6 +363,14 @@ public class DistributedJobParticipant implements Managed {
     } catch (Exception e) {
       LOG.error("Error participating in job {}", job.getId(), e);
     } finally {
+      // Flush and close the failure recorder first (before closing sink)
+      if (failureRecorder != null) {
+        try {
+          failureRecorder.close();
+        } catch (Exception e) {
+          LOG.warn("Error closing failure recorder", e);
+        }
+      }
       // Close the bulk sink
       if (bulkSink != null) {
         try {

@@ -635,7 +635,8 @@ public class OpenSearchBulkSink implements BulkSink {
             LOG.warn("Failed to index document {}: {}", item.id(), failureMessage);
           }
           if (failureCallback != null) {
-            failureCallback.onFailure(null, item.id(), null, failureMessage);
+            String entityType = extractEntityTypeFromIndex(item.index());
+            failureCallback.onFailure(entityType, item.id(), null, failureMessage);
           }
         }
       }
@@ -649,6 +650,19 @@ public class OpenSearchBulkSink implements BulkSink {
           failures,
           numberOfActions);
       statsUpdater.run();
+    }
+
+    private String extractEntityTypeFromIndex(String indexName) {
+      if (indexName == null || indexName.isEmpty()) {
+        return "unknown";
+      }
+      // Index names are like "table_search_index" or "dashboard_search_index"
+      // Extract entity type by removing "_search_index" suffix
+      String suffix = "_search_index";
+      if (indexName.endsWith(suffix)) {
+        return indexName.substring(0, indexName.length() - suffix.length());
+      }
+      return indexName;
     }
 
     private boolean shouldRetry(int attemptNumber, Throwable error) {

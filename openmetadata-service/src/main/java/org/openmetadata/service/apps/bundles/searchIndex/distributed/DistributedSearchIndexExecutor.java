@@ -111,7 +111,6 @@ public class DistributedSearchIndexExecutor {
   private Thread serverStatsPersistThread;
   private static final long SERVER_STATS_PERSIST_INTERVAL_MS = 30000;
   private IndexingFailureRecorder failureRecorder;
-  private String currentRunId;
   private BulkSink searchIndexSink;
 
   // Reader stats tracking (accumulated across all worker threads)
@@ -356,9 +355,7 @@ public class DistributedSearchIndexExecutor {
     this.searchIndexSink = bulkSink;
 
     // Initialize failure recorder
-    this.currentRunId = UUID.randomUUID().toString();
-    this.failureRecorder =
-        new IndexingFailureRecorder(collectionDAO, jobId.toString(), currentRunId);
+    this.failureRecorder = new IndexingFailureRecorder(collectionDAO, jobId.toString(), serverId);
 
     // Set up failure callback on the sink to record sink failures
     bulkSink.setFailureCallback(

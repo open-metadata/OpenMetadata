@@ -19,21 +19,21 @@ public class IndexingFailureRecorder implements AutoCloseable {
 
   private final CollectionDAO.SearchIndexFailureDAO failureDAO;
   private final String jobId;
-  private final String runId;
+  private final String serverId;
   private final int batchSize;
   private final List<CollectionDAO.SearchIndexFailureDAO.SearchIndexFailureRecord> buffer;
   private final ReentrantLock lock = new ReentrantLock();
   private volatile boolean closed = false;
 
-  public IndexingFailureRecorder(CollectionDAO collectionDAO, String jobId, String runId) {
-    this(collectionDAO, jobId, runId, DEFAULT_BATCH_SIZE);
+  public IndexingFailureRecorder(CollectionDAO collectionDAO, String jobId, String serverId) {
+    this(collectionDAO, jobId, serverId, DEFAULT_BATCH_SIZE);
   }
 
   public IndexingFailureRecorder(
-      CollectionDAO collectionDAO, String jobId, String runId, int batchSize) {
+      CollectionDAO collectionDAO, String jobId, String serverId, int batchSize) {
     this.failureDAO = collectionDAO.searchIndexFailureDAO();
     this.jobId = jobId;
-    this.runId = runId;
+    this.serverId = serverId;
     this.batchSize = batchSize;
     this.buffer = new ArrayList<>(batchSize);
   }
@@ -85,7 +85,7 @@ public class IndexingFailureRecorder implements AutoCloseable {
         new CollectionDAO.SearchIndexFailureDAO.SearchIndexFailureRecord(
             UUID.randomUUID().toString(),
             jobId,
-            runId,
+            serverId,
             entityType,
             entityId,
             entityFqn,
@@ -126,7 +126,8 @@ public class IndexingFailureRecorder implements AutoCloseable {
     buffer.clear();
 
     try {
-      LOG.info("Flushing {} failure records for job {} runId {}", toFlush.size(), jobId, runId);
+      LOG.info(
+          "Flushing {} failure records for job {} serverId {}", toFlush.size(), jobId, serverId);
       failureDAO.insertBatch(toFlush);
       LOG.info("Successfully flushed {} failure records for job {}", toFlush.size(), jobId);
     } catch (Exception e) {
