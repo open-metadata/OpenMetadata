@@ -19,6 +19,7 @@ import {
   lowerCase,
   omit,
   omitBy,
+  parseInt,
   startCase,
   uniqBy,
 } from 'lodash';
@@ -558,31 +559,4 @@ export const getServiceTypeForTestDefinition = (
   table?: Table
 ): string | undefined => {
   return table?.serviceType;
-};
-
-/**
- * Checks if a test definition supports a given service type
- * @param testDefinition - The test definition to check
- * @param serviceType - The service type to validate against
- * @returns true if the test definition supports the service type
- */
-export const isTestDefinitionSupportedForService = (
-  testDefinition: TestDefinition,
-  serviceType?: string
-): boolean => {
-  // If no service type provided, cannot determine support
-  if (!serviceType) {
-    return true; // Default to showing all
-  }
-
-  // If supportedServices is empty or undefined, supports all services
-  if (
-    !testDefinition.supportedServices ||
-    testDefinition.supportedServices.length === 0
-  ) {
-    return true;
-  }
-
-  // Check if service type is in the supported list
-  return testDefinition.supportedServices.includes(serviceType);
 };

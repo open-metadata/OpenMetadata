@@ -28,7 +28,6 @@ import {
   createTestCaseParameters,
   getServiceTypeForTestDefinition,
   getTestCaseFiltersValue,
-  isTestDefinitionSupportedForService,
   transformToTestCaseStatusObject,
 } from './DataQualityUtils';
 
@@ -606,7 +605,7 @@ describe('DataQualityUtils', () => {
     });
 
     it('should return undefined when table is undefined', () => {
-      const result = getServiceTypeForTestDefinition(undefined);
+      const result = getServiceTypeForTestDefinition();
 
       expect(result).toBeUndefined();
     });
@@ -615,110 +614,6 @@ describe('DataQualityUtils', () => {
       const result = getServiceTypeForTestDefinition(null as unknown as Table);
 
       expect(result).toBeUndefined();
-    });
-  });
-
-  describe('isTestDefinitionSupportedForService', () => {
-    const mockTestDefinition: TestDefinition = {
-      id: 'test-def-id',
-      name: 'testDefinition',
-      testPlatforms: [TestPlatform.OpenMetadata],
-      supportedServices: ['BigQuery', 'Snowflake', 'PostgreSQL'],
-    } as TestDefinition;
-
-    it('should return true when serviceType is undefined', () => {
-      const result = isTestDefinitionSupportedForService(
-        mockTestDefinition,
-        undefined
-      );
-
-      expect(result).toBe(true);
-    });
-
-    it('should return true when supportedServices is empty', () => {
-      const testDef = {
-        ...mockTestDefinition,
-        supportedServices: [],
-      } as TestDefinition;
-
-      const result = isTestDefinitionSupportedForService(testDef, 'BigQuery');
-
-      expect(result).toBe(true);
-    });
-
-    it('should return true when supportedServices is undefined', () => {
-      const testDef = {
-        ...mockTestDefinition,
-        supportedServices: undefined,
-      } as TestDefinition;
-
-      const result = isTestDefinitionSupportedForService(testDef, 'BigQuery');
-
-      expect(result).toBe(true);
-    });
-
-    it('should return true when serviceType is in supportedServices', () => {
-      const result = isTestDefinitionSupportedForService(
-        mockTestDefinition,
-        'BigQuery'
-      );
-
-      expect(result).toBe(true);
-    });
-
-    it('should return true when serviceType matches any supported service', () => {
-      const supportedServices = ['BigQuery', 'Snowflake', 'PostgreSQL'];
-
-      supportedServices.forEach((service) => {
-        const result = isTestDefinitionSupportedForService(
-          mockTestDefinition,
-          service
-        );
-
-        expect(result).toBe(true);
-      });
-    });
-
-    it('should return false when serviceType is not in supportedServices', () => {
-      const result = isTestDefinitionSupportedForService(
-        mockTestDefinition,
-        'MySQL'
-      );
-
-      expect(result).toBe(false);
-    });
-
-    it('should return false for multiple unsupported services', () => {
-      const unsupportedServices = ['MySQL', 'Oracle', 'MSSQL', 'Hive'];
-
-      unsupportedServices.forEach((service) => {
-        const result = isTestDefinitionSupportedForService(
-          mockTestDefinition,
-          service
-        );
-
-        expect(result).toBe(false);
-      });
-    });
-
-    it('should handle case-sensitive service type matching', () => {
-      const result = isTestDefinitionSupportedForService(
-        mockTestDefinition,
-        'bigquery' // lowercase, should not match
-      );
-
-      expect(result).toBe(false);
-    });
-
-    it('should return true when serviceType is undefined and supportedServices is undefined', () => {
-      const testDef = {
-        ...mockTestDefinition,
-        supportedServices: undefined,
-      } as TestDefinition;
-
-      const result = isTestDefinitionSupportedForService(testDef);
-
-      expect(result).toBe(true);
     });
   });
 });
