@@ -28,17 +28,29 @@ from metadata.generated.schema.security.credentials.gcpValues import (
     SingleProjectId,
 )
 from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.bigquery.queries import (
-    BIGQUERY_FOREIGN_CONSTRAINTS,
-    BIGQUERY_TABLE_CONSTRAINTS,
-)
+from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_CONSTRAINTS
 from metadata.utils.bigquery_utils import get_bigquery_client
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-FK_CACHE = {}
-PK_CACHE = {}
+CONSTRAINT_CACHE = {}
+
+
+def clear_constraint_cache():
+    """Clear the global constraint cache to free memory."""
+    global CONSTRAINT_CACHE
+    CONSTRAINT_CACHE.clear()
+    logger.debug("Cleared CONSTRAINT_CACHE")
+
+
+def clear_constraint_cache_for_schema(project: str, schema: str):
+    """Clear cache entry for a specific schema to free memory incrementally."""
+    global CONSTRAINT_CACHE
+    cache_key = f"{project}.{schema}"
+    if cache_key in CONSTRAINT_CACHE:
+        del CONSTRAINT_CACHE[cache_key]
+        logger.debug(f"Cleared CONSTRAINT_CACHE for {cache_key}")
 
 
 class InspectorWrapper(BaseModel):
@@ -89,20 +101,20 @@ def get_pk_constraint(
     """
     try:
         project, schema = schema.split(".")
-        constraints = PK_CACHE.get(f"{project}.{schema}")
-        if constraints is None:
-            constraints = connection.engine.execute(
-                BIGQUERY_TABLE_CONSTRAINTS.format(
-                    project_id=project, schema_name=schema
-                )
-            )
-            PK_CACHE[f"{project}.{schema}"] = constraints.fetchall()
+        cache_key = f"{project}.{schema}"
 
-        col_name = []
-        table_constraints = [row for row in constraints if row.table_name == table_name]
-        for table_constraint in table_constraints:
-            col_name.append(table_constraint.column_name)
-        return {"constrained_columns": tuple(col_name)}
+        if cache_key not in CONSTRAINT_CACHE:
+            constraints = connection.engine.execute(
+                BIGQUERY_CONSTRAINTS.format(project_id=project, dataset_name=schema)
+            )
+            CONSTRAINT_CACHE[cache_key] = constraints.fetchall()
+
+        col_names = [
+            row.column_name
+            for row in CONSTRAINT_CACHE[cache_key]
+            if row.table_name == table_name and row.constraint_type == "PRIMARY KEY"
+        ]
+        return {"constrained_columns": tuple(col_names)}
     except Exception as exc:
         logger.debug(traceback.format_exc())
         logger.warning(
@@ -119,28 +131,27 @@ def get_foreign_keys(
     """
     try:
         project, schema = schema.split(".")
-        constraints = FK_CACHE.get(f"{project}.{schema}")
-        if constraints is None:
-            constraints = connection.engine.execute(
-                BIGQUERY_FOREIGN_CONSTRAINTS.format(
-                    project_id=project, schema_name=schema
-                )
-            )
-            FK_CACHE[f"{project}.{schema}"] = constraints.fetchall()
+        cache_key = f"{project}.{schema}"
 
-        col_name = []
-        table_constraints = [row for row in constraints if row.table_name == table_name]
-        for table_constraint in table_constraints:
-            col_name.append(
-                {
-                    "name": table_constraint.name,
-                    "referred_schema": table_constraint.referred_schema,
-                    "referred_table": table_constraint.referred_table,
-                    "constrained_columns": [table_constraint.constrained_columns],
-                    "referred_columns": [table_constraint.referred_columns],
-                }
+        if cache_key not in CONSTRAINT_CACHE:
+            constraints = connection.engine.execute(
+                BIGQUERY_CONSTRAINTS.format(project_id=project, dataset_name=schema)
             )
-        return col_name
+            CONSTRAINT_CACHE[cache_key] = constraints.fetchall()
+
+        fk_list = []
+        for row in CONSTRAINT_CACHE[cache_key]:
+            if row.table_name == table_name and row.constraint_type == "FOREIGN KEY":
+                fk_list.append(
+                    {
+                        "name": row.constraint_name,
+                        "referred_schema": row.referenced_schema,
+                        "referred_table": row.referenced_table,
+                        "constrained_columns": [row.column_name],
+                        "referred_columns": [row.referenced_column],
+                    }
+                )
+        return fk_list
     except Exception as exc:
         logger.debug(traceback.format_exc())
         logger.warning(

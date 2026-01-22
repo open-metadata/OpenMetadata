@@ -463,23 +463,11 @@ class BigqueryUnitTest(TestCase):
             either.right for either in self.bq_source.yield_database(MOCK_DB_NAME)
         ]
 
-    def test_yield_database_schema(self):
-        def schema_comment_query(query: str):
-            if query.strip().startswith(
-                "SELECT option_value as schema_description FROM"
-            ):
-                result = Mock()
-                mock_result = Mock()
-                mock_result.schema_description = (
-                    '"Some description with it\'s own\\nnew line"'
-                )
-                result.result.return_value = [mock_result]
-                return result
-            else:
-                raise NotImplementedError
-
-        self.bq_source.client.query = schema_comment_query
-
+    @patch(
+        "metadata.ingestion.source.database.bigquery.metadata.BigquerySource.get_schema_description"
+    )
+    def test_yield_database_schema(self, get_schema_description):
+        get_schema_description.return_value = "Some description with it's own\nnew line"
         assert EXPTECTED_DATABASE_SCHEMA == [
             either.right
             for either in self.bq_source.yield_database_schema(
@@ -522,14 +510,10 @@ class BigqueryUnitTest(TestCase):
                     table[0]
                 ]  # pylint: disable=cell-var-from-loop
             )
-            self.bq_source.inspector.get_columns = (
-                lambda table_name, schema, table_type, db_name: MOCK_COLUMN_DATA[
-                    i
-                ]  # pylint: disable=cell-var-from-loop
-            )
-            self.bq_source.inspector.get_table_ddl = (
-                lambda table_name, schema, db_name: None  # pylint: disable=cell-var-from-loop
-            )
+            self.bq_source._get_columns_internal = lambda schema_name, table_name, db_name, inspector, table_type,: MOCK_COLUMN_DATA[
+                i
+            ]  # pylint: disable=cell-var-from-loop
+
             self.bq_source.inspector.get_table_comment = lambda table_name, schema: {
                 "text": table[2]
             }  # pylint: disable=cell-var-from-loop

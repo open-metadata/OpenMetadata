@@ -66,13 +66,15 @@ class BigQueryIncrementalTableProcessor:
 
         for entry in entries:
             table_name = entry.payload.get("resourceName", "").split("/")[-1]
-            timestamp = entry.timestamp
-            deleted = self._is_table_deleted(entry)
 
-            if table_name not in table_map:
-                table_map[table_name] = BigQueryTable(
-                    name=table_name, timestamp=timestamp, deleted=deleted
-                )
+            if table_name in table_map:
+                continue
+
+            table_map[table_name] = BigQueryTable(
+                name=table_name,
+                timestamp=entry.timestamp,
+                deleted=self._is_table_deleted(entry),
+            )
         self._changed_tables_map.add(dataset, table_map)
 
     def get_deleted(self, schema_name: SchemaName) -> List[TableName]:
