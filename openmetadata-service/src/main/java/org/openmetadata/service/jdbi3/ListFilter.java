@@ -139,7 +139,8 @@ public class ListFilter extends Filter<ListFilter> {
     }
     String inCondition = getInConditionFromString(entityStatus);
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-      return String.format("JSON_UNQUOTE(JSON_EXTRACT(json, '$.entityStatus')) IN (%s)", inCondition);
+      return String.format(
+          "JSON_UNQUOTE(JSON_EXTRACT(json, '$.entityStatus')) IN (%s)", inCondition);
     } else {
       return String.format("json->>'entityStatus' IN (%s)", inCondition);
     }
