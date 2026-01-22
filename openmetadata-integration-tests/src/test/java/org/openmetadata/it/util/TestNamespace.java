@@ -39,6 +39,10 @@ public class TestNamespace {
     return cachedShortPrefix;
   }
 
+  public String shortPrefix(String base) {
+    return shortPrefix() + "_" + base;
+  }
+
   /**
    * Generate a unique short ID for each call. Use this when creating multiple independent entities
    * within the same test method that need different names (e.g., multiple tables).

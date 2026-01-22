@@ -22,6 +22,10 @@ public class DatabaseSchemaTestFactory {
     return DatabaseSchemas.create().name(ns.prefix("schema")).in(databaseFqn).execute();
   }
 
+  public static DatabaseSchema create(String databaseFqn, String schemaName) {
+    return DatabaseSchemas.create().name(schemaName).in(databaseFqn).execute();
+  }
+
   /**
    * Create a schema with its parent database using fluent API.
    */

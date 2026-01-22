@@ -3,6 +3,7 @@ package org.openmetadata.it.tests.repositories;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -36,6 +37,8 @@ import org.openmetadata.schema.type.RecognizerException;
 import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.type.Resolution;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TagLabelMetadata;
+import org.openmetadata.schema.type.TagLabelRecognizerMetadata;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.fluent.Tables;
@@ -183,24 +186,23 @@ class RecognizerFeedbackRepositoryTest {
 
     Column col1 =
         new Column()
-            .withName(ns.uniqueShortId() + "_col1")
+            .withName(ns.shortPrefix("col1"))
             .withDataType(ColumnDataType.STRING)
             .withTags(Arrays.asList(manualTag));
 
     Column col2 =
         new Column()
-            .withName(ns.uniqueShortId() + "_col2")
+            .withName(ns.shortPrefix("col2"))
             .withDataType(ColumnDataType.STRING)
             .withTags(Arrays.asList(generatedTag));
 
-    Column col3 =
-        new Column().withName(ns.uniqueShortId() + "_col3").withDataType(ColumnDataType.STRING);
+    Column col3 = new Column().withName(ns.shortPrefix("col3")).withDataType(ColumnDataType.STRING);
 
     List<Column> columns = Arrays.asList(col1, col2, col3);
 
     Table table =
         Tables.create()
-            .name(ns.uniqueShortId() + "_table")
+            .name(ns.shortPrefix("table"))
             .inSchema(schema.getFullyQualifiedName())
             .withColumns(columns)
             .execute();
@@ -380,6 +382,172 @@ class RecognizerFeedbackRepositoryTest {
     assertTrue(exception.getReason().contains("This is test data"));
   }
 
+  @Test
+  void testApplyFeedback_withRecognizerMetadata_shouldTargetSpecificRecognizer(TestNamespace ns) {
+    String tagFqn = createTagWithMultipleRecognizers(ns);
+    Tag tag = tagRepository.getByName(null, tagFqn, tagRepository.getFields("recognizers"));
+
+    UUID recognizer1Id = tag.getRecognizers().get(0).getId();
+    UUID recognizer2Id = tag.getRecognizers().get(1).getId();
+
+    Table table =
+        createTableWithTagAndRecognizerMetadata(ns, tagFqn, recognizer1Id, "recognizer_1");
+
+    Column column = table.getColumns().getFirst();
+    String columnLink =
+        String.format(
+            "<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), column.getName());
+
+    RecognizerFeedback feedback = new RecognizerFeedback();
+    feedback.setEntityLink(columnLink);
+    feedback.setTagFQN(tagFqn);
+    feedback.setFeedbackType(RecognizerFeedback.FeedbackType.FALSE_POSITIVE);
+    feedback.setUserReason(RecognizerFeedback.UserReason.NOT_SENSITIVE_DATA);
+    feedback.setCreatedBy(createUserReference("admin"));
+    feedback.setStatus(RecognizerFeedback.Status.PENDING);
+
+    RecognizerFeedback created = repository.create(feedback);
+    RecognizerFeedback result = repository.applyFeedback(created, "admin");
+
+    assertEquals(RecognizerFeedback.Status.APPLIED, result.getStatus());
+
+    Tag updatedTag = tagRepository.getByName(null, tagFqn, tagRepository.getFields("recognizers"));
+    Recognizer targetRecognizer = findRecognizerById(updatedTag, recognizer1Id);
+    Recognizer otherRecognizer = findRecognizerById(updatedTag, recognizer2Id);
+
+    assertNotNull(targetRecognizer.getExceptionList());
+    assertEquals(1, targetRecognizer.getExceptionList().size());
+    assertEquals(columnLink, targetRecognizer.getExceptionList().get(0).getEntityLink());
+
+    assertTrue(
+        otherRecognizer.getExceptionList() == null || otherRecognizer.getExceptionList().isEmpty());
+  }
+
+  @Test
+  void testApplyFeedback_withoutRecognizerMetadata_shouldFallbackToAllRecognizers(
+      TestNamespace ns) {
+    String tagFqn = createTagWithMultipleRecognizers(ns);
+    Table table = createTableWithTagWithoutMetadata(ns, tagFqn);
+
+    Column column = table.getColumns().get(0);
+    String columnLink =
+        String.format(
+            "<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), column.getName());
+
+    RecognizerFeedback feedback = new RecognizerFeedback();
+    feedback.setEntityLink(columnLink);
+    feedback.setTagFQN(tagFqn);
+    feedback.setFeedbackType(RecognizerFeedback.FeedbackType.FALSE_POSITIVE);
+    feedback.setUserReason(RecognizerFeedback.UserReason.NOT_SENSITIVE_DATA);
+    feedback.setCreatedBy(createUserReference("admin"));
+    feedback.setStatus(RecognizerFeedback.Status.PENDING);
+
+    RecognizerFeedback created = repository.create(feedback);
+    RecognizerFeedback result = repository.applyFeedback(created, "admin");
+
+    assertEquals(RecognizerFeedback.Status.APPLIED, result.getStatus());
+
+    Tag updatedTag = tagRepository.getByName(null, tagFqn, tagRepository.getFields("recognizers"));
+
+    for (Recognizer recognizer : updatedTag.getRecognizers()) {
+      assertNotNull(recognizer.getExceptionList());
+      assertEquals(1, recognizer.getExceptionList().size());
+      assertEquals(columnLink, recognizer.getExceptionList().get(0).getEntityLink());
+    }
+  }
+
+  @Test
+  void testApplyFeedback_recognizerNotFoundInTag_shouldFallbackToAllRecognizers(TestNamespace ns) {
+    String tagFqn = createTagWithMultipleRecognizers(ns);
+    UUID nonExistentRecognizerId = UUID.randomUUID();
+
+    Table table =
+        createTableWithTagAndRecognizerMetadata(
+            ns, tagFqn, nonExistentRecognizerId, "nonexistent_recognizer");
+
+    Column column = table.getColumns().get(0);
+    String columnLink =
+        String.format(
+            "<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), column.getName());
+
+    RecognizerFeedback feedback = new RecognizerFeedback();
+    feedback.setEntityLink(columnLink);
+    feedback.setTagFQN(tagFqn);
+    feedback.setFeedbackType(RecognizerFeedback.FeedbackType.FALSE_POSITIVE);
+    feedback.setUserReason(RecognizerFeedback.UserReason.NOT_SENSITIVE_DATA);
+    feedback.setCreatedBy(createUserReference("admin"));
+    feedback.setStatus(RecognizerFeedback.Status.PENDING);
+
+    RecognizerFeedback created = repository.create(feedback);
+    RecognizerFeedback result = repository.applyFeedback(created, "admin");
+
+    assertEquals(RecognizerFeedback.Status.APPLIED, result.getStatus());
+
+    Tag updatedTag = tagRepository.getByName(null, tagFqn, tagRepository.getFields("recognizers"));
+
+    for (Recognizer recognizer : updatedTag.getRecognizers()) {
+      assertNotNull(recognizer.getExceptionList());
+      assertEquals(1, recognizer.getExceptionList().size());
+      assertEquals(columnLink, recognizer.getExceptionList().get(0).getEntityLink());
+    }
+  }
+
+  @Test
+  void testGetRecognizerIdFromTagLabel_withMetadata_shouldReturnRecognizerId(TestNamespace ns) {
+    String tagFqn = createTagWithRecognizer(ns);
+    Tag tag = tagRepository.getByName(null, tagFqn, tagRepository.getFields("recognizers"));
+    UUID recognizerId = tag.getRecognizers().get(0).getId();
+
+    Table table = createTableWithTagAndRecognizerMetadata(ns, tagFqn, recognizerId, "recognizer_1");
+
+    Column column = table.getColumns().get(0);
+    String columnLink =
+        String.format(
+            "<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), column.getName());
+
+    UUID result = repository.getRecognizerIdFromTagLabel(columnLink, tagFqn);
+
+    assertEquals(recognizerId, result);
+  }
+
+  @Test
+  void testGetRecognizerIdFromTagLabel_withoutMetadata_shouldReturnNull(TestNamespace ns) {
+    String tagFqn = createTagWithRecognizer(ns);
+    Table table = createTableWithTagWithoutMetadata(ns, tagFqn);
+
+    Column column = table.getColumns().get(0);
+    String columnLink =
+        String.format(
+            "<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), column.getName());
+
+    UUID result = repository.getRecognizerIdFromTagLabel(columnLink, tagFqn);
+
+    assertNull(result);
+  }
+
+  @Test
+  void testFindRecognizerById_found_shouldReturnRecognizer(TestNamespace ns) {
+    String tagFqn = createTagWithRecognizer(ns);
+    Tag tag = tagRepository.getByName(null, tagFqn, tagRepository.getFields("recognizers"));
+    UUID recognizerId = tag.getRecognizers().get(0).getId();
+
+    Recognizer found = repository.findRecognizerById(tag, recognizerId);
+
+    assertNotNull(found);
+    assertEquals(recognizerId, found.getId());
+  }
+
+  @Test
+  void testFindRecognizerById_notFound_shouldReturnNull(TestNamespace ns) {
+    String tagFqn = createTagWithRecognizer(ns);
+    Tag tag = tagRepository.getByName(null, tagFqn, tagRepository.getFields("recognizers"));
+    UUID differentId = UUID.randomUUID();
+
+    Recognizer found = repository.findRecognizerById(tag, differentId);
+
+    assertNull(found);
+  }
+
   private String createTagWithRecognizer(TestNamespace ns) {
     String tagName = ns.uniqueShortId() + "_pii-tag";
     CreateTag createTag =
@@ -401,13 +569,13 @@ class RecognizerFeedbackRepositoryTest {
     DatabaseService svc = DatabaseServiceTestFactory.create(ns, "Postgres");
     Database db =
         Databases.create()
-            .name(ns.uniqueShortId() + "_db")
+            .name(ns.shortPrefix("db"))
             .in(svc.getFullyQualifiedName())
             .withDescription("Test database created by integration test")
             .execute();
     DatabaseSchema schema =
         DatabaseSchemas.create()
-            .name(ns.uniqueShortId() + "_schema")
+            .name(ns.shortPrefix("schema"))
             .in(db.getFullyQualifiedName())
             .execute();
 
@@ -462,5 +630,102 @@ class RecognizerFeedbackRepositoryTest {
 
   private Column findColumnByName(List<Column> columns, String name) {
     return columns.stream().filter(c -> c.getName().equals(name)).findFirst().orElse(null);
+  }
+
+  private String createTagWithMultipleRecognizers(TestNamespace ns) {
+    String tagName = ns.uniqueShortId() + "_multi-recognizer-tag";
+    CreateTag createTag =
+        new CreateTag()
+            .withName(tagName)
+            .withClassification("PII")
+            .withDescription("Test tag with multiple recognizers");
+
+    Recognizer recognizer1 =
+        new Recognizer()
+            .withName(ns.shortPrefix("recognizer_1"))
+            .withRecognizerConfig(
+                new PredefinedRecognizer().withName(PredefinedRecognizer.Name.EMAIL_RECOGNIZER));
+
+    Recognizer recognizer2 =
+        new Recognizer()
+            .withName(ns.shortPrefix("recognizer_2"))
+            .withRecognizerConfig(
+                new PredefinedRecognizer().withName(PredefinedRecognizer.Name.US_SSN_RECOGNIZER));
+
+    createTag.withRecognizers(Arrays.asList(recognizer1, recognizer2));
+
+    Tag tag = Tags.create(createTag);
+    return tag.getFullyQualifiedName();
+  }
+
+  private Table createTableWithTagAndRecognizerMetadata(
+      TestNamespace ns, String tagFqn, UUID recognizerId, String recognizerName) {
+    DatabaseService svc =
+        DatabaseServiceTestFactory.createPostgresWithName(ns.shortPrefix("Postgres"), ns);
+    Database db =
+        DatabaseTestFactory.createWithName(svc.getFullyQualifiedName(), ns.shortPrefix("db"));
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.create(db.getFullyQualifiedName(), ns.shortPrefix("schema"));
+
+    TagLabelRecognizerMetadata recognizerMetadata = new TagLabelRecognizerMetadata();
+    recognizerMetadata.setRecognizerId(recognizerId);
+    recognizerMetadata.setRecognizerName(recognizerName);
+    recognizerMetadata.setScore(0.85);
+
+    TagLabelMetadata metadata = new TagLabelMetadata();
+    metadata.setRecognizer(recognizerMetadata);
+
+    TagLabel tagWithMetadata = new TagLabel();
+    tagWithMetadata.setTagFQN(tagFqn);
+    tagWithMetadata.setLabelType(TagLabel.LabelType.GENERATED);
+    tagWithMetadata.setMetadata(metadata);
+
+    Column column =
+        new Column()
+            .withName(ns.shortPrefix("email_col"))
+            .withDataType(ColumnDataType.STRING)
+            .withTags(Collections.singletonList(tagWithMetadata));
+
+    return Tables.create()
+        .name(ns.shortPrefix("table"))
+        .inSchema(schema.getFullyQualifiedName())
+        .withColumns(Collections.singletonList(column))
+        .execute();
+  }
+
+  private Table createTableWithTagWithoutMetadata(TestNamespace ns, String tagFqn) {
+    DatabaseService svc =
+        DatabaseServiceTestFactory.createPostgresWithName(ns.shortPrefix("Postgres"), ns);
+    Database db =
+        DatabaseTestFactory.createWithName(svc.getFullyQualifiedName(), ns.shortPrefix("pg"));
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.create(db.getFullyQualifiedName(), ns.shortPrefix("schema"));
+
+    TagLabel tagWithoutMetadata = new TagLabel();
+    tagWithoutMetadata.setTagFQN(tagFqn);
+    tagWithoutMetadata.setLabelType(TagLabel.LabelType.GENERATED);
+    tagWithoutMetadata.setMetadata(null);
+
+    Column column =
+        new Column()
+            .withName(ns.shortPrefix("email_col"))
+            .withDataType(ColumnDataType.STRING)
+            .withTags(Collections.singletonList(tagWithoutMetadata));
+
+    return Tables.create()
+        .name(ns.shortPrefix("table"))
+        .inSchema(schema.getFullyQualifiedName())
+        .withColumns(Collections.singletonList(column))
+        .execute();
+  }
+
+  private Recognizer findRecognizerById(Tag tag, UUID recognizerId) {
+    if (tag.getRecognizers() == null) {
+      return null;
+    }
+    return tag.getRecognizers().stream()
+        .filter(r -> r.getId() != null && r.getId().equals(recognizerId))
+        .findFirst()
+        .orElse(null);
   }
 }
