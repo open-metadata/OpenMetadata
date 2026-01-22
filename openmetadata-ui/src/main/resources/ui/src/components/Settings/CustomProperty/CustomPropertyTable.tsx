@@ -159,7 +159,9 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
           if (!isString(config) && !isArray(config)) {
             if (config?.columns) {
               return (
-                <div className="w-full d-flex gap-2 flex-column">
+                <div
+                  className="w-full d-flex gap-2 flex-column"
+                  data-testid="table-config">
                   <Typography.Text>
                     <span className="font-medium">{`${t(
                       'label.column-plural'

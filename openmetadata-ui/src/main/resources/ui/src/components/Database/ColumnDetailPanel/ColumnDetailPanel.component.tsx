@@ -19,14 +19,23 @@ import {
 } from '@untitledui/icons';
 import { Card, Drawer, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-new.svg';
 import { ReactComponent as KeyIcon } from '../../../assets/svg/icon-key.svg';
+import {
+  ENTITY_PATH,
+  PAGE_SIZE_LARGE,
+} from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
+import { Type } from '../../../generated/entity/type';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
-import { updateTableColumn } from '../../../rest/tableAPI';
+import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
+import {
+  getTableColumnsByFQN,
+  updateTableColumn,
+} from '../../../rest/tableAPI';
 import { listTestCases } from '../../../rest/testAPI';
 import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQualityUtils';
 import { toEntityData } from '../../../utils/EntitySummaryPanelUtils';
@@ -79,6 +88,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   onNavigate,
   tableConstraints = [],
   entityType,
+  onColumnsUpdate,
 }: ColumnDetailPanelProps<T>) => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -94,6 +104,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       description:
         (permissions.EditDescription || permissions.EditAll) && !deleted,
       viewAllPermission: permissions.ViewAll,
+      customProperties:
+        (permissions.EditCustomFields || permissions.EditAll) && !deleted,
     }),
     [permissions, deleted]
   );
@@ -147,11 +159,67 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     }
   }, [column?.fullyQualifiedName]);
 
+  const [entityTypeDetail, setEntityTypeDetail] = useState<Type>();
+
+  const fetchEntityTypeDetail = async () => {
+    try {
+      const res = await getTypeByFQN(ENTITY_PATH.column);
+      setEntityTypeDetail(res);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  useEffect(() => {
+    fetchEntityTypeDetail();
+  }, []);
+
+  const [activeColumn, setActiveColumn] = useState<T | null>(column);
+
+  useEffect(() => {
+    setActiveColumn(column);
+  }, [column]);
+
+  const fetchColumnDetails = useCallback(async () => {
+    if (!column?.fullyQualifiedName || !isOpen || !tableFqn) {
+      return;
+    }
+
+    const col = column as Column;
+    // If extension is missing, fetch full details using list
+    if (entityType === EntityType.TABLE && !col.extension) {
+      try {
+        const response = await getTableColumnsByFQN(tableFqn, {
+          fields: 'tags,customMetrics,extension',
+          limit: PAGE_SIZE_LARGE,
+        });
+
+        const latestColumn = response.data.find(
+          (c) => c.fullyQualifiedName === column.fullyQualifiedName
+        );
+
+        if (latestColumn) {
+          setActiveColumn((prev) => ({ ...prev, ...latestColumn } as T));
+        }
+
+        if (onColumnsUpdate) {
+          onColumnsUpdate(response.data);
+        }
+      } catch (error) {
+        // Fallback to existing data if fetch fails
+      }
+    }
+  }, [column?.fullyQualifiedName, isOpen, entityType, tableFqn]);
+
+  useEffect(() => {
+    fetchColumnDetails();
+  }, [fetchColumnDetails]);
+
   useEffect(() => {
     if (isOpen && entityType === EntityType.TABLE) {
       fetchTestCases();
     }
-  }, [isOpen, column, fetchTestCases]);
+  }, [isOpen, activeColumn, fetchTestCases]);
 
   // Flatten all columns including nested children for accurate counting and navigation
   const flattenedColumns = useMemo(
@@ -161,30 +229,30 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
   // Find the actual index in the flattened array
   const actualColumnIndex = useMemo(() => {
-    if (!column?.fullyQualifiedName) {
+    if (!activeColumn?.fullyQualifiedName) {
       return 0;
     }
 
     return flattenedColumns.findIndex(
-      (col) => col.fullyQualifiedName === column.fullyQualifiedName
+      (col) => col.fullyQualifiedName === activeColumn.fullyQualifiedName
     );
-  }, [column, flattenedColumns]);
+  }, [activeColumn, flattenedColumns]);
 
   const breadcrumbPath = useMemo(() => {
-    if (!isColumn(column)) {
+    if (!isColumn(activeColumn)) {
       return [];
     }
 
-    return buildColumnBreadcrumbPath(column, allColumns as Column[]);
-  }, [column, allColumns]);
+    return buildColumnBreadcrumbPath(activeColumn, allColumns as Column[]);
+  }, [activeColumn, allColumns]);
 
   const nestedColumns = useMemo(() => {
-    if (!isColumn(column)) {
+    if (!isColumn(activeColumn)) {
       return [];
     }
 
-    return column.children || [];
-  }, [column]);
+    return activeColumn.children || [];
+  }, [activeColumn]);
 
   const handleNestedColumnClick = useCallback(
     (nestedColumn: Column) => {
@@ -215,14 +283,17 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       update: ColumnFieldUpdate,
       successMessageKey: string
     ): Promise<T | undefined> => {
-      if (!column?.fullyQualifiedName) {
+      if (!activeColumn?.fullyQualifiedName) {
         return undefined;
       }
 
       const response = onColumnFieldUpdate
-        ? await onColumnFieldUpdate(column.fullyQualifiedName, update)
+        ? await onColumnFieldUpdate(activeColumn.fullyQualifiedName, update)
         : // Fallback to direct API call for Table entities when used outside GenericProvider
-          ((await updateTableColumn(column.fullyQualifiedName, update)) as T);
+          ((await updateTableColumn(
+            activeColumn.fullyQualifiedName,
+            update
+          )) as T);
 
       showSuccessToast(
         t('server.update-entity-success', {
@@ -232,7 +303,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
       return response;
     },
-    [column?.fullyQualifiedName, t, onColumnFieldUpdate]
+    [activeColumn?.fullyQualifiedName, t, onColumnFieldUpdate]
   );
 
   const handleDescriptionUpdate = useCallback(
@@ -263,7 +334,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       if (updatedTags.length === 0) {
         // Clear all classification tags but preserve glossary terms and tier tags
         return normalizeTags(
-          (column?.tags ?? []).filter(
+          (activeColumn?.tags ?? []).filter(
             (tag) =>
               tag.source === TagSource.Glossary ||
               (tag.tagFQN?.startsWith('Tier.') ?? false)
@@ -273,10 +344,11 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
       // Merge updated classification tags with existing glossary tags
       return normalizeTags(
-        (mergeTagsWithGlossary(column?.tags, updatedTags) ?? []) as TagLabel[]
+        (mergeTagsWithGlossary(activeColumn?.tags, updatedTags) ??
+          []) as TagLabel[]
       );
     },
-    [column?.tags]
+    [activeColumn?.tags]
   );
 
   const handleTagsUpdate = useCallback(
@@ -287,6 +359,10 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           { tags: allTags },
           'label.tag-plural'
         );
+
+        if (response) {
+          setActiveColumn((prev) => ({ ...prev, tags: response.tags } as T));
+        }
 
         return response?.tags;
       } catch (error) {
@@ -307,7 +383,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     async (updatedTags: TagLabel[]) => {
       try {
         // Merge glossary terms with existing classification tags
-        const classificationAndTierTags = (column?.tags ?? []).filter(
+        const classificationAndTierTags = (activeColumn?.tags ?? []).filter(
           (tag) =>
             tag.source === TagSource.Classification ||
             (tag.tagFQN?.startsWith('Tier.') ?? false)
@@ -322,6 +398,10 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           'label.glossary-term-plural'
         );
 
+        if (response) {
+          setActiveColumn((prev) => ({ ...prev, tags: response.tags } as T));
+        }
+
         return response?.tags;
       } catch (error) {
         showErrorToast(
@@ -334,14 +414,42 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         throw error;
       }
     },
-    [column?.tags, performColumnFieldUpdate, t]
+    [activeColumn?.tags, performColumnFieldUpdate, t]
   );
 
+  const handleExtensionUpdate = useCallback(
+    async (updatedExtension: Record<string, unknown> | undefined) => {
+      try {
+        await performColumnFieldUpdate(
+          { extension: updatedExtension },
+          'label.custom-property-plural'
+        );
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-updating-error', {
+            entity: t('label.custom-property-plural'),
+          })
+        );
+      }
+    },
+    [performColumnFieldUpdate, t]
+  );
+
+  const previousFqnRef = useRef<string | undefined>();
+
   useEffect(() => {
-    if (isOpen && column) {
-      setActiveTab(EntityRightPanelTab.OVERVIEW);
+    // Only reset if FQN effectively changed or panel was just opened
+    if (isOpen && activeColumn) {
+      if (activeColumn.fullyQualifiedName !== previousFqnRef.current) {
+        setActiveTab(EntityRightPanelTab.OVERVIEW);
+        previousFqnRef.current = activeColumn.fullyQualifiedName;
+      }
+    } else if (!isOpen) {
+      // Reset ref when panel closes so next open resets tab
+      previousFqnRef.current = undefined;
     }
-  }, [isOpen, column]);
+  }, [isOpen, activeColumn?.fullyQualifiedName]);
 
   const handleTabChange = (tab: EntityRightPanelTab) => {
     setActiveTab(tab);
@@ -403,8 +511,9 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
   const classificationTags = useMemo(
     () =>
-      column?.tags?.filter((tag) => tag.source !== TagSource.Glossary) || [],
-    [column?.tags]
+      activeColumn?.tags?.filter((tag) => tag.source !== TagSource.Glossary) ||
+      [],
+    [activeColumn?.tags]
   );
 
   const renderOverviewTab = () => {
@@ -416,20 +525,20 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           </div>
         ) : (
           <DescriptionSection
-            description={column?.description}
+            description={activeColumn?.description}
             hasPermission={hasEditPermission?.description ?? false}
             onDescriptionUpdate={handleDescriptionUpdate}
           />
         )}
 
-        {isColumn(column) && entityType === EntityType.TABLE && (
+        {isColumn(activeColumn ?? null) && entityType === EntityType.TABLE && (
           <KeyProfileMetrics
-            columnFqn={column.fullyQualifiedName}
+            columnFqn={activeColumn!.fullyQualifiedName}
             tableFqn={tableFqn}
           />
         )}
 
-        {isColumn(column) && (
+        {isColumn(activeColumn ?? null) && (
           <NestedColumnsSection
             columns={nestedColumns}
             onColumnClick={handleNestedColumnClick}
@@ -448,16 +557,16 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         )}
 
         <GlossaryTermsSection
-          entityId={column?.fullyQualifiedName || ''}
+          entityId={activeColumn?.fullyQualifiedName || ''}
           entityType={'_column' as EntityType}
           hasPermission={hasEditPermission?.glossaryTerms ?? false}
           maxVisibleGlossaryTerms={3}
-          tags={column?.tags}
+          tags={activeColumn?.tags}
           onGlossaryTermsUpdate={handleGlossaryTermsUpdate}
         />
 
         <TagsSection
-          entityId={column?.fullyQualifiedName || ''}
+          entityId={activeColumn?.fullyQualifiedName || ''}
           entityType={'_column' as EntityType}
           hasPermission={hasEditPermission?.tags ?? false}
           tags={classificationTags}
@@ -486,7 +595,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
     return (
       <LineageTabContent
-        entityFqn={column?.fullyQualifiedName || ''}
+        entityFqn={activeColumn?.fullyQualifiedName || ''}
         filter={lineageFilter}
         lineageData={lineageData}
         onFilterChange={setLineageFilter}
@@ -495,25 +604,28 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   };
 
   const renderCustomPropertiesTab = () => {
-    if (!column?.fullyQualifiedName) {
+    if (!activeColumn?.fullyQualifiedName) {
       return null;
     }
 
     return (
       <div className="overview-tab-content">
         <CustomPropertiesSection
-          entityData={toEntityData(column)}
+          entityData={toEntityData(activeColumn)}
           entityType={entityType}
+          entityTypeDetail={entityTypeDetail}
+          hasEditPermissions={hasEditPermission.customProperties}
           isEntityDataLoading={false}
           viewCustomPropertiesPermission={
             hasViewPermission?.customProperties ?? false
           }
+          onExtensionUpdate={handleExtensionUpdate}
         />
       </div>
     );
   };
   const isPrimaryKey = useMemo(() => {
-    const columnName = column?.name;
+    const columnName = activeColumn?.name;
     if (!columnName) {
       return false;
     }
@@ -523,9 +635,9 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         constraint.constraintType === 'PRIMARY_KEY' &&
         constraint.columns?.includes(columnName)
     );
-  }, [column?.name, tableConstraints]);
+  }, [activeColumn?.name, tableConstraints]);
 
-  const columnTitle = column ? (
+  const columnTitle = activeColumn ? (
     <div className="title-section">
       <div className="title-container items-start">
         {breadcrumbPath.length > 1 && (
@@ -563,10 +675,10 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         <Tooltip
           mouseEnterDelay={0.5}
           placement="topLeft"
-          title={getEntityName(column)}
+          title={getEntityName(activeColumn)}
           trigger="hover">
           <div className="d-flex items-center justify-between w-full">
-            <div className="d-flex items-center gap-2">
+            <div className="d-flex items-center">
               <span className="entity-icon">
                 <ColumnIcon />
               </span>
@@ -574,7 +686,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                 className="entity-title-link"
                 data-testid="entity-link"
                 ellipsis={{ tooltip: true }}>
-                {stringToHTML(getEntityName(column))}
+                {stringToHTML(getEntityName(activeColumn))}
               </Typography.Text>
             </div>
             <div>
@@ -589,15 +701,29 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           </div>
         </Tooltip>
         <div className="d-flex items-center gap-2">
-          {isColumn(column) && getDataTypeDisplay(column) && (
-            <Chip
-              className="data-type-chip"
-              label={getDataTypeDisplay(column) || ''}
-              size="small"
-              variant="outlined"
-            />
+          {isColumn(activeColumn) && getDataTypeDisplay(activeColumn) && (
+            <Tooltip
+              placement="bottom"
+              title={getDataTypeDisplay(activeColumn)}
+              trigger="hover">
+              <Chip
+                className="data-type-chip"
+                label={getDataTypeDisplay(activeColumn) || ''}
+                size="small"
+                sx={{
+                  maxWidth: '240px',
+                  '& .MuiChip-label': {
+                    display: 'block',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  },
+                }}
+                variant="outlined"
+              />
+            </Tooltip>
           )}
-          {isColumn(column) && isPrimaryKey && (
+          {isColumn(activeColumn) && isPrimaryKey && (
             <Chip
               className="data-type-chip"
               icon={<KeyIcon height={12} width={12} />}
@@ -612,7 +738,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   ) : null;
 
   const renderTabContent = () => {
-    if (!column) {
+    if (!activeColumn) {
       return null;
     }
 
@@ -621,7 +747,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         return (
           <DataQualityTab
             isColumnDetailPanel
-            entityFQN={column.fullyQualifiedName || ''}
+            entityFQN={activeColumn.fullyQualifiedName || ''}
             entityType={entityType}
           />
         );
@@ -641,7 +767,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     }
   };
 
-  if (!column) {
+  if (!activeColumn) {
     return null;
   }
 
@@ -692,7 +818,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       open={isOpen}
       placement="right"
       title={columnTitle}
-      width={576}
+      width="40%"
       onClose={onClose}>
       <div className="column-detail-panel-container">
         <div className="d-flex gap-2">

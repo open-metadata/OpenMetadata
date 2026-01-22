@@ -121,6 +121,7 @@ describe('ColumnSummaryList Component', () => {
       {
         offset: 0,
         limit: 10,
+        fields: 'tags,extension',
       }
     );
     expect(screen.getByTestId('summary-list')).toBeInTheDocument();
@@ -147,6 +148,7 @@ describe('ColumnSummaryList Component', () => {
       {
         offset: 0,
         limit: 10,
+        fields: 'tags,extension',
       }
     );
     expect(screen.getByTestId('summary-list')).toBeInTheDocument();
@@ -192,6 +194,7 @@ describe('ColumnSummaryList Component', () => {
       {
         offset: 10,
         limit: 10,
+        fields: 'tags,extension',
       }
     );
   });
