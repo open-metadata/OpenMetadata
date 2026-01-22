@@ -132,15 +132,15 @@ def test_it_returns_the_expected_classifications(
     run_autoclassification: AutoClassificationWorkflow,
 ) -> None:
     (
-        customer_id_column,
-        nhs_number_column,
-        dwh_x10_column,
-        user_name_column,
         address_column,
+        customer_id_column,
+        dwh_x10_column,
         dwh_x20_column,
-        timestamp_column,
-        version_column,
+        nhs_number_column,
         order_date_column,
+        timestamp_column,
+        user_name_column,
+        version_column,
     ) = metadata.get_table_columns(
         f"{db_service.fullyQualifiedName.root}.test_db.public.example_table",
         fields=["tags"],
