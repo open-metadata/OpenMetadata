@@ -433,8 +433,13 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
     if (serverStatsAggr != null && serverStatsAggr.sinkSuccess() > 0) {
       // Use server stats table (most accurate)
+      // Include entityBuildFailures in failed count - these are records that read successfully
+      // but failed during Entity.buildSearchIndex() conversion
       successRecords = serverStatsAggr.sinkSuccess();
-      failedRecords = serverStatsAggr.readerFailed() + serverStatsAggr.sinkFailed();
+      failedRecords =
+          serverStatsAggr.readerFailed()
+              + serverStatsAggr.sinkFailed()
+              + serverStatsAggr.entityBuildFailures();
       statsSource = "serverStatsTable";
     } else if (actualSinkStats != null) {
       // Use local sink stats (single server scenario)
@@ -491,7 +496,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
         sinkStats.setTotalRecords((int) actualSinkTotal);
         sinkStats.setSuccessRecords((int) sinkSuccess);
-        sinkStats.setFailedRecords((int) sinkFailed);
+        // Include entityBuildFailures in sinkFailed - they occur during sink processing
+        // when Entity.buildSearchIndex() fails before sending to bulk processor
+        sinkStats.setFailedRecords((int) (sinkFailed + entityBuildFailures));
       } else {
         // Fallback: derive from reader stats (less accurate)
         long readerFailed = 0;
