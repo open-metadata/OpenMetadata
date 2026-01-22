@@ -22,8 +22,8 @@ import APIClient from './index';
 const testCaseIncidentUrl = '/dataQuality/testCases/testCaseIncidentStatus';
 
 export type TestCaseIncidentStatusParams = ListParams & {
-  startTs: number;
-  endTs: number;
+  startTs?: number;
+  endTs?: number;
   latest?: boolean;
   testCaseResolutionStatusType?: string;
   assignee?: string;

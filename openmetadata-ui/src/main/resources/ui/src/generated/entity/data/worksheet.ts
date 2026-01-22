@@ -910,6 +910,7 @@ export interface TableData {
 export enum DriveServiceType {
     CustomDrive = "CustomDrive",
     GoogleDrive = "GoogleDrive",
+    SFTP = "Sftp",
     SharePoint = "SharePoint",
 }
 

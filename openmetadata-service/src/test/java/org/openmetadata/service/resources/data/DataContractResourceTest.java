@@ -80,6 +80,9 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -5708,17 +5711,12 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     DataContract created = createDataContract(create);
 
     // Export to ODCS JSON
-    org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract odcs =
-        exportDataContractToODCS(created.getId());
+    ODCSDataContract odcs = exportDataContractToODCS(created.getId());
 
     // Verify ODCS structure
     assertNotNull(odcs);
-    assertEquals(
-        org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract.OdcsApiVersion.V_3_0_2,
-        odcs.getApiVersion());
-    assertEquals(
-        org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract.OdcsKind.DATA_CONTRACT,
-        odcs.getKind());
+    assertEquals(ODCSDataContract.OdcsApiVersion.V_3_0_2, odcs.getApiVersion());
+    assertEquals(ODCSDataContract.OdcsKind.DATA_CONTRACT, odcs.getKind());
     assertEquals(created.getName(), odcs.getName());
     assertNotNull(odcs.getStatus());
     assertNotNull(odcs.getDescription());
@@ -5728,13 +5726,9 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertNotNull(odcs.getSchema());
     assertEquals(2, odcs.getSchema().size());
     assertEquals("id", odcs.getSchema().get(0).getName());
-    assertEquals(
-        org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement.LogicalType.INTEGER,
-        odcs.getSchema().get(0).getLogicalType());
+    assertEquals(ODCSSchemaElement.LogicalType.INTEGER, odcs.getSchema().get(0).getLogicalType());
     assertEquals("name", odcs.getSchema().get(1).getName());
-    assertEquals(
-        org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement.LogicalType.STRING,
-        odcs.getSchema().get(1).getLogicalType());
+    assertEquals(ODCSSchemaElement.LogicalType.STRING, odcs.getSchema().get(1).getLogicalType());
   }
 
   @Test
@@ -5767,14 +5761,11 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     DataContract created = createDataContract(create);
 
     // Export to ODCS by FQN
-    org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract odcs =
-        exportDataContractToODCSByFqn(created.getFullyQualifiedName());
+    ODCSDataContract odcs = exportDataContractToODCSByFqn(created.getFullyQualifiedName());
 
     // Verify ODCS structure
     assertNotNull(odcs);
-    assertEquals(
-        org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract.OdcsApiVersion.V_3_0_2,
-        odcs.getApiVersion());
+    assertEquals(ODCSDataContract.OdcsApiVersion.V_3_0_2, odcs.getApiVersion());
     assertEquals(created.getName(), odcs.getName());
   }
 
@@ -5785,41 +5776,31 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     Table table = createUniqueTable(test.getDisplayName());
 
     // Create ODCS data contract
-    org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract odcs =
-        new org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract();
-    odcs.setApiVersion(
-        org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract.OdcsApiVersion.V_3_0_2);
-    odcs.setKind(
-        org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_0_2);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
     odcs.setId(UUID.randomUUID().toString());
     odcs.setName("odcs_import_test_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9]", "_"));
     odcs.setVersion("1.0.0");
-    odcs.setStatus(
-        org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract.OdcsStatus.ACTIVE);
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
 
     // Add description
-    org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription desc =
-        new org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription();
+    ODCSDescription desc = new ODCSDescription();
     desc.setPurpose("Imported from ODCS");
     odcs.setDescription(desc);
 
     // Add schema - use column names that match the table (id, name, description, email)
-    List<org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement> schema =
-        new ArrayList<>();
-    org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement col1 =
-        new org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement();
+    List<ODCSSchemaElement> schema = new ArrayList<>();
+    ODCSSchemaElement col1 = new ODCSSchemaElement();
     col1.setName("id");
-    col1.setLogicalType(
-        org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement.LogicalType.INTEGER);
+    col1.setLogicalType(ODCSSchemaElement.LogicalType.INTEGER);
     col1.setPrimaryKey(true);
     col1.setDescription("ID column");
     schema.add(col1);
 
-    org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement col2 =
-        new org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement();
+    ODCSSchemaElement col2 = new ODCSSchemaElement();
     col2.setName("email");
-    col2.setLogicalType(
-        org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement.LogicalType.STRING);
+    col2.setLogicalType(ODCSSchemaElement.LogicalType.STRING);
     col2.setRequired(true);
     schema.add(col2);
 
@@ -5901,17 +5882,13 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     Table table = createUniqueTable(test.getDisplayName());
 
     // Create ODCS data contract
-    org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract odcs =
-        new org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract();
-    odcs.setApiVersion(
-        org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract.OdcsApiVersion.V_3_0_2);
-    odcs.setKind(
-        org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_0_2);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
     odcs.setId(UUID.randomUUID().toString());
     odcs.setName("upsert_odcs_test_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9]", "_"));
     odcs.setVersion("1.0.0");
-    odcs.setStatus(
-        org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract.OdcsStatus.DRAFT);
+    odcs.setStatus(ODCSDataContract.OdcsStatus.DRAFT);
 
     // Create initial contract
     DataContract created = createOrUpdateDataContractFromODCS(odcs, table.getId(), "table");
@@ -5922,10 +5899,8 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     createdContracts.add(created);
 
     // Update the contract via ODCS
-    odcs.setStatus(
-        org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract.OdcsStatus.ACTIVE);
-    org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription desc =
-        new org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription();
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+    ODCSDescription desc = new ODCSDescription();
     desc.setPurpose("Updated via ODCS");
     odcs.setDescription(desc);
 
@@ -5964,26 +5939,23 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     DataContract original = createDataContract(create);
 
     // Export to ODCS
-    org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract odcs =
-        exportDataContractToODCS(original.getId());
+    ODCSDataContract odcs = exportDataContractToODCS(original.getId());
 
     // Verify ODCS export
     assertNotNull(odcs);
     assertEquals(original.getName(), odcs.getName());
-    assertEquals(
-        org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract.OdcsStatus.ACTIVE,
-        odcs.getStatus()); // APPROVED -> active
+    assertEquals(ODCSDataContract.OdcsStatus.ACTIVE, odcs.getStatus()); // APPROVED -> active
     assertEquals(3, odcs.getSchema().size());
 
     // Verify type mappings in ODCS
     assertEquals(
-        org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement.LogicalType.INTEGER,
+        ODCSSchemaElement.LogicalType.INTEGER,
         odcs.getSchema().get(0).getLogicalType()); // INT -> integer
     assertEquals(
-        org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement.LogicalType.STRING,
+        ODCSSchemaElement.LogicalType.STRING,
         odcs.getSchema().get(1).getLogicalType()); // STRING -> string
     assertEquals(
-        org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement.LogicalType.STRING,
+        ODCSSchemaElement.LogicalType.STRING,
         odcs.getSchema().get(2).getLogicalType()); // STRING -> string
 
     // Import back to a new table with a unique name
@@ -6030,8 +6002,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     DataContract created = createDataContract(create);
 
     // Export to ODCS
-    org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract odcs =
-        exportDataContractToODCS(created.getId());
+    ODCSDataContract odcs = exportDataContractToODCS(created.getId());
 
     // Verify SLA properties
     assertNotNull(odcs.getSlaProperties());
@@ -6050,14 +6021,10 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
   // ==================== ODCS Helper Methods ====================
 
-  private org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract
-      exportDataContractToODCS(UUID id) throws HttpResponseException {
+  private ODCSDataContract exportDataContractToODCS(UUID id) throws HttpResponseException {
     WebTarget target = getResource(id).path("/odcs");
     Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
-    return TestUtils.readResponse(
-        response,
-        org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract.class,
-        Status.OK.getStatusCode());
+    return TestUtils.readResponse(response, ODCSDataContract.class, Status.OK.getStatusCode());
   }
 
   private String exportDataContractToODCSYaml(UUID id) throws HttpResponseException {
@@ -6068,21 +6035,14 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     return response.readEntity(String.class);
   }
 
-  private org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract
-      exportDataContractToODCSByFqn(String fqn) throws HttpResponseException {
+  private ODCSDataContract exportDataContractToODCSByFqn(String fqn) throws HttpResponseException {
     WebTarget target = getCollection().path("/name/" + fqn + "/odcs");
     Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
-    return TestUtils.readResponse(
-        response,
-        org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract.class,
-        Status.OK.getStatusCode());
+    return TestUtils.readResponse(response, ODCSDataContract.class, Status.OK.getStatusCode());
   }
 
   private DataContract importDataContractFromODCS(
-      org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract odcs,
-      UUID entityId,
-      String entityType)
-      throws HttpResponseException {
+      ODCSDataContract odcs, UUID entityId, String entityType) throws HttpResponseException {
     WebTarget target =
         getCollection()
             .path("/odcs")
@@ -6108,10 +6068,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
   }
 
   private DataContract createOrUpdateDataContractFromODCS(
-      org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract odcs,
-      UUID entityId,
-      String entityType)
-      throws HttpResponseException {
+      ODCSDataContract odcs, UUID entityId, String entityType) throws HttpResponseException {
     WebTarget target =
         getCollection()
             .path("/odcs")

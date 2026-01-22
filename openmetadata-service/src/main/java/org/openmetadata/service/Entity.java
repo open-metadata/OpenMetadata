@@ -220,6 +220,7 @@ public final class Entity {
   public static final String DATA_INSIGHT_CUSTOM_CHART = "dataInsightCustomChart";
   public static final String DATA_INSIGHT_CHART = "dataInsightChart";
   public static final String PAGE = "page";
+  public static final String RECOGNIZER_FEEDBACK = "recognizerFeedback";
 
   //
   // Column entity types (for custom properties)

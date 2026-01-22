@@ -287,9 +287,8 @@ export interface PipelineServiceClientConfiguration {
      */
     useRolesFromProvider?: boolean;
     /**
-     * AWS IAM authentication configuration for OpenSearch. IAM auth is automatically enabled
-     * when region is configured. Uses standard AWS environment variables (AWS_DEFAULT_REGION,
-     * AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN).
+     * AWS IAM authentication configuration for OpenSearch. IAM auth must be explicitly enabled.
+     * When enabled, uses standard AWS environment variables or configured credentials.
      */
     aws?: Aws;
     /**
@@ -1552,11 +1551,15 @@ export interface AuthorizerConfiguration {
 }
 
 /**
- * AWS IAM authentication configuration for OpenSearch. IAM auth is automatically enabled
- * when region is configured. Uses standard AWS environment variables (AWS_DEFAULT_REGION,
- * AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN).
+ * AWS IAM authentication configuration for OpenSearch. IAM auth must be explicitly enabled.
+ * When enabled, uses standard AWS environment variables or configured credentials.
  */
 export interface Aws {
+    /**
+     * Enable AWS IAM authentication for OpenSearch. When enabled, requires region to be
+     * configured. Defaults to false for backward compatibility.
+     */
+    enabled?: boolean;
     /**
      * AWS service name for signing (es for Elasticsearch/OpenSearch, aoss for OpenSearch
      * Serverless)
@@ -1880,6 +1883,12 @@ export interface AWSCredentials {
      */
     awsSessionToken?: string;
     /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
+    /**
      * EndPoint URL for the AWS
      */
     endPointURL?: string;
@@ -2082,6 +2091,11 @@ export interface NaturalLanguageSearch {
      */
     enabled?: boolean;
     /**
+     * OpenAI configuration for embedding generation. Supports both OpenAI and Azure OpenAI
+     * endpoints.
+     */
+    openai?: Openai;
+    /**
      * Fully qualified class name of the NLQService implementation to use
      */
     providerClass?: string;
@@ -2129,11 +2143,17 @@ export interface AWSBaseConfig {
      */
     assumeRoleSessionName?: string;
     /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
+    /**
      * Custom endpoint URL for AWS-compatible services (MinIO, LocalStack).
      */
     endpointUrl?: string;
     /**
-     * AWS Region (e.g., us-east-1). When set, enables AWS authentication.
+     * AWS Region (e.g., us-east-1). Required when AWS authentication is enabled.
      */
     region?: string;
     /**
@@ -2154,6 +2174,38 @@ export interface Djl {
      * DJL model name for embedding generation
      */
     embeddingModel?: string;
+}
+
+/**
+ * OpenAI configuration for embedding generation. Supports both OpenAI and Azure OpenAI
+ * endpoints.
+ */
+export interface Openai {
+    /**
+     * API key for authenticating with OpenAI or Azure OpenAI.
+     */
+    apiKey?: string;
+    /**
+     * Azure OpenAI API version. Only used with Azure OpenAI.
+     */
+    apiVersion?: string;
+    /**
+     * Azure OpenAI deployment name. Required when using Azure OpenAI.
+     */
+    deploymentName?: string;
+    /**
+     * Dimension of the embedding vector. Default is 1536 for text-embedding-3-small.
+     */
+    embeddingDimension?: number;
+    /**
+     * OpenAI embedding model identifier (e.g., text-embedding-3-small, text-embedding-ada-002).
+     */
+    embeddingModelId?: string;
+    /**
+     * Custom endpoint URL. For Azure OpenAI, use the Azure resource endpoint (e.g.,
+     * https://your-resource.openai.azure.com). Leave empty for standard OpenAI API.
+     */
+    endpoint?: string;
 }
 
 /**

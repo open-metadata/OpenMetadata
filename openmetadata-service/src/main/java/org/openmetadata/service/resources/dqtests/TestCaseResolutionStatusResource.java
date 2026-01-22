@@ -32,7 +32,6 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.UUID;
-import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
@@ -120,13 +119,11 @@ public class TestCaseResolutionStatusResource
       @Parameter(
               description = "Filter test case statuses after the given start timestamp",
               schema = @Schema(type = "number"))
-          @NonNull
           @QueryParam("startTs")
           Long startTs,
       @Parameter(
               description = "Filter test case statuses before the given end timestamp",
               schema = @Schema(type = "number"))
-          @NonNull
           @QueryParam("endTs")
           Long endTs,
       @Parameter(
@@ -382,13 +379,11 @@ public class TestCaseResolutionStatusResource
       @Parameter(
               description = "Filter test case statuses after the given start timestamp",
               schema = @Schema(type = "number"))
-          @NonNull
           @QueryParam("startTs")
           Long startTs,
       @Parameter(
               description = "Filter test case statuses before the given end timestamp",
               schema = @Schema(type = "number"))
-          @NonNull
           @QueryParam("endTs")
           Long endTs,
       @Parameter(
@@ -449,8 +444,12 @@ public class TestCaseResolutionStatusResource
     searchListFilter.addQueryParam("testCaseFqn", testCaseFQN);
     searchListFilter.addQueryParam("originEntityFQN", originEntityFQN);
     searchListFilter.addQueryParam("domains", domain);
-    searchListFilter.addQueryParam("startTimestamp", String.valueOf(startTs));
-    searchListFilter.addQueryParam("endTimestamp", String.valueOf(endTs));
+    if (startTs != null) {
+      searchListFilter.addQueryParam("startTimestamp", String.valueOf(startTs));
+    }
+    if (endTs != null) {
+      searchListFilter.addQueryParam("endTimestamp", String.valueOf(endTs));
+    }
 
     ResourceContextInterface testCaseResourceContext = TestCaseResourceContext.builder().build();
     ResourceContextInterface entityResourceContext =

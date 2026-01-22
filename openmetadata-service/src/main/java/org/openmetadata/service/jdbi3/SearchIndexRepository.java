@@ -126,7 +126,6 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   @Override
   public void setFields(SearchIndex searchIndex, Fields fields, RelationIncludes relationIncludes) {
     searchIndex.setService(getContainer(searchIndex.getId()));
-    searchIndex.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(searchIndex) : null);
     if (searchIndex.getFields() != null) {
       getFieldTags(fields.contains(FIELD_TAGS), searchIndex.getFields());
     }
