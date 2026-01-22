@@ -35,6 +35,7 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
+import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -321,6 +322,7 @@ const NotificationListPage = () => {
                 header: t(PAGE_HEADERS.NOTIFICATION.header),
                 subHeader: t(PAGE_HEADERS.NOTIFICATION.subHeader),
               }}
+              learningPageId={LEARNING_PAGE_IDS.ALERTS}
             />
             {(alertResourcePermission?.Create ||
               alertResourcePermission?.All) && (

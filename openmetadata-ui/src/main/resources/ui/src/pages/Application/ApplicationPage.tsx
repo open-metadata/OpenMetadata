@@ -26,6 +26,7 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import ApplicationCard from '../../components/Settings/Applications/ApplicationCard/ApplicationCard.component';
 import { ROUTES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
+import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { App } from '../../generated/entity/applications/app';
@@ -160,7 +161,7 @@ const ApplicationPage = () => {
               ),
               subHeader: t(PAGE_HEADERS.APPLICATION.subHeader),
             }}
-            learningPageId="automations"
+            learningPageId={LEARNING_PAGE_IDS.AUTOMATIONS}
           />
         </Col>
         <Col className="d-flex justify-end" span={8}>

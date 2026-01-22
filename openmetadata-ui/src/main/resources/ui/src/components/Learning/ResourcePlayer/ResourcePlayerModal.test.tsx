@@ -166,7 +166,6 @@ describe('ResourcePlayerModal', () => {
         'DataGovernance',
         'Observability',
         'DataQuality',
-        'Lineage',
       ],
     });
     render(

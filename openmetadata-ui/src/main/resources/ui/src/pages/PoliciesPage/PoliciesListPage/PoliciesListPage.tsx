@@ -33,6 +33,7 @@ import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
 } from '../../../constants/HelperTextUtil';
+import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -285,7 +286,8 @@ const PoliciesListPage = () => {
                 header: t(PAGE_HEADERS.POLICIES.header),
                 subHeader: t(PAGE_HEADERS.POLICIES.subHeader),
               }}
-              learningPageId="policies"
+              learningPageId={LEARNING_PAGE_IDS.POLICIES}
+              title={t('label.policy-plural')}
             />
 
             {addPolicyPermission && (

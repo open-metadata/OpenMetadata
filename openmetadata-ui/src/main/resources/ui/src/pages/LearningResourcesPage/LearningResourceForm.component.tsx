@@ -14,132 +14,32 @@
 import { CloseOutlined } from '@ant-design/icons';
 import { Button, Drawer, Form, Input, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArticalIcon } from '../../assets/svg/artical.svg';
 import { ReactComponent as StoryLaneIcon } from '../../assets/svg/story-lane.svg';
 import { ReactComponent as VideoIcon } from '../../assets/svg/video.svg';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import {
+  CATEGORIES,
+  DURATIONS,
+  LearningResourceStatus,
+  LEARNING_RESOURCE_STATUSES,
+  PAGE_IDS,
+  ResourceType,
+  ResourceTypeOption,
+} from '../../constants/Learning.constants';
+import {
   createLearningResource,
   CreateLearningResource,
-  LearningResource,
   updateLearningResource,
 } from '../../rest/learningResourceAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './learning-resource-form.less';
+import { LearningResourceFormProps } from './LearningResourceForm.interface';
+
 const { TextArea } = Input;
 const { Text } = Typography;
-
-interface LearningResourceFormProps {
-  open: boolean;
-  resource: LearningResource | null;
-  onClose: () => void;
-}
-
-const RESOURCE_TYPES = [
-  {
-    value: 'Video',
-    label: 'Video',
-    icon: <VideoIcon height={16} width={16} />,
-  },
-  {
-    value: 'Storylane',
-    label: 'Storylane',
-    icon: <StoryLaneIcon height={16} width={16} />,
-  },
-  {
-    value: 'Article',
-    label: 'Article',
-    icon: <ArticalIcon height={16} width={16} />,
-  },
-];
-const CATEGORIES = [
-  { value: 'Discovery', label: 'Discovery' },
-  { value: 'DataGovernance', label: 'Governance' },
-  { value: 'DataQuality', label: 'Data Quality' },
-  { value: 'Observability', label: 'Observability' },
-  { value: 'Administration', label: 'Admin' },
-  { value: 'AI', label: 'AI' },
-];
-const STATUSES = ['Draft', 'Active', 'Deprecated'];
-const DURATIONS = [
-  '1 min',
-  '2 mins',
-  '3 mins',
-  '5 mins',
-  '10 mins',
-  '15 mins',
-  '30 mins',
-];
-
-const PAGE_IDS = [
-  // Domains & Data Products
-  { value: 'domain', label: 'Domain' },
-  { value: 'dataProduct', label: 'Data Product' },
-  // Glossaries
-  { value: 'glossary', label: 'Glossary' },
-  { value: 'glossaryTerm', label: 'Glossary Term' },
-  // Classification
-  { value: 'classification', label: 'Classification' },
-  { value: 'tags', label: 'Tags' },
-  // Lineage
-  { value: 'lineage', label: 'Lineage' },
-  // Data Insights
-  { value: 'dataInsights', label: 'Data Insights' },
-  { value: 'dataInsightDashboards', label: 'Data Insight Dashboards' },
-  // Data Quality
-  { value: 'dataQuality', label: 'Data Quality' },
-  { value: 'testSuite', label: 'Test Suite' },
-  { value: 'incidentManager', label: 'Incident Manager' },
-  { value: 'profilerConfiguration', label: 'Profiler Configuration' },
-  // Rules Library
-  { value: 'rulesLibrary', label: 'Rules Library' },
-  // Explore & Discovery
-  { value: 'explore', label: 'Explore' },
-  { value: 'table', label: 'Table' },
-  { value: 'dashboard', label: 'Dashboard' },
-  { value: 'pipeline', label: 'Pipeline' },
-  { value: 'topic', label: 'Topic' },
-  { value: 'container', label: 'Container' },
-  { value: 'mlmodel', label: 'ML Model' },
-  { value: 'storedProcedure', label: 'Stored Procedure' },
-  { value: 'searchIndex', label: 'Search Index' },
-  { value: 'apiEndpoint', label: 'API Endpoint' },
-  { value: 'apiCollection', label: 'API Collection' },
-  { value: 'database', label: 'Database' },
-  { value: 'databaseSchema', label: 'Database Schema' },
-  // Home Page
-  { value: 'homePage', label: 'Home Page' },
-  { value: 'myData', label: 'My Data' },
-  // Workflows & Automations
-  { value: 'workflows', label: 'Workflows' },
-  { value: 'automations', label: 'Automations' },
-  // Knowledge Center
-  { value: 'knowledgeCenter', label: 'Knowledge Center' },
-  // SQL Studio
-  { value: 'sqlStudio', label: 'SQL Studio' },
-  { value: 'queryBuilder', label: 'Query Builder' },
-  // Ask Collate
-  { value: 'askCollate', label: 'Ask Collate' },
-  { value: 'aiAssistant', label: 'AI Assistant' },
-  // Metrics
-  { value: 'metrics', label: 'Metrics' },
-  // Observability
-  { value: 'dataObservability', label: 'Data Observability' },
-  { value: 'pipelineObservability', label: 'Pipeline Observability' },
-  { value: 'alerts', label: 'Alerts' },
-  // Administration
-  { value: 'services', label: 'Services' },
-  { value: 'policies', label: 'Policies' },
-  { value: 'roles', label: 'Roles' },
-  { value: 'teams', label: 'Teams' },
-  { value: 'users', label: 'Users' },
-  { value: 'notificationTemplates', label: 'Notification Templates' },
-  { value: 'ingestionRunners', label: 'Ingestion Runners' },
-  { value: 'usage', label: 'Usage' },
-  { value: 'settings', label: 'Settings' },
-];
 
 export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
   open,
@@ -150,7 +50,30 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
   const [form] = Form.useForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [embedContent, setEmbedContent] = useState('');
-  const [resourceType, setResourceType] = useState<string>('Article');
+  const [resourceType, setResourceType] = useState<string>(
+    ResourceType.Article
+  );
+
+  const RESOURCE_TYPES: ResourceTypeOption[] = useMemo(
+    () => [
+      {
+        value: ResourceType.Video,
+        label: t('label.video'),
+        icon: <VideoIcon height={16} width={16} />,
+      },
+      {
+        value: ResourceType.Storylane,
+        label: t('label.storylane'),
+        icon: <StoryLaneIcon height={16} width={16} />,
+      },
+      {
+        value: ResourceType.Article,
+        label: t('label.article'),
+        icon: <ArticalIcon height={16} width={16} />,
+      },
+    ],
+    [t]
+  );
 
   useEffect(() => {
     if (resource) {
@@ -173,12 +96,12 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
           ? Math.floor(resource.estimatedDuration / 60)
           : undefined,
         contexts: resource.contexts?.map((ctx) => ctx.pageId) || [],
-        status: resource.status || 'Active',
+        status: resource.status || LearningResourceStatus.Active,
       });
     } else {
       form.resetFields();
       setEmbedContent('');
-      setResourceType('Article');
+      setResourceType(ResourceType.Article);
     }
   }, [resource, form]);
 
@@ -208,7 +131,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
         resourceType: values.resourceType,
         source: {
           embedConfig:
-            values.resourceType === 'Article' && embedContent
+            values.resourceType === ResourceType.Article && embedContent
               ? { content: embedContent }
               : undefined,
           provider: values.sourceProvider,
@@ -220,7 +143,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
       if (resource) {
         await updateLearningResource(resource.id, payload);
         showSuccessToast(
-          t('message.entity-updated-successfully', {
+          t('server.entity-updated-successfully', {
             entity: t('label.learning-resource'),
           })
         );
@@ -286,7 +209,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
       <Form
         className="learning-resource-form"
         form={form}
-        initialValues={{ status: 'Active' }}
+        initialValues={{ status: LearningResourceStatus.Active }}
         layout="vertical">
         <Form.Item
           className="form-item-required"
@@ -407,7 +330,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
               }),
               required: true,
             },
-            { message: t('message.invalid-url'), type: 'url' },
+            { message: t('label.invalid-url'), type: 'url' },
           ]}>
           <Input placeholder="https://www.youtube.com/watch?v=..." />
         </Form.Item>
@@ -429,7 +352,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
 
         <Form.Item label={t('label.status')} name="status">
           <Select
-            options={STATUSES.map((status) => ({
+            options={LEARNING_RESOURCE_STATUSES.map((status) => ({
               label: status,
               value: status,
             }))}
@@ -437,7 +360,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
           />
         </Form.Item>
 
-        {resourceType === 'Article' && (
+        {resourceType === ResourceType.Article && (
           <Form.Item label={t('label.embedded-content')}>
             <Text className="embedded-content-hint" type="secondary">
               {t('message.optional-markdown-content')}

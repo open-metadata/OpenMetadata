@@ -33,6 +33,7 @@ import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
 } from '../../../constants/HelperTextUtil';
+import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -283,7 +284,8 @@ const RolesListPage = () => {
                 header: t(PAGE_HEADERS.ROLES.header),
                 subHeader: t(PAGE_HEADERS.ROLES.subHeader),
               }}
-              learningPageId="roles"
+              learningPageId={LEARNING_PAGE_IDS.ROLES}
+              title={t('label.role-plural')}
             />
 
             {addRolePermission && (

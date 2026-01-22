@@ -41,6 +41,7 @@ import { LearningIcon } from '../../components/Learning/LearningIcon/LearningIco
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { INITIAL_PAGING_VALUE } from '../../constants/constants';
+import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { DEFAULT_SORT_ORDER } from '../../constants/profiler.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -526,7 +527,7 @@ const TestSuiteDetailsPage = () => {
                 icon={<TestSuiteIcon className="h-9" />}
                 name={testSuite?.name ?? ''}
                 serviceName="testSuite"
-                suffix={<LearningIcon pageId="testSuite" />}
+                suffix={<LearningIcon pageId={LEARNING_PAGE_IDS.TEST_SUITE} />}
               />
             </Col>
             <Col className="d-flex justify-end" span={6}>

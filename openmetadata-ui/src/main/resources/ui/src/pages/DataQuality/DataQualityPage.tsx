@@ -21,6 +21,7 @@ import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TestCaseFormV1 from '../../components/DataQuality/AddDataQualityTest/components/TestCaseFormV1';
 import BundleSuiteForm from '../../components/DataQuality/BundleSuiteForm/BundleSuiteForm';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
+import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
@@ -139,7 +140,7 @@ const DataQualityPage = () => {
                     header: t('label.data-quality'),
                     subHeader: t('message.page-sub-header-for-data-quality'),
                   }}
-                  learningPageId="dataQuality"
+                  learningPageId={LEARNING_PAGE_IDS.DATA_QUALITY}
                 />
               </Col>
 

@@ -25,6 +25,7 @@ import {
 } from '../../../constants/constants';
 import { CONNECTORS_DOCS } from '../../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import {
   OPEN_METADATA,
@@ -528,7 +529,10 @@ const Services = ({ serviceName }: ServicesProps) => {
       gutter={[16, 16]}>
       <Col span={24}>
         <Space className="w-full justify-between m-b-lg" data-testid="header">
-          <PageHeader data={getServicePageHeader()} learningPageId="services" />
+          <PageHeader
+            data={getServicePageHeader()}
+            learningPageId={LEARNING_PAGE_IDS.SERVICES}
+          />
           {isFetchingStatus ? (
             <ButtonSkeleton size="default" />
           ) : (

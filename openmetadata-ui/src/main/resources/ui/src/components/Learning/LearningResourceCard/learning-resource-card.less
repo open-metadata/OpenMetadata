@@ -117,10 +117,15 @@
         background-color: @grey-100;
         border-color: @grey-300;
         color: @grey-600;
+        cursor: pointer;
+
+        &:hover {
+          border-color: @grey-400;
+          background-color: @grey-200;
+        }
       }
     }
   }
-
   .learning-resource-meta {
     display: flex;
     align-items: center;
@@ -135,6 +140,22 @@
     .meta-separator {
       color: @grey-400;
       font-size: 12px;
+    }
+  }
+
+  .hidden-tags-popover {
+    display: flex;
+    flex-wrap: wrap;
+    gap: @size-xxs;
+    max-width: 250px;
+
+    .category-tag {
+      margin: 0;
+      font-size: 11px;
+      line-height: 16px;
+      padding: 2px 6px;
+      border-radius: @border-rad-base;
+      font-weight: @font-medium;
     }
   }
 }

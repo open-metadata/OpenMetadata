@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tag, Typography } from 'antd';
+import { Popover, Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import { DateTime } from 'luxon';
 import React, { useMemo, useState } from 'react';
@@ -19,13 +19,16 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArticalIcon } from '../../../assets/svg/artical.svg';
 import { ReactComponent as StoryLaneIcon } from '../../../assets/svg/story-lane.svg';
 import { ReactComponent as VideoIcon } from '../../../assets/svg/video.svg';
+import { DEFAULT_THEME } from '../../../constants/Appearance.constants';
+import {
+  MAX_VISIBLE_TAGS,
+  ResourceType,
+} from '../../../constants/Learning.constants';
 import { LEARNING_CATEGORIES } from '../Learning.interface';
 import './learning-resource-card.less';
 import { LearningResourceCardProps } from './LearningResourceCard.interface';
 
 const { Text, Paragraph, Link } = Typography;
-
-const MAX_VISIBLE_TAGS = 3;
 
 export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
   resource,
@@ -37,11 +40,11 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
 
   const resourceTypeIcon = useMemo(() => {
     switch (resource.resourceType) {
-      case 'Video':
+      case ResourceType.Video:
         return <VideoIcon className="resource-type-icon video-icon" />;
-      case 'Storylane':
+      case ResourceType.Storylane:
         return <StoryLaneIcon className="resource-type-icon storylane-icon" />;
-      case 'Article':
+      case ResourceType.Article:
         return <ArticalIcon className="resource-type-icon article-icon" />;
       default:
         return <ArticalIcon className="resource-type-icon article-icon" />;
@@ -67,20 +70,21 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
 
   const categoryTags = useMemo(() => {
     if (!resource.categories || resource.categories.length === 0) {
-      return { visible: [], remaining: 0 };
+      return { visible: [], hidden: [], remaining: 0 };
     }
 
     const visible = resource.categories.slice(0, MAX_VISIBLE_TAGS);
+    const hidden = resource.categories.slice(MAX_VISIBLE_TAGS);
     const remaining = resource.categories.length - MAX_VISIBLE_TAGS;
 
-    return { visible, remaining };
+    return { visible, hidden, remaining };
   }, [resource.categories]);
 
   const getCategoryColor = (category: string) => {
     const categoryInfo =
       LEARNING_CATEGORIES[category as keyof typeof LEARNING_CATEGORIES];
 
-    return categoryInfo?.color ?? '#1890ff';
+    return categoryInfo?.color ?? DEFAULT_THEME.primaryColor;
   };
 
   const handleViewMoreClick = (e: React.MouseEvent) => {
@@ -141,9 +145,32 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
               </Tag>
             ))}
             {categoryTags.remaining > 0 && (
-              <Tag className="category-tag more-tag">
-                +{categoryTags.remaining}
-              </Tag>
+              <Popover
+                content={
+                  <div className="hidden-tags-popover">
+                    {categoryTags.hidden.map((category) => (
+                      <Tag
+                        className="category-tag"
+                        key={category}
+                        style={{
+                          backgroundColor: `${getCategoryColor(category)}15`,
+                          borderColor: getCategoryColor(category),
+                          color: getCategoryColor(category),
+                        }}>
+                        {LEARNING_CATEGORIES[
+                          category as keyof typeof LEARNING_CATEGORIES
+                        ]?.label ?? category}
+                      </Tag>
+                    ))}
+                  </div>
+                }
+                trigger="click">
+                <Tag
+                  className="category-tag more-tag"
+                  onClick={(e) => e.stopPropagation()}>
+                  +{categoryTags.remaining}
+                </Tag>
+              </Popover>
             )}
           </div>
 

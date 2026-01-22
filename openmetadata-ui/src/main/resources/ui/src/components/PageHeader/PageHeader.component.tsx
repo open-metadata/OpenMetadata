@@ -23,12 +23,13 @@ const PageHeader = ({
   subHeaderProps,
   isBeta,
   learningPageId,
+  title,
 }: HeaderProps) => {
   const { t } = useTranslation();
 
   return (
     <div className="page-header-container" data-testid="page-header-container">
-      <Space align="center" size="middle">
+      <Space align="center" size={4}>
         <Typography.Title
           className="heading m-b-0"
           data-testid="heading"
@@ -45,7 +46,9 @@ const PageHeader = ({
             />
           )}
         </Typography.Title>
-        {learningPageId && <LearningIcon pageId={learningPageId} />}
+        {learningPageId && (
+          <LearningIcon pageId={learningPageId} title={title} />
+        )}
       </Space>
       <Typography.Paragraph
         className="sub-heading"

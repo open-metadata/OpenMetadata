@@ -36,6 +36,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
 import { ADMIN_ONLY_ACTION } from '../../constants/HelperTextUtil';
+import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -494,6 +495,7 @@ const UserListPageV1 = () => {
                     subHeader: t(PAGE_HEADERS.USERS.subHeader),
                   }
             }
+            learningPageId={LEARNING_PAGE_IDS.USERS}
           />
         </Col>
         <Col span={12}>

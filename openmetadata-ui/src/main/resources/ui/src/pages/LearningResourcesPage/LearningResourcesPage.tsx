@@ -35,6 +35,15 @@ import { ResourcePlayerModal } from '../../components/Learning/ResourcePlayer/Re
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
+  CATEGORIES,
+  DEFAULT_PAGE_SIZE,
+  LEARNING_RESOURCE_STATUSES,
+  MAX_VISIBLE_CONTEXTS,
+  MAX_VISIBLE_TAGS,
+  PAGE_IDS,
+  RESOURCE_TYPE_VALUES,
+} from '../../constants/Learning.constants';
+import {
   deleteLearningResource,
   getLearningResourcesList,
   LearningResource,
@@ -43,61 +52,6 @@ import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { LearningResourceForm } from './LearningResourceForm.component';
 import './LearningResourcesPage.less';
-
-const RESOURCE_TYPES = ['Article', 'Video', 'Storylane'];
-const CATEGORIES = [
-  'Discovery',
-  'Administration',
-  'DataGovernance',
-  'DataQuality',
-  'Observability',
-  'AI',
-];
-const CONTENT_CONTEXTS = [
-  { value: 'domain', label: 'Domain' },
-  { value: 'dataProduct', label: 'Data Product' },
-  { value: 'glossary', label: 'Glossary' },
-  { value: 'glossaryTerm', label: 'Glossary Term' },
-  { value: 'classification', label: 'Classification' },
-  { value: 'tags', label: 'Tags' },
-  { value: 'lineage', label: 'Lineage' },
-  { value: 'dataInsights', label: 'Data Insights' },
-  { value: 'dataQuality', label: 'Data Quality' },
-  { value: 'testSuite', label: 'Test Suite' },
-  { value: 'incidentManager', label: 'Incident Manager' },
-  { value: 'explore', label: 'Explore' },
-  { value: 'table', label: 'Table' },
-  { value: 'dashboard', label: 'Dashboard' },
-  { value: 'pipeline', label: 'Pipeline' },
-  { value: 'topic', label: 'Topic' },
-  { value: 'container', label: 'Container' },
-  { value: 'mlmodel', label: 'ML Model' },
-  { value: 'storedProcedure', label: 'Stored Procedure' },
-  { value: 'searchIndex', label: 'Search Index' },
-  { value: 'apiEndpoint', label: 'API Endpoint' },
-  { value: 'database', label: 'Database' },
-  { value: 'databaseSchema', label: 'Database Schema' },
-  { value: 'homePage', label: 'Home Page' },
-  { value: 'workflows', label: 'Workflows' },
-  { value: 'automations', label: 'Automations' },
-  { value: 'knowledgeCenter', label: 'Knowledge Center' },
-  { value: 'sqlStudio', label: 'SQL Studio' },
-  { value: 'askCollate', label: 'Ask Collate' },
-  { value: 'metrics', label: 'Metrics' },
-  { value: 'dataObservability', label: 'Data Observability' },
-  { value: 'pipelineObservability', label: 'Pipeline Observability' },
-  { value: 'alerts', label: 'Alerts' },
-  { value: 'services', label: 'Services' },
-  { value: 'policies', label: 'Policies' },
-  { value: 'roles', label: 'Roles' },
-  { value: 'teams', label: 'Teams' },
-  { value: 'users', label: 'Users' },
-  { value: 'settings', label: 'Settings' },
-];
-const STATUSES = ['Draft', 'Active', 'Deprecated'];
-const MAX_VISIBLE_TAGS = 2;
-const MAX_VISIBLE_CONTEXTS = 3;
-const DEFAULT_PAGE_SIZE = 10;
 
 export const LearningResourcesPage: React.FC = () => {
   const { t } = useTranslation();
@@ -157,7 +111,6 @@ export const LearningResourcesPage: React.FC = () => {
             | 'DataGovernance'
             | 'DataQuality'
             | 'Observability'
-            | 'AI'
         );
       const matchesContent =
         !filterContent ||
@@ -362,7 +315,7 @@ export const LearningResourcesPage: React.FC = () => {
         const remaining = contexts.length - MAX_VISIBLE_CONTEXTS;
 
         const getContextLabel = (pageId: string) => {
-          const context = CONTENT_CONTEXTS.find((c) => c.value === pageId);
+          const context = PAGE_IDS.find((c) => c.value === pageId);
 
           return context?.label ?? pageId;
         };
@@ -476,15 +429,13 @@ export const LearningResourcesPage: React.FC = () => {
               allowClear
               className="filter-select"
               dropdownStyle={{ minWidth: 120 }}
-              options={RESOURCE_TYPES.map((type) => ({
+              options={RESOURCE_TYPE_VALUES.map((type) => ({
                 label: type,
                 value: type,
               }))}
               placeholder={t('label.type')}
-              popupMatchSelectWidth={false}
               suffixIcon={<DownOutlined className="filter-arrow" />}
               value={filterType}
-              variant="borderless"
               onChange={setFilterType}
             />
 
@@ -493,16 +444,12 @@ export const LearningResourcesPage: React.FC = () => {
               className="filter-select"
               dropdownStyle={{ minWidth: 140 }}
               options={CATEGORIES.map((cat) => ({
-                label:
-                  LEARNING_CATEGORIES[cat as keyof typeof LEARNING_CATEGORIES]
-                    ?.label ?? cat,
-                value: cat,
+                label: cat.label,
+                value: cat.value,
               }))}
               placeholder={t('label.category')}
-              popupMatchSelectWidth={false}
               suffixIcon={<DownOutlined className="filter-arrow" />}
               value={filterCategory}
-              variant="borderless"
               onChange={setFilterCategory}
             />
 
@@ -510,12 +457,10 @@ export const LearningResourcesPage: React.FC = () => {
               allowClear
               className="filter-select"
               dropdownStyle={{ minWidth: 160 }}
-              options={CONTENT_CONTEXTS}
+              options={PAGE_IDS}
               placeholder={t('label.context')}
-              popupMatchSelectWidth={false}
               suffixIcon={<DownOutlined className="filter-arrow" />}
               value={filterContent}
-              variant="borderless"
               onChange={setFilterContent}
             />
 
@@ -523,15 +468,13 @@ export const LearningResourcesPage: React.FC = () => {
               allowClear
               className="filter-select"
               dropdownStyle={{ minWidth: 120 }}
-              options={STATUSES.map((status) => ({
+              options={LEARNING_RESOURCE_STATUSES.map((status) => ({
                 label: status,
                 value: status,
               }))}
               placeholder={t('label.status')}
-              popupMatchSelectWidth={false}
               suffixIcon={<DownOutlined className="filter-arrow" />}
               value={filterStatus}
-              variant="borderless"
               onChange={setFilterStatus}
             />
 

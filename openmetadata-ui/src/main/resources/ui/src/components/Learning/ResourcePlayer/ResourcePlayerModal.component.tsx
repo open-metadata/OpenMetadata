@@ -20,6 +20,11 @@ import { Button, Modal, Tag, Typography } from 'antd';
 import { DateTime } from 'luxon';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DEFAULT_THEME } from '../../../constants/Appearance.constants';
+import {
+  MAX_VISIBLE_TAGS,
+  ResourceType,
+} from '../../../constants/Learning.constants';
 import { LEARNING_CATEGORIES } from '../Learning.interface';
 import { ArticleViewer } from './ArticleViewer.component';
 import './resource-player-modal.less';
@@ -28,8 +33,6 @@ import { StorylaneTour } from './StorylaneTour.component';
 import { VideoPlayer } from './VideoPlayer.component';
 
 const { Link, Paragraph, Text } = Typography;
-
-const MAX_VISIBLE_TAGS = 3;
 
 export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
   open,
@@ -74,9 +77,9 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
       LEARNING_CATEGORIES[category as keyof typeof LEARNING_CATEGORIES];
 
     return {
-      bgColor: categoryInfo?.bgColor ?? '#f8f9fc',
-      borderColor: categoryInfo?.borderColor ?? '#d5d9eb',
-      color: categoryInfo?.color ?? '#363f72',
+      bgColor: categoryInfo?.bgColor ?? DEFAULT_THEME.hoverColor,
+      borderColor: categoryInfo?.borderColor ?? DEFAULT_THEME.infoColor,
+      color: categoryInfo?.color ?? DEFAULT_THEME.primaryColor,
     };
   }, []);
 
@@ -90,11 +93,11 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
 
   const renderPlayer = useMemo(() => {
     switch (resource.resourceType) {
-      case 'Video':
+      case ResourceType.Video:
         return <VideoPlayer resource={resource} />;
-      case 'Storylane':
+      case ResourceType.Storylane:
         return <StorylaneTour resource={resource} />;
-      case 'Article':
+      case ResourceType.Article:
         return <ArticleViewer resource={resource} />;
       default:
         return <div>{t('message.unsupported-resource-type')}</div>;

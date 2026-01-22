@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,18 +11,10 @@
  *  limitations under the License.
  */
 
-import { TypographyProps } from 'antd';
-import { ParagraphProps } from 'antd/lib/typography/Paragraph';
-import { ReactNode } from 'react';
+import { LearningResource } from '../../rest/learningResourceAPI';
 
-export interface HeaderProps {
-  data: {
-    header: ReactNode;
-    subHeader: ReactNode;
-  };
-  titleProps?: TypographyProps;
-  subHeaderProps?: ParagraphProps;
-  isBeta?: boolean;
-  learningPageId?: string;
-  title?: string;
+export interface LearningResourceFormProps {
+  open: boolean;
+  resource: LearningResource | null;
+  onClose: () => void;
 }

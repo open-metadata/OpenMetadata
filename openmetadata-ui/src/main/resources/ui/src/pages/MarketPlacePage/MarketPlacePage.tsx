@@ -25,6 +25,7 @@ import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import ApplicationCard from '../../components/Settings/Applications/ApplicationCard/ApplicationCard.component';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
+import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { AppMarketPlaceDefinition } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { Paging } from '../../generated/type/paging';
@@ -144,7 +145,7 @@ const MarketPlacePage = () => {
                     ),
                     subHeader: t(PAGE_HEADERS.APPLICATION.subHeader),
                   }}
-                  learningPageId="automations"
+                  learningPageId={LEARNING_PAGE_IDS.AUTOMATIONS}
                 />
                 <HeadingIcon />
               </div>

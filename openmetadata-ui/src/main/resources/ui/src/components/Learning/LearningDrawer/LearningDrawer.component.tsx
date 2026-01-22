@@ -88,10 +88,6 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
       domain: t('label.domain'),
       dataProduct: t('label.data-product'),
       dataQuality: t('label.data-quality'),
-      observability: t('label.observability'),
-      governance: t('label.governance'),
-      discovery: t('label.discovery'),
-      administration: t('label.administration'),
     };
 
     return titleMap[pageId] || pageId;
