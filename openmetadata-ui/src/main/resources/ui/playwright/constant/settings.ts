@@ -103,6 +103,7 @@ export enum GlobalSettingOptions {
   SPREADSHEETS = 'spreadsheets',
   WORKSHEETS = 'worksheets',
   SSO = 'sso',
+  TABLE_COLUMNS = 'column',
 }
 
 export const SETTINGS_OPTIONS_PATH = {
@@ -346,5 +347,9 @@ export const SETTING_CUSTOM_PROPERTIES_PATH = {
   [GlobalSettingOptions.WORKSHEETS]: [
     GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
     `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.WORKSHEETS}`,
+  ],
+  [GlobalSettingOptions.TABLE_COLUMNS]: [
+    GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+    `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.TABLE_COLUMNS}`,
   ],
 };

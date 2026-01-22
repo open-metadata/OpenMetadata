@@ -473,6 +473,12 @@ export const getField = (field: FieldProp) => {
       );
     }
 
+    case FieldTypes.COMPONENT: {
+      fieldElement = props.children;
+
+      break;
+    }
+
     default:
       break;
   }

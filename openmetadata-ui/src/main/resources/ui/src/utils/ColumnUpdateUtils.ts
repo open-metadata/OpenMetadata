@@ -43,6 +43,7 @@ import {
   normalizeTags,
   pruneEmptyChildren,
   updateFieldDescription,
+  updateFieldExtension,
   updateFieldTags,
 } from './TableUtils';
 
@@ -260,6 +261,10 @@ export const updateTableColumn = (
   if (update.tags !== undefined) {
     const normalizedTags = normalizeTags(update.tags);
     updateFieldTags(fqn, toEntityTags(normalizedTags), columns);
+  }
+
+  if (update.extension !== undefined) {
+    updateFieldExtension(fqn, update.extension, columns);
   }
 
   const updatedTable: Table = {

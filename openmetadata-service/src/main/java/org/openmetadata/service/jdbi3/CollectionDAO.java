@@ -7649,6 +7649,21 @@ public interface CollectionDAO {
               endTs)
           : listCount(getTimeSeriesTableName(), filter.getQueryParams(), condition, startTs, endTs);
     }
+
+    @Override
+    default List<String> listWithOffset(ListFilter filter, int limit, int offset) {
+      String condition = filter.getCondition();
+      condition = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, condition);
+      return listWithOffset(
+          getTimeSeriesTableName(), filter.getQueryParams(), condition, limit, offset);
+    }
+
+    @Override
+    default int listCount(ListFilter filter) {
+      String condition = filter.getCondition();
+      condition = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, condition);
+      return listCount(getTimeSeriesTableName(), filter.getQueryParams(), condition);
+    }
   }
 
   interface TestCaseResultTimeSeriesDAO extends EntityTimeSeriesDAO {

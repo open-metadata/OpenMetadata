@@ -4134,6 +4134,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     throw new IllegalArgumentException(csvNotSupported(entityType));
   }
 
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      String targetEntityType)
+      throws IOException {
+    throw new IllegalArgumentException(csvNotSupported(entityType));
+  }
+
   public List<TagLabel> getAllTags(EntityInterface entity) {
     return entity.getTags();
   }
@@ -5745,8 +5756,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Delete tags related to deleted columns
       deletedColumns.forEach(
-          deleted ->
-              daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName()));
+          deleted -> {
+            daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName());
+            String extensionKey = FullyQualifiedName.buildHash(deleted.getFullyQualifiedName());
+            daoCollection.entityExtensionDAO().delete(updated.getId(), extensionKey);
+          });
 
       // Add tags related to newly added columns
       for (Column added : addedColumns) {
@@ -5780,6 +5794,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             stored.getTags(),
             updated.getTags());
         updateColumnConstraint(stored, updated);
+        updateColumnExtension(stored, updated);
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
           String childrenFieldName = EntityUtil.getFieldName(fieldName, updated.getName());
@@ -5824,6 +5839,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private void updateColumnConstraint(Column origColumn, Column updatedColumn) {
       String columnField = getColumnField(origColumn, "constraint");
       recordChange(columnField, origColumn.getConstraint(), updatedColumn.getConstraint());
+    }
+
+    private void updateColumnExtension(Column origColumn, Column updatedColumn) {
+      if (updatedColumn.getExtension() != null) {
+        String extensionKey = FullyQualifiedName.buildHash(updatedColumn.getFullyQualifiedName());
+        daoCollection
+            .entityExtensionDAO()
+            .insert(
+                updated.getId(),
+                extensionKey,
+                "columnExtension",
+                JsonUtils.pojoToJson(updatedColumn.getExtension()));
+      }
     }
 
     protected void updateColumnDataLength(Column origColumn, Column updatedColumn) {
