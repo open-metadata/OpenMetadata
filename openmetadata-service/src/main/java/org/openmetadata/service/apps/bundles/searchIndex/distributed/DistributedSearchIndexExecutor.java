@@ -467,6 +467,15 @@ public class DistributedSearchIndexExecutor {
         Thread.currentThread().interrupt();
       }
 
+      // Flush sink and wait for all pending bulk requests to complete before persisting final stats
+      if (searchIndexSink != null) {
+        LOG.info("Flushing sink and waiting for pending requests before final stats persist");
+        boolean completed = searchIndexSink.flushAndAwait(60);
+        if (!completed) {
+          LOG.warn("Sink flush timed out - some requests may not be reflected in final stats");
+        }
+      }
+
       // Final server stats persist
       persistServerStats(jobId);
 

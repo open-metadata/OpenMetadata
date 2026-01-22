@@ -460,18 +460,43 @@ public class SearchIndexApp extends AbstractNativeApplication {
     StepStats readerStats = stats.getReaderStats();
     if (readerStats != null) {
       readerStats.setTotalRecords((int) distributedJob.getTotalRecords());
-      readerStats.setSuccessRecords((int) distributedJob.getProcessedRecords());
-      readerStats.setFailedRecords(
-          serverStatsAggr != null ? (int) serverStatsAggr.readerFailed() : 0);
+      long readerFailed = serverStatsAggr != null ? serverStatsAggr.readerFailed() : 0;
+      // readerSuccess = total - readerFailed (entities that were successfully read)
+      long readerSuccess = distributedJob.getTotalRecords() - readerFailed;
+      readerStats.setSuccessRecords((int) readerSuccess);
+      readerStats.setFailedRecords((int) readerFailed);
     }
 
     StepStats sinkStats = stats.getSinkStats();
     if (sinkStats != null) {
-      sinkStats.setTotalRecords((int) distributedJob.getProcessedRecords());
       if (serverStatsAggr != null) {
-        sinkStats.setSuccessRecords((int) serverStatsAggr.sinkSuccess());
-        sinkStats.setFailedRecords((int) serverStatsAggr.sinkFailed());
+        // Use actual sink stats from the database
+        // sinkTotal = entities actually submitted to bulk processor (totalSubmitted)
+        // Note: sinkTotal might be less than readerSuccess if there were entity build failures
+        long actualSinkTotal = serverStatsAggr.sinkTotal();
+        long sinkSuccess = serverStatsAggr.sinkSuccess();
+        long sinkFailed = serverStatsAggr.sinkFailed();
+        long entityBuildFailures = serverStatsAggr.entityBuildFailures();
+
+        // Log for debugging - entity build failures explain the gap between reader and sink
+        long expectedSinkTotal = distributedJob.getTotalRecords() - serverStatsAggr.readerFailed();
+        if (actualSinkTotal != expectedSinkTotal) {
+          LOG.info(
+              "Sink stats: actualSinkTotal={}, expectedSinkTotal={}, gap={} (entityBuildFailures={})",
+              actualSinkTotal,
+              expectedSinkTotal,
+              expectedSinkTotal - actualSinkTotal,
+              entityBuildFailures);
+        }
+
+        sinkStats.setTotalRecords((int) actualSinkTotal);
+        sinkStats.setSuccessRecords((int) sinkSuccess);
+        sinkStats.setFailedRecords((int) sinkFailed);
       } else {
+        // Fallback: derive from reader stats (less accurate)
+        long readerFailed = 0;
+        long sinkTotal = distributedJob.getTotalRecords() - readerFailed;
+        sinkStats.setTotalRecords((int) sinkTotal);
         sinkStats.setSuccessRecords((int) successRecords);
         sinkStats.setFailedRecords((int) failedRecords);
       }

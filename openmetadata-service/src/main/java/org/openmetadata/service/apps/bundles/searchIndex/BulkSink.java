@@ -22,6 +22,18 @@ public interface BulkSink {
 
   void close() throws IOException;
 
+  /**
+   * Flush any pending bulk requests and wait for them to complete. Unlike close(), this does not
+   * shut down the sink - it can still be used for more writes after flush.
+   *
+   * @param timeoutSeconds Maximum time to wait for pending requests to complete
+   * @return true if all requests completed within timeout, false otherwise
+   */
+  default boolean flushAndAwait(int timeoutSeconds) {
+    // Default implementation does nothing - subclasses should override
+    return true;
+  }
+
   /** Callback interface for receiving failure notifications when documents fail to index. */
   @FunctionalInterface
   interface FailureCallback {

@@ -280,10 +280,15 @@ public class ElasticSearchBulkSink implements BulkSink {
 
   @Override
   public StepStats getStats() {
+    // Read directly from atomic counters for accurate real-time stats
+    // Use success + failed as total to ensure invariant holds (total = success + failed)
+    // This handles entity build failures which increment failed but not submitted
+    long success = totalSuccess.get();
+    long failed = totalFailed.get();
     return new StepStats()
-        .withTotalRecords(stats.getTotalRecords())
-        .withSuccessRecords(stats.getSuccessRecords())
-        .withFailedRecords(stats.getFailedRecords());
+        .withTotalRecords((int) (success + failed))
+        .withSuccessRecords((int) success)
+        .withFailedRecords((int) failed);
   }
 
   @Override
@@ -297,9 +302,39 @@ public class ElasticSearchBulkSink implements BulkSink {
       if (!terminated) {
         LOG.warn("Bulk processor did not terminate within timeout");
       }
+
+      // Final stats update to ensure all processed records are reflected
+      updateStats();
+
+      LOG.info(
+          "Sink closed - final stats: submitted={}, success={}, failed={}, entityBuildFailures={}",
+          totalSubmitted.get(),
+          totalSuccess.get(),
+          totalFailed.get(),
+          entityBuildFailures.get());
+
     } catch (InterruptedException e) {
       LOG.warn("Interrupted while closing bulk processor", e);
       Thread.currentThread().interrupt();
+    }
+  }
+
+  @Override
+  public boolean flushAndAwait(int timeoutSeconds) {
+    try {
+      boolean completed = bulkProcessor.flushAndWait(timeoutSeconds, TimeUnit.SECONDS);
+      if (completed) {
+        LOG.debug(
+            "Flush complete - stats: submitted={}, success={}, failed={}",
+            totalSubmitted.get(),
+            totalSuccess.get(),
+            totalFailed.get());
+      }
+      return completed;
+    } catch (InterruptedException e) {
+      LOG.warn("Interrupted while waiting for flush to complete", e);
+      Thread.currentThread().interrupt();
+      return false;
     }
   }
 
@@ -456,6 +491,33 @@ public class ElasticSearchBulkSink implements BulkSink {
       } finally {
         lock.unlock();
       }
+    }
+
+    /**
+     * Flush pending requests and wait for all active bulk requests to complete. Unlike awaitClose,
+     * this does not close the processor - it can continue to be used after this call.
+     *
+     * @param timeout Maximum time to wait
+     * @param unit Time unit for timeout
+     * @return true if all requests completed within timeout
+     */
+    boolean flushAndWait(long timeout, TimeUnit unit) throws InterruptedException {
+      flush();
+
+      long timeoutMillis = unit.toMillis(timeout);
+      long startTime = System.currentTimeMillis();
+
+      // Wait for all active bulk requests to complete
+      while (activeBulkRequests.get() > 0) {
+        long elapsed = System.currentTimeMillis() - startTime;
+        if (elapsed >= timeoutMillis) {
+          LOG.warn(
+              "Timeout waiting for {} active bulk requests to complete", activeBulkRequests.get());
+          return false;
+        }
+        Thread.sleep(100);
+      }
+      return true;
     }
 
     private void flushIfNeeded() {

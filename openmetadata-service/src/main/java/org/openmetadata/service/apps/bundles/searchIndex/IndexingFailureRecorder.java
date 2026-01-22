@@ -72,6 +72,15 @@ public class IndexingFailureRecorder implements AutoCloseable {
       return;
     }
 
+    LOG.info(
+        "Recording {} failure for entityType={}, entityId={}, error={}",
+        stage,
+        entityType,
+        entityId,
+        errorMessage != null
+            ? errorMessage.substring(0, Math.min(100, errorMessage.length()))
+            : null);
+
     CollectionDAO.SearchIndexFailureDAO.SearchIndexFailureRecord record =
         new CollectionDAO.SearchIndexFailureDAO.SearchIndexFailureRecord(
             UUID.randomUUID().toString(),
@@ -88,6 +97,7 @@ public class IndexingFailureRecorder implements AutoCloseable {
     lock.lock();
     try {
       buffer.add(record);
+      LOG.debug("Buffer size now: {} for job {}", buffer.size(), jobId);
       if (buffer.size() >= batchSize) {
         flushInternal();
       }
@@ -107,6 +117,7 @@ public class IndexingFailureRecorder implements AutoCloseable {
 
   private void flushInternal() {
     if (buffer.isEmpty()) {
+      LOG.debug("No failure records to flush for job {}", jobId);
       return;
     }
 
@@ -115,10 +126,16 @@ public class IndexingFailureRecorder implements AutoCloseable {
     buffer.clear();
 
     try {
+      LOG.info("Flushing {} failure records for job {} runId {}", toFlush.size(), jobId, runId);
       failureDAO.insertBatch(toFlush);
-      LOG.debug("Flushed {} failure records for job {}", toFlush.size(), jobId);
+      LOG.info("Successfully flushed {} failure records for job {}", toFlush.size(), jobId);
     } catch (Exception e) {
-      LOG.error("Failed to flush {} failure records for job {}", toFlush.size(), jobId, e);
+      LOG.error(
+          "Failed to flush {} failure records for job {} - table may not exist: {}",
+          toFlush.size(),
+          jobId,
+          e.getMessage(),
+          e);
     }
   }
 

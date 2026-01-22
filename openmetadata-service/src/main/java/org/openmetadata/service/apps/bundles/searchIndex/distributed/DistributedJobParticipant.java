@@ -325,6 +325,15 @@ public class DistributedJobParticipant implements Managed {
         }
       }
 
+      // Flush sink and wait for all pending bulk requests to complete before persisting final stats
+      if (sinkForStats != null) {
+        LOG.info("Flushing sink and waiting for pending requests before final stats persist");
+        boolean completed = sinkForStats.flushAndAwait(60);
+        if (!completed) {
+          LOG.warn("Sink flush timed out - some requests may not be reflected in final stats");
+        }
+      }
+
       // Persist final server stats before exiting (ensures final state is captured)
       persistServerStats(
           job.getId(), sinkForStats, partitionsProcessed, totalReaderSuccess, totalReaderFailed);
