@@ -548,8 +548,11 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
       await applyStatusFilter(page, ['Approved']);
 
       // Search should still be active, results filtered by status
-      const filteredCount = await verifyRowStatuses(page, ['Approved']);
-      expect(filteredCount).toBeLessThanOrEqual(initialCount);
+      // Use toPass() for auto-retry to handle DOM update timing
+      await expect(async () => {
+        const filteredCount = await verifyRowStatuses(page, ['Approved']);
+        expect(filteredCount).toBeLessThanOrEqual(initialCount);
+      }).toPass({ timeout: 5000 });
     });
   });
 
