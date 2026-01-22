@@ -16,6 +16,9 @@ from unittest.mock import Mock, patch
 from presidio_analyzer import AnalyzerEngine, RecognizerRegistry
 from presidio_analyzer.nlp_engine import SpacyNlpEngine
 
+from metadata.generated.schema.type.classificationLanguages import (
+    ClassificationLanguage,
+)
 from metadata.pii.algorithms.presidio_utils import (
     build_analyzer_engine,
     load_nlp_engine,
@@ -67,11 +70,11 @@ class TestAnalyzerEngine:
         mock_engine = Mock(spec=AnalyzerEngine)
         mock_engine_cls.return_value = mock_engine
 
-        result = build_analyzer_engine(SPACY_EN_MODEL)
+        result = build_analyzer_engine(ClassificationLanguage.en)
 
         # Verify NLP engine was loaded
         mock_load_nlp.assert_called_once_with(
-            model_name=SPACY_EN_MODEL, supported_language=SUPPORTED_LANG
+            model_name="en_core_web_md", supported_language=SUPPORTED_LANG
         )
 
         # Verify analyzer engine was created
