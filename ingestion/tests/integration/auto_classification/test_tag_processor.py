@@ -42,7 +42,7 @@ def create_service_request(postgres_container: PostgresConnection, tmp_path_fact
                 authType=BasicAuth(password=postgres_container.password),
                 hostPort=postgres_container.get_container_host_ip()
                 + ":"
-                + postgres_container.get_exposed_port(postgres_container.port),
+                + str(postgres_container.get_exposed_port(postgres_container.port)),
                 database=postgres_container.dbname,
             )
         ),
@@ -180,7 +180,13 @@ def test_it_returns_the_expected_classifications(
             ),
         ),
     ]
-    assert timestamp_column.tags == []
+    assert timestamp_column.tags == [
+        IsInstance(TagLabel)
+        & HasAttributes(
+            tagFQN=HasAttributes(root="PII.NonSensitive"),
+            reason=Contains("Detected by `SpacyRecognizer`"),
+        ),
+    ]
     assert version_column.tags == []
     assert order_date_column.tags == [
         IsInstance(TagLabel)
