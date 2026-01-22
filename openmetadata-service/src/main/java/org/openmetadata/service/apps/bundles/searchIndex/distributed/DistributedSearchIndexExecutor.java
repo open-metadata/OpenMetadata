@@ -101,6 +101,10 @@ public class DistributedSearchIndexExecutor {
   private String currentRunId;
   private BulkSink searchIndexSink;
 
+  // Reader stats tracking (accumulated across all worker threads)
+  private final AtomicLong coordinatorReaderSuccess = new AtomicLong(0);
+  private final AtomicLong coordinatorReaderFailed = new AtomicLong(0);
+
   public DistributedSearchIndexExecutor(CollectionDAO collectionDAO) {
     this(collectionDAO, 10000); // Default partition size
   }
@@ -575,6 +579,10 @@ public class DistributedSearchIndexExecutor {
         totalSuccess.addAndGet(result.successCount());
         totalFailed.addAndGet(result.failedCount());
 
+        // Also accumulate into coordinator reader stats for persistence
+        coordinatorReaderSuccess.addAndGet(result.successCount());
+        coordinatorReaderFailed.addAndGet(result.failedCount());
+
         LOG.info(
             "Worker {} completed partition {} (success: {}, failed: {})",
             workerId,
@@ -745,8 +753,8 @@ public class DistributedSearchIndexExecutor {
               statsId,
               jobId.toString(),
               serverId,
-              0,
-              0,
+              coordinatorReaderSuccess.get(),
+              coordinatorReaderFailed.get(),
               sinkStats != null ? sinkStats.getTotalRecords() : 0,
               sinkStats != null ? sinkStats.getSuccessRecords() : 0,
               sinkStats != null ? sinkStats.getFailedRecords() : 0,
@@ -755,7 +763,12 @@ public class DistributedSearchIndexExecutor {
               partitionsFailed,
               System.currentTimeMillis());
 
-      LOG.debug("Persisted server stats for job {} server {}", jobId, serverId);
+      LOG.debug(
+          "Persisted server stats for job {} server {}: readerSuccess={}, readerFailed={}",
+          jobId,
+          serverId,
+          coordinatorReaderSuccess.get(),
+          coordinatorReaderFailed.get());
     } catch (Exception e) {
       LOG.error("Error persisting server stats for job {} server {}", jobId, serverId, e);
     }

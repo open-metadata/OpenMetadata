@@ -17,6 +17,7 @@ import io.dropwizard.lifecycle.Managed;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.cache.CacheConfig;
@@ -45,10 +46,21 @@ public class DistributedJobParticipant implements Managed {
   private final SearchRepository searchRepository;
   private final String serverId;
   private final DistributedSearchIndexCoordinator coordinator;
-  private final DistributedJobNotifier notifier;
+
+  /**
+   * -- GETTER --
+   * Get the notifier being used (for testing/debugging).
+   */
+  @Getter private final DistributedJobNotifier notifier;
+
   private final AtomicBoolean running = new AtomicBoolean(false);
   private final AtomicBoolean participating = new AtomicBoolean(false);
-  private UUID currentJobId;
+
+  /**
+   * -- GETTER --
+   * Get the current job ID being processed, if any.
+   */
+  @Getter private UUID currentJobId;
 
   public DistributedJobParticipant(
       CollectionDAO collectionDAO,
@@ -193,9 +205,10 @@ public class DistributedJobParticipant implements Managed {
   private void processJobPartitions(SearchIndexJob job) {
     LOG.info("Server {} joining distributed job {} to process partitions", serverId, job.getId());
 
+    BulkSink bulkSink = null;
     try {
       // Create bulk sink for this participation
-      BulkSink bulkSink =
+      bulkSink =
           searchRepository.createBulkSink(
               job.getJobConfiguration().getBatchSize() != null
                   ? job.getJobConfiguration().getBatchSize()
@@ -232,6 +245,9 @@ public class DistributedJobParticipant implements Managed {
           new PartitionWorker(coordinator, bulkSink, batchSize, recreateContext, recreateIndex);
 
       int partitionsProcessed = 0;
+      long totalReaderSuccess = 0;
+      long totalReaderFailed = 0;
+      final BulkSink sinkForStats = bulkSink;
 
       // Process partitions until none are available or job completes
       while (running.get()) {
@@ -280,6 +296,8 @@ public class DistributedJobParticipant implements Managed {
         try {
           PartitionWorker.PartitionResult result = worker.processPartition(partition);
           partitionsProcessed++;
+          totalReaderSuccess += result.successCount();
+          totalReaderFailed += result.failedCount();
 
           LOG.info(
               "Participant completed partition {} (success: {}, failed: {})",
@@ -287,10 +305,22 @@ public class DistributedJobParticipant implements Managed {
               result.successCount(),
               result.failedCount());
 
+          // Persist stats after each partition completion
+          persistServerStats(
+              job.getId(),
+              sinkForStats,
+              partitionsProcessed,
+              totalReaderSuccess,
+              totalReaderFailed);
+
         } catch (Exception e) {
           LOG.error("Error processing partition {}", partition.getId(), e);
         }
       }
+
+      // Persist final server stats before exiting (ensures final state is captured)
+      persistServerStats(
+          job.getId(), sinkForStats, partitionsProcessed, totalReaderSuccess, totalReaderFailed);
 
       LOG.info(
           "Server {} finished participating in job {}, processed {} partitions",
@@ -300,21 +330,70 @@ public class DistributedJobParticipant implements Managed {
 
     } catch (Exception e) {
       LOG.error("Error participating in job {}", job.getId(), e);
+    } finally {
+      // Close the bulk sink
+      if (bulkSink != null) {
+        try {
+          bulkSink.close();
+        } catch (Exception e) {
+          LOG.warn("Error closing bulk sink", e);
+        }
+      }
+    }
+  }
+
+  /** Persist server stats to the database. */
+  private void persistServerStats(
+      UUID jobId,
+      BulkSink bulkSink,
+      int partitionsCompleted,
+      long readerSuccess,
+      long readerFailed) {
+    if (bulkSink == null) {
+      return;
+    }
+
+    try {
+      org.openmetadata.schema.system.StepStats sinkStats = bulkSink.getStats();
+      long entityBuildFailures = bulkSink.getEntityBuildFailures();
+
+      String statsId = UUID.nameUUIDFromBytes((jobId.toString() + serverId).getBytes()).toString();
+
+      collectionDAO
+          .searchIndexServerStatsDAO()
+          .upsert(
+              statsId,
+              jobId.toString(),
+              serverId,
+              readerSuccess,
+              readerFailed,
+              sinkStats != null ? sinkStats.getTotalRecords() : 0,
+              sinkStats != null ? sinkStats.getSuccessRecords() : 0,
+              sinkStats != null ? sinkStats.getFailedRecords() : 0,
+              entityBuildFailures,
+              partitionsCompleted,
+              0, // partitionsFailed - not tracked here
+              System.currentTimeMillis());
+
+      LOG.info(
+          "Participant {} persisted server stats for job {}: readerSuccess={}, readerFailed={}, "
+              + "sinkTotal={}, sinkSuccess={}, sinkFailed={}, partitionsCompleted={}",
+          serverId,
+          jobId,
+          readerSuccess,
+          readerFailed,
+          sinkStats != null ? sinkStats.getTotalRecords() : 0,
+          sinkStats != null ? sinkStats.getSuccessRecords() : 0,
+          sinkStats != null ? sinkStats.getFailedRecords() : 0,
+          partitionsCompleted);
+
+    } catch (Exception e) {
+      LOG.error("Failed to persist server stats for participant {} job {}", serverId, jobId, e);
     }
   }
 
   /** Check if currently participating in a job. */
   public boolean isParticipating() {
     return participating.get();
-  }
-
-  /** Get the current job ID being processed, if any. */
-  public UUID getCurrentJobId() {
-    return currentJobId;
-  }
-
-  /** Get the notifier being used (for testing/debugging). */
-  public DistributedJobNotifier getNotifier() {
-    return notifier;
   }
 }
