@@ -61,6 +61,9 @@ ORACLE_METADATA_CONFIG["source"]["sourceConfig"] = {
         "schemaFilterPattern": {
             "includes": ["test"],
         },
+        "tableFilterPattern": {
+            "excludes": ["interim_temp_table_1"],
+        },
     }
 }
 
@@ -69,6 +72,7 @@ ORACLE_LINEAGE_CONFIG["source"]["type"] = "oracle-lineage"
 ORACLE_LINEAGE_CONFIG["source"]["sourceConfig"] = {
     "config": {
         "type": "DatabaseLineage",
+        "enableTempTableLineage": True,
     }
 }
 
