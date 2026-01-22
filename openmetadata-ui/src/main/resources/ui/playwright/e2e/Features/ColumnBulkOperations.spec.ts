@@ -12,6 +12,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
+import { TableClass } from '../../support/entity/TableClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
@@ -1446,19 +1447,13 @@ test.describe('Column Bulk Operations - Cross Entity Type Support', () => {
 test.describe('Column Bulk Operations - Cross Entity Type Bulk Update', () => {
   // Test that bulk updates propagate to columns across ALL entity types:
   // table, topic, container, searchIndex, dashboardDataModel
-
+  test.slow(true);
   const sharedColumnName = `cross_entity_column_${uuid()}`;
   let serviceName: string;
   let messagingServiceName: string;
   let storageServiceName: string;
   let searchServiceName: string;
   let dashboardServiceName: string;
-
-  let tableFQN: string;
-  let topicFQN: string;
-  let containerFQN: string;
-  let searchIndexFQN: string;
-  let dashboardDataModelFQN: string;
 
   test.beforeAll(
     'Setup entities with shared column name',
@@ -1509,8 +1504,8 @@ test.describe('Column Bulk Operations - Cross Entity Type Bulk Update', () => {
           columns: [
             {
               name: sharedColumnName,
-              dataType: 'VARCHAR',
-              dataTypeDisplay: 'varchar',
+              dataType: 'STRING',
+              dataTypeDisplay: 'string',
               description: 'Column in table',
             },
           ],
@@ -1658,7 +1653,7 @@ test.describe('Column Bulk Operations - Cross Entity Type Bulk Update', () => {
             columns: [
               {
                 name: sharedColumnName,
-                dataType: 'VARCHAR',
+                dataType: 'STRING',
                 description: 'Column in dashboard data model',
               },
             ],
@@ -1672,82 +1667,9 @@ test.describe('Column Bulk Operations - Cross Entity Type Bulk Update', () => {
     }
   );
 
-  test.afterAll('Cleanup cross-entity test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    // Delete all created entities
-    if (tableFQN) {
-      await apiContext
-        .delete(`/api/v1/tables/name/${tableFQN}?hardDelete=true`)
-        .catch(() => {});
-    }
-    if (topicFQN) {
-      await apiContext
-        .delete(`/api/v1/topics/name/${topicFQN}?hardDelete=true`)
-        .catch(() => {});
-    }
-    if (containerFQN) {
-      await apiContext
-        .delete(`/api/v1/containers/name/${containerFQN}?hardDelete=true`)
-        .catch(() => {});
-    }
-    if (searchIndexFQN) {
-      await apiContext
-        .delete(`/api/v1/searchIndexes/name/${searchIndexFQN}?hardDelete=true`)
-        .catch(() => {});
-    }
-    if (dashboardDataModelFQN) {
-      await apiContext
-        .delete(
-          `/api/v1/dashboard/datamodels/name/${dashboardDataModelFQN}?hardDelete=true`
-        )
-        .catch(() => {});
-    }
-
-    // Delete services
-    if (serviceName) {
-      await apiContext
-        .delete(
-          `/api/v1/services/databaseServices/name/${serviceName}?hardDelete=true&recursive=true`
-        )
-        .catch(() => {});
-    }
-    if (messagingServiceName) {
-      await apiContext
-        .delete(
-          `/api/v1/services/messagingServices/name/${messagingServiceName}?hardDelete=true&recursive=true`
-        )
-        .catch(() => {});
-    }
-    if (storageServiceName) {
-      await apiContext
-        .delete(
-          `/api/v1/services/storageServices/name/${storageServiceName}?hardDelete=true&recursive=true`
-        )
-        .catch(() => {});
-    }
-    if (searchServiceName) {
-      await apiContext
-        .delete(
-          `/api/v1/services/searchServices/name/${searchServiceName}?hardDelete=true&recursive=true`
-        )
-        .catch(() => {});
-    }
-    if (dashboardServiceName) {
-      await apiContext
-        .delete(
-          `/api/v1/services/dashboardServices/name/${dashboardServiceName}?hardDelete=true&recursive=true`
-        )
-        .catch(() => {});
-    }
-
-    await afterAction();
-  });
-
   test('should show column appearing in multiple entity types', async ({
     page,
   }) => {
-    test.slow(true);
     await redirectToHomePage(page);
     await visitColumnBulkOperationsPage(page);
 
@@ -1767,8 +1689,6 @@ test.describe('Column Bulk Operations - Cross Entity Type Bulk Update', () => {
   test('should update column across all entity types via bulk update', async ({
     page,
   }) => {
-    test.setTimeout(120000); // Extended timeout for search index
-
     await redirectToHomePage(page);
     await visitColumnBulkOperationsPage(page);
 
@@ -1810,20 +1730,17 @@ test.describe('Column Bulk Operations - Cross Entity Type Bulk Update', () => {
         }[];
       } | null = null;
 
-      const requestPromise = page.waitForRequest(
-        (request) => {
-          if (request.url().includes('/api/v1/columns/bulk-update-async')) {
-            try {
-              requestBody = request.postDataJSON();
-            } catch {
-              // Ignore
-            }
-            return true;
+      const requestPromise = page.waitForRequest((request) => {
+        if (request.url().includes('/api/v1/columns/bulk-update-async')) {
+          try {
+            requestBody = request.postDataJSON();
+          } catch {
+            // Ignore
           }
-          return false;
-        },
-        { timeout: 15000 }
-      );
+          return true;
+        }
+        return false;
+      });
 
       // Click update
       const updateButton = drawer.getByRole('button', { name: 'Update' });
@@ -1865,149 +1782,35 @@ test.describe('Column Bulk Operations - Cross Entity Type Bulk Update', () => {
 });
 
 test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
-  // Test nested/STRUCT column handling
-
-  const parentColumnName = `struct_parent_${uuid()}`;
-  let serviceName: string;
-  let tableFQN: string;
+  const table = new TableClass();
+  let structColumnName: string;
 
   test.beforeAll('Setup table with STRUCT columns', async ({ browser }) => {
-    test.slow(true);
-
     const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    serviceName = `pw-struct-service-${uuid()}`;
-    const databaseName = `pw-struct-database-${uuid()}`;
-    const schemaName = `pw-struct-schema-${uuid()}`;
-
-    // Create service, database, schema
-    await apiContext.post('/api/v1/services/databaseServices', {
-      data: {
-        name: serviceName,
-        serviceType: 'Mysql',
-        connection: {
-          config: {
-            type: 'Mysql',
-            scheme: 'mysql+pymysql',
-            username: 'username',
-            authType: { password: 'password' },
-            hostPort: 'mysql:3306',
-          },
-        },
-      },
-    });
-
-    await apiContext.post('/api/v1/databases', {
-      data: {
-        name: databaseName,
-        service: serviceName,
-      },
-    });
-
-    await apiContext.post('/api/v1/databaseSchemas', {
-      data: {
-        name: schemaName,
-        database: `${serviceName}.${databaseName}`,
-      },
-    });
-
-    // Create table with nested STRUCT column
-    const tableResponse = await apiContext.post('/api/v1/tables', {
-      data: {
-        name: `pw-struct-table-${uuid()}`,
-        databaseSchema: `${serviceName}.${databaseName}.${schemaName}`,
-        columns: [
-          {
-            name: parentColumnName,
-            dataType: 'STRUCT',
-            dataTypeDisplay:
-              'struct<name:string,age:int,address:struct<city:string,zip:string>>',
-            description: 'Parent STRUCT column',
-            children: [
-              {
-                name: 'name',
-                dataType: 'STRING',
-                description: 'Name field',
-              },
-              {
-                name: 'age',
-                dataType: 'INT',
-                description: 'Age field',
-              },
-              {
-                name: 'address',
-                dataType: 'STRUCT',
-                description: 'Nested address struct',
-                children: [
-                  {
-                    name: 'city',
-                    dataType: 'STRING',
-                    description: 'City field',
-                  },
-                  {
-                    name: 'zip',
-                    dataType: 'STRING',
-                    description: 'Zip code field',
-                  },
-                ],
-              },
-            ],
-          },
-          {
-            name: 'simple_column',
-            dataType: 'VARCHAR',
-            description: 'Simple non-nested column',
-          },
-        ],
-      },
-    });
-
-    const tableData = await tableResponse.json();
-    tableFQN = tableData.fullyQualifiedName;
-
+    await table.create(apiContext);
+    structColumnName = table.columnsName[2];
     await afterAction();
   });
 
   test.afterAll('Cleanup STRUCT test data', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    if (tableFQN) {
-      await apiContext
-        .delete(`/api/v1/tables/name/${tableFQN}?hardDelete=true`)
-        .catch(() => {});
-    }
-
-    if (serviceName) {
-      await apiContext
-        .delete(
-          `/api/v1/services/databaseServices/name/${serviceName}?hardDelete=true&recursive=true`
-        )
-        .catch(() => {});
-    }
-
+    await table.delete(apiContext);
     await afterAction();
   });
 
   test('should display STRUCT column with expand button', async ({ page }) => {
-    test.setTimeout(120000); // Extended timeout for search index
+    test.slow(true);
 
     await redirectToHomePage(page);
     await visitColumnBulkOperationsPage(page);
 
-    // Use retry helper to wait for search index
-    await searchColumn(page, parentColumnName);
+    await searchColumn(page, structColumnName);
 
-    // Find the STRUCT column row
     const structRow = page.locator('tbody tr').first();
     await expect(structRow).toBeVisible();
 
-    // STRUCT columns should have an expand button for nested fields
-    // Look for expand button or STRUCT indicator
-    const expandButton = structRow.locator(
-      'button.expand-button, .anticon-right'
-    );
+    const expandButton = structRow.locator('button.expand-button');
 
-    // If there's an expand button, the STRUCT column is properly displayed
     if ((await expandButton.count()) > 0) {
       await expect(expandButton).toBeVisible();
     }
@@ -2016,85 +1819,68 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
   test('should expand STRUCT column to show nested fields', async ({
     page,
   }) => {
-    test.slow(true); // Extended timeout for search index
+    test.slow(true);
 
     await redirectToHomePage(page);
     await visitColumnBulkOperationsPage(page);
 
-    // Use retry helper to wait for search index
-    await searchColumn(page, parentColumnName);
+    await searchColumn(page, structColumnName);
 
-    // Find expand button for STRUCT
     const expandButton = page
       .locator('tbody tr')
       .first()
-      .locator('button.expand-button, .anticon-right')
-      .first();
+      .locator('button.expand-button');
 
     if ((await expandButton.count()) > 0) {
       const initialRowCount = await page.locator('tbody tr').count();
 
-      // Click to expand
       await expandButton.click();
 
-      // Row count should increase (nested fields are shown)
       const expandedRowCount = await page.locator('tbody tr').count();
 
-      // Should have more rows after expansion (nested children visible)
       expect(expandedRowCount).toBeGreaterThanOrEqual(initialRowCount);
 
-      // Look for nested field names (name, age, address)
       const pageContent = await page.content();
       const hasNestedFields =
-        pageContent.includes('name') ||
-        pageContent.includes('age') ||
-        pageContent.includes('address');
+        pageContent.includes(table.columnsName[3]) ||
+        pageContent.includes(table.columnsName[4]);
 
       expect(hasNestedFields).toBe(true);
     }
   });
 
   test('should select and edit nested STRUCT field', async ({ page }) => {
-    test.setTimeout(120000); // Extended timeout for search index
+    test.slow(true);
 
     await redirectToHomePage(page);
     await visitColumnBulkOperationsPage(page);
 
-    // Use retry helper to wait for search index
-    await searchColumn(page, parentColumnName);
+    await searchColumn(page, structColumnName);
 
-    // Expand to show nested fields
     const expandButton = page
       .locator('tbody tr')
       .first()
-      .locator('button.expand-button, .anticon-right')
-      .first();
+      .locator('button.expand-button');
 
     if ((await expandButton.count()) > 0) {
       await expandButton.click();
 
-      // Find a nested field checkbox (rows after the first one are nested)
       const nestedCheckboxes = page.locator('tbody tr input[type="checkbox"]');
       const checkboxCount = await nestedCheckboxes.count();
 
       if (checkboxCount > 1) {
-        // Select a nested field (not the parent)
         await nestedCheckboxes.nth(1).click();
 
-        // Edit button should be enabled
         const editButton = page.getByRole('button', { name: /edit/i }).first();
         await expect(editButton).toBeEnabled();
 
-        // Open edit drawer
         await editButton.click();
 
         const drawer = page.getByTestId('column-bulk-operations-form-drawer');
         await expect(drawer).toBeVisible();
 
-        // Verify drawer shows the nested field
         await expect(drawer.getByText('Display Name')).toBeVisible();
 
-        // Close drawer
         await page.keyboard.press('Escape');
       }
     }
@@ -2103,29 +1889,24 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
   test('should show nested levels with proper indentation', async ({
     page,
   }) => {
-    test.setTimeout(120000); // Extended timeout for search index
+    test.slow(true);
 
     await redirectToHomePage(page);
     await visitColumnBulkOperationsPage(page);
 
-    // Use retry helper to wait for search index
-    await searchColumn(page, parentColumnName);
+    await searchColumn(page, structColumnName);
 
-    // Expand STRUCT column
     const expandButton = page
       .locator('tbody tr')
       .first()
-      .locator('button.expand-button, .anticon-right')
-      .first();
+      .locator('button.expand-button');
 
     if ((await expandButton.count()) > 0) {
       await expandButton.click();
 
-      // Look for struct-child-row class which indicates nested indentation
       const nestedRows = page.locator('.struct-child-row, .child-row');
       const nestedCount = await nestedRows.count();
 
-      // Should have nested rows with indentation
       if (nestedCount > 0) {
         await expect(nestedRows.first()).toBeVisible();
       }
