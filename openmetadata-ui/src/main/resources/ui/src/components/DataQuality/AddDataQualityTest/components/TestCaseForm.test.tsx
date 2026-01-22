@@ -88,6 +88,9 @@ jest.mock('react-router-dom', () => ({
 jest.mock('../../../../utils/DataQuality/DataQualityUtils', () => {
   return {
     createTestCaseParameters: jest.fn().mockImplementation(() => []),
+    getServiceTypeForTestDefinition: jest
+      .fn()
+      .mockImplementation(() => 'BigQuery'),
   };
 });
 jest.mock('../../../../rest/testAPI', () => ({
@@ -209,6 +212,7 @@ describe('TestCaseForm', () => {
       limit: 50,
       supportedDataType: undefined,
       testPlatform: 'OpenMetadata',
+      supportedService: 'BigQuery',
     });
   });
 
@@ -256,6 +260,7 @@ describe('TestCaseForm', () => {
       limit: 50,
       supportedDataType: 'VARCHAR',
       testPlatform: 'OpenMetadata',
+      supportedService: 'BigQuery',
     });
 
     mockParams.dashboardType = ProfilerDashboardType.TABLE;
