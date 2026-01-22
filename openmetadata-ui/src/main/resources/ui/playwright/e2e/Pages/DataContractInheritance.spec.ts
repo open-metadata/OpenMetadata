@@ -83,7 +83,7 @@ const fillContractDetailsForm = async (
 };
 
 const fillTermsOfServiceForm = async (page: Page, termsContent: string) => {
-  await page.getByRole('button', { name: 'Terms of Service' }).click();
+  await page.getByRole('tab', { name: 'Terms of Service' }).click();
   await page.fill('.om-block-editor .has-focus', termsContent);
 };
 
@@ -91,7 +91,7 @@ const fillSemanticsForm = async (
   page: Page,
   semanticsData: typeof DATA_PRODUCT_SEMANTICS
 ) => {
-  await page.getByRole('button', { name: 'Semantics' }).click();
+  await page.getByRole('tab', { name: 'Semantics' }).click();
 
   await page.fill('#semantics_0_name', semanticsData.name);
   await page.fill('#semantics_0_description', semanticsData.description);

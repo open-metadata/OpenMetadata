@@ -185,7 +185,7 @@ test.describe('Data Contracts', () => {
       });
 
       await test.step('Fill the Terms of Service Detail', async () => {
-        await page.getByRole('button', { name: 'Terms of Service' }).click();
+        await page.getByRole('tab', { name: 'Terms of Service' }).click();
         await page.fill(
           '.om-block-editor .has-focus',
           DATA_CONTRACT_DETAILS.termsOfService
@@ -195,7 +195,7 @@ test.describe('Data Contracts', () => {
       // Schema selection step - only for entities with schema
       if (entitySupportsSchema(entityType)) {
         await test.step('Fill Contract Schema form', async () => {
-          await page.getByRole('button', { name: 'Schema' }).click();
+          await page.getByRole('tab', { name: 'Schema' }).click();
 
           // Check if there are schema fields to select
           const hasSchemaFields = await page
@@ -216,7 +216,7 @@ test.describe('Data Contracts', () => {
       }
 
       await test.step('Fill first Contract Semantics form', async () => {
-        await page.getByRole('button', { name: 'Semantics' }).click();
+        await page.getByRole('tab', { name: 'Semantics' }).click();
 
         await expect(page.getByTestId('add-semantic-button')).toBeDisabled();
 
