@@ -85,6 +85,10 @@ import {
   defaultFields,
   defaultFieldsWithColumns,
 } from '../../utils/DatasetDetailsUtils';
+import {
+  getEffectiveUpdateKey,
+  mergeEntityStateUpdate,
+} from '../../utils/EntityUpdateUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
@@ -213,8 +217,8 @@ const TableDetailsPageV1: React.FC = () => {
         const [details, columnsResponse] = await Promise.all([
           getTableDetailsByFQN(tableFqn, { fields }),
           getTableColumnsByFQN(tableFqn, {
-            fields: 'tags,customMetrics,extension', 
-          }).catch(() => null), 
+            fields: 'tags,customMetrics,extension',
+          }).catch(() => null),
         ]);
 
         let finalColumns = details.columns || [];
@@ -445,20 +449,15 @@ const TableDetailsPageV1: React.FC = () => {
           return;
         }
 
-        const updatedObj = {
-          ...previous,
-          ...res,
-          ...(key && { [key]: res[key] }),
-        };
+        const effectiveKey = getEffectiveUpdateKey<Table>(key, updatedTable);
 
-        // If operation was to remove let's remove the key itself
-        if (key && res[key] === undefined) {
-          delete updatedObj[key];
-        }
-
-        return updatedObj;
+        return mergeEntityStateUpdate<Table>(
+          previous,
+          res,
+          updatedTable,
+          effectiveKey
+        );
       });
-      await fetchTableDetails(true);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -920,12 +919,12 @@ const TableDetailsPageV1: React.FC = () => {
   return (
     <PageLayoutV1 pageTitle={entityName} title="Table details">
       <GenericProvider<Table>
-        key={tableFqn}
         columnFqn={columnFqn}
         customizedPage={customizedPage}
         data={tableDetails}
         isTabExpanded={isTabExpanded}
         isVersionView={false}
+        key={tableFqn}
         permissions={tablePermissions}
         type={EntityType.TABLE}
         onColumnsUpdate={handleColumnsUpdate}
