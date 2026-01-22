@@ -623,6 +623,7 @@ export enum DatabaseServiceType {
     Iceberg = "Iceberg",
     Impala = "Impala",
     MariaDB = "MariaDB",
+    MicrosoftFabric = "MicrosoftFabric",
     MongoDB = "MongoDB",
     Mssql = "Mssql",
     Mysql = "Mysql",
