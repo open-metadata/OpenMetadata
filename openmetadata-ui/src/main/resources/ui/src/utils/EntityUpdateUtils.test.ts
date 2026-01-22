@@ -13,11 +13,7 @@
 import { AxiosError } from 'axios';
 import { TFunction } from 'i18next';
 import { EntityType } from '../enums/entity.enum';
-import {
-  getEffectiveUpdateKey,
-  mergeEntityStateUpdate,
-  updateEntityField,
-} from './EntityUpdateUtils';
+import { mergeEntityStateUpdate, updateEntityField } from './EntityUpdateUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
 import * as EntityValidationUtils from './EntityValidationUtils';
 import * as ToastUtils from './ToastUtils';
@@ -262,82 +258,6 @@ describe('EntityUpdateUtils', () => {
     });
   });
 
-  describe('getEffectiveUpdateKey', () => {
-    interface TestEntity {
-      id: string;
-      name: string;
-      extension?: Record<string, unknown>;
-      tags?: string[];
-    }
-
-    it('should return the provided key when key is defined', () => {
-      const entity: TestEntity = {
-        id: '1',
-        name: 'Test',
-        extension: { prop: 'value' },
-      };
-
-      const result = getEffectiveUpdateKey<TestEntity>('name', entity);
-
-      expect(result).toBe('name');
-    });
-
-    it('should return undefined when key is undefined and extension is not undefined', () => {
-      const entity: TestEntity = {
-        id: '1',
-        name: 'Test',
-        extension: { prop: 'value' },
-      };
-
-      const result = getEffectiveUpdateKey<TestEntity>(undefined, entity);
-
-      expect(result).toBeUndefined();
-    });
-
-    it('should return "extension" when key is undefined and extension is undefined', () => {
-      const entity: TestEntity = {
-        id: '1',
-        name: 'Test',
-        extension: undefined, // Explicitly set to undefined (as CustomPropertyTable does)
-      };
-
-      const result = getEffectiveUpdateKey<TestEntity>(undefined, entity);
-
-      expect(result).toBe('extension');
-    });
-
-    it('should return "extension" when key is undefined and extension is explicitly undefined', () => {
-      const entity: TestEntity = {
-        id: '1',
-        name: 'Test',
-        extension: undefined,
-      };
-
-      const result = getEffectiveUpdateKey<TestEntity>(undefined, entity);
-
-      expect(result).toBe('extension');
-    });
-
-    it('should return undefined when key is undefined and entity has no extension property', () => {
-      interface EntityWithoutExtension {
-        id: string;
-        name: string;
-      }
-
-      const entity: EntityWithoutExtension = {
-        id: '1',
-        name: 'Test',
-      };
-
-      const result = getEffectiveUpdateKey<EntityWithoutExtension>(
-        undefined,
-        entity
-      );
-
-      expect(result).toBeUndefined();
-    });
-  });
-
   describe('mergeEntityStateUpdate', () => {
     interface TestEntity {
       id: string;
@@ -346,7 +266,7 @@ describe('EntityUpdateUtils', () => {
       tags?: string[];
     }
 
-    it('should merge previous and response when no effectiveKey provided', () => {
+    it('should merge previous and response when no key provided', () => {
       const previous: TestEntity = {
         id: '1',
         name: 'Previous',
@@ -371,7 +291,7 @@ describe('EntityUpdateUtils', () => {
       });
     });
 
-    it('should remove field when effectiveKey is provided and value is undefined', () => {
+    it('should remove field when key is provided and value is undefined', () => {
       const previous: TestEntity = {
         id: '1',
         name: 'Test',
@@ -403,7 +323,7 @@ describe('EntityUpdateUtils', () => {
       expect('extension' in result).toBe(false);
     });
 
-    it('should update field when effectiveKey is provided and value is not undefined', () => {
+    it('should update field when key is provided and value is not undefined', () => {
       const previous: TestEntity = {
         id: '1',
         name: 'Previous',

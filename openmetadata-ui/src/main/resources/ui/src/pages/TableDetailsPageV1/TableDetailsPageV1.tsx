@@ -85,10 +85,7 @@ import {
   defaultFields,
   defaultFieldsWithColumns,
 } from '../../utils/DatasetDetailsUtils';
-import {
-  getEffectiveUpdateKey,
-  mergeEntityStateUpdate,
-} from '../../utils/EntityUpdateUtils';
+import { mergeEntityStateUpdate } from '../../utils/EntityUpdateUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
@@ -449,14 +446,7 @@ const TableDetailsPageV1: React.FC = () => {
           return;
         }
 
-        const effectiveKey = getEffectiveUpdateKey<Table>(key, updatedTable);
-
-        return mergeEntityStateUpdate<Table>(
-          previous,
-          res,
-          updatedTable,
-          effectiveKey
-        );
+        return mergeEntityStateUpdate<Table>(previous, res, updatedTable, key);
       });
     } catch (error) {
       showErrorToast(error as AxiosError);
