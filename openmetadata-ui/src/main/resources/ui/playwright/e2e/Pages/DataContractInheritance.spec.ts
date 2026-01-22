@@ -564,26 +564,18 @@ test.describe('Data Contract Inheritance', () => {
         page.locator('.contract-header-container .inherit-icon')
       ).not.toBeVisible();
 
-      // Verify Terms of Service has inherited icon (from Data Product)
-      await expect(
-        page.locator('.contract-card-items').filter({ hasText: 'Terms of Service' })
-      ).toBeVisible();
-      await expect(
-        page
-          .locator('.contract-card-items')
-          .filter({ hasText: 'Terms of Service' })
-          .locator('.inherit-icon')
-      ).toBeVisible();
+      // Verify Terms of Service section exists with inherited icon (from Data Product)
+      const termsSection = page
+        .locator('.contract-card-items')
+        .filter({ hasText: 'Terms of Service' });
+      await expect(termsSection).toBeVisible();
+      await expect(termsSection.locator('.inherit-icon')).toBeVisible();
 
-      // Verify SLA section exists and has inherited icon (from Data Product)
+      // Verify SLA section exists with inherited icon (from Data Product)
+      // Using the test ID for SLA card
+      await expect(page.getByTestId('contract-sla-card')).toBeVisible();
       await expect(
-        page.locator('.contract-card-items').filter({ hasText: 'Service Level Agreement' })
-      ).toBeVisible();
-      await expect(
-        page
-          .locator('.contract-card-items')
-          .filter({ hasText: 'Service Level Agreement' })
-          .locator('.inherit-icon')
+        page.getByTestId('contract-sla-card').locator('.inherit-icon')
       ).toBeVisible();
 
       // Verify Semantics section exists
@@ -685,28 +677,39 @@ test.describe('Data Contract Inheritance', () => {
     });
 
     await test.step('Fill asset contract details (without SLA initially)', async () => {
-      await page.getByTestId('contract-name').fill(`asset_sla_edit_${uuid()}`);
-      await page.fill(
-        '.om-block-editor[contenteditable="true"]',
+      await fillContractDetailsForm(
+        page,
+        `asset_sla_edit_${uuid()}`,
         'Asset contract for SLA edit test'
       );
     });
 
-    await test.step('Save asset contract without SLA', async () => {
-      await saveContract(page);
+    await test.step('Save asset contract without SLA - should be POST (create new)', async () => {
+      // First save should be POST (creating new contract for asset)
+      // because asset only has inherited contract, not its own
+      const createResponse = page.waitForResponse((response) => {
+        return (
+          response.url().includes('/api/v1/dataContracts') &&
+          response.request().method() === 'POST'
+        );
+      });
+
+      await page.getByTestId('save-contract-btn').click();
+      const response = await createResponse;
+
+      // Verify POST succeeded (201 Created)
+      expect(response.status()).toBe(201);
+
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
       // Verify contract was saved
       await expect(page.getByTestId('contract-title')).toBeVisible();
 
       // Verify SLA is still shown (inherited from Data Product)
+      await expect(page.getByTestId('contract-sla-card')).toBeVisible();
       await expect(
-        page.locator('.contract-card-items').filter({ hasText: 'Service Level Agreement' })
-      ).toBeVisible();
-      await expect(
-        page
-          .locator('.contract-card-items')
-          .filter({ hasText: 'Service Level Agreement' })
-          .locator('.inherit-icon')
+        page.getByTestId('contract-sla-card').locator('.inherit-icon')
       ).toBeVisible();
     });
 
@@ -756,22 +759,17 @@ test.describe('Data Contract Inheritance', () => {
       await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
 
-      // Verify SLA section exists
-      await expect(
-        page.locator('.contract-card-items').filter({ hasText: 'Service Level Agreement' })
-      ).toBeVisible();
+      // Verify SLA section exists using the correct test ID
+      await expect(page.getByTestId('contract-sla-card')).toBeVisible();
 
       // Verify SLA does NOT have inherited icon (asset has its own SLA now)
       await expect(
-        page
-          .locator('.contract-card-items')
-          .filter({ hasText: 'Service Level Agreement' })
-          .locator('.inherit-icon')
+        page.getByTestId('contract-sla-card').locator('.inherit-icon')
       ).not.toBeVisible();
 
-      // Verify the asset's SLA values are displayed
+      // Verify the asset's SLA values are displayed (freshness interval)
       await expect(
-        page.getByText(ASSET_SLA_EDIT.refreshFrequencyInterval)
+        page.getByText(new RegExp(`${ASSET_SLA_EDIT.refreshFrequencyInterval}\\s*hour`, 'i'))
       ).toBeVisible();
     });
   });
@@ -1226,7 +1224,22 @@ test.describe('Data Contract Inheritance', () => {
         ASSET_CONTRACT_DETAILS.description
       );
 
-      await saveContract(page);
+      // First save should be POST (creating new contract for asset)
+      const createResponse = page.waitForResponse((response) => {
+        return (
+          response.url().includes('/api/v1/dataContracts') &&
+          response.request().method() === 'POST'
+        );
+      });
+
+      await page.getByTestId('save-contract-btn').click();
+      const response = await createResponse;
+
+      // Verify POST succeeded (201 Created)
+      expect(response.status()).toBe(201);
+
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
       // Verify asset's own contract is displayed
       await expect(page.getByTestId('contract-title')).toContainText(
@@ -1267,20 +1280,26 @@ test.describe('Data Contract Inheritance', () => {
       // Wait for contract to reload after deletion
       await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
+      // Refresh the page to ensure we get the latest contract state
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
       // Verify the inherited contract from Data Product is now displayed
       await expect(page.getByTestId('contract-title')).toContainText(
         DP_CONTRACT_DETAILS.name
       );
 
-      // Verify the inherited icon is shown
+      // Verify the inherited icon is shown on the contract header
       await expect(
         page.locator('.contract-header-container .inherit-icon')
       ).toBeVisible();
 
       // Verify Terms of Service from Data Product is shown
-      await expect(
-        page.locator('.contract-card-items').filter({ hasText: 'Terms of Service' })
-      ).toBeVisible();
+      const termsSection = page
+        .locator('.contract-card-items')
+        .filter({ hasText: 'Terms of Service' });
+      await expect(termsSection).toBeVisible();
       await expect(page.getByText(DP_CONTRACT_DETAILS.termsOfService)).toBeVisible();
     });
   });
