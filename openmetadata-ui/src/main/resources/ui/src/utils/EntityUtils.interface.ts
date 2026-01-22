@@ -61,6 +61,7 @@ export enum FormattedPipelineServiceType {
   Spline = 'Spline',
   Stitch = 'Stitch',
   Wherescape = 'Wherescape',
+  MicrosoftFabricPipeline = 'Microsoft Fabric Pipeline',
 }
 export enum FormattedSearchServiceType {
   CustomSearch = 'Custom Search',
@@ -94,6 +95,7 @@ export enum FormattedDatabaseServiceType {
   Iceberg = 'Iceberg',
   Impala = 'Impala',
   MariaDB = 'Maria DB',
+  MicrosoftFabric = 'Microsoft Fabric',
   MongoDB = 'Mongo DB',
   Mssql = 'MS SQL',
   Mysql = 'MySQL',
