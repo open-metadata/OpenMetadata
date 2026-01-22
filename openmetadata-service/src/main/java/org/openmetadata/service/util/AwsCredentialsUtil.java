@@ -41,8 +41,13 @@ public class AwsCredentialsUtil {
       return StaticCredentialsProvider.create(
           AwsBasicCredentials.create(config.getAccessKeyId(), config.getSecretAccessKey()));
     }
-    LOG.info("Using AWS default credential provider chain (IAM role, environment, etc.)");
-    return DefaultCredentialsProvider.create();
+    if (Boolean.TRUE.equals(config.getEnabled())) {
+      LOG.info("Using AWS default credential provider chain (IAM role, environment, etc.)");
+      return DefaultCredentialsProvider.create();
+    }
+    throw new IllegalArgumentException(
+        "AWS credentials not configured. Either provide accessKeyId/secretAccessKey "
+            + "or set enabled=true to use IAM authentication via the default credential provider chain.");
   }
 
   private static AwsCredentialsProvider buildAssumeRoleProvider(
@@ -75,5 +80,17 @@ public class AwsCredentialsUtil {
 
   public static boolean isAwsConfigured(AWSBaseConfig config) {
     return config != null && StringUtils.isNotEmpty(config.getRegion());
+  }
+
+  public static boolean isAwsIamAuthEnabled(AWSBaseConfig config) {
+    return config != null
+        && Boolean.TRUE.equals(config.getEnabled())
+        && StringUtils.isNotEmpty(config.getRegion());
+  }
+
+  public static boolean hasStaticCredentials(AWSBaseConfig config) {
+    return config != null
+        && StringUtils.isNotEmpty(config.getAccessKeyId())
+        && StringUtils.isNotEmpty(config.getSecretAccessKey());
   }
 }
