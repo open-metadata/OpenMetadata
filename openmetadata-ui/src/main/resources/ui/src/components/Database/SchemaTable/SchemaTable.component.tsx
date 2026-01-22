@@ -665,8 +665,7 @@ const SchemaTable = () => {
             className="d-flex items-center cursor-pointer"
             data-testid="name-column-header"
             onClick={handleColumnHeaderSortToggle}>
-            <span
-              className={sortBy === 'name' ? 'text-primary font-medium' : ''}>
+            <span className={sortBy === 'name' ? 'font-medium' : ''}>
               {t('label.name')}
             </span>
             <IconSortIndicator
@@ -945,7 +944,7 @@ const SchemaTable = () => {
           defaultVisibleColumns={DEFAULT_SCHEMA_TABLE_VISIBLE_COLUMNS}
           expandable={expandableConfig}
           extraTableFilters={
-            <div className="d-flex items-center gap-4">
+            <div className="d-flex items-center">
               <Dropdown
                 menu={{ items: sortMenuItems, onClick: handleSortMenuClick }}
                 trigger={['click']}>
@@ -960,7 +959,8 @@ const SchemaTable = () => {
               </Dropdown>
               {getBulkEditButton(
                 tablePermissions.EditAll && !deleted,
-                handleEditTable
+                handleEditTable,
+                'edit-table-bulk-button'
               )}
             </div>
           }
