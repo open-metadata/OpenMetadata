@@ -586,27 +586,20 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
                   .withNewValue(newTiers));
         }
 
-        if (CommonUtil.isChanged(newWorksheet.getDomains(), domains)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("domains")
-                  .withOldValue(newWorksheet.getDomains())
-                  .withNewValue(domains));
-        }
-        if (CommonUtil.isChanged(newWorksheet.getDomains(), domains)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("domains")
-                  .withOldValue(newWorksheet.getDomains())
-                  .withNewValue(domains));
-        }
-        if (CommonUtil.isChanged(newWorksheet.getDataProducts(), dataProducts)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("dataProducts")
-                  .withOldValue(newWorksheet.getDataProducts())
-                  .withNewValue(dataProducts));
-        }
+          if (CommonUtil.isChanged(newWorksheet.getDomains(), domains)) {
+            fieldsUpdated.add(
+                new FieldChange()
+                    .withName("domains")
+                    .withOldValue(newWorksheet.getDomains())
+                    .withNewValue(domains));
+          }
+          if (CommonUtil.isChanged(newWorksheet.getDataProducts(), dataProducts)) {
+            fieldsUpdated.add(
+                new FieldChange()
+                    .withName("dataProducts")
+                    .withOldValue(newWorksheet.getDataProducts())
+                    .withNewValue(dataProducts));
+          }
       }
 
       ChangeDescription changeDescription = new ChangeDescription();
