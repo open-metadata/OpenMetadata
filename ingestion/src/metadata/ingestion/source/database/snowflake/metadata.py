@@ -529,15 +529,14 @@ class SnowflakeSource(
 
             for res in result:
                 row = list(res)
+                fqn_elements = [name for name in row[2:] if name]
                 # row[0] = TAG_NAME, row[1] = TAG_VALUE
                 if not row[1]:
-                    fqn_elements = [name for name in row[2:] if name]
                     logger.warning(
                         f"Skipping tag '{row[0]}' for '{'.'.join(fqn_elements)}' - "
                         "TAG_VALUE is empty. Snowflake tags require a value to be ingested."
                     )
                     continue
-                fqn_elements = [name for name in row[2:] if name]
                 yield from get_ometa_tag_and_classification(
                     tag_fqn=FullyQualifiedEntityName(
                         fqn._build(  # pylint: disable=protected-access
