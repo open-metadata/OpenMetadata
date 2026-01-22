@@ -58,10 +58,12 @@ from metadata.utils.execution_time_tracker import (
 from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.logger import utils_logger
 from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
+from metadata.utils.timeout import timeout
 
 logger = utils_logger()
 DEFAULT_SCHEMA_NAME = "<default>"
 CUTOFF_NODES = 20
+NODE_PROCESSING_TIMEOUT = 30  # seconds
 
 
 # pylint: disable=too-many-function-args,protected-access
@@ -1022,6 +1024,7 @@ def get_lineage_via_table_entity(
         )
 
 
+@calculate_execution_time(context="GetLineageForPath")
 def _get_lineage_for_path(
     from_fqn: str,
     to_fqn: str,
@@ -1066,6 +1069,7 @@ def _get_lineage_for_path(
     return None
 
 
+@calculate_execution_time_generator(context="ProcessSequence")
 def _process_sequence(
     sequence: List[Any], graph: DiGraph, metadata: OpenMetadata
 ) -> Iterable[Either[AddLineageRequest]]:
@@ -1103,6 +1107,7 @@ def _process_sequence(
             logger.error(f"Error creating lineage for node [{node}]: {exc}")
 
 
+@calculate_execution_time(context="GetPathsFromSubtree")
 def _get_paths_from_subtree(subtree: DiGraph) -> List[List[Any]]:
     """
     Get all paths from root nodes to leaf nodes in a subtree
@@ -1113,14 +1118,31 @@ def _get_paths_from_subtree(subtree: DiGraph) -> List[List[Any]]:
     # Find all leaf nodes (nodes with no outgoing edges)
     leaf_nodes = [node for node in subtree if subtree.out_degree(node) == 0]
 
+    @calculate_execution_time(context="ProcessRootNode")
+    @timeout(seconds=NODE_PROCESSING_TIMEOUT)
+    def process_root_node(root, leaf_nodes):
+        """Process a single root node and return all paths to leaf nodes."""
+        logger.debug(f"Processing root node {root}")
+        node_paths = []
+        for leaf in leaf_nodes:
+            node_paths.extend(
+                nx.all_simple_paths(subtree, root, leaf, cutoff=CUTOFF_NODES)
+            )
+        return node_paths
+
     # Find all simple paths from each root to each leaf
     for root in root_nodes:
-        logger.debug(f"Processing root node {root}")
-        for leaf in leaf_nodes:
-            paths.extend(nx.all_simple_paths(subtree, root, leaf, cutoff=CUTOFF_NODES))
+        try:
+            root_paths = process_root_node(root, leaf_nodes)
+            paths.extend(root_paths)
+        except TimeoutError:
+            logger.warning(
+                f"Processing root node {root} failed after timeout of {NODE_PROCESSING_TIMEOUT} seconds"
+            )
     return paths
 
 
+@calculate_execution_time_generator(context="GetLineageByGraph")
 def get_lineage_by_graph(
     graph: Optional[DiGraph],
     metadata: OpenMetadata,
@@ -1152,6 +1174,7 @@ def get_lineage_by_graph(
             yield from _process_sequence(path, subtree, metadata)
 
 
+@calculate_execution_time_generator(context="GetLineageByProcedureGraph")
 def get_lineage_by_procedure_graph(
     procedure_graph_map: Optional[Dict],
     metadata: OpenMetadata,
