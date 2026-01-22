@@ -302,7 +302,10 @@ public class DistributedJobStatsAggregator {
     sinkStats.setTotalRecords(safeToInt(job.getProcessedRecords()));
     if (serverStatsAggr != null) {
       sinkStats.setSuccessRecords(safeToInt(serverStatsAggr.sinkSuccess()));
-      sinkStats.setFailedRecords(safeToInt(serverStatsAggr.sinkFailed()));
+      // Include entityBuildFailures in sinkFailed - they occur during sink processing
+      // when Entity.buildSearchIndex() fails before sending to bulk processor
+      sinkStats.setFailedRecords(
+          safeToInt(serverStatsAggr.sinkFailed() + serverStatsAggr.entityBuildFailures()));
     } else {
       sinkStats.setSuccessRecords(safeToInt(job.getSuccessRecords()));
       sinkStats.setFailedRecords(safeToInt(job.getFailedRecords()));
