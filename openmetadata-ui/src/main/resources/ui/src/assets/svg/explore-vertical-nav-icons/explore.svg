@@ -1,4 +1,5 @@
-<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path fill-rule="evenodd" clip-rule="evenodd" d="M5.16666 10.0333L6.32666 6.32667L10.0333 5.16667L8.87332 8.87333L5.16666 10.0333Z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="7.60001" cy="7.6" r="7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M8.87,15.13l1.49-4.77,4.77-1.49-1.49,4.77-4.77,1.49Z"/>
+  <circle fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" cx="12" cy="12" r="9"/>
 </svg>
