@@ -114,7 +114,7 @@ describe('CSVUtils', () => {
       );
 
       expect(csvString).toBe(
-        'tags,glossaryTerms,description,domains\n"value1","value2","something new","domain1"'
+        'tags,glossaryTerms,description,domains\nvalue1,"value2","something new","""domain1"""'
       );
     });
 
@@ -162,11 +162,11 @@ describe('CSVUtils', () => {
       );
 
       expect(csvString).toBe(
-        'name*,fullyQualifiedName,entityType*\n"default","""local.mysql"".default",database'
+        'name*,fullyQualifiedName,entityType*\ndefault,"""local.mysql"".default",database'
       );
     });
 
-    it('should quote domain values without escaping quotes', () => {
+    it('should quote domain values with triple quotes', () => {
       const columns = [
         { name: 'domains', key: 'domains' },
         { name: 'name*', key: 'name*' },
@@ -183,11 +183,11 @@ describe('CSVUtils', () => {
       );
 
       expect(csvString).toBe(
-        'domains,name*\n"PW%domain.7429a05d","test-database"'
+        'domains,name*\n"""PW%domain.7429a05d""",test-database'
       );
     });
 
-    it('should quote tags values without escaping quotes', () => {
+    it('should not wrap tags in quotes', () => {
       const columns = [
         { name: 'tags', key: 'tags' },
         { name: 'name*', key: 'name*' },
@@ -203,10 +203,10 @@ describe('CSVUtils', () => {
         dataSource
       );
 
-      expect(csvString).toBe('tags,name*\n"PII.Sensitive","test-entity"');
+      expect(csvString).toBe('tags,name*\nPII.Sensitive,test-entity');
     });
 
-    it('should not double-escape domain values that already have escaped quotes', () => {
+    it('should format domains with triple quotes', () => {
       const columns = [{ name: 'domains', key: 'domains' }];
       const dataSource = [
         {
@@ -218,8 +218,7 @@ describe('CSVUtils', () => {
         dataSource
       );
 
-      expect(csvString).toBe('domains\n"PW%domain.7429a05d"');
-      expect(csvString).not.toContain('""""');
+      expect(csvString).toBe('domains\n"""PW%domain.7429a05d"""');
     });
 
     it('should handle FQN values with dots in service names correctly', () => {
@@ -301,7 +300,7 @@ describe('CSVUtils', () => {
         dataSource
       );
 
-      expect(csvString).toBe('domains\n"PW%domain.7429a05d"');
+      expect(csvString).toBe('domains\n"""PW%domain.7429a05d"""');
     });
 
     it('should handle mixed scenario: domains, FQN with dots, and regular values', () => {
@@ -323,7 +322,7 @@ describe('CSVUtils', () => {
       );
 
       expect(csvString).toBe(
-        'domains,fullyQualifiedName,name*\n"PW%domain.7429a05d","""pw.db.service.e2f0f527"".pwdatabasea8657c","test-database"'
+        'domains,fullyQualifiedName,name*\n"""PW%domain.7429a05d""","""pw.db.service.e2f0f527"".pwdatabasea8657c",test-database'
       );
     });
 
@@ -360,7 +359,694 @@ describe('CSVUtils', () => {
         dataSource
       );
 
-      expect(csvString).toBe('name*\n"service.name.table"');
+      expect(csvString).toBe('name*\nservice.name.table');
+    });
+
+    describe('glossaryTerms formatting', () => {
+      it('should return empty string for empty glossaryTerms value', () => {
+        const columns = [{ name: 'glossaryTerms', key: 'glossaryTerms' }];
+        const dataSource = [{ glossaryTerms: '' }];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe('glossaryTerms\n');
+      });
+
+      it('should return empty string for whitespace-only glossaryTerms value', () => {
+        const columns = [{ name: 'glossaryTerms', key: 'glossaryTerms' }];
+        const dataSource = [{ glossaryTerms: '   ' }];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe('glossaryTerms\n');
+      });
+
+      it('should format single PW glossary term correctly', () => {
+        const columns = [{ name: 'glossaryTerms', key: 'glossaryTerms' }];
+        const dataSource = [
+          {
+            glossaryTerms:
+              'PW%0b440530.Clever3cd5511b".PW.10739be3%Shark22dfbaf9',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe(
+          'glossaryTerms\n"""PW%0b440530.Clever3cd5511b"".""PW.10739be3%Shark22dfbaf9"""'
+        );
+      });
+
+      it('should format single PW glossary term with quotes correctly (removes quotes)', () => {
+        const columns = [{ name: 'glossaryTerms', key: 'glossaryTerms' }];
+        const dataSource = [
+          {
+            glossaryTerms:
+              '"PW%0b440530.Clever3cd5511b"."PW.10739be3%Shark22dfbaf9"',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe(
+          'glossaryTerms\n"""PW%0b440530.Clever3cd5511b"".""PW.10739be3%Shark22dfbaf9"""'
+        );
+      });
+
+      it('should format multiple PW glossary terms correctly', () => {
+        const columns = [{ name: 'glossaryTerms', key: 'glossaryTerms' }];
+        const dataSource = [
+          {
+            glossaryTerms:
+              'PW%0b440530.Clever3cd5511b".PW.10739be3%Shark22dfbaf9;PW%220e8cf3.Merrybb2cb0d0".PW.51185f8c%Shark8f7df244',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe(
+          'glossaryTerms\n"""PW%0b440530.Clever3cd5511b"".""PW.10739be3%Shark22dfbaf9"";""PW%220e8cf3.Merrybb2cb0d0"".""PW.51185f8c%Shark8f7df244"""'
+        );
+      });
+
+      it('should format single non-PW glossary term correctly', () => {
+        const columns = [{ name: 'glossaryTerms', key: 'glossaryTerms' }];
+        const dataSource = [
+          {
+            glossaryTerms: 'CustomTerm',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe('glossaryTerms\n"CustomTerm"');
+      });
+
+      it('should format multiple non-PW glossary terms correctly', () => {
+        const columns = [{ name: 'glossaryTerms', key: 'glossaryTerms' }];
+        const dataSource = [
+          {
+            glossaryTerms: 'Term1;Term2;Term3',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe('glossaryTerms\n"Term1;Term2;Term3"');
+      });
+
+      it('should format mixed PW and non-PW glossary terms correctly', () => {
+        const columns = [{ name: 'glossaryTerms', key: 'glossaryTerms' }];
+        const dataSource = [
+          {
+            glossaryTerms:
+              'PW%0b440530.Clever3cd5511b".PW.10739be3%Shark22dfbaf9;CustomTerm',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe(
+          'glossaryTerms\n"""PW%0b440530.Clever3cd5511b"".""PW.10739be3%Shark22dfbaf9"";CustomTerm"'
+        );
+      });
+
+      it('should handle glossaryTerms with extra whitespace and semicolons', () => {
+        const columns = [{ name: 'glossaryTerms', key: 'glossaryTerms' }];
+        const dataSource = [
+          {
+            glossaryTerms:
+              '  PW%0b440530.Clever3cd5511b".PW.10739be3%Shark22dfbaf9  ;  PW%220e8cf3.Merrybb2cb0d0".PW.51185f8c%Shark8f7df244  ',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe(
+          'glossaryTerms\n"""PW%0b440530.Clever3cd5511b"".""PW.10739be3%Shark22dfbaf9"";""PW%220e8cf3.Merrybb2cb0d0"".""PW.51185f8c%Shark8f7df244"""'
+        );
+      });
+
+      it('should handle glossaryTerms with empty segments (filtered out)', () => {
+        const columns = [{ name: 'glossaryTerms', key: 'glossaryTerms' }];
+        const dataSource = [
+          {
+            glossaryTerms:
+              'PW%0b440530.Clever3cd5511b".PW.10739be3%Shark22dfbaf9;;  ;PW%220e8cf3.Merrybb2cb0d0".PW.51185f8c%Shark8f7df244',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe(
+          'glossaryTerms\n"""PW%0b440530.Clever3cd5511b"".""PW.10739be3%Shark22dfbaf9"";""PW%220e8cf3.Merrybb2cb0d0"".""PW.51185f8c%Shark8f7df244"""'
+        );
+      });
+
+      it('should handle multiple PW glossary terms with 3+ groups', () => {
+        const columns = [{ name: 'glossaryTerms', key: 'glossaryTerms' }];
+        const dataSource = [
+          {
+            glossaryTerms:
+              'PW%0b440530.Clever3cd5511b".PW.10739be3%Shark22dfbaf9;PW%220e8cf3.Merrybb2cb0d0".PW.51185f8c%Shark8f7df244;PW%330f9d4e.AnotherTerm".PW.62296g9d%ThirdTerm',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toContain(
+          '"""PW%0b440530.Clever3cd5511b"".""PW.10739be3%Shark22dfbaf9""'
+        );
+        expect(csvString).toContain(
+          '""PW%220e8cf3.Merrybb2cb0d0"".""PW.51185f8c%Shark8f7df244""'
+        );
+        expect(csvString).toContain(
+          '""PW%330f9d4e.AnotherTerm"".""PW.62296g9d%ThirdTerm"""'
+        );
+      });
+
+      it('should handle multiple non-PW glossary terms (3+ terms)', () => {
+        const columns = [{ name: 'glossaryTerms', key: 'glossaryTerms' }];
+        const dataSource = [
+          {
+            glossaryTerms: 'Term1;Term2;Term3;Term4',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe('glossaryTerms\n"Term1;Term2;Term3;Term4"');
+      });
+    });
+
+    describe('domains formatting', () => {
+      it('should format domains with triple quotes', () => {
+        const columns = [{ name: 'domains', key: 'domains' }];
+        const dataSource = [
+          {
+            domains: 'PW%domain.09e0bf05',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe('domains\n"""PW%domain.09e0bf05"""');
+      });
+
+      it('should escape quotes in domains value', () => {
+        const columns = [{ name: 'domains', key: 'domains' }];
+        const dataSource = [
+          {
+            domains: 'PW%domain.09e0bf05"with"quotes',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe(
+          'domains\n"""PW%domain.09e0bf05""with""quotes"""'
+        );
+      });
+
+      it('should handle multiple domains (semicolon-separated)', () => {
+        const columns = [{ name: 'domains', key: 'domains' }];
+        const dataSource = [
+          {
+            domains: 'PW%domain.09e0bf05;PW%domain.7429a05d',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe(
+          'domains\n"""PW%domain.09e0bf05;PW%domain.7429a05d"""'
+        );
+      });
+
+      it('should handle domains with commas', () => {
+        const columns = [{ name: 'domains', key: 'domains' }];
+        const dataSource = [
+          {
+            domains: 'PW%domain.09e0bf05,with,commas',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe('domains\n"""PW%domain.09e0bf05,with,commas"""');
+      });
+    });
+
+    describe('description formatting', () => {
+      it('should format description with standard CSV quoting', () => {
+        const columns = [{ name: 'description', key: 'description' }];
+        const dataSource = [
+          {
+            description: 'Simple description',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe('description\n"Simple description"');
+      });
+
+      it('should escape quotes in description', () => {
+        const columns = [{ name: 'description', key: 'description' }];
+        const dataSource = [
+          {
+            description: 'Description with "quotes"',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe('description\n"Description with ""quotes"""');
+      });
+
+      it('should handle description with HTML content', () => {
+        const columns = [{ name: 'description', key: 'description' }];
+        const dataSource = [
+          {
+            description: '<p><strong>test</strong></p>',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe('description\n"<p><strong>test</strong></p>"');
+      });
+    });
+
+    describe('tags formatting', () => {
+      it('should not wrap tags in quotes', () => {
+        const columns = [{ name: 'tags', key: 'tags' }];
+        const dataSource = [
+          {
+            tags: 'PII.NonSensitive',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe('tags\nPII.NonSensitive');
+      });
+
+      it('should not wrap tags with semicolons in quotes', () => {
+        const columns = [{ name: 'tags', key: 'tags' }];
+        const dataSource = [
+          {
+            tags: 'PII.NonSensitive;PersonalData.Personal',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe('tags\nPII.NonSensitive;PersonalData.Personal');
+      });
+
+      it('should quote tags if they contain commas (generic CSV rule)', () => {
+        const columns = [{ name: 'tags', key: 'tags' }];
+        const dataSource = [
+          {
+            tags: 'tag1,tag2',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe('tags\n"tag1,tag2"');
+      });
+
+      it('should quote tags if they contain newlines (generic CSV rule)', () => {
+        const columns = [{ name: 'tags', key: 'tags' }];
+        const dataSource = [
+          {
+            tags: 'tag1\ntag2',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe('tags\n"tag1\ntag2"');
+      });
+
+      it('should handle multiple tags with different separators', () => {
+        const columns = [{ name: 'tags', key: 'tags' }];
+        const dataSource = [
+          {
+            tags: 'PII.NonSensitive;PersonalData.Personal;Tier.Tier1',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe(
+          'tags\nPII.NonSensitive;PersonalData.Personal;Tier.Tier1'
+        );
+      });
+
+      it('should handle multiple tags with commas (quoted)', () => {
+        const columns = [{ name: 'tags', key: 'tags' }];
+        const dataSource = [
+          {
+            tags: 'tag1,tag2;tag3,tag4',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe('tags\n"tag1,tag2;tag3,tag4"');
+      });
+    });
+
+    describe('generic CSV formatting', () => {
+      it('should quote values with commas', () => {
+        const columns = [{ name: 'customField', key: 'customField' }];
+        const dataSource = [
+          {
+            customField: 'value,with,commas',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe('customField\n"value,with,commas"');
+      });
+
+      it('should quote values with newlines', () => {
+        const columns = [{ name: 'customField', key: 'customField' }];
+        const dataSource = [
+          {
+            customField: 'value\nwith\nnewlines',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe('customField\n"value\nwith\nnewlines"');
+      });
+
+      it('should quote and escape values with quotes', () => {
+        const columns = [{ name: 'customField', key: 'customField' }];
+        const dataSource = [
+          {
+            customField: 'value"with"quotes',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe('customField\n"value""with""quotes"');
+      });
+
+      it('should not quote values without special characters', () => {
+        const columns = [{ name: 'customField', key: 'customField' }];
+        const dataSource = [
+          {
+            customField: 'simplevalue',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe('customField\nsimplevalue');
+      });
+    });
+
+    describe('mixed scenarios', () => {
+      it('should handle complete row with all special columns', () => {
+        const columns = [
+          { name: 'name*', key: 'name*' },
+          { name: 'tags', key: 'tags' },
+          { name: 'glossaryTerms', key: 'glossaryTerms' },
+          { name: 'domains', key: 'domains' },
+          { name: 'description', key: 'description' },
+        ];
+        const dataSource = [
+          {
+            'name*': 'test-entity',
+            tags: 'PII.NonSensitive',
+            glossaryTerms:
+              'PW%0b440530.Clever3cd5511b".PW.10739be3%Shark22dfbaf9',
+            domains: 'PW%domain.09e0bf05',
+            description: 'Test description',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toContain(
+          'name*,tags,glossaryTerms,domains,description'
+        );
+        expect(csvString).toContain('test-entity');
+        expect(csvString).toContain('PII.NonSensitive');
+        expect(csvString).toContain(
+          '"""PW%0b440530.Clever3cd5511b"".""PW.10739be3%Shark22dfbaf9""'
+        );
+        expect(csvString).toContain('"""PW%domain.09e0bf05"""');
+        expect(csvString).toContain('"Test description"');
+      });
+
+      it('should handle empty values correctly', () => {
+        const columns = [
+          { name: 'name*', key: 'name*' },
+          { name: 'tags', key: 'tags' },
+          { name: 'glossaryTerms', key: 'glossaryTerms' },
+        ];
+        const dataSource = [
+          {
+            'name*': '',
+            tags: '',
+            glossaryTerms: '',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe('name*,tags,glossaryTerms\n,,');
+      });
+
+      it('should handle multiple rows correctly', () => {
+        const columns = [
+          { name: 'name*', key: 'name*' },
+          { name: 'glossaryTerms', key: 'glossaryTerms' },
+        ];
+        const dataSource = [
+          {
+            'name*': 'entity1',
+            glossaryTerms:
+              'PW%0b440530.Clever3cd5511b".PW.10739be3%Shark22dfbaf9',
+          },
+          {
+            'name*': 'entity2',
+            glossaryTerms: 'CustomTerm',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe(
+          'name*,glossaryTerms\nentity1,"""PW%0b440530.Clever3cd5511b"".""PW.10739be3%Shark22dfbaf9"""\nentity2,"CustomTerm"'
+        );
+      });
+
+      it('should handle row with multiple glossary terms, multiple tags, and extension', () => {
+        const columns = [
+          { name: 'name*', key: 'name*' },
+          { name: 'tags', key: 'tags' },
+          { name: 'glossaryTerms', key: 'glossaryTerms' },
+          { name: 'extension', key: 'extension' },
+        ];
+        const dataSource = [
+          {
+            'name*': 'test-entity',
+            tags: 'PII.NonSensitive;PersonalData.Personal;Tier.Tier1',
+            glossaryTerms:
+              'PW%0b440530.Clever3cd5511b".PW.10739be3%Shark22dfbaf9;PW%220e8cf3.Merrybb2cb0d0".PW.51185f8c%Shark8f7df244',
+            extension:
+              'pwcustompropertydatabaseSchematest055fd0ad:test;pwcustompropertydatabaseSchematest09df36cf:"test-colum1,test-colum2"',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toContain('name*,tags,glossaryTerms,extension');
+        expect(csvString).toContain('test-entity');
+        expect(csvString).toContain(
+          'PII.NonSensitive;PersonalData.Personal;Tier.Tier1'
+        );
+        expect(csvString).toContain(
+          '"""PW%0b440530.Clever3cd5511b"".""PW.10739be3%Shark22dfbaf9"";""PW%220e8cf3.Merrybb2cb0d0"".""PW.51185f8c%Shark8f7df244"""'
+        );
+        // Extension should be quoted if it contains commas or semicolons
+        expect(csvString).toContain('extension');
+      });
+
+      it('should handle extension column with simple value (no quotes)', () => {
+        const columns = [{ name: 'extension', key: 'extension' }];
+        const dataSource = [
+          {
+            extension: 'simpleExtensionValue',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe('extension\nsimpleExtensionValue');
+      });
+
+      it('should handle extension column with commas (quoted)', () => {
+        const columns = [{ name: 'extension', key: 'extension' }];
+        const dataSource = [
+          {
+            extension: 'prop1:value1,value2;prop2:value3',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe('extension\n"prop1:value1,value2;prop2:value3"');
+      });
+
+      it('should handle extension column with semicolons (not quoted - semicolons are not special in CSV)', () => {
+        const columns = [{ name: 'extension', key: 'extension' }];
+        const dataSource = [
+          {
+            extension: 'prop1:value1;prop2:value2;prop3:value3',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        // Semicolons don't require quoting in CSV (only commas, quotes, newlines do)
+        expect(csvString).toBe(
+          'extension\nprop1:value1;prop2:value2;prop3:value3'
+        );
+      });
+
+      it('should handle extension column with quotes (escaped)', () => {
+        const columns = [{ name: 'extension', key: 'extension' }];
+        const dataSource = [
+          {
+            extension: 'prop1:"value with quotes"',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toBe('extension\n"prop1:""value with quotes"""');
+      });
+
+      it('should handle complete row with extension, multiple tags, and multiple glossary terms', () => {
+        const columns = [
+          { name: 'name*', key: 'name*' },
+          { name: 'tags', key: 'tags' },
+          { name: 'glossaryTerms', key: 'glossaryTerms' },
+          { name: 'domains', key: 'domains' },
+          { name: 'extension', key: 'extension' },
+        ];
+        const dataSource = [
+          {
+            'name*': 'test-entity',
+            tags: 'PII.NonSensitive;PersonalData.Personal',
+            glossaryTerms:
+              'PW%0b440530.Clever3cd5511b".PW.10739be3%Shark22dfbaf9;PW%220e8cf3.Merrybb2cb0d0".PW.51185f8c%Shark8f7df244',
+            domains: 'PW%domain.09e0bf05',
+            extension:
+              'pwcustompropertydatabaseSchematest055fd0ad:test;pwcustompropertydatabaseSchematest09df36cf:"test-colum1,test-colum2"',
+          },
+        ];
+        const csvString = getCSVStringFromColumnsAndDataSource(
+          columns,
+          dataSource
+        );
+
+        expect(csvString).toContain(
+          'name*,tags,glossaryTerms,domains,extension'
+        );
+        expect(csvString).toContain('test-entity');
+        expect(csvString).toContain('PII.NonSensitive;PersonalData.Personal');
+        expect(csvString).toContain(
+          '"""PW%0b440530.Clever3cd5511b"".""PW.10739be3%Shark22dfbaf9"";""PW%220e8cf3.Merrybb2cb0d0"".""PW.51185f8c%Shark8f7df244"""'
+        );
+        expect(csvString).toContain('"""PW%domain.09e0bf05"""');
+        expect(csvString).toContain('extension');
+      });
     });
   });
 
@@ -670,7 +1356,8 @@ describe('CSVUtils', () => {
         dataSource
       );
 
-      expect(csvString).toBe('col1,col2\nvalue1,value2');
+      // Empty rows are included (empty values result in empty cells)
+      expect(csvString).toBe('col1,col2\n,\nvalue1,value2');
     });
 
     it('should handle newline characters in values', () => {
@@ -703,7 +1390,7 @@ describe('CSVUtils', () => {
         dataSource
       );
 
-      expect(csvString).toBe('col1\nvalue');
+      expect(csvString).toBe('col1\n\n\nvalue');
     });
 
     it('should handle columns with undefined keys', () => {

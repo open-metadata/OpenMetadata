@@ -269,25 +269,38 @@ const formatGlossaryTerms = (value: string): string => {
     .filter(Boolean);
 
   const formatted = terms.map((term) => {
-    // Remove all quotes first
     const clean = term.replace(/"/g, '');
 
-    // PW glossary term
     if (clean.startsWith('PW%') && clean.includes('.PW.')) {
       const splitIndex = clean.indexOf('.PW.');
 
       const left = clean.substring(0, splitIndex);
-      const right = clean.substring(splitIndex + 1); // keep PW.*
+      const right = clean.substring(splitIndex + 1);
 
       return `""${left}"".""${right}""`;
     }
 
-    // Non-PW glossary term
     return clean;
   });
 
-  // Wrap entire cell once (CSV-compliant)
   return `"${formatted.join(';')}"`;
+};
+
+const formatDomain = (value: string): string => {
+  if (!value?.trim()) {
+    return '';
+  }
+
+  const trimmed = value.trim();
+
+  // If already correctly formatted → return as-is
+  if (/^""".+"""$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  const clean = trimmed.replace(/"/g, '');
+
+  return `"""${clean}"""`;
 };
 
 export const getCSVStringFromColumnsAndDataSource = (
@@ -305,23 +318,15 @@ export const getCSVStringFromColumnsAndDataSource = (
         if (!value) {
           return '';
         }
-
-        // 🔒 glossaryTerms — FINAL STRING
         if (key === 'glossaryTerms') {
           return formatGlossaryTerms(value);
         }
-
-        // 🔒 domains — triple quoted
         if (key === 'domains') {
-          return `"""${value.replace(/"/g, '""')}"""`;
+          return formatDomain(value);
         }
-
-        // description — standard CSV
         if (key === 'description') {
           return `"${value.replace(/"/g, '""')}"`;
         }
-
-        // generic CSV escape (ONLY for other columns)
         if (/[,"\n]/.test(value)) {
           return `"${value.replace(/"/g, '""')}"`;
         }
