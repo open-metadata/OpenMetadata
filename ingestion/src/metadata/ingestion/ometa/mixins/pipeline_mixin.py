@@ -23,6 +23,8 @@ from metadata.generated.schema.entity.data.pipeline import (
 )
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.utils import quote
+from metadata.utils import fqn as fqn_utils
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -42,8 +44,17 @@ class OMetaPipelineMixin:
         Given a pipeline and a PipelineStatus, send it
         to the Pipeline Entity
         """
+        # Normalize FQN as safety net for special characters
+        try:
+            # Split and rebuild FQN to ensure consistent format
+            parts = fqn_utils.split(fqn)
+            normalized_fqn = fqn_utils._build(*parts, quote=True)
+        except Exception:
+            # If normalization fails, use original FQN
+            normalized_fqn = fqn
+
         resp = self.client.put(
-            f"{self.get_suffix(Pipeline)}/{fqn}/status",
+            f"{self.get_suffix(Pipeline)}/{quote(normalized_fqn)}/status",
             data=status.model_dump_json(),
         )
 
