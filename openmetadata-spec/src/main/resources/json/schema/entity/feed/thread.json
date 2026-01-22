@@ -16,6 +16,7 @@
         "UpdateTag",
         "RequestApproval",
         "RequestTestCaseFailureResolution",
+        "RecognizerFeedbackApproval",
         "Generic"
       ],
       "javaEnums": [
@@ -36,6 +37,9 @@
         },
         {
           "name": "RequestTestCaseFailureResolution"
+        },
+        {
+          "name": "RecognizerFeedbackApproval"
         },
         {
           "name": "Generic"
@@ -84,6 +88,10 @@
         "testCaseResolutionStatusId": {
           "description": "The test case resolution status id for which the task is created.",
           "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "feedback": {
+          "description": "The recognizer feedback that we're reviewing for the Tag that's supposed to be pointed by this task",
+          "$ref": "../../type/recognizerFeedback.json"
         }
       },
       "required": ["id", "assignees", "type"],
