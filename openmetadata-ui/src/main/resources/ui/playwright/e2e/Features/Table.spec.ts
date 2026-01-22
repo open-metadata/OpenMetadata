@@ -883,3 +883,133 @@ test.describe('Large Table Column Search & Copy Link', () => {
     );
   });
 });
+
+test.describe('dbt Tab Visibility', () => {
+  const tableWithDbtPath = new TableClass();
+  const tableWithDbtProject = new TableClass();
+  const tableWithSql = new TableClass();
+
+  test.beforeAll('Setup tables with dbt data', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    await tableWithDbtPath.create(apiContext);
+    await tableWithDbtProject.create(apiContext);
+    await tableWithSql.create(apiContext);
+
+    await tableWithDbtPath.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/dataModel',
+          value: {
+            path: 'data/seeds/my_seed.csv',
+          },
+        },
+      ],
+    });
+
+    await tableWithDbtProject.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/dataModel',
+          value: {
+            dbtSourceProject: 'my_dbt_project',
+          },
+        },
+      ],
+    });
+
+    await tableWithSql.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/dataModel',
+          value: {
+            sql: 'SELECT * FROM my_table',
+            dbtSourceProject: 'my_dbt_project',
+            path: 'models/example/my_model.sql',
+          },
+        },
+      ],
+    });
+
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup tables', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    await tableWithDbtPath.delete(apiContext);
+    await tableWithDbtProject.delete(apiContext);
+    await tableWithSql.delete(apiContext);
+
+    await afterAction();
+  });
+
+  test('should show dbt tab when only path is available (dbt seed)', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await tableWithDbtPath.visitEntityPage(page);
+    await waitForAllLoadersToDisappear(page);
+
+    const dbtTab = page.getByRole('tab', { name: 'dbt' });
+    await expect(dbtTab).toBeVisible();
+
+    await dbtTab.click();
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(page.getByText('data/seeds/my_seed.csv')).toBeVisible();
+    await expect(
+      page.getByTestId('query-entity-copy-button')
+    ).not.toBeVisible();
+    await expect(page.getByTestId('query-line')).not.toBeVisible();
+  });
+
+  test('should show dbt tab when only dbtSourceProject is available', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await tableWithDbtProject.visitEntityPage(page);
+    await waitForAllLoadersToDisappear(page);
+
+    const dbtTab = page.getByRole('tab', { name: 'dbt' });
+    await expect(dbtTab).toBeVisible();
+
+    await dbtTab.click();
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(page.getByTestId('dbt-source-project-id')).toHaveText(
+      'my_dbt_project'
+    );
+    await expect(
+      page.getByTestId('query-entity-copy-button')
+    ).not.toBeVisible();
+    await expect(page.getByTestId('query-line')).not.toBeVisible();
+  });
+
+  test('should show dbt tab with SQL editor when SQL is present', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await tableWithSql.visitEntityPage(page);
+    await waitForAllLoadersToDisappear(page);
+
+    const dbtTab = page.getByRole('tab', { name: 'dbt' });
+    await expect(dbtTab).toBeVisible();
+
+    await dbtTab.click();
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(page.getByTestId('dbt-source-project-id')).toHaveText(
+      'my_dbt_project'
+    );
+    await expect(page.getByText('models/example/my_model.sql')).toBeVisible();
+    await expect(page.getByTestId('query-entity-copy-button')).toBeVisible();
+    await expect(page.getByTestId('query-line')).toBeVisible();
+  });
+});

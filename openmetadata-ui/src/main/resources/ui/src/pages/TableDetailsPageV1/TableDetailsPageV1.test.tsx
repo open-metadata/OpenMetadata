@@ -504,6 +504,64 @@ describe('TestDetailsPageV1 component', () => {
     expect(screen.queryByText('label.view-definition')).not.toBeInTheDocument();
   });
 
+  it('TableDetailsPageV1 should show dbt tab when path is available without sql', async () => {
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: true,
+      })),
+    }));
+
+    (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        name: 'test',
+        id: '123',
+        tableFqn: 'fqn',
+        dataModel: { path: 'data/seeds/my_seed.csv' },
+        columns: [],
+      })
+    );
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
+    });
+
+    expect(await screen.findByText('label.dbt-lowercase')).toBeInTheDocument();
+    expect(screen.queryByText('label.view-definition')).not.toBeInTheDocument();
+  });
+
+  it('TableDetailsPageV1 should show dbt tab when dbtSourceProject is available without sql', async () => {
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: true,
+      })),
+    }));
+
+    (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        name: 'test',
+        id: '123',
+        tableFqn: 'fqn',
+        dataModel: { dbtSourceProject: 'my_dbt_project' },
+        columns: [],
+      })
+    );
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
+    });
+
+    expect(await screen.findByText('label.dbt-lowercase')).toBeInTheDocument();
+    expect(screen.queryByText('label.view-definition')).not.toBeInTheDocument();
+  });
+
   it('TableDetailsPageV1 should render schema definition tab table type is not view', async () => {
     (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
       getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
