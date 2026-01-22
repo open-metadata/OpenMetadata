@@ -72,6 +72,7 @@ class PowerBIReport(BaseModel):
     users: Optional[List[PowerBIUser]] = []
     modifiedBy: Optional[str] = None
     description: Optional[str] = None
+    format: Optional[str] = None
 
 
 class DashboardsResponse(BaseModel):
