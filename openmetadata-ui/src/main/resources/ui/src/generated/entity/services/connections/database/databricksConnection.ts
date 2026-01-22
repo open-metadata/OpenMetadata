@@ -90,6 +90,9 @@ export interface DatabricksConnection {
  *
  * Azure Active Directory authentication for Azure Databricks workspaces using Service
  * Principal.
+ *
+ * OAuth 2.0 credentials for connector authentication (stored for internal use by
+ * OpenMetadata MCP server)
  */
 export interface AuthenticationType {
     /**
@@ -100,11 +103,15 @@ export interface AuthenticationType {
     /**
      * Service Principal Application ID created in your Databricks Account Console for OAuth
      * Machine-to-Machine authentication.
+     *
+     * OAuth 2.0 client identifier for the connector application
      */
     clientId?: string;
     /**
      * OAuth Secret generated for the Service Principal in Databricks Account Console. Used for
      * secure OAuth2 authentication.
+     *
+     * OAuth 2.0 client secret (encrypted via SecretsManager)
      */
     clientSecret?: string;
     /**
@@ -119,6 +126,28 @@ export interface AuthenticationType {
      * Azure Active Directory Tenant ID where your Service Principal is registered.
      */
     azureTenantId?: string;
+    /**
+     * Current access token (automatically refreshed when expired)
+     */
+    accessToken?: string;
+    /**
+     * Unix timestamp (seconds since epoch) when the access token expires. Uses int64 to avoid
+     * Y2038 overflow.
+     */
+    expiresAt?: number;
+    /**
+     * Long-lived refresh token for automatic access token renewal without user interaction
+     */
+    refreshToken?: string;
+    /**
+     * List of OAuth scopes granted to this application
+     */
+    scopes?: string[];
+    /**
+     * OAuth token endpoint for internal token refresh operations. If not specified, will be
+     * inferred from connector configuration.
+     */
+    tokenEndpoint?: string;
 }
 
 /**

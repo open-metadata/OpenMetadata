@@ -603,6 +603,9 @@ export interface ConfigObject {
      *
      * Choose Auth Config Type.
      *
+     * Choose the authentication method to connect to Snowflake. Default is basic
+     * username/password authentication.
+     *
      * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
      */
     authType?: AuthenticationType | NoConfigAuthenticationTypes;
@@ -808,6 +811,11 @@ export interface ConfigObject {
      * TRANSIENT tables.
      */
     includeTransientTables?: boolean;
+    /**
+     * OAuth 2.0 credentials for Snowflake authentication. Used internally by OpenMetadata MCP
+     * server for redirect-free OAuth. Requires one-time setup via OpenMetadata UI.
+     */
+    oauth?: OAuthCredentials;
     /**
      * Connection to Snowflake instance via Private Key
      */
@@ -1023,6 +1031,12 @@ export enum AuthMechanismEnum {
  * Azure Active Directory authentication for Azure Databricks workspaces using Service
  * Principal.
  *
+ * OAuth 2.0 credentials for connector authentication (stored for internal use by
+ * OpenMetadata MCP server)
+ *
+ * OAuth 2.0 credentials for Snowflake authentication. Used internally by OpenMetadata MCP
+ * server for redirect-free OAuth. Requires one-time setup via OpenMetadata UI.
+ *
  * Choose Auth Config Type.
  *
  * Common Database Connection Config
@@ -1050,11 +1064,15 @@ export interface AuthenticationType {
     /**
      * Service Principal Application ID created in your Databricks Account Console for OAuth
      * Machine-to-Machine authentication.
+     *
+     * OAuth 2.0 client identifier for the connector application
      */
     clientId?: string;
     /**
      * OAuth Secret generated for the Service Principal in Databricks Account Console. Used for
      * secure OAuth2 authentication.
+     *
+     * OAuth 2.0 client secret (encrypted via SecretsManager)
      */
     clientSecret?: string;
     /**
@@ -1069,6 +1087,28 @@ export interface AuthenticationType {
      * Azure Active Directory Tenant ID where your Service Principal is registered.
      */
     azureTenantId?: string;
+    /**
+     * Current access token (automatically refreshed when expired)
+     */
+    accessToken?: string;
+    /**
+     * Unix timestamp (seconds since epoch) when the access token expires. Uses int64 to avoid
+     * Y2038 overflow.
+     */
+    expiresAt?: number;
+    /**
+     * Long-lived refresh token for automatic access token renewal without user interaction
+     */
+    refreshToken?: string;
+    /**
+     * List of OAuth scopes granted to this application
+     */
+    scopes?: string[];
+    /**
+     * OAuth token endpoint for internal token refresh operations. If not specified, will be
+     * inferred from connector configuration.
+     */
+    tokenEndpoint?: string;
     /**
      * Password to connect to source.
      *
@@ -1228,10 +1268,16 @@ export enum CloudRegion {
 }
 
 /**
+ * Choose the authentication method to connect to Snowflake. Default is basic
+ * username/password authentication.
+ *
  * Database Authentication types not requiring config.
  */
 export enum NoConfigAuthenticationTypes {
+    Basic = "basic",
+    KeyPair = "keyPair",
     OAuth2 = "OAuth2",
+    Oauth2 = "oauth2",
 }
 
 export interface AuthenticationModeObject {
@@ -2124,6 +2170,46 @@ export enum SSLMode {
 export enum HiveMetastoreConnectionDetailsType {
     Mysql = "Mysql",
     Postgres = "Postgres",
+}
+
+/**
+ * OAuth 2.0 credentials for connector authentication (stored for internal use by
+ * OpenMetadata MCP server)
+ *
+ * OAuth 2.0 credentials for Snowflake authentication. Used internally by OpenMetadata MCP
+ * server for redirect-free OAuth. Requires one-time setup via OpenMetadata UI.
+ */
+export interface OAuthCredentials {
+    /**
+     * Current access token (automatically refreshed when expired)
+     */
+    accessToken?: string;
+    /**
+     * OAuth 2.0 client identifier for the connector application
+     */
+    clientId: string;
+    /**
+     * OAuth 2.0 client secret (encrypted via SecretsManager)
+     */
+    clientSecret: string;
+    /**
+     * Unix timestamp (seconds since epoch) when the access token expires. Uses int64 to avoid
+     * Y2038 overflow.
+     */
+    expiresAt?: number;
+    /**
+     * Long-lived refresh token for automatic access token renewal without user interaction
+     */
+    refreshToken: string;
+    /**
+     * List of OAuth scopes granted to this application
+     */
+    scopes?: string[];
+    /**
+     * OAuth token endpoint for internal token refresh operations. If not specified, will be
+     * inferred from connector configuration.
+     */
+    tokenEndpoint?: string;
 }
 
 /**

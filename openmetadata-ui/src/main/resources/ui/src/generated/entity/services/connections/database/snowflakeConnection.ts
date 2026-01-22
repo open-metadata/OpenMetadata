@@ -24,6 +24,11 @@ export interface SnowflakeConnection {
      */
     accountUsageSchema?: string;
     /**
+     * Choose the authentication method to connect to Snowflake. Default is basic
+     * username/password authentication.
+     */
+    authType?: AuthenticationType;
+    /**
      * Optional configuration for ingestion to keep the client session active in case the
      * ingestion process runs for longer durations.
      */
@@ -58,6 +63,11 @@ export interface SnowflakeConnection {
      * TRANSIENT tables.
      */
     includeTransientTables?: boolean;
+    /**
+     * OAuth 2.0 credentials for Snowflake authentication. Used internally by OpenMetadata MCP
+     * server for redirect-free OAuth. Requires one-time setup via OpenMetadata UI.
+     */
+    oauth?: OAuthCredentials;
     /**
      * Password to connect to Snowflake.
      */
@@ -118,11 +128,21 @@ export interface SnowflakeConnection {
      * Username to connect to Snowflake. This user should have privileges to read all the
      * metadata in Snowflake.
      */
-    username: string;
+    username?: string;
     /**
      * Snowflake warehouse.
      */
     warehouse: string;
+}
+
+/**
+ * Choose the authentication method to connect to Snowflake. Default is basic
+ * username/password authentication.
+ */
+export enum AuthenticationType {
+    Basic = "basic",
+    KeyPair = "keyPair",
+    Oauth2 = "oauth2",
 }
 
 /**
@@ -145,6 +165,46 @@ export interface FilterPattern {
      * List of strings/regex patterns to match and include only database entities that match.
      */
     includes?: string[];
+}
+
+/**
+ * OAuth 2.0 credentials for Snowflake authentication. Used internally by OpenMetadata MCP
+ * server for redirect-free OAuth. Requires one-time setup via OpenMetadata UI.
+ *
+ * OAuth 2.0 credentials for connector authentication (stored for internal use by
+ * OpenMetadata MCP server)
+ */
+export interface OAuthCredentials {
+    /**
+     * Current access token (automatically refreshed when expired)
+     */
+    accessToken?: string;
+    /**
+     * OAuth 2.0 client identifier for the connector application
+     */
+    clientId: string;
+    /**
+     * OAuth 2.0 client secret (encrypted via SecretsManager)
+     */
+    clientSecret: string;
+    /**
+     * Unix timestamp (seconds since epoch) when the access token expires. Uses int64 to avoid
+     * Y2038 overflow.
+     */
+    expiresAt?: number;
+    /**
+     * Long-lived refresh token for automatic access token renewal without user interaction
+     */
+    refreshToken: string;
+    /**
+     * List of OAuth scopes granted to this application
+     */
+    scopes?: string[];
+    /**
+     * OAuth token endpoint for internal token refresh operations. If not specified, will be
+     * inferred from connector configuration.
+     */
+    tokenEndpoint?: string;
 }
 
 /**
