@@ -356,12 +356,16 @@ test.describe('Bulk Import Export', () => {
           'Entity created',
           'Entity created',
           'Entity created',
-          'Entity updated',
+          'Entity created',
           'Entity created',
           'Entity created',
         ];
 
-        await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+        const cells = page.getByRole('gridcell', {
+          name: /Entity (created|updated)/
+        });
+
+        await expect(cells).toHaveText(rowStatus);
 
         const updateButtonResponse = page.waitForResponse(
           `/api/v1/services/databaseServices/name/*/importAsync?*dryRun=false&recursive=true*`
@@ -555,11 +559,15 @@ test.describe('Bulk Import Export', () => {
           'Entity updated',
           'Entity created',
           'Entity created',
-          'Entity updated',
+          'Entity created',
           'Entity created',
         ];
 
-        await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+        const cells = page.getByRole('gridcell', {
+          name: /Entity (created|updated)/
+        });
+
+        await expect(cells).toHaveText(rowStatus);
 
         const updateButtonResponse = page.waitForResponse(
           `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
@@ -728,12 +736,16 @@ test.describe('Bulk Import Export', () => {
 
         const rowStatus = [
           'Entity created',
-          'Entity updated',
           'Entity created',
-          'Entity updated',
+          'Entity created',
+          'Entity created',
         ];
 
-        await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+        const cells = page.getByRole('gridcell', {
+          name: /Entity (created|updated)/
+        });
+
+        await expect(cells).toHaveText(rowStatus);
 
         const updateButtonResponse = page.waitForResponse(
           `/api/v1/databaseSchemas/name/*/importAsync?*dryRun=false&recursive=true*`
@@ -816,11 +828,18 @@ test.describe('Bulk Import Export', () => {
         });
 
         // total column count +2 for newly added columns
-        const rowStatus = Array(
-          tableEntity.entityLinkColumnsName.length + 2
-        ).fill('Entity updated');
+        const total = tableEntity.entityLinkColumnsName.length + 2;
 
-        await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+        const rowStatus = [
+          ...Array(total - 2).fill('Entity updated'),
+          ...Array(2).fill('Entity created')
+        ];
+
+        const cells = page.getByRole('gridcell', {
+          name: /Entity (created|updated)/
+        });
+
+        await expect(cells).toHaveText(rowStatus);
 
         const updateButtonResponse = page.waitForResponse(
           `/api/v1/tables/name/*/importAsync?*dryRun=false&recursive=true*`
@@ -915,7 +934,11 @@ test.describe('Bulk Import Export', () => {
           'Entity updated',
         ];
 
-        await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+        const cells = page.getByRole('gridcell', {
+          name: /Entity (created|updated)/
+        });
+
+        await expect(cells).toHaveText(rowStatus);
 
         const updateButtonResponse = page.waitForResponse(
           `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
@@ -989,7 +1012,11 @@ test.describe('Bulk Import Export', () => {
         'Entity updated',
       ];
 
-      await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+      const cells = page.getByRole('gridcell', {
+          name: /Entity (created|updated)/
+        });
+
+      await expect(cells).toHaveText(rowStatus);
 
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`

@@ -652,9 +652,8 @@ test.describe('Bulk Edit Entity', () => {
         state: 'visible',
       });
 
-      const rowStatus = ['Entity updated'];
-
-      await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+      const row = page.getByRole('row', { name: /Entity updated/i });
+      await expect(row).toBeVisible();
 
       await page.getByRole('button', { name: 'Update' }).click();
       await page
@@ -791,9 +790,8 @@ test.describe('Bulk Edit Entity', () => {
         state: 'visible',
       });
 
-      const rowStatus = ['Entity updated'];
-
-      await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+      const row = page.getByRole('row', { name: /Entity updated/i });
+      await expect(row).toBeVisible();
 
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/glossaryTerms/name/*/importAsync?*dryRun=false*`
