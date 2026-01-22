@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { expect, Page, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { Glossary } from '../../support/glossary/Glossary';
@@ -21,7 +21,9 @@ import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
-import { test } from '../fixtures/pages';
+
+// Use the admin user to login
+test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const COLUMN_BULK_OPERATIONS_URL = '/column-bulk-operations';
 
