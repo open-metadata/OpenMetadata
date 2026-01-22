@@ -17,6 +17,7 @@ import { ReactComponent as IconAPI } from '../assets/svg/apis-colored.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application-colored.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
 import { ReactComponent as ChartIcon } from '../assets/svg/chart-colored.svg';
+import { ReactComponent as ColumnIcon } from '../assets/svg/column-colored.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored-new.svg';
 import { ReactComponent as DashboardDataModelIcon } from '../assets/svg/dashboard-data-models-colored.svg';
 import { ReactComponent as DataAssetRulesIcon } from '../assets/svg/data-asset-rules.svg';
@@ -794,6 +795,13 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.SEARCH_INDEXES}`,
             icon: SearchIndexIcon,
+          },
+          {
+            label: t('label.column-plural'),
+            description: t('message.define-custom-property-for-column'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.COLUMN}`,
+            icon: ColumnIcon,
           },
           {
             label: t('label.glossary-term'),
