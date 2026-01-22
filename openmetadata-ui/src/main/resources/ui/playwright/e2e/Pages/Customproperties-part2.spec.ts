@@ -10,26 +10,46 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test from '@playwright/test';
+import { test } from '../../support/fixtures/userPages';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
-import { redirectToHomePage, uuid } from '../../utils/common';
+import { TableClass } from '../../support/entity/TableClass';
+import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import {
   addCustomPropertiesForEntity,
   deleteCreatedProperty,
   editCreatedProperty,
   verifyCustomPropertyInAdvancedSearch,
+  verifyTableColumnCustomPropertyPersistence,
 } from '../../utils/customProperty';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
+
+const TABLE_COLUMN_ENTITY_NAME = 'tableColumn';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
+const adminTestEntity = new TableClass();
+
 test.describe('Custom properties with custom property config', () => {
+  test.beforeAll('Setup test data', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await adminTestEntity.create(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup test data', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await adminTestEntity.delete(apiContext);
+    await afterAction();
+  });
+
   test.beforeEach('Visit Home Page', async ({ page }) => {
     await redirectToHomePage(page);
   });
 
   test.describe('Add update and delete Enum custom properties', () => {
+    test.slow(true);
+
     Object.values(CUSTOM_PROPERTIES_ENTITIES).forEach(async (entity) => {
       const propertyName = `pwcustomproperty${entity.name}test${uuid()}`;
 
@@ -57,6 +77,25 @@ test.describe('Custom properties with custom property config', () => {
           propertyName.toUpperCase(), // displayName is in uppercase
           entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
         );
+
+        if (entity.name === TABLE_COLUMN_ENTITY_NAME) {
+          await test.step(
+            'Verify Custom Property Persistence on Reload',
+            async () => {
+              const tableName = adminTestEntity.entity.name ?? '';
+              const tableFqn =
+                adminTestEntity.entityResponseData.fullyQualifiedName ?? '';
+
+              await verifyTableColumnCustomPropertyPersistence({
+                page,
+                tableName,
+                tableFqn,
+                propertyName,
+                propertyType: 'Enum',
+              });
+            }
+          );
+        }
 
         await settingClick(
           page,
@@ -97,6 +136,25 @@ test.describe('Custom properties with custom property config', () => {
           propertyName.toUpperCase(), // displayName is in uppercase
           entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
         );
+
+        if (entity.name === TABLE_COLUMN_ENTITY_NAME) {
+          await test.step(
+            'Verify Custom Property Persistence on Reload',
+            async () => {
+              const tableName = adminTestEntity.entity.name ?? '';
+              const tableFqn =
+                adminTestEntity.entityResponseData.fullyQualifiedName ?? '';
+
+              await verifyTableColumnCustomPropertyPersistence({
+                page,
+                tableName,
+                tableFqn,
+                propertyName,
+                propertyType: 'Table',
+              });
+            }
+          );
+        }
 
         await settingClick(
           page,
@@ -141,6 +199,25 @@ test.describe('Custom properties with custom property config', () => {
             propertyName.toUpperCase(), // displayName is in uppercase
             entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
           );
+
+          if (entity.name === TABLE_COLUMN_ENTITY_NAME) {
+            await test.step(
+              'Verify Custom Property Persistence on Reload',
+              async () => {
+                const tableName = adminTestEntity.entity.name ?? '';
+                const tableFqn =
+                  adminTestEntity.entityResponseData.fullyQualifiedName ?? '';
+
+                await verifyTableColumnCustomPropertyPersistence({
+                  page,
+                  tableName,
+                  tableFqn,
+                  propertyName,
+                  propertyType: 'Entity Reference',
+                });
+              }
+            );
+          }
 
           await settingClick(
             page,
@@ -191,6 +268,25 @@ test.describe('Custom properties with custom property config', () => {
             entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
           );
 
+          if (entity.name === TABLE_COLUMN_ENTITY_NAME) {
+            await test.step(
+              'Verify Custom Property Persistence on Reload',
+              async () => {
+                const tableName = adminTestEntity.entity.name ?? '';
+                const tableFqn =
+                  adminTestEntity.entityResponseData.fullyQualifiedName ?? '';
+
+                await verifyTableColumnCustomPropertyPersistence({
+                  page,
+                  tableName,
+                  tableFqn,
+                  propertyName,
+                  propertyType: 'Entity Reference List',
+                });
+              }
+            );
+          }
+
           await settingClick(
             page,
             entity.entityApiType as SettingOptionsType,
@@ -226,6 +322,31 @@ test.describe('Custom properties with custom property config', () => {
 
         await editCreatedProperty(page, propertyName);
 
+        if (entity.name === TABLE_COLUMN_ENTITY_NAME) {
+          await test.step(
+            'Verify Custom Property Persistence on Reload',
+            async () => {
+              const tableName = adminTestEntity.entity.name ?? '';
+              const tableFqn =
+                adminTestEntity.entityResponseData.fullyQualifiedName ?? '';
+
+              await verifyTableColumnCustomPropertyPersistence({
+                page,
+                tableName,
+                tableFqn,
+                propertyName,
+                propertyType: 'Date',
+              });
+            }
+          );
+        }
+
+        await settingClick(
+          page,
+          entity.entityApiType as SettingOptionsType,
+          true
+        );
+
         await deleteCreatedProperty(page, propertyName);
       });
     });
@@ -259,6 +380,25 @@ test.describe('Custom properties with custom property config', () => {
           propertyName.toUpperCase(), // displayName is in uppercase
           entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
         );
+
+        if (entity.name === TABLE_COLUMN_ENTITY_NAME) {
+          await test.step(
+            'Verify Custom Property Persistence on Reload',
+            async () => {
+              const tableName = adminTestEntity.entity.name ?? '';
+              const tableFqn =
+                adminTestEntity.entityResponseData.fullyQualifiedName ?? '';
+
+              await verifyTableColumnCustomPropertyPersistence({
+                page,
+                tableName,
+                tableFqn,
+                propertyName,
+                propertyType: 'Time',
+              });
+            }
+          );
+        }
 
         await settingClick(
           page,
@@ -301,6 +441,25 @@ test.describe('Custom properties with custom property config', () => {
           propertyName.toUpperCase(), // displayName is in uppercase
           entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
         );
+
+        if (entity.name === TABLE_COLUMN_ENTITY_NAME) {
+          await test.step(
+            'Verify Custom Property Persistence on Reload',
+            async () => {
+              const tableName = adminTestEntity.entity.name ?? '';
+              const tableFqn =
+                adminTestEntity.entityResponseData.fullyQualifiedName ?? '';
+
+              await verifyTableColumnCustomPropertyPersistence({
+                page,
+                tableName,
+                tableFqn,
+                propertyName,
+                propertyType: 'Date Time',
+              });
+            }
+          );
+        }
 
         await settingClick(
           page,

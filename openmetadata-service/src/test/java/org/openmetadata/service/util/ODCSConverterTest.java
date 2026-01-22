@@ -1543,11 +1543,11 @@ class ODCSConverterTest {
     assertNotNull(contract);
     assertNotNull(contract.getOdcsQualityRules());
     assertEquals(3, contract.getOdcsQualityRules().size());
-
-    ODCSQualityRule storedRule1 = contract.getOdcsQualityRules().get(0);
-    assertEquals("email_not_null_check", storedRule1.getName());
-    assertEquals(ODCSQualityRule.OdcsQualityMetric.NULL_VALUES, storedRule1.getMetric());
-    assertEquals("email", storedRule1.getColumn());
+    assertEquals("email_not_null_check", contract.getOdcsQualityRules().get(0).getName());
+    assertEquals(
+        ODCSQualityRule.OdcsQualityMetric.NULL_VALUES,
+        contract.getOdcsQualityRules().get(0).getMetric());
+    assertEquals("email", contract.getOdcsQualityRules().get(0).getColumn());
   }
 
   @Test
@@ -1562,7 +1562,6 @@ class ODCSConverterTest {
     entity.setType("table");
     contract.setEntity(entity);
 
-    // Store quality rules in dedicated field
     List<ODCSQualityRule> qualityRules = new ArrayList<>();
 
     ODCSQualityRule rule1 = new ODCSQualityRule();
