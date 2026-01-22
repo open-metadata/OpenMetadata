@@ -10,189 +10,702 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
-import { CUSTOM_PROPERTIES_ENTITIES } from '../../../constant/customProperty';
-import { GlobalSettingOptions } from '../../../constant/settings';
+import { test } from '@playwright/test';
+import {
+  CP_BASE_VALUES,
+  CP_NEGATIVE_TEST_VALUES,
+  CP_PARTIAL_SEARCH_VALUES,
+  CP_RANGE_VALUES,
+} from '../../../constant/customPropertyAdvancedSearch';
 import { SidebarItem } from '../../../constant/sidebar';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
-import { selectOption } from '../../../utils/advancedSearch';
-import { createNewPage, redirectToHomePage, uuid } from '../../../utils/common';
+import { TopicClass } from '../../../support/entity/TopicClass';
+import { showAdvancedSearchDialog } from '../../../utils/advancedSearch';
+import { createNewPage, redirectToHomePage } from '../../../utils/common';
 import {
-  addCustomPropertiesForEntity,
-  deleteCreatedProperty,
-} from '../../../utils/customProperty';
-import { settingClick, sidebarClick } from '../../../utils/sidebar';
+  applyCustomPropertyFilter,
+  clearAdvancedSearchFilters,
+  CPASTestData,
+  selectEntityReferenceValue,
+  setupCustomPropertyAdvancedSearchTest,
+  verifySearchResults,
+} from '../../../utils/customPropertyAdvancedSearchUtils';
+import { sidebarClick } from '../../../utils/sidebar';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const dashboardEntity = new DashboardClass();
-const propertyName = `pwCustomPropertyDashboardTest${uuid()}`;
-const propertyValue = `dashboardcustomproperty_${uuid()}`;
+const dashboard = new DashboardClass();
+const topic1 = new TopicClass();
+const topic2 = new TopicClass();
 
-test.beforeAll('Setup pre-requests', async ({ browser }) => {
-  const { apiContext, afterAction } = await createNewPage(browser);
-  await dashboardEntity.create(apiContext);
-  await afterAction();
-});
+test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
+  const testData: CPASTestData = {
+    types: [],
+    cpMetadataType: { name: '', id: '' },
+    createdCPData: [],
+  };
 
-test.afterAll('Cleanup', async ({ browser }) => {
-  const { apiContext, afterAction } = await createNewPage(browser);
-  await dashboardEntity.delete(apiContext);
-  await afterAction();
-});
+  const propertyNames: Record<string, string> = {};
 
-test('CustomProperty Dashboard Filter', async ({ page }) => {
-  test.slow(true);
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { page, apiContext, afterAction } = await createNewPage(browser);
 
-  await redirectToHomePage(page);
-
-  await test.step('Create Dashboard Custom Property', async () => {
-    await settingClick(page, GlobalSettingOptions.DASHBOARDS, true);
-
-    await addCustomPropertiesForEntity({
+    await dashboard.create(apiContext);
+    await topic1.create(apiContext);
+    await topic2.create(apiContext);
+    await setupCustomPropertyAdvancedSearchTest(
       page,
-      propertyName,
-      customPropertyData: CUSTOM_PROPERTIES_ENTITIES['entity_dashboard'],
-      customType: 'String',
+      testData as unknown as CPASTestData,
+      dashboard,
+      topic1,
+      topic2
+    );
+
+    testData.createdCPData.forEach((cp) => {
+      propertyNames[cp.propertyType.name] = cp.name;
+    });
+
+    await afterAction();
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.EXPLORE);
+  });
+
+  test.describe('Text Field Custom Properties', () => {
+    test('String CP with all operators', async ({ page }) => {
+      const propertyName = propertyNames['string'];
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'equal',
+        CP_BASE_VALUES.string
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true,
+        CP_BASE_VALUES.string
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'not_equal',
+        CP_NEGATIVE_TEST_VALUES.string
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        false,
+        CP_NEGATIVE_TEST_VALUES.string
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'like',
+        CP_PARTIAL_SEARCH_VALUES.string
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true,
+        CP_PARTIAL_SEARCH_VALUES.string
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'not_like',
+        CP_NEGATIVE_TEST_VALUES.partialString
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        false,
+        CP_NEGATIVE_TEST_VALUES.partialString
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(page, propertyName, 'is_not_null', '');
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+    });
+
+    test('Email CP with all operators', async ({ page }) => {
+      const propertyName = propertyNames['email'];
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'equal',
+        CP_BASE_VALUES.email
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true,
+        CP_BASE_VALUES.email
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'not_equal',
+        CP_NEGATIVE_TEST_VALUES.email
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        false
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'like',
+        CP_PARTIAL_SEARCH_VALUES.email
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(page, propertyName, 'is_not_null', '');
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+    });
+
+    test('Markdown CP with all operators', async ({ page }) => {
+      const propertyName = propertyNames['markdown'];
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'like',
+        CP_PARTIAL_SEARCH_VALUES.markdown
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'not_like',
+        CP_NEGATIVE_TEST_VALUES.partialString
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        false
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(page, propertyName, 'is_not_null', '');
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+    });
+
+    test('SQL Query CP with all operators', async ({ page }) => {
+      const propertyName = propertyNames['sqlQuery'];
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'like',
+        CP_PARTIAL_SEARCH_VALUES.sqlQuery
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(page, propertyName, 'is_not_null', '');
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+    });
+
+    test('Duration CP with all operators', async ({ page }) => {
+      const propertyName = propertyNames['duration'];
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'equal',
+        CP_BASE_VALUES.duration
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'like',
+        CP_PARTIAL_SEARCH_VALUES.duration
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(page, propertyName, 'is_not_null', '');
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
     });
   });
 
-  await test.step('Add Custom Property in Dashboard', async () => {
-    await dashboardEntity.visitEntityPage(page);
+  test.describe('Number Field Custom Properties', () => {
+    test('Integer CP with all operators', async ({ page }) => {
+      const propertyName = propertyNames['integer'];
 
-    const container = page.locator(
-      `[data-testid="custom-property-${propertyName}-card"]`
-    );
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'equal',
+        CP_BASE_VALUES.integer
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
 
-    await page.getByTestId('custom_properties').click();
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'not_equal',
+        CP_NEGATIVE_TEST_VALUES.integer
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        false
+      );
+      await clearAdvancedSearchFilters(page);
 
-    await expect(
-      page.locator(
-        `[data-testid="custom-property-${propertyName}-card"] [data-testid="property-name"]`
-      )
-    ).toHaveText(propertyName);
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'between',
+        CP_RANGE_VALUES.integer
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
 
-    const editButton = page.locator(
-      `[data-testid="custom-property-${propertyName}-card"] [data-testid="edit-icon"]`
-    );
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'not_between',
+        CP_NEGATIVE_TEST_VALUES.integerRange
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
 
-    await editButton.scrollIntoViewIfNeeded();
-    await editButton.click({ force: true });
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(page, propertyName, 'is_not_null', '');
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+    });
 
-    await page.getByTestId('value-input').fill(propertyValue);
+    test('Number CP with all operators', async ({ page }) => {
+      const propertyName = propertyNames['number'];
 
-    const saveResponse = page.waitForResponse('/api/v1/dashboards/*');
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'equal',
+        CP_BASE_VALUES.number
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
 
-    await page.getByTestId('inline-save-btn').click();
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'not_equal',
+        CP_NEGATIVE_TEST_VALUES.number
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        false
+      );
+      await clearAdvancedSearchFilters(page);
 
-    await saveResponse;
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'between',
+        CP_RANGE_VALUES.number
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
 
-    await expect(container.getByTestId('value')).toContainText(propertyValue);
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(page, propertyName, 'is_not_null', '');
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+    });
+
+    test('Timestamp CP with all operators', async ({ page }) => {
+      const propertyName = propertyNames['timestamp'];
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'equal',
+        CP_BASE_VALUES.timestamp
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'not_equal',
+        CP_NEGATIVE_TEST_VALUES.timestamp
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        false
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(page, propertyName, 'is_not_null', '');
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+    });
   });
 
-  await test.step(
-    'Filter Dashboard using AdvanceSearch Custom Property',
-    async () => {
-      await redirectToHomePage(page);
+  test.describe('Entity Reference Custom Properties', () => {
+    test('Entity Reference CP with all operators', async ({ page }) => {
+      const propertyName = propertyNames['entityReference'];
 
-      const responseExplorePage = page.waitForResponse(
-        '/api/v1/metadata/types/customProperties'
-      );
-
-      await sidebarClick(page, SidebarItem.EXPLORE);
-
-      await responseExplorePage;
-
-      await page.getByTestId('explore-tree-title-Dashboards').click();
-
-      await page.getByTestId('advance-search-button').click();
-
-      await page.waitForSelector('[role="dialog"].ant-modal');
-
-      await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-
-      await expect(page.locator('.ant-modal-title')).toContainText(
-        'Advanced Search'
-      );
-
-      // Select Custom Property Filter
-
-      await page
-        .getByTestId('advanced-search-modal')
-        .getByText('Owner')
-        .click();
-
+      await showAdvancedSearchDialog(page);
       const ruleLocator = page.locator('.rule').nth(0);
-
-      // Perform click on rule field
-      await selectOption(
+      await applyCustomPropertyFilter(page, propertyName, 'select_equals', '');
+      await selectEntityReferenceValue(
         page,
-        ruleLocator.locator('.rule--field .ant-select'),
-        'Custom Properties',
+        ruleLocator,
+        topic1.entityResponseData.name
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
         true
       );
+      await clearAdvancedSearchFilters(page);
 
-      await selectOption(
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(page, propertyName, 'is_not_null', '');
+      await verifySearchResults(
         page,
-        ruleLocator.locator('.rule--field .ant-select'),
-        'Dashboard',
+        dashboard.entityResponseData.fullyQualifiedName,
         true
       );
+      await clearAdvancedSearchFilters(page);
+    });
 
-      // Select Custom Property Field when we want filter
-      await page
-        .locator(
-          '.group--children .rule--field .ant-select-selector .ant-select-selection-search .ant-select-selection-search-input'
-        )
-        .fill(propertyName);
-      await page.getByTitle(propertyName).click();
+    test('Entity Reference List CP with all operators', async ({ page }) => {
+      const propertyName = propertyNames['entityReferenceList'];
 
-      await page
-        .locator('.rule--operator .ant-select-selection-search-input')
-        .click();
-      await page.waitForSelector(`.ant-select-dropdown:visible`, {
-        state: 'visible',
-      });
-      await page.click(`.ant-select-dropdown:visible [title="=="]`);
-
-      // type custom property value based, on which the filter should be made on dashboard
-      await page
-        .locator('.group--children .rule--widget .ant-input')
-        .fill(propertyValue);
-
-      const applyAdvanceFilter = page.waitForRequest('/api/v1/search/query?*');
-
-      await page.getByTestId('apply-btn').click();
-
-      await applyAdvanceFilter;
-
-      await page.waitForLoadState('networkidle');
-
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-
-      // Validate if filter dashboard appeared
-
-      await expect(
-        page.getByTestId('advance-search-filter-text')
-      ).toContainText(
-        `extension.dashboard.${propertyName} = '${propertyValue}'`
+      await showAdvancedSearchDialog(page);
+      const ruleLocator = page.locator('.rule').nth(0);
+      await applyCustomPropertyFilter(page, propertyName, 'select_equals', '');
+      await selectEntityReferenceValue(
+        page,
+        ruleLocator,
+        topic1.entityResponseData.name
       );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
 
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(page, propertyName, 'is_not_null', '');
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+    });
+  });
 
-      await expect(
-        page.getByTestId('entity-header-display-name')
-      ).toContainText(dashboardEntity.entity.displayName);
-    }
-  );
+  test.describe('Date/Time Custom Properties', () => {
+    test('Date CP with all operators', async ({ page }) => {
+      const propertyName = propertyNames['date-cp'];
 
-  await test.step('Delete Custom Property ', async () => {
-    await settingClick(page, GlobalSettingOptions.DASHBOARDS, true);
-    await deleteCreatedProperty(page, propertyName);
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'between',
+        CP_RANGE_VALUES.dateCp
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'not_between',
+        CP_NEGATIVE_TEST_VALUES.dateCp
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+    });
+
+    test('DateTime CP with all operators', async ({ page }) => {
+      const propertyName = propertyNames['dateTime-cp'];
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'between',
+        CP_RANGE_VALUES.dateTimeCp
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'not_between',
+        CP_NEGATIVE_TEST_VALUES.dateTimeCp
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+    });
+
+    test('Time CP with all operators', async ({ page }) => {
+      const propertyName = propertyNames['time-cp'];
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'between',
+        CP_RANGE_VALUES.timeCp
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'not_between',
+        CP_NEGATIVE_TEST_VALUES.timeCp
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+    });
+  });
+
+  test.describe('Enum Custom Properties', () => {
+    test('Enum CP with all operators', async ({ page }) => {
+      const propertyName = propertyNames['enum'];
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'multiselect_equals',
+        CP_BASE_VALUES.enum[0]
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'multiselect_contains',
+        CP_BASE_VALUES.enum[0]
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'multiselect_not_equals',
+        CP_NEGATIVE_TEST_VALUES.enum
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        false
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(page, propertyName, 'is_not_null', '');
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+    });
+  });
+
+  test.describe('Special Custom Properties', () => {
+    test('Time Interval CP with operators', async ({ page }) => {
+      const propertyName = propertyNames['timeInterval'];
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(page, propertyName, 'is_not_null', '');
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+    });
   });
 });
