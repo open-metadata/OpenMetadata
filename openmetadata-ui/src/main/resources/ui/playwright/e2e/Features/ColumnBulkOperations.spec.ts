@@ -31,69 +31,25 @@ async function visitColumnBulkOperationsPage(page: Page) {
   await dataRes;
 }
 
-// Helper function to search for a column with retry logic for search index timing
-async function searchColumnWithRetry(
-  page: Page,
-  columnName: string,
-  maxRetries = 5,
-  retryDelayMs = 3000
-): Promise<boolean> {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    const searchInput = page.getByPlaceholder('Search columns');
+async function searchColumn(page: Page, columnName: string) {
+  const searchInput = page.getByPlaceholder('Search columns');
 
-    // Clear and fill search
-    await searchInput.clear();
+  // Clear and fill search
+  await searchInput.clear();
 
-    // Set up response listener before filling search (to catch debounced request)
-    const responsePromise = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/columns/grid') &&
-        response.status() === 200,
-      { timeout: 10000 }
-    );
+  // Set up response listener before filling search (to catch debounced request)
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/columns/grid') &&
+      response.status() === 200,
+    { timeout: 10000 }
+  );
 
-    await searchInput.fill(columnName);
+  await searchInput.fill(columnName);
 
-    // Wait for API response
-    let apiResponse: { totalUniqueColumns?: number } | null = null;
-    try {
-      const response = await responsePromise;
-      apiResponse = await response.json();
-      console.log(
-        `Attempt ${attempt}: API returned ${apiResponse?.totalUniqueColumns ?? 0} columns`
-      );
-    } catch {
-      console.log(`Attempt ${attempt}: Response timeout or parse error`);
-    }
+  await responsePromise;
 
-    // Wait for UI to update after API response
-    await page.waitForTimeout(1000);
-
-    // Check if any rows are visible
-    const rows = page.locator('tbody tr');
-    const rowCount = await rows.count();
-    console.log(`Attempt ${attempt}: UI shows ${rowCount} rows`);
-
-    if (rowCount > 0) {
-      // Verify the column name is in the results
-      const firstRowText = await rows.first().textContent();
-      if (firstRowText && firstRowText.includes(columnName)) {
-        return true;
-      }
-      console.log(`Attempt ${attempt}: First row text doesn't include column name`);
-      console.log(`Looking for: ${columnName}`);
-      console.log(`Found: ${firstRowText?.substring(0, 100)}`);
-    }
-
-    if (attempt < maxRetries) {
-      // Wait and retry - search index may need time to index new data
-      await page.waitForTimeout(retryDelayMs);
-      // Refresh the page to get fresh data
-      await visitColumnBulkOperationsPage(page);
-    }
-  }
-
-  return false;
+  await waitForAllLoadersToDisappear(page);
 }
 
 test.describe('Column Bulk Operations Page', () => {
@@ -132,15 +88,11 @@ test.describe('Column Bulk Operations - Metadata Status Filters', () => {
     });
     await metadataStatusButton.click();
 
-    // Wait for dropdown to appear
-    await page.waitForTimeout(500);
-
     // Select MISSING filter - the dropdown has menuitems with checkboxes
     await page.getByRole('menuitem', { name: 'Missing' }).click();
     await page.getByRole('button', { name: 'Update' }).click();
 
     // Wait for filter to apply
-    await page.waitForTimeout(1000);
 
     // Verify filter is applied (URL should contain the filter parameter)
     await expect(page).toHaveURL(/metadataStatus=MISSING/);
@@ -154,15 +106,9 @@ test.describe('Column Bulk Operations - Metadata Status Filters', () => {
     });
     await metadataStatusButton.click();
 
-    // Wait for dropdown to appear
-    await page.waitForTimeout(500);
-
     // Select INCOMPLETE filter
     await page.getByRole('menuitem', { name: 'Incomplete' }).click();
     await page.getByRole('button', { name: 'Update' }).click();
-
-    // Wait for filter to apply
-    await page.waitForTimeout(1000);
 
     // Verify filter is applied
     await expect(page).toHaveURL(/metadataStatus=INCOMPLETE/);
@@ -177,15 +123,11 @@ test.describe('Column Bulk Operations - Metadata Status Filters', () => {
     });
     await metadataStatusButton.click();
 
-    // Wait for dropdown to appear
-    await page.waitForTimeout(500);
-
     // Select INCONSISTENT filter - for columns with different metadata across occurrences
     await page.getByRole('menuitem', { name: 'Inconsistent' }).click();
     await page.getByRole('button', { name: 'Update' }).click();
 
     // Wait for filter to apply
-    await page.waitForTimeout(1000);
 
     // Verify filter is applied
     await expect(page).toHaveURL(/metadataStatus=INCONSISTENT/);
@@ -200,15 +142,11 @@ test.describe('Column Bulk Operations - Metadata Status Filters', () => {
     });
     await metadataStatusButton.click();
 
-    // Wait for dropdown to appear
-    await page.waitForTimeout(500);
-
     // Select COMPLETE filter - use exact: true since "Complete" is substring of "Incomplete"
     await page.getByRole('menuitem', { name: 'Complete', exact: true }).click();
     await page.getByRole('button', { name: 'Update' }).click();
 
     // Wait for filter to apply
-    await page.waitForTimeout(1000);
 
     // Verify filter is applied
     await expect(page).toHaveURL(/metadataStatus=COMPLETE/);
@@ -232,9 +170,6 @@ test.describe('Column Bulk Operations - Metadata Status Filters', () => {
       name: 'Metadata Status',
     });
     await metadataStatusButton.click();
-
-    // Wait for dropdown to appear
-    await page.waitForTimeout(500);
 
     // Select MISSING filter
     await page.getByRole('menuitem', { name: 'Missing' }).click();
@@ -260,8 +195,6 @@ test.describe('Column Bulk Operations - Domain Filters', () => {
     const domainsDropdown = page.getByTestId('search-dropdown-Domains');
     await domainsDropdown.click();
 
-    await page.waitForTimeout(500);
-
     const dropdownMenu = page.getByTestId('drop-down-menu');
     await expect(dropdownMenu).toBeVisible();
 
@@ -276,8 +209,6 @@ test.describe('Column Bulk Operations - Domain Filters', () => {
 
     const domainsDropdown = page.getByTestId('search-dropdown-Domains');
     await domainsDropdown.click();
-
-    await page.waitForTimeout(500);
 
     const dropdownMenu = page.getByTestId('drop-down-menu');
     await expect(dropdownMenu).toBeVisible();
@@ -381,9 +312,6 @@ test.describe('Column Bulk Operations - Selection and Edit', () => {
       // Try to close drawer using Escape key
       await page.keyboard.press('Escape');
 
-      // Wait a bit for potential close animation
-      await page.waitForTimeout(1000);
-
       // If drawer is still visible, that's OK - just verify we can interact with it
       // The test succeeds if the drawer can be opened
     }
@@ -443,17 +371,6 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    await glossaryTerm.delete(apiContext);
-    await glossary.delete(apiContext);
-    await tag.delete(apiContext);
-    await classification.delete(apiContext);
-
-    await afterAction();
-  });
-
   test('should update display name and propagate to all entities', async ({
     page,
   }) => {
@@ -461,18 +378,7 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
     await visitColumnBulkOperationsPage(page);
 
     // Search for customer_id which exists in sample data (dim_customer, fact_sale)
-    const searchInput = page.getByPlaceholder('Search columns');
-    await searchInput.fill(sharedColumnName);
-
-    // Wait for search API response
-    await page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/columns/grid') &&
-        response.status() === 200
-    );
-
-    // Wait for table to update
-    await page.waitForTimeout(500);
+    await searchColumn(page, sharedColumnName);
 
     // Verify column appears in results
     const columnRow = page.locator('tbody tr').first();
@@ -552,26 +458,23 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
     await visitColumnBulkOperationsPage(page);
 
     // Search for customer_id which exists in sample data
-    const searchInput = page.getByPlaceholder('Search columns');
-    await searchInput.fill(sharedColumnName);
-
-    // Wait for search API response
-    await page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/columns/grid') &&
-        response.status() === 200
-    );
-    await page.waitForTimeout(500);
+    await searchColumn(page, sharedColumnName);
 
     // Click the expand button on the parent row to see all occurrences
-    const expandButton = page.locator('tbody tr').first().locator('button').first();
+    const expandButton = page
+      .locator('tbody tr')
+      .first()
+      .locator('button')
+      .first();
     if ((await expandButton.count()) > 0) {
       await expandButton.click();
-      await page.waitForTimeout(500);
     }
 
     // Select the parent row (this should select all child occurrences)
-    const parentCheckbox = page.locator('tbody tr').first().locator('input[type="checkbox"]');
+    const parentCheckbox = page
+      .locator('tbody tr')
+      .first()
+      .locator('input[type="checkbox"]');
     await parentCheckbox.click();
 
     // Open edit drawer
@@ -640,16 +543,7 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
     await visitColumnBulkOperationsPage(page);
 
     // Search for customer_id which exists in sample data
-    const searchInput = page.getByPlaceholder('Search columns');
-    await searchInput.fill(sharedColumnName);
-
-    // Wait for search API response
-    await page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/columns/grid') &&
-        response.status() === 200
-    );
-    await page.waitForTimeout(500);
+    await searchColumn(page, sharedColumnName);
 
     // Select the column
     const columnRow = page.locator('tbody tr').first();
@@ -695,13 +589,8 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
   test('should populate existing values when editing again', async ({
     page,
   }) => {
-    test.setTimeout(60000);
-
-    await redirectToHomePage(page);
+    test.slow(true);
     await visitColumnBulkOperationsPage(page);
-
-    // Wait for grid data to load
-    await page.waitForTimeout(2000);
 
     // Get the first row (any column with data)
     const firstCheckbox = page
@@ -738,9 +627,6 @@ test.describe('Column Bulk Operations - Edit Drawer Pre-population', () => {
     await redirectToHomePage(page);
     await visitColumnBulkOperationsPage(page);
 
-    // Wait for grid to load
-    await page.waitForTimeout(1000);
-
     // Select any column from the grid
     const columnRow = page.locator('tbody tr').first();
     await expect(columnRow).toBeVisible();
@@ -774,9 +660,6 @@ test.describe('Column Bulk Operations - Edit Drawer Pre-population', () => {
     await redirectToHomePage(page);
     await visitColumnBulkOperationsPage(page);
 
-    // Wait for grid to load
-    await page.waitForTimeout(1000);
-
     // Select any column from the grid
     const columnRow = page.locator('tbody tr').first();
     await expect(columnRow).toBeVisible();
@@ -793,11 +676,15 @@ test.describe('Column Bulk Operations - Edit Drawer Pre-population', () => {
     await expect(drawer).toBeVisible();
 
     // Verify Glossary Terms field exists
-    const glossaryField = drawer.locator('[data-testid="glossary-terms-field"]');
+    const glossaryField = drawer.locator(
+      '[data-testid="glossary-terms-field"]'
+    );
     await expect(glossaryField).toBeVisible();
 
     // Verify the glossary selector is visible
-    const glossarySelector = glossaryField.locator('[data-testid="tag-selector"]');
+    const glossarySelector = glossaryField.locator(
+      '[data-testid="tag-selector"]'
+    );
     await expect(glossarySelector).toBeVisible();
 
     // Close drawer
@@ -860,7 +747,6 @@ test.describe('Column Bulk Operations - Coverage Status Display', () => {
     });
 
     await visitColumnBulkOperationsPage(page);
-    await page.waitForTimeout(3000);
 
     // Verify the API response contains metadataStatus field
     if (apiResponse && apiResponse.columns && apiResponse.columns.length > 0) {
@@ -906,7 +792,6 @@ test.describe('Column Bulk Operations - Column Variations', () => {
       await expandButtons.first().click();
 
       // Wait for expansion
-      await page.waitForTimeout(500);
 
       // Check that rows increased or stayed same
       const newRowCount = await page.locator('tbody tr').count();
@@ -925,11 +810,7 @@ test.describe('Column Bulk Operations - Search', () => {
     const searchInput = page.getByPlaceholder('Search columns');
 
     if (await searchInput.isVisible()) {
-      // Enter a search query
-      await searchInput.fill('id');
-
-      // Wait for debounced search
-      await page.waitForTimeout(1500);
+      await searchColumn(page, 'id');
 
       // Verify the table is still visible
       await expect(page.getByRole('table')).toBeVisible();
@@ -998,7 +879,6 @@ test.describe('Column Bulk Operations - Search', () => {
     await searchInput.fill('id');
 
     await apiResponsePromise;
-    await page.waitForTimeout(500);
 
     await expect(totalUniqueColumnsCard).toBeVisible();
     await expect(totalOccurrencesCard).toBeVisible();
@@ -1018,9 +898,10 @@ test.describe('Column Bulk Operations - Pagination', () => {
       const isNextEnabled = await nextButton.isEnabled();
 
       if (isNextEnabled) {
+        const dataRes = page.waitForResponse('/api/v1/columns/grid?size=25*');
         // Click next page
         await nextButton.click();
-        await page.waitForTimeout(1500);
+        await dataRes;
 
         // Previous button should now be enabled
         const prevButton = page.getByRole('button', { name: 'Previous' });
@@ -1028,7 +909,6 @@ test.describe('Column Bulk Operations - Pagination', () => {
 
         // Navigate back
         await prevButton.click();
-        await page.waitForTimeout(1500);
       }
     }
   });
@@ -1117,7 +997,6 @@ test.describe('Column Bulk Operations - View Selected Only', () => {
           await switchElement.first().click();
 
           // Wait for UI to update
-          await page.waitForTimeout(500);
 
           // Should show fewer rows (only selected)
           const filteredRowCount = await page.locator('tbody tr').count();
@@ -1127,7 +1006,6 @@ test.describe('Column Bulk Operations - View Selected Only', () => {
           await switchElement.first().click();
 
           // Wait for UI to update
-          await page.waitForTimeout(500);
 
           // Should show all rows again
           const restoredRowCount = await page.locator('tbody tr').count();
@@ -1161,7 +1039,6 @@ test.describe('Column Bulk Operations - Aggregate Row Click Behavior', () => {
 
       // Drawer should be visible (if it's an aggregate row)
       // Note: This may not open drawer for single-occurrence rows
-      await page.waitForTimeout(500);
     }
   });
 
@@ -1178,7 +1055,6 @@ test.describe('Column Bulk Operations - Aggregate Row Click Behavior', () => {
     if ((await expandButtons.count()) > 0) {
       // Click expand button
       await expandButtons.click();
-      await page.waitForTimeout(500);
 
       // Drawer should NOT be visible
       const drawer = page.getByTestId('column-bulk-operations-form-drawer');
@@ -1208,10 +1084,9 @@ test.describe('Column Bulk Operations - Combined Filters', () => {
       name: 'Metadata Status',
     });
     await metadataStatusButton.click();
-    await page.waitForTimeout(500);
+
     await page.getByRole('menuitem', { name: 'Missing' }).click();
     await page.getByRole('button', { name: 'Update' }).click();
-    await page.waitForTimeout(1000);
 
     // Verify filter is in URL
     await expect(page).toHaveURL(/metadataStatus=MISSING/);
@@ -1231,12 +1106,10 @@ test.describe('Column Bulk Operations - Combined Filters', () => {
       name: 'Metadata Status',
     });
     await metadataStatusButton.click();
-    await page.waitForTimeout(500);
 
     // Click to deselect the checked item
     await page.getByRole('menuitem', { name: 'Missing' }).click();
     await page.getByRole('button', { name: 'Update' }).click();
-    await page.waitForTimeout(1000);
 
     // URL should not have the filter anymore
     const url = page.url();
@@ -1262,9 +1135,7 @@ test.describe('Column Bulk Operations - URL State Persistence', () => {
     await visitColumnBulkOperationsPage(page);
 
     // Enter search query
-    const searchInput = page.getByPlaceholder('Search columns');
-    await searchInput.fill('test_column');
-    await page.waitForTimeout(1500);
+    await searchColumn(page, 'test_column');
 
     // Verify search is in URL
     await expect(page).toHaveURL(/q=test_column|searchQuery=test_column/);
@@ -1278,11 +1149,7 @@ test.describe('Column Bulk Operations - Empty State', () => {
     await visitColumnBulkOperationsPage(page);
 
     // Search for something that doesn't exist
-    const searchInput = page.getByPlaceholder('Search columns');
-    await searchInput.fill('zzz_nonexistent_column_xyz_12345');
-
-    // Wait for search API to complete
-    await page.waitForTimeout(2000);
+    await searchColumn(page, 'zzz_nonexistent_column_xyz_12345');
 
     // Should show "no records found" or similar message
     const noRecordsText = page.getByText(
@@ -1369,9 +1236,6 @@ test.describe('Column Bulk Operations - Cancel Without Saving', () => {
   }) => {
     await visitColumnBulkOperationsPage(page);
 
-    // Wait for data to load
-    await page.waitForTimeout(2000);
-
     // Select a column
     const firstCheckbox = page
       .locator('tbody tr')
@@ -1401,7 +1265,6 @@ test.describe('Column Bulk Operations - Cancel Without Saving', () => {
       await page.keyboard.press('Escape');
 
       // Wait for drawer to close
-      await page.waitForTimeout(1000);
 
       // Open drawer again
       await editButton.click();
@@ -1458,7 +1321,6 @@ test.describe('Column Bulk Operations - Service Filter', () => {
     ) {
       // Service filter is available, verify it can be clicked
       await serviceFilterButton.click();
-      await page.waitForTimeout(500);
 
       // Close any dropdown that opened
       await page.keyboard.press('Escape');
@@ -1490,7 +1352,6 @@ test.describe('Column Bulk Operations - Cross Entity Type Support', () => {
       await assetTypeButton.click();
 
       // Wait for dropdown to appear
-      await page.waitForTimeout(500);
 
       // Select Table
       await page.getByRole('menuitem', { name: 'Table' }).click();
@@ -1522,7 +1383,6 @@ test.describe('Column Bulk Operations - Cross Entity Type Support', () => {
       await assetTypeButton.click();
 
       // Wait for dropdown to appear
-      await page.waitForTimeout(500);
 
       // Select Dashboard Data Model
       await page
@@ -1540,7 +1400,6 @@ test.describe('Column Bulk Operations - Cross Entity Type Support', () => {
     page,
   }) => {
     await visitColumnBulkOperationsPage(page);
-    await page.waitForTimeout(3000);
 
     // Look for occurrence count indicators in the table
     // Columns that appear in multiple tables/entities will show count > 1
@@ -1570,7 +1429,6 @@ test.describe('Column Bulk Operations - Cross Entity Type Support', () => {
     if (buttonCount > 0) {
       // Click to expand
       await expandButtons.first().click();
-      await page.waitForTimeout(500);
 
       // After expansion, child rows should show entity path information
       // Look for path or entity reference text
@@ -1889,32 +1747,21 @@ test.describe('Column Bulk Operations - Cross Entity Type Bulk Update', () => {
   test('should show column appearing in multiple entity types', async ({
     page,
   }) => {
-    test.setTimeout(120000); // Extended timeout for search index
-
+    test.slow(true);
     await redirectToHomePage(page);
     await visitColumnBulkOperationsPage(page);
 
     // Use retry helper to wait for search index to index the new entities
-    const found = await searchColumnWithRetry(page, sharedColumnName, 10, 5000);
+    await searchColumn(page, sharedColumnName);
 
-    if (found) {
-      // Should find the column with multiple occurrences
-      const columnRow = page.locator('tbody tr').first();
-      await expect(columnRow).toBeVisible();
+    // Should find the column with multiple occurrences
+    const columnRow = page.locator('tbody tr').first();
+    await expect(columnRow).toBeVisible();
 
-      // The column should show occurrence count > 1 (ideally 5 - one per entity type)
-      // Look for the column name with count
-      const columnText = await columnRow.textContent();
-      expect(columnText).toContain(sharedColumnName);
-    } else {
-      // If column not found after retries, the test data may not have been indexed
-      // This can happen in CI environments with slow search indexing
-      // Log warning but don't fail - the search index timing is external
-      console.warn(
-        `Column ${sharedColumnName} not found in search index after retries. ` +
-          'Search indexing may be slow.'
-      );
-    }
+    // The column should show occurrence count > 1 (ideally 5 - one per entity type)
+    // Look for the column name with count
+    const columnText = await columnRow.textContent();
+    expect(columnText).toContain(sharedColumnName);
   });
 
   test('should update column across all entity types via bulk update', async ({
@@ -1926,14 +1773,7 @@ test.describe('Column Bulk Operations - Cross Entity Type Bulk Update', () => {
     await visitColumnBulkOperationsPage(page);
 
     // Use retry helper to wait for search index to index the new entities
-    const found = await searchColumnWithRetry(page, sharedColumnName, 10, 5000);
-
-    if (!found) {
-      console.warn(
-        `Column ${sharedColumnName} not found in search index. Skipping bulk update test.`
-      );
-      return;
-    }
+    await searchColumn(page, sharedColumnName);
 
     // Select the column
     const firstCheckbox = page
@@ -2155,14 +1995,7 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
     await visitColumnBulkOperationsPage(page);
 
     // Use retry helper to wait for search index
-    const found = await searchColumnWithRetry(page, parentColumnName, 10, 5000);
-
-    if (!found) {
-      console.warn(
-        `STRUCT column ${parentColumnName} not found in search index. Skipping test.`
-      );
-      return;
-    }
+    await searchColumn(page, parentColumnName);
 
     // Find the STRUCT column row
     const structRow = page.locator('tbody tr').first();
@@ -2183,20 +2016,13 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
   test('should expand STRUCT column to show nested fields', async ({
     page,
   }) => {
-    test.setTimeout(120000); // Extended timeout for search index
+    test.slow(true); // Extended timeout for search index
 
     await redirectToHomePage(page);
     await visitColumnBulkOperationsPage(page);
 
     // Use retry helper to wait for search index
-    const found = await searchColumnWithRetry(page, parentColumnName, 10, 5000);
-
-    if (!found) {
-      console.warn(
-        `STRUCT column ${parentColumnName} not found in search index. Skipping test.`
-      );
-      return;
-    }
+    await searchColumn(page, parentColumnName);
 
     // Find expand button for STRUCT
     const expandButton = page
@@ -2210,7 +2036,6 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
 
       // Click to expand
       await expandButton.click();
-      await page.waitForTimeout(500);
 
       // Row count should increase (nested fields are shown)
       const expandedRowCount = await page.locator('tbody tr').count();
@@ -2236,14 +2061,7 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
     await visitColumnBulkOperationsPage(page);
 
     // Use retry helper to wait for search index
-    const found = await searchColumnWithRetry(page, parentColumnName, 10, 5000);
-
-    if (!found) {
-      console.warn(
-        `STRUCT column ${parentColumnName} not found in search index. Skipping test.`
-      );
-      return;
-    }
+    await searchColumn(page, parentColumnName);
 
     // Expand to show nested fields
     const expandButton = page
@@ -2254,7 +2072,6 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
 
     if ((await expandButton.count()) > 0) {
       await expandButton.click();
-      await page.waitForTimeout(500);
 
       // Find a nested field checkbox (rows after the first one are nested)
       const nestedCheckboxes = page.locator('tbody tr input[type="checkbox"]');
@@ -2292,14 +2109,7 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
     await visitColumnBulkOperationsPage(page);
 
     // Use retry helper to wait for search index
-    const found = await searchColumnWithRetry(page, parentColumnName, 10, 5000);
-
-    if (!found) {
-      console.warn(
-        `STRUCT column ${parentColumnName} not found in search index. Skipping test.`
-      );
-      return;
-    }
+    await searchColumn(page, parentColumnName);
 
     // Expand STRUCT column
     const expandButton = page
@@ -2310,7 +2120,6 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
 
     if ((await expandButton.count()) > 0) {
       await expandButton.click();
-      await page.waitForTimeout(500);
 
       // Look for struct-child-row class which indicates nested indentation
       const nestedRows = page.locator('.struct-child-row, .child-row');
@@ -2348,9 +2157,8 @@ test.describe('Column Bulk Operations - Error Handling', () => {
     const searchInput = page.getByPlaceholder('Search columns');
     await expect(searchInput).toBeVisible();
     await searchInput.fill('test');
-    await page.waitForTimeout(1000);
+
     await searchInput.clear();
-    await page.waitForTimeout(500);
 
     // Page should still be functional
     await expect(searchInput).toBeVisible();
@@ -2358,9 +2166,6 @@ test.describe('Column Bulk Operations - Error Handling', () => {
 
   test('should handle network timeout gracefully', async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
-
-    // Wait for data to load
-    await page.waitForTimeout(2000);
 
     // Select a column
     const firstCheckbox = page
@@ -2391,9 +2196,6 @@ test.describe('Column Bulk Operations - Error Handling', () => {
       // Click Update - should show loading state
       const updateButton = drawer.getByRole('button', { name: 'Update' });
       await updateButton.click();
-
-      // Just verify we can interact - the actual timeout handling depends on implementation
-      await page.waitForTimeout(2000);
 
       // Close drawer
       await page.keyboard.press('Escape');
@@ -2442,7 +2244,6 @@ test.describe('Column Bulk Operations - Tag Operations', () => {
 
           if ((await closeButton.count()) > 0) {
             await closeButton.click();
-            await page.waitForTimeout(500);
 
             // Tag count should decrease
             const newTagCount = await existingTags.count();
@@ -2485,7 +2286,6 @@ test.describe('Column Bulk Operations - Tag Operations', () => {
       if ((await tagSelector.count()) > 0) {
         // Click to open dropdown
         await tagSelector.click();
-        await page.waitForTimeout(500);
 
         // Try to select multiple tags from dropdown
         const tagOptions = page.locator(
@@ -2500,7 +2300,7 @@ test.describe('Column Bulk Operations - Tag Operations', () => {
 
           // Reopen and select second tag
           await tagSelector.click();
-          await page.waitForTimeout(500);
+
           await tagOptions.nth(1).click();
           await page.waitForTimeout(300);
         }
@@ -2642,7 +2442,6 @@ test.describe('Column Bulk Operations - Keyboard Accessibility', () => {
 
       // Press Space to toggle
       await page.keyboard.press('Space');
-      await page.waitForTimeout(300);
 
       // Verify checkbox state changed
       const newChecked = await firstCheckbox.isChecked();
@@ -2673,13 +2472,11 @@ test.describe('Column Bulk Operations - Selection Edge Cases', () => {
         await tableContainer.evaluate((el) => {
           el.scrollTop = el.scrollHeight;
         });
-        await page.waitForTimeout(500);
 
         // Scroll back up
         await tableContainer.evaluate((el) => {
           el.scrollTop = 0;
         });
-        await page.waitForTimeout(500);
 
         // First row should still be selected
         await expect(firstCheckbox).toBeChecked();
@@ -2690,9 +2487,6 @@ test.describe('Column Bulk Operations - Selection Edge Cases', () => {
   test('should allow selecting non-adjacent rows', async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
 
-    // Wait for data to load
-    await page.waitForTimeout(2000);
-
     const rows = page.locator('tbody tr');
     const rowCount = await rows.count();
 
@@ -2700,7 +2494,6 @@ test.describe('Column Bulk Operations - Selection Edge Cases', () => {
       // Select first row
       const firstCheckbox = rows.nth(0).locator('input[type="checkbox"]');
       await firstCheckbox.click();
-      await page.waitForTimeout(500);
 
       // Verify first is checked before continuing
       await expect(firstCheckbox).toBeChecked();
@@ -2708,7 +2501,6 @@ test.describe('Column Bulk Operations - Selection Edge Cases', () => {
       // Select third row - checkbox clicks should add to selection
       const thirdCheckbox = rows.nth(2).locator('input[type="checkbox"]');
       await thirdCheckbox.click();
-      await page.waitForTimeout(500);
 
       // Check if multi-select behavior works with checkboxes
       // If third is checked, verify both are selected
@@ -2733,7 +2525,6 @@ test.describe('Column Bulk Operations - Selection Edge Cases', () => {
 
         // Click third checkbox again to select it
         await thirdCheckbox.click();
-        await page.waitForTimeout(300);
 
         // Verify edit button is enabled
         const editButton = page.getByRole('button', { name: /edit/i }).first();
@@ -2789,7 +2580,6 @@ test.describe(
       for (const query of specialChars) {
         await searchInput.clear();
         await searchInput.fill(query);
-        await page.waitForTimeout(1000);
 
         // Should not crash - page should still be functional
         await expect(searchInput).toHaveValue(query);
@@ -2849,7 +2639,6 @@ test.describe(
           // Enter a long description
           const longDescription = 'A'.repeat(500);
           await editor.first().fill(longDescription);
-          await page.waitForTimeout(300);
 
           // Should accept the long text without error
           await expect(editor.first()).toBeVisible();
@@ -2899,9 +2688,6 @@ test.describe('Column Bulk Operations - Async Job Status', () => {
   test('should show loading state during update', async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
 
-    // Wait for data to load
-    await page.waitForTimeout(2000);
-
     const firstCheckbox = page
       .locator('tbody tr')
       .first()
@@ -2932,7 +2718,6 @@ test.describe('Column Bulk Operations - Async Job Status', () => {
       await updateButton.click();
 
       // Wait a bit to see loading state
-      await page.waitForTimeout(500);
 
       // Button should be in loading state or disabled
       const isLoading = await updateButton.isDisabled();
@@ -2959,7 +2744,6 @@ test.describe('Column Bulk Operations - Async Job Status', () => {
       const firstCheckbox = rows.first().locator('input[type="checkbox"]');
       if ((await firstCheckbox.count()) > 0) {
         await firstCheckbox.click();
-        await page.waitForTimeout(500);
 
         // Edit button should become enabled
         const editButton = page.getByRole('button', { name: /edit/i }).first();
@@ -2967,7 +2751,6 @@ test.describe('Column Bulk Operations - Async Job Status', () => {
 
         // Click to open drawer
         await editButton.click();
-        await page.waitForTimeout(1000);
 
         // Drawer should open
         const drawer = page.getByTestId('column-bulk-operations-form-drawer');
@@ -2976,7 +2759,6 @@ test.describe('Column Bulk Operations - Async Job Status', () => {
 
           // Close drawer
           await page.keyboard.press('Escape');
-          await page.waitForTimeout(500);
         }
       }
     }
@@ -3062,7 +2844,6 @@ test.describe('Column Bulk Operations - Empty/Edge Values', () => {
       name: /metadata status/i,
     });
     await metadataStatusButton.click();
-    await page.waitForTimeout(500);
 
     const missingOption = page.locator(
       '[title="Missing"], [data-testid="Missing"]'
@@ -3206,11 +2987,9 @@ test.describe('Column Bulk Operations - Filter Edge Cases', () => {
     // Apply search
     const searchInput = page.getByPlaceholder('Search columns');
     await searchInput.fill('test');
-    await page.waitForTimeout(1000);
 
     // Clear search
     await searchInput.clear();
-    await page.waitForTimeout(1000);
 
     // Page should still be functional
     await expect(searchInput).toBeVisible();
@@ -3229,9 +3008,7 @@ test.describe('Column Bulk Operations - Filter Edge Cases', () => {
     await expect(statsCard).toBeVisible();
 
     // Apply search
-    const searchInput = page.getByPlaceholder('Search columns');
-    await searchInput.fill('id');
-    await page.waitForTimeout(1500);
+    await searchColumn(page, 'id');
 
     // Apply metadata filter
     const metadataStatusButton = page.getByRole('button', {
@@ -3246,7 +3023,6 @@ test.describe('Column Bulk Operations - Filter Edge Cases', () => {
 
     if ((await option.count()) > 0) {
       await option.click();
-      await page.waitForTimeout(1000);
     }
 
     // Grid should show results (or empty state if no matches)

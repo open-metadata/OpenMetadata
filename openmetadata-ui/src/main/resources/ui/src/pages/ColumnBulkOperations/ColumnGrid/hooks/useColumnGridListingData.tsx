@@ -88,14 +88,12 @@ export const useColumnGridListingData = (
   const totalOccurrencesRef = useRef<number>(0);
   // Removed accumulation logic - we'll just filter current page data
 
-  // URL state management
+  // Local pagination state (cursor-based, not in URL)
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // URL state management (search and filters only, pagination is local)
   const urlState = useMemo(() => {
     const searchQuery = searchParams.get('q') || '';
-    const currentPage = Number.parseInt(searchParams.get('page') || '1', 10);
-    const pageSize = Number.parseInt(
-      searchParams.get('size') || String(PAGE_SIZE),
-      10
-    );
 
     const filters: Record<string, string[]> = {};
     const filterKeys = [
@@ -115,9 +113,9 @@ export const useColumnGridListingData = (
       searchQuery,
       filters,
       currentPage,
-      pageSize,
+      pageSize: PAGE_SIZE,
     };
-  }, [searchParams]);
+  }, [searchParams, currentPage]);
 
   const parsedFilters: ExploreQuickFilterField[] = useMemo(() => {
     return COLUMN_GRID_FILTERS.map((filter) => ({
@@ -139,15 +137,7 @@ export const useColumnGridListingData = (
     currentPage: urlState.currentPage,
     totalEntities: effectiveTotal,
     pageSize: urlState.pageSize,
-    onPageChange: (page) => {
-      const newParams = new URLSearchParams(searchParams);
-      if (page > 1) {
-        newParams.set('page', page.toString());
-      } else {
-        newParams.delete('page');
-      }
-      setSearchParams(newParams);
-    },
+    onPageChange: setCurrentPage,
   });
 
   // Convert URL filters to ColumnGridFilters
@@ -190,25 +180,6 @@ export const useColumnGridListingData = (
             ...filters,
             ...(searchQuery && { columnNamePattern: searchQuery }),
           };
-
-        // Log the API request for debugging
-        // Uncomment for debugging:
-        // console.log('ColumnGrid API Request:', {
-        //   url: '/columns/grid',
-        //   params: apiParams,
-        //   queryString: new URLSearchParams(
-        //     Object.entries(apiParams).reduce((acc, [key, value]) => {
-        //       if (value !== undefined && value !== null) {
-        //         if (Array.isArray(value)) {
-        //           acc[key] = value.join(',');
-        //         } else {
-        //           acc[key] = String(value);
-        //         }
-        //       }
-        //       return acc;
-        //     }, {} as Record<string, string>)
-        //   ).toString(),
-        // });
 
         const response = await getColumnGrid(apiParams);
 
@@ -396,8 +367,8 @@ export const useColumnGridListingData = (
       } else {
         newParams.delete('q');
       }
-      newParams.delete('page');
       setSearchParams(newParams);
+      setCurrentPage(1);
     },
     [searchParams, setSearchParams]
   );
@@ -422,38 +393,19 @@ export const useColumnGridListingData = (
         }
       });
 
-      newParams.delete('page');
       setSearchParams(newParams);
+      setCurrentPage(1);
     },
     [searchParams, setSearchParams]
   );
 
-  const handlePageChange = useCallback(
-    (page: number) => {
-      const newParams = new URLSearchParams(searchParams);
-      if (page > 1) {
-        newParams.set('page', page.toString());
-      } else {
-        newParams.delete('page');
-      }
-      setSearchParams(newParams);
-    },
-    [searchParams, setSearchParams]
-  );
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+  }, []);
 
-  const handlePageSizeChange = useCallback(
-    (size: number) => {
-      const newParams = new URLSearchParams(searchParams);
-      if (size !== PAGE_SIZE) {
-        newParams.set('size', size.toString());
-      } else {
-        newParams.delete('size');
-      }
-      newParams.delete('page');
-      setSearchParams(newParams);
-    },
-    [searchParams, setSearchParams]
-  );
+  const handlePageSizeChange = useCallback((_size: number) => {
+    setCurrentPage(1);
+  }, []);
 
   const refetch = useCallback(() => {
     // Clear ALL caches to ensure fresh data is fetched from the server

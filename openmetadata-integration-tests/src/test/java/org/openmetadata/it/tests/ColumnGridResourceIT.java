@@ -104,8 +104,7 @@ public class ColumnGridResourceIT {
     // Use just "shared_across" as pattern (not ns.prefix) to find the column name
     ColumnGridResponse response =
         getColumnGrid(
-            client,
-            "entityTypes=table,dashboardDataModel&columnNamePattern=shared_across");
+            client, "entityTypes=table,dashboardDataModel&columnNamePattern=shared_across");
 
     assertNotNull(response, "Response should not be null");
     assertNotNull(response.getColumns(), "Columns should not be null");

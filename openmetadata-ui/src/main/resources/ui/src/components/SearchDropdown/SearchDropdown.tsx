@@ -273,9 +273,12 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
               </Button>
             </>
           )}
-          <Divider
-            className={classNames(showClearAllBtn ? 'm-y-0' : 'm-t-xs m-b-0')}
-          />
+          {!hideSearchBar && (
+            <Divider
+              className={classNames(showClearAllBtn ? 'm-y-0' : 'm-t-xs m-b-0')}
+            />
+          )}
+
           {hasNullOption && (
             <>
               <div className="d-flex items-center m-x-sm m-y-xs gap-2">
