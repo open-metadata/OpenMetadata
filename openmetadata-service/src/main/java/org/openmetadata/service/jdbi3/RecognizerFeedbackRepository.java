@@ -310,7 +310,15 @@ public class RecognizerFeedbackRepository {
         List<Column> results =
             tableRepository
                 .getTableColumnsByFQN(
-                    entity.getFullyQualifiedName(), Integer.MAX_VALUE, 0, "tags", null, null, null)
+                    entity.getFullyQualifiedName(),
+                    Integer.MAX_VALUE,
+                    0,
+                    "tags",
+                    null,
+                    "ordinalPosition",
+                    null,
+                    null,
+                    null)
                 .getData();
 
         originalEntity =
