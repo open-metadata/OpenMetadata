@@ -37,6 +37,7 @@ import {
   pruneEmptyChildren,
   shouldCollapseSchema,
   updateColumnInNestedStructure,
+  updateFieldExtension,
 } from '../utils/TableUtils';
 import EntityLink from './EntityLink';
 import { extractTableColumns } from './TableUtils';
@@ -1811,6 +1812,337 @@ describe('TableUtils', () => {
       expect(
         getHighlightedRowClassName(record, 'test.database.schema.table.column1')
       ).toBe('highlighted-row');
+    });
+  });
+
+  describe('updateFieldExtension', () => {
+    it('should update extension for a field at root level', () => {
+      const fields: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'table.column1',
+          dataType: DataType.String,
+        } as Column,
+        {
+          name: 'column2',
+          fullyQualifiedName: 'table.column2',
+          dataType: DataType.Int,
+        } as Column,
+      ];
+
+      const newExtension = { customProperty: 'value1', anotherProp: 123 };
+      updateFieldExtension('table.column1', newExtension, fields);
+
+      expect(fields[0].extension).toEqual(newExtension);
+      expect(fields[1].extension).toBeUndefined();
+    });
+
+    it('should update extension for a field in nested children', () => {
+      const fields: Column[] = [
+        {
+          name: 'parentColumn',
+          fullyQualifiedName: 'table.parentColumn',
+          dataType: DataType.Struct,
+          children: [
+            {
+              name: 'nestedColumn',
+              fullyQualifiedName: 'table.parentColumn.nestedColumn',
+              dataType: DataType.String,
+            } as Column,
+            {
+              name: 'anotherNestedColumn',
+              fullyQualifiedName: 'table.parentColumn.anotherNestedColumn',
+              dataType: DataType.Int,
+            } as Column,
+          ],
+        } as Column,
+      ];
+
+      const newExtension = { nestedProperty: 'nestedValue' };
+      updateFieldExtension(
+        'table.parentColumn.nestedColumn',
+        newExtension,
+        fields
+      );
+
+      expect(fields[0].children?.[0].extension).toEqual(newExtension);
+      expect(fields[0].children?.[1].extension).toBeUndefined();
+      expect(fields[0].extension).toBeUndefined();
+    });
+
+    it('should update extension for a field in deeply nested children', () => {
+      const fields: Column[] = [
+        {
+          name: 'level1',
+          fullyQualifiedName: 'table.level1',
+          dataType: DataType.Struct,
+          children: [
+            {
+              name: 'level2',
+              fullyQualifiedName: 'table.level1.level2',
+              dataType: DataType.Struct,
+              children: [
+                {
+                  name: 'level3',
+                  fullyQualifiedName: 'table.level1.level2.level3',
+                  dataType: DataType.String,
+                } as Column,
+              ],
+            } as Column,
+          ],
+        } as Column,
+      ];
+
+      const newExtension = { deepProperty: 'deepValue' };
+      updateFieldExtension('table.level1.level2.level3', newExtension, fields);
+
+      expect(fields[0].children?.[0].children?.[0].extension).toEqual(
+        newExtension
+      );
+    });
+
+    it('should not modify fields when target FQN does not exist', () => {
+      const fields: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'table.column1',
+          dataType: DataType.String,
+          extension: { existing: 'value' },
+        } as Column,
+      ];
+
+      const originalExtension = { ...fields[0].extension };
+      const newExtension = { newProperty: 'newValue' };
+
+      updateFieldExtension('table.nonexistent', newExtension, fields);
+
+      expect(fields[0].extension).toEqual(originalExtension);
+    });
+
+    it('should handle empty array', () => {
+      const fields: Column[] = [];
+      const newExtension = { property: 'value' };
+
+      expect(() => {
+        updateFieldExtension('table.column1', newExtension, fields);
+      }).not.toThrow();
+    });
+
+    it('should handle undefined searchIndexFields', () => {
+      const newExtension = { property: 'value' };
+
+      expect(() => {
+        updateFieldExtension('table.column1', newExtension, undefined);
+      }).not.toThrow();
+    });
+
+    it('should replace existing extension with new extension', () => {
+      const fields: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'table.column1',
+          dataType: DataType.String,
+          extension: { oldProperty: 'oldValue' },
+        } as Column,
+      ];
+
+      const newExtension = { newProperty: 'newValue', anotherProp: 456 };
+      updateFieldExtension('table.column1', newExtension, fields);
+
+      expect(fields[0].extension).toEqual(newExtension);
+      expect(fields[0].extension).not.toHaveProperty('oldProperty');
+    });
+
+    it('should update extension for multiple fields with same FQN pattern', () => {
+      const fields: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'table.column1',
+          dataType: DataType.String,
+        } as Column,
+        {
+          name: 'parentColumn',
+          fullyQualifiedName: 'table.parentColumn',
+          dataType: DataType.Struct,
+          children: [
+            {
+              name: 'column1',
+              fullyQualifiedName: 'table.parentColumn.column1',
+              dataType: DataType.String,
+            } as Column,
+          ],
+        } as Column,
+      ];
+
+      const newExtension = { property: 'value' };
+      updateFieldExtension('table.column1', newExtension, fields);
+
+      expect(fields[0].extension).toEqual(newExtension);
+      expect(fields[1].children?.[0].extension).toBeUndefined();
+    });
+
+    it('should work with SearchIndexField type', () => {
+      const fields = [
+        {
+          name: 'field1',
+          fullyQualifiedName: 'index.field1',
+          dataType: 'TEXT',
+        },
+        {
+          name: 'field2',
+          fullyQualifiedName: 'index.field2',
+          dataType: 'KEYWORD',
+        },
+      ];
+
+      const newExtension = { searchProperty: 'searchValue' };
+      updateFieldExtension('index.field1', newExtension, fields);
+
+      expect(fields[0].extension).toEqual(newExtension);
+      expect(fields[1].extension).toBeUndefined();
+    });
+
+    it('should work with Field type (Topic)', () => {
+      const fields = [
+        {
+          name: 'topicField1',
+          fullyQualifiedName: 'topic.field1',
+          dataType: 'STRING',
+        },
+        {
+          name: 'topicField2',
+          fullyQualifiedName: 'topic.field2',
+          dataType: 'INT',
+        },
+      ];
+
+      const newExtension = { topicProperty: 'topicValue' };
+      updateFieldExtension('topic.field1', newExtension, fields);
+
+      expect(fields[0].extension).toEqual(newExtension);
+      expect(fields[1].extension).toBeUndefined();
+    });
+
+    it('should handle fields with undefined children', () => {
+      const fields: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'table.column1',
+          dataType: DataType.String,
+          children: undefined,
+        } as Column,
+      ];
+
+      const newExtension = { property: 'value' };
+      updateFieldExtension('table.column1', newExtension, fields);
+
+      expect(fields[0].extension).toEqual(newExtension);
+    });
+
+    it('should handle fields with empty children array', () => {
+      const fields: Column[] = [
+        {
+          name: 'parentColumn',
+          fullyQualifiedName: 'table.parentColumn',
+          dataType: DataType.Struct,
+          children: [],
+        } as Column,
+      ];
+
+      const newExtension = { property: 'value' };
+      updateFieldExtension('table.parentColumn', newExtension, fields);
+
+      expect(fields[0].extension).toEqual(newExtension);
+    });
+
+    it('should update extension with complex nested object', () => {
+      const fields: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'table.column1',
+          dataType: DataType.String,
+        } as Column,
+      ];
+
+      const complexExtension = {
+        metadata: {
+          source: 'external',
+          version: 1,
+        },
+        tags: ['tag1', 'tag2'],
+        config: {
+          enabled: true,
+          settings: {
+            timeout: 5000,
+            retries: 3,
+          },
+        },
+      };
+
+      updateFieldExtension('table.column1', complexExtension, fields);
+
+      expect(fields[0].extension).toEqual(complexExtension);
+      expect(fields[0].extension?.metadata?.source).toBe('external');
+      expect(fields[0].extension?.config?.settings?.timeout).toBe(5000);
+    });
+
+    it('should handle multiple nested fields and update only the target', () => {
+      const fields: Column[] = [
+        {
+          name: 'parent1',
+          fullyQualifiedName: 'table.parent1',
+          dataType: DataType.Struct,
+          children: [
+            {
+              name: 'child1',
+              fullyQualifiedName: 'table.parent1.child1',
+              dataType: DataType.String,
+            } as Column,
+            {
+              name: 'child2',
+              fullyQualifiedName: 'table.parent1.child2',
+              dataType: DataType.Int,
+            } as Column,
+          ],
+        } as Column,
+        {
+          name: 'parent2',
+          fullyQualifiedName: 'table.parent2',
+          dataType: DataType.Struct,
+          children: [
+            {
+              name: 'child1',
+              fullyQualifiedName: 'table.parent2.child1',
+              dataType: DataType.String,
+            } as Column,
+          ],
+        } as Column,
+      ];
+
+      const newExtension = { targetProperty: 'targetValue' };
+      updateFieldExtension('table.parent1.child2', newExtension, fields);
+
+      expect(fields[0].children?.[1].extension).toEqual(newExtension);
+      expect(fields[0].children?.[0].extension).toBeUndefined();
+      expect(fields[1].children?.[0].extension).toBeUndefined();
+      expect(fields[0].extension).toBeUndefined();
+      expect(fields[1].extension).toBeUndefined();
+    });
+
+    it('should handle empty extension object', () => {
+      const fields: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'table.column1',
+          dataType: DataType.String,
+          extension: { existing: 'value' },
+        } as Column,
+      ];
+
+      const emptyExtension = {};
+      updateFieldExtension('table.column1', emptyExtension, fields);
+
+      expect(fields[0].extension).toEqual(emptyExtension);
     });
   });
 });

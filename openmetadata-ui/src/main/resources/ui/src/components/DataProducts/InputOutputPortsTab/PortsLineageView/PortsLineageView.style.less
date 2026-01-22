@@ -1,0 +1,105 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) '../../../../styles/variables.less';
+
+.ports-lineage-view {
+  .react-flow__renderer {
+    background-color: @grey-9;
+  }
+
+  .react-flow__controls {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    border: 1px solid @grey-200;
+    overflow: hidden;
+
+    .react-flow__controls-button {
+      border: none;
+      border-bottom: 1px solid @grey-200;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &:hover {
+        background-color: @grey-100;
+      }
+    }
+  }
+
+  .react-flow__edge-path {
+    stroke-linecap: round;
+  }
+
+  .data-product-center-node {
+    background-color: @white;
+    border: 2px solid @primary-color;
+    border-radius: 12px;
+    padding: 16px 24px;
+    min-width: 220px;
+    max-width: 300px;
+    box-shadow: 0 4px 12px rgba(48, 98, 212, 0.15);
+    position: relative;
+
+    .data-product-badge {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: @primary-color;
+      color: @white;
+      padding: 2px 12px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .data-product-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+
+      .data-product-icon-container {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: @primary-1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .data-product-name {
+        font-weight: 600;
+        font-size: 15px;
+        text-align: center;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 100%;
+      }
+    }
+  }
+}
+
+.ports-lineage-view-empty {
+  .ant-empty {
+    margin: 0;
+  }
+}
