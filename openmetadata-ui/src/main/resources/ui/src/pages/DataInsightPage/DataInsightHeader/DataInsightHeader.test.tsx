@@ -53,6 +53,10 @@ jest.mock('../../../utils/DataInsightUtils', () => ({
 
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
   formatDate: jest.fn().mockReturnValue('formattedDate'),
+  getEpochMillisForPastDays: jest.fn().mockReturnValue(0),
+  getStartOfDayInMillis: jest.fn().mockReturnValue(0),
+  getEndOfDayInMillis: jest.fn().mockReturnValue(0),
+  getCurrentMillis: jest.fn().mockReturnValue(0),
 }));
 
 jest.mock('../../../utils/PermissionsUtils', () => ({
@@ -66,7 +70,7 @@ jest.mock('../DataInsightProvider', () => ({
 }));
 
 jest.mock('../../../constants/constants', () => ({
-  ROUTES: {},
+  ...jest.requireActual('../../../constants/constants'),
 }));
 
 jest.mock(
