@@ -35,7 +35,9 @@ class TestSinkEmptyTagValidation:
         self.config = MetadataRestSinkConfig(bulk_sink_batch_size=10)
         self.sink = MetadataRestSink(self.config, self.mock_metadata)
 
-    def _create_tag_record(self, tag_name: str, classification_name: str = "TestClassification"):
+    def _create_tag_record(
+        self, tag_name: str, classification_name: str = "TestClassification"
+    ):
         """Helper to create OMetaTagAndClassification record"""
         return OMetaTagAndClassification(
             fqn=FullyQualifiedEntityName("test.fqn"),
@@ -127,7 +129,10 @@ class TestSinkEmptyTagValidation:
         """Test that classification is created before tag"""
         mock_classification = Mock()
         mock_tag = Mock()
-        self.mock_metadata.create_or_update.side_effect = [mock_classification, mock_tag]
+        self.mock_metadata.create_or_update.side_effect = [
+            mock_classification,
+            mock_tag,
+        ]
 
         record = self._create_tag_record("TestTag", "TestClassification")
         self.sink.write_classification_and_tag(record)
