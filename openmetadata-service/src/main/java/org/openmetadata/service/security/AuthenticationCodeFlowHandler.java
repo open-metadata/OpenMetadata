@@ -128,6 +128,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   public static final String DEFAULT_PRINCIPAL_DOMAIN = "openmetadata.org";
   public static final String OIDC_CREDENTIAL_PROFILE = "oidcCredentialProfile";
   public static final String SESSION_REDIRECT_URI = "sessionRedirectUri";
+  public static final String SESSION_GOOGLE_CALLBACK_URL = "googleCallbackUrl";
   public static final String SESSION_USER_ID = "userId";
   public static final String SESSION_USERNAME = "username";
   public static final String REDIRECT_URI_KEY = "redirectUri";
@@ -321,7 +322,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       String requestedRedirectUri = req.getParameter(REDIRECT_URI_KEY);
 
       // Determine Google callback URL and final redirect URI based on the flow:
-      // 1. MCP OAuth flow: requestedRedirectUri is a full URL (e.g., https://ngrok-url/mcp/callback)
+      // 1. MCP OAuth flow: requestedRedirectUri is a full URL (e.g.,
+      // https://ngrok-url/mcp/callback)
       //    - Use the full URL for Google OAuth callback
       //    - MCP handles its own final redirect
       // 2. Web login flow: requestedRedirectUri is a relative path (e.g., /auth/callback)
@@ -340,12 +342,14 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       } else {
         // Regular web login: use configured callback for Google, store frontend path for redirect
         googleCallbackUrl = client.getCallbackUrl();
-        finalRedirectUri =
-            requestedRedirectUri != null ? requestedRedirectUri : googleCallbackUrl;
+        finalRedirectUri = requestedRedirectUri != null ? requestedRedirectUri : googleCallbackUrl;
         LOG.info("Web login flow detected - using configured callback URL for Google OAuth");
       }
 
       checkAndStoreRedirectUriInSession(session, finalRedirectUri);
+
+      // Store the Google callback URL used for authorization so token exchange uses the same URL
+      session.setAttribute(SESSION_GOOGLE_CALLBACK_URL, googleCallbackUrl);
 
       LOG.info(
           "Auth Login - Session: {}, requestedRedirectUri: {}, googleCallbackUrl: {}, finalRedirectUri: {}",
@@ -420,9 +424,18 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       }
 
       LOG.info("Performing Auth Callback For User Session: {} ", session.getId());
-      // Always use the backend's configured callback URL for token exchange (must match what was sent to Google)
-      // SESSION_REDIRECT_URI now stores the frontend's final redirect URL, not the Google callback URL
-      String computedCallbackUrl = client.getCallbackUrl();
+
+      // Retrieve the Google callback URL that was used during authorization
+      // This MUST match the redirect_uri sent to Google in the authorization request
+      String computedCallbackUrl = (String) session.getAttribute(SESSION_GOOGLE_CALLBACK_URL);
+      if (computedCallbackUrl == null) {
+        // Fallback to client's callback URL if not found in session (backward compatibility)
+        computedCallbackUrl = client.getCallbackUrl();
+        LOG.warn(
+            "Google callback URL not found in session {}, using client callback URL: {}",
+            session.getId(),
+            computedCallbackUrl);
+      }
       LOG.info("Token exchange using callback URL: {}", computedCallbackUrl);
       Map<String, List<String>> parameters = retrieveCallbackParameters(req);
       AuthenticationResponse response =
@@ -875,8 +888,34 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       LOG.info("Admin principals list: {}", getAdminPrincipals());
 
       String domain = email.split("@")[1];
+
+      // Validate email domain against allowed registration domains
+      Set<String> allowedDomains = authorizerConfiguration.getAllowedEmailRegistrationDomains();
+      if (allowedDomains != null
+          && !allowedDomains.contains("all")
+          && !allowedDomains.contains(domain)) {
+        LOG.warn(
+            "SECURITY: Blocked OAuth signup for disallowed domain: {} (user: {})", domain, email);
+        throw new AuthenticationException("Email domain not allowed for self-signup: " + domain);
+      }
+
       User newUser =
           UserUtil.user(userName, domain, userName).withIsAdmin(isAdmin).withIsEmailVerified(true);
+
+      // Assign default role if configured
+      String defaultRoleName = authorizerConfiguration.getDefaultOAuthRole();
+      if (defaultRoleName != null && !defaultRoleName.isEmpty()) {
+        try {
+          org.openmetadata.schema.entity.teams.Role defaultRole =
+              Entity.getEntityByName(Entity.ROLE, defaultRoleName, "", Include.NON_DELETED);
+          newUser.setRoles(List.of(defaultRole.getEntityReference()));
+          LOG.info("Assigned default OAuth role '{}' to new user: {}", defaultRoleName, userName);
+        } catch (EntityNotFoundException ex) {
+          LOG.error(
+              "Default OAuth role '{}' not found. User will be created without roles.",
+              defaultRoleName);
+        }
+      }
 
       // Assign teams from claims if provided
       UserUtil.assignTeamsFromClaim(newUser, teamsFromClaim);

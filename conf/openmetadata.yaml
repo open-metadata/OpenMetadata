@@ -280,24 +280,31 @@ authorizerConfiguration:
   className: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
   containerRequestFilter: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.service.security.JwtFilter}
   adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
+  # For MCP OAuth: Set to specific domains like ["company.com"] to restrict self-signup
   allowedEmailRegistrationDomains: ${AUTHORIZER_ALLOWED_REGISTRATION_DOMAIN:-["all"]}
   principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"open-metadata.org"}
   allowedDomains: ${AUTHORIZER_ALLOWED_DOMAINS:-[]}
   enforcePrincipalDomain: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
   enableSecureSocketConnection : ${AUTHORIZER_ENABLE_SECURE_SOCKET:-false}
   useRolesFromProvider: ${AUTHORIZER_USE_ROLES_FROM_PROVIDER:-false}
+  # For MCP OAuth: Default role assigned to new OAuth users (e.g., "DataConsumer")
+  defaultOAuthRole: ${AUTHORIZER_DEFAULT_OAUTH_ROLE:-null}
 
 authenticationConfiguration:
+  # For SSO: Set to "confidential" and configure OIDC settings below
   clientType: ${AUTHENTICATION_CLIENT_TYPE:-public}
+  # For SSO: Set to "google", "okta", "azure", etc. and configure OIDC credentials
   provider: ${AUTHENTICATION_PROVIDER:-basic}
   # This is used by auth provider provide response as either id_token or code
   responseType: ${AUTHENTICATION_RESPONSE_TYPE:-id_token}
   # This will only be valid when provider type specified is customOidc
   providerName: ${CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME:-""}
+  # For SSO: Set to provider's JWKS URL (e.g., ["https://www.googleapis.com/oauth2/v3/certs"])
   publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[http://localhost:8585/api/v1/system/config/jwks]}
   tokenValidationAlgorithm: ${AUTHENTICATION_TOKEN_VALIDATION_ALGORITHM:-"RS256"}
   authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
   clientId: ${AUTHENTICATION_CLIENT_ID:-""}
+  # For SSO: Set to your OAuth callback URL (e.g., "https://yourhost/api/v1/callback")
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
   jwtPrincipalClaimsMapping: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS_MAPPING:-[]}
@@ -308,11 +315,13 @@ authenticationConfiguration:
   # Default: false (secure flag only set when HTTPS is detected)
   forceSecureSessionCookie: ${FORCE_SECURE_SESSION_COOKIE:-false}
   oidcConfiguration:
+    # REQUIRED for SSO: OAuth client ID from your identity provider
     id: ${OIDC_CLIENT_ID:-""}
-    type: ${OIDC_TYPE:-""} # google, azure etc.
+    type: ${OIDC_TYPE:-"google"}
+    # REQUIRED for SSO: OAuth client secret from your identity provider (NEVER commit this!)
     secret: ${OIDC_CLIENT_SECRET:-""}
     scope: ${OIDC_SCOPE:-"openid email profile"}
-    discoveryUri: ${OIDC_DISCOVERY_URI:-""}
+    discoveryUri: ${OIDC_DISCOVERY_URI:-"https://accounts.google.com/.well-known/openid-configuration"}
     useNonce: ${OIDC_USE_NONCE:-true}
     preferredJwsAlgorithm: ${OIDC_PREFERRED_JWS:-"RS256"}
     responseType: ${OIDC_RESPONSE_TYPE:-"code"}

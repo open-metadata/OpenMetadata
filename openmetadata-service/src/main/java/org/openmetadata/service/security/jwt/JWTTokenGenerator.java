@@ -57,6 +57,7 @@ public class JWTTokenGenerator {
   public static final String PREFERRED_USERNAME = "preferred_username";
   public static final String USERNAME = "username";
   public static final String IMPERSONATED_USER_CLAIM = "impersonatedUser";
+  public static final String SCOPE_CLAIM = "scope";
   private static final JWTTokenGenerator INSTANCE = new JWTTokenGenerator();
   private RSAPrivateKey privateKey;
   @Getter private RSAPublicKey publicKey;
@@ -120,6 +121,19 @@ public class JWTTokenGenerator {
       long expiryInSeconds,
       boolean isBot,
       ServiceTokenType tokenType) {
+    return generateJWTToken(
+        userName, roles, isAdmin, email, expiryInSeconds, isBot, tokenType, null);
+  }
+
+  public JWTAuthMechanism generateJWTToken(
+      String userName,
+      Set<String> roles,
+      boolean isAdmin,
+      String email,
+      long expiryInSeconds,
+      boolean isBot,
+      ServiceTokenType tokenType,
+      List<String> scopes) {
     return getJwtAuthMechanism(
         userName,
         roles,
@@ -128,7 +142,8 @@ public class JWTTokenGenerator {
         isBot,
         tokenType,
         getCustomExpiryDate(expiryInSeconds),
-        null);
+        null,
+        scopes);
   }
 
   public JWTAuthMechanism getJwtAuthMechanism(
@@ -140,9 +155,21 @@ public class JWTTokenGenerator {
       ServiceTokenType tokenType,
       Date expires,
       JWTTokenExpiry expiry) {
+    return getJwtAuthMechanism(
+        userName, roles, isAdmin, email, isBot, tokenType, expires, expiry, null);
+  }
+
+  public JWTAuthMechanism getJwtAuthMechanism(
+      String userName,
+      Set<String> roles,
+      boolean isAdmin,
+      String email,
+      boolean isBot,
+      ServiceTokenType tokenType,
+      Date expires,
+      JWTTokenExpiry expiry,
+      List<String> scopes) {
     try {
-      // Handle the Admin Role Here Since there is no Admin Role as such , just a isAdmin flag in
-      // User Schema
       if (isAdmin) {
         if (nullOrEmpty(roles)) {
           roles = Set.of(ADMIN_ROLE);
@@ -152,7 +179,7 @@ public class JWTTokenGenerator {
       }
       JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTTokenExpiry(expiry);
       Algorithm algorithm = getAlgorithm(tokenValidationAlgorithm, null, privateKey);
-      String token =
+      var tokenBuilder =
           JWT.create()
               .withIssuer(issuer)
               .withKeyId(kid)
@@ -164,8 +191,13 @@ public class JWTTokenGenerator {
               .withClaim(USERNAME, userName)
               .withClaim(PREFERRED_USERNAME, userName)
               .withIssuedAt(new Date(System.currentTimeMillis()))
-              .withExpiresAt(expires)
-              .sign(algorithm);
+              .withExpiresAt(expires);
+
+      if (scopes != null && !scopes.isEmpty()) {
+        tokenBuilder.withClaim(SCOPE_CLAIM, String.join(" ", scopes));
+      }
+
+      String token = tokenBuilder.sign(algorithm);
       jwtAuthMechanism.setJWTToken(token);
       jwtAuthMechanism.setJWTTokenExpiresAt(expires != null ? expires.getTime() : null);
       return jwtAuthMechanism;

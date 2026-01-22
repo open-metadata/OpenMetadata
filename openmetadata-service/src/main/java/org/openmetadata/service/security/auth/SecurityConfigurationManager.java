@@ -78,19 +78,15 @@ public class SecurityConfigurationManager {
     environment = env;
     this.config = config;
 
-    // Try to load from database first
-    try {
-      currentAuthConfig =
-          SettingsCache.getSetting(AUTHENTICATION_CONFIGURATION, AuthenticationConfiguration.class);
-      currentAuthzConfig =
-          SettingsCache.getSetting(AUTHORIZER_CONFIGURATION, AuthorizerConfiguration.class);
-      LOG.info("Loaded security configuration from database");
-    } catch (Exception e) {
-      // If not in database, use the one from YAML
-      currentAuthConfig = config.getAuthenticationConfiguration();
-      currentAuthzConfig = config.getAuthorizerConfiguration();
-      LOG.info("Using security configuration from YAML");
-    }
+    // Always use YAML configuration for auth during startup
+    // This ensures environment variables and YAML defaults take precedence
+    // Database settings can override this later via the Settings API
+    currentAuthConfig = config.getAuthenticationConfiguration();
+    currentAuthzConfig = config.getAuthorizerConfiguration();
+    LOG.info(
+        "Using security configuration from YAML - provider: {}, clientType: {}",
+        currentAuthConfig != null ? currentAuthConfig.getProvider() : "null",
+        currentAuthConfig != null ? currentAuthConfig.getClientType() : "null");
   }
 
   public SecurityConfiguration getCurrentSecurityConfig() {
