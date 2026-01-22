@@ -147,6 +147,7 @@ describe('LearningResourceForm', () => {
     });
 
     expect(screen.getByText('label.name')).toBeInTheDocument();
+    expect(screen.getByText('label.display-name')).toBeInTheDocument();
     expect(screen.getByText('label.description')).toBeInTheDocument();
     expect(screen.getByText('label.type')).toBeInTheDocument();
     expect(screen.getByText('label.category-plural')).toBeInTheDocument();
@@ -155,6 +156,26 @@ describe('LearningResourceForm', () => {
     expect(screen.getByText('label.source-provider')).toBeInTheDocument();
     expect(screen.getByText('label.duration')).toBeInTheDocument();
     expect(screen.getByText('label.status')).toBeInTheDocument();
+  });
+
+  it('should disable name field when editing', async () => {
+    await act(async () => {
+      render(<LearningResourceForm {...mockProps} resource={mockResource} />);
+    });
+
+    const nameInput = document.querySelector('#name') as HTMLInputElement;
+
+    expect(nameInput).toBeDisabled();
+  });
+
+  it('should enable name field when creating new', async () => {
+    await act(async () => {
+      render(<LearningResourceForm {...mockProps} />);
+    });
+
+    const nameInput = document.querySelector('#name') as HTMLInputElement;
+
+    expect(nameInput).not.toBeDisabled();
   });
 
   it('should not render when open is false', async () => {

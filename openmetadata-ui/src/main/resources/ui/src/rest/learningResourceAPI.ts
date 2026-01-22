@@ -139,14 +139,12 @@ export const createLearningResource = async (data: CreateLearningResource) => {
   return response.data;
 };
 
-export const updateLearningResource = async (
-  id: string,
-  data: CreateLearningResource
-) => {
+export const updateLearningResource = async (data: CreateLearningResource) => {
+  // PUT without ID does create-or-update by name
   const response = await APIClient.put<
     CreateLearningResource,
     AxiosResponse<LearningResource>
-  >(`${BASE_URL}/${id}`, data);
+  >(BASE_URL, data);
 
   return response.data;
 };
