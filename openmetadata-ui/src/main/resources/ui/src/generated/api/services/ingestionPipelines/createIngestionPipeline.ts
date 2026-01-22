@@ -916,10 +916,11 @@ export interface Pipeline {
  *
  * Regex to filter MuleSoft applications by name.
  *
+ * Regex to only include/exclude pipelines that matches the pattern.
+ *
  * Regex to only include/exclude directories that match the pattern.
  *
  * Regex to only include/exclude files that match the pattern.
- * Regex to only include/exclude pipelines that matches the pattern.
  *
  * Regex to only fetch tags that matches the pattern.
  */
