@@ -29,6 +29,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
+import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -56,6 +57,7 @@ import Loader from '../../common/Loader/Loader';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../common/Table/Table';
+import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
 import TestDefinitionForm from '../TestDefinitionForm/TestDefinitionForm.component';
 
@@ -456,9 +458,15 @@ const TestDefinitionList = () => {
           <Card>
             <Row justify="space-between">
               <Col>
-                <Typography.Title level={5}>
-                  {t('label.data-quality-rule-plural')}
-                </Typography.Title>
+                <div className="flex gap-2 items-center m-b-xss">
+                  <Typography.Title className="m-b-0" level={5}>
+                    {t('label.data-quality-rule-plural')}
+                  </Typography.Title>
+                  <LearningIcon
+                    pageId={LEARNING_PAGE_IDS.RULES_LIBRARY}
+                    title={t('label.data-quality-rule-plural')}
+                  />
+                </div>
                 <Typography.Text type="secondary">
                   {t('message.page-sub-header-for-test-definitions')}
                 </Typography.Text>

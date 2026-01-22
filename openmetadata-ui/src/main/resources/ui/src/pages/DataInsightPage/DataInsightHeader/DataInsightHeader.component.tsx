@@ -82,6 +82,7 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
                 {t('label.data-insight-plural')}
               </Typography.Title>
               <LearningIcon
+                className="m-b-xs"
                 pageId={LEARNING_PAGE_IDS.DATA_INSIGHTS}
                 title={t('label.data-insight-plural')}
               />
