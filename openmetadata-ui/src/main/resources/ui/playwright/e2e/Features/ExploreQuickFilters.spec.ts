@@ -10,53 +10,55 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
-import {
-  assignSingleSelectDomain,
-  clickOutside,
-  createNewPage,
-  redirectToHomePage,
-} from '../../utils/common';
-import {
-  assignTag,
-  assignTier,
-  waitForAllLoadersToDisappear,
-} from '../../utils/entity';
+import { performAdminLogin } from '../../utils/admin';
+import { clickOutside, redirectToHomePage } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { searchAndClickOnOption, selectNullOption } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
-
-// use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
+import { test } from '../fixtures/pages';
 
 const domain = new Domain();
 const table = new TableClass();
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   test.slow();
-
-  const { page, apiContext, afterAction } = await createNewPage(browser);
+  const { apiContext, afterAction } = await performAdminLogin(browser);
   await table.create(apiContext);
   await domain.create(apiContext);
-  await table.visitEntityPage(page);
-  await assignSingleSelectDomain(page, domain.data);
-  await assignTag(
-    page,
-    'PersonalData.Personal',
-    'Add',
-    table.endpoint,
-    'KnowledgePanel.Tags'
-  );
-  await assignTier(page, 'Tier5', table.endpoint);
-  await afterAction();
-});
+  await table.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'add',
+        value: {
+          tagFQN: 'PersonalData.Personal',
+        },
+        path: '/tags/0',
+      },
+      {
+        op: 'add',
+        value: {
+          tagFQN: 'Tier.Tier5',
+        },
+        path: '/tags/1',
+      },
+      {
+        op: 'add',
+        path: '/domains/0',
+        value: {
+          id: domain.responseData.id,
+          type: 'domain',
+          name: domain.responseData.name,
+          displayName: domain.responseData.displayName,
+        },
+      },
+    ],
+  });
 
-test.afterAll('Cleanup', async ({ browser }) => {
-  const { apiContext, afterAction } = await createNewPage(browser);
-  await table.delete(apiContext);
-  await domain.delete(apiContext);
   await afterAction();
 });
 
@@ -85,7 +87,7 @@ test('search dropdown should work properly for quick filters', async ({
 
     const querySearchURL = `/api/v1/search/query?*index=dataAsset*query_filter=*should*${
       filter.key
-    }*${(filter.value ?? '').replace(/ /g, '+').toLowerCase()}*`;
+    }*${(filter.value ?? '').replaceAll(' ', '+').toLowerCase()}*`;
 
     const queryRes = page.waitForResponse(querySearchURL);
     await page.click('[data-testid="update-btn"]');
@@ -108,37 +110,35 @@ test('should search for empty or null filters', async ({ page }) => {
 });
 
 test('should show correct count for initial options', async ({ page }) => {
-  const items = [{ label: 'Tier', key: 'tier.tagFQN' }];
+  const filter = { label: 'Tier', key: 'tier.tagFQN' };
 
-  for (const filter of items) {
-    const aggregateAPI = page.waitForResponse(
-      '/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*'
-    );
-    await page.click(`[data-testid="search-dropdown-${filter.label}"]`);
+  const aggregateAPI = page.waitForResponse(
+    '/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*'
+  );
+  await page.click(`[data-testid="search-dropdown-${filter.label}"]`);
 
-    const res = await aggregateAPI;
-    const data = await res.json();
-    const buckets = data.aggregations['sterms#tier.tagFQN'].buckets;
+  const res = await aggregateAPI;
+  const data = await res.json();
+  const buckets = data.aggregations['sterms#tier.tagFQN'].buckets;
 
-    await waitForAllLoadersToDisappear(page);
+  await waitForAllLoadersToDisappear(page);
 
-    for (const bucket of buckets) {
-      const normalizedKey = bucket.key
-        .split('.')
-        .map((seg: string) =>
-          seg ? seg.charAt(0).toUpperCase() + seg.slice(1) : seg
-        )
-        .join('.');
+  for (const bucket of buckets) {
+    const normalizedKey = bucket.key
+      .split('.')
+      .map((seg: string) =>
+        seg ? seg.charAt(0).toUpperCase() + seg.slice(1) : seg
+      )
+      .join('.');
 
-      expect(
-        page
-          .locator(`[data-menu-id$="-${normalizedKey}"]`)
-          .getByTestId('filter-count')
-      ).toHaveText(bucket.doc_count.toString());
-    }
-
-    await clickOutside(page);
+    await expect(
+      page
+        .locator(`[data-menu-id$="-${normalizedKey}"]`)
+        .getByTestId('filter-count')
+    ).toHaveText(bucket.doc_count.toString());
   }
+
+  await clickOutside(page);
 });
 
 test('should search for multiple values along with null filters', async ({
@@ -175,7 +175,7 @@ test('should persist quick filter on global search', async ({ page }) => {
 
   await page
     .getByTestId('searchBox')
-    .fill(table.entityResponseData.fullyQualifiedName);
+    .fill(table.entityResponseData.fullyQualifiedName ?? '');
   await waitForSearchResponse;
 
   await clickOutside(page);

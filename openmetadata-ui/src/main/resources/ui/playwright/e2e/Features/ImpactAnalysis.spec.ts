@@ -166,20 +166,6 @@ test.describe('Impact Analysis', () => {
     await afterAction();
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await Promise.all([
-      table.delete(apiContext),
-      table2.delete(apiContext),
-      topic.delete(apiContext),
-      dashboard.delete(apiContext),
-      dataModel.delete(apiContext),
-      pipeline.delete(apiContext),
-      mlModel.delete(apiContext),
-    ]);
-    await afterAction();
-  });
-
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
@@ -216,8 +202,14 @@ test.describe('Impact Analysis', () => {
       await expect(page.getByText(node)).toBeVisible();
     }
 
+    const getUpstreamNodes1 = page.waitForResponse(
+      `/api/v1/lineage/getLineageByEntityCount?*`
+    );
+
     // Verify Dashboard is visible in Impact Analysis for Upstream
     await page.getByRole('button', { name: 'Upstream' }).click();
+
+    await getUpstreamNodes1;
 
     await expect(
       page.getByText(dashboard.entityResponseData.displayName)
@@ -251,7 +243,11 @@ test.describe('Impact Analysis', () => {
 
   test('Verify Upstream connections', async ({ page }) => {
     // Verify Dashboard is visible in Impact Analysis for Upstream
+    const getUpstreamNodes2 = page.waitForResponse(
+      `/api/v1/lineage/getLineageByEntityCount?*`
+    );
     await page.getByRole('button', { name: 'Upstream' }).click();
+    await getUpstreamNodes2;
 
     await expect(
       page.getByText(dashboard.entityResponseData.displayName)
@@ -270,8 +266,14 @@ test.describe('Impact Analysis', () => {
     await impactAnalysisResponse;
     await waitForAllLoadersToDisappear(page);
 
+    const getUpstreamNode2 = page.waitForResponse(
+      `/api/v1/lineage/getLineageByEntityCount?*`
+    );
+
     // Verify Table is visible in Impact Analysis for Upstream of Topic
     await page.getByRole('button', { name: 'Upstream' }).click();
+
+    await getUpstreamNode2;
 
     await expect(
       page.getByText(

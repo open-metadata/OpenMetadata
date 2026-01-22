@@ -65,8 +65,7 @@ import { DataProduct } from '../domain/DataProduct';
 import { Domain } from '../domain/Domain';
 import { GlossaryTerm } from '../glossary/GlossaryTerm';
 import { TagClass } from '../tag/TagClass';
-import { EntityTypeEndpoint, ENTITY_PATH } from './Entity.interface';
-
+import { ENTITY_PATH, EntityTypeEndpoint } from './Entity.interface';
 export class EntityClass {
   type = '';
   serviceCategory?: GlobalSettingOptions;
@@ -74,6 +73,7 @@ export class EntityClass {
   childrenTabId?: string;
   childrenSelectorId?: string;
   childrenSelectorId2?: string;
+  entity = {};
   endpoint: EntityTypeEndpoint;
   cleanupUser?: (apiContext: APIRequestContext) => Promise<void>;
 
@@ -94,12 +94,11 @@ export class EntityClass {
     return {};
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public set(_data: any) {
     // handle in parent component
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async visitEntityPage(_: Page) {
     // Override for entity visit
   }
@@ -274,7 +273,6 @@ export class EntityClass {
 
   async descriptionUpdate(page: Page) {
     const description =
-      // eslint-disable-next-line max-len
       'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus varius quam eu mi ullamcorper, in porttitor magna mollis. Duis a tellus aliquet nunc commodo bibendum. Donec euismod maximus porttitor. Aenean quis lacus ultrices, tincidunt erat ac, dapibus felis.';
 
     await updateDescription(page, description);
@@ -287,7 +285,6 @@ export class EntityClass {
     entityEndpoint: string
   ) {
     const description =
-      // eslint-disable-next-line max-len
       'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus varius quam eu mi ullamcorper, in porttitor magna mollis. Duis a tellus aliquet nunc commodo bibendum. Donec euismod maximus porttitor. Aenean quis lacus ultrices, tincidunt erat ac, dapibus felis.';
 
     // Add description

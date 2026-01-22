@@ -124,7 +124,6 @@ export const performZoomOut = async (page: Page) => {
   const zoomOutBtn = page.getByTestId('zoom-out');
   const enabled = await zoomOutBtn.isEnabled();
   if (enabled) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     for (const _index of Array.from({ length: 10 })) {
       await zoomOutBtn.dispatchEvent('click');
     }
@@ -184,9 +183,9 @@ export const dragConnection = async (
   targetId: string,
   isColumnLineage = false
 ) => {
-  const selector = !isColumnLineage
-    ? '.lineage-node-handle'
-    : '.lineage-column-node-handle';
+  const selector = isColumnLineage
+    ? '.lineage-column-node-handle'
+    : '.lineage-node-handle';
 
   const lineageRes = page.waitForResponse('/api/v1/lineage');
   await page
@@ -387,9 +386,11 @@ export const editPipelineEdgeDescription = async (
     `[data-testid="pipeline-label-${fromNodeFqn}-${toNodeFqn}"]`
   );
   await page.locator('.edge-info-drawer').isVisible();
-  await page
-    .locator('.edge-info-drawer [data-testid="Edge"] a')
-    .filter({ hasText: pipelineData.name });
+  await expect(
+    page
+      .locator('.edge-info-drawer [data-testid="Edge"] a')
+      .filter({ hasText: pipelineData.name })
+  ).toBeAttached();
 
   await page.click('.edge-info-drawer [data-testid="edit-description"]');
   await page.locator('.ProseMirror').first().click();
@@ -420,20 +421,25 @@ const verifyPipelineDataInDrawer = async (
   );
 
   await page.locator('.edge-info-drawer').isVisible();
-  await page
-    .locator('.edge-info-drawer [data-testid="Edge"] a')
-    .filter({ hasText: pipelineName });
+  await expect(
+    page
+      .locator('.edge-info-drawer [data-testid="Edge"] a')
+      .filter({ hasText: pipelineName })
+  ).toBeAttached();
 
   if (bVisitPipelinePageFromDrawer) {
+    const fromNodeDisplayName = get(fromNode.entity, 'displayName');
+    const toNodeDisplayName = get(toNode.entity, 'displayName');
+
     await expect(page.getByTestId('edge-header-title')).toHaveText(
       'Edge Information'
     );
     await expect(
       page.locator('.overview-section').getByTestId('Source-value')
-    ).toHaveText(fromNode.entity.displayName);
+    ).toHaveText(fromNodeDisplayName);
     await expect(
       page.locator('.overview-section').getByTestId('Target-value')
-    ).toHaveText(toNode.entity.displayName);
+    ).toHaveText(toNodeDisplayName);
     await expect(
       page.locator('.overview-section').getByTestId('Edge-value')
     ).toHaveText(pipelineName);
@@ -667,7 +673,9 @@ export const getLineageCSVData = async (page: Page) => {
 
   const csvRows = fileData
     .split('\n')
-    .map((row) => row.split(',').map((cell) => cell.replace(/"/g, '').trim()));
+    .map((row) =>
+      row.split(',').map((cell) => cell.replaceAll('"', '').trim())
+    );
 
   const headers = csvRows[0];
   await verifyCSVHeaders(headers);
@@ -698,7 +706,7 @@ export const verifyExportLineageCSV = async (
   );
 
   const arr = [];
-  for (let i = 0; i < entities.length; i++) {
+  for (const entity of entities) {
     arr.push({
       fromEntityFQN: currentEntityFQN,
       fromServiceName: get(
@@ -707,13 +715,9 @@ export const verifyExportLineageCSV = async (
         ''
       ),
       fromServiceType: get(currentEntity, 'entityResponseData.serviceType', ''),
-      toEntityFQN: get(
-        entities[i],
-        'entityResponseData.fullyQualifiedName',
-        ''
-      ),
-      toServiceName: get(entities[i], 'entityResponseData.service.name', ''),
-      toServiceType: get(entities[i], 'entityResponseData.serviceType', ''),
+      toEntityFQN: get(entity, 'entityResponseData.fullyQualifiedName', ''),
+      toServiceName: get(entity, 'entityResponseData.service.name', ''),
+      toServiceType: get(entity, 'entityResponseData.serviceType', ''),
       pipelineName: get(pipeline, 'entityResponseData.name', ''),
     });
   }
@@ -832,16 +836,13 @@ export const connectEdgeBetweenNodesViaAPI = (
   toEntity: { id: string; type: string },
   columnsLineage: Array<{ fromColumns: string[]; toColumn: string }>
 ) => {
-  return apiContext.put('/api/v1/lineage/', {
+  return apiContext.put('/api/v1/lineage', {
     data: {
       edge: {
         fromEntity,
         toEntity,
         lineageDetails: { columnsLineage, description: '' },
       },
-    },
-    headers: {
-      'Content-Type': 'application/json',
     },
   });
 };

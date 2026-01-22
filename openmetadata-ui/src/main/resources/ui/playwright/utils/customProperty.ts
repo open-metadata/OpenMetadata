@@ -17,14 +17,9 @@ import {
   ENTITY_REFERENCE_PROPERTIES,
 } from '../constant/customProperty';
 import { SidebarItem } from '../constant/sidebar';
-import { waitForAllLoadersToDisappear } from './entity';
 import {
-  navigateToEntityPanelTab,
-  navigateToExploreAndSelectTable,
-} from './entityPanel';
-import {
-  EntityTypeEndpoint,
   ENTITY_PATH,
+  EntityTypeEndpoint,
 } from '../support/entity/Entity.interface';
 import { UserClass } from '../support/user/UserClass';
 import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
@@ -34,6 +29,11 @@ import {
   descriptionBoxReadOnly,
   uuid,
 } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
+import {
+  navigateToEntityPanelTab,
+  navigateToExploreAndSelectTable,
+} from './entityPanel';
 import { sidebarClick } from './sidebar';
 
 export enum CustomPropertyType {
@@ -301,7 +301,7 @@ export const validateValueForProperty = async (data: {
     // For markdown, remove * and _ as they are formatting characters
     await expect(
       container.locator(descriptionBoxReadOnly).last()
-    ).toContainText(value.replace(/\*|_/gi, ''));
+    ).toContainText(value.replaceAll(/[*_]/gi, ''));
   } else if (
     ![
       'entityReference',
@@ -665,9 +665,9 @@ export const addCustomPropertiesForEntity = async ({
   // Enum configuration
   if (customType === 'Enum' && enumConfig) {
     for (const val of enumConfig.values) {
-      const enumInput = page.locator('#root\\/enumConfig');
+      const enumInput = page.locator(String.raw`#root\/enumConfig`);
       await enumInput.clear();
-      await enumInput.type(val, { delay: 50 });
+      await enumInput.fill(val);
       await enumInput.press('Enter');
       await expect(enumInput).toHaveValue('');
     }
@@ -679,12 +679,12 @@ export const addCustomPropertiesForEntity = async ({
   // Table configuration
   if (customType === 'Table' && tableConfig) {
     for (const val of tableConfig.columns) {
-      const columnInput = page.locator('#root\\/columns');
+      const columnInput = page.locator(String.raw`#root\/columns`);
       await columnInput.click();
       await page.waitForTimeout(200); // Allow focus to settle
       await columnInput.clear();
       await page.waitForTimeout(200); // Allow clear to settle
-      await columnInput.type(val, { delay: 100 }); // Slow typing to prevent merge
+      await columnInput.fill(val);
       await columnInput.press('Enter');
       await expect(columnInput).toHaveValue(''); // Verify input is consumed
       await page.waitForTimeout(200); // Safety wait between items
@@ -697,7 +697,7 @@ export const addCustomPropertiesForEntity = async ({
     entityReferenceConfig
   ) {
     for (const val of entityReferenceConfig) {
-      await page.click('#root\\/entityReferenceConfig');
+      await page.click(String.raw`#root\/entityReferenceConfig`);
       await page.keyboard.type(val);
       await page.click(`[title="${val}"]`);
       // Wait for dropdown to close completely
@@ -706,7 +706,7 @@ export const addCustomPropertiesForEntity = async ({
         .filter({ hasText: 'Entity Reference Types' })
         .click({ force: true });
       await expect(
-        page.locator('#root\\/entityReferenceConfig_list')
+        page.locator(String.raw`#root\/entityReferenceConfig_list`)
       ).not.toBeVisible();
       // Additional wait for DOM to settle on slower environments
       await page.waitForTimeout(300);
@@ -723,7 +723,7 @@ export const addCustomPropertiesForEntity = async ({
 
   // Description
   await expect(
-    page.locator('#root\\/entityReferenceConfig_list')
+    page.locator(String.raw`#root\/entityReferenceConfig_list`)
   ).not.toBeVisible();
   await page.locator(`${descriptionBox} p`).click();
   await page.waitForTimeout(200);
@@ -737,15 +737,28 @@ export const addCustomPropertiesForEntity = async ({
   const createPropertyPromise = page.waitForResponse(
     '/api/v1/metadata/types/*'
   );
+  const getCustomPropertiesList = page.waitForResponse(
+    '/api/v1/metadata/types/name/*?fields=customProperties'
+  );
 
   await page.click('[data-testid="create-button"]');
-  await page.waitForSelector('[data-testid="custom-property-form"]', {
-    state: 'detached',
-  });
-  await page.waitForLoadState('networkidle');
   const response = await createPropertyPromise;
 
   expect(response.status()).toBe(200);
+  await page.waitForSelector('[data-testid="custom-property-form"]', {
+    state: 'detached',
+  });
+
+  await getCustomPropertiesList;
+
+  await page.waitForSelector('[data-testid="entity-custom-fields"]', {
+    state: 'visible',
+  });
+  await page.waitForSelector(
+    '[data-testid="entity-custom-fields"] .entity-custom-properties-table [data-testid="loader"]',
+    { state: 'detached' }
+  );
+
   await expect(
     page.getByRole('row', { name: new RegExp(propertyName, 'i') })
   ).toBeVisible();
@@ -793,16 +806,16 @@ export const editCreatedProperty = async (
   await page.locator(descriptionBox).fill('This is new description');
 
   if (type === 'Enum') {
-    await page.click('#root\\/customPropertyConfig');
-    await page.fill('#root\\/customPropertyConfig', 'updatedValue');
-    await page.press('#root\\/customPropertyConfig', 'Enter');
+    await page.click(String.raw`#root\/customPropertyConfig`);
+    await page.fill(String.raw`#root\/customPropertyConfig`, 'updatedValue');
+    await page.press(String.raw`#root\/customPropertyConfig`, 'Enter');
     await clickOutside(page);
   }
 
   if (ENTITY_REFERENCE_PROPERTIES.includes(type ?? '')) {
-    await page.click('#root\\/customPropertyConfig');
-    await page.fill('#root\\/customPropertyConfig', 'Table');
-    await page.press('#root\\/customPropertyConfig', 'Enter');
+    await page.click(String.raw`#root\/customPropertyConfig`);
+    await page.fill(String.raw`#root\/customPropertyConfig`, 'Table');
+    await page.press(String.raw`#root\/customPropertyConfig`, 'Enter');
     await clickOutside(page);
   }
 
@@ -1385,9 +1398,6 @@ export const updateCustomPropertyInRightPanel = async (data: {
 
     await expect(container.getByTestId('value')).toContainText(startValue);
     await expect(container.getByTestId('value')).toContainText(endValue);
-  } else if (propertyType === 'sqlQuery') {
-    await waitForAllLoadersToDisappear(page);
-    await expect(container.getByTestId('value')).toContainText(value);
   } else if (propertyType === 'table-cp') {
     const values = value.split(',');
 
@@ -1398,13 +1408,14 @@ export const updateCustomPropertyInRightPanel = async (data: {
     // For markdown, remove * and _ as they are formatting characters
     await expect(
       container.locator(descriptionBoxReadOnly).last()
-    ).toContainText(value.replace(/\*|_/gi, ''));
+    ).toContainText(value.replaceAll(/[*_]/gi, ''));
   } else if (
     ![
       'entityReference',
       'entityReferenceList',
       'date-cp',
       'dateTime-cp',
+      'sqlQuery',
     ].includes(propertyType)
   ) {
     // For other types (string, integer, number, duration), match exact value without transformation
@@ -1418,7 +1429,7 @@ export const updateCustomPropertyInRightPanel = async (data: {
 
       for (const link of links) {
         const href = await link.getAttribute('href');
-        if (href && href.toLowerCase().includes(val.trim().toLowerCase())) {
+        if (href?.toLowerCase().includes(val.trim().toLowerCase())) {
           await expect(link).toBeVisible();
           break;
         }
