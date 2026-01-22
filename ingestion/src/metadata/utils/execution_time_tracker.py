@@ -28,6 +28,31 @@ from metadata.utils.singleton import Singleton
 logger = utils_logger()
 
 
+class ExecutionTimeMetrics(BaseModel):
+    """Execution time statistics."""
+
+    total_time: float = 0.0
+    call_count: int = 0
+    min_time: Optional[float] = None
+    max_time: Optional[float] = None
+
+    @property
+    def average_time(self) -> float:
+        """Average time per call."""
+        return self.total_time / self.call_count if self.call_count > 0 else 0.0
+
+    def update(self, elapsed: float):
+        """Update with new measurement."""
+        self.total_time += elapsed
+        self.call_count += 1
+
+        if self.min_time is None or elapsed < self.min_time:
+            self.min_time = elapsed
+
+        if self.max_time is None or elapsed > self.max_time:
+            self.max_time = elapsed
+
+
 class ExecutionTimeTrackerContext(BaseModel):
     """Small Model to hold the ExecutionTimeTracker context."""
 
@@ -81,13 +106,19 @@ class ExecutionTimeTrackerState(metaclass=Singleton):
 
     def __init__(self):
         """Initializes the state and the lock."""
-        self.state: Dict[str, float] = {}
+        self.state: Dict[str, ExecutionTimeMetrics] = {}
         self.lock = threading.Lock()
 
     def add(self, context: ExecutionTimeTrackerContext, elapsed: float):
-        """Updates the State."""
+        """Update metrics with elapsed time."""
         with self.lock:
-            self.state[context.name] = self.state.get(context.name, 0) + elapsed
+            if context.name not in self.state:
+                self.state[context.name] = ExecutionTimeMetrics()
+            self.state[context.name].update(elapsed)
+
+    def get_metrics(self, context_name: str) -> Optional[ExecutionTimeMetrics]:
+        """Get metrics by name."""
+        return self.state.get(context_name)
 
 
 class ExecutionTimeTracker(metaclass=Singleton):
@@ -167,11 +198,26 @@ class ExecutionTimeTracker(metaclass=Singleton):
             elapsed = stop - context.start
 
             logger.debug(
-                "%s executed in %s", context.name, pretty_print_time_duration(elapsed)
+                "%s executed in %s",
+                context.name,
+                pretty_print_time_duration(elapsed),
             )
 
             if context.stored:
                 self.state.add(context, elapsed)
+
+    def get_summary(self) -> Dict[str, ExecutionTimeMetrics]:
+        """Get all metrics."""
+        return dict(self.state.state)
+
+    def get_context_metrics(self, context_name: str) -> Optional[ExecutionTimeMetrics]:
+        """Get metrics by name."""
+        return self.state.get_metrics(context_name)
+
+    def reset(self) -> None:
+        """Reset all metrics."""
+        with self.state.lock:
+            self.state.state.clear()
 
 
 def calculate_execution_time(context: Optional[str] = None, store: bool = True):
