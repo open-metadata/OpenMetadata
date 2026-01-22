@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -256,35 +255,32 @@ class RecognizerFeedbackRepositoryTest {
 
     String entityLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
 
-    RecognizerException existingException = new RecognizerException();
-    existingException.setEntityLink(entityLink);
-    existingException.setReason("Existing reason");
+    RecognizerFeedback feedback =
+        repository.create(
+            new RecognizerFeedback()
+                .withId(UUID.randomUUID())
+                .withTagFQN(tagFqn)
+                .withEntityLink(entityLink)
+                .withFeedbackType(RecognizerFeedback.FeedbackType.FALSE_POSITIVE)
+                .withUserReason(RecognizerFeedback.UserReason.NOT_SENSITIVE_DATA)
+                .withStatus(RecognizerFeedback.Status.PENDING)
+                .withCreatedBy(createUserReference("admin")));
+    repository.applyFeedback(feedback, "reviewer");
 
-    Tag tag = tagRepository.getByName(null, tagFqn, tagRepository.getFields("recognizers"));
-    Recognizer recognizer = tag.getRecognizers().get(0);
-    recognizer.setExceptionList(new ArrayList<>(Arrays.asList(existingException)));
-
-    Tag originalTag = tag;
-    tagRepository.patch(
-        null,
-        tag.getId(),
-        "admin",
-        org.openmetadata.schema.utils.JsonUtils.getJsonPatch(originalTag, tag),
-        org.openmetadata.schema.type.change.ChangeSource.MANUAL);
-
-    RecognizerFeedback feedback = new RecognizerFeedback();
-    feedback.setEntityLink(entityLink);
-    feedback.setTagFQN(tagFqn);
-    feedback.setFeedbackType(RecognizerFeedback.FeedbackType.FALSE_POSITIVE);
-    feedback.setUserReason(RecognizerFeedback.UserReason.NOT_SENSITIVE_DATA);
-    feedback.setCreatedBy(createUserReference("admin"));
-    feedback.setStatus(RecognizerFeedback.Status.PENDING);
-
-    RecognizerFeedback created = repository.create(feedback);
-    repository.applyFeedback(created, "admin");
+    feedback =
+        repository.create(
+            new RecognizerFeedback()
+                .withId(UUID.randomUUID())
+                .withTagFQN(tagFqn)
+                .withEntityLink(entityLink)
+                .withFeedbackType(RecognizerFeedback.FeedbackType.FALSE_POSITIVE)
+                .withUserReason(RecognizerFeedback.UserReason.NOT_SENSITIVE_DATA)
+                .withStatus(RecognizerFeedback.Status.PENDING)
+                .withCreatedBy(createUserReference("admin")));
+    repository.applyFeedback(feedback, "reviewer");
 
     Tag updatedTag = tagRepository.getByName(null, tagFqn, tagRepository.getFields("recognizers"));
-    assertEquals(1, updatedTag.getRecognizers().get(0).getExceptionList().size());
+    assertEquals(1, updatedTag.getRecognizers().getFirst().getExceptionList().size());
   }
 
   @Test
