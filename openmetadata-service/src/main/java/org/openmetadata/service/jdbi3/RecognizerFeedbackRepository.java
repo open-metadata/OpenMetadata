@@ -113,9 +113,7 @@ public class RecognizerFeedbackRepository {
       Tag originalTag = JsonUtils.readValue(JsonUtils.pojoToJson(tag), Tag.class);
 
       for (Recognizer recognizer : tag.getRecognizers()) {
-        if (shouldUpdateRecognizer(recognizer, feedback)) {
-          addExceptionToRecognizer(recognizer, feedback);
-        }
+        addExceptionToRecognizer(recognizer, feedback);
       }
 
       tagRepository.patch(
@@ -191,10 +189,6 @@ public class RecognizerFeedbackRepository {
           feedback.getEntityLink(),
           recognizer.getName());
     }
-  }
-
-  private boolean shouldUpdateRecognizer(Recognizer recognizer, RecognizerFeedback feedback) {
-    return feedback.getFeedbackType() == RecognizerFeedback.FeedbackType.FALSE_POSITIVE;
   }
 
   @SuppressWarnings({"unchecked", "rawtypes"})
