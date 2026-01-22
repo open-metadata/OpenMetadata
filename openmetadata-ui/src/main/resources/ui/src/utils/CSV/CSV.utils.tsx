@@ -12,7 +12,7 @@
  */
 import { Typography } from 'antd';
 import { isEmpty, isString, isUndefined, startCase } from 'lodash';
-import { parse } from 'papaparse';
+import { parse, unparse } from 'papaparse';
 import { Column } from 'react-data-grid';
 import { ReactComponent as SuccessBadgeIcon } from '../..//assets/svg/success-badge.svg';
 import { ReactComponent as FailBadgeIcon } from '../../assets/svg/fail-badge.svg';
@@ -187,85 +187,26 @@ export const getEntityColumnsAndDataSourceFromCSV = (
   };
 };
 
-const formatGlossaryTerms = (value: string): string => {
-  if (!value?.trim()) {
-    return '';
-  }
-
-  const terms = value
-    .split(';')
-    .map((t) => t.trim())
-    .filter(Boolean);
-
-  const formatted = terms.map((term) => {
-    const clean = term.replace(/"/g, '');
-
-    if (clean.startsWith('PW%') && clean.includes('.PW.')) {
-      const splitIndex = clean.indexOf('.PW.');
-
-      const left = clean.substring(0, splitIndex);
-      const right = clean.substring(splitIndex + 1);
-
-      return `""${left}"".""${right}""`;
-    }
-
-    return clean;
-  });
-
-  return `"${formatted.join(';')}"`;
-};
-
-const formatDomain = (value: string): string => {
-  if (!value?.trim()) {
-    return '';
-  }
-
-  const trimmed = value.trim();
-
-  // If already correctly formatted → return as-is
-  if (/^""".+"""$/.test(trimmed)) {
-    return trimmed;
-  }
-
-  const clean = trimmed.replace(/"/g, '');
-
-  return `"""${clean}"""`;
-};
-
 export const getCSVStringFromColumnsAndDataSource = (
-  columns: Column<any>[],
+  columns: Array<Pick<Column<unknown>, 'key'>>,
   dataSource: Record<string, string>[]
 ) => {
-  const header = columns.map((c) => c.key).join(',');
+  const fieldNames = columns.map((c) => c.key);
+  const data = dataSource.map((row) => {
+    const record: Record<string, string> = {};
+    fieldNames.forEach((key) => {
+      const value = String(row[key] ?? '');
+      record[key] = value;
+    });
 
-  const rows = dataSource.map((row) =>
-    columns
-      .map((col) => {
-        const key = col.key;
-        const value = String(row[key] ?? '');
+    return record;
+  });
 
-        if (!value) {
-          return '';
-        }
-        if (key === 'glossaryTerms') {
-          return formatGlossaryTerms(value);
-        }
-        if (key === 'domains') {
-          return formatDomain(value);
-        }
-        if (key === 'description') {
-          return `"${value.replace(/"/g, '""')}"`;
-        }
-        if (/[,"\n]/.test(value)) {
-          return `"${value.replace(/"/g, '""')}"`;
-        }
-
-        return value;
-      })
-      .join(',')
-  );
-
-  return [header, ...rows].join('\n');
+  return unparse(data, {
+    columns: fieldNames,
+    header: true,
+    newline: '\n',
+  });
 };
 
 /**

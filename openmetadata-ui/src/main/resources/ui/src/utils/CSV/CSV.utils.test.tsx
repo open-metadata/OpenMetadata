@@ -114,7 +114,7 @@ describe('CSVUtils', () => {
       );
 
       expect(csvString).toBe(
-        'tags,glossaryTerms,description,domains\nvalue1,"value2","something new","""domain1"""'
+        'tags,glossaryTerms,description,domains\nvalue1,value2,something new,domain1'
       );
     });
 
@@ -139,7 +139,7 @@ describe('CSVUtils', () => {
       );
 
       expect(csvString).toBe(
-        `tags,glossaryTerms,description,domain\n"value,1","value_2","something#new","domain,1"`
+        `tags,glossaryTerms,description,domain\n"value,1",value_2,something#new,"domain,1"`
       );
     });
 
@@ -182,9 +182,7 @@ describe('CSVUtils', () => {
         dataSource
       );
 
-      expect(csvString).toBe(
-        'domains,name*\n"""PW%domain.7429a05d""",test-database'
-      );
+      expect(csvString).toBe('domains,name*\nPW%domain.7429a05d,test-database');
     });
 
     it('should not wrap tags in quotes', () => {
@@ -218,7 +216,7 @@ describe('CSVUtils', () => {
         dataSource
       );
 
-      expect(csvString).toBe('domains\n"""PW%domain.7429a05d"""');
+      expect(csvString).toBe('domains\nPW%domain.7429a05d');
     });
 
     it('should handle FQN values with dots in service names correctly', () => {
@@ -300,7 +298,7 @@ describe('CSVUtils', () => {
         dataSource
       );
 
-      expect(csvString).toBe('domains\n"""PW%domain.7429a05d"""');
+      expect(csvString).toBe('domains\nPW%domain.7429a05d');
     });
 
     it('should handle mixed scenario: domains, FQN with dots, and regular values', () => {
@@ -322,7 +320,7 @@ describe('CSVUtils', () => {
       );
 
       expect(csvString).toBe(
-        'domains,fullyQualifiedName,name*\n"""PW%domain.7429a05d""","""pw.db.service.e2f0f527"".pwdatabasea8657c",test-database'
+        'domains,fullyQualifiedName,name*\nPW%domain.7429a05d,"""pw.db.service.e2f0f527"".pwdatabasea8657c",test-database'
       );
     });
 
@@ -382,7 +380,7 @@ describe('CSVUtils', () => {
           dataSource
         );
 
-        expect(csvString).toBe('glossaryTerms\n');
+        expect(csvString).toBe('glossaryTerms\n"   "');
       });
 
       it('should format single PW glossary term correctly', () => {
@@ -399,7 +397,7 @@ describe('CSVUtils', () => {
         );
 
         expect(csvString).toBe(
-          'glossaryTerms\n"""PW%0b440530.Clever3cd5511b"".""PW.10739be3%Shark22dfbaf9"""'
+          'glossaryTerms\n"PW%0b440530.Clever3cd5511b"".PW.10739be3%Shark22dfbaf9"'
         );
       });
 
@@ -421,24 +419,6 @@ describe('CSVUtils', () => {
         );
       });
 
-      it('should format multiple PW glossary terms correctly', () => {
-        const columns = [{ name: 'glossaryTerms', key: 'glossaryTerms' }];
-        const dataSource = [
-          {
-            glossaryTerms:
-              'PW%0b440530.Clever3cd5511b".PW.10739be3%Shark22dfbaf9;PW%220e8cf3.Merrybb2cb0d0".PW.51185f8c%Shark8f7df244',
-          },
-        ];
-        const csvString = getCSVStringFromColumnsAndDataSource(
-          columns,
-          dataSource
-        );
-
-        expect(csvString).toBe(
-          'glossaryTerms\n"""PW%0b440530.Clever3cd5511b"".""PW.10739be3%Shark22dfbaf9"";""PW%220e8cf3.Merrybb2cb0d0"".""PW.51185f8c%Shark8f7df244"""'
-        );
-      });
-
       it('should format single non-PW glossary term correctly', () => {
         const columns = [{ name: 'glossaryTerms', key: 'glossaryTerms' }];
         const dataSource = [
@@ -451,7 +431,7 @@ describe('CSVUtils', () => {
           dataSource
         );
 
-        expect(csvString).toBe('glossaryTerms\n"CustomTerm"');
+        expect(csvString).toBe('glossaryTerms\nCustomTerm');
       });
 
       it('should format multiple non-PW glossary terms correctly', () => {
@@ -466,7 +446,7 @@ describe('CSVUtils', () => {
           dataSource
         );
 
-        expect(csvString).toBe('glossaryTerms\n"Term1;Term2;Term3"');
+        expect(csvString).toBe('glossaryTerms\nTerm1;Term2;Term3');
       });
 
       it('should format mixed PW and non-PW glossary terms correctly', () => {
@@ -483,67 +463,7 @@ describe('CSVUtils', () => {
         );
 
         expect(csvString).toBe(
-          'glossaryTerms\n"""PW%0b440530.Clever3cd5511b"".""PW.10739be3%Shark22dfbaf9"";CustomTerm"'
-        );
-      });
-
-      it('should handle glossaryTerms with extra whitespace and semicolons', () => {
-        const columns = [{ name: 'glossaryTerms', key: 'glossaryTerms' }];
-        const dataSource = [
-          {
-            glossaryTerms:
-              '  PW%0b440530.Clever3cd5511b".PW.10739be3%Shark22dfbaf9  ;  PW%220e8cf3.Merrybb2cb0d0".PW.51185f8c%Shark8f7df244  ',
-          },
-        ];
-        const csvString = getCSVStringFromColumnsAndDataSource(
-          columns,
-          dataSource
-        );
-
-        expect(csvString).toBe(
-          'glossaryTerms\n"""PW%0b440530.Clever3cd5511b"".""PW.10739be3%Shark22dfbaf9"";""PW%220e8cf3.Merrybb2cb0d0"".""PW.51185f8c%Shark8f7df244"""'
-        );
-      });
-
-      it('should handle glossaryTerms with empty segments (filtered out)', () => {
-        const columns = [{ name: 'glossaryTerms', key: 'glossaryTerms' }];
-        const dataSource = [
-          {
-            glossaryTerms:
-              'PW%0b440530.Clever3cd5511b".PW.10739be3%Shark22dfbaf9;;  ;PW%220e8cf3.Merrybb2cb0d0".PW.51185f8c%Shark8f7df244',
-          },
-        ];
-        const csvString = getCSVStringFromColumnsAndDataSource(
-          columns,
-          dataSource
-        );
-
-        expect(csvString).toBe(
-          'glossaryTerms\n"""PW%0b440530.Clever3cd5511b"".""PW.10739be3%Shark22dfbaf9"";""PW%220e8cf3.Merrybb2cb0d0"".""PW.51185f8c%Shark8f7df244"""'
-        );
-      });
-
-      it('should handle multiple PW glossary terms with 3+ groups', () => {
-        const columns = [{ name: 'glossaryTerms', key: 'glossaryTerms' }];
-        const dataSource = [
-          {
-            glossaryTerms:
-              'PW%0b440530.Clever3cd5511b".PW.10739be3%Shark22dfbaf9;PW%220e8cf3.Merrybb2cb0d0".PW.51185f8c%Shark8f7df244;PW%330f9d4e.AnotherTerm".PW.62296g9d%ThirdTerm',
-          },
-        ];
-        const csvString = getCSVStringFromColumnsAndDataSource(
-          columns,
-          dataSource
-        );
-
-        expect(csvString).toContain(
-          '"""PW%0b440530.Clever3cd5511b"".""PW.10739be3%Shark22dfbaf9""'
-        );
-        expect(csvString).toContain(
-          '""PW%220e8cf3.Merrybb2cb0d0"".""PW.51185f8c%Shark8f7df244""'
-        );
-        expect(csvString).toContain(
-          '""PW%330f9d4e.AnotherTerm"".""PW.62296g9d%ThirdTerm"""'
+          'glossaryTerms\n"PW%0b440530.Clever3cd5511b"".PW.10739be3%Shark22dfbaf9;CustomTerm"'
         );
       });
 
@@ -559,7 +479,7 @@ describe('CSVUtils', () => {
           dataSource
         );
 
-        expect(csvString).toBe('glossaryTerms\n"Term1;Term2;Term3;Term4"');
+        expect(csvString).toBe('glossaryTerms\nTerm1;Term2;Term3;Term4');
       });
     });
 
@@ -576,7 +496,7 @@ describe('CSVUtils', () => {
           dataSource
         );
 
-        expect(csvString).toBe('domains\n"""PW%domain.09e0bf05"""');
+        expect(csvString).toBe('domains\nPW%domain.09e0bf05');
       });
 
       it('should handle multiple domains (semicolon-separated)', () => {
@@ -592,7 +512,7 @@ describe('CSVUtils', () => {
         );
 
         expect(csvString).toBe(
-          'domains\n"""PW%domain.09e0bf05;PW%domain.7429a05d"""'
+          'domains\nPW%domain.09e0bf05;PW%domain.7429a05d'
         );
       });
 
@@ -608,7 +528,7 @@ describe('CSVUtils', () => {
           dataSource
         );
 
-        expect(csvString).toBe('domains\n"""PW%domain.09e0bf05,with,commas"""');
+        expect(csvString).toBe('domains\n"PW%domain.09e0bf05,with,commas"');
       });
     });
 
@@ -625,7 +545,7 @@ describe('CSVUtils', () => {
           dataSource
         );
 
-        expect(csvString).toBe('description\n"Simple description"');
+        expect(csvString).toBe('description\nSimple description');
       });
 
       it('should escape quotes in description', () => {
@@ -655,7 +575,7 @@ describe('CSVUtils', () => {
           dataSource
         );
 
-        expect(csvString).toBe('description\n"<p><strong>test</strong></p>"');
+        expect(csvString).toBe('description\n<p><strong>test</strong></p>');
       });
     });
 
@@ -845,10 +765,10 @@ describe('CSVUtils', () => {
         expect(csvString).toContain('test-entity');
         expect(csvString).toContain('PII.NonSensitive');
         expect(csvString).toContain(
-          '"""PW%0b440530.Clever3cd5511b"".""PW.10739be3%Shark22dfbaf9""'
+          '"PW%0b440530.Clever3cd5511b"".PW.10739be3%Shark22dfbaf9"'
         );
-        expect(csvString).toContain('"""PW%domain.09e0bf05"""');
-        expect(csvString).toContain('"Test description"');
+        expect(csvString).toContain('PW%domain.09e0bf05');
+        expect(csvString).toContain('Test description');
       });
 
       it('should handle empty values correctly', () => {
@@ -894,42 +814,8 @@ describe('CSVUtils', () => {
         );
 
         expect(csvString).toBe(
-          'name*,glossaryTerms\nentity1,"""PW%0b440530.Clever3cd5511b"".""PW.10739be3%Shark22dfbaf9"""\nentity2,"CustomTerm"'
+          'name*,glossaryTerms\nentity1,"PW%0b440530.Clever3cd5511b"".PW.10739be3%Shark22dfbaf9"\nentity2,CustomTerm'
         );
-      });
-
-      it('should handle row with multiple glossary terms, multiple tags, and extension', () => {
-        const columns = [
-          { name: 'name*', key: 'name*' },
-          { name: 'tags', key: 'tags' },
-          { name: 'glossaryTerms', key: 'glossaryTerms' },
-          { name: 'extension', key: 'extension' },
-        ];
-        const dataSource = [
-          {
-            'name*': 'test-entity',
-            tags: 'PII.NonSensitive;PersonalData.Personal;Tier.Tier1',
-            glossaryTerms:
-              'PW%0b440530.Clever3cd5511b".PW.10739be3%Shark22dfbaf9;PW%220e8cf3.Merrybb2cb0d0".PW.51185f8c%Shark8f7df244',
-            extension:
-              'pwcustompropertydatabaseSchematest055fd0ad:test;pwcustompropertydatabaseSchematest09df36cf:"test-colum1,test-colum2"',
-          },
-        ];
-        const csvString = getCSVStringFromColumnsAndDataSource(
-          columns,
-          dataSource
-        );
-
-        expect(csvString).toContain('name*,tags,glossaryTerms,extension');
-        expect(csvString).toContain('test-entity');
-        expect(csvString).toContain(
-          'PII.NonSensitive;PersonalData.Personal;Tier.Tier1'
-        );
-        expect(csvString).toContain(
-          '"""PW%0b440530.Clever3cd5511b"".""PW.10739be3%Shark22dfbaf9"";""PW%220e8cf3.Merrybb2cb0d0"".""PW.51185f8c%Shark8f7df244"""'
-        );
-        // Extension should be quoted if it contains commas or semicolons
-        expect(csvString).toContain('extension');
       });
 
       it('should handle extension column with simple value (no quotes)', () => {
@@ -993,42 +879,6 @@ describe('CSVUtils', () => {
         );
 
         expect(csvString).toBe('extension\n"prop1:""value with quotes"""');
-      });
-
-      it('should handle complete row with extension, multiple tags, and multiple glossary terms', () => {
-        const columns = [
-          { name: 'name*', key: 'name*' },
-          { name: 'tags', key: 'tags' },
-          { name: 'glossaryTerms', key: 'glossaryTerms' },
-          { name: 'domains', key: 'domains' },
-          { name: 'extension', key: 'extension' },
-        ];
-        const dataSource = [
-          {
-            'name*': 'test-entity',
-            tags: 'PII.NonSensitive;PersonalData.Personal',
-            glossaryTerms:
-              'PW%0b440530.Clever3cd5511b".PW.10739be3%Shark22dfbaf9;PW%220e8cf3.Merrybb2cb0d0".PW.51185f8c%Shark8f7df244',
-            domains: 'PW%domain.09e0bf05',
-            extension:
-              'pwcustompropertydatabaseSchematest055fd0ad:test;pwcustompropertydatabaseSchematest09df36cf:"test-colum1,test-colum2"',
-          },
-        ];
-        const csvString = getCSVStringFromColumnsAndDataSource(
-          columns,
-          dataSource
-        );
-
-        expect(csvString).toContain(
-          'name*,tags,glossaryTerms,domains,extension'
-        );
-        expect(csvString).toContain('test-entity');
-        expect(csvString).toContain('PII.NonSensitive;PersonalData.Personal');
-        expect(csvString).toContain(
-          '"""PW%0b440530.Clever3cd5511b"".""PW.10739be3%Shark22dfbaf9"";""PW%220e8cf3.Merrybb2cb0d0"".""PW.51185f8c%Shark8f7df244"""'
-        );
-        expect(csvString).toContain('"""PW%domain.09e0bf05"""');
-        expect(csvString).toContain('extension');
       });
     });
   });
