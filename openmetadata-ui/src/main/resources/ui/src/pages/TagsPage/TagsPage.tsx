@@ -188,6 +188,7 @@ const TagsPage = () => {
         setIsLoading(false);
       } else {
         showErrorToast(t('server.unexpected-response'));
+        setIsLoading(false);
       }
     } catch (err) {
       const errMsg = getErrorText(
