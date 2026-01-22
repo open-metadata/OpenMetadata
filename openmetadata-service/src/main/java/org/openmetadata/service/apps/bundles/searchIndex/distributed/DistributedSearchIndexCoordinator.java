@@ -94,6 +94,10 @@ public class DistributedSearchIndexCoordinator {
     this.serverId = ServerIdentityResolver.getInstance().getServerId();
   }
 
+  public CollectionDAO getCollectionDAO() {
+    return collectionDAO;
+  }
+
   /**
    * Create a new distributed indexing job.
    *

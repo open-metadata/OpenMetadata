@@ -31,6 +31,7 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingJobContext;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingProgressListener;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.socket.WebSocketManager;
 
 /**
@@ -356,6 +357,20 @@ public class DistributedJobStatsAggregator {
     if (job.getServerStats() != null && !job.getServerStats().isEmpty()) {
       successContext.withAdditionalProperty("serverStats", job.getServerStats());
       successContext.withAdditionalProperty("serverCount", job.getServerStats().size());
+    }
+
+    // Add aggregated server stats from the dedicated table for more accurate sink stats
+    try {
+      CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats serverStatsAggr =
+          coordinator
+              .getCollectionDAO()
+              .searchIndexServerStatsDAO()
+              .getAggregatedStats(job.getId().toString());
+      if (serverStatsAggr != null) {
+        successContext.withAdditionalProperty("aggregatedServerStats", serverStatsAggr);
+      }
+    } catch (Exception e) {
+      LOG.debug("Could not fetch aggregated server stats for job {}", job.getId(), e);
     }
 
     appRecord.setSuccessContext(successContext);

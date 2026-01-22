@@ -6,6 +6,7 @@ import static org.openmetadata.service.Entity.TEST_CASE_RESOLUTION_STATUS;
 import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_CONFIG;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_STATS;
 import static org.openmetadata.service.socket.WebSocketManager.SEARCH_INDEX_JOB_BROADCAST_CHANNEL;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -165,10 +166,25 @@ public class SearchIndexApp extends AbstractNativeApplication {
     throw new ReindexingException("JobData is not initialized");
   }
 
+  private void cleanupOldFailures() {
+    try {
+      long cutoffTime = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(30);
+      int deleted = collectionDAO.searchIndexFailureDAO().deleteOlderThan(cutoffTime);
+      if (deleted > 0) {
+        LOG.info("Cleaned up {} old failure records", deleted);
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to cleanup old failure records", e);
+    }
+  }
+
   private void runReindexing(JobExecutionContext jobExecutionContext) throws Exception {
     boolean success = false;
     try {
       setupEntities();
+
+      cleanupOldFailures();
+
       LOG.info(
           "Search Index Job Started for Entities: {}, RecreateIndex: {}, DistributedIndexing: {}",
           jobData.getEntities(),
@@ -216,7 +232,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private void updateJobDataFromResult(ExecutionResult result) {
     if (result.finalStats() != null) {
-      jobData.setStats(result.finalStats());
+      Stats stats = result.finalStats();
+      StatsReconciler.reconcile(stats);
+      jobData.setStats(stats);
     }
 
     switch (result.status()) {
@@ -319,6 +337,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
       saveServerStatsToJobDataMap(jobExecutionContext, finalJob);
     }
 
+    // Save stats to APP_RUN_STATS for OmAppJobListener to pick up
+    // This is required because distributed mode doesn't use QuartzProgressListener
+    if (jobData.getStats() != null) {
+      jobExecutionContext.getJobDetail().getJobDataMap().put(APP_RUN_STATS, jobData.getStats());
+    }
+
     updateFinalJobStatus();
   }
 
@@ -381,26 +405,55 @@ public class SearchIndexApp extends AbstractNativeApplication {
       return;
     }
 
-    // Use actual sink stats if available, otherwise use partition-based aggregates
-    // The actual sink stats are more accurate because the bulk sink is asynchronous
-    // and partition stats count entities as "success" before the sink confirms
-    long successRecords =
-        actualSinkStats != null
-            ? actualSinkStats.getSuccessRecords()
-            : distributedJob.getSuccessRecords();
-    long failedRecords =
-        actualSinkStats != null
-            ? actualSinkStats.getFailedRecords()
-            : distributedJob.getFailedRecords();
+    // In distributed mode, we need to aggregate stats from ALL servers, not just the local sink.
+    // The local sink (actualSinkStats) only tracks what this server processed, but other servers
+    // have their own sinks.
+    //
+    // Priority order for stats:
+    // 1. Aggregate from distributedJob.getServerStats() (most accurate - tracked per server)
+    // 2. Use partition-based stats from distributedJob (fallback)
+    // 3. Use local sink stats (only if single server)
+    long successRecords = distributedJob.getSuccessRecords();
+    long failedRecords = distributedJob.getFailedRecords();
+    String statsSource = "partition-based";
 
-    if (actualSinkStats != null) {
+    // First, try to aggregate from serverStats (most accurate for distributed mode)
+    Map<String, SearchIndexJob.ServerStats> serverStatsMap = distributedJob.getServerStats();
+    if (serverStatsMap != null && !serverStatsMap.isEmpty()) {
+      long serverSuccess = 0;
+      long serverFailed = 0;
+      for (SearchIndexJob.ServerStats serverStat : serverStatsMap.values()) {
+        serverSuccess += serverStat.getSuccessRecords();
+        serverFailed += serverStat.getFailedRecords();
+      }
+
       LOG.info(
-          "Using actual sink stats - partition-based: success={}, failed={}; actual: success={}, failed={}",
+          "Using aggregated server stats from {} servers: success={}, failed={} "
+              + "(partition-based: success={}, failed={}, local sink: success={}, failed={})",
+          serverStatsMap.size(),
+          serverSuccess,
+          serverFailed,
           distributedJob.getSuccessRecords(),
           distributedJob.getFailedRecords(),
+          actualSinkStats != null ? actualSinkStats.getSuccessRecords() : "N/A",
+          actualSinkStats != null ? actualSinkStats.getFailedRecords() : "N/A");
+
+      successRecords = serverSuccess;
+      failedRecords = serverFailed;
+      statsSource = "serverStats";
+    } else if (actualSinkStats != null) {
+      // If no serverStats available, use local sink stats (single server scenario)
+      LOG.info(
+          "Using local sink stats (single server): success={}, failed={}",
           actualSinkStats.getSuccessRecords(),
           actualSinkStats.getFailedRecords());
+      successRecords = actualSinkStats.getSuccessRecords();
+      failedRecords = actualSinkStats.getFailedRecords();
+      statsSource = "localSink";
     }
+
+    LOG.debug(
+        "Stats source: {}, success={}, failed={}", statsSource, successRecords, failedRecords);
 
     StepStats jobStats = stats.getJobStats();
     if (jobStats != null) {
@@ -438,6 +491,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
         }
       }
     }
+
+    StatsReconciler.reconcile(stats);
 
     switch (distributedJob.getStatus()) {
       case COMPLETED -> jobData.setStatus(EventPublisherJob.Status.COMPLETED);
@@ -711,6 +766,19 @@ public class SearchIndexApp extends AbstractNativeApplication {
     if (jobData.getStats() != null) {
       SuccessContext successContext =
           new SuccessContext().withAdditionalProperty("stats", jobData.getStats());
+
+      try {
+        String jobIdStr =
+            distributedExecutor != null
+                ? distributedExecutor.getJobWithFreshStats().getId().toString()
+                : getApp().getId().toString();
+        int failureCount = collectionDAO.searchIndexFailureDAO().countByJobId(jobIdStr);
+        if (failureCount > 0) {
+          successContext.withAdditionalProperty("failureRecordCount", failureCount);
+        }
+      } catch (Exception e) {
+        LOG.debug("Could not get failure count", e);
+      }
 
       if (distributedExecutor != null) {
         SearchIndexJob distributedJob = distributedExecutor.getJobWithFreshStats();

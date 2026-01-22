@@ -66,6 +66,9 @@ public class OpenSearchBulkSink implements BulkSink {
   private volatile int batchSize;
   private volatile int maxConcurrentRequests;
 
+  // Failure callback
+  private volatile FailureCallback failureCallback;
+
   public OpenSearchBulkSink(
       SearchRepository searchRepository,
       int batchSize,
@@ -209,12 +212,28 @@ public class OpenSearchBulkSink implements BulkSink {
       entityBuildFailures.incrementAndGet();
       totalFailed.incrementAndGet();
       updateStats();
+      if (failureCallback != null) {
+        String entityTypeName = Entity.getEntityTypeFromObject(entity);
+        failureCallback.onFailure(
+            entityTypeName,
+            entity.getId() != null ? entity.getId().toString() : null,
+            entity.getFullyQualifiedName(),
+            e.getMessage());
+      }
     } catch (Exception e) {
       LOG.error(
           "Encountered Issue while building SearchDoc from Entity Due to : {}", e.getMessage(), e);
       entityBuildFailures.incrementAndGet();
       totalFailed.incrementAndGet();
       updateStats();
+      if (failureCallback != null) {
+        String entityTypeName = Entity.getEntityTypeFromObject(entity);
+        failureCallback.onFailure(
+            entityTypeName,
+            entity.getId() != null ? entity.getId().toString() : null,
+            entity.getFullyQualifiedName(),
+            e.getMessage());
+      }
     }
   }
 
@@ -237,12 +256,26 @@ public class OpenSearchBulkSink implements BulkSink {
       entityBuildFailures.incrementAndGet();
       totalFailed.incrementAndGet();
       updateStats();
+      if (failureCallback != null) {
+        failureCallback.onFailure(
+            entityType,
+            entity.getId() != null ? entity.getId().toString() : null,
+            null,
+            e.getMessage());
+      }
     } catch (Exception e) {
       LOG.error(
           "Encountered Issue while building SearchDoc from Entity Due to : {}", e.getMessage(), e);
       entityBuildFailures.incrementAndGet();
       totalFailed.incrementAndGet();
       updateStats();
+      if (failureCallback != null) {
+        failureCallback.onFailure(
+            entityType,
+            entity.getId() != null ? entity.getId().toString() : null,
+            null,
+            e.getMessage());
+      }
     }
   }
 
@@ -295,6 +328,14 @@ public class OpenSearchBulkSink implements BulkSink {
     return entityBuildFailures.get();
   }
 
+  @Override
+  public void setFailureCallback(FailureCallback callback) {
+    this.failureCallback = callback;
+    if (bulkProcessor != null) {
+      bulkProcessor.setFailureCallback(callback);
+    }
+  }
+
   public void updateBatchSize(int newBatchSize) {
     this.batchSize = newBatchSize;
     LOG.info("Batch size updated to: {}", newBatchSize);
@@ -333,6 +374,7 @@ public class OpenSearchBulkSink implements BulkSink {
     private final long initialBackoffMillis;
     private final int maxRetries;
     private volatile boolean closed = false;
+    private volatile FailureCallback failureCallback;
 
     CustomBulkProcessor(
         OpenSearchClient client,
@@ -360,6 +402,10 @@ public class OpenSearchBulkSink implements BulkSink {
 
       scheduler.scheduleAtFixedRate(
           this::flushIfNeeded, flushIntervalMillis, flushIntervalMillis, TimeUnit.MILLISECONDS);
+    }
+
+    void setFailureCallback(FailureCallback callback) {
+      this.failureCallback = callback;
     }
 
     void add(BulkOperation operation) {
@@ -525,6 +571,9 @@ public class OpenSearchBulkSink implements BulkSink {
                 failureMessage);
           } else {
             LOG.warn("Failed to index document {}: {}", item.id(), failureMessage);
+          }
+          if (failureCallback != null) {
+            failureCallback.onFailure(null, item.id(), null, failureMessage);
           }
         }
       }

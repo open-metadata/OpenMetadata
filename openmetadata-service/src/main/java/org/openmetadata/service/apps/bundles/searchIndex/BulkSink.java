@@ -21,4 +21,28 @@ public interface BulkSink {
   }
 
   void close() throws IOException;
+
+  /** Callback interface for receiving failure notifications when documents fail to index. */
+  @FunctionalInterface
+  interface FailureCallback {
+    /**
+     * Called when a document fails to index in ES/OpenSearch.
+     *
+     * @param entityType The type of entity that failed
+     * @param entityId The ID of the entity (from document ID), may be null for build failures
+     * @param entityFqn The FQN of the entity, may be null if not available
+     * @param errorMessage The error message from ES/OpenSearch
+     */
+    void onFailure(String entityType, String entityId, String entityFqn, String errorMessage);
+  }
+
+  /**
+   * Set a callback to be notified when documents fail to index. The callback will be called for
+   * each failed document in a bulk response.
+   *
+   * @param callback The failure callback, or null to clear
+   */
+  default void setFailureCallback(FailureCallback callback) {
+    // Default implementation does nothing - subclasses should override
+  }
 }

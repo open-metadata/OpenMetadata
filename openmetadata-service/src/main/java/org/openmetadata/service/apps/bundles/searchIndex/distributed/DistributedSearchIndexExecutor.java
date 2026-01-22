@@ -28,8 +28,10 @@ import java.util.concurrent.atomic.AtomicLong;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.system.EventPublisherJob;
+import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.CompositeProgressListener;
+import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingJobContext;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingProgressListener;
@@ -91,6 +93,13 @@ public class DistributedSearchIndexExecutor {
 
   // Job context for listener callbacks
   private ReindexingJobContext jobContext;
+
+  // Server stats persistence
+  private Thread serverStatsPersistThread;
+  private static final long SERVER_STATS_PERSIST_INTERVAL_MS = 30000;
+  private IndexingFailureRecorder failureRecorder;
+  private String currentRunId;
+  private BulkSink searchIndexSink;
 
   public DistributedSearchIndexExecutor(CollectionDAO collectionDAO) {
     this(collectionDAO, 10000); // Default partition size
@@ -320,6 +329,28 @@ public class DistributedSearchIndexExecutor {
 
     statsAggregator.start();
 
+    // Store sink reference for stats persistence
+    this.searchIndexSink = bulkSink;
+
+    // Initialize failure recorder
+    this.currentRunId = UUID.randomUUID().toString();
+    this.failureRecorder =
+        new IndexingFailureRecorder(collectionDAO, jobId.toString(), currentRunId);
+
+    // Set up failure callback on the sink to record sink failures
+    bulkSink.setFailureCallback(
+        (entityType, entityId, entityFqn, errorMessage) -> {
+          if (failureRecorder != null) {
+            failureRecorder.recordSinkFailure(entityType, entityId, entityFqn, errorMessage);
+          }
+        });
+
+    // Start server stats persist thread
+    serverStatsPersistThread =
+        Thread.ofVirtual()
+            .name("server-stats-persist-" + jobId.toString().substring(0, 8))
+            .start(() -> runServerStatsPersistLoop(jobId));
+
     // Start lock refresh thread to prevent lock expiration during long-running jobs
     lockRefreshThread =
         Thread.ofVirtual()
@@ -397,6 +428,11 @@ public class DistributedSearchIndexExecutor {
         partitionHeartbeatThread.interrupt();
       }
 
+      // Stop server stats persist thread
+      if (serverStatsPersistThread != null) {
+        serverStatsPersistThread.interrupt();
+      }
+
       // Shutdown executor
       workerExecutor.shutdown();
       try {
@@ -408,9 +444,22 @@ public class DistributedSearchIndexExecutor {
         Thread.currentThread().interrupt();
       }
 
+      // Final server stats persist
+      persistServerStats(jobId);
+
       // Final stats broadcast and cleanup
       statsAggregator.forceUpdate();
       statsAggregator.stop();
+
+      // Flush and close failure recorder
+      if (failureRecorder != null) {
+        failureRecorder.close();
+      }
+
+      // Clear failure callback from sink
+      if (searchIndexSink != null) {
+        searchIndexSink.setFailureCallback(null);
+      }
 
       // Notify other servers that job has completed
       if (jobNotifier != null) {
@@ -448,7 +497,8 @@ public class DistributedSearchIndexExecutor {
     LOG.info("Worker {} starting for job {}", workerId, currentJob.getId());
 
     PartitionWorker worker =
-        new PartitionWorker(coordinator, bulkSink, batchSize, recreateContext, recreateIndex);
+        new PartitionWorker(
+            coordinator, bulkSink, batchSize, recreateContext, recreateIndex, failureRecorder);
 
     synchronized (activeWorkers) {
       activeWorkers.add(worker);
@@ -646,6 +696,73 @@ public class DistributedSearchIndexExecutor {
         LOG.error("Error updating partition heartbeats", e);
       }
     }
+  }
+
+  private void runServerStatsPersistLoop(UUID jobId) {
+    while (!stopped.get() && !Thread.currentThread().isInterrupted()) {
+      try {
+        Thread.sleep(SERVER_STATS_PERSIST_INTERVAL_MS);
+
+        SearchIndexJob job = coordinator.getJob(jobId).orElse(null);
+        if (job == null || job.isTerminal()) {
+          break;
+        }
+
+        persistServerStats(jobId);
+
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        break;
+      } catch (Exception e) {
+        LOG.error("Error persisting server stats for job {}", jobId, e);
+      }
+    }
+  }
+
+  private void persistServerStats(UUID jobId) {
+    if (searchIndexSink == null) {
+      return;
+    }
+
+    try {
+      StepStats sinkStats = searchIndexSink.getStats();
+      long entityBuildFailures = searchIndexSink.getEntityBuildFailures();
+
+      List<SearchIndexPartition> completed =
+          coordinator.getPartitions(jobId, PartitionStatus.COMPLETED);
+      List<SearchIndexPartition> failed = coordinator.getPartitions(jobId, PartitionStatus.FAILED);
+
+      int partitionsCompleted =
+          (int) completed.stream().filter(p -> serverId.equals(p.getAssignedServer())).count();
+      int partitionsFailed =
+          (int) failed.stream().filter(p -> serverId.equals(p.getAssignedServer())).count();
+
+      String statsId = UUID.nameUUIDFromBytes((jobId.toString() + serverId).getBytes()).toString();
+
+      collectionDAO
+          .searchIndexServerStatsDAO()
+          .upsert(
+              statsId,
+              jobId.toString(),
+              serverId,
+              0,
+              0,
+              sinkStats != null ? sinkStats.getTotalRecords() : 0,
+              sinkStats != null ? sinkStats.getSuccessRecords() : 0,
+              sinkStats != null ? sinkStats.getFailedRecords() : 0,
+              entityBuildFailures,
+              partitionsCompleted,
+              partitionsFailed,
+              System.currentTimeMillis());
+
+      LOG.debug("Persisted server stats for job {} server {}", jobId, serverId);
+    } catch (Exception e) {
+      LOG.error("Error persisting server stats for job {} server {}", jobId, serverId, e);
+    }
+  }
+
+  public IndexingFailureRecorder getFailureRecorder() {
+    return failureRecorder;
   }
 
   /**

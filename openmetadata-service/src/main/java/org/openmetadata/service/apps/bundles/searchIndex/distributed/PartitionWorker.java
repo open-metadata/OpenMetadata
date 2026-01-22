@@ -24,11 +24,13 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.util.RestUtil;
@@ -77,6 +79,7 @@ public class PartitionWorker {
   private final ReindexContext recreateContext;
   private final boolean recreateIndex;
   private final AtomicBoolean stopped = new AtomicBoolean(false);
+  private final IndexingFailureRecorder failureRecorder;
 
   public PartitionWorker(
       DistributedSearchIndexCoordinator coordinator,
@@ -84,11 +87,22 @@ public class PartitionWorker {
       int batchSize,
       ReindexContext recreateContext,
       boolean recreateIndex) {
+    this(coordinator, searchIndexSink, batchSize, recreateContext, recreateIndex, null);
+  }
+
+  public PartitionWorker(
+      DistributedSearchIndexCoordinator coordinator,
+      BulkSink searchIndexSink,
+      int batchSize,
+      ReindexContext recreateContext,
+      boolean recreateIndex,
+      IndexingFailureRecorder failureRecorder) {
     this.coordinator = coordinator;
     this.searchIndexSink = searchIndexSink;
     this.batchSize = batchSize;
     this.recreateContext = recreateContext;
     this.recreateIndex = recreateIndex;
+    this.failureRecorder = failureRecorder;
   }
 
   /**
@@ -147,10 +161,15 @@ public class PartitionWorker {
 
         } catch (SearchIndexException e) {
           LOG.error("Error processing batch at offset {} for {}", currentOffset, entityType, e);
+
+          if (failureRecorder != null) {
+            failureRecorder.recordReaderFailure(
+                entityType, e.getMessage(), ExceptionUtils.getStackTrace(e));
+          }
+
           failedCount.addAndGet(currentBatchSize);
           currentOffset += currentBatchSize;
 
-          // Update progress even on error
           updateProgress(
               partition,
               currentOffset,

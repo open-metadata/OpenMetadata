@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -127,6 +128,8 @@ public class SearchIndexExecutor implements AutoCloseable {
   private ReindexingConfiguration config;
   private ReindexingJobContext context;
   private long startTime;
+  private IndexingFailureRecorder failureRecorder;
+  private String currentRunId;
 
   record IndexingTask<T>(String entityType, ResultList<T> entities, int offset, int retryCount) {
     IndexingTask(String entityType, ResultList<T> entities, int offset) {
@@ -224,6 +227,12 @@ public class SearchIndexExecutor implements AutoCloseable {
     listeners.onJobConfigured(context, effectiveConfig);
 
     stats.set(initializeTotalRecords(entities));
+
+    this.currentRunId = UUID.randomUUID().toString();
+    String jobId = context.getJobId() != null ? context.getJobId().toString() : currentRunId;
+    this.failureRecorder = new IndexingFailureRecorder(collectionDAO, jobId, currentRunId);
+    cleanupOldFailures();
+
     initializeSink(effectiveConfig);
 
     if (effectiveConfig.recreateIndex()) {
@@ -320,7 +329,31 @@ public class SearchIndexExecutor implements AutoCloseable {
         searchRepository.createBulkSink(
             config.batchSize(), config.maxConcurrentRequests(), config.payloadSize());
     this.recreateIndexHandler = searchRepository.createReindexHandler();
+
+    if (searchIndexSink != null) {
+      searchIndexSink.setFailureCallback(this::handleSinkFailure);
+    }
+
     LOG.debug("Initialized BulkSink with batch size: {}", config.batchSize());
+  }
+
+  private void handleSinkFailure(
+      String entityType, String entityId, String entityFqn, String errorMessage) {
+    if (failureRecorder != null) {
+      failureRecorder.recordSinkFailure(entityType, entityId, entityFqn, errorMessage);
+    }
+  }
+
+  private void cleanupOldFailures() {
+    try {
+      long cutoffTime = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(30);
+      int deleted = collectionDAO.searchIndexFailureDAO().deleteOlderThan(cutoffTime);
+      if (deleted > 0) {
+        LOG.info("Cleaned up {} old failure records", deleted);
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to cleanup old failure records", e);
+    }
   }
 
   private void reIndexFromStartToEnd(SearchClusterMetrics clusterMetrics, Set<String> entities)
@@ -811,6 +844,11 @@ public class SearchIndexExecutor implements AutoCloseable {
     } catch (SearchIndexException e) {
       LOG.error("Error reading source for {}", entityType, e);
       if (!stopped.get()) {
+        if (failureRecorder != null) {
+          failureRecorder.recordReaderFailure(
+              entityType, e.getMessage(), ExceptionUtils.getStackTrace(e));
+        }
+
         listeners.onError(entityType, e.getIndexingError(), stats.get());
         IndexingError indexingError = e.getIndexingError();
         int failedCount =
@@ -1138,6 +1176,18 @@ public class SearchIndexExecutor implements AutoCloseable {
   }
 
   private ExecutionResult buildResult() {
+    if (failureRecorder != null) {
+      failureRecorder.flush();
+    }
+
+    syncSinkStatsFromBulkSink();
+
+    Stats currentStats = stats.get();
+    if (currentStats != null) {
+      StatsReconciler.reconcile(currentStats);
+      stats.set(currentStats);
+    }
+
     long endTime = System.currentTimeMillis();
     ExecutionResult.Status status = determineStatus();
 
@@ -1236,6 +1286,14 @@ public class SearchIndexExecutor implements AutoCloseable {
   }
 
   private void cleanup() {
+    if (failureRecorder != null) {
+      try {
+        failureRecorder.close();
+      } catch (Exception e) {
+        LOG.error("Error closing failure recorder", e);
+      }
+    }
+
     if (searchIndexSink != null) {
       try {
         searchIndexSink.close();

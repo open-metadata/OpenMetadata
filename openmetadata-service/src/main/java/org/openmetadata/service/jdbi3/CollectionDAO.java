@@ -54,6 +54,7 @@ import org.jdbi.v3.sqlobject.customizer.BindBeanList;
 import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
+import org.jdbi.v3.sqlobject.statement.SqlBatch;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.statement.UseRowMapper;
@@ -467,6 +468,12 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   SearchReindexLockDAO searchReindexLockDAO();
+
+  @CreateSqlObject
+  SearchIndexFailureDAO searchIndexFailureDAO();
+
+  @CreateSqlObject
+  SearchIndexServerStatsDAO searchIndexServerStatsDAO();
 
   @CreateSqlObject
   AuditLogDAO auditLogDAO();
@@ -9807,6 +9814,219 @@ public interface CollectionDAO {
 
       public boolean isExpired() {
         return System.currentTimeMillis() > expiresAt;
+      }
+    }
+  }
+
+  /** DAO for search index failure records */
+  interface SearchIndexFailureDAO {
+
+    record SearchIndexFailureRecord(
+        String id,
+        String jobId,
+        String runId,
+        String entityType,
+        String entityId,
+        String entityFqn,
+        String failureStage,
+        String errorMessage,
+        String stackTrace,
+        long timestamp) {}
+
+    @SqlUpdate(
+        "INSERT INTO search_index_failures (id, jobId, runId, entityType, entityId, entityFqn, "
+            + "failureStage, errorMessage, stackTrace, timestamp) "
+            + "VALUES (:id, :jobId, :runId, :entityType, :entityId, :entityFqn, "
+            + ":failureStage, :errorMessage, :stackTrace, :timestamp)")
+    void insert(
+        @Bind("id") String id,
+        @Bind("jobId") String jobId,
+        @Bind("runId") String runId,
+        @Bind("entityType") String entityType,
+        @Bind("entityId") String entityId,
+        @Bind("entityFqn") String entityFqn,
+        @Bind("failureStage") String failureStage,
+        @Bind("errorMessage") String errorMessage,
+        @Bind("stackTrace") String stackTrace,
+        @Bind("timestamp") long timestamp);
+
+    @SqlBatch(
+        "INSERT INTO search_index_failures (id, jobId, runId, entityType, entityId, entityFqn, "
+            + "failureStage, errorMessage, stackTrace, timestamp) "
+            + "VALUES (:id, :jobId, :runId, :entityType, :entityId, :entityFqn, "
+            + ":failureStage, :errorMessage, :stackTrace, :timestamp)")
+    void insertBatch(@BindBean List<SearchIndexFailureRecord> failures);
+
+    @SqlQuery(
+        "SELECT * FROM search_index_failures WHERE runId = :runId "
+            + "ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+    @RegisterRowMapper(SearchIndexFailureMapper.class)
+    List<SearchIndexFailureRecord> findByRunId(
+        @Bind("runId") String runId, @Bind("limit") int limit, @Bind("offset") int offset);
+
+    @SqlQuery("SELECT COUNT(*) FROM search_index_failures WHERE runId = :runId")
+    int countByRunId(@Bind("runId") String runId);
+
+    @SqlQuery(
+        "SELECT * FROM search_index_failures WHERE jobId = :jobId "
+            + "ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+    @RegisterRowMapper(SearchIndexFailureMapper.class)
+    List<SearchIndexFailureRecord> findByJobId(
+        @Bind("jobId") String jobId, @Bind("limit") int limit, @Bind("offset") int offset);
+
+    @SqlQuery("SELECT COUNT(*) FROM search_index_failures WHERE jobId = :jobId")
+    int countByJobId(@Bind("jobId") String jobId);
+
+    @SqlUpdate("DELETE FROM search_index_failures WHERE timestamp < :cutoffTime")
+    int deleteOlderThan(@Bind("cutoffTime") long cutoffTime);
+
+    @SqlUpdate("DELETE FROM search_index_failures WHERE jobId = :jobId")
+    int deleteByJobId(@Bind("jobId") String jobId);
+
+    class SearchIndexFailureMapper implements RowMapper<SearchIndexFailureRecord> {
+      @Override
+      public SearchIndexFailureRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new SearchIndexFailureRecord(
+            rs.getString("id"),
+            rs.getString("jobId"),
+            rs.getString("runId"),
+            rs.getString("entityType"),
+            rs.getString("entityId"),
+            rs.getString("entityFqn"),
+            rs.getString("failureStage"),
+            rs.getString("errorMessage"),
+            rs.getString("stackTrace"),
+            rs.getLong("timestamp"));
+      }
+    }
+  }
+
+  /** DAO for search index per-server stats in distributed mode */
+  interface SearchIndexServerStatsDAO {
+
+    record ServerStatsRecord(
+        String id,
+        String jobId,
+        String serverId,
+        long readerSuccess,
+        long readerFailed,
+        long sinkTotal,
+        long sinkSuccess,
+        long sinkFailed,
+        long entityBuildFailures,
+        int partitionsCompleted,
+        int partitionsFailed,
+        long lastUpdatedAt) {}
+
+    record AggregatedServerStats(
+        long readerSuccess,
+        long readerFailed,
+        long sinkTotal,
+        long sinkSuccess,
+        long sinkFailed,
+        long entityBuildFailures,
+        int partitionsCompleted,
+        int partitionsFailed) {}
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO search_index_server_stats (id, jobId, serverId, readerSuccess, readerFailed, "
+                + "sinkTotal, sinkSuccess, sinkFailed, entityBuildFailures, partitionsCompleted, "
+                + "partitionsFailed, lastUpdatedAt) "
+                + "VALUES (:id, :jobId, :serverId, :readerSuccess, :readerFailed, :sinkTotal, "
+                + ":sinkSuccess, :sinkFailed, :entityBuildFailures, :partitionsCompleted, "
+                + ":partitionsFailed, :lastUpdatedAt) "
+                + "ON DUPLICATE KEY UPDATE readerSuccess = :readerSuccess, readerFailed = :readerFailed, "
+                + "sinkTotal = :sinkTotal, sinkSuccess = :sinkSuccess, sinkFailed = :sinkFailed, "
+                + "entityBuildFailures = :entityBuildFailures, partitionsCompleted = :partitionsCompleted, "
+                + "partitionsFailed = :partitionsFailed, lastUpdatedAt = :lastUpdatedAt",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO search_index_server_stats (id, jobId, serverId, readerSuccess, readerFailed, "
+                + "sinkTotal, sinkSuccess, sinkFailed, entityBuildFailures, partitionsCompleted, "
+                + "partitionsFailed, lastUpdatedAt) "
+                + "VALUES (:id, :jobId, :serverId, :readerSuccess, :readerFailed, :sinkTotal, "
+                + ":sinkSuccess, :sinkFailed, :entityBuildFailures, :partitionsCompleted, "
+                + ":partitionsFailed, :lastUpdatedAt) "
+                + "ON CONFLICT (jobId, serverId) DO UPDATE SET readerSuccess = :readerSuccess, "
+                + "readerFailed = :readerFailed, sinkTotal = :sinkTotal, sinkSuccess = :sinkSuccess, "
+                + "sinkFailed = :sinkFailed, entityBuildFailures = :entityBuildFailures, "
+                + "partitionsCompleted = :partitionsCompleted, partitionsFailed = :partitionsFailed, "
+                + "lastUpdatedAt = :lastUpdatedAt",
+        connectionType = POSTGRES)
+    void upsert(
+        @Bind("id") String id,
+        @Bind("jobId") String jobId,
+        @Bind("serverId") String serverId,
+        @Bind("readerSuccess") long readerSuccess,
+        @Bind("readerFailed") long readerFailed,
+        @Bind("sinkTotal") long sinkTotal,
+        @Bind("sinkSuccess") long sinkSuccess,
+        @Bind("sinkFailed") long sinkFailed,
+        @Bind("entityBuildFailures") long entityBuildFailures,
+        @Bind("partitionsCompleted") int partitionsCompleted,
+        @Bind("partitionsFailed") int partitionsFailed,
+        @Bind("lastUpdatedAt") long lastUpdatedAt);
+
+    @SqlQuery("SELECT * FROM search_index_server_stats WHERE jobId = :jobId")
+    @RegisterRowMapper(ServerStatsMapper.class)
+    List<ServerStatsRecord> findByJobId(@Bind("jobId") String jobId);
+
+    @SqlQuery(
+        "SELECT * FROM search_index_server_stats WHERE jobId = :jobId AND serverId = :serverId")
+    @RegisterRowMapper(ServerStatsMapper.class)
+    ServerStatsRecord findByJobIdAndServerId(
+        @Bind("jobId") String jobId, @Bind("serverId") String serverId);
+
+    @SqlQuery(
+        "SELECT "
+            + "COALESCE(SUM(readerSuccess), 0) as readerSuccess, "
+            + "COALESCE(SUM(readerFailed), 0) as readerFailed, "
+            + "COALESCE(SUM(sinkTotal), 0) as sinkTotal, "
+            + "COALESCE(SUM(sinkSuccess), 0) as sinkSuccess, "
+            + "COALESCE(SUM(sinkFailed), 0) as sinkFailed, "
+            + "COALESCE(SUM(entityBuildFailures), 0) as entityBuildFailures, "
+            + "COALESCE(SUM(partitionsCompleted), 0) as partitionsCompleted, "
+            + "COALESCE(SUM(partitionsFailed), 0) as partitionsFailed "
+            + "FROM search_index_server_stats WHERE jobId = :jobId")
+    @RegisterRowMapper(AggregatedServerStatsMapper.class)
+    AggregatedServerStats getAggregatedStats(@Bind("jobId") String jobId);
+
+    @SqlUpdate("DELETE FROM search_index_server_stats WHERE jobId = :jobId")
+    void deleteByJobId(@Bind("jobId") String jobId);
+
+    class ServerStatsMapper implements RowMapper<ServerStatsRecord> {
+      @Override
+      public ServerStatsRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new ServerStatsRecord(
+            rs.getString("id"),
+            rs.getString("jobId"),
+            rs.getString("serverId"),
+            rs.getLong("readerSuccess"),
+            rs.getLong("readerFailed"),
+            rs.getLong("sinkTotal"),
+            rs.getLong("sinkSuccess"),
+            rs.getLong("sinkFailed"),
+            rs.getLong("entityBuildFailures"),
+            rs.getInt("partitionsCompleted"),
+            rs.getInt("partitionsFailed"),
+            rs.getLong("lastUpdatedAt"));
+      }
+    }
+
+    class AggregatedServerStatsMapper implements RowMapper<AggregatedServerStats> {
+      @Override
+      public AggregatedServerStats map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new AggregatedServerStats(
+            rs.getLong("readerSuccess"),
+            rs.getLong("readerFailed"),
+            rs.getLong("sinkTotal"),
+            rs.getLong("sinkSuccess"),
+            rs.getLong("sinkFailed"),
+            rs.getLong("entityBuildFailures"),
+            rs.getInt("partitionsCompleted"),
+            rs.getInt("partitionsFailed"));
       }
     }
   }

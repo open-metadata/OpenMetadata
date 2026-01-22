@@ -188,3 +188,48 @@ CREATE TABLE IF NOT EXISTS search_reindex_lock (
     expiresAt BIGINT NOT NULL,
     PRIMARY KEY (lockKey)
 );
+
+-- Search Index Failures Table
+-- Purpose: Store individual failure records for entities that fail during reindexing
+
+CREATE TABLE IF NOT EXISTS search_index_failures (
+    id VARCHAR(36) NOT NULL,
+    jobId VARCHAR(36) NOT NULL,
+    runId VARCHAR(36) NOT NULL,
+    entityType VARCHAR(256) NOT NULL,
+    entityId VARCHAR(36),
+    entityFqn VARCHAR(1024),
+    failureStage VARCHAR(32) NOT NULL,
+    errorMessage TEXT,
+    stackTrace TEXT,
+    timestamp BIGINT NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_search_index_failures_job_id ON search_index_failures(jobId);
+CREATE INDEX IF NOT EXISTS idx_search_index_failures_run_id ON search_index_failures(runId);
+CREATE INDEX IF NOT EXISTS idx_search_index_failures_entity_type ON search_index_failures(entityType);
+CREATE INDEX IF NOT EXISTS idx_search_index_failures_timestamp ON search_index_failures(timestamp);
+
+-- Search Index Server Stats Table
+-- Purpose: Track per-server stats in distributed indexing mode
+
+CREATE TABLE IF NOT EXISTS search_index_server_stats (
+    id VARCHAR(36) NOT NULL,
+    jobId VARCHAR(36) NOT NULL,
+    serverId VARCHAR(256) NOT NULL,
+    readerSuccess BIGINT DEFAULT 0,
+    readerFailed BIGINT DEFAULT 0,
+    sinkTotal BIGINT DEFAULT 0,
+    sinkSuccess BIGINT DEFAULT 0,
+    sinkFailed BIGINT DEFAULT 0,
+    entityBuildFailures BIGINT DEFAULT 0,
+    partitionsCompleted INT DEFAULT 0,
+    partitionsFailed INT DEFAULT 0,
+    lastUpdatedAt BIGINT NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE (jobId, serverId)
+);
+
+CREATE INDEX IF NOT EXISTS idx_search_index_server_stats_job_id ON search_index_server_stats(jobId);
+
