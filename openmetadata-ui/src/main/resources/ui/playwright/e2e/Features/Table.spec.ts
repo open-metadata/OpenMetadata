@@ -862,8 +862,11 @@ test.describe('Large Table Column Search & Copy Link', () => {
     expect(clipboardText).toContain(targetColumnName);
 
     // 5. Visit the copied Link
+    const visitLinkResponse = page.waitForResponse((response) =>
+      response.url().includes(`/table/${createdTable.fullyQualifiedName}`)
+    );
     await page.goto(clipboardText);
-    await page.waitForLoadState('networkidle');
+    await visitLinkResponse;
     await waitForAllLoadersToDisappear(page);
 
     // 6. Verify Side Panel is open
