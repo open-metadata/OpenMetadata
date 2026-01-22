@@ -903,6 +903,7 @@ test.describe('dbt Tab Visibility', () => {
           op: 'add',
           path: '/dataModel',
           value: {
+            modelType: 'DBT',
             path: 'data/seeds/my_seed.csv',
           },
         },
@@ -916,6 +917,7 @@ test.describe('dbt Tab Visibility', () => {
           op: 'add',
           path: '/dataModel',
           value: {
+            modelType: 'DBT',
             dbtSourceProject: 'my_dbt_project',
           },
         },
@@ -929,6 +931,7 @@ test.describe('dbt Tab Visibility', () => {
           op: 'add',
           path: '/dataModel',
           value: {
+            modelType: 'DBT',
             sql: 'SELECT * FROM my_table',
             dbtSourceProject: 'my_dbt_project',
             path: 'models/example/my_model.sql',
