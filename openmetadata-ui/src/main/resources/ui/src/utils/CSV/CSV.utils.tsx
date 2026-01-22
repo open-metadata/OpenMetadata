@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import { get, isEmpty, isString, isUndefined, startCase } from 'lodash';
+import { isEmpty, isString, isUndefined, startCase } from 'lodash';
 import { parse } from 'papaparse';
 import { Column } from 'react-data-grid';
 import { ReactComponent as SuccessBadgeIcon } from '../..//assets/svg/success-badge.svg';
@@ -258,48 +258,78 @@ export const getEntityColumnsAndDataSourceFromCSV = (
   };
 };
 
-const formatTripleQuotedCSVValue = (value: string): string => {
-  // Step 1: escape inner quotes
-  const escaped = value.replace(/"/g, '""');
+const formatGlossaryTerms = (value: string): string => {
+  if (!value?.trim()) {
+    return '';
+  }
 
-  // Step 2: wrap with triple quotes
-  return `"""${escaped}"""`;
+  const terms = value
+    .split(';')
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+  const formatted = terms.map((term) => {
+    // Remove all quotes first
+    const clean = term.replace(/"/g, '');
+
+    // PW glossary term
+    if (clean.startsWith('PW%') && clean.includes('.PW.')) {
+      const splitIndex = clean.indexOf('.PW.');
+
+      const left = clean.substring(0, splitIndex);
+      const right = clean.substring(splitIndex + 1); // keep PW.*
+
+      return `""${left}"".""${right}""`;
+    }
+
+    // Non-PW glossary term
+    return clean;
+  });
+
+  // Wrap entire cell once (CSV-compliant)
+  return `"${formatted.join(';')}"`;
 };
 
 export const getCSVStringFromColumnsAndDataSource = (
   columns: Column<any>[],
   dataSource: Record<string, string>[]
 ) => {
-  const header = columns.map((col) => col.key).join(',');
+  const header = columns.map((c) => c.key).join(',');
 
-  const rows = dataSource
-    .map((row) =>
-      columns
-        .map((col) => {
-          const colName = col.key ?? '';
-          const value = String(get(row, colName, ''));
+  const rows = dataSource.map((row) =>
+    columns
+      .map((col) => {
+        const key = col.key;
+        const value = String(row[key] ?? '');
 
-          if (!value) {
-            return '';
-          }
+        if (!value) {
+          return '';
+        }
 
-          if (colName === 'glossaryTerms' || colName === 'domains') {
-            return formatTripleQuotedCSVValue(value);
-          }
+        // 🔒 glossaryTerms — FINAL STRING
+        if (key === 'glossaryTerms') {
+          return formatGlossaryTerms(value);
+        }
 
-          if (colName === 'description') {
-            return `"${value.replace(/"/g, '""')}"`;
-          }
+        // 🔒 domains — triple quoted
+        if (key === 'domains') {
+          return `"""${value.replace(/"/g, '""')}"""`;
+        }
 
-          if (/[,"\n]/.test(value)) {
-            return `"${value.replace(/"/g, '""')}"`;
-          }
+        // description — standard CSV
+        if (key === 'description') {
+          return `"${value.replace(/"/g, '""')}"`;
+        }
 
-          return value;
-        })
-        .join(',')
-    )
-    .filter(Boolean);
+        // generic CSV escape (ONLY for other columns)
+        if (/[,"\n]/.test(value)) {
+          return `"${value.replace(/"/g, '""')}"`;
+        }
+
+        return value;
+      })
+      .join(',')
+  );
 
   return [header, ...rows].join('\n');
 };
