@@ -174,6 +174,7 @@ base_requirements = {
     "collate-data-diff>=0.11.6",
     "jaraco.functools<4.2.0",  # above 4.2 breaks the build
     "jaraco.context==6.0.1",
+    # TODO: Remove one once we have updated datadiff version
     VERSIONS["snowflake-connector"],
     "mysql-connector-python>=8.0.29;python_version<'3.9'",
     "mysql-connector-python>=9.1;python_version>='3.9'",
