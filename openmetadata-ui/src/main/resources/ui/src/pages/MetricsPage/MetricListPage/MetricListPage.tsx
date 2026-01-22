@@ -25,6 +25,7 @@ import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../../constants/constants';
 import { METRICS_DOCS } from '../../../constants/docs.constants';
+import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -242,7 +243,7 @@ const MetricListPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.metric-plural')}>
-      <Row className="p-b-md" gutter={[0, 16]}>
+      <Row className="p-b-md m-t-xs" gutter={[0, 16]}>
         <Col span={24}>
           <div className="d-flex justify-between">
             <PageHeader
@@ -250,6 +251,8 @@ const MetricListPage = () => {
                 header: t('label.metric-plural'),
                 subHeader: t('message.metric-description'),
               }}
+              learningPageId={LEARNING_PAGE_IDS.METRICS}
+              title={t('label.metric-plural')}
             />
             {permission.Create && (
               <LimitWrapper resource="metric">

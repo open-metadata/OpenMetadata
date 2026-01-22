@@ -143,7 +143,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
       if (resource) {
         await updateLearningResource(payload);
         showSuccessToast(
-          t('server.entity-updated-successfully', {
+          t('server.entity-updated-success', {
             entity: t('label.learning-resource'),
           })
         );
