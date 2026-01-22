@@ -57,6 +57,7 @@ import {
   getNameFromFQN,
   replaceAllSpacialCharWith_,
 } from '../../../../utils/CommonUtils';
+import { getServiceTypeForTestDefinition } from '../../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
@@ -117,11 +118,15 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
 
   const fetchAllTestDefinitions = async (columnType?: string) => {
     try {
+      // Derive service type from table for filtering
+      const serviceType = getServiceTypeForTestDefinition(table);
+
       const { data } = await getListTestDefinitions({
         limit: PAGE_SIZE_LARGE,
         entityType: isColumnFqn ? EntityType.Column : EntityType.Table,
         testPlatform: TestPlatform.OpenMetadata,
         supportedDataType: columnType,
+        supportedService: serviceType,
       });
 
       setTestDefinitions(data);
