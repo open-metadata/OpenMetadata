@@ -151,6 +151,12 @@ public class DistributedJobParticipant implements Managed {
         return;
       }
 
+      // Check if this server is coordinating this job (don't participate in our own job)
+      if (DistributedSearchIndexExecutor.isCoordinatingJob(jobId)) {
+        LOG.debug("Job {} is being coordinated by this server, participant will not join", jobId);
+        return;
+      }
+
       // Check if there are pending partitions we can help with
       long pendingCount = coordinator.getPartitions(job.getId(), PartitionStatus.PENDING).size();
       if (pendingCount == 0) {

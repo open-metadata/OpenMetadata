@@ -24,6 +24,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -54,6 +55,18 @@ import org.openmetadata.service.search.ReindexContext;
  */
 @Slf4j
 public class DistributedSearchIndexExecutor {
+
+  /**
+   * Set of job IDs currently being coordinated by this server. Used to prevent
+   * DistributedJobParticipant from joining jobs that this server is coordinating.
+   */
+  private static final Set<UUID> COORDINATED_JOBS =
+      java.util.Collections.synchronizedSet(new java.util.HashSet<>());
+
+  /** Check if a job is being coordinated by this server. */
+  public static boolean isCoordinatingJob(UUID jobId) {
+    return COORDINATED_JOBS.contains(jobId);
+  }
 
   /** Maximum number of concurrent partition workers per server */
   private static final int MAX_WORKER_THREADS = 10;
@@ -104,6 +117,8 @@ public class DistributedSearchIndexExecutor {
   // Reader stats tracking (accumulated across all worker threads)
   private final AtomicLong coordinatorReaderSuccess = new AtomicLong(0);
   private final AtomicLong coordinatorReaderFailed = new AtomicLong(0);
+  private final AtomicInteger coordinatorPartitionsCompleted = new AtomicInteger(0);
+  private final AtomicInteger coordinatorPartitionsFailed = new AtomicInteger(0);
 
   public DistributedSearchIndexExecutor(CollectionDAO collectionDAO) {
     this(collectionDAO, 10000); // Default partition size
@@ -304,6 +319,10 @@ public class DistributedSearchIndexExecutor {
           "Job must be in RUNNING state to execute. Current: " + currentJob.getStatus());
     }
 
+    // Mark this job as being coordinated by this server (prevents participant from joining)
+    COORDINATED_JOBS.add(jobId);
+    LOG.debug("Marked job {} as coordinated by this server", jobId);
+
     // Create job context for listener callbacks
     jobContext = new DistributedJobContext(currentJob);
 
@@ -472,6 +491,10 @@ public class DistributedSearchIndexExecutor {
 
       // Release lock
       coordinator.releaseReindexLock(jobId);
+
+      // Remove from coordinated jobs set
+      COORDINATED_JOBS.remove(jobId);
+      LOG.debug("Removed job {} from coordinated jobs set", jobId);
     }
 
     // Get final job state
@@ -579,9 +602,10 @@ public class DistributedSearchIndexExecutor {
         totalSuccess.addAndGet(result.successCount());
         totalFailed.addAndGet(result.failedCount());
 
-        // Also accumulate into coordinator reader stats for persistence
+        // Accumulate into coordinator stats for persistence
         coordinatorReaderSuccess.addAndGet(result.successCount());
         coordinatorReaderFailed.addAndGet(result.failedCount());
+        coordinatorPartitionsCompleted.incrementAndGet();
 
         LOG.info(
             "Worker {} completed partition {} (success: {}, failed: {})",
@@ -589,6 +613,9 @@ public class DistributedSearchIndexExecutor {
             partition.getId(),
             result.successCount(),
             result.failedCount());
+
+        // Persist stats after each partition completion
+        persistServerStats(currentJob.getId());
       }
     } finally {
       synchronized (activeWorkers) {
@@ -736,14 +763,9 @@ public class DistributedSearchIndexExecutor {
       StepStats sinkStats = searchIndexSink.getStats();
       long entityBuildFailures = searchIndexSink.getEntityBuildFailures();
 
-      List<SearchIndexPartition> completed =
-          coordinator.getPartitions(jobId, PartitionStatus.COMPLETED);
-      List<SearchIndexPartition> failed = coordinator.getPartitions(jobId, PartitionStatus.FAILED);
-
-      int partitionsCompleted =
-          (int) completed.stream().filter(p -> serverId.equals(p.getAssignedServer())).count();
-      int partitionsFailed =
-          (int) failed.stream().filter(p -> serverId.equals(p.getAssignedServer())).count();
+      // Use local counters instead of querying DB (more accurate, no timing issues)
+      int partitionsCompleted = coordinatorPartitionsCompleted.get();
+      int partitionsFailed = coordinatorPartitionsFailed.get();
 
       String statsId = UUID.nameUUIDFromBytes((jobId.toString() + serverId).getBytes()).toString();
 
@@ -764,11 +786,13 @@ public class DistributedSearchIndexExecutor {
               System.currentTimeMillis());
 
       LOG.debug(
-          "Persisted server stats for job {} server {}: readerSuccess={}, readerFailed={}",
+          "Persisted server stats for job {} server {}: readerSuccess={}, readerFailed={}, "
+              + "partitionsCompleted={}",
           jobId,
           serverId,
           coordinatorReaderSuccess.get(),
-          coordinatorReaderFailed.get());
+          coordinatorReaderFailed.get(),
+          partitionsCompleted);
     } catch (Exception e) {
       LOG.error("Error persisting server stats for job {} server {}", jobId, serverId, e);
     }
