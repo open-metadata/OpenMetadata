@@ -7,17 +7,17 @@ from unittest.mock import MagicMock, Mock
 
 import pytest
 
-from metadata.data_quality.validations.column.base.ruleLibrarySqlExpressionValidator import (
+from metadata.data_quality.validations.column.base.columnRuleLibrarySqlExpressionValidator import (
     RESERVED_PARAMS,
 )
-from metadata.data_quality.validations.column.base.ruleLibrarySqlExpressionValidator import (
-    RuleLibrarySqlExpressionValidator as BaseValidator,
+from metadata.data_quality.validations.column.base.columnRuleLibrarySqlExpressionValidator import (
+    ColumnRuleLibrarySqlExpressionValidator as BaseValidator,
 )
-from metadata.data_quality.validations.column.pandas.ruleLibrarySqlExpressionValidator import (
-    RuleLibrarySqlExpressionValidator as PandasValidator,
+from metadata.data_quality.validations.column.pandas.columnRuleLibrarySqlExpressionValidator import (
+    ColumnRuleLibrarySqlExpressionValidator as PandasValidator,
 )
-from metadata.data_quality.validations.column.sqlalchemy.ruleLibrarySqlExpressionValidator import (
-    RuleLibrarySqlExpressionValidator as SQAValidator,
+from metadata.data_quality.validations.column.sqlalchemy.columnRuleLibrarySqlExpressionValidator import (
+    ColumnRuleLibrarySqlExpressionValidator as SQAValidator,
 )
 
 

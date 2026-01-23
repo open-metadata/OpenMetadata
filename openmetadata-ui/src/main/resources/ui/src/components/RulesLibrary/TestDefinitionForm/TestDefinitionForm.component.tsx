@@ -101,7 +101,9 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
           supportedDataTypes: values.supportedDataTypes,
           parameterDefinition: values.parameterDefinition,
           validatorClass: values.sqlExpression
-            ? 'RuleLibrarySqlExpressionValidator'
+            ? values.entityType === EntityType.Column
+              ? 'ColumnRuleLibrarySqlExpressionValidator'
+              : 'TableRuleLibrarySqlExpressionValidator'
             : undefined,
         };
         await createTestDefinition(payload);
