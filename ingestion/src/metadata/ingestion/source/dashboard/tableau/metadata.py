@@ -877,8 +877,9 @@ class TableauSource(DashboardServiceSource):
                         db_service_entity, database_name
                     )
                 else:
-                    logger.debug(
-                        f"Database service {db_service_name} not found for table {table.name}"
+                    logger.warning(
+                        f"Database service '{db_service_name}' not found for table '{table.name}'. "
+                        f"Please ensure the database service exists in OpenMetadata."
                     )
 
             schema_name = (
