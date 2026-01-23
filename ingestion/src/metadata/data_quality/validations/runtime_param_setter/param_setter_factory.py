@@ -22,8 +22,16 @@ from metadata.data_quality.validations.runtime_param_setter.param_setter import 
 from metadata.data_quality.validations.runtime_param_setter.table_custom_sql_query_params_setter import (
     TableCustomSQLQueryParamsSetter,
 )
+
+from metadata.data_quality.validations.runtime_param_setter.rule_library_sql_expression_params_setter import (
+    RuleLibrarySqlExpressionParamsSetter,
+)
+
 from metadata.data_quality.validations.runtime_param_setter.table_diff_params_setter import (
     TableDiffParamsSetter,
+)
+from metadata.data_quality.validations.column.base.ruleLibrarySqlExpressionValidator import (
+    RuleLibrarySqlExpressionValidator,
 )
 from metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery import (
     TableCustomSQLQueryValidator,
@@ -68,6 +76,9 @@ class RuntimeParameterSetterFactory:
             validator_name(TableDiffValidator): {TableDiffParamsSetter},
             validator_name(TableCustomSQLQueryValidator): {
                 TableCustomSQLQueryParamsSetter
+            },
+            validator_name(RuleLibrarySqlExpressionValidator): {
+                RuleLibrarySqlExpressionParamsSetter
             },
         }
 

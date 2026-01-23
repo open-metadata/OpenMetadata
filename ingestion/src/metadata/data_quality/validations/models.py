@@ -44,4 +44,5 @@ class TableCustomSQLQueryRuntimeParameters(BaseModel):
     conn_config: DatabaseConnection
     entity: Table
 
-class 
+class RuleLibrarySqlExpressionRuntimeParameters(BaseModel):
+    conn_config: DatabaseConnection
