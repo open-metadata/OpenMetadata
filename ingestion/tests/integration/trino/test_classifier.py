@@ -22,7 +22,9 @@ def sampling_only_classifier_config(
     return config
 
 
-def _run_classifier_with_retry(run_workflow, ingestion_config, classifier_config, max_retries=3, delay=30):
+def _run_classifier_with_retry(
+    run_workflow, ingestion_config, classifier_config, max_retries=3, delay=30
+):
     """Run classifier workflow with retry logic for flaky elasticsearch issues."""
     last_error = None
     for attempt in range(max_retries):
@@ -49,7 +51,9 @@ def run_classifier(
     create_test_data,
     request,
 ):
-    _run_classifier_with_retry(run_workflow, ingestion_config, sampling_only_classifier_config)
+    _run_classifier_with_retry(
+        run_workflow, ingestion_config, sampling_only_classifier_config
+    )
     return ingestion_config
 
 
