@@ -46,6 +46,7 @@ import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import DescriptionTaskNew from '../../../pages/TasksPage/shared/DescriptionTaskNew';
 import TagsTask from '../../../pages/TasksPage/shared/TagsTask';
 import { updateTask } from '../../../rest/feedsAPI';
+import { getNameFromFQN } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getErrorText } from '../../../utils/StringsUtils';
 import {
@@ -57,7 +58,6 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './task-feed-card.less';
-import { getNameFromFQN } from '../../../utils/CommonUtils';
 
 interface TaskFeedCardProps {
   feed: Thread;
@@ -130,9 +130,9 @@ const TaskFeedCard = ({
   const taskLinkTitleElement = useMemo(() => {
     const isRecognizerFeedback =
       taskDetails?.type === TaskType.RecognizerFeedbackApproval;
-    const tagName = isRecognizerFeedback
+    const entityName = isRecognizerFeedback
       ? getNameFromFQN(taskDetails?.feedback?.tagFQN ?? '')
-      : '';
+      : getNameFromFQN(entityFQN);
 
     return isEntityDetailsAvailable && !isUndefined(taskDetails) ? (
       <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
@@ -144,8 +144,8 @@ const TaskFeedCard = ({
           <Typography.Text className="m-r-xss task-details-id">{`#${taskDetails.id} `}</Typography.Text>
 
           <Typography.Text className="m-r-xss  m-r-xss task-details-entity-link">
-            {isRecognizerFeedback && tagName
-              ? `${t(TASK_TYPES[taskDetails.type])}: ${tagName}`
+            {isRecognizerFeedback && entityName
+              ? `${t(TASK_TYPES[taskDetails.type])}: ${entityName}`
               : t(TASK_TYPES[taskDetails.type])}
           </Typography.Text>
 
@@ -155,7 +155,7 @@ const TaskFeedCard = ({
             <Typography.Text
               className="break-all header-link text-sm"
               data-testid="entity-link">
-              {tagName}
+              {entityName}
             </Typography.Text>
           )}
 
@@ -250,7 +250,9 @@ const TaskFeedCard = ({
     assignee.type === 'team' ? checkIfUserPartOfTeam(assignee.id) : false
   );
   const hasEditAccess =
-    (isAdminUser && !isTaskGlossaryApproval && !isTaskRecognizerFeedbackApproval) ||
+    (isAdminUser &&
+      !isTaskGlossaryApproval &&
+      !isTaskRecognizerFeedbackApproval) ||
     isAssignee ||
     (Boolean(isPartOfAssigneeTeam) && !isCreator);
 
