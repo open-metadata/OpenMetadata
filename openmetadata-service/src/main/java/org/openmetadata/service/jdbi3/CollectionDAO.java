@@ -466,6 +466,9 @@ public interface CollectionDAO {
   LLMServiceDAO llmServiceDAO();
 
   @CreateSqlObject
+  McpServiceDAO mcpServiceDAO();
+
+  @CreateSqlObject
   AuditLogDAO auditLogDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
@@ -9020,6 +9023,23 @@ public interface CollectionDAO {
     @Override
     default Class<org.openmetadata.schema.entity.services.LLMService> getEntityClass() {
       return org.openmetadata.schema.entity.services.LLMService.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
+    }
+  }
+
+  interface McpServiceDAO extends EntityDAO<org.openmetadata.schema.entity.services.McpService> {
+    @Override
+    default String getTableName() {
+      return "mcp_service_entity";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.services.McpService> getEntityClass() {
+      return org.openmetadata.schema.entity.services.McpService.class;
     }
 
     @Override

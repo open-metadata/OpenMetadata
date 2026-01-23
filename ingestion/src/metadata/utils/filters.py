@@ -413,3 +413,18 @@ def filter_by_worksheet(
     :return: True for filtering, False otherwise
     """
     return _filter(worksheet_filter_pattern, worksheet_name)
+
+
+def filter_by_server(
+    server_filter_pattern: Optional[FilterPattern], server_name: str
+) -> bool:
+    """
+    Return True if the MCP server needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param server_filter_pattern: Model defining server filtering logic
+    :param server_name: server name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(server_filter_pattern, server_name)

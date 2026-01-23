@@ -85,6 +85,8 @@ import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.llm.OpenAIConnection;
+import org.openmetadata.schema.services.connections.mcp.McpConnection;
+import org.openmetadata.schema.services.connections.mcp.McpServerConfig;
 import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.services.connections.messaging.RedpandaConnection;
 import org.openmetadata.schema.services.connections.metadata.AmundsenConnection;
@@ -217,6 +219,20 @@ public final class TestUtils {
               new OpenAIConnection()
                   .withApiKey("test-api-key")
                   .withBaseURL("https://api.openai.com/v1"));
+
+  public static final org.openmetadata.schema.type.McpConnection MCP_CONNECTION =
+      new org.openmetadata.schema.type.McpConnection()
+          .withConfig(
+              new McpConnection()
+                  .withType(McpConnection.McpType.MCP)
+                  .withDiscoveryMethod(McpConnection.DiscoveryMethod.DirectConnection)
+                  .withServers(
+                      java.util.List.of(
+                          new McpServerConfig()
+                              .withName("test-server")
+                              .withTransport(McpServerConfig.TransportType.Stdio)
+                              .withCommand("echo")
+                              .withArgs(java.util.List.of("test")))));
 
   public static final MetadataConnection AMUNDSEN_CONNECTION =
       new MetadataConnection()

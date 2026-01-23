@@ -10,6 +10,7 @@ import org.openmetadata.sdk.network.OpenMetadataHttpClient;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.sdk.services.ai.AIApplicationService;
 import org.openmetadata.sdk.services.ai.LLMModelService;
+import org.openmetadata.sdk.services.ai.McpServerService;
 import org.openmetadata.sdk.services.ai.PromptTemplateService;
 import org.openmetadata.sdk.services.apiservice.APICollectionService;
 import org.openmetadata.sdk.services.apiservice.APIEndpointService;
@@ -184,6 +185,7 @@ public class OpenMetadataClient {
 
   // AI
   private final AIApplicationService aiApplications;
+  private final McpServerService mcpServers;
   private final PromptTemplateService promptTemplates;
 
   public OpenMetadataClient(OpenMetadataConfig config) {
@@ -292,6 +294,7 @@ public class OpenMetadataClient {
 
     // Initialize AI services
     this.aiApplications = new AIApplicationService(httpClient);
+    this.mcpServers = new McpServerService(httpClient);
     this.promptTemplates = new PromptTemplateService(httpClient);
 
     // Initialize feed service
@@ -578,6 +581,10 @@ public class OpenMetadataClient {
   // AI Service Getters
   public AIApplicationService aiApplications() {
     return aiApplications;
+  }
+
+  public McpServerService mcpServers() {
+    return mcpServers;
   }
 
   public PromptTemplateService promptTemplates() {

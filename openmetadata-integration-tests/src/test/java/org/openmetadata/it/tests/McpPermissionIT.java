@@ -220,6 +220,134 @@ public class McpPermissionIT {
     assertEquals("Updated by user1", updated.getDescription());
   }
 
+  // ==================== DataConsumer Policy Tests ====================
+  // The Organization team has DataConsumer as default role, which grants:
+  // ViewAll, EditDescription, EditTags, EditGlossaryTerms, EditTier, EditCertification
+  // User2 (no explicit roles) inherits DataConsumer from Organization
+
+  @Test
+  void testUser2WithDataConsumerCanEditDescription(TestNamespace ns) throws Exception {
+    // User2 inherits DataConsumer role from Organization, which allows EditDescription
+    CreateMcpServer create =
+        new CreateMcpServer()
+            .withName(ns.prefix("dataconsumer-edit-desc"))
+            .withServerType(McpServerType.Database)
+            .withTransportType(McpTransportType.Stdio)
+            .withDescription("Original description");
+
+    McpServer created = createMcpServer(SdkClients.adminClient(), create);
+
+    String patchJson =
+        "[{\"op\": \"replace\", \"path\": \"/description\", \"value\": \"Updated by user2 via DataConsumer\"}]";
+
+    patchMcpServer(SdkClients.user2Client(), created.getId(), patchJson);
+
+    McpServer updated = getMcpServer(SdkClients.adminClient(), created.getId());
+    assertEquals("Updated by user2 via DataConsumer", updated.getDescription());
+  }
+
+  @Test
+  void testUser2WithDataConsumerCanEditTags(TestNamespace ns) throws Exception {
+    // User2 inherits DataConsumer role from Organization, which allows EditTags
+    SharedEntities shared = SharedEntities.get();
+
+    CreateMcpServer create =
+        new CreateMcpServer()
+            .withName(ns.prefix("dataconsumer-edit-tags"))
+            .withServerType(McpServerType.WebAPI)
+            .withTransportType(McpTransportType.Stdio)
+            .withDescription("Server for tag editing test");
+
+    McpServer created = createMcpServer(SdkClients.adminClient(), create);
+
+    String patchJson =
+        String.format(
+            "[{\"op\": \"add\", \"path\": \"/tags\", \"value\": [{\"tagFQN\": \"%s\", \"source\": \"Classification\"}]}]",
+            shared.PERSONAL_DATA_TAG.getFullyQualifiedName());
+
+    patchMcpServer(SdkClients.user2Client(), created.getId(), patchJson);
+
+    McpServer updated = getMcpServerWithFields(SdkClients.adminClient(), created.getId(), "tags");
+    assertNotNull(updated.getTags(), "Tags field should be returned");
+    assertTrue(updated.getTags().size() > 0, "Tags should be added by DataConsumer user");
+  }
+
+  @Test
+  void testUser2WithDataConsumerCannotEditDisplayName(TestNamespace ns) throws Exception {
+    // EditDisplayName is NOT in DataConsumer policy - should fail
+    CreateMcpServer create =
+        new CreateMcpServer()
+            .withName(ns.prefix("no-displayname-edit"))
+            .withServerType(McpServerType.FileSystem)
+            .withTransportType(McpTransportType.SSE)
+            .withDisplayName("Original Display Name");
+
+    McpServer created = createMcpServer(SdkClients.adminClient(), create);
+
+    String patchJson =
+        "[{\"op\": \"replace\", \"path\": \"/displayName\", \"value\": \"Unauthorized Name\"}]";
+
+    assertThrows(
+        Exception.class,
+        () -> patchMcpServer(SdkClients.user2Client(), created.getId(), patchJson),
+        "DataConsumer should not be able to edit displayName (not in policy)");
+  }
+
+  @Test
+  void testUser2CanSetOwnerOnUnownedEntity(TestNamespace ns) throws Exception {
+    // OrganizationPolicy allows EditOwners when noOwner() is true
+    SharedEntities shared = SharedEntities.get();
+
+    CreateMcpServer create =
+        new CreateMcpServer()
+            .withName(ns.prefix("unowned-server"))
+            .withServerType(McpServerType.Security)
+            .withTransportType(McpTransportType.Streamable)
+            .withDescription("Server with no owner - anyone can set owner");
+    // Note: No owners set
+
+    McpServer created = createMcpServer(SdkClients.adminClient(), create);
+
+    String patchJson =
+        String.format(
+            "[{\"op\": \"add\", \"path\": \"/owners\", \"value\": [{\"id\": \"%s\", \"type\": \"user\"}]}]",
+            shared.USER2.getId());
+
+    // Should succeed because noOwner() is true
+    patchMcpServer(SdkClients.user2Client(), created.getId(), patchJson);
+
+    McpServer updated = getMcpServerWithFields(SdkClients.adminClient(), created.getId(), "owners");
+    assertNotNull(updated.getOwners(), "Owners field should be returned");
+    assertTrue(updated.getOwners().size() > 0, "Owner should be set on unowned entity");
+  }
+
+  @Test
+  void testUser2CannotChangeOwnerOnOwnedEntity(TestNamespace ns) throws Exception {
+    // OrganizationPolicy only allows EditOwners when noOwner() - owned entities are protected
+    SharedEntities shared = SharedEntities.get();
+
+    CreateMcpServer create =
+        new CreateMcpServer()
+            .withName(ns.prefix("owned-server"))
+            .withServerType(McpServerType.Cloud)
+            .withTransportType(McpTransportType.Stdio)
+            .withOwners(List.of(shared.USER1_REF)) // Has an owner
+            .withDescription("Server with owner - protected from unauthorized changes");
+
+    McpServer created = createMcpServer(SdkClients.adminClient(), create);
+
+    String patchJson =
+        String.format(
+            "[{\"op\": \"replace\", \"path\": \"/owners\", \"value\": [{\"id\": \"%s\", \"type\": \"user\"}]}]",
+            shared.USER2.getId());
+
+    // Should fail because noOwner() is false (entity has owner) and user2 is not the owner
+    assertThrows(
+        Exception.class,
+        () -> patchMcpServer(SdkClients.user2Client(), created.getId(), patchJson),
+        "Non-owner should not be able to change owners on owned entity");
+  }
+
   // ==================== MCP Execution Permission Tests ====================
 
   @Test
@@ -395,6 +523,19 @@ public class McpPermissionIT {
             .executeForString(
                 HttpMethod.GET,
                 "/v1/mcpServers/" + id.toString() + "?include=" + include,
+                null,
+                RequestOptions.builder().build());
+    return MAPPER.readValue(response, McpServer.class);
+  }
+
+  private McpServer getMcpServerWithFields(OpenMetadataClient client, UUID id, String fields)
+      throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/mcpServers/" + id.toString() + "?fields=" + fields,
                 null,
                 RequestOptions.builder().build());
     return MAPPER.readValue(response, McpServer.class);

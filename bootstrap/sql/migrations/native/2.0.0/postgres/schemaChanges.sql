@@ -33,3 +33,19 @@ CREATE INDEX IF NOT EXISTS mcp_execution_server_index ON mcp_execution_entity(se
 CREATE INDEX IF NOT EXISTS mcp_execution_timestamp_index ON mcp_execution_entity(timestamp);
 
 COMMENT ON TABLE mcp_execution_entity IS 'MCP Server Execution logs';
+
+-- Create mcp_service_entity table for MCP Service (ingestion source)
+CREATE TABLE IF NOT EXISTS mcp_service_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json->>'id') STORED NOT NULL,
+    nameHash VARCHAR(256) NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json->>'name') STORED NOT NULL,
+    serviceType VARCHAR(256) GENERATED ALWAYS AS (json->>'serviceType') STORED NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json->>'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'updatedBy') STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json->>'deleted')::boolean) STORED,
+    PRIMARY KEY (id),
+    UNIQUE (nameHash)
+);
+
+COMMENT ON TABLE mcp_service_entity IS 'MCP Service entities for ingestion';

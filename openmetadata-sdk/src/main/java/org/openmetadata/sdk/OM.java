@@ -47,6 +47,8 @@ public class OM {
     org.openmetadata.sdk.fluent.Domains.setDefaultClient(client);
     org.openmetadata.sdk.fluent.Metrics.setDefaultClient(client);
     org.openmetadata.sdk.fluent.TestCases.setDefaultClient(client);
+    org.openmetadata.sdk.fluent.McpServers.setDefaultClient(client);
+    org.openmetadata.sdk.fluent.AIApplications.setDefaultClient(client);
 
     // Initialize new fluent API classes
     org.openmetadata.sdk.api.Search.setDefaultClient(client);
@@ -145,6 +147,53 @@ public class OM {
     public static org.openmetadata.schema.entity.data.Dashboard create(
         org.openmetadata.schema.api.data.CreateDashboard request) {
       return org.openmetadata.sdk.fluent.Dashboards.create(request);
+    }
+  }
+
+  public static class McpServer {
+    public static org.openmetadata.sdk.fluent.McpServers.McpServerFinder find(String id) {
+      return org.openmetadata.sdk.fluent.McpServers.find(id);
+    }
+
+    public static org.openmetadata.sdk.fluent.McpServers.McpServerFinder findByName(String fqn) {
+      return org.openmetadata.sdk.fluent.McpServers.findByName(fqn);
+    }
+
+    public static org.openmetadata.sdk.fluent.McpServers.McpServerCreator create() {
+      return org.openmetadata.sdk.fluent.McpServers.create();
+    }
+
+    public static org.openmetadata.schema.entity.ai.McpServer create(
+        org.openmetadata.schema.api.ai.CreateMcpServer request) {
+      return org.openmetadata.sdk.fluent.McpServers.create(request);
+    }
+
+    public static org.openmetadata.sdk.fluent.McpServers.McpServerLister list() {
+      return org.openmetadata.sdk.fluent.McpServers.list();
+    }
+  }
+
+  public static class AIApplication {
+    public static org.openmetadata.sdk.fluent.AIApplications.AIApplicationFinder find(String id) {
+      return org.openmetadata.sdk.fluent.AIApplications.find(id);
+    }
+
+    public static org.openmetadata.sdk.fluent.AIApplications.AIApplicationFinder findByName(
+        String fqn) {
+      return org.openmetadata.sdk.fluent.AIApplications.findByName(fqn);
+    }
+
+    public static org.openmetadata.sdk.fluent.AIApplications.AIApplicationCreator create() {
+      return org.openmetadata.sdk.fluent.AIApplications.create();
+    }
+
+    public static org.openmetadata.schema.entity.ai.AIApplication create(
+        org.openmetadata.schema.api.ai.CreateAIApplication request) {
+      return org.openmetadata.sdk.fluent.AIApplications.create(request);
+    }
+
+    public static org.openmetadata.sdk.fluent.AIApplications.AIApplicationLister list() {
+      return org.openmetadata.sdk.fluent.AIApplications.list();
     }
   }
 

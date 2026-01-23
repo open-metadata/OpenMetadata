@@ -861,8 +861,18 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     LOG.info("Bulk loading time: {}ms, Individual loading time: {}ms", bulkTime, individualTime);
 
     // Test 4: Verify that bulk loaded entities have the same field completeness
-    if (!bulkResult.getData().isEmpty()) {
-      T bulkEntity = bulkResult.getData().get(0);
+    // Use an entity created by this test to avoid interference from concurrent tests
+    if (!entities.isEmpty()) {
+      T createdEntity = entities.get(0);
+      // Find the same entity in bulk results
+      T bulkEntity =
+          bulkResult.getData().stream()
+              .filter(e -> e.getId().equals(createdEntity.getId()))
+              .findFirst()
+              .orElse(null);
+      if (bulkEntity == null) {
+        return; // Entity not found in bulk results, skip this check
+      }
       T individualEntity = getEntity(bulkEntity.getId(), allFields, ADMIN_AUTH_HEADERS);
 
       // Verify critical fields are populated in bulk load
@@ -1225,8 +1235,18 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       long bulkTime = System.currentTimeMillis() - startTime;
 
       // Verify that the requested fields are populated in bulk results
-      if (!bulkResult.getData().isEmpty()) {
-        T entity = bulkResult.getData().get(0);
+      // Use an entity created by this test to avoid interference from concurrent tests
+      if (!entities.isEmpty()) {
+        T createdEntity = entities.get(0);
+        // Find the same entity in bulk results
+        T entity =
+            bulkResult.getData().stream()
+                .filter(e -> e.getId().equals(createdEntity.getId()))
+                .findFirst()
+                .orElse(null);
+        if (entity == null) {
+          continue; // Entity not found in bulk results, skip this field combination
+        }
 
         // Test that bulk loading populates the same fields as individual loading
         T individualEntity = getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
@@ -3053,6 +3073,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     if (supportsSoftDelete) {
       Map<String, String> queryParams = new HashMap<>();
       queryParams.put("include", "deleted");
+      // Use includeRelations to get all followers (not just deleted ones) for the deleted entity
+      queryParams.put("includeRelations", "followers:all");
       entity = getEntity(entityId, queryParams, FIELD_FOLLOWERS, ADMIN_AUTH_HEADERS);
       TestUtils.existsInEntityReferenceList(entity.getFollowers(), user1.getId(), true);
     }

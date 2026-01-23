@@ -165,6 +165,7 @@ public final class Entity {
   public static final String API_SERVICE = "apiService";
   public static final String DRIVE_SERVICE = "driveService";
   public static final String LLM_SERVICE = "llmService";
+  public static final String MCP_SERVICE = "mcpService";
   //
   // Data asset entities
   //
@@ -315,6 +316,7 @@ public final class Entity {
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.API, API_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.DRIVE, DRIVE_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.LLM, LLM_SERVICE);
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.MCP, MCP_SERVICE);
 
     ENTITY_SERVICE_TYPE_MAP.put(DATABASE, DATABASE_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(DATABASE_SCHEMA, DATABASE_SERVICE);
@@ -353,6 +355,7 @@ public final class Entity {
             SECURITY_SERVICE,
             DRIVE_SERVICE,
             LLM_SERVICE,
+            MCP_SERVICE,
             DATABASE,
             DATABASE_SCHEMA,
             CLASSIFICATION,
