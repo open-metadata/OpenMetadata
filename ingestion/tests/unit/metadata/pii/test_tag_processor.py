@@ -15,7 +15,6 @@ from unittest.mock import Mock
 
 import pytest
 from dirty_equals import Contains, HasAttributes, IsFloat, IsInstance, IsUUID
-from presidio_analyzer.nlp_engine import NlpEngine
 
 from _openmetadata_testutils.factories.metadata.generated.schema.entity.classification.tag import (
     TagFactory,
@@ -26,6 +25,7 @@ from _openmetadata_testutils.factories.metadata.generated.schema.type.basic impo
 from _openmetadata_testutils.factories.metadata.generated.schema.type.recognizer import (
     PatternFactory,
     PatternRecognizerFactory,
+    PredefinedRecognizerFactory,
     RecognizerFactory,
 )
 from _openmetadata_testutils.factories.metadata.pii.models import ScoredTagFactory
@@ -58,6 +58,7 @@ from metadata.generated.schema.type.classificationLanguages import (
     ClassificationLanguage,
 )
 from metadata.generated.schema.type.piiEntity import PIIEntity
+from metadata.generated.schema.type.predefinedRecognizer import Name
 from metadata.generated.schema.type.recognizer import RecognizerException
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
@@ -106,21 +107,12 @@ class TestTagProcessor:
     @pytest.fixture
     def email_tag(self, pii_classification: Classification) -> Tag:
         """Create an email tag for testing"""
-        email_pattern = PatternFactory.create(
-            name="Email pattern",
-            regex="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}",
-            score=0.95,
-        )
-        email_pattern_recognizer = PatternRecognizerFactory.create(
-            patterns=[email_pattern],
-            supportedEntity=PIIEntity.EMAIL_ADDRESS,
-            context=[],
-            supportedLanguage=ClassificationLanguage.en,
-        )
         email_recognizer = RecognizerFactory.create(
-            name="EmailRecognizer",
+            name="Email",
             description="Recognizes email addresses",
-            recognizerConfig=email_pattern_recognizer,
+            recognizerConfig=PredefinedRecognizerFactory.create(
+                name=Name.EmailRecognizer
+            ),
             confidenceThreshold=0.8,
             exceptionList=[],
             target=recognizer.Target.content,
@@ -177,9 +169,7 @@ class TestTagProcessor:
     @pytest.fixture
     def score_tags_for_column(self) -> ScoreTagsForColumnService:
         """Create mock NLP engine client"""
-        return ScoreTagsForColumnService(
-            nlp_engine=Mock(spec=NlpEngine),
-        )
+        return ScoreTagsForColumnService()
 
     @pytest.fixture
     def processor(
@@ -268,15 +258,8 @@ class TestTagProcessor:
                     recognizerId=IsInstance(Uuid) & HasAttributes(root=IsUUID()),
                     recognizerName="EmailRecognizer",
                     target=tagLabelRecognizerMetadata.Target.content,
-                    score=IsFloat(approx=0.95),
-                    patterns=Contains(
-                        IsInstance(PatternMatch)
-                        & HasAttributes(
-                            name=Contains("Email"),
-                            regex=Contains("@"),
-                            score=IsFloat(approx=0.95),
-                        )
-                    ),
+                    score=IsFloat(gt=0.80),
+                    patterns=Contains(IsInstance(PatternMatch)),
                 )
             ),
         )
@@ -298,7 +281,21 @@ class TestTagProcessor:
 
         # Should detect phone tag
         assert len(result) == 1
-        assert result[0].tagFQN.root == "PII.PhoneTag"
+        assert result[0] == IsInstance(TagLabel) & HasAttributes(
+            tagFQN=TagFQN(root="PII.PhoneTag"),
+            state=State.Suggested,
+            source=TagSource.Classification,
+            labelType=LabelType.Generated,
+            metadata=IsInstance(TagLabelMetadata)
+            & HasAttributes(
+                recognizer=IsInstance(TagLabelRecognizerMetadata)
+                & HasAttributes(
+                    recognizerId=IsInstance(Uuid) & HasAttributes(root=IsUUID()),
+                    recognizerName="PhoneRecognizer",
+                    target=tagLabelRecognizerMetadata.Target.content,
+                )
+            ),
+        )
 
     def test_no_classification_for_non_pii_data(self, processor: TagProcessor) -> None:
         """Test that non-PII data doesn't get classified"""

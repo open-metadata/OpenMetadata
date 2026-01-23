@@ -20,6 +20,7 @@ from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.generated.schema.type.classificationLanguages import (
     ClassificationLanguage,
 )
+from metadata.generated.schema.type.predefinedRecognizer import PredefinedRecognizer
 from metadata.generated.schema.type.tagLabelRecognizerMetadata import (
     PatternMatch,
     TagLabelRecognizerMetadata,
@@ -94,7 +95,6 @@ class TagScorer:
 
                 recognizer_metadata = self._build_recognizer_metadata(
                     content_analysis=content_analysis,
-                    column_analysis=column_analysis,
                     total_score=total_score,
                 )
 
@@ -123,21 +123,14 @@ class TagScorer:
     def _build_recognizer_metadata(
         self,
         content_analysis: TagAnalysis,
-        column_analysis: Optional[TagAnalysis],
         total_score: float,
     ) -> Optional[TagLabelRecognizerMetadata]:
         """Build recognizer metadata from the primary (highest scoring) analysis."""
-        primary_analysis = (
-            content_analysis
-            if content_analysis.score
-            >= (column_analysis.score if column_analysis else 0)
-            else column_analysis
-        )
 
-        if not primary_analysis or not primary_analysis.recognizer_results:
+        if not content_analysis or not content_analysis.recognizer_results:
             return None
 
-        results = primary_analysis.recognizer_results
+        results = content_analysis.recognizer_results
         if not results:
             return None
 
@@ -171,8 +164,15 @@ class TagScorer:
         ]
 
         recognizer_id = None
-        for recognizer_config in primary_analysis.tag.recognizers or []:
-            if recognizer_config.name.root == recognizer_name:
+        for recognizer_config in content_analysis.tag.recognizers or []:
+            if isinstance(
+                recognizer_config.recognizerConfig.root, PredefinedRecognizer
+            ):
+                name = recognizer_config.recognizerConfig.root.name.value
+            else:
+                name = recognizer_config.name.root
+
+            if name == recognizer_name:
                 recognizer_id = recognizer_config.id
                 break
 
@@ -183,8 +183,8 @@ class TagScorer:
             recognizerId=recognizer_id,
             recognizerName=recognizer_name,
             score=min(total_score, 1),
-            target=TARGET_MAP[primary_analysis.target]
-            if primary_analysis.target
+            target=TARGET_MAP[content_analysis.target]
+            if content_analysis.target
             else None,
             patterns=pattern_matches if pattern_matches else None,
         )
