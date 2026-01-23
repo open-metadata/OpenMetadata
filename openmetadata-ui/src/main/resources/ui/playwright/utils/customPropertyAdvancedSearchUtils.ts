@@ -12,12 +12,19 @@
  */
 import { expect, Locator, Page } from '@playwright/test';
 import { isObject, isUndefined } from 'lodash';
-import { CP_BASE_VALUES } from '../constant/customPropertyAdvancedSearch';
+import {
+  CP_BASE_VALUES,
+  MULTISELECT_OPERATORS,
+} from '../constant/customPropertyAdvancedSearch';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import { selectOption } from './advancedSearch';
 import { getApiContext, uuid } from './common';
-import { waitForAllLoadersToDisappear } from './entity';
+import {
+  escapeESReservedCharacters,
+  getEncodedFqn,
+  waitForAllLoadersToDisappear,
+} from './entity';
 
 export interface CustomPropertyDetails {
   name: string;
@@ -327,10 +334,10 @@ export const getOperatorLabel = (operator: string): string => {
     is_not_null: 'Is not null',
     between: 'Between',
     not_between: 'Not between',
-    multiselect_contains: 'Any in',
-    multiselect_not_contains: 'Not in',
-    multiselect_equals: '==',
-    multiselect_not_equals: '!=',
+    multiselect_contains: 'Contains',
+    multiselect_not_contains: 'Not contains',
+    multiselect_equals: 'Equals',
+    multiselect_not_equals: 'Not equals',
     select_equals: '==',
     select_not_equals: '!=',
   };
@@ -384,18 +391,25 @@ export const applyCustomPropertyFilter = async (
       const startInput = ruleLocator.locator('.rule--value input').first();
       const endInput = ruleLocator.locator('.rule--value input').last();
 
+      await startInput.click();
       await startInput.fill(String(rangeValue.start));
+      await endInput.click();
       await endInput.fill(String(rangeValue.end));
+
+      await page.keyboard.press('Enter');
     } else {
-      const inputElement = ruleLocator.locator(
-        '.rule--widget--TEXT input[type="text"]'
-      );
+      const inputElement = ruleLocator.locator('.rule--widget input');
 
       if (await inputElement.isVisible()) {
         const stringValue = isObject(value)
           ? JSON.stringify(value)
           : String(value);
+        await inputElement.click();
         await inputElement.fill(stringValue);
+
+        if (MULTISELECT_OPERATORS.includes(operator)) {
+          await page.keyboard.press('Enter');
+        }
       }
     }
   }
@@ -415,7 +429,9 @@ export const selectEntityReferenceValue = async (
   await aggregateRes1;
 
   const aggregateRes2 = page.waitForResponse(
-    `/api/v1/search/aggregate?*${entityName}*`
+    `/api/v1/search/aggregate?*${getEncodedFqn(
+      escapeESReservedCharacters(entityName)
+    )}*`
   );
   await dropdownInput.fill(entityName);
   await aggregateRes2;

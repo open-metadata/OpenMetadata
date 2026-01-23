@@ -24,6 +24,7 @@ import {
 import { debounce, isEmpty, sortBy, toLower } from 'lodash';
 import { CustomPropertyEnumConfig } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import {
+  CP_TYPE_WITHOUT_KEYWORD_FIELD,
   LIST_VALUE_OPERATORS,
   MULTISELECT_FIELD_OPERATORS,
   NULL_CHECK_OPERATORS,
@@ -1246,11 +1247,7 @@ class AdvancedSearchClassBase {
       field.type === 'entityReference'
     ) {
       subfieldsKey = field.name + '.displayName.keyword';
-    } else if (
-      field.type === 'number' ||
-      field.type === 'integer' ||
-      field.type === 'timestamp'
-    ) {
+    } else if (CP_TYPE_WITHOUT_KEYWORD_FIELD.includes(field.type)) {
       subfieldsKey = field.name;
     } else {
       subfieldsKey = field.name + '.keyword';
@@ -1308,6 +1305,7 @@ class AdvancedSearchClassBase {
             operators: RANGE_FIELD_OPERATORS,
             fieldSettings: {
               valueFormat: dateFormat,
+              dateFormat,
             },
           },
         };

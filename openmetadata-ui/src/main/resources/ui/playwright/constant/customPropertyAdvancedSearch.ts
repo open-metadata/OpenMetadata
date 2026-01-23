@@ -45,26 +45,14 @@ export const CP_BASE_VALUES = {
   },
 };
 
-export const CP_NEGATIVE_TEST_VALUES = {
-  string: 'randomValue',
-  email: 'different@email.com',
-  integer: 100,
-  integerRange: { start: 100, end: 200 },
-  number: 100.5,
-  timestamp: 9999999999999,
-  dateCp: { start: '01-01-2020', end: '31-12-2020' },
-  dateTimeCp: { start: '01-01-2020 00:00:00', end: '31-12-2020 23:59:59' },
-  timeCp: { start: '12:00:00', end: '13:00:00' },
-  enum: 'Option 2',
-  partialString: 'nonexistent',
-};
-
 export const CP_PARTIAL_SEARCH_VALUES = {
   string: 'gsd',
   email: 'open-metadata',
-  markdown: 'here',
-  sqlQuery: 'select',
+  markdown: 'HEre',
+  sqlQuery: 'Select',
   duration: 'P1Y',
+  dateTimeCp: '025 21:5',
+  timeCp: '5:04:0',
 };
 
 export const CP_RANGE_VALUES = {
@@ -74,3 +62,10 @@ export const CP_RANGE_VALUES = {
   dateTimeCp: { start: '01-12-2025 00:00:00', end: '31-12-2025 23:59:59' },
   timeCp: { start: '00:00:00', end: '23:59:59' },
 };
+
+export const MULTISELECT_OPERATORS = [
+  'multiselect_equals',
+  'multiselect_not_equals',
+  'multiselect_contains',
+  'multiselect_not_contains',
+];

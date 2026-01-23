@@ -381,3 +381,10 @@ export const CURATED_ASSETS_LIST = [
   EntityType.TABLE,
   EntityType.TOPIC,
 ];
+
+export const CP_TYPE_WITHOUT_KEYWORD_FIELD = [
+  'number',
+  'integer',
+  'timestamp',
+  'date-cp',
+];
