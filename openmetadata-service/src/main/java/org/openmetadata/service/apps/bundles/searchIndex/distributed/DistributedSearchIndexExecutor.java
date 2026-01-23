@@ -771,6 +771,9 @@ public class DistributedSearchIndexExecutor {
     try {
       StepStats sinkStats = searchIndexSink.getStats();
       long entityBuildFailures = searchIndexSink.getEntityBuildFailures();
+      
+      long totalFailed = sinkStats != null ? sinkStats.getFailedRecords() : 0;
+      long actualSinkFailed = totalFailed - entityBuildFailures;
 
       // Use local counters instead of querying DB (more accurate, no timing issues)
       int partitionsCompleted = coordinatorPartitionsCompleted.get();
@@ -788,7 +791,7 @@ public class DistributedSearchIndexExecutor {
               coordinatorReaderFailed.get(),
               sinkStats != null ? sinkStats.getTotalRecords() : 0,
               sinkStats != null ? sinkStats.getSuccessRecords() : 0,
-              sinkStats != null ? sinkStats.getFailedRecords() : 0,
+              actualSinkFailed,
               entityBuildFailures,
               partitionsCompleted,
               partitionsFailed,
@@ -796,11 +799,13 @@ public class DistributedSearchIndexExecutor {
 
       LOG.debug(
           "Persisted server stats for job {} server {}: readerSuccess={}, readerFailed={}, "
-              + "partitionsCompleted={}",
+              + "sinkFailed={}, entityBuildFailures={}, partitionsCompleted={}",
           jobId,
           serverId,
           coordinatorReaderSuccess.get(),
           coordinatorReaderFailed.get(),
+          actualSinkFailed,
+          entityBuildFailures,
           partitionsCompleted);
     } catch (Exception e) {
       LOG.error("Error persisting server stats for job {} server {}", jobId, serverId, e);

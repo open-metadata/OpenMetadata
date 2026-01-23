@@ -396,6 +396,9 @@ public class DistributedJobParticipant implements Managed {
     try {
       org.openmetadata.schema.system.StepStats sinkStats = bulkSink.getStats();
       long entityBuildFailures = bulkSink.getEntityBuildFailures();
+      
+      long totalFailed = sinkStats != null ? sinkStats.getFailedRecords() : 0;
+      long actualSinkFailed = totalFailed - entityBuildFailures;
 
       String statsId = UUID.nameUUIDFromBytes((jobId.toString() + serverId).getBytes()).toString();
 
@@ -409,7 +412,7 @@ public class DistributedJobParticipant implements Managed {
               readerFailed,
               sinkStats != null ? sinkStats.getTotalRecords() : 0,
               sinkStats != null ? sinkStats.getSuccessRecords() : 0,
-              sinkStats != null ? sinkStats.getFailedRecords() : 0,
+              actualSinkFailed,
               entityBuildFailures,
               partitionsCompleted,
               0, // partitionsFailed - not tracked here
@@ -417,14 +420,15 @@ public class DistributedJobParticipant implements Managed {
 
       LOG.info(
           "Participant {} persisted server stats for job {}: readerSuccess={}, readerFailed={}, "
-              + "sinkTotal={}, sinkSuccess={}, sinkFailed={}, partitionsCompleted={}",
+              + "sinkTotal={}, sinkSuccess={}, sinkFailed={}, entityBuildFailures={}, partitionsCompleted={}",
           serverId,
           jobId,
           readerSuccess,
           readerFailed,
           sinkStats != null ? sinkStats.getTotalRecords() : 0,
           sinkStats != null ? sinkStats.getSuccessRecords() : 0,
-          sinkStats != null ? sinkStats.getFailedRecords() : 0,
+          actualSinkFailed,
+          entityBuildFailures,
           partitionsCompleted);
 
     } catch (Exception e) {
