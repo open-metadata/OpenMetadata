@@ -221,7 +221,7 @@ class TestParameters(BaseModel):
                 "POSTGRES_SERVICE.dvdrental.public.customer_without_first_name",
                 TestCaseResult(
                     timestamp=int(datetime.now().timestamp() * 1000),
-                    testCaseStatus=TestCaseStatus.Success,
+                    testCaseStatus=TestCaseStatus.Failed,
                     failedRows=0,
                     passedRows=599,
                     testResultValue=[
@@ -317,7 +317,7 @@ class TestParameters(BaseModel):
                 "POSTGRES_SERVICE.dvdrental.public.customer_different_case_columns",
                 TestCaseResult(
                     timestamp=int(datetime.now().timestamp() * 1000),
-                    testCaseStatus=TestCaseStatus.Success,
+                    testCaseStatus=TestCaseStatus.Failed,
                     failedRows=0,
                     passedRows=599,
                     testResultValue=[
