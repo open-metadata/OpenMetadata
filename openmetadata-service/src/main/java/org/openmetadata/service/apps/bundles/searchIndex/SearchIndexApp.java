@@ -107,13 +107,13 @@ public class SearchIndexApp extends AbstractNativeApplication {
           cleaner.cleanupOrphanedIndices(searchRepository.getSearchClient());
       if (result.deleted() > 0) {
         LOG.info(
-            "Cleaned up {} orphaned rebuild indices on startup (found={}, failed={})",
+            "Cleaned up {} orphaned rebuild indices on Job End (found={}, failed={})",
             result.deleted(),
             result.found(),
             result.failed());
       }
     } catch (Exception e) {
-      LOG.warn("Failed to cleanup orphaned indices on startup: {}", e.getMessage());
+      LOG.warn("Failed to cleanup orphaned indices on Job End: {}", e.getMessage());
     }
   }
 

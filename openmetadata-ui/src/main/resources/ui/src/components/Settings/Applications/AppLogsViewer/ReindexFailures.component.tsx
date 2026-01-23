@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Drawer, Select, Space, Table, Typography } from 'antd';
+import { Drawer, Select, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -123,15 +123,23 @@ const ReindexFailures = ({ visible, onClose }: ReindexFailuresProps) => {
         title: t('label.error'),
         dataIndex: 'errorMessage',
         key: 'errorMessage',
-        ellipsis: true,
-        render: (text: string) => (
-          <Typography.Paragraph
-            className="m-b-0"
-            copyable={Boolean(text)}
-            ellipsis={{ rows: 2, expandable: true }}>
-            {text || '-'}
-          </Typography.Paragraph>
-        ),
+        width: 400,
+        render: (text: string) =>
+          text ? (
+            <Tooltip
+              overlayStyle={{ maxWidth: 500 }}
+              placement="topLeft"
+              title={<pre className="m-0 whitespace-pre-wrap">{text}</pre>}>
+              <Typography.Paragraph
+                copyable
+                className="m-b-0"
+                ellipsis={{ rows: 2, expandable: true, symbol: 'more' }}>
+                {text}
+              </Typography.Paragraph>
+            </Tooltip>
+          ) : (
+            '-'
+          ),
       },
       {
         title: t('label.timestamp'),
