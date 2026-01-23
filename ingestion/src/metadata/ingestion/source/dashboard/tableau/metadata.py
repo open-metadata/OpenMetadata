@@ -876,6 +876,11 @@ class TableauSource(DashboardServiceSource):
                     database_name = get_database_name_for_lineage(
                         db_service_entity, database_name
                     )
+                else:
+                    logger.debug(
+                        f"Database service {db_service_name} not found for table {table.name}"
+                    )
+
             schema_name = (
                 table.schema_
                 if table.schema_
