@@ -340,6 +340,7 @@ export const getOperatorLabel = (operator: string): string => {
     multiselect_not_equals: 'Not equals',
     select_equals: '==',
     select_not_equals: '!=',
+    regexp: 'Regular Expression',
   };
 
   return operatorMap[operator] || operator;

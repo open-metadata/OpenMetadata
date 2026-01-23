@@ -53,6 +53,8 @@ export const CP_PARTIAL_SEARCH_VALUES = {
   duration: 'P1Y',
   dateTimeCp: '025 21:5',
   timeCp: '5:04:0',
+  tableCp: 'User',
+  entityReference: 'pw-topic',
 };
 
 export const CP_RANGE_VALUES = {
