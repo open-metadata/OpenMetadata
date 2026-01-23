@@ -130,9 +130,9 @@ const TaskFeedCard = ({
   const taskLinkTitleElement = useMemo(() => {
     const isRecognizerFeedback =
       taskDetails?.type === TaskType.RecognizerFeedbackApproval;
-    const tagName = isRecognizerFeedback
-      ? getNameFromFQN(taskDetails?.feedback?.tagFQN ?? '')
-      : '';
+    const entityName = getNameFromFQN(
+      isRecognizerFeedback ? taskDetails?.feedback?.tagFQN ?? '' : entityFQN
+    );
 
     return isEntityDetailsAvailable && !isUndefined(taskDetails) ? (
       <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
@@ -144,8 +144,8 @@ const TaskFeedCard = ({
           <Typography.Text className="m-r-xss task-details-id">{`#${taskDetails.id} `}</Typography.Text>
 
           <Typography.Text className="m-r-xss  m-r-xss task-details-entity-link">
-            {isRecognizerFeedback && tagName
-              ? `${t(TASK_TYPES[taskDetails.type])}: ${tagName}`
+            {isRecognizerFeedback && entityName
+              ? `${t(TASK_TYPES[taskDetails.type])}: ${entityName}`
               : t(TASK_TYPES[taskDetails.type])}
           </Typography.Text>
 
@@ -155,7 +155,7 @@ const TaskFeedCard = ({
             <Typography.Text
               className="break-all header-link text-sm"
               data-testid="entity-link">
-              {tagName}
+              {entityName}
             </Typography.Text>
           )}
 
