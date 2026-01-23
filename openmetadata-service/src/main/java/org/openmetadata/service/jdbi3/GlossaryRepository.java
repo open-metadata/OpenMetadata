@@ -290,7 +290,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       String description = csvRecord.get(3);
       List<String> synonyms = CsvUtil.fieldToStrings(csvRecord.get(4));
       List<EntityReference> relatedTerms =
-          getEntityReferences(printer, csvRecord, 5, GLOSSARY_TERM);
+          getEntityReferencesForGlossaryTerms(printer, csvRecord, 5);
       List<TermReference> references = getTermReferences(printer, csvRecord);
       List<TagLabel> tags =
           getTagLabels(printer, csvRecord, List.of(Pair.of(7, TagLabel.TagSource.CLASSIFICATION)));
