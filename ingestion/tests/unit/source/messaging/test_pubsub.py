@@ -12,6 +12,7 @@
 Unit tests for Google Cloud Pub/Sub connector
 """
 import os
+import uuid
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -463,3 +464,329 @@ class TestPubSubEdgeCases:
         )
         assert "record" in schema_info.definition
         assert "User" in schema_info.definition
+
+
+class TestPubSubTopicLineage:
+    """Test Pub/Sub topic lineage functionality"""
+
+    @pytest.fixture
+    def mock_pubsub_source(self):
+        """Create a mock PubsubSource for lineage testing"""
+        from metadata.ingestion.source.messaging.pubsub.metadata import PubsubSource
+
+        source = MagicMock(spec=PubsubSource)
+        source.metadata = MagicMock()
+        source.context = MagicMock()
+        source.context.get.return_value.messaging_service = "test-pubsub-service"
+        source.yield_topic_lineage = PubsubSource.yield_topic_lineage.__get__(
+            source, PubsubSource
+        )
+        return source
+
+    def test_yield_topic_lineage_no_subscriptions(self, mock_pubsub_source):
+        """Test yield_topic_lineage returns nothing when there are no subscriptions"""
+        from metadata.ingestion.source.messaging.messaging_service import (
+            BrokerTopicDetails,
+        )
+
+        topic_metadata = PubSubTopicMetadata(
+            name="projects/test/topics/test-topic",
+            subscriptions=None,
+        )
+        topic_details = BrokerTopicDetails(
+            topic_name="test-topic",
+            topic_metadata=topic_metadata,
+        )
+
+        result = list(mock_pubsub_source.yield_topic_lineage(topic_details))
+        assert len(result) == 0
+
+    def test_yield_topic_lineage_empty_subscriptions(self, mock_pubsub_source):
+        """Test yield_topic_lineage returns nothing when subscriptions list is empty"""
+        from metadata.ingestion.source.messaging.messaging_service import (
+            BrokerTopicDetails,
+        )
+
+        topic_metadata = PubSubTopicMetadata(
+            name="projects/test/topics/test-topic",
+            subscriptions=[],
+        )
+        topic_details = BrokerTopicDetails(
+            topic_name="test-topic",
+            topic_metadata=topic_metadata,
+        )
+
+        result = list(mock_pubsub_source.yield_topic_lineage(topic_details))
+        assert len(result) == 0
+
+    def test_yield_topic_lineage_no_bigquery_config(self, mock_pubsub_source):
+        """Test yield_topic_lineage skips subscriptions without BigQuery config"""
+        from metadata.ingestion.source.messaging.messaging_service import (
+            BrokerTopicDetails,
+        )
+
+        subscription = PubSubSubscription(
+            name="test-subscription",
+            bigquery_config=None,
+        )
+        topic_metadata = PubSubTopicMetadata(
+            name="projects/test/topics/test-topic",
+            subscriptions=[subscription],
+        )
+        topic_details = BrokerTopicDetails(
+            topic_name="test-topic",
+            topic_metadata=topic_metadata,
+        )
+
+        result = list(mock_pubsub_source.yield_topic_lineage(topic_details))
+        assert len(result) == 0
+
+    def test_yield_topic_lineage_bigquery_config_no_table(self, mock_pubsub_source):
+        """Test yield_topic_lineage skips subscriptions with BigQuery config but no table"""
+        from metadata.ingestion.source.messaging.messaging_service import (
+            BrokerTopicDetails,
+        )
+
+        subscription = PubSubSubscription(
+            name="test-subscription",
+            bigquery_config=PubSubBigQueryConfig(table=None),
+        )
+        topic_metadata = PubSubTopicMetadata(
+            name="projects/test/topics/test-topic",
+            subscriptions=[subscription],
+        )
+        topic_details = BrokerTopicDetails(
+            topic_name="test-topic",
+            topic_metadata=topic_metadata,
+        )
+
+        result = list(mock_pubsub_source.yield_topic_lineage(topic_details))
+        assert len(result) == 0
+
+    def test_yield_topic_lineage_table_not_found(self, mock_pubsub_source):
+        """Test yield_topic_lineage skips when BigQuery table is not found"""
+        from metadata.ingestion.source.messaging.messaging_service import (
+            BrokerTopicDetails,
+        )
+
+        mock_pubsub_source.metadata.get_by_name.return_value = None
+
+        subscription = PubSubSubscription(
+            name="test-subscription",
+            bigquery_config=PubSubBigQueryConfig(table="project.dataset.table"),
+        )
+        topic_metadata = PubSubTopicMetadata(
+            name="projects/test/topics/test-topic",
+            subscriptions=[subscription],
+        )
+        topic_details = BrokerTopicDetails(
+            topic_name="test-topic",
+            topic_metadata=topic_metadata,
+        )
+
+        result = list(mock_pubsub_source.yield_topic_lineage(topic_details))
+        assert len(result) == 0
+
+    def test_yield_topic_lineage_topic_not_found(self, mock_pubsub_source):
+        """Test yield_topic_lineage skips when topic entity is not found"""
+        from metadata.generated.schema.entity.data.table import Table
+        from metadata.ingestion.source.messaging.messaging_service import (
+            BrokerTopicDetails,
+        )
+
+        mock_table = MagicMock()
+        mock_table.id = "table-id-123"
+
+        def get_by_name_side_effect(entity, fqn):
+            if entity == Table:
+                return mock_table
+            return None
+
+        mock_pubsub_source.metadata.get_by_name.side_effect = get_by_name_side_effect
+
+        subscription = PubSubSubscription(
+            name="test-subscription",
+            bigquery_config=PubSubBigQueryConfig(table="project.dataset.table"),
+        )
+        topic_metadata = PubSubTopicMetadata(
+            name="projects/test/topics/test-topic",
+            subscriptions=[subscription],
+        )
+        topic_details = BrokerTopicDetails(
+            topic_name="test-topic",
+            topic_metadata=topic_metadata,
+        )
+
+        with patch(
+            "metadata.ingestion.source.messaging.pubsub.metadata.fqn.build"
+        ) as mock_fqn_build:
+            mock_fqn_build.return_value = "test-pubsub-service.test-topic"
+            result = list(mock_pubsub_source.yield_topic_lineage(topic_details))
+
+        assert len(result) == 0
+
+    def test_yield_topic_lineage_success(self, mock_pubsub_source):
+        """Test yield_topic_lineage successfully creates lineage"""
+        from metadata.generated.schema.entity.data.table import Table
+        from metadata.generated.schema.entity.data.topic import Topic
+        from metadata.ingestion.source.messaging.messaging_service import (
+            BrokerTopicDetails,
+        )
+
+        table_uuid = uuid.uuid4()
+        topic_uuid = uuid.uuid4()
+
+        mock_table = MagicMock()
+        mock_table.id = table_uuid
+        mock_topic = MagicMock()
+        mock_topic.id = topic_uuid
+
+        def get_by_name_side_effect(entity, fqn):
+            if entity == Table:
+                return mock_table
+            if entity == Topic:
+                return mock_topic
+            return None
+
+        mock_pubsub_source.metadata.get_by_name.side_effect = get_by_name_side_effect
+
+        subscription = PubSubSubscription(
+            name="bq-subscription",
+            bigquery_config=PubSubBigQueryConfig(table="project.dataset.events"),
+        )
+        topic_metadata = PubSubTopicMetadata(
+            name="projects/test/topics/events-topic",
+            subscriptions=[subscription],
+        )
+        topic_details = BrokerTopicDetails(
+            topic_name="events-topic",
+            topic_metadata=topic_metadata,
+        )
+
+        with patch(
+            "metadata.ingestion.source.messaging.pubsub.metadata.fqn.build"
+        ) as mock_fqn_build:
+            mock_fqn_build.return_value = "test-pubsub-service.events-topic"
+            result = list(mock_pubsub_source.yield_topic_lineage(topic_details))
+
+        assert len(result) == 1
+        lineage_request = result[0].right
+        assert lineage_request is not None
+        assert lineage_request.edge.fromEntity.id.root == topic_uuid
+        assert lineage_request.edge.fromEntity.type == "topic"
+        assert lineage_request.edge.toEntity.id.root == table_uuid
+        assert lineage_request.edge.toEntity.type == "table"
+        assert "bq-subscription" in lineage_request.edge.lineageDetails.description
+
+    def test_yield_topic_lineage_multiple_subscriptions(self, mock_pubsub_source):
+        """Test yield_topic_lineage handles multiple BigQuery subscriptions"""
+        from metadata.generated.schema.entity.data.table import Table
+        from metadata.generated.schema.entity.data.topic import Topic
+        from metadata.ingestion.source.messaging.messaging_service import (
+            BrokerTopicDetails,
+        )
+
+        table_uuid1 = uuid.uuid4()
+        table_uuid2 = uuid.uuid4()
+        topic_uuid = uuid.uuid4()
+
+        mock_table1 = MagicMock()
+        mock_table1.id = table_uuid1
+        mock_table2 = MagicMock()
+        mock_table2.id = table_uuid2
+        mock_topic = MagicMock()
+        mock_topic.id = topic_uuid
+
+        call_count = {"table": 0}
+
+        def get_by_name_side_effect(entity, fqn):
+            if entity == Table:
+                call_count["table"] += 1
+                return mock_table1 if call_count["table"] == 1 else mock_table2
+            if entity == Topic:
+                return mock_topic
+            return None
+
+        mock_pubsub_source.metadata.get_by_name.side_effect = get_by_name_side_effect
+
+        subscriptions = [
+            PubSubSubscription(
+                name="bq-sub-1",
+                bigquery_config=PubSubBigQueryConfig(table="project.dataset.table1"),
+            ),
+            PubSubSubscription(
+                name="push-sub",
+                push_endpoint="https://example.com/push",
+            ),
+            PubSubSubscription(
+                name="bq-sub-2",
+                bigquery_config=PubSubBigQueryConfig(table="project.dataset.table2"),
+            ),
+        ]
+        topic_metadata = PubSubTopicMetadata(
+            name="projects/test/topics/multi-topic",
+            subscriptions=subscriptions,
+        )
+        topic_details = BrokerTopicDetails(
+            topic_name="multi-topic",
+            topic_metadata=topic_metadata,
+        )
+
+        with patch(
+            "metadata.ingestion.source.messaging.pubsub.metadata.fqn.build"
+        ) as mock_fqn_build:
+            mock_fqn_build.return_value = "test-pubsub-service.multi-topic"
+            result = list(mock_pubsub_source.yield_topic_lineage(topic_details))
+
+        assert len(result) == 2
+        assert result[0].right.edge.toEntity.id.root == table_uuid1
+        assert result[1].right.edge.toEntity.id.root == table_uuid2
+
+    def test_yield_topic_lineage_table_fqn_parsing(self, mock_pubsub_source):
+        """Test yield_topic_lineage correctly parses BigQuery table FQN"""
+        from metadata.generated.schema.entity.data.table import Table
+        from metadata.generated.schema.entity.data.topic import Topic
+        from metadata.ingestion.source.messaging.messaging_service import (
+            BrokerTopicDetails,
+        )
+
+        mock_table = MagicMock()
+        mock_table.id = "table-id"
+        mock_topic = MagicMock()
+        mock_topic.id = "topic-id"
+
+        captured_fqns = []
+
+        def get_by_name_side_effect(entity, fqn):
+            captured_fqns.append((entity, fqn))
+            if entity == Table:
+                return mock_table
+            if entity == Topic:
+                return mock_topic
+            return None
+
+        mock_pubsub_source.metadata.get_by_name.side_effect = get_by_name_side_effect
+
+        subscription = PubSubSubscription(
+            name="bq-sub",
+            bigquery_config=PubSubBigQueryConfig(
+                table="my-project.my_dataset.my_table"
+            ),
+        )
+        topic_metadata = PubSubTopicMetadata(
+            name="projects/test/topics/test-topic",
+            subscriptions=[subscription],
+        )
+        topic_details = BrokerTopicDetails(
+            topic_name="test-topic",
+            topic_metadata=topic_metadata,
+        )
+
+        with patch(
+            "metadata.ingestion.source.messaging.pubsub.metadata.fqn.build"
+        ) as mock_fqn_build:
+            mock_fqn_build.return_value = "test-pubsub-service.test-topic"
+            list(mock_pubsub_source.yield_topic_lineage(topic_details))
+
+        table_call = [c for c in captured_fqns if c[0] == Table][0]
+        assert table_call[1] == "my-project.my_dataset.my_table"

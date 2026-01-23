@@ -434,11 +434,12 @@ class PubsubSource(MessagingServiceSource):
                 )
             )
 
-    def yield_bigquery_lineage(
+    def yield_topic_lineage(
         self, topic_details: BrokerTopicDetails
     ) -> Iterable[Either[AddLineageRequest]]:
         """
-        Yield lineage from Pub/Sub topic to BigQuery tables via BigQuery subscriptions
+        Yield lineage from Pub/Sub topic to BigQuery tables via BigQuery subscriptions.
+        Overrides the base class method to provide BigQuery-specific lineage.
         """
         metadata: PubSubTopicMetadata = topic_details.topic_metadata
         if not metadata.subscriptions:

@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 from typing_extensions import Annotated
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 from metadata.generated.schema.entity.services.messagingService import (
     MessagingConnection,
@@ -104,6 +105,12 @@ class MessagingServiceTopology(ServiceTopology):
                 consumer=["messaging_service"],
                 nullable=True,
             ),
+            NodeStage(
+                type_=AddLineageRequest,
+                processor="yield_topic_lineage",
+                consumer=["messaging_service"],
+                nullable=True,
+            ),
         ],
     )
 
@@ -157,6 +164,14 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
     ) -> Iterable[Either[TopicSampleData]]:
         """
         Method to Get Sample Data of Messaging Entity
+        """
+
+    def yield_topic_lineage(
+        self, topic_details: Any
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Method to Get Lineage for Messaging Entity.
+        Override this method in subclasses to provide lineage information.
         """
 
     @abstractmethod
