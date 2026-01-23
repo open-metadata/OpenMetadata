@@ -192,20 +192,26 @@ export const getCSVStringFromColumnsAndDataSource = (
   dataSource: Record<string, string>[]
 ) => {
   const fieldNames = columns.map((c) => c.key);
-  const data = dataSource.map((row) => {
-    const record: Record<string, string> = {};
-    fieldNames.forEach((key) => {
-      const value = String(row[key] ?? '');
-      record[key] = value;
-    });
 
-    return record;
-  });
+  const data = dataSource.map((row) =>
+    Object.fromEntries(
+      fieldNames.map((key) => {
+        let value = String(row[key] ?? '');
+        const isQuoted = value.startsWith('"') && value.endsWith('"');
+        if (key === 'column.name*' && value.includes('.') && !isQuoted) {
+          value = `"${value.replace(/"/g, '""')}"`;
+        }
+
+        return [key, value];
+      })
+    )
+  );
 
   return unparse(data, {
     columns: fieldNames,
     header: true,
     newline: '\n',
+    quotes: fieldNames.map((k) => k === 'column.name*'),
   });
 };
 
