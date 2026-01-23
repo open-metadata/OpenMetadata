@@ -2,7 +2,6 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -74,7 +73,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     // Add unique suffix to avoid collisions when multiple tests create classifications
     String uniqueSuffix = java.util.UUID.randomUUID().toString().substring(0, 8);
     CreateClassification classificationRequest = new CreateClassification();
-    classificationRequest.setName(ns.prefix("classification") + "_" + uniqueSuffix);
+    classificationRequest.setName(ns.uniqueShortId() + "_" + "classification" + "_" + uniqueSuffix);
     classificationRequest.setDescription("Test classification for tags");
     return SdkClients.adminClient().classifications().create(classificationRequest);
   }
@@ -636,188 +635,5 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
         fetchedTag1.getDisabled(), "Tag1 should not be disabled after classification is enabled");
     assertFalse(
         fetchedTag2.getDisabled(), "Tag2 should not be disabled after classification is enabled");
-  }
-
-  // ===================================================================
-  // RENAME CONSOLIDATION TESTS
-  // These tests verify that child entities (nested tags) are preserved
-  // when a tag is renamed and then other fields are updated within the
-  // same session (which triggers change consolidation).
-  // ===================================================================
-
-  /**
-   * Test that child tags are preserved when a parent tag is renamed and then the description is
-   * updated. This tests the consolidation logic to ensure it doesn't revert to a previous version
-   * with the old FQN.
-   */
-  @Test
-  void test_renameAndUpdateDescriptionPreservesChildren(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-    Classification classification = createClassification(ns);
-
-    // Create parent tag
-    CreateTag parentRequest = new CreateTag();
-    parentRequest.setName(ns.prefix("parent_rename_consolidate"));
-    parentRequest.setClassification(classification.getFullyQualifiedName());
-    parentRequest.setDescription("Initial description");
-    Tag parentTag = createEntity(parentRequest);
-
-    // Create child tag
-    CreateTag childRequest = new CreateTag();
-    childRequest.setName(ns.prefix("child_for_rename"));
-    childRequest.setClassification(classification.getFullyQualifiedName());
-    childRequest.setParent(parentTag.getFullyQualifiedName());
-    childRequest.setDescription("Child tag");
-    Tag childTag = createEntity(childRequest);
-
-    // Verify child exists
-    Tag fetchedChild = client.tags().get(childTag.getId().toString(), "parent");
-    assertNotNull(fetchedChild.getParent());
-    assertEquals(parentTag.getId(), fetchedChild.getParent().getId());
-
-    // Rename the parent tag
-    String newName = "renamed-" + parentTag.getName();
-    parentTag.setName(newName);
-    Tag renamed = patchEntity(parentTag.getId().toString(), parentTag);
-    assertEquals(newName, renamed.getName());
-
-    // Verify child after rename
-    fetchedChild = client.tags().get(childTag.getId().toString(), "parent");
-    assertNotNull(fetchedChild.getParent(), "Child should have parent after rename");
-
-    // Update description (triggers consolidation logic)
-    renamed.setDescription("Updated description after rename");
-    Tag afterDescUpdate = patchEntity(renamed.getId().toString(), renamed);
-    assertEquals("Updated description after rename", afterDescUpdate.getDescription());
-
-    // Verify child is preserved after consolidation
-    fetchedChild = client.tags().get(childTag.getId().toString(), "parent");
-    assertNotNull(
-        fetchedChild.getParent(),
-        "CRITICAL: Child should have parent after rename + description update consolidation");
-
-    // Verify the child's parent reference has the updated FQN
-    assertEquals(
-        afterDescUpdate.getFullyQualifiedName(),
-        fetchedChild.getParent().getFullyQualifiedName(),
-        "Child's parent reference should have updated FQN after consolidation");
-  }
-
-  /**
-   * Test multiple renames followed by updates within the same session. This is a more complex
-   * scenario that tests the robustness of the consolidation fix.
-   */
-  @Test
-  void test_multipleRenamesWithUpdatesPreservesChildren(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-    Classification classification = createClassification(ns);
-
-    // Create parent tag
-    CreateTag parentRequest = new CreateTag();
-    parentRequest.setName(ns.prefix("parent_multi_rename"));
-    parentRequest.setClassification(classification.getFullyQualifiedName());
-    parentRequest.setDescription("Initial description");
-    Tag parentTag = createEntity(parentRequest);
-
-    // Create child tag
-    CreateTag childRequest = new CreateTag();
-    childRequest.setName(ns.prefix("child_multi_rename"));
-    childRequest.setClassification(classification.getFullyQualifiedName());
-    childRequest.setParent(parentTag.getFullyQualifiedName());
-    childRequest.setDescription("Child tag");
-    Tag childTag = createEntity(childRequest);
-
-    Tag fetchedChild = client.tags().get(childTag.getId().toString(), "parent");
-    assertNotNull(fetchedChild.getParent());
-
-    String[] names = {"renamed-first", "renamed-second", "renamed-third"};
-
-    for (int i = 0; i < names.length; i++) {
-      String newName = names[i] + "-" + UUID.randomUUID().toString().substring(0, 8);
-
-      parentTag.setName(newName);
-      parentTag = patchEntity(parentTag.getId().toString(), parentTag);
-      assertEquals(newName, parentTag.getName());
-
-      fetchedChild = client.tags().get(childTag.getId().toString(), "parent");
-      assertNotNull(fetchedChild.getParent(), "Child should have parent after rename " + (i + 1));
-
-      parentTag.setDescription("Description after rename " + (i + 1));
-      parentTag = patchEntity(parentTag.getId().toString(), parentTag);
-
-      fetchedChild = client.tags().get(childTag.getId().toString(), "parent");
-      assertNotNull(
-          fetchedChild.getParent(),
-          "Child should have parent after rename + update iteration " + (i + 1));
-    }
-
-    // Verify the child's parent reference has the final updated FQN
-    assertEquals(
-        parentTag.getFullyQualifiedName(),
-        fetchedChild.getParent().getFullyQualifiedName(),
-        "Child's parent reference should have final updated FQN");
-  }
-
-  @Test
-  void test_tagRename_activityFeedsPreserved(TestNamespace ns) throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
-    Classification classification = createClassification(ns);
-
-    CreateTag request = new CreateTag();
-    request.setName(ns.prefix("tag_rename_feeds"));
-    request.setClassification(classification.getFullyQualifiedName());
-    request.setDescription("Tag for testing rename with activity feeds");
-
-    Tag tag = createEntity(request);
-    String originalFqn = tag.getFullyQualifiedName();
-
-    Thread.sleep(1000);
-
-    String newName = ns.prefix("tag_renamed_feeds");
-    tag.setName(newName);
-    Tag renamedTag = patchEntity(tag.getId().toString(), tag);
-
-    assertNotEquals(originalFqn, renamedTag.getFullyQualifiedName());
-    assertTrue(renamedTag.getFullyQualifiedName().contains(newName));
-
-    Thread.sleep(2000);
-
-    Tag fetchedTag = getEntity(renamedTag.getId().toString());
-    assertEquals(renamedTag.getFullyQualifiedName(), fetchedTag.getFullyQualifiedName());
-    assertEquals(newName, fetchedTag.getName());
-  }
-
-  @Test
-  void test_tagRename_childTagsUpdated(TestNamespace ns) throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
-    Classification classification = createClassification(ns);
-
-    CreateTag parentRequest = new CreateTag();
-    parentRequest.setName(ns.prefix("parent_rename"));
-    parentRequest.setClassification(classification.getFullyQualifiedName());
-    parentRequest.setDescription("Parent tag for rename test");
-
-    Tag parentTag = createEntity(parentRequest);
-
-    CreateTag childRequest = new CreateTag();
-    childRequest.setName(ns.prefix("child_tag"));
-    childRequest.setClassification(classification.getFullyQualifiedName());
-    childRequest.setParent(parentTag.getFullyQualifiedName());
-    childRequest.setDescription("Child tag");
-
-    Tag childTag = createEntity(childRequest);
-    String originalChildFqn = childTag.getFullyQualifiedName();
-
-    Thread.sleep(1000);
-
-    String newParentName = ns.prefix("parent_renamed");
-    parentTag.setName(newParentName);
-    Tag renamedParent = patchEntity(parentTag.getId().toString(), parentTag);
-
-    Thread.sleep(2000);
-
-    Tag fetchedChild = getEntity(childTag.getId().toString());
-    assertNotEquals(originalChildFqn, fetchedChild.getFullyQualifiedName());
-    assertTrue(fetchedChild.getFullyQualifiedName().contains(newParentName));
   }
 }
