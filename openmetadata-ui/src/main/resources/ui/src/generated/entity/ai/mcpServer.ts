@@ -11,41 +11,39 @@
  *  limitations under the License.
  */
 /**
- * AI Application entity representing AI systems including chatbots, agents, copilots, and
- * other AI-powered applications. Applications can use multiple LLM models and integrate
- * with various tools and data sources.
+ * MCP (Model Context Protocol) Server entity representing an MCP server deployment for AI
+ * governance. MCP servers expose tools, resources, and prompts that can be used by AI
+ * applications. This entity enables comprehensive governance including risk assessment,
+ * compliance, shadow AI detection, and data access tracking.
  */
-export interface AIApplication {
-    applicationType: ApplicationType;
-    biasMetrics?:    BiasMetrics;
-    certification?:  AssetCertification;
+export interface MCPServer {
+    capabilities?:  ServerCapabilities;
+    certification?: AssetCertification;
     /**
      * Change that led to this version
      */
     changeDescription?: ChangeDescription;
+    connectionConfig?:  ConnectionConfig;
+    dataAccessSummary?: DataAccessSummary;
     /**
-     * Data products this AI Application is part of
+     * Data products this MCP Server is part of
      */
     dataProducts?: EntityReference[];
-    /**
-     * Data sources (tables, APIs, etc.) this application can access
-     */
-    dataSources?: EntityReference[];
     /**
      * When true, indicates the entity has been soft deleted
      */
     deleted?: boolean;
     /**
-     * Production deployment endpoint
+     * Deployment endpoint URL
      */
     deploymentUrl?: string;
     /**
-     * Description of the AI Application, its purpose, and usage.
+     * Description of the MCP Server, its purpose, and capabilities.
      */
     description?:      string;
     developmentStage?: DevelopmentStage;
     /**
-     * Display name for the AI Application.
+     * Display name for the MCP Server.
      */
     displayName?: string;
     /**
@@ -53,28 +51,23 @@ export interface AIApplication {
      */
     documentation?: string;
     /**
-     * Domain the AI Application belongs to
+     * Domain the MCP Server belongs to
      */
     domain?: EntityReference;
     /**
-     * Domains the AI Application belongs to
+     * Domains the MCP Server belongs to
      */
     domains?: EntityReference[];
-    /**
-     * AI applications that depend on this application
-     */
-    downstreamApplications?: EntityReference[];
     /**
      * Entity extension data with custom attributes
      */
     extension?: any;
     /**
-     * Followers of this AI Application
+     * Followers of this MCP Server
      */
     followers?: EntityReference[];
-    framework?: FrameworkInfo;
     /**
-     * Fully qualified name of the AI Application.
+     * Fully qualified name of the MCP Server.
      */
     fullyQualifiedName?: string;
     governanceMetadata?: GovernanceMetadata;
@@ -83,7 +76,7 @@ export interface AIApplication {
      */
     href?: string;
     /**
-     * Unique identifier of the AI Application.
+     * Unique identifier of the MCP Server.
      */
     id: string;
     /**
@@ -91,40 +84,32 @@ export interface AIApplication {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
-     * Vector databases, document stores used for RAG
-     */
-    knowledgeBases?: EntityReference[];
-    /**
      * Life Cycle properties of the entity
      */
     lifeCycle?: LifeCycle;
     /**
-     * MCP servers this application connects to for tools, resources, and prompts
-     */
-    mcpServers?: EntityReference[];
-    /**
-     * Multiple LLM models this application can use for different purposes
-     */
-    modelConfigurations: ModelConfiguration[];
-    /**
-     * Name that identifies this AI Application.
+     * Name that identifies this MCP Server.
      */
     name: string;
     /**
-     * Owners of this AI Application
+     * Owners of this MCP Server
      */
-    owners?:             EntityReference[];
-    performanceMetrics?: PerformanceMetrics;
+    owners?: EntityReference[];
     /**
-     * Primary/default LLM model used by this application
+     * Prompt templates exposed by this MCP Server
      */
-    primaryModel?: EntityReference;
+    prompts?: MCPPrompt[];
     /**
-     * Prompt templates used by this application
+     * MCP protocol version supported by this server
      */
-    promptTemplates?: EntityReference[];
-    qualityMetrics?:  QualityMetrics;
-    safetyMetrics?:   SafetyMetrics;
+    protocolVersion?: string;
+    /**
+     * Resources exposed by this MCP Server
+     */
+    resources?:       MCPResource[];
+    securityMetrics?: SecurityMetrics;
+    serverInfo?:      ServerInfo;
+    serverType:       ServerType;
     /**
      * Link to source code repository
      */
@@ -134,17 +119,14 @@ export interface AIApplication {
      */
     sourceHash?: string;
     /**
-     * Tags for this AI Application
+     * Tags for this MCP Server
      */
     tags?: TagLabel[];
     /**
-     * Test suites for validating this AI application
+     * Tools exposed by this MCP Server
      */
-    testSuites?: EntityReference[];
-    /**
-     * MCP tools or other tools available to this application
-     */
-    tools?: EntityReference[];
+    tools?:         MCPTool[];
+    transportType?: TransportType;
     /**
      * Last update time in Unix epoch milliseconds
      */
@@ -152,11 +134,12 @@ export interface AIApplication {
     /**
      * User who made the update
      */
-    updatedBy?: string;
+    updatedBy?:    string;
+    usageMetrics?: UsageMetrics;
     /**
-     * Other AI applications this application depends on (multi-agent orchestration)
+     * AI Applications that use this MCP Server
      */
-    upstreamApplications?: EntityReference[];
+    usedByApplications?: EntityReference[];
     /**
      * Metadata version of the entity
      */
@@ -168,141 +151,33 @@ export interface AIApplication {
 }
 
 /**
- * Type of AI application based on primary function and interaction pattern
+ * Capabilities supported by the MCP server
  */
-export enum ApplicationType {
-    Agent = "Agent",
-    Assistant = "Assistant",
-    AutomationBot = "AutomationBot",
-    Chatbot = "Chatbot",
-    CodeGenerator = "CodeGenerator",
-    Copilot = "Copilot",
-    Custom = "Custom",
-    DataAnalyst = "DataAnalyst",
-    MultiAgent = "MultiAgent",
-    Rag = "RAG",
-}
-
-/**
- * Bias evaluation metrics for the AI application
- */
-export interface BiasMetrics {
+export interface ServerCapabilities {
     /**
-     * Whether significant bias was detected
+     * Whether the server supports logging
      */
-    biasDetected?: boolean;
+    loggingSupported?: boolean;
     /**
-     * Demographic parity score
+     * Whether the server supports prompts
      */
-    demographicParity?: number;
+    promptsSupported?: boolean;
     /**
-     * Bias scores by demographic dimension
+     * Whether the server supports resources
      */
-    dimensionScores?: DimensionScores;
+    resourcesSupported?: boolean;
     /**
-     * Disparate impact ratio
+     * Whether the server supports roots
      */
-    disparateImpact?: number;
+    rootsSupported?: boolean;
     /**
-     * Equalized odds score
+     * Whether the server supports sampling
      */
-    equalizedOdds?: number;
+    samplingSupported?: boolean;
     /**
-     * Method used for bias evaluation (e.g., Fairlearn, AI Fairness 360)
+     * Whether the server supports tools
      */
-    evaluationMethod?: string;
-    lastEvaluatedAt?:  number;
-    /**
-     * Overall bias score from 0-1, where higher values indicate more bias
-     */
-    overallBiasScore?: number;
-    /**
-     * Steps taken or recommended to remediate bias
-     */
-    remediationSteps?: string[];
-    /**
-     * Dataset used for bias evaluation
-     */
-    testDataset?: EntityReference;
-}
-
-/**
- * Bias scores by demographic dimension
- */
-export interface DimensionScores {
-    age?:           number;
-    disability?:    number;
-    gender?:        number;
-    race?:          number;
-    religion?:      number;
-    socioeconomic?: number;
-    [property: string]: any;
-}
-
-/**
- * Dataset used for bias evaluation
- *
- * This schema defines the EntityReference type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
- *
- * Data products this AI Application is part of
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
- *
- * Domain the AI Application belongs to
- *
- * User, Pipeline, Query that created,updated or accessed the data asset
- *
- * Reference to LLMModel entity
- *
- * Primary/default LLM model used by this application
- */
-export interface EntityReference {
-    /**
-     * If true the entity referred to has been soft-deleted.
-     */
-    deleted?: boolean;
-    /**
-     * Optional description of entity.
-     */
-    description?: string;
-    /**
-     * Display Name that identifies this entity.
-     */
-    displayName?: string;
-    /**
-     * Fully qualified name of the entity instance. For entities such as tables, databases
-     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
-     * such as `user` and `team` this will be same as the `name` field.
-     */
-    fullyQualifiedName?: string;
-    /**
-     * Link to the entity resource.
-     */
-    href?: string;
-    /**
-     * Unique identifier that identifies an entity instance.
-     */
-    id: string;
-    /**
-     * If true the relationship indicated by this entity reference is inherited from the parent
-     * entity.
-     */
-    inherited?: boolean;
-    /**
-     * Name of the entity instance.
-     */
-    name?: string;
-    /**
-     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
-     * `dashboardService`...
-     */
-    type: string;
+    toolsSupported?: boolean;
 }
 
 /**
@@ -508,7 +383,159 @@ export interface FieldChange {
 }
 
 /**
- * Development stage of the AI application. 'Unauthorized' indicates Shadow AI that needs
+ * Connection configuration for the MCP server
+ */
+export interface ConnectionConfig {
+    /**
+     * Arguments to pass to the server command
+     */
+    args?: string[];
+    /**
+     * Command to start the MCP server
+     */
+    command?: string;
+    /**
+     * Environment variables for the server
+     */
+    env?: { [key: string]: string };
+    /**
+     * Number of retry attempts on connection failure
+     */
+    retryAttempts?: number;
+    /**
+     * Connection timeout in milliseconds
+     */
+    timeout?: number;
+    /**
+     * URL for SSE or Streamable transport servers
+     */
+    url?: string;
+    /**
+     * Working directory for the server process
+     */
+    workingDirectory?: string;
+}
+
+/**
+ * Summary of data access patterns for this MCP server
+ */
+export interface DataAccessSummary {
+    /**
+     * Types of access patterns
+     */
+    accessPatterns?: AccessPattern[];
+    /**
+     * Whether this server accesses databases
+     */
+    databaseAccess?: boolean;
+    /**
+     * Data sources accessed by this server
+     */
+    dataSources?: EntityReference[];
+    /**
+     * Whether this server accesses external APIs
+     */
+    externalApiAccess?: boolean;
+    /**
+     * Whether this server accesses the file system
+     */
+    fileSystemAccess?: boolean;
+    /**
+     * Whether this server requires network access
+     */
+    networkAccess?: boolean;
+    /**
+     * Whether this server accesses PII data
+     */
+    piiAccess?: boolean;
+    /**
+     * Highest sensitivity level of data accessed
+     */
+    sensitivityLevel?: SensitivityLevel;
+}
+
+export enum AccessPattern {
+    Execute = "Execute",
+    Read = "Read",
+    Write = "Write",
+}
+
+/**
+ * Data sources accessed by this server
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * Domain the MCP Server belongs to
+ *
+ * User, Pipeline, Query that created,updated or accessed the data asset
+ *
+ * Reference to the underlying data entity if known
+ */
+export interface EntityReference {
+    /**
+     * If true the entity referred to has been soft-deleted.
+     */
+    deleted?: boolean;
+    /**
+     * Optional description of entity.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this entity.
+     */
+    displayName?: string;
+    /**
+     * Fully qualified name of the entity instance. For entities such as tables, databases
+     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+     * such as `user` and `team` this will be same as the `name` field.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Link to the entity resource.
+     */
+    href?: string;
+    /**
+     * Unique identifier that identifies an entity instance.
+     */
+    id: string;
+    /**
+     * If true the relationship indicated by this entity reference is inherited from the parent
+     * entity.
+     */
+    inherited?: boolean;
+    /**
+     * Name of the entity instance.
+     */
+    name?: string;
+    /**
+     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+     * `dashboardService`...
+     */
+    type: string;
+}
+
+/**
+ * Highest sensitivity level of data accessed
+ *
+ * Sensitivity level of data
+ */
+export enum SensitivityLevel {
+    Confidential = "Confidential",
+    Internal = "Internal",
+    Public = "Public",
+    Restricted = "Restricted",
+}
+
+/**
+ * Development stage of the MCP server. 'Unauthorized' indicates Shadow AI that needs
  * governance review.
  */
 export enum DevelopmentStage {
@@ -522,35 +549,7 @@ export enum DevelopmentStage {
 }
 
 /**
- * Information about the framework used to build the application
- */
-export interface FrameworkInfo {
-    language?: Language;
-    name?:     Name;
-    version?:  string;
-}
-
-export enum Language {
-    C = "C#",
-    Go = "Go",
-    Java = "Java",
-    JavaScript = "JavaScript",
-    Python = "Python",
-    TypeScript = "TypeScript",
-}
-
-export enum Name {
-    AutoGen = "AutoGen",
-    CrewAI = "CrewAI",
-    Custom = "Custom",
-    Haystack = "Haystack",
-    LangChain = "LangChain",
-    LlamaIndex = "LlamaIndex",
-    SemanticKernel = "Semantic Kernel",
-}
-
-/**
- * AI governance metadata for compliance and risk management
+ * Governance metadata for compliance and risk management of the MCP server
  */
 export interface GovernanceMetadata {
     /**
@@ -561,28 +560,40 @@ export interface GovernanceMetadata {
      * Comments from governance council on approval/rejection decision
      */
     approvalComments?: string;
-    approvedAt?:       number;
-    approvedBy?:       string;
     /**
-     * Classification of data accessed by this application
+     * Timestamp when the server was approved
      */
-    dataClassification?: DataClassification;
+    approvedAt?: number;
     /**
-     * Governance policies applied to this application
+     * User who approved the server
+     */
+    approvedBy?: string;
+    /**
+     * Classification of data accessed by this server
+     */
+    dataClassification?: GovernanceMetadataDataClassification;
+    /**
+     * Governance policies applied to this server
      */
     governancePolicies?: EntityReference[];
     /**
      * Notes from AI governance intake form or review process
      */
-    intakeNotes?:  string;
+    intakeNotes?: string;
+    /**
+     * Timestamp when the server was registered
+     */
     registeredAt?: number;
+    /**
+     * User who registered the server
+     */
     registeredBy?: string;
     /**
      * Registration status - used to track Shadow AI
      */
     registrationStatus?: RegistrationStatus;
     /**
-     * Risk assessment for this AI application
+     * Risk assessment for this MCP server
      */
     riskAssessment?: RiskAssessment;
 }
@@ -1017,15 +1028,15 @@ export interface Verification {
 }
 
 /**
- * Classification of data accessed by this application
+ * Classification of data accessed by this server
  */
-export interface DataClassification {
+export interface GovernanceMetadataDataClassification {
     /**
-     * Does this application access Personally Identifiable Information
+     * Whether this server accesses Personally Identifiable Information
      */
     accessesPII?: boolean;
     /**
-     * Does this application access sensitive business data
+     * Whether this server accesses sensitive business data
      */
     accessesSensitiveData?: boolean;
     /**
@@ -1033,7 +1044,7 @@ export interface DataClassification {
      */
     dataCategories?: string[];
     /**
-     * Data retention period for application logs
+     * Data retention period for server logs
      */
     dataRetentionPeriod?: string;
     [property: string]: any;
@@ -1051,7 +1062,7 @@ export enum RegistrationStatus {
 }
 
 /**
- * Risk assessment for this AI application
+ * Risk assessment for this MCP server
  */
 export interface RiskAssessment {
     assessedAt?: number;
@@ -1068,6 +1079,9 @@ export interface RiskAssessment {
     [property: string]: any;
 }
 
+/**
+ * Risk level based on capabilities and data access
+ */
 export enum RiskLevel {
     Critical = "Critical",
     High = "High",
@@ -1120,149 +1134,443 @@ export interface AccessDetails {
 }
 
 /**
- * Configuration for one LLM model used by this application. Applications can have multiple
- * model configurations for different purposes.
+ * MCP Prompt - a reusable prompt template exposed by the server
  */
-export interface ModelConfiguration {
+export interface MCPPrompt {
     /**
-     * Reference to LLMModel entity
+     * Arguments that can be passed to this prompt
      */
-    model: EntityReference;
+    arguments?:          PromptArgument[];
+    dataAccessPatterns?: string[];
     /**
-     * Model-specific parameters for this application
+     * Description of the prompt
      */
-    parameters?: Parameters;
+    description?: string;
     /**
-     * Purpose of this model in the application workflow
+     * Display name for the prompt
      */
-    purpose: Purpose;
+    displayName?: string;
+    examples?:    Example[];
+    lastUsedAt?:  number;
     /**
-     * Criteria for when to use this model
+     * Message templates
      */
-    selectionCriteria?: SelectionCriteria;
+    messages?: PromptMessage[];
+    /**
+     * Name of the prompt
+     */
+    name:                  string;
+    outputClassification?: OutputClassification;
+    promptType?:           PromptType;
+    tags?:                 TagLabel[];
+    usageCount?:           number;
 }
 
 /**
- * Model-specific parameters for this application
+ * Argument definition for a prompt
  */
-export interface Parameters {
-    frequencyPenalty?: number;
-    maxTokens?:        number;
-    presencePenalty?:  number;
-    temperature?:      number;
-    topP?:             number;
+export interface PromptArgument {
+    /**
+     * Default value
+     */
+    default?:     any;
+    description?: string;
+    /**
+     * Allowed values
+     */
+    enum?: any[];
+    /**
+     * Name of the argument
+     */
+    name:       string;
+    required?:  boolean;
+    sensitive?: boolean;
+    type?:      Type;
+}
+
+export enum Type {
+    Array = "Array",
+    Boolean = "Boolean",
+    Number = "Number",
+    Object = "Object",
+    String = "String",
+}
+
+export interface Example {
+    arguments?:      { [key: string]: any };
+    expectedOutput?: string;
+    name?:           string;
     [property: string]: any;
 }
 
 /**
- * Purpose of this model in the application workflow
+ * A message in the prompt template
  */
-export enum Purpose {
-    CodeGeneration = "CodeGeneration",
-    CostOptimization = "CostOptimization",
-    Embedding = "Embedding",
-    Fallback = "Fallback",
-    Primary = "Primary",
-    Reasoning = "Reasoning",
+export interface PromptMessage {
+    content: string;
+    role:    Role;
 }
 
-/**
- * Criteria for when to use this model
- */
-export interface SelectionCriteria {
-    /**
-     * Use this model if cost per query is under this threshold
-     */
-    costThreshold?: number;
-    /**
-     * Use this model only if query is under this token count
-     */
-    maxTokens?: number;
-    /**
-     * Types of queries this model handles
-     */
-    queryTypes?: string[];
+export enum Role {
+    Assistant = "assistant",
+    System = "system",
+    User = "user",
+}
+
+export interface OutputClassification {
+    mayContainPII?:    boolean;
+    outputCategories?: string[];
+    sensitivityLevel?: SensitivityLevel;
     [property: string]: any;
 }
 
 /**
- * Runtime performance metrics for the AI application
+ * Type of MCP prompt
  */
-export interface PerformanceMetrics {
+export enum PromptType {
+    Analysis = "Analysis",
+    Classification = "Classification",
+    Custom = "Custom",
+    Extraction = "Extraction",
+    Generation = "Generation",
+    Query = "Query",
+    Summarization = "Summarization",
+    Transformation = "Transformation",
+    Validation = "Validation",
+}
+
+/**
+ * MCP Resource - data exposed by the server that can be read by AI applications
+ */
+export interface MCPResource {
     /**
-     * Average cost per execution
+     * Number of times accessed
      */
-    averageCost?: number;
+    accessCount?: number;
+    accessLevel?: AccessLevel;
+    annotations?: ResourceAnnotations;
+    /**
+     * Data classification for the resource
+     */
+    dataClassification?: ResourceDataClassification;
+    /**
+     * Description of the resource
+     */
+    description?: string;
+    /**
+     * Display name for the resource
+     */
+    displayName?:  string;
+    lastModified?: number;
+    /**
+     * MIME type of the resource content
+     */
+    mimeType?: string;
+    /**
+     * Name of the resource
+     */
+    name:                 string;
+    requiredPermissions?: string[];
+    resourceType?:        ResourceType;
+    /**
+     * Size in bytes
+     */
+    size?: number;
+    /**
+     * Reference to the underlying data entity if known
+     */
+    sourceEntity?: EntityReference;
+    tags?:         TagLabel[];
+    /**
+     * URI pattern for accessing this resource
+     */
+    uri: string;
+    /**
+     * URI template if the resource supports dynamic URIs
+     */
+    uriTemplate?: string;
+}
+
+export enum AccessLevel {
+    Full = "Full",
+    ReadOnly = "ReadOnly",
+    ReadWrite = "ReadWrite",
+}
+
+export interface ResourceAnnotations {
+    audience?: string[];
+    priority?: number;
+    [property: string]: any;
+}
+
+/**
+ * Data classification for the resource
+ */
+export interface ResourceDataClassification {
+    complianceRequirements?: string[];
+    containsPII?:            boolean;
+    dataCategories?:         string[];
+    piiTypes?:               PiiType[];
+    retentionPeriod?:        string;
+    sensitivityLevel?:       SensitivityLevel;
+    [property: string]: any;
+}
+
+/**
+ * Type of PII
+ */
+export enum PiiType {
+    Address = "Address",
+    BiometricData = "BiometricData",
+    DateOfBirth = "DateOfBirth",
+    Email = "Email",
+    FinancialData = "FinancialData",
+    HealthData = "HealthData",
+    LocationData = "LocationData",
+    Name = "Name",
+    Other = "Other",
+    Phone = "Phone",
+    Ssn = "SSN",
+}
+
+/**
+ * Type of MCP resource
+ */
+export enum ResourceType {
+    API = "API",
+    Blob = "Blob",
+    Custom = "Custom",
+    Database = "Database",
+    Directory = "Directory",
+    Document = "Document",
+    File = "File",
+    Stream = "Stream",
+    URL = "URL",
+}
+
+/**
+ * Security metrics and settings for the MCP server
+ */
+export interface SecurityMetrics {
+    /**
+     * Whether audit logging is enabled
+     */
+    auditLoggingEnabled?: boolean;
+    /**
+     * Whether authentication is required
+     */
+    authenticationRequired?: boolean;
+    /**
+     * Whether authorization is enforced
+     */
+    authorizationEnforced?: boolean;
+    /**
+     * Whether data is encrypted in transit
+     */
+    encryptionInTransit?: boolean;
+    /**
+     * Whether the server runs in a sandboxed environment
+     */
+    sandboxed?: boolean;
+    /**
+     * Method used for secrets management
+     */
+    secretsManagement?: string;
+}
+
+/**
+ * Information about the MCP server software
+ */
+export interface ServerInfo {
+    /**
+     * URL to the server's documentation
+     */
+    documentationUrl?: string;
+    /**
+     * URL to the server's source code repository
+     */
+    repositoryUrl?: string;
+    /**
+     * Name of the MCP server software
+     */
+    serverName?: string;
+    /**
+     * Version of the MCP server software
+     */
+    serverVersion?: string;
+    /**
+     * Vendor or organization that provides the server
+     */
+    vendor?: string;
+}
+
+/**
+ * Type of MCP server based on its primary function
+ */
+export enum ServerType {
+    Cloud = "Cloud",
+    Communication = "Communication",
+    Custom = "Custom",
+    DataAccess = "DataAccess",
+    Database = "Database",
+    Development = "Development",
+    FileSystem = "FileSystem",
+    Security = "Security",
+    WebAPI = "WebAPI",
+}
+
+/**
+ * MCP Tool - a capability exposed by the server that can perform operations
+ */
+export interface MCPTool {
+    /**
+     * MCP tool annotations
+     */
+    annotations?: ToolAnnotations;
+    /**
+     * Data access patterns for the tool
+     */
+    dataAccess?: DataAccess;
+    /**
+     * Description of what the tool does
+     */
+    description?: string;
+    /**
+     * Display name for the tool
+     */
+    displayName?: string;
+    /**
+     * Whether this tool is idempotent
+     */
+    idempotent?: boolean;
+    /**
+     * JSON Schema for tool input parameters
+     */
+    inputSchema?: { [key: string]: any };
+    lastUsedAt?:  number;
+    /**
+     * Name of the tool
+     */
+    name: string;
+    /**
+     * JSON Schema for tool output
+     */
+    outputSchema?: { [key: string]: any };
+    /**
+     * Rate limit for tool invocations per minute
+     */
+    rateLimitPerMinute?: number;
+    /**
+     * Permissions required to use this tool
+     */
+    requiredPermissions?: string[];
+    /**
+     * Whether this tool's action can be reversed
+     */
+    reversible?: boolean;
+    /**
+     * Identified risk factors
+     */
+    riskFactors?: string[];
+    riskLevel?:   RiskLevel;
+    /**
+     * Whether this tool causes side effects
+     */
+    sideEffects?: boolean;
+    tags?:        TagLabel[];
+    /**
+     * Maximum execution time in milliseconds
+     */
+    timeout?:      number;
+    toolCategory?: ToolCategory;
+    /**
+     * Number of times this tool has been invoked
+     */
+    usageCount?: number;
+}
+
+/**
+ * MCP tool annotations
+ */
+export interface ToolAnnotations {
+    destructiveHint?: boolean;
+    idempotentHint?:  boolean;
+    openWorldHint?:   boolean;
+    readOnlyHint?:    boolean;
+    title?:           string;
+    [property: string]: any;
+}
+
+/**
+ * Data access patterns for the tool
+ */
+export interface DataAccess {
+    dataTypes?:        string[];
+    deletesData?:      boolean;
+    piiAccess?:        boolean;
+    readsData?:        boolean;
+    sensitivityLevel?: SensitivityLevel;
+    writesData?:       boolean;
+    [property: string]: any;
+}
+
+/**
+ * Category of the MCP tool based on its primary function
+ */
+export enum ToolCategory {
+    CodeOperation = "CodeOperation",
+    CommunicationOperation = "CommunicationOperation",
+    Custom = "Custom",
+    DataOperation = "DataOperation",
+    DatabaseOperation = "DatabaseOperation",
+    FileOperation = "FileOperation",
+    SearchOperation = "SearchOperation",
+    SecurityOperation = "SecurityOperation",
+    SystemOperation = "SystemOperation",
+    WebOperation = "WebOperation",
+}
+
+/**
+ * Transport protocol used by the MCP server
+ */
+export enum TransportType {
+    SSE = "SSE",
+    Stdio = "Stdio",
+    Streamable = "Streamable",
+}
+
+/**
+ * Usage metrics for the MCP server
+ */
+export interface UsageMetrics {
     /**
      * Average latency in milliseconds
      */
     averageLatencyMs?: number;
-    currency?:         string;
-    lastExecutionAt?:  number;
+    /**
+     * Daily active users
+     */
+    dailyActiveUsers?: number;
+    /**
+     * Timestamp of last invocation
+     */
+    lastInvokedAt?: number;
     /**
      * 95th percentile latency in milliseconds
      */
     p95LatencyMs?: number;
     /**
-     * 99th percentile latency in milliseconds
-     */
-    p99LatencyMs?: number;
-    /**
      * Success rate (0-1)
      */
     successRate?: number;
     /**
-     * Total cost across all executions
+     * Total number of invocations
      */
-    totalCost?: number;
+    totalInvocations?: number;
     /**
-     * Total number of executions
+     * Number of unique users
      */
-    totalExecutions?: number;
-}
-
-/**
- * Quality metrics for AI application responses
- */
-export interface QualityMetrics {
-    /**
-     * Answer relevancy score (0-1)
-     */
-    answerRelevancy?: number;
-    /**
-     * Context precision score (0-1)
-     */
-    contextPrecision?: number;
-    /**
-     * Faithfulness to source data (0-1)
-     */
-    faithfulness?: number;
-    /**
-     * Rate of hallucinations (0-1)
-     */
-    hallucinationRate?: number;
-}
-
-/**
- * Safety metrics for AI application
- */
-export interface SafetyMetrics {
-    /**
-     * Number of requests blocked by safety filters
-     */
-    blockedRequests?: number;
-    /**
-     * Rate of harmful content generated
-     */
-    harmfulContentRate?: number;
-    /**
-     * Rate of PII leakage incidents
-     */
-    piiLeakageRate?: number;
-    /**
-     * Number of prompt injection attempts detected
-     */
-    promptInjectionAttempts?: number;
+    uniqueUsers?: number;
 }
 
 /**
