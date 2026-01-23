@@ -82,7 +82,11 @@ public class MigrationUtil {
             }
           }
         } catch (Exception e) {
-          LOG.error("Error processing table ID '{}': {}", tableId, e.getMessage(), e);
+          LOG.error(
+              "Failed to update table constraints for table ID '{}'. Error during JSON parsing or database update: {}",
+              tableId,
+              e.getMessage(),
+              e);
         }
       }
 
