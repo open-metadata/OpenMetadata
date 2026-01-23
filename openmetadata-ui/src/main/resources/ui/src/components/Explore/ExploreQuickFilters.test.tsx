@@ -428,7 +428,7 @@ describe('ExploreQuickFilters component', () => {
       ).toHaveTextContent('true');
     });
 
-    it('should filter tier options on search', async () => {
+    it('should call getAggregationOptions on tier search', async () => {
       mockGetTags.mockResolvedValue(mockTierTags);
       mockGetAggregationOptions.mockResolvedValue({
         data: {
@@ -450,18 +450,6 @@ describe('ExploreQuickFilters component', () => {
 
       render(<ExploreQuickFilters {...mockProps} fields={tierFields} />);
 
-      const initialButton = screen.getByTestId(
-        `onGetInitialOptions-${TIER_FQN_KEY}`
-      );
-
-      await act(async () => {
-        userEvent.click(initialButton);
-      });
-
-      await waitFor(() => {
-        expect(getTags).toHaveBeenCalled();
-      });
-
       const searchButton = screen.getByTestId(`onSearch-${TIER_FQN_KEY}`);
 
       await act(async () => {
@@ -469,13 +457,13 @@ describe('ExploreQuickFilters component', () => {
       });
 
       await waitFor(() => {
-        expect(getAggregationOptions).not.toHaveBeenCalledWith(
-          expect.anything(),
+        expect(getAggregationOptions).toHaveBeenCalledWith(
+          SearchIndex.TABLE,
           TIER_FQN_KEY,
           'test',
-          expect.anything(),
-          expect.anything(),
-          expect.anything()
+          expect.any(String),
+          false,
+          false
         );
       });
     });
