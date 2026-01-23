@@ -282,11 +282,12 @@ class QlikSenseJWTAuthTest(TestCase):
         """
         Test that JWT authentication can be configured properly
         """
+        from pydantic import AnyUrl, SecretStr
+
         from metadata.generated.schema.entity.services.connections.dashboard.qlikSenseConnection import (
             QlikJWT,
             QlikSenseConnection,
         )
-        from pydantic import AnyUrl, SecretStr
 
         # Create a connection with JWT authentication
         jwt_config = QlikSenseConnection(
@@ -303,14 +304,13 @@ class QlikSenseJWTAuthTest(TestCase):
         """
         Test that QlikSenseClient can be initialized with JWT auth
         """
+        from pydantic import AnyUrl, SecretStr
+
         from metadata.generated.schema.entity.services.connections.dashboard.qlikSenseConnection import (
             QlikJWT,
             QlikSenseConnection,
         )
-        from metadata.ingestion.source.dashboard.qliksense.client import (
-            QlikSenseClient,
-        )
-        from pydantic import AnyUrl, SecretStr
+        from metadata.ingestion.source.dashboard.qliksense.client import QlikSenseClient
 
         # Create a connection with JWT authentication
         jwt_config = QlikSenseConnection(
