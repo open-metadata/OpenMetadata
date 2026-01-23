@@ -1,0 +1,215 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/columnGridResponse.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ColumnGridResponse",
+  "description": "Response containing all unique columns grouped by metadata similarity for grid-based editing.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.ColumnGridResponse",
+  "properties": {
+    "columns": {
+      "description": "List of unique column names with their metadata groups.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/columnGridItem"
+      }
+    },
+    "totalUniqueColumns": {
+      "description": "Total number of unique column names.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "totalOccurrences": {
+      "description": "Total number of column occurrences across all entities.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "cursor": {
+      "description": "Cursor for pagination (Base64-encoded). Use this in the next request to get the next page of results.",
+      "type": "string"
+    }
+  },
+  "required": ["columns", "totalUniqueColumns", "totalOccurrences"],
+  "definitions": {
+    "columnGridItem": {
+      "javaType": "org.openmetadata.schema.api.data.ColumnGridItem",
+      "description": "A unique column name with its metadata groups.",
+      "type": "object",
+      "properties": {
+        "columnName": {
+          "description": "Name of the column.",
+          "type": "string"
+        },
+        "totalOccurrences": {
+          "description": "Total number of occurrences for this column name.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "hasVariations": {
+          "description": "Whether this column has different metadata across occurrences.",
+          "type": "boolean"
+        },
+        "metadataStatus": {
+          "description": "Aggregate metadata status across all occurrences. Uses worst-case: MISSING if any occurrence is missing, INCOMPLETE if any is incomplete, otherwise COMPLETE.",
+          "$ref": "#/definitions/metadataStatus"
+        },
+        "groups": {
+          "description": "Metadata groups - columns with identical metadata are grouped together.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/columnMetadataGroup"
+          }
+        }
+      },
+      "required": ["columnName", "totalOccurrences", "hasVariations", "groups"],
+      "additionalProperties": false
+    },
+    "columnMetadataGroup": {
+      "javaType": "org.openmetadata.schema.api.data.ColumnMetadataGroup",
+      "description": "A group of columns with identical metadata.",
+      "type": "object",
+      "properties": {
+        "groupId": {
+          "description": "Unique identifier for this metadata group (hash of metadata values).",
+          "type": "string"
+        },
+        "displayName": {
+          "description": "Display name (common across all columns in this group).",
+          "type": "string"
+        },
+        "description": {
+          "description": "Description (common across all columns in this group).",
+          "$ref": "../../type/basic.json#/definitions/markdown"
+        },
+        "tags": {
+          "description": "Tags (common across all columns in this group).",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/tagLabel.json"
+          }
+        },
+        "dataType": {
+          "description": "Data type (common across all columns in this group).",
+          "type": "string"
+        },
+        "metadataStatus": {
+          "description": "Metadata completeness status for this group.",
+          "$ref": "#/definitions/metadataStatus"
+        },
+        "occurrenceCount": {
+          "description": "Number of column occurrences in this group.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "occurrences": {
+          "description": "List of column occurrences in this group.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/columnOccurrenceRef"
+          }
+        },
+        "children": {
+          "description": "Nested columns for STRUCT, MAP, or UNION data types.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/columnChild"
+          }
+        }
+      },
+      "required": ["groupId", "occurrenceCount", "occurrences"],
+      "additionalProperties": false
+    },
+    "columnChild": {
+      "javaType": "org.openmetadata.schema.api.data.ColumnChild",
+      "description": "A child column within a STRUCT, MAP, or UNION type.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name of the child column.",
+          "type": "string"
+        },
+        "fullyQualifiedName": {
+          "description": "Fully qualified name of the child column.",
+          "type": "string"
+        },
+        "displayName": {
+          "description": "Display name of the child column.",
+          "type": "string"
+        },
+        "description": {
+          "description": "Description of the child column.",
+          "$ref": "../../type/basic.json#/definitions/markdown"
+        },
+        "dataType": {
+          "description": "Data type of the child column.",
+          "type": "string"
+        },
+        "tags": {
+          "description": "Tags on the child column.",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/tagLabel.json"
+          }
+        },
+        "children": {
+          "description": "Nested children for deeply nested structures.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/columnChild"
+          }
+        }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    },
+    "columnOccurrenceRef": {
+      "javaType": "org.openmetadata.schema.api.data.ColumnOccurrenceRef",
+      "description": "Reference to a column occurrence.",
+      "type": "object",
+      "properties": {
+        "columnFQN": {
+          "description": "Fully qualified name of the column.",
+          "type": "string"
+        },
+        "entityType": {
+          "description": "Type of entity containing the column.",
+          "type": "string"
+        },
+        "entityFQN": {
+          "description": "Fully qualified name of the parent entity.",
+          "type": "string"
+        },
+        "entityDisplayName": {
+          "description": "Display name of the parent entity.",
+          "type": "string"
+        },
+        "serviceName": {
+          "description": "Name of the service.",
+          "type": "string"
+        },
+        "databaseName": {
+          "description": "Name of the database (if applicable).",
+          "type": "string"
+        },
+        "schemaName": {
+          "description": "Name of the schema (if applicable).",
+          "type": "string"
+        }
+      },
+      "required": ["columnFQN", "entityType", "entityFQN"],
+      "additionalProperties": false
+    },
+    "metadataStatus": {
+      "javaType": "org.openmetadata.schema.api.data.MetadataStatus",
+      "description": "Metadata completeness status for a column or group of columns.",
+      "type": "string",
+      "enum": ["MISSING", "INCOMPLETE", "INCONSISTENT", "COMPLETE"],
+      "javaEnums": [
+        {"name": "MISSING", "description": "No description and no tags."},
+        {"name": "INCOMPLETE", "description": "Has description or tags, but not both."},
+        {"name": "INCONSISTENT", "description": "Metadata varies across occurrences (different descriptions, tags, or glossary terms)."},
+        {"name": "COMPLETE", "description": "Has both description and tags, and is consistent across all occurrences."}
+      ]
+    }
+  },
+  "additionalProperties": false
+}
