@@ -186,9 +186,12 @@ public class CreateRecognizerFeedbackApprovalTaskImpl implements TaskListener {
         CollectionDAO.TagUsageDAO tagUsageDAO = Entity.getCollectionDAO().tagUsageDAO();
         List<TagLabel> tags = tagUsageDAO.getTags(targetFQN);
         recognizer =
-                tags.stream()
-                        .filter(tagLabel -> feedback.getTagFQN().equals(tagLabel.getTagFQN()))
-                        .findFirst().filter(tagLabel -> tagLabel.getMetadata() != null).map(tagLabel -> tagLabel.getMetadata().getRecognizer()).orElse(null);
+            tags.stream()
+                .filter(tagLabel -> feedback.getTagFQN().equals(tagLabel.getTagFQN()))
+                .findFirst()
+                .filter(tagLabel -> tagLabel.getMetadata() != null)
+                .map(tagLabel -> tagLabel.getMetadata().getRecognizer())
+                .orElse(null);
       } catch (Exception ex) {
         LOG.warn(
             "Failed to retrieve recognizer metadata for feedback {}: {}",
