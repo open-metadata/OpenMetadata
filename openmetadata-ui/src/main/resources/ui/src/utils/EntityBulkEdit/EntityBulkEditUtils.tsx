@@ -110,83 +110,6 @@ export const getBulkEntityNavigationPath = (
   return entityUtilClassBase.getEntityLink(entityType, fqn);
 };
 
-interface TagValue {
-  tagFQN: string;
-  source: string;
-}
-
-const parseTagsArray = (value: string | undefined): TagValue[] => {
-  if (!value) {
-    return [];
-  }
-  try {
-    return JSON.parse(value) as TagValue[];
-  } catch {
-    return [];
-  }
-};
-
-const getChangedTagTypes = (
-  oldValue: string | undefined,
-  newValue: string | undefined
-): Set<string> => {
-  const oldTags = parseTagsArray(oldValue);
-  const newTags = parseTagsArray(newValue);
-
-  const getTagsBySource = (tags: TagValue[]) => ({
-    classification: tags.filter((t) => t.source === 'Classification'),
-    glossary: tags.filter((t) => t.source === 'Glossary'),
-  });
-
-  const oldBySource = getTagsBySource(oldTags);
-  const newBySource = getTagsBySource(newTags);
-
-  const changedTypes = new Set<string>();
-
-  const classificationChanged =
-    JSON.stringify(oldBySource.classification.map((t) => t.tagFQN).sort()) !==
-    JSON.stringify(newBySource.classification.map((t) => t.tagFQN).sort());
-
-  const glossaryChanged =
-    JSON.stringify(oldBySource.glossary.map((t) => t.tagFQN).sort()) !==
-    JSON.stringify(newBySource.glossary.map((t) => t.tagFQN).sort());
-
-  if (classificationChanged) {
-    const oldTiers = oldBySource.classification.filter((t) =>
-      t.tagFQN.startsWith('Tier.')
-    );
-    const newTiers = newBySource.classification.filter((t) =>
-      t.tagFQN.startsWith('Tier.')
-    );
-    const oldNonTiers = oldBySource.classification.filter(
-      (t) => !t.tagFQN.startsWith('Tier.')
-    );
-    const newNonTiers = newBySource.classification.filter(
-      (t) => !t.tagFQN.startsWith('Tier.')
-    );
-
-    if (
-      JSON.stringify(oldTiers.map((t) => t.tagFQN).sort()) !==
-      JSON.stringify(newTiers.map((t) => t.tagFQN).sort())
-    ) {
-      changedTypes.add('tiers');
-    }
-
-    if (
-      JSON.stringify(oldNonTiers.map((t) => t.tagFQN).sort()) !==
-      JSON.stringify(newNonTiers.map((t) => t.tagFQN).sort())
-    ) {
-      changedTypes.add('tags');
-    }
-  }
-
-  if (glossaryChanged) {
-    changedTypes.add('glossaryTerms');
-  }
-
-  return changedTypes;
-};
-
 /**
  * Parses the changeDescription JSON from a row and extracts the updated field names.
  * Returns both the raw field name and prefixed version (e.g., 'description' and 'column.description')
@@ -202,27 +125,10 @@ export const getUpdatedFields = (row: Record<string, string>): Set<string> => {
   try {
     const parsed = JSON.parse(row.changeDescription);
     const fields: string[] = [];
-
-    const processField = (f: {
-      name: string;
-      oldValue?: string;
-      newValue?: string;
-    }) => {
-      if (f.name === 'tags') {
-        const changedTagTypes = getChangedTagTypes(f.oldValue, f.newValue);
-        changedTagTypes.forEach((type) => {
-          fields.push(type);
-          fields.push(`column.${type}`);
-        });
-      } else {
-        fields.push(f.name);
-        fields.push(`column.${f.name}`);
-      }
-    };
-
-    (parsed.fieldsAdded || []).forEach(processField);
-    (parsed.fieldsUpdated || []).forEach(processField);
-    (parsed.fieldsDeleted || []).forEach(processField);
+    (parsed.fieldsUpdated || []).forEach((f: { name: string }) => {
+      fields.push(f.name);
+      fields.push(`column.${f.name}`);
+    });
 
     return new Set(fields);
   } catch {
