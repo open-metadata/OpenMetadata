@@ -26,6 +26,7 @@ import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichT
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { DataProductDomainWidget } from '../components/DataProducts/DataProductDomainWidget/DataProductDomainWidget';
 import { InputOutputPortsTab } from '../components/DataProducts/InputOutputPortsTab';
 import EntitySummaryPanel from '../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
@@ -278,6 +279,16 @@ export const getDataProductDetailTabs = ({
                 }}
               />
             ),
+          },
+          {
+            label: (
+              <TabsLabel
+                id={EntityTabs.CONTRACT}
+                name={labelMap?.[EntityTabs.CONTRACT] ?? t('label.contract')}
+              />
+            ),
+            key: EntityTabs.CONTRACT,
+            children: <ContractTab />,
           },
         ]),
     {

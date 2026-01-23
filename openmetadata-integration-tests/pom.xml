@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
     <artifactId>platform</artifactId>
     <groupId>org.open-metadata</groupId>
@@ -11,13 +9,11 @@
   <artifactId>openmetadata-integration-tests</artifactId>
   <name>OpenMetadata Integration Tests</name>
   <packaging>jar</packaging>
-
   <properties>
     <maven.surefire.version>3.1.2</maven.surefire.version>
     <junit.jupiter.version>5.10.2</junit.jupiter.version>
     <junit.platform.version>1.10.2</junit.platform.version>
   </properties>
-
   <dependencies>
     <!-- SDK client -->
     <dependency>
@@ -25,7 +21,6 @@
       <artifactId>openmetadata-sdk</artifactId>
       <version>${project.version}</version>
     </dependency>
-
     <!-- Service (for config types + app class) -->
     <dependency>
       <groupId>org.open-metadata</groupId>
@@ -33,7 +28,6 @@
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
-
     <!-- Service test utilities (for RDF tests) -->
     <dependency>
       <groupId>org.open-metadata</groupId>
@@ -42,7 +36,6 @@
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>
-
     <!-- Testcontainers for infra -->
     <dependency>
       <groupId>org.testcontainers</groupId>
@@ -86,7 +79,6 @@
       <version>1.20.4</version>
       <scope>test</scope>
     </dependency>
-
     <!-- Kubernetes client for K8s integration tests -->
     <dependency>
       <groupId>io.kubernetes</groupId>
@@ -100,7 +92,6 @@
       <version>6.12.0</version>
       <scope>test</scope>
     </dependency>
-
     <!-- OMJob operator model for K8s integration tests -->
     <dependency>
       <groupId>org.open-metadata</groupId>
@@ -108,14 +99,12 @@
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
-
     <!-- Dropwizard testing harness -->
     <dependency>
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-testing</artifactId>
       <scope>test</scope>
     </dependency>
-
     <!-- JUnit 5 -->
     <dependency>
       <groupId>org.junit.jupiter</groupId>
@@ -123,7 +112,6 @@
       <version>${junit.jupiter.version}</version>
       <scope>test</scope>
     </dependency>
-
     <!-- JUnit Platform Launcher (for LauncherSessionListener) -->
     <dependency>
       <groupId>org.junit.platform</groupId>
@@ -131,7 +119,6 @@
       <version>${junit.platform.version}</version>
       <scope>test</scope>
     </dependency>
-
     <!-- Awaitility for eventual consistency -->
     <dependency>
       <groupId>org.awaitility</groupId>
@@ -139,7 +126,6 @@
       <version>4.2.0</version>
       <scope>test</scope>
     </dependency>
-
     <!-- JWT signing -->
     <dependency>
       <groupId>com.auth0</groupId>
@@ -147,7 +133,6 @@
       <version>4.4.0</version>
       <scope>test</scope>
     </dependency>
-
     <!-- RDF support (Apache Jena) for RDF tests -->
     <dependency>
       <groupId>org.apache.jena</groupId>
@@ -162,35 +147,67 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
-
   <build>
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>${maven.surefire.version}</version>
-        <configuration>
-          <!-- Single JVM fork - parallelism is handled by JUnit 5 internally -->
-          <!-- This ensures LauncherSessionListener starts containers ONCE -->
-          <forkCount>1</forkCount>
-          <reuseForks>true</reuseForks>
-          <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
-          <includes>
-            <include>**/*IT.java</include>
-            <include>**/*Test.java</include>
-          </includes>
-          <systemPropertyVariables>
-            <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
-          </systemPropertyVariables>
-          <!-- Report configuration for parallel execution -->
-          <trimStackTrace>false</trimStackTrace>
-          <reportFormat>plain</reportFormat>
-          <useFile>true</useFile>
-        </configuration>
+        <executions>
+          <!-- Phase 1: Run TagRecognizerFeedbackIT sequentially, alone -->
+          <execution>
+            <id>sequential-test</id>
+            <phase>test</phase>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <forkCount>1</forkCount>
+              <reuseForks>true</reuseForks>
+              <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+              <includes>
+                <include>**/TagRecognizerFeedbackIT.java</include>
+              </includes>
+              <systemPropertyVariables>
+                <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+              </systemPropertyVariables>
+              <trimStackTrace>false</trimStackTrace>
+              <reportFormat>plain</reportFormat>
+              <useFile>true</useFile>
+            </configuration>
+          </execution>
+          <!-- Phase 2: Run all other tests in parallel -->
+          <execution>
+            <id>parallel-tests</id>
+            <phase>test</phase>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <forkCount>1</forkCount>
+              <reuseForks>true</reuseForks>
+              <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+              <includes>
+                <include>**/*IT.java</include>
+                <include>**/*Test.java</include>
+              </includes>
+              <excludes>
+                <exclude>**/TagRecognizerFeedbackIT.java</exclude>
+              </excludes>
+              <systemPropertyVariables>
+                <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
+              </systemPropertyVariables>
+              <trimStackTrace>false</trimStackTrace>
+              <reportFormat>plain</reportFormat>
+              <useFile>true</useFile>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
-
   <profiles>
     <!-- MySQL + Elasticsearch (default) -->
     <profile>
@@ -204,30 +221,62 @@
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-surefire-plugin</artifactId>
             <version>${maven.surefire.version}</version>
-            <configuration>
-              <forkCount>1</forkCount>
-              <reuseForks>true</reuseForks>
-              <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
-              <includes>
-                <include>**/*IT.java</include>
-                <include>**/*Test.java</include>
-              </includes>
-              <systemPropertyVariables>
-                <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
-                <databaseType>mysql</databaseType>
-                <databaseImage>mysql:8.3.0</databaseImage>
-                <searchType>elasticsearch</searchType>
-                <searchImage>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</searchImage>
-              </systemPropertyVariables>
-              <trimStackTrace>false</trimStackTrace>
-              <reportFormat>plain</reportFormat>
-              <useFile>true</useFile>
-            </configuration>
+            <executions>
+              <!-- Phase 1: Run TagRecognizerFeedbackIT sequentially, alone -->
+              <execution>
+                <id>sequential-test</id>
+                <phase>test</phase>
+                <goals>
+                  <goal>test</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/TagRecognizerFeedbackIT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+              <!-- Phase 2: Run all other tests in parallel -->
+              <execution>
+                <id>parallel-tests</id>
+                <phase>test</phase>
+                <goals>
+                  <goal>test</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/*IT.java</include>
+                    <include>**/*Test.java</include>
+                  </includes>
+                  <excludes>
+                    <exclude>**/TagRecognizerFeedbackIT.java</exclude>
+                  </excludes>
+                  <systemPropertyVariables>
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+            </executions>
           </plugin>
         </plugins>
       </build>
     </profile>
-
     <!-- PostgreSQL + OpenSearch -->
     <profile>
       <id>postgres-opensearch</id>
@@ -237,30 +286,62 @@
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-surefire-plugin</artifactId>
             <version>${maven.surefire.version}</version>
-            <configuration>
-              <forkCount>1</forkCount>
-              <reuseForks>true</reuseForks>
-              <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
-              <includes>
-                <include>**/*IT.java</include>
-                <include>**/*Test.java</include>
-              </includes>
-              <systemPropertyVariables>
-                <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
-                <databaseType>postgres</databaseType>
-                <databaseImage>postgres:15</databaseImage>
-                <searchType>opensearch</searchType>
-                <searchImage>opensearchproject/opensearch:2.19.0</searchImage>
-              </systemPropertyVariables>
-              <trimStackTrace>false</trimStackTrace>
-              <reportFormat>plain</reportFormat>
-              <useFile>true</useFile>
-            </configuration>
+            <executions>
+              <!-- Phase 1: Run TagRecognizerFeedbackIT sequentially, alone -->
+              <execution>
+                <id>sequential-test</id>
+                <phase>test</phase>
+                <goals>
+                  <goal>test</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/TagRecognizerFeedbackIT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+              <!-- Phase 2: Run all other tests in parallel -->
+              <execution>
+                <id>parallel-tests</id>
+                <phase>test</phase>
+                <goals>
+                  <goal>test</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/*IT.java</include>
+                    <include>**/*Test.java</include>
+                  </includes>
+                  <excludes>
+                    <exclude>**/TagRecognizerFeedbackIT.java</exclude>
+                  </excludes>
+                  <systemPropertyVariables>
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+            </executions>
           </plugin>
         </plugins>
       </build>
     </profile>
-
     <!-- PostgreSQL + Elasticsearch -->
     <profile>
       <id>postgres-elasticsearch</id>
@@ -270,30 +351,62 @@
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-surefire-plugin</artifactId>
             <version>${maven.surefire.version}</version>
-            <configuration>
-              <forkCount>1</forkCount>
-              <reuseForks>true</reuseForks>
-              <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
-              <includes>
-                <include>**/*IT.java</include>
-                <include>**/*Test.java</include>
-              </includes>
-              <systemPropertyVariables>
-                <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
-                <databaseType>postgres</databaseType>
-                <databaseImage>postgres:15</databaseImage>
-                <searchType>elasticsearch</searchType>
-                <searchImage>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</searchImage>
-              </systemPropertyVariables>
-              <trimStackTrace>false</trimStackTrace>
-              <reportFormat>plain</reportFormat>
-              <useFile>true</useFile>
-            </configuration>
+            <executions>
+              <!-- Phase 1: Run TagRecognizerFeedbackIT sequentially, alone -->
+              <execution>
+                <id>sequential-test</id>
+                <phase>test</phase>
+                <goals>
+                  <goal>test</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/TagRecognizerFeedbackIT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+              <!-- Phase 2: Run all other tests in parallel -->
+              <execution>
+                <id>parallel-tests</id>
+                <phase>test</phase>
+                <goals>
+                  <goal>test</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/*IT.java</include>
+                    <include>**/*Test.java</include>
+                  </includes>
+                  <excludes>
+                    <exclude>**/TagRecognizerFeedbackIT.java</exclude>
+                  </excludes>
+                  <systemPropertyVariables>
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+            </executions>
           </plugin>
         </plugins>
       </build>
     </profile>
-
     <!-- MySQL + OpenSearch -->
     <profile>
       <id>mysql-opensearch</id>
@@ -303,30 +416,62 @@
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-surefire-plugin</artifactId>
             <version>${maven.surefire.version}</version>
-            <configuration>
-              <forkCount>1</forkCount>
-              <reuseForks>true</reuseForks>
-              <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
-              <includes>
-                <include>**/*IT.java</include>
-                <include>**/*Test.java</include>
-              </includes>
-              <systemPropertyVariables>
-                <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
-                <databaseType>mysql</databaseType>
-                <databaseImage>mysql:8.3.0</databaseImage>
-                <searchType>opensearch</searchType>
-                <searchImage>opensearchproject/opensearch:2.19.0</searchImage>
-              </systemPropertyVariables>
-              <trimStackTrace>false</trimStackTrace>
-              <reportFormat>plain</reportFormat>
-              <useFile>true</useFile>
-            </configuration>
+            <executions>
+              <!-- Phase 1: Run TagRecognizerFeedbackIT sequentially, alone -->
+              <execution>
+                <id>sequential-test</id>
+                <phase>test</phase>
+                <goals>
+                  <goal>test</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/TagRecognizerFeedbackIT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+              <!-- Phase 2: Run all other tests in parallel -->
+              <execution>
+                <id>parallel-tests</id>
+                <phase>test</phase>
+                <goals>
+                  <goal>test</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/*IT.java</include>
+                    <include>**/*Test.java</include>
+                  </includes>
+                  <excludes>
+                    <exclude>**/TagRecognizerFeedbackIT.java</exclude>
+                  </excludes>
+                  <systemPropertyVariables>
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+            </executions>
           </plugin>
         </plugins>
       </build>
     </profile>
-
     <!-- RDF integration tests profile -->
     <profile>
       <id>postgres-rdf-tests</id>
@@ -336,28 +481,61 @@
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-surefire-plugin</artifactId>
             <version>${maven.surefire.version}</version>
-            <configuration>
-              <reuseForks>true</reuseForks>
-              <forkCount>1</forkCount>
-              <argLine>-Xmx2G</argLine>
-              <systemPropertyVariables>
-                <enableRdf>true</enableRdf>
-                <rdfContainerImage>stain/jena-fuseki:latest</rdfContainerImage>
-                <databaseType>postgres</databaseType>
-                <databaseImage>postgres:15</databaseImage>
-                <searchType>elasticsearch</searchType>
-                <searchImage>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</searchImage>
-                <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
-              </systemPropertyVariables>
-              <includes>
-                <include>**/*IT.java</include>
-                <include>**/*Test.java</include>
-              </includes>
-            </configuration>
+            <executions>
+              <!-- Phase 1: Run TagRecognizerFeedbackIT sequentially, alone -->
+              <execution>
+                <id>sequential-test</id>
+                <phase>test</phase>
+                <goals>
+                  <goal>test</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/TagRecognizerFeedbackIT.java</include>
+                  </includes>
+                  <systemPropertyVariables>
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+              <!-- Phase 2: Run all other tests in parallel -->
+              <execution>
+                <id>parallel-tests</id>
+                <phase>test</phase>
+                <goals>
+                  <goal>test</goal>
+                </goals>
+                <configuration>
+                  <forkCount>1</forkCount>
+                  <reuseForks>true</reuseForks>
+                  <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
+                  <includes>
+                    <include>**/*IT.java</include>
+                    <include>**/*Test.java</include>
+                  </includes>
+                  <excludes>
+                    <exclude>**/TagRecognizerFeedbackIT.java</exclude>
+                  </excludes>
+                  <systemPropertyVariables>
+                    <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
+                    <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
+                  </systemPropertyVariables>
+                  <trimStackTrace>false</trimStackTrace>
+                  <reportFormat>plain</reportFormat>
+                  <useFile>true</useFile>
+                </configuration>
+              </execution>
+            </executions>
           </plugin>
         </plugins>
       </build>
     </profile>
   </profiles>
-
 </project>

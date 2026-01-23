@@ -28,11 +28,17 @@ export interface AwsBaseConfig {
      */
     assumeRoleSessionName?: string;
     /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
+    /**
      * Custom endpoint URL for AWS-compatible services (MinIO, LocalStack).
      */
     endpointUrl?: string;
     /**
-     * AWS Region (e.g., us-east-1). When set, enables AWS authentication.
+     * AWS Region (e.g., us-east-1). Required when AWS authentication is enabled.
      */
     region?: string;
     /**

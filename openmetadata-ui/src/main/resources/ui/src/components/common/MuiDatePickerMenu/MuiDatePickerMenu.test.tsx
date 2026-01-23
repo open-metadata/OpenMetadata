@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { DateTime } from 'luxon';
 import '../../../test/unit/mocks/mui.mock';
 import MuiDatePickerMenu from './MuiDatePickerMenu';
@@ -89,13 +89,13 @@ describe('MuiDatePickerMenu', () => {
   });
 
   describe('Rendering', () => {
-    it('should render the component with default date range', () => {
+    it('should render the component with placeholder when no default date range', () => {
       render(
         <MuiDatePickerMenu handleDateRangeChange={mockHandleDateRangeChange} />
       );
 
       expect(screen.getByTestId('mui-date-picker-menu')).toBeInTheDocument();
-      expect(screen.getByText('Last 7 days')).toBeInTheDocument();
+      expect(screen.getByText('label.select-entity')).toBeInTheDocument();
     });
 
     it('should render with custom default date range', () => {
@@ -175,24 +175,24 @@ describe('MuiDatePickerMenu', () => {
       expect(button).not.toBeDisabled();
     });
 
-    it('should render button with text content', () => {
+    it('should render button with placeholder text content', () => {
       render(
         <MuiDatePickerMenu handleDateRangeChange={mockHandleDateRangeChange} />
       );
 
       const button = screen.getByTestId('mui-date-picker-menu');
 
-      expect(button).toHaveTextContent('Last 7 days');
+      expect(button).toHaveTextContent('label.select-entity');
     });
   });
 
   describe('Preset Range Selection', () => {
-    it('should initialize with default options from constant', () => {
+    it('should initialize with placeholder when no default range provided', () => {
       render(
         <MuiDatePickerMenu handleDateRangeChange={mockHandleDateRangeChange} />
       );
 
-      expect(screen.getByText('Last 7 days')).toBeInTheDocument();
+      expect(screen.getByText('label.select-entity')).toBeInTheDocument();
     });
 
     it('should display custom option title when provided', () => {
@@ -289,24 +289,24 @@ describe('MuiDatePickerMenu', () => {
       expect(button).toBeInTheDocument();
     });
 
-    it('should use default profiler filter range when no options provided', () => {
+    it('should show placeholder when no options and no default range provided', () => {
       render(
         <MuiDatePickerMenu handleDateRangeChange={mockHandleDateRangeChange} />
       );
 
-      expect(screen.getByText('Last 7 days')).toBeInTheDocument();
+      expect(screen.getByText('label.select-entity')).toBeInTheDocument();
     });
   });
 
   describe('Component Display', () => {
-    it('should display selected time range text', () => {
+    it('should display placeholder text when no default range', () => {
       render(
         <MuiDatePickerMenu handleDateRangeChange={mockHandleDateRangeChange} />
       );
 
       const button = screen.getByTestId('mui-date-picker-menu');
 
-      expect(button).toHaveTextContent('Last 7 days');
+      expect(button).toHaveTextContent('label.select-entity');
     });
 
     it('should display different text for different initial ranges', () => {
@@ -314,7 +314,7 @@ describe('MuiDatePickerMenu', () => {
         <MuiDatePickerMenu handleDateRangeChange={mockHandleDateRangeChange} />
       );
 
-      expect(screen.getByText('Last 7 days')).toBeInTheDocument();
+      expect(screen.getByText('label.select-entity')).toBeInTheDocument();
 
       unmount();
 
@@ -362,7 +362,7 @@ describe('MuiDatePickerMenu', () => {
 
       const button = screen.getByTestId('mui-date-picker-menu');
 
-      expect(button).toHaveTextContent('Last 7 days');
+      expect(button).toHaveTextContent('label.select-entity');
       expect(button.textContent).not.toBe('');
     });
   });
@@ -461,6 +461,61 @@ describe('MuiDatePickerMenu', () => {
       );
 
       expect(screen.getByText('Mar 1 - Mar 31')).toBeInTheDocument();
+    });
+  });
+
+  describe('Clear Functionality', () => {
+    it('should not show clear button when allowClear is false', () => {
+      render(
+        <MuiDatePickerMenu
+          defaultDateRange={{ key: 'last7days', title: 'Last 7 days' }}
+          handleDateRangeChange={mockHandleDateRangeChange}
+        />
+      );
+
+      expect(screen.queryByTestId('clear-date-picker')).not.toBeInTheDocument();
+    });
+
+    it('should show clear button when allowClear is true and value is selected', () => {
+      render(
+        <MuiDatePickerMenu
+          allowClear
+          defaultDateRange={{ key: 'last7days', title: 'Last 7 days' }}
+          handleDateRangeChange={mockHandleDateRangeChange}
+        />
+      );
+
+      expect(screen.getByTestId('clear-date-picker')).toBeInTheDocument();
+    });
+
+    it('should call onClear callback when clear button is clicked', () => {
+      const mockOnClear = jest.fn();
+      render(
+        <MuiDatePickerMenu
+          allowClear
+          defaultDateRange={{ key: 'last7days', title: 'Last 7 days' }}
+          handleDateRangeChange={mockHandleDateRangeChange}
+          onClear={mockOnClear}
+        />
+      );
+
+      fireEvent.click(screen.getByTestId('clear-date-picker'));
+
+      expect(mockOnClear).toHaveBeenCalledTimes(1);
+    });
+
+    it('should reset selection when clear button is clicked', () => {
+      render(
+        <MuiDatePickerMenu
+          allowClear
+          defaultDateRange={{ key: 'last7days', title: 'Last 7 days' }}
+          handleDateRangeChange={mockHandleDateRangeChange}
+        />
+      );
+
+      fireEvent.click(screen.getByTestId('clear-date-picker'));
+
+      expect(screen.queryByTestId('clear-date-picker')).not.toBeInTheDocument();
     });
   });
 });
