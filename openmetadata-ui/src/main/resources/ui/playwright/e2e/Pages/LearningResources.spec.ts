@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { expect, Page, test } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { LearningResourceClass } from '../../support/learning/LearningResourceClass';
 import {
@@ -23,22 +23,13 @@ import { settingClick } from '../../utils/sidebar';
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 // Helper function to select an option from Ant Design dropdown
-async function selectDropdownOption(page: import('@playwright/test').Page, optionText: string) {
+async function selectDropdownOption(page: Page, optionText: string) {
   await page.locator('.ant-select-item-option').filter({ hasText: optionText }).first().click();
 }
 
-// Helper function to wait for toast notification
-async function waitForToast(page: import('@playwright/test').Page, pattern: RegExp) {
-  // Wait for the Ant Design message or alert
-  const toastLocator = page.locator('.ant-message-notice-content, [data-testid="alert-bar"]');
-  await expect(toastLocator.filter({ hasText: pattern })).toBeVisible({ timeout: 10000 });
-}
-
 // Helper function to search for a resource by name
-async function searchResource(page: import('@playwright/test').Page, searchText: string) {
+async function searchResource(page: Page, searchText: string) {
   await page.locator('.search-input input').fill(searchText);
-  // Wait for the table to update
-  await page.waitForTimeout(500);
 }
 
 test.describe('Learning Resources Admin Page', () => {
@@ -99,7 +90,7 @@ test.describe('Learning Resources Admin Page', () => {
 
     // Search for the resource to find it
     await searchResource(page, uniqueId);
-    await expect(page.getByText(resource.data.displayName ?? '')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(resource.data.displayName ?? '')).toBeVisible();
 
     await test.step('Click edit button and verify drawer opens', async () => {
       await page.getByTestId(`edit-${resource.data.name}`).click();
@@ -133,20 +124,19 @@ test.describe('Learning Resources Admin Page', () => {
 
     // Search for the resource to find it
     await searchResource(page, uniqueId);
-    await expect(page.getByText(resource.data.displayName ?? '')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(resource.data.displayName ?? '')).toBeVisible();
 
     await test.step('Click delete button and confirm', async () => {
       await page.getByTestId(`delete-${resource.data.name}`).click();
       // Wait for the confirmation modal to appear
-      await expect(page.locator('.ant-modal-confirm')).toBeVisible({ timeout: 5000 });
+      await expect(page.locator('.ant-modal-confirm')).toBeVisible();
       // Click the OK/Delete button in the modal
       await page.locator('.ant-modal-confirm-btns button').filter({ hasText: /delete|ok/i }).click();
     });
 
     await test.step('Verify resource is removed from list', async () => {
       // Wait for modal to close and table to update
-      await expect(page.locator('.ant-modal-confirm')).not.toBeVisible({ timeout: 5000 });
-      await page.waitForTimeout(500);
+      await expect(page.locator('.ant-modal-confirm')).not.toBeVisible();
       await expect(page.getByText(resource.data.displayName ?? '')).not.toBeVisible();
     });
 
@@ -173,7 +163,7 @@ test.describe('Learning Resources Admin Page', () => {
 
     // Search for the resource to find it
     await searchResource(page, uniqueId);
-    await expect(page.getByText(resource.data.displayName ?? '')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(resource.data.displayName ?? '')).toBeVisible();
 
     await test.step('Click on resource name to preview', async () => {
       await page.getByText(resource.data.displayName ?? '').click();
@@ -186,7 +176,7 @@ test.describe('Learning Resources Admin Page', () => {
     await test.step('Close preview modal', async () => {
       // Close button is in the modal header with class 'close-button'
       await page.locator('.close-button').click();
-      await expect(page.locator('.ant-modal')).not.toBeVisible({ timeout: 5000 });
+      await expect(page.locator('.ant-modal')).not.toBeVisible();
     });
 
     await resource.delete(apiContext);
@@ -214,7 +204,7 @@ test.describe('Learning Resources Admin Page', () => {
 
       // Search for our specific resource
       await searchResource(page, uniqueId);
-      await expect(page.getByText(`PW Video Resource ${uniqueId}`)).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(`PW Video Resource ${uniqueId}`)).toBeVisible();
     });
 
     await videoResource.delete(apiContext);
@@ -237,7 +227,7 @@ test.describe('Learning Resources Admin Page', () => {
 
     await test.step('Search for resource', async () => {
       await searchResource(page, uniqueId);
-      await expect(page.getByText(`PW Search Resource ${uniqueId}`)).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(`PW Search Resource ${uniqueId}`)).toBeVisible();
     });
 
     await resource.delete(apiContext);
@@ -272,7 +262,7 @@ test.describe('Learning Resources Admin Page - Additional Tests', () => {
       await selectDropdownOption(page, 'Governance');
 
       await searchResource(page, uniqueId);
-      await expect(page.getByText(`PW Category Resource ${uniqueId}`)).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(`PW Category Resource ${uniqueId}`)).toBeVisible();
     });
 
     await resource.delete(apiContext);
@@ -298,7 +288,7 @@ test.describe('Learning Resources Admin Page - Additional Tests', () => {
       await selectDropdownOption(page, 'Draft');
 
       await searchResource(page, uniqueId);
-      await expect(page.getByText(`PW Status Resource ${uniqueId}`)).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(`PW Status Resource ${uniqueId}`)).toBeVisible();
     });
 
     await resource.delete(apiContext);
@@ -320,7 +310,7 @@ test.describe('Learning Resources Admin Page - Additional Tests', () => {
     await page.waitForSelector('.ant-table-tbody');
 
     await searchResource(page, uniqueId);
-    await expect(page.getByText(resource.data.displayName ?? '')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(resource.data.displayName ?? '')).toBeVisible();
 
     await test.step('Open edit drawer and modify display name', async () => {
       await page.getByTestId(`edit-${resource.data.name}`).click();
@@ -333,14 +323,14 @@ test.describe('Learning Resources Admin Page - Additional Tests', () => {
 
     await test.step('Save changes', async () => {
       await page.getByTestId('save-resource').click();
-      await expect(page.locator('.drawer-title')).not.toBeVisible({ timeout: 10000 });
+      await expect(page.locator('.drawer-title')).not.toBeVisible();
     });
 
     await test.step('Verify updated display name in list', async () => {
       await page.reload();
       await page.waitForSelector('.ant-table-tbody');
       await searchResource(page, uniqueId);
-      await expect(page.getByText(`Updated Resource ${uniqueId}`)).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(`Updated Resource ${uniqueId}`)).toBeVisible();
     });
 
     await resource.delete(apiContext);
@@ -367,7 +357,7 @@ test.describe('Learning Icon on Pages', () => {
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     const learningIcon = page.locator('[data-testid="learning-icon"]');
-    await expect(learningIcon).toBeVisible({ timeout: 10000 });
+    await expect(learningIcon).toBeVisible();
 
     await resource.delete(apiContext);
     await afterAction();
@@ -392,7 +382,7 @@ test.describe('Learning Icon on Pages', () => {
 
     await test.step('Click learning icon', async () => {
       const learningIcon = page.locator('[data-testid="learning-icon"]');
-      await expect(learningIcon).toBeVisible({ timeout: 10000 });
+      await expect(learningIcon).toBeVisible();
       await learningIcon.click();
     });
 
@@ -425,7 +415,6 @@ test.describe('Learning Icon on Pages', () => {
 
     await page.goto('/glossary');
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-    await page.waitForTimeout(2000);
 
     // Check if learning icon exists
     const learningIcon = page.locator('[data-testid="learning-icon"]');
@@ -462,7 +451,7 @@ test.describe('Learning Icon on Pages', () => {
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     const learningIcon = page.locator('[data-testid="learning-icon"]');
-    await expect(learningIcon).toBeVisible({ timeout: 15000 });
+    await expect(learningIcon).toBeVisible();
 
     // Click and verify resource is shown
     await learningIcon.click();
@@ -498,7 +487,7 @@ test.describe('Learning Icon on Pages', () => {
 
     await test.step('Open learning drawer', async () => {
       const learningIcon = page.locator('[data-testid="learning-icon"]');
-      await expect(learningIcon).toBeVisible({ timeout: 15000 });
+      await expect(learningIcon).toBeVisible();
       await learningIcon.click();
       await expect(page.locator('.learning-drawer')).toBeVisible();
     });
@@ -507,12 +496,12 @@ test.describe('Learning Icon on Pages', () => {
       // Click on the resource card
       await page.getByText(`PW Player Resource ${uniqueId}`).click();
       // Verify player modal opens
-      await expect(page.locator('.ant-modal')).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('.ant-modal')).toBeVisible();
     });
 
     await test.step('Close player modal', async () => {
       await page.locator('.close-button').click();
-      await expect(page.locator('.ant-modal')).not.toBeVisible({ timeout: 5000 });
+      await expect(page.locator('.ant-modal')).not.toBeVisible();
     });
 
     await resource.delete(apiContext);
@@ -529,7 +518,7 @@ test.describe.serial('Learning Resources E2E Flow', () => {
       await redirectToHomePage(page);
       await settingClick(page, GlobalSettingOptions.LEARNING_RESOURCES);
       await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-      await page.waitForSelector('.ant-table-tbody', { timeout: 30000 });
+      await page.waitForSelector('.ant-table-tbody');
     });
 
     await test.step('Open add resource drawer and fill form', async () => {
@@ -566,7 +555,7 @@ test.describe.serial('Learning Resources E2E Flow', () => {
     await test.step('Save the resource', async () => {
       await page.getByTestId('save-resource').click();
       // Wait for drawer to close indicating success
-      await expect(page.locator('.drawer-title')).not.toBeVisible({ timeout: 10000 });
+      await expect(page.locator('.drawer-title')).not.toBeVisible();
     });
 
     await test.step('Navigate to Glossary page and verify learning icon appears', async () => {
@@ -574,7 +563,7 @@ test.describe.serial('Learning Resources E2E Flow', () => {
       await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
       const learningIcon = page.locator('[data-testid="learning-icon"]');
-      await expect(learningIcon).toBeVisible({ timeout: 15000 });
+      await expect(learningIcon).toBeVisible();
     });
 
     await test.step('Click learning icon and verify the created resource is shown', async () => {
@@ -587,16 +576,16 @@ test.describe.serial('Learning Resources E2E Flow', () => {
     await test.step('Cleanup - delete the created resource', async () => {
       // Navigate back to Learning Resources admin page
       await page.goto('/settings/preferences/learning-resources');
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached', timeout: 30000 });
-      await page.waitForSelector('.ant-table-tbody', { timeout: 30000 });
+      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+      await page.waitForSelector('.ant-table-tbody');
 
       await searchResource(page, uniqueId);
-      await expect(page.getByText(`E2E Test Resource ${uniqueId}`)).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(`E2E Test Resource ${uniqueId}`)).toBeVisible();
 
       await page.getByTestId(`delete-${resourceName}`).click();
-      await expect(page.locator('.ant-modal-confirm')).toBeVisible({ timeout: 5000 });
+      await expect(page.locator('.ant-modal-confirm')).toBeVisible();
       await page.locator('.ant-modal-confirm-btns button').filter({ hasText: /delete|ok/i }).click();
-      await expect(page.locator('.ant-modal-confirm')).not.toBeVisible({ timeout: 5000 });
+      await expect(page.locator('.ant-modal-confirm')).not.toBeVisible();
     });
   });
 
@@ -621,25 +610,25 @@ test.describe.serial('Learning Resources E2E Flow', () => {
     await test.step('Verify resource appears on Glossary page initially', async () => {
       await page.goto('/glossary');
       await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached', timeout: 30000 });
+      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
       const learningIcon = page.locator('[data-testid="learning-icon"]');
-      await expect(learningIcon).toBeVisible({ timeout: 20000 });
+      await expect(learningIcon).toBeVisible();
 
       // Verify our resource is in the drawer
       await learningIcon.click();
       await expect(page.locator('.learning-drawer')).toBeVisible();
-      await expect(page.getByText(`Update Context Resource ${uniqueId}`)).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(`Update Context Resource ${uniqueId}`)).toBeVisible();
       await page.keyboard.press('Escape');
     });
 
     await test.step('Navigate to admin page and update resource context to Lineage', async () => {
       await page.goto('/settings/preferences/learning-resources');
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached', timeout: 30000 });
-      await page.waitForSelector('.ant-table-tbody', { timeout: 30000 });
+      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+      await page.waitForSelector('.ant-table-tbody');
 
       await searchResource(page, uniqueId);
-      await expect(page.getByText(`Update Context Resource ${uniqueId}`)).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(`Update Context Resource ${uniqueId}`)).toBeVisible();
 
       // Click edit button
       await page.getByTestId(`edit-${resource.data.name}`).click();
@@ -653,13 +642,12 @@ test.describe.serial('Learning Resources E2E Flow', () => {
 
       // Save changes
       await page.getByTestId('save-resource').click();
-      await expect(page.locator('.drawer-title')).not.toBeVisible({ timeout: 10000 });
+      await expect(page.locator('.drawer-title')).not.toBeVisible();
     });
 
     await test.step('Verify learning icon no longer appears on Glossary page', async () => {
       await page.goto('/glossary');
       await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-      await page.waitForTimeout(2000); // Give time for API to respond
 
       // The learning icon should not be visible or should not show our resource
       const learningIcon = page.locator('[data-testid="learning-icon"]');
@@ -679,7 +667,7 @@ test.describe.serial('Learning Resources E2E Flow', () => {
       await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
       const learningIcon = page.locator('[data-testid="learning-icon"]');
-      await expect(learningIcon).toBeVisible({ timeout: 15000 });
+      await expect(learningIcon).toBeVisible();
 
       // Verify our resource is in the drawer
       await learningIcon.click();
@@ -712,36 +700,35 @@ test.describe.serial('Learning Resources E2E Flow', () => {
     await test.step('Verify resource appears on Glossary page initially', async () => {
       await page.goto('/glossary');
       await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached', timeout: 30000 });
+      await page.waitForSelector('[data-testid="loader"]', { state: 'detached'});
 
       const learningIcon = page.locator('[data-testid="learning-icon"]');
-      await expect(learningIcon).toBeVisible({ timeout: 20000 });
+      await expect(learningIcon).toBeVisible();
 
       // Verify our resource is in the drawer
       await learningIcon.click();
       await expect(page.locator('.learning-drawer')).toBeVisible();
-      await expect(page.getByText(`Delete E2E Resource ${uniqueId}`)).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(`Delete E2E Resource ${uniqueId}`)).toBeVisible();
       await page.keyboard.press('Escape');
     });
 
     await test.step('Navigate to admin page and delete the resource', async () => {
       await page.goto('/settings/preferences/learning-resources');
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached', timeout: 30000 });
-      await page.waitForSelector('.ant-table-tbody', { timeout: 30000 });
+      await page.waitForSelector('[data-testid="loader"]', { state: 'detached'});
+      await page.waitForSelector('.ant-table-tbody');
 
       await searchResource(page, uniqueId);
-      await expect(page.getByText(`Delete E2E Resource ${uniqueId}`)).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(`Delete E2E Resource ${uniqueId}`)).toBeVisible();
 
       await page.getByTestId(`delete-${resource.data.name}`).click();
-      await expect(page.locator('.ant-modal-confirm')).toBeVisible({ timeout: 5000 });
+      await expect(page.locator('.ant-modal-confirm')).toBeVisible();
       await page.locator('.ant-modal-confirm-btns button').filter({ hasText: /delete|ok/i }).click();
-      await expect(page.locator('.ant-modal-confirm')).not.toBeVisible({ timeout: 5000 });
+      await expect(page.locator('.ant-modal-confirm')).not.toBeVisible();
     });
 
     await test.step('Verify learning icon no longer shows deleted resource on Glossary page', async () => {
       await page.goto('/glossary');
       await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-      await page.waitForTimeout(2000); // Give time for API to respond
 
       const learningIcon = page.locator('[data-testid="learning-icon"]');
       const isIconVisible = await learningIcon.isVisible().catch(() => false);
