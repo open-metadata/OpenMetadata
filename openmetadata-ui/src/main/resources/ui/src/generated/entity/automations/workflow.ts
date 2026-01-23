@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -395,9 +395,6 @@ export enum AuthProvider {
  *
  * Regex to only fetch api endpoints with names matching the pattern.
  *
- * Regex to only include/exclude schemas that matches the pattern. System schemas
- * (information_schema, _statistics_, sys) are excluded by default.
- *
  * Regex to include/exclude FHIR resource categories
  *
  * Regex to include/exclude FHIR resource types
@@ -623,6 +620,14 @@ export interface TestServiceConnectionRequest {
      * of 'schema' to avoid conflicts with Pydantic's BaseModel.schema() method.
      */
     databaseSchema?: string;
+    /**
+     * RUNTIME FIELD - Automatically injected by backend from admin
+     * QueryRunnerConfig.querySettings.maxResultSize. This is NOT user-configurable in the
+     * request. The backend fetches this value from the service's QueryRunnerConfig and injects
+     * it here for enforcement by the Python workflow. If query has LIMIT exceeding this value,
+     * an error is raised. If query has no LIMIT, one is automatically injected.
+     */
+    maxResultSize?: number;
     /**
      * Query to be executed.
      */
