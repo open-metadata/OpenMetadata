@@ -557,10 +557,13 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       session.removeAttribute(SESSION_MCP_AUTH_METHOD);
       session.removeAttribute(SESSION_MCP_CSRF_TOKEN);
 
-      String redirectUrl = redirectUri + "?code=" + authCode;
-      if (state != null && !state.isEmpty()) {
-        redirectUrl += "&state=" + state;
-      }
+      String redirectUrl =
+          redirectUri
+              + "?code="
+              + URLEncoder.encode(authCode, StandardCharsets.UTF_8)
+              + (state != null && !state.isEmpty()
+                  ? "&state=" + URLEncoder.encode(state, StandardCharsets.UTF_8)
+                  : "");
 
       LOG.info("Redirecting to client redirect_uri with authorization code");
 
