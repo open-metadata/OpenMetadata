@@ -254,13 +254,17 @@ class PubsubSource(MessagingServiceSource):
                 f"{topic_details.topic_name}?project={self.project_id}"
             )
 
-            partitions = len(metadata.subscriptions) if metadata.subscriptions else 1
+            # Pub/Sub does not have partitions like Kafka. For compatibility with the
+            # OpenMetadata topic model (which expects a `partitions` field), we use the
+            # number of subscriptions as a proxy value.
+            subscriptions_count = (
+                len(metadata.subscriptions) if metadata.subscriptions else 1
+            )
             retention_time = self._parse_retention(metadata.message_retention_duration)
-
             topic = CreateTopicRequest(
                 name=EntityName(topic_details.topic_name),
                 service=FullyQualifiedEntityName(self.context.get().messaging_service),
-                partitions=partitions,
+                partitions=subscriptions_count,
                 retentionTime=retention_time,
                 sourceUrl=SourceUrl(source_url),
             )
@@ -397,6 +401,11 @@ class PubsubSource(MessagingServiceSource):
         Sample data extraction requires creating and consuming from a subscription.
         """
         if not self.generate_sample_data:
+            logger.debug(
+                "Sample data generation is disabled for Pub/Sub. "
+                "Set `generateSampleData` to true in the workflow configuration "
+                "to enable sample data extraction for topics."
+            )
             return
 
         try:
