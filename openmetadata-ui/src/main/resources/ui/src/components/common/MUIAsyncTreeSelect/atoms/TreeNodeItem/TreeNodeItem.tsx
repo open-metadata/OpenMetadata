@@ -18,6 +18,7 @@ import { TreeNodeLabel } from '../TreeNodeLabel';
 
 export interface TreeNodeItemProps {
   node: TreeNode;
+  parentNode?: TreeNode;
   depth?: number;
   isSelected: boolean;
   isLoading: boolean;
@@ -27,13 +28,14 @@ export interface TreeNodeItemProps {
   multiple: boolean;
   disabled: boolean;
   renderNode?: (node: TreeNode, isSelected: boolean) => ReactNode;
-  onNodeClick: (node: TreeNode) => void;
+  onNodeClick: (node: TreeNode, parentNode?: TreeNode) => void;
   onMouseDown: (e: React.MouseEvent) => void;
   renderChildren: () => ReactNode;
 }
 
 const TreeNodeItem: FC<TreeNodeItemProps> = ({
   node,
+  parentNode,
   depth = 0,
   isSelected,
   isLoading,
@@ -61,6 +63,7 @@ const TreeNodeItem: FC<TreeNodeItemProps> = ({
             isSelected={isSelected}
             multiple={multiple}
             node={node}
+            parentNode={parentNode}
             showCheckbox={showCheckbox}
             showIcon={showIcon}
             onMouseDown={onMouseDown}

@@ -39,7 +39,7 @@ export interface UseAsyncTreeSelectReturn<T> {
   // Expansion
   expandedNodes: Set<string>;
   isNodeExpanded: (nodeId: string) => boolean;
-  toggleNodeExpansion: (nodeId: string) => void;
+  toggleNodeExpansion: (nodeId: string, parentNode?: TreeNode<T>) => void;
   expandAll: () => void;
   collapseAll: () => void;
 

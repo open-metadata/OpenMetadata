@@ -311,6 +311,9 @@
           },
           "href": {
             "type": "text"
+          },
+          "mutuallyExclusive": {
+            "type": "boolean"
           }
         }
       },
@@ -519,6 +522,9 @@
       },
       "childrenCount": {
         "type": "integer"
+      },
+      "mutuallyExclusive": {
+        "type": "boolean"
       }
     }
   }

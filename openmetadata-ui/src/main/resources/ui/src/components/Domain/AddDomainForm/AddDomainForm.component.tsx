@@ -195,6 +195,7 @@ const AddDomainForm = ({
         id: 'root/glossaryTerms',
         type: FieldTypes.GLOSSARY_TAG_SUGGESTION_MUI,
         props: {
+          'data-testid': 'glossary-terms',
           placeholder: t('label.select-field', {
             field: t('label.glossary-term-plural'),
           }),

@@ -336,6 +336,11 @@ public final class CatalogExceptionMessage {
   }
 
   public static String mutuallyExclusiveLabels(TagLabel tag1, TagLabel tag2) {
+    if (tag1.getSource() == TagLabel.TagSource.GLOSSARY) {
+      return String.format(
+          "Glossary terms %s and %s are mutually exclusive and can't be assigned together",
+          tag1.getTagFQN(), tag2.getTagFQN());
+    }
     return String.format(
         "Tag labels %s and %s are mutually exclusive and can't be assigned together",
         tag1.getTagFQN(), tag2.getTagFQN());
