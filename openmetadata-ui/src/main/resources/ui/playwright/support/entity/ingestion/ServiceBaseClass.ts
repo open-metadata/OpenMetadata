@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /*
  *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -102,6 +101,27 @@ class ServiceBaseClass {
 
     // await airflowStatus;
     await this.fillConnectionDetails(page);
+
+    const runnerSelector = page.getByTestId(
+      'select-widget-root/ingestionRunner'
+    );
+
+    if (await runnerSelector.isVisible()) {
+      await runnerSelector.click();
+      await page.waitForSelector(
+        '.ant-select-dropdown:visible [data-testid="select-option-Collate SaaS Agent"]',
+        { state: 'visible' }
+      );
+      await page
+        .locator(
+          '.ant-select-dropdown:visible [data-testid="select-option-Collate SaaS Agent"]'
+        )
+        .click();
+
+      await expect(
+        page.getByTestId('select-widget-root/ingestionRunner')
+      ).toContainText('Collate SaaS Agent');
+    }
 
     if (this.shouldTestConnection) {
       await testConnection(page);

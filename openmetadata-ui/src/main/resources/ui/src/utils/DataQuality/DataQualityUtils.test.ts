@@ -12,6 +12,7 @@
  */
 
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
+import { Table } from '../../generated/entity/data/table';
 import { DataQualityReport } from '../../generated/tests/dataQualityReport';
 import {
   TestDataType,
@@ -25,6 +26,7 @@ import {
   buildMustEsFilterForTags,
   buildTestCaseParams,
   createTestCaseParameters,
+  getServiceTypeForTestDefinition,
   getTestCaseFiltersValue,
   transformToTestCaseStatusObject,
 } from './DataQualityUtils';
@@ -553,6 +555,65 @@ describe('DataQualityUtils', () => {
           },
         },
       ]);
+    });
+  });
+
+  describe('getServiceTypeForTestDefinition', () => {
+    it('should return serviceType when table has serviceType property', () => {
+      const table = {
+        id: 'test-id',
+        name: 'test-table',
+        serviceType: 'BigQuery',
+      } as Table;
+
+      const result = getServiceTypeForTestDefinition(table);
+
+      expect(result).toBe('BigQuery');
+    });
+
+    it('should return serviceType for different service types', () => {
+      const serviceTypes = [
+        'Snowflake',
+        'PostgreSQL',
+        'MySQL',
+        'Redshift',
+        'Postgres',
+      ];
+
+      serviceTypes.forEach((serviceType) => {
+        const table = {
+          id: 'test-id',
+          name: 'test-table',
+          serviceType,
+        } as Table;
+
+        const result = getServiceTypeForTestDefinition(table);
+
+        expect(result).toBe(serviceType);
+      });
+    });
+
+    it('should return undefined when table does not have serviceType', () => {
+      const table = {
+        id: 'test-id',
+        name: 'test-table',
+      } as Table;
+
+      const result = getServiceTypeForTestDefinition(table);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined when table is undefined', () => {
+      const result = getServiceTypeForTestDefinition();
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined when table is null', () => {
+      const result = getServiceTypeForTestDefinition(null as unknown as Table);
+
+      expect(result).toBeUndefined();
     });
   });
 });

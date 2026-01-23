@@ -97,7 +97,10 @@ import {
   replaceAllSpacialCharWith_,
   Transi18next,
 } from '../../../../utils/CommonUtils';
-import { convertSearchSourceToTable } from '../../../../utils/DataQuality/DataQualityUtils';
+import {
+  convertSearchSourceToTable,
+  getServiceTypeForTestDefinition,
+} from '../../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import {
   createScrollToErrorHandler,
@@ -529,7 +532,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           limit: 0,
         });
         setCanCreatePipeline(paging.total === 0);
-      } catch (error) {
+      } catch {
         setCanCreatePipeline(true);
       }
     },
@@ -642,7 +645,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           data,
           paging: { total: response.hits.total.value },
         };
-      } catch (error) {
+      } catch {
         return { data: [], paging: { total: 0 } };
       }
     },
@@ -652,6 +655,11 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   const fetchTestDefinitions = useCallback(
     async (columnType?: string) => {
       try {
+        // Derive service type from table for filtering
+        const serviceType = getServiceTypeForTestDefinition(
+          selectedTableData || table
+        );
+
         const { data } = await getListTestDefinitions({
           limit: PAGE_SIZE_LARGE,
           entityType:
@@ -660,13 +668,14 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
               : EntityType.Table,
           testPlatform: TestPlatform.OpenMetadata,
           supportedDataType: columnType,
+          supportedService: serviceType,
         });
         setTestDefinitions(data);
-      } catch (error) {
+      } catch {
         setTestDefinitions([]);
       }
     },
-    [selectedTestLevel]
+    [selectedTestLevel, selectedTableData, table]
   );
 
   const fetchSelectedTableData = useCallback(async (tableFqn: string) => {
@@ -707,7 +716,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
       });
 
       setExistingTestCases(data.map((testCase) => testCase.name));
-    } catch (error) {
+    } catch {
       setExistingTestCases([]);
     }
   }, [selectedTableData, selectedTable, hasTestSuite]);

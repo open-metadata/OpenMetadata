@@ -18,11 +18,7 @@ const IncidentsTab = () => {
 
   return (
     <div className="p-b-lg">
-      <IncidentManager
-        isDateRangePickerVisible={false}
-        isIncidentPage={false}
-        tableDetails={table}
-      />
+      <IncidentManager isIncidentPage={false} tableDetails={table} />
     </div>
   );
 };
