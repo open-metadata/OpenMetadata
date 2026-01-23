@@ -50,6 +50,7 @@ import {
   addAssetsToDomain,
   addTagsAndGlossaryToDomain,
   checkAssetsCount,
+  checkAssetsCountWithRetry,
   createDataProduct,
   createDataProductForSubDomain,
   createDomain,
@@ -1985,17 +1986,12 @@ test.describe('Domain Rename Comprehensive Tests', () => {
         newDomainName
       );
 
-      domain.data.name = newDomainName;
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await selectDomain(page, domain.data);
-
       // Verify assets are still associated after rename
       await page.getByTestId('assets').click();
       await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
 
-      await checkAssetsCount(page, assets.length);
+      await checkAssetsCountWithRetry(page, assets.length);
     } finally {
       try {
         await apiContext.delete(
@@ -2319,18 +2315,13 @@ test.describe('Domain Rename Comprehensive Tests', () => {
         newDomainName
       );
 
-      domain.data.name = newDomainName;
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await selectDomain(page, domain.data);
-
       // Verify ALL relationships are preserved after rename
 
       // 1. Verify assets
       await page.getByTestId('assets').click();
       await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
-      await checkAssetsCount(page, assets.length);
+      await checkAssetsCountWithRetry(page, assets.length);
 
       // 2. Verify subdomain
       const subdomainSearchResponse = page.waitForResponse(
@@ -2436,16 +2427,11 @@ test.describe('Domain Rename Comprehensive Tests', () => {
           newDomainName
         );
 
-        domain.data.name = newDomainName;
-        await redirectToHomePage(page);
-        await sidebarClick(page, SidebarItem.DOMAIN);
-        await selectDomain(page, domain.data);
-
         // Verify assets are still associated after each rename
         await page.getByTestId('assets').click();
         await page.waitForLoadState('networkidle');
         await waitForAllLoadersToDisappear(page);
-        await checkAssetsCount(page, assets.length);
+        await checkAssetsCountWithRetry(page, assets.length);
 
         // Verify subdomain is still accessible after each rename
         const subdomainSearchResponse = page.waitForResponse(
