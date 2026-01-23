@@ -117,8 +117,12 @@ export interface ExploreQuickFilterField {
   key: string;
   label: string;
   labelKeyOptions?: Record<string, string | number | boolean>;
+  options?: SearchDropdownOption[];
   value?: SearchDropdownOption[];
   hideCounts?: boolean;
+  hideSearchBar?: boolean;
+  searchIndex?: SearchIndex;
+  searchKey?: string;
 }
 
 // Type for all the explore tab entities

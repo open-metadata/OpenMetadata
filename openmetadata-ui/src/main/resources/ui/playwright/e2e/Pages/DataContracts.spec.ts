@@ -185,7 +185,9 @@ test.describe('Data Contracts', () => {
       });
 
       await test.step('Fill the Terms of Service Detail', async () => {
-        await page.getByRole('button', { name: 'Terms of Service' }).click();
+        // Scope to contract card to avoid conflicts with entity page tabs
+        const contractCard = page.getByTestId('add-contract-card');
+        await contractCard.getByRole('tab', { name: 'Terms of Service' }).click();
         await page.fill(
           '.om-block-editor .has-focus',
           DATA_CONTRACT_DETAILS.termsOfService
@@ -195,7 +197,9 @@ test.describe('Data Contracts', () => {
       // Schema selection step - only for entities with schema
       if (entitySupportsSchema(entityType)) {
         await test.step('Fill Contract Schema form', async () => {
-          await page.getByRole('button', { name: 'Schema' }).click();
+          // Scope to contract card to avoid conflicts with entity page tabs (e.g., Topic, ApiEndpoint)
+          const contractCard = page.getByTestId('add-contract-card');
+          await contractCard.getByRole('tab', { name: 'Schema' }).click();
 
           // Check if there are schema fields to select
           const hasSchemaFields = await page
@@ -216,7 +220,9 @@ test.describe('Data Contracts', () => {
       }
 
       await test.step('Fill first Contract Semantics form', async () => {
-        await page.getByRole('button', { name: 'Semantics' }).click();
+        // Scope to contract card to avoid conflicts with entity page tabs
+        const contractCard = page.getByTestId('add-contract-card');
+        await contractCard.getByRole('tab', { name: 'Semantics' }).click();
 
         await expect(page.getByTestId('add-semantic-button')).toBeDisabled();
 
@@ -628,8 +634,11 @@ test.describe('Data Contracts', () => {
           ).not.toBeChecked();
         }
 
-        // Move to Semantic Tab
-        await page.getByRole('tab', { name: 'Semantics' }).click();
+        // Move to Semantic Tab - scope to contract card to avoid conflicts with entity page tabs
+        await page
+          .getByTestId('add-contract-card')
+          .getByRole('tab', { name: 'Semantics' })
+          .click();
 
         await page.getByTestId('delete-condition-button').last().click();
 

@@ -104,9 +104,8 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         self._ingestion_pipeline: Optional[IngestionPipeline] = None
         self._start_ts = datetime_to_ts(datetime.now())
 
-        self._execution_time_tracker = ExecutionTimeTracker(
-            self.workflow_config.loggerLevel == LogLevels.DEBUG
-        )
+        # Execution time tracking is always enabled for workflows regardless of the log level
+        self._execution_time_tracker = ExecutionTimeTracker(enabled=True)
 
         set_loggers_level(self.workflow_config.loggerLevel.value)
 
