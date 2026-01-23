@@ -17,6 +17,7 @@ import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
+import { ChartClass } from '../../support/entity/ChartClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
@@ -290,6 +291,7 @@ test.describe('Explore page', () => {
   const glossary = new Glossary();
   const glossaryTerm = new GlossaryTerm(glossary);
   const dashboard = new DashboardClass();
+  const chart = new ChartClass();
   const storedProcedure = new StoredProcedureClass();
   const pipeline = new PipelineClass();
   const container = new ContainerClass();
@@ -319,6 +321,7 @@ test.describe('Explore page', () => {
     await glossary.create(apiContext);
     await glossaryTerm.create(apiContext);
     await dashboard.create(apiContext);
+    await chart.create(apiContext);
     await storedProcedure.create(apiContext);
     await pipeline.create(apiContext);
     await container.create(apiContext);
@@ -348,6 +351,7 @@ test.describe('Explore page', () => {
     await glossaryTerm.delete(apiContext);
     await glossary.delete(apiContext);
     await dashboard.delete(apiContext);
+    await chart.delete(apiContext);
     await storedProcedure.delete(apiContext);
     await pipeline.delete(apiContext);
     await container.delete(apiContext);
@@ -400,6 +404,31 @@ test.describe('Explore page', () => {
 
   test('Check listing of entities when index is all', async ({ page }) => {
     await validateBucketsForIndex(page, 'all');
+  });
+
+  test('Verify charts are visible in explore tree aggregation', async ({
+    page,
+  }) => {
+    const response = page.waitForResponse(
+      (resp) =>
+        resp.url().includes('/api/v1/search/query') &&
+        resp.url().includes('index=dataAsset') &&
+        resp.url().includes('size=0')
+    );
+
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    const apiResponse = await response;
+    const jsonResponse = await apiResponse.json();
+
+    const buckets =
+      jsonResponse.aggregations?.['sterms#entityType']?.buckets ?? [];
+
+    const chartBucket = buckets.find((b: Bucket) => b.key === 'chart');
+
+    expect(chartBucket).toBeDefined();
+    expect(chartBucket?.doc_count).toBeGreaterThan(0);
   });
 
   DATA_ASSETS.forEach((asset) => {
