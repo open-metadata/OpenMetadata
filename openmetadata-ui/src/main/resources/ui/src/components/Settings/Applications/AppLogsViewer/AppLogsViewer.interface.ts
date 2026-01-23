@@ -67,3 +67,21 @@ export interface EntityStatsData {
   successRecords: number;
   failedRecords: number;
 }
+
+export interface ServerStats {
+  serverId: string;
+  processedRecords: number;
+  successRecords: number;
+  failedRecords: number;
+  totalPartitions: number;
+  completedPartitions: number;
+  processingPartitions: number;
+}
+
+export interface ServerStatsData {
+  name: string;
+  processedRecords: number;
+  successRecords: number;
+  failedRecords: number;
+  partitions: string;
+}

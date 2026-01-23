@@ -270,6 +270,11 @@ class TestCaseRunner(Processor):
                     f"Test case {test_case.name.root} is not an OpenMetadata test case."
                 )
                 continue
+            if not getattr(test_definition, "enabled", True):
+                logger.debug(
+                    f"Test case {test_case.name.root} is disabled. Skipping execution."
+                )
+                continue
             om_test_cases.append(test_case)
 
         return om_test_cases

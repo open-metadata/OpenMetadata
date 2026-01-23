@@ -5,9 +5,12 @@ import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexMetrics;
 import org.openmetadata.service.search.SearchHealthStatus;
+import org.openmetadata.service.search.SearchRepository;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 
@@ -18,6 +21,9 @@ public class DatabseAndSearchServiceStatusJob implements Job {
   private static final String SEARCH_SERVICE_NAME = "search";
   private static final String DATABASE_SERVICE_NAME = "database";
 
+  private static final AtomicReference<SearchIndexMetrics> searchIndexMetrics =
+      new AtomicReference<>();
+
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
     PrometheusMeterRegistry meterRegistry =
@@ -25,6 +31,7 @@ public class DatabseAndSearchServiceStatusJob implements Job {
             jobExecutionContext.getJobDetail().getJobDataMap().get(JOB_CONTEXT_METER_REGISTRY);
     checkDatabaseStatus(meterRegistry);
     checkElasticSearchStatus(meterRegistry);
+    refreshSearchIndexMetrics(meterRegistry);
   }
 
   private void checkElasticSearchStatus(PrometheusMeterRegistry meterRegistry) {
@@ -51,5 +58,29 @@ public class DatabseAndSearchServiceStatusJob implements Job {
 
   private void publishUnhealthyCounter(PrometheusMeterRegistry meterRegistry, String... tags) {
     Counter.builder(SERVICE_COUNTER).tags(tags).register(meterRegistry).increment();
+  }
+
+  private void refreshSearchIndexMetrics(PrometheusMeterRegistry meterRegistry) {
+    try {
+      SearchRepository searchRepository = Entity.getSearchRepository();
+      if (searchRepository == null) {
+        return;
+      }
+
+      SearchIndexMetrics metrics = searchIndexMetrics.get();
+      if (metrics == null) {
+        metrics = new SearchIndexMetrics(meterRegistry, searchRepository);
+        if (searchIndexMetrics.compareAndSet(null, metrics)) {
+          metrics.registerMetrics();
+          LOG.info("SearchIndexMetrics initialized and registered");
+        } else {
+          metrics = searchIndexMetrics.get();
+        }
+      }
+
+      metrics.refreshStats();
+    } catch (Exception e) {
+      LOG.debug("Failed to refresh search index metrics: {}", e.getMessage());
+    }
   }
 }
