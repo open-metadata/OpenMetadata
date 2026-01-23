@@ -14,7 +14,7 @@ Validator for table rule library SQL expression
 """
 from typing import Dict
 
-from jinja2 import Template
+from jinja2 import StrictUndefined, Template, TemplateSyntaxError, UndefinedError
 
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.data_quality.validations.models import (
@@ -66,6 +66,9 @@ class TableRuleLibrarySqlExpressionValidator(BaseTestValidator):
 
         Returns:
             Compiled SQL expression with all parameters substituted
+
+        Raises:
+            ValueError: If sqlExpression is not defined or template rendering fails
         """
         sql_template = self.runtime_params.test_definition.sqlExpression
         if not sql_template:
@@ -74,8 +77,18 @@ class TableRuleLibrarySqlExpressionValidator(BaseTestValidator):
         params = {"table_name": table_name}
         params.update(self._get_user_params())
 
-        template = Template(sql_template.root)
-        return template.render(**params)
+        try:
+            template = Template(sql_template.root, undefined=StrictUndefined)
+            return template.render(**params)
+        except TemplateSyntaxError as e:
+            raise ValueError(
+                f"Invalid Jinja2 syntax in SQL expression: {e.message}"
+            ) from e
+        except UndefinedError as e:
+            raise ValueError(
+                f"Undefined variable in SQL expression: {e.message}. "
+                f"Available parameters: {list(params.keys())}"
+            ) from e
 
     def _run_results(self, sql_expression) -> int:
         raise NotImplementedError

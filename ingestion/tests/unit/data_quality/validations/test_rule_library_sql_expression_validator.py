@@ -209,6 +209,31 @@ class TestBaseValidatorCompileSqlExpression:
             == "SELECT revenue FROM sales.orders WHERE value >= 10 AND value <= 100"
         )
 
+    def test_compile_raises_error_on_invalid_jinja_syntax(
+        self, base_validator_with_runtime_params
+    ):
+        base_validator_with_runtime_params.runtime_params.test_definition.sqlExpression = _mock_sql_query(
+            "SELECT {{ column_name } FROM {{ table_name }}"
+        )
+
+        with pytest.raises(ValueError, match="Invalid Jinja2 syntax"):
+            base_validator_with_runtime_params.compile_sql_expression(
+                column_name="col", table_name="table"
+            )
+
+    def test_compile_raises_error_on_undefined_variable(
+        self, base_validator_with_runtime_params
+    ):
+        base_validator_with_runtime_params.runtime_params.test_definition.sqlExpression = _mock_sql_query(
+            "SELECT {{ column_name }} FROM {{ table_name }} WHERE val > {{ undefined_param }}"
+        )
+        base_validator_with_runtime_params.test_case.parameterValues = []
+
+        with pytest.raises(ValueError, match="Undefined variable in SQL expression"):
+            base_validator_with_runtime_params.compile_sql_expression(
+                column_name="col", table_name="table"
+            )
+
 
 class TestSQAValidatorCompileSqlExpression:
     """Test cases for compile_sql_expression method in SQLAlchemy validator"""
