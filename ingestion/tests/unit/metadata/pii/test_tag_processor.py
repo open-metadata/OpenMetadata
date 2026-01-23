@@ -14,10 +14,14 @@ Unit tests for Tag Processor
 from unittest.mock import Mock
 
 import pytest
+from dirty_equals import Contains, HasAttributes, IsFloat, IsInstance, IsUUID
 from presidio_analyzer.nlp_engine import NlpEngine
 
 from _openmetadata_testutils.factories.metadata.generated.schema.entity.classification.tag import (
     TagFactory,
+)
+from _openmetadata_testutils.factories.metadata.generated.schema.type.basic import (
+    UuidFactory,
 )
 from _openmetadata_testutils.factories.metadata.generated.schema.type.recognizer import (
     PatternFactory,
@@ -48,19 +52,28 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.type import recognizer, tagLabelRecognizerMetadata
+from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.classificationLanguages import (
     ClassificationLanguage,
 )
 from metadata.generated.schema.type.piiEntity import PIIEntity
-from metadata.generated.schema.type.recognizer import RecognizerException, Target
+from metadata.generated.schema.type.recognizer import RecognizerException
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
+    TagFQN,
     TagLabel,
     TagSource,
 )
+from metadata.generated.schema.type.tagLabelMetadata import TagLabelMetadata
+from metadata.generated.schema.type.tagLabelRecognizerMetadata import (
+    PatternMatch,
+    TagLabelRecognizerMetadata,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.algorithms.tag_scoring import ScoreTagsForColumnService
+from metadata.pii.models import ScoredTag
 from metadata.pii.tag_processor import TagProcessor
 
 
@@ -110,7 +123,7 @@ class TestTagProcessor:
             recognizerConfig=email_pattern_recognizer,
             confidenceThreshold=0.8,
             exceptionList=[],
-            target=Target.content,
+            target=recognizer.Target.content,
         )
         return TagFactory.create(
             tag_name="EmailTag",
@@ -140,7 +153,7 @@ class TestTagProcessor:
             recognizerConfig=phone_pattern_recognizer,
             confidenceThreshold=0.6,
             exceptionList=[],
-            target=Target.content,
+            target=recognizer.Target.content,
         )
         return TagFactory.create(
             tag_name="PhoneTag",
@@ -243,10 +256,30 @@ class TestTagProcessor:
 
         # Should detect email tag
         assert len(result) == 1
-        assert isinstance(result[0], TagLabel)
-        assert result[0].tagFQN.root == "PII.EmailTag"
-        assert result[0].state is State.Suggested
-        assert result[0].labelType is LabelType.Generated
+        assert result[0] == IsInstance(TagLabel) & HasAttributes(
+            tagFQN=TagFQN(root="PII.EmailTag"),
+            state=State.Suggested,
+            source=TagSource.Classification,
+            labelType=LabelType.Generated,
+            metadata=IsInstance(TagLabelMetadata)
+            & HasAttributes(
+                recognizer=IsInstance(TagLabelRecognizerMetadata)
+                & HasAttributes(
+                    recognizerId=IsInstance(Uuid) & HasAttributes(root=IsUUID()),
+                    recognizerName="EmailRecognizer",
+                    target=tagLabelRecognizerMetadata.Target.content,
+                    score=IsFloat(approx=0.95),
+                    patterns=Contains(
+                        IsInstance(PatternMatch)
+                        & HasAttributes(
+                            name=Contains("Email"),
+                            regex=Contains("@"),
+                            score=IsFloat(approx=0.95),
+                        )
+                    ),
+                )
+            ),
+        )
 
     def test_classify_phone_column(
         self, processor: TagProcessor, phone_tag: Tag
@@ -316,7 +349,7 @@ class TestTagProcessor:
             recognizerConfig=mixed_pattern_recognizer,
             confidenceThreshold=0.7,
             exceptionList=[],
-            target=Target.content,
+            target=recognizer.Target.content,
         )
         mixed_tag = TagFactory.create(
             tag_name="MixedTag",
@@ -411,7 +444,7 @@ class TestTagProcessor:
             recognizerConfig=ssn_pattern_recognizer,
             confidenceThreshold=0.9,
             exceptionList=[],
-            target=Target.content,
+            target=recognizer.Target.content,
         )
 
         ssn_tag = TagFactory.create(
@@ -485,7 +518,7 @@ class TestTagProcessor:
                         reason="It didn't work",
                     )
                 ],
-                target=Target.content,
+                target=recognizer.Target.content,
             )
             for r in email_tag.recognizers
         ]
@@ -550,3 +583,124 @@ class TestTagProcessor:
 
         # Should not detect Email PII
         assert len(result) == 0
+
+
+class TestBuildTagLabel:
+    @pytest.fixture
+    def email_tag(self):
+        return TagFactory.create(
+            tag_name="Email",
+            tag_classification__name="PII",
+        )
+
+    @pytest.fixture
+    def recognizer_metadata(self):
+        return TagLabelRecognizerMetadata(
+            recognizerId=UuidFactory.create(),
+            recognizerName="email_recognizer",
+            score=0.85,
+            target=tagLabelRecognizerMetadata.Target.content,
+            patterns=[
+                PatternMatch(name="email_pattern", regex="pattern", score=0.9),
+                PatternMatch(name="simple_email", regex="pattern", score=0.8),
+            ],
+        )
+
+    def test_builds_tag_label_without_recognizer_metadata(self, email_tag):
+        scored_tag = ScoredTag(
+            tag=email_tag,
+            score=0.85,
+            reason="Detected by recognizer",
+            recognizer_metadata=None,
+        )
+
+        tag_label = TagProcessor.build_tag_label(scored_tag)
+
+        assert tag_label.tagFQN.root == email_tag.fullyQualifiedName
+        assert tag_label.source == TagSource.Classification
+        assert tag_label.state == State.Suggested
+        assert tag_label.labelType == LabelType.Generated
+        assert tag_label.reason == "Detected by recognizer"
+        assert tag_label.metadata is None
+
+    def test_builds_tag_label_with_recognizer_metadata(
+        self, email_tag, recognizer_metadata
+    ):
+        scored_tag = ScoredTag(
+            tag=email_tag,
+            score=0.85,
+            reason="Detected by email_recognizer",
+            recognizer_metadata=recognizer_metadata,
+        )
+
+        tag_label = TagProcessor.build_tag_label(scored_tag)
+
+        assert tag_label.tagFQN.root == email_tag.fullyQualifiedName
+        assert tag_label.source == TagSource.Classification
+        assert tag_label.state == State.Suggested
+        assert tag_label.labelType == LabelType.Generated
+        assert tag_label.reason == "Detected by email_recognizer"
+        assert tag_label.metadata is not None
+        assert tag_label.metadata.recognizer == recognizer_metadata
+
+    def test_wraps_recognizer_metadata_in_tag_label_metadata(
+        self, email_tag, recognizer_metadata
+    ):
+        scored_tag = ScoredTag(
+            tag=email_tag,
+            score=0.85,
+            reason="Test reason",
+            recognizer_metadata=recognizer_metadata,
+        )
+
+        tag_label = TagProcessor.build_tag_label(scored_tag)
+
+        assert tag_label.metadata is not None
+        assert tag_label.metadata.recognizer is not None
+        assert (
+            tag_label.metadata.recognizer.recognizerId
+            == recognizer_metadata.recognizerId
+        )
+        assert tag_label.metadata.recognizer.recognizerName == "email_recognizer"
+        assert tag_label.metadata.recognizer.score == 0.85
+        assert tag_label.metadata.recognizer.target.value == "content"
+        assert tag_label.metadata.recognizer.patterns is not None
+        assert len(tag_label.metadata.recognizer.patterns) == 2
+
+    def test_preserves_pattern_information(self, email_tag, recognizer_metadata):
+        scored_tag = ScoredTag(
+            tag=email_tag,
+            score=0.85,
+            reason="Matched patterns",
+            recognizer_metadata=recognizer_metadata,
+        )
+
+        tag_label = TagProcessor.build_tag_label(scored_tag)
+
+        patterns = tag_label.metadata.recognizer.patterns
+        assert patterns[0].name == "email_pattern"
+        assert patterns[0].score == 0.9
+        assert patterns[1].name == "simple_email"
+        assert patterns[1].score == 0.8
+
+    def test_handles_recognizer_metadata_without_patterns(self, email_tag):
+        metadata_no_patterns = TagLabelRecognizerMetadata(
+            recognizerId=UuidFactory.create(),
+            recognizerName="test_recognizer",
+            score=0.7,
+            target=tagLabelRecognizerMetadata.Target.column_name,
+            patterns=None,
+        )
+
+        scored_tag = ScoredTag(
+            tag=email_tag,
+            score=0.7,
+            reason="No patterns",
+            recognizer_metadata=metadata_no_patterns,
+        )
+
+        tag_label = TagProcessor.build_tag_label(scored_tag)
+
+        assert tag_label.metadata is not None
+        assert tag_label.metadata.recognizer is not None
+        assert tag_label.metadata.recognizer.patterns is None

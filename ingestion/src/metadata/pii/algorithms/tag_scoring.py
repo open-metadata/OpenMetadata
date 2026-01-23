@@ -1,4 +1,16 @@
-from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Sequence, final
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    cast,
+    final,
+)
 
 if TYPE_CHECKING:
     from presidio_analyzer.nlp_engine import NlpEngine
@@ -8,13 +20,18 @@ from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.generated.schema.type.classificationLanguages import (
     ClassificationLanguage,
 )
+from metadata.generated.schema.type.tagLabelRecognizerMetadata import (
+    PatternMatch,
+    TagLabelRecognizerMetadata,
+)
+from metadata.pii.algorithms import presidio_constants
 from metadata.pii.algorithms.preprocessing import preprocess_values
 from metadata.pii.algorithms.presidio_utils import (
     load_nlp_engine,
     set_presidio_logger_level,
 )
 from metadata.pii.models import ScoredTag
-from metadata.pii.tag_analyzer import TagAnalysis, TagAnalyzer
+from metadata.pii.tag_analyzer import TARGET_MAP, TagAnalysis, TagAnalyzer
 
 
 @final
@@ -75,10 +92,17 @@ class TagScorer:
                     column_analysis=column_analysis,
                 )
 
+                recognizer_metadata = self._build_recognizer_metadata(
+                    content_analysis=content_analysis,
+                    column_analysis=column_analysis,
+                    total_score=total_score,
+                )
+
                 scored_tag = ScoredTag(
                     tag=analyzer.tag,
                     score=total_score,
                     reason=reason,
+                    recognizer_metadata=recognizer_metadata,
                 )
 
                 results.append(scored_tag)
@@ -95,6 +119,75 @@ class TagScorer:
             reason += f"Column analysis:\n{column_analysis.explanation}\n"
 
         return reason
+
+    def _build_recognizer_metadata(
+        self,
+        content_analysis: TagAnalysis,
+        column_analysis: Optional[TagAnalysis],
+        total_score: float,
+    ) -> Optional[TagLabelRecognizerMetadata]:
+        """Build recognizer metadata from the primary (highest scoring) analysis."""
+        primary_analysis = (
+            content_analysis
+            if content_analysis.score
+            >= (column_analysis.score if column_analysis else 0)
+            else column_analysis
+        )
+
+        if not primary_analysis or not primary_analysis.recognizer_results:
+            return None
+
+        results = primary_analysis.recognizer_results
+        if not results:
+            return None
+
+        first_result = results[0]
+        recognition_metadata = cast(Dict[str, str], first_result.recognition_metadata)
+
+        recognizer_name = recognition_metadata.get(
+            presidio_constants.RECOGNIZER_METADATA_NAME,
+            recognition_metadata.get(
+                presidio_constants.RECOGNIZER_METADATA_IDENTIFIER,
+                presidio_constants.DEFAULT_RECOGNIZER_IDENTIFIER,
+            ),
+        )
+
+        patterns_matched: Set[Tuple[str, str, float]] = set()
+        for result in results:
+            if result.analysis_explanation and result.analysis_explanation.pattern:
+                patterns_matched.add(
+                    (
+                        result.analysis_explanation.pattern_name,
+                        result.analysis_explanation.pattern,
+                        result.analysis_explanation.score,
+                    )
+                )
+
+        pattern_matches = [
+            PatternMatch(name=name, regex=pattern, score=score)
+            for name, pattern, score in sorted(
+                patterns_matched, key=lambda o: o[1], reverse=True
+            )
+        ]
+
+        recognizer_id = None
+        for recognizer_config in primary_analysis.tag.recognizers or []:
+            if recognizer_config.name.root == recognizer_name:
+                recognizer_id = recognizer_config.id
+                break
+
+        if not recognizer_id:
+            return None
+
+        return TagLabelRecognizerMetadata(
+            recognizerId=recognizer_id,
+            recognizerName=recognizer_name,
+            score=min(total_score, 1),
+            target=TARGET_MAP[primary_analysis.target]
+            if primary_analysis.target
+            else None,
+            patterns=pattern_matches if pattern_matches else None,
+        )
 
 
 class ScoreTagsForColumnService:
