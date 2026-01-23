@@ -15,10 +15,12 @@ package org.openmetadata.service.security.auth;
 
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.MCP_CONFIGURATION;
 
 import io.dropwizard.core.setup.Environment;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
@@ -37,6 +39,7 @@ public class SecurityConfigurationManager {
 
   private AuthenticationConfiguration currentAuthConfig;
   private AuthorizerConfiguration currentAuthzConfig;
+  private MCPConfiguration currentMcpConfig;
 
   public void setCurrentAuthConfig(AuthenticationConfiguration authConfig) {
     this.currentAuthConfig = authConfig;
@@ -44,6 +47,10 @@ public class SecurityConfigurationManager {
 
   public void setCurrentAuthzConfig(AuthorizerConfiguration authzConfig) {
     this.currentAuthzConfig = authzConfig;
+  }
+
+  public void setCurrentMcpConfig(MCPConfiguration mcpConfig) {
+    this.currentMcpConfig = mcpConfig;
   }
 
   private SecurityConfiguration previousSecurityConfig;
@@ -68,6 +75,10 @@ public class SecurityConfigurationManager {
     return getInstance().currentAuthzConfig;
   }
 
+  public static MCPConfiguration getCurrentMcpConfig() {
+    return getInstance().currentMcpConfig;
+  }
+
   public void setAuthenticatorHandler(AuthenticatorHandler handler) {
     this.authenticatorHandler = handler;
   }
@@ -83,10 +94,15 @@ public class SecurityConfigurationManager {
     // Database settings can override this later via the Settings API
     currentAuthConfig = config.getAuthenticationConfiguration();
     currentAuthzConfig = config.getAuthorizerConfiguration();
+    currentMcpConfig = config.getMcpConfiguration();
     LOG.info(
         "Using security configuration from YAML - provider: {}, clientType: {}",
         currentAuthConfig != null ? currentAuthConfig.getProvider() : "null",
         currentAuthConfig != null ? currentAuthConfig.getClientType() : "null");
+    LOG.info(
+        "Using MCP configuration from YAML - enabled: {}, baseUrl: {}",
+        currentMcpConfig != null ? currentMcpConfig.getEnabled() : "null",
+        currentMcpConfig != null ? currentMcpConfig.getBaseUrl() : "null");
   }
 
   public SecurityConfiguration getCurrentSecurityConfig() {
@@ -103,9 +119,20 @@ public class SecurityConfigurationManager {
       currentAuthzConfig =
           SettingsCache.getSetting(AUTHORIZER_CONFIGURATION, AuthorizerConfiguration.class);
 
+      // Reload MCP configuration from database
+      try {
+        currentMcpConfig = SettingsCache.getSetting(MCP_CONFIGURATION, MCPConfiguration.class);
+        LOG.info("Reloaded MCP configuration from database");
+      } catch (Exception e) {
+        LOG.warn("Failed to reload MCP configuration, keeping current config: {}", e.getMessage());
+      }
+
       OpenMetadataApplicationConfig appConfig = this.config;
       appConfig.setAuthenticationConfiguration(currentAuthConfig);
       appConfig.setAuthorizerConfiguration(currentAuthzConfig);
+      if (currentMcpConfig != null) {
+        appConfig.setMcpConfiguration(currentMcpConfig);
+      }
 
       application.reinitializeAuthSystem(appConfig, environment);
 

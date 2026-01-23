@@ -39,8 +39,26 @@ public class MCPConfiguration {
    * List of allowed origins for CORS on OAuth endpoints.
    * Use specific origins for production security. Wildcard (*) is NOT recommended.
    * Default includes common development origins.
+   * IMPORTANT: Add your OpenMetadata server's hosted URL to this list for production deployments.
+   * Example: If OpenMetadata is hosted at https://om.company.com, add it to this list.
    */
   @JsonProperty("allowedOrigins")
   private List<String> allowedOrigins =
       Arrays.asList("http://localhost:3000", "http://localhost:8585", "http://localhost:9090");
+
+  /**
+   * HTTP connection timeout in milliseconds for SSO provider metadata fetching.
+   * Used by pac4j HttpURLConnection when fetching OIDC discovery documents.
+   * Default: 30000ms (30 seconds)
+   */
+  @JsonProperty("connectTimeout")
+  private Integer connectTimeout = 30000;
+
+  /**
+   * HTTP read timeout in milliseconds for SSO provider metadata fetching.
+   * Used by pac4j HttpURLConnection when reading OIDC discovery responses.
+   * Default: 30000ms (30 seconds)
+   */
+  @JsonProperty("readTimeout")
+  private Integer readTimeout = 30000;
 }
