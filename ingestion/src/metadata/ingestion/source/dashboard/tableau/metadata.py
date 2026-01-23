@@ -868,11 +868,14 @@ class TableauSource(DashboardServiceSource):
                 db_service_entity = self.metadata.get_by_name(
                     entity=DatabaseService, fqn=db_service_name
                 )
-                if isinstance(db_service_entity.connection.config, BigQueryConnection):
-                    database_name = None
-                database_name = get_database_name_for_lineage(
-                    db_service_entity, database_name
-                )
+                if db_service_entity:
+                    if isinstance(
+                        db_service_entity.connection.config, BigQueryConnection
+                    ):
+                        database_name = None
+                    database_name = get_database_name_for_lineage(
+                        db_service_entity, database_name
+                    )
             schema_name = (
                 table.schema_
                 if table.schema_
