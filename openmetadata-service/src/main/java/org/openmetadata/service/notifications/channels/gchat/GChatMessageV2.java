@@ -95,6 +95,7 @@ public class GChatMessageV2 implements NotificationMessage {
     private TextParagraph textParagraph;
     private Image image;
     private Divider divider;
+    private DecoratedText decoratedText;
 
     public static Widget text(String text) {
       Widget w = new Widget();
@@ -111,6 +112,12 @@ public class GChatMessageV2 implements NotificationMessage {
     public static Widget divider() {
       Widget w = new Widget();
       w.divider = new Divider();
+      return w;
+    }
+
+    public static Widget decoratedText(String topLabel, String text) {
+      Widget w = new Widget();
+      w.decoratedText = new DecoratedText(topLabel, text);
       return w;
     }
   }
@@ -141,5 +148,14 @@ public class GChatMessageV2 implements NotificationMessage {
   public static class Image {
     private String imageUrl;
     private String altText;
+  }
+
+  @Data
+  @NoArgsConstructor
+  @AllArgsConstructor
+  @JsonInclude(Include.NON_NULL)
+  public static class DecoratedText {
+    private String topLabel;
+    private String text;
   }
 }

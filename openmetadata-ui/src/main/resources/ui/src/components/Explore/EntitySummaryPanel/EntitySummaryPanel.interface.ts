@@ -12,6 +12,7 @@
  */
 
 import { PipelineViewMode } from '../../../generated/settings/settings';
+import { EntityData } from '../../../pages/TasksPage/TasksPage.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import { EntityDetailsObjectInterface } from '../ExplorePage.interface';
 
@@ -25,4 +26,5 @@ export interface EntitySummaryPanelProps {
   pipelineViewMode?: PipelineViewMode;
   downstreamDepth?: number;
   nodesPerLayer?: number;
+  onEntityUpdate?: (updatedEntity: Partial<EntityData>) => void;
 }

@@ -318,13 +318,18 @@ export const TEXT_FIELD_DESCRIPTION_OPERATORS = [
   'is_not_null',
 ];
 
+export const MULTISELECT_FIELD_OPERATORS = [
+  'multiselect_contains',
+  'multiselect_not_contains',
+  'multiselect_equals',
+  'multiselect_not_equals',
+];
+
 export const RANGE_FIELD_OPERATORS = ['between', 'not_between'];
 
 export const LIST_VALUE_OPERATORS = ['select_equals', 'select_not_equals'];
 
 export const NULL_CHECK_OPERATORS = ['is_null', 'is_not_null'];
-
-export const MISC_FIELDS = ['owner.displayName', 'tags.tagFQN'];
 
 export const OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY = 'displayName.keyword';
 

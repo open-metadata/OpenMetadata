@@ -1,0 +1,68 @@
+# Copyright 2026 Collate.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+apiVersion: v3.1.0
+kind: DataContract
+id: multi-object-contract
+name: Multi-Object Data Contract
+version: "1.0.0"
+status: active
+description:
+  purpose: Contract with multiple schema objects for testing multi-object import
+schema:
+  - name: customers
+    logicalType: object
+    physicalType: table
+    description: Customer records table
+    properties:
+      - name: customer_id
+        logicalType: integer
+        required: true
+        primaryKey: true
+      - name: customer_name
+        logicalType: string
+        required: true
+      - name: email
+        logicalType: string
+        required: false
+  - name: orders
+    logicalType: object
+    physicalType: table
+    description: Customer orders table
+    properties:
+      - name: order_id
+        logicalType: integer
+        required: true
+        primaryKey: true
+      - name: customer_id
+        logicalType: integer
+        required: true
+      - name: order_date
+        logicalType: timestamp
+      - name: total_amount
+        logicalType: number
+  - name: products
+    logicalType: object
+    physicalType: table
+    description: Product catalog table
+    properties:
+      - name: product_id
+        logicalType: integer
+        required: true
+        primaryKey: true
+      - name: product_name
+        logicalType: string
+        required: true
+      - name: price
+        logicalType: number
+slaProperties:
+  - property: freshness
+    value: "24"
+    unit: hours

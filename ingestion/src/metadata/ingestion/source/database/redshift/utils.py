@@ -81,6 +81,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         )
         column_info["distkey"] = col.distkey
         column_info["sortkey"] = col.sortkey
+        column_info["ordinal_position"] = col.attnum
         column_info["system_data_type"] = col.format_type
         columns.append(column_info)
     return columns
@@ -109,7 +110,7 @@ def _get_column_info(self, *args, **kwargs):
     )._get_column_info(*args, **kwdrs)
 
     # raw_data_type is not included in column_info as
-    # redhift doesn't support complex data types directly
+    # redshift doesn't support complex data types directly
     # https://docs.aws.amazon.com/redshift/latest/dg/c_Supported_data_types.html
 
     if "info" not in column_info:

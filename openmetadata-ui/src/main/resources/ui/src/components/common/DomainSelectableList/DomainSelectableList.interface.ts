@@ -26,4 +26,5 @@ export interface DomainSelectableListProps {
   showAllDomains?: boolean;
   wrapInButton?: boolean;
   overlayClassName?: string;
+  isClearable?: boolean;
 }

@@ -36,10 +36,11 @@ import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import TagSuggestion from '../../pages/TasksPage/shared/TagSuggestion';
 import Fqn from '../Fqn';
 import { t } from '../i18next/LocalUtil';
+import { getCustomPropertyEntityType } from './CSV.utils';
 
 class CSVUtilsClassBase {
   public hideImportsColumnList() {
-    return ['glossaryStatus'];
+    return ['glossaryStatus', 'inspectionQuery'];
   }
 
   public columnsWithMultipleValuesEscapeNeeded() {
@@ -57,6 +58,7 @@ class CSVUtilsClassBase {
       'storedProcedure.code',
       'column.name*',
       'name*',
+      'parameterValues',
     ];
   }
 
@@ -434,7 +436,7 @@ class CSVUtilsClassBase {
               <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
               <ModalWithCustomPropertyEditor
                 visible
-                entityType={entityType}
+                entityType={getCustomPropertyEntityType(entityType)}
                 header="Edit CustomProperty"
                 value={value}
                 onCancel={() => onClose(false)}

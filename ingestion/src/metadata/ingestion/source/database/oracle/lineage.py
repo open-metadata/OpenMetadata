@@ -47,8 +47,13 @@ from metadata.utils.helpers import get_start_and_end
 class OracleLineageSource(
     OracleQueryParserSource, StoredProcedureLineageMixin, LineageSource
 ):
+    # command types mapping to query types:
+    # 1 = CREATE TABLE
+    # 2 = INSERT
+    # 6 = UPDATE
+    # 189 = MERGE
     filters = """
-        AND COMMAND_TYPE IN (1, 2) AND (
+        AND COMMAND_TYPE IN (1, 2, 6, 189) AND (
             lower(SQL_FULLTEXT) LIKE '%%create%%table%%as%%select%%'
             OR lower(SQL_FULLTEXT) LIKE '%%insert%%into%%select%%'
             OR lower(SQL_FULLTEXT) LIKE '%%update%%'

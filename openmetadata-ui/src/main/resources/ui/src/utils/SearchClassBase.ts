@@ -661,13 +661,11 @@ class SearchClassBase {
     return openEntityInNewPage ? '_blank' : '_self';
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public getEntitySummaryComponent(_entity: SourceType): JSX.Element | null {
     return null;
   }
 
   public getEntitiesSuggestions(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _options: Array<Option>
   ): Array<{ suggestions: SearchSuggestions; searchIndex: SearchIndex }> {
     return [];

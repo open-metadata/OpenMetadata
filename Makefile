@@ -147,6 +147,7 @@ build-ingestion-base-local:  ## Builds the ingestion DEV docker operator with th
 update_all:  ## To update all the release related files run make update_all RELEASE_VERSION=2.2.2
 	@echo "The release version is: $(RELEASE_VERSION)" ; \
 	$(MAKE) update_maven ; \
+	$(MAKE) update_openapi_version ; \
 	$(MAKE) update_pyproject_version ; \
 	$(MAKE) update_dockerfile_version ; \
 	$(MAKE) update_dockerfile_ri_version ; \
@@ -160,6 +161,11 @@ update_maven:  ## To update the common and pom.xml maven version
 #remove comment and use the below section when want to use this sub module "update_maven" independently to update github actions
 #make update_maven RELEASE_VERSION=2.2.2
 
+.PHONY: update_openapi_version
+update_openapi_version:  ## To update the OpenAPI version in OpenMetadataApplication.java
+	@echo "Updating OpenAPI version to $(RELEASE_VERSION)..."; \
+	python3 scripts/update_version.py update_openapi_version -v $(RELEASE_VERSION)
+#make update_openapi_version RELEASE_VERSION=2.2.2
 
 .PHONY: update_pyproject_version
 update_pyproject_version:  ## To update the pyproject.toml files

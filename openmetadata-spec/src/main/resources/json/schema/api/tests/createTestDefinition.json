@@ -47,6 +47,9 @@
         "$ref": "../../tests/testDefinition.json#/definitions/testCaseParameterDefinition"
       }
     },
+    "dataQualityDimension": {
+      "$ref": "../../tests/testDefinition.json#/definitions/dataQualityDimensions"
+    },
     "supportedServices": {
       "description": "List of services that this test definition supports. When empty, it implies all services are supported.",
       "type": "array",
@@ -61,6 +64,10 @@
       "items": {
         "type": "string"
       }
+    },
+    "sqlExpression": {
+      "description": "SQL expression template for custom SQL-based test definitions. Supports substitution variables: {table} and {column} for runtime entity references, and {{paramName}} for user-defined parameters.",
+      "$ref": "../../type/basic.json#/definitions/sqlQuery"
     }
   },
   "required": ["name", "description","entityType", "testPlatforms"],

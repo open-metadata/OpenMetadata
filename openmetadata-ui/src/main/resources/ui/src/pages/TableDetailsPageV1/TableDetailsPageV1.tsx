@@ -1,4 +1,3 @@
-/* eslint-disable i18next/no-literal-string */
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +14,7 @@
 import { Col, Row, Tabs, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,7 +31,6 @@ import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHead
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
@@ -47,11 +45,10 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
-  FqnPart,
   TabSpecificField,
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
-import { Table, TableType } from '../../generated/entity/data/table';
+import { Column, Table, TableType } from '../../generated/entity/data/table';
 import {
   Suggestion,
   SuggestionType,
@@ -71,23 +68,24 @@ import { getDataQualityLineage } from '../../rest/lineageAPI';
 import { getQueriesList } from '../../rest/queryAPI';
 import {
   addFollower,
+  getTableColumnsByFQN,
   getTableDetailsByFQN,
   patchTableDetails,
   removeFollower,
   restoreTable,
   updateTablesVotes,
 } from '../../rest/tableAPI';
-import {
-  addToRecentViewed,
-  getFeedCounts,
-  getPartialNameFromTableFQN,
-} from '../../utils/CommonUtils';
+import { addToRecentViewed, getFeedCounts } from '../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
-import { defaultFields } from '../../utils/DatasetDetailsUtils';
+import {
+  defaultFields,
+  defaultFieldsWithColumns,
+} from '../../utils/DatasetDetailsUtils';
+import { mergeEntityStateUpdate } from '../../utils/EntityUpdateUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
@@ -116,7 +114,6 @@ const TableDetailsPageV1: React.FC = () => {
   const { setDqLineageData } = useTestCaseStore();
   const [tableDetails, setTableDetails] = useState<Table>();
   const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: datasetFQN } = useFqn();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const USERId = currentUser?.id ?? '';
@@ -132,17 +129,18 @@ const TableDetailsPageV1: React.FC = () => {
     DEFAULT_ENTITY_PERMISSION
   );
   const [dqFailureCount, setDqFailureCount] = useState(0);
-  const { customizedPage, isLoading } = useCustomPages(PageType.Table);
+  const { customizedPage } = useCustomPages(PageType.Table);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
-  const tableFqn = useMemo(
-    () =>
-      getPartialNameFromTableFQN(
-        datasetFQN,
-        [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
-        FQN_SEPARATOR_CHAR
-      ),
-    [datasetFQN]
+  const {
+    fqn: datasetFQN,
+    entityFqn: tableFqn,
+    columnFqn: columnPart,
+  } = useFqn({ type: EntityType.TABLE });
+
+  const columnFqn = useMemo(
+    () => (columnPart ? datasetFQN : undefined),
+    [columnPart, datasetFQN]
   );
 
   const alertBadge = useMemo(() => {
@@ -199,35 +197,79 @@ const TableDetailsPageV1: React.FC = () => {
     [tableDetails?.tableType]
   );
 
-  const fetchTableDetails = useCallback(async () => {
-    setLoading(true);
-    try {
-      let fields = defaultFields;
-      if (viewUsagePermission) {
-        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+  const fetchTableDetails = useCallback(
+    async (showLoading = true) => {
+      if (showLoading) {
+        setLoading(true);
       }
-      if (viewTestCasePermission) {
-        fields += `,${TabSpecificField.TESTSUITE}`;
-      }
+      try {
+        let fields = defaultFieldsWithColumns;
+        if (viewUsagePermission) {
+          fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+        }
+        if (viewTestCasePermission) {
+          fields += `,${TabSpecificField.TESTSUITE}`;
+        }
 
-      const details = await getTableDetailsByFQN(tableFqn, { fields });
-      setTableDetails(details);
-      addToRecentViewed({
-        displayName: getEntityName(details),
-        entityType: EntityType.TABLE,
-        fqn: details.fullyQualifiedName ?? '',
-        serviceType: details.serviceType,
-        timestamp: 0,
-        id: details.id,
-      });
-    } catch (error) {
-      if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        navigate(ROUTES.FORBIDDEN, { replace: true });
+        const [details, columnsResponse] = await Promise.all([
+          getTableDetailsByFQN(tableFqn, { fields }),
+          getTableColumnsByFQN(tableFqn, {
+            fields: 'tags,customMetrics,extension',
+          }).catch(() => null),
+        ]);
+
+        let finalColumns = details.columns || [];
+        if (columnsResponse?.data && columnsResponse.data.length > 0) {
+          // Merge fresh columns from /columns API into the full list from /tables API
+          // This ensures we keep the correct total count while having fresh data for visible columns
+          columnsResponse.data.forEach((freshCol) => {
+            finalColumns = updateColumnInNestedStructure(
+              finalColumns,
+              freshCol.fullyQualifiedName ?? '',
+              freshCol
+            );
+          });
+        }
+
+        const mergedDetails = {
+          ...details,
+          columns: finalColumns,
+        };
+
+        setTableDetails((current) => {
+          // Prevent stale server data from overwriting newer local state (optimistic updates)
+          if (
+            current?.updatedAt &&
+            mergedDetails.updatedAt &&
+            mergedDetails.updatedAt < current.updatedAt
+          ) {
+            return current;
+          }
+
+          return mergedDetails;
+        });
+        addToRecentViewed({
+          displayName: getEntityName(details),
+          entityType: EntityType.TABLE,
+          fqn: details.fullyQualifiedName ?? '',
+          serviceType: details.serviceType,
+          timestamp: 0,
+          id: details.id,
+        });
+      } catch (error) {
+        if (
+          (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
+        ) {
+          navigate(ROUTES.FORBIDDEN, { replace: true });
+        }
+      } finally {
+        if (showLoading) {
+          setLoading(false);
+        }
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [tableFqn, viewUsagePermission]);
+    },
+    [tableFqn, viewUsagePermission]
+  );
 
   const fetchDQUpstreamFailureCount = async () => {
     if (!tableClassBase.getAlertEnableStatus()) {
@@ -257,13 +299,13 @@ const TableDetailsPageV1: React.FC = () => {
         return;
       }
 
-      if (isUndefined(tableDetails?.testSuite?.id)) {
+      const testSuiteId = tableDetails?.testSuite?.id;
+
+      if (!testSuiteId) {
         await fetchDQUpstreamFailureCount();
 
         return;
       }
-
-      const testSuiteId = tableDetails?.testSuite?.id;
 
       const { data } = await fetchTestCaseResultByTestSuiteId(
         testSuiteId,
@@ -404,18 +446,7 @@ const TableDetailsPageV1: React.FC = () => {
           return;
         }
 
-        const updatedObj = {
-          ...previous,
-          ...res,
-          ...(key && { [key]: res[key] }),
-        };
-
-        // If operation was to remove let's remove the key itself
-        if (key && res[key] === undefined) {
-          delete updatedObj[key];
-        }
-
-        return updatedObj;
+        return mergeEntityStateUpdate<Table>(previous, res, updatedTable, key);
       });
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -553,6 +584,8 @@ const TableDetailsPageV1: React.FC = () => {
       fetchTableDetails,
       isViewTableType,
       labelMap: tabLabelMap,
+      columnFqn,
+      columnPart,
     });
 
     const updatedTabs = getDetailsTabWithNewLabel(
@@ -582,12 +615,50 @@ const TableDetailsPageV1: React.FC = () => {
     editLineagePermission,
     fetchTableDetails,
     isViewTableType,
+    columnFqn,
+    columnPart,
   ]);
 
   const isExpandViewSupported = useMemo(
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Table),
     [tabs[0], activeTab]
   );
+
+  const handleTableSync = useCallback((updatedTable: Table) => {
+    setTableDetails(updatedTable);
+  }, []);
+
+  const handleColumnsUpdate = useCallback((newColumns: Column[]) => {
+    if (isEmpty(newColumns)) {
+      return;
+    }
+
+    setTableDetails((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const newColumnsMap = new Map(
+        newColumns.map((c) => [c.fullyQualifiedName, c])
+      );
+      const updatedColumns = (current.columns || []).map((col) => {
+        if (
+          col.fullyQualifiedName &&
+          newColumnsMap.has(col.fullyQualifiedName)
+        ) {
+          return newColumnsMap.get(col.fullyQualifiedName) as Column;
+        }
+
+        return col;
+      });
+
+      return {
+        ...current,
+        columns: updatedColumns,
+        updatedAt: Date.now(), // Update timestamp to prevent stale overrides
+      };
+    });
+  }, []);
 
   const onTierUpdate = useCallback(
     async (newTier?: Tag) => {
@@ -778,6 +849,7 @@ const TableDetailsPageV1: React.FC = () => {
     if (isTourOpen || isTourPage) {
       setTableDetails(mockDatasetData.tableDetails as unknown as Table);
     } else if (viewBasicPermission) {
+      setTableDetails(undefined);
       fetchTableDetails();
       getEntityFeedCount();
     }
@@ -814,7 +886,7 @@ const TableDetailsPageV1: React.FC = () => {
     setIsTabExpanded((prev) => !prev);
   };
 
-  if (loading || isLoading) {
+  if (loading) {
     return <Loader />;
   }
 
@@ -835,18 +907,18 @@ const TableDetailsPageV1: React.FC = () => {
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.table'),
-      })}
-      title="Table details">
+    <PageLayoutV1 pageTitle={entityName} title="Table details">
       <GenericProvider<Table>
+        columnFqn={columnFqn}
         customizedPage={customizedPage}
         data={tableDetails}
         isTabExpanded={isTabExpanded}
         isVersionView={false}
+        key={tableFqn}
         permissions={tablePermissions}
         type={EntityType.TABLE}
+        onColumnsUpdate={handleColumnsUpdate}
+        onEntitySync={handleTableSync}
         onUpdate={onTableUpdate}>
         <Row gutter={[0, 12]}>
           {/* Entity Heading */}

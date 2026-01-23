@@ -76,12 +76,13 @@ describe('UsersTab', () => {
   });
 
   it('should render empty placeholder if no data', async () => {
-    (getUserById as jest.Mock).mockImplementation(() => Promise.resolve([])),
-      await act(async () => {
-        render(<UsersTab users={[]} onRemoveUser={mockOnRemoveUser} />, {
-          wrapper: MemoryRouter,
-        });
+    (getUserById as jest.Mock).mockImplementation(() => Promise.resolve([]));
+
+    await act(async () => {
+      render(<UsersTab users={[]} onRemoveUser={mockOnRemoveUser} />, {
+        wrapper: MemoryRouter,
       });
+    });
 
     expect(
       await screen.findByTestId('assign-error-placeholder-label.user')

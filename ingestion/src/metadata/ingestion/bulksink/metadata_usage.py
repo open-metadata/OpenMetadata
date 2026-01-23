@@ -283,16 +283,21 @@ class MetadataUsageBulkSink(BulkSink):
                             table_entity=table_entity, table_usage=table_usage
                         )
                 except APIError as err:
-                    error = f"Failed to update query join for {table_usage}: {err}"
-                    logger.debug(traceback.format_exc())
-                    logger.warning(error)
-                    self.status.failed(
-                        StackTraceError(
-                            name=table_usage.table,
-                            error=error,
-                            stackTrace=traceback.format_exc(),
+                    if err.status_code == 409:
+                        logger.warning(
+                            f"Entity already exists for {table_usage.table}, skipping: {err}"
                         )
-                    )
+                    else:
+                        error = f"Failed to update query join for {table_usage}: {err}"
+                        logger.debug(traceback.format_exc())
+                        logger.warning(error)
+                        self.status.failed(
+                            StackTraceError(
+                                name=table_usage.table,
+                                error=error,
+                                stackTrace=traceback.format_exc(),
+                            )
+                        )
                 except Exception as exc:
                     name = table_entity.name.root
                     error = (

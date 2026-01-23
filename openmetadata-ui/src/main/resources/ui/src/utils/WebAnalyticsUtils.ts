@@ -76,7 +76,7 @@ const handlePostAnalytic = async (
 
     // collect the event data
     await postWebAnalyticEvent(webAnalyticEventData);
-  } catch (_error) {
+  } catch (error) {
     // silently ignore the error
   }
 };

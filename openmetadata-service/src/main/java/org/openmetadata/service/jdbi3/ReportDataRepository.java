@@ -7,14 +7,14 @@ import org.openmetadata.schema.analytics.ReportData.ReportDataType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.analytics.ReportDataResource;
 
 public class ReportDataRepository extends EntityTimeSeriesRepository<ReportData> {
-  public static final String COLLECTION_PATH = "/v1/analytics/report";
   public static final String REPORT_DATA_EXTENSION = "reportData.reportDataResult";
 
   public ReportDataRepository() {
     super(
-        COLLECTION_PATH,
+        ReportDataResource.COLLECTION_PATH,
         Entity.getCollectionDAO().reportDataTimeSeriesDao(),
         ReportData.class,
         Entity.ENTITY_REPORT_DATA);

@@ -28,7 +28,7 @@ class WebSocketMock {
    * @param page - Playwright page
    * @param urlPattern - WebSocket URL pattern to intercept (default: /push\/feed/)
    */
-  async setup(page: Page, urlPattern: RegExp = /push\/feed/) {
+  async setup(page: Page, urlPattern = /push\/feed/) {
     await page.routeWebSocket(urlPattern, (ws) => {
       this.wsRoute = ws;
 
@@ -47,11 +47,13 @@ class WebSocketMock {
           // Engine.IO PING -> PONG
           if (message === '2') {
             ws.send('3');
+
             return;
           }
           // Socket.io CONNECT -> CONNECT ACK
           if (message === '40') {
             ws.send('40{"sid":"mock-socket"}');
+
             return;
           }
         }
@@ -118,6 +120,7 @@ export const getWebSocketMock = (): WebSocketMock => {
   if (!defaultMock) {
     defaultMock = new WebSocketMock();
   }
+
   return defaultMock;
 };
 
@@ -138,6 +141,7 @@ export const setupWebSocketMock = async (
 ): Promise<WebSocketMock> => {
   const mock = getWebSocketMock();
   await mock.setup(page, urlPattern);
+
   return mock;
 };
 
@@ -157,4 +161,3 @@ export const cleanupWebSocketMock = () => {
     defaultMock = null;
   }
 };
-

@@ -10,24 +10,30 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tag, Tooltip, Typography } from 'antd';
+import { Tooltip, useTheme } from '@mui/material';
+import { Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { ReactComponent as AutomatedTag } from '../../../assets/svg/automated-tag.svg';
 import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
 import { ReactComponent as IconTagNew } from '../../../assets/svg/ic-tag-new.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { ReactComponent as IconTag } from '../../../assets/svg/tag.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
-import { TagSource } from '../../../generated/type/tagLabel';
+import { LabelType, TagSource } from '../../../generated/type/tagLabel';
 import { reduceColorOpacity } from '../../../utils/CommonUtils';
+import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { renderIcon } from '../../../utils/IconUtils';
 import {
   getClassificationTagPath,
   getGlossaryPath,
 } from '../../../utils/RouterUtils';
+import tagClassBase from '../../../utils/TagClassBase';
 import { getTagDisplay, getTagTooltip } from '../../../utils/TagsUtils';
+import TagChip from '../../common/atoms/TagChip/TagChip';
 import { HighlightedTagLabel } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { TagsV1Props } from './TagsV1.interface';
 import './tagsV1.less';
@@ -45,7 +51,9 @@ const TagsV1 = ({
   size,
   isEditTags,
   newLook,
+  entityFqn,
 }: TagsV1Props) => {
+  const theme = useTheme();
   const color = useMemo(
     () => (isVersionPage ? undefined : tag.style?.color),
     [tag]
@@ -132,21 +140,16 @@ const TagsV1 = ({
     return '';
   }, [newLook, tag.style?.color]);
 
-  const renderIcon = useMemo(() => {
+  const renderTagIcon = useMemo(() => {
     if (hideIcon) {
       return null;
     }
 
     if (tag.style?.iconURL) {
-      return (
-        <img
-          className="m-r-xss"
-          data-testid="icon"
-          height={12}
-          src={tag.style.iconURL}
-          width={12}
-        />
-      );
+      return renderIcon(tag.style.iconURL, {
+        size: 12,
+        style: { marginRight: 4, flexShrink: 0 },
+      });
     }
 
     return startIcon;
@@ -161,7 +164,7 @@ const TagsV1 = ({
             'd-flex items-center p-x-xs w-full tag-content-container',
             tagChipStyleClass
           )}>
-          {renderIcon}
+          {renderTagIcon}
           <Typography.Text
             className="m-0 tags-label text-truncate truncate w-max-full"
             data-testid={`tag-${tag.tagFQN}`}
@@ -172,7 +175,40 @@ const TagsV1 = ({
         </div>
       </div>
     ),
-    [startIcon, tagName, tag, tagColorBar]
+    [renderTagIcon, tagName, tag, tagColorBar]
+  );
+
+  const automatedTagChip = useMemo(
+    () => (
+      <Link
+        className="no-underline"
+        data-testid="tag-redirect-link"
+        to={redirectLink}>
+        <TagChip
+          icon={
+            <AutomatedTag
+              color={theme.palette.allShades.brand[900]}
+              width={16}
+            />
+          }
+          label={tagName || ''}
+          labelDataTestId={`tag-${tag.tagFQN}`}
+          sx={{
+            pl: 1.5,
+            color: theme.palette.allShades.brand[900],
+            borderColor: theme.palette.allShades.brand[100],
+            backgroundColor: theme.palette.allShades.brand[50],
+            '&::before': {
+              display: 'none',
+            },
+            '&:hover': {
+              backgroundColor: theme.palette.allShades.brand[50],
+            },
+          }}
+        />
+      </Link>
+    ),
+    [tagName, tag, redirectLink, theme]
   );
 
   const tagChip = useMemo(
@@ -229,6 +265,42 @@ const TagsV1 = ({
   if (startWith === TAG_START_WITH.PLUS) {
     return addTagChip;
   }
+  if (tag.labelType === LabelType.Generated && entityFqn) {
+    if (isEditTags) {
+      return automatedTagChip;
+    }
+
+    const columnName = EntityLink.getTableColumnNameFromColumnFqn(
+      entityFqn,
+      false
+    );
+
+    // Only show Collate feedback popup for column-level tags
+    if (columnName) {
+      const recognizerPopupWrapper = tagClassBase.getRecognizerFeedbackPopup(
+        tag,
+        entityFqn,
+        automatedTagChip
+      );
+
+      if (recognizerPopupWrapper) {
+        return recognizerPopupWrapper;
+      }
+    }
+
+    return (
+      <Tooltip
+        arrow
+        enterDelay={500}
+        placement="top"
+        slotProps={{
+          tooltip: { className: 'tags-tooltip' },
+        }}
+        title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}>
+        {automatedTagChip}
+      </Tooltip>
+    );
+  }
 
   return (
     <>
@@ -236,10 +308,13 @@ const TagsV1 = ({
         tagChip
       ) : (
         <Tooltip
-          mouseEnterDelay={0.5}
-          placement="bottomLeft"
-          title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}
-          trigger="hover">
+          arrow
+          enterDelay={500}
+          placement="top"
+          slotProps={{
+            tooltip: { className: 'tags-tooltip' },
+          }}
+          title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}>
           {tagChip}
         </Tooltip>
       )}

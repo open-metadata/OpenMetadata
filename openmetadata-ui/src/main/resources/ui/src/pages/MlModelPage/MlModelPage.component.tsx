@@ -56,7 +56,7 @@ const MlModelPage = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const navigate = useNavigate();
-  const { fqn: mlModelFqn } = useFqn();
+  const { entityFqn: mlModelFqn } = useFqn({ type: EntityType.MLMODEL });
   const [mlModelDetail, setMlModelDetail] = useState<Mlmodel>({} as Mlmodel);
   const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
   const USERId = currentUser?.id ?? '';

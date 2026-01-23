@@ -42,6 +42,13 @@ public class SlackBlockKitRenderer extends BaseMarkdownChannelRenderer<SlackMess
 
     SlackMessage message = new SlackMessage();
     message.setBlocks(blocks);
+
+    // Add table attachment if one was created (only one table per message allowed)
+    SlackTableAttachment tableAttachment = visitor.getTableAttachment();
+    if (tableAttachment != null) {
+      message.setAttachments(List.of(tableAttachment));
+    }
+
     return message;
   }
 }

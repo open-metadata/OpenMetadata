@@ -77,7 +77,6 @@ export const getDashboardDetailPageTabs = ({
   dashboardDetails,
   editLineagePermission,
   editCustomAttributePermission,
-  viewAllPermission,
   viewCustomPropertiesPermission,
   handleFeedCount,
   feedCount,

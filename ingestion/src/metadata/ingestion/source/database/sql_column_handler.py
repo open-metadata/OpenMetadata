@@ -329,7 +329,8 @@ class SqlColumnHandlerMixin:
                     dataLength=col_data_length,
                     constraint=col_constraint,
                     arrayDataType=arr_data_type,
-                    ordinalPosition=column.get("ordinalPosition"),
+                    ordinalPosition=column.get("ordinalPosition")
+                    or column.get("ordinal_position"),
                 )
                 if precision:
                     # Precision and scale must be integer values

@@ -26,22 +26,19 @@ public class InferenceEngine {
   public InferenceEngine(ReasoningLevel level) {
     switch (level) {
       case RDFS:
-        // Get RDFS reasoner
         this.reasonerFactory = null;
         this.reasoner = ReasonerRegistry.getRDFSReasoner();
         break;
       case OWL_LITE:
-        // Get OWL Mini reasoner
         this.reasonerFactory = null;
         this.reasoner = ReasonerRegistry.getOWLMiniReasoner();
         break;
       case OWL_DL:
-        // Get OWL reasoner
         this.reasonerFactory = null;
         this.reasoner = ReasonerRegistry.getOWLReasoner();
         break;
       case CUSTOM:
-        this.reasonerFactory = null; // Will use custom rules
+        this.reasonerFactory = null;
         this.reasoner = null;
         break;
       default:
@@ -50,21 +47,15 @@ public class InferenceEngine {
     }
   }
 
-  /**
-   * Create inference model from base model
-   */
   public InfModel createInferenceModel(Model baseModel, Model ontologyModel) {
     if (reasoner != null) {
-      // Pre-configured reasoner (RDFS, OWL)
       reasoner = reasoner.bindSchema(ontologyModel);
       return ModelFactory.createInfModel(reasoner, baseModel);
     } else if (reasonerFactory != null) {
-      // Factory-based reasoner
       reasoner = reasonerFactory.create(null);
       reasoner = reasoner.bindSchema(ontologyModel);
       return ModelFactory.createInfModel(reasoner, baseModel);
     } else {
-      // Custom rules reasoner
       List<Rule> rules = createCustomRules();
       reasoner = new GenericRuleReasoner(rules);
       reasoner = reasoner.bindSchema(ontologyModel);
@@ -73,69 +64,66 @@ public class InferenceEngine {
   }
 
   /**
-   * Define custom inference rules for OpenMetadata
+   * Define custom inference rules for OpenMetadata. Note: Jena rules require full URIs, not
+   * prefixed names.
    */
   private List<Rule> createCustomRules() {
-    String rules =
-        """
-      # Transitive upstream/downstream relationships
-      [transitiveUpstream: (?a om:upstream ?b) (?b om:upstream ?c) -> (?a om:upstream ?c)]
-      [transitiveDownstream: (?a om:downstream ?b) (?b om:downstream ?c) -> (?a om:downstream ?c)]
+    String om = "https://open-metadata.org/ontology/";
+    String rdf = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
 
-      # Inverse relationships
-      [inverseUpstream: (?a om:upstream ?b) -> (?b om:downstream ?a)]
-      [inverseDownstream: (?a om:downstream ?b) -> (?b om:upstream ?a)]
-      [inverseUses: (?a om:uses ?b) -> (?b om:usedBy ?a)]
-      [inverseOwns: (?a om:owns ?b) -> (?b om:ownedBy ?a)]
+    // Build rules with full URIs
+    StringBuilder rulesBuilder = new StringBuilder();
 
-      # PII propagation
-      [piiPropagation: (?table om:classifiedAs om:PII) (?downstream om:upstream ?table)
-                       -> (?downstream om:classifiedAs om:PII)]
+    // Transitive upstream/downstream relationships
+    rulesBuilder.append(
+        String.format(
+            "[transitiveUpstream: (?a <%supstream> ?b) (?b <%supstream> ?c) -> (?a <%supstream> ?c)]%n",
+            om, om, om));
+    rulesBuilder.append(
+        String.format(
+            "[transitiveDownstream: (?a <%sdownstream> ?b) (?b <%sdownstream> ?c) -> (?a <%sdownstream> ?c)]%n",
+            om, om, om));
 
-      # Impact analysis
-      [deprecatedImpact: (?source om:status "deprecated") (?consumer om:uses ?source)
-                         -> (?consumer om:hasImpact "source-deprecated")]
+    // Inverse relationships
+    rulesBuilder.append(
+        String.format(
+            "[inverseUpstream: (?a <%supstream> ?b) -> (?b <%sdownstream> ?a)]%n", om, om));
+    rulesBuilder.append(
+        String.format(
+            "[inverseDownstream: (?a <%sdownstream> ?b) -> (?b <%supstream> ?a)]%n", om, om));
+    rulesBuilder.append(
+        String.format("[inverseUses: (?a <%suses> ?b) -> (?b <%susedBy> ?a)]%n", om, om));
+    rulesBuilder.append(
+        String.format("[inverseOwns: (?a <%sowns> ?b) -> (?b <%sownedBy> ?a)]%n", om, om));
 
-      # Domain membership inheritance
-      [domainInheritance: (?parent om:inDomain ?domain) (?child om:belongsTo ?parent)
-                          -> (?child om:inDomain ?domain)]
+    // Domain membership inheritance
+    rulesBuilder.append(
+        String.format(
+            "[domainInheritance: (?parent <%sinDomain> ?domain) (?child <%sbelongsTo> ?parent) -> (?child <%sinDomain> ?domain)]%n",
+            om, om, om));
 
-      # Team ownership inheritance
-      [ownershipInheritance: (?parent om:ownedBy ?team) (?child om:belongsTo ?parent)
-                             noValue(?child om:ownedBy)
-                             -> (?child om:ownedBy ?team)]
+    // Glossary term inheritance
+    rulesBuilder.append(
+        String.format(
+            "[glossaryInheritance: (?table <%shasGlossaryTerm> ?term) (?column <%sbelongsTo> ?table) -> (?column <%shasGlossaryTerm> ?term)]%n",
+            om, om, om));
 
-      # Data quality inheritance
-      [qualityPropagation: (?source om:dataQualityScore ?score)
-                           (?target om:upstream ?source)
-                           lessThan(?score, 50.0)
-                           -> (?target om:hasQualityIssue "low-quality-upstream")]
+    // Service type inference
+    rulesBuilder.append(
+        String.format(
+            "[serviceTypeInference: (?service <%shasDatabase> ?db) -> (?service <%stype> <%sDatabaseService>)]%n",
+            om, rdf, om));
+    rulesBuilder.append(
+        String.format(
+            "[serviceTypeInference2: (?service <%shasPipeline> ?pipeline) -> (?service <%stype> <%sPipelineService>)]%n",
+            om, rdf, om));
 
-      # Glossary term inheritance
-      [glossaryInheritance: (?table om:hasGlossaryTerm ?term)
-                            (?column om:belongsTo ?table)
-                            -> (?column om:hasGlossaryTerm ?term)]
-
-      # Service type inference
-      [serviceTypeInference: (?service om:hasDatabase ?db) -> (?service rdf:type om:DatabaseService)]
-      [serviceTypeInference2: (?service om:hasPipeline ?pipeline) -> (?service rdf:type om:PipelineService)]
-
-      # Completeness checking
-      [missingDescription: (?entity rdf:type om:DataAsset)
-                           noValue(?entity om:description)
-                           -> (?entity om:hasIssue "missing-description")]
-      """;
-
-    return Rule.parseRules(rules);
+    return Rule.parseRules(rulesBuilder.toString());
   }
 
-  /**
-   * Run inference and return new triples
-   */
   public Model getInferredTriples(Model baseModel, Model ontologyModel) {
     InfModel infModel = createInferenceModel(baseModel, ontologyModel);
 
-    // Get only the inferred triples (not the base ones)
     Model inferredModel = ModelFactory.createDefaultModel();
 
     StmtIterator iter = infModel.listStatements();
@@ -149,26 +137,17 @@ public class InferenceEngine {
     return inferredModel;
   }
 
-  /**
-   * Validate model consistency
-   */
   public ValidityReport validateModel(Model model, Model ontologyModel) {
     InfModel infModel = createInferenceModel(model, ontologyModel);
     return infModel.validate();
   }
 
-  /**
-   * Check for specific inferences
-   */
   public boolean hasInference(
       Model baseModel, Model ontologyModel, Resource subject, Property predicate, RDFNode object) {
     InfModel infModel = createInferenceModel(baseModel, ontologyModel);
     return infModel.contains(subject, predicate, object);
   }
 
-  /**
-   * Get explanation for an inference
-   */
   public List<Derivation> explainInference(
       Model baseModel, Model ontologyModel, Statement inferredStatement) {
     InfModel infModel = createInferenceModel(baseModel, ontologyModel);

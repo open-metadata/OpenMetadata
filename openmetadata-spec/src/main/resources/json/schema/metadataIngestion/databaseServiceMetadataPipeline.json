@@ -152,6 +152,11 @@
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
       "title": "Database Filter Pattern"
     },
+    "storedProcedureFilterPattern": {
+      "description": "Regex to only include/exclude stored procedures that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Stored Procedure Filter Pattern"
+    },
     "threads": {
       "description": "Number of Threads to use in order to parallelize Table ingestion.",
       "type": "integer",

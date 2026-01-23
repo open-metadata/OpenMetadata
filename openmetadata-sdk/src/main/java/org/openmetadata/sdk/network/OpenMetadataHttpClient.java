@@ -20,6 +20,7 @@ import okhttp3.ResponseBody;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.exceptions.AuthenticationException;
+import org.openmetadata.sdk.exceptions.ConflictException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.exceptions.RateLimitException;
@@ -207,11 +208,20 @@ public class OpenMetadataHttpClient implements HttpClient {
     if (requestBody != null) {
       // Check if this is a string request (for CSV import, etc.)
       if (requestBody instanceof String) {
+        String stringBody = (String) requestBody;
         String contentType = "text/plain";
+        // Check if options has a specific Content-Type
         if (options != null && options.getHeaders() != null) {
           contentType = options.getHeaders().getOrDefault("Content-Type", contentType);
         }
-        body = RequestBody.create((String) requestBody, MediaType.parse(contentType));
+        // If no explicit content type and the string looks like JSON, use application/json
+        if (contentType.equals("text/plain") && stringBody.length() > 0) {
+          char firstChar = stringBody.trim().charAt(0);
+          if (firstChar == '{' || firstChar == '[') {
+            contentType = "application/json; charset=utf-8";
+          }
+        }
+        body = RequestBody.create(stringBody, MediaType.parse(contentType));
       } else {
         try {
           String jsonBody = objectMapper.writeValueAsString(requestBody);
@@ -316,6 +326,8 @@ public class OpenMetadataHttpClient implements HttpClient {
         throw new InvalidRequestException(errorMessage);
       case 401:
         throw new AuthenticationException(errorMessage);
+      case 409:
+        throw new ConflictException(errorMessage);
       case 429:
         String retryAfter = response.header("Retry-After");
         long retryAfterSeconds = retryAfter != null ? Long.parseLong(retryAfter) : -1;

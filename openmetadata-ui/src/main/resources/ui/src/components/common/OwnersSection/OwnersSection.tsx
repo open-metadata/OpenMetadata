@@ -127,7 +127,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
         }}
         onUpdate={handleOwnerSelection}>
         <div className="owner-selector-display">
-          {editingOwners.length > 0 && (
+          {editingOwners.length > 0 ? (
             <div className="selected-owners-list">
               {editingOwners.map((owner) => (
                 <div className="selected-owner-chip" key={owner.id}>
@@ -137,6 +137,12 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
                 </div>
               ))}
             </div>
+          ) : (
+            <span className="no-data-placeholder">
+              {t('label.no-entity-assigned', {
+                entity: t('label.owner-plural'),
+              })}
+            </span>
           )}
         </div>
       </UserTeamSelectableList>

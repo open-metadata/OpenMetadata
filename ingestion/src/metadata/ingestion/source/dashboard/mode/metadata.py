@@ -171,7 +171,11 @@ class ModeSource(DashboardServiceSource):
                     )
                     continue
 
-                lineage_parser = LineageParser(query.get("raw_query"))
+                lineage_parser = LineageParser(
+                    query.get("raw_query"),
+                    parser_type=self.get_query_parser_type(),
+                )
+                query_hash = lineage_parser.query_hash
                 for table in lineage_parser.source_tables:
                     database_schema_name, table = fqn.split(str(table))[-2:]
                     database_schema_name = self.check_database_schema_name(
@@ -184,7 +188,7 @@ class ModeSource(DashboardServiceSource):
                         and prefix_table_name.lower() != str(table).lower()
                     ):
                         logger.debug(
-                            f"Table {table} does not match prefix {prefix_table_name}"
+                            f"[{query_hash}] Table {table} does not match prefix {prefix_table_name}"
                         )
                         continue
 
@@ -195,7 +199,7 @@ class ModeSource(DashboardServiceSource):
                         != str(database_schema_name).lower()
                     ):
                         logger.debug(
-                            f"Schema {database_schema_name} does not match prefix {prefix_schema_name}"
+                            f"[{query_hash}] Schema {database_schema_name} does not match prefix {prefix_schema_name}"
                         )
                         continue
 

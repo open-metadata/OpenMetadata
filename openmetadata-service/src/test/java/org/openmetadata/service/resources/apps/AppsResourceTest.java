@@ -726,7 +726,8 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   private void postAppStop(String appName, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("apps/stop").path(appName);
-    Response response = SecurityUtil.addHeaders(target, authHeaders).post(null);
+    Response response =
+        SecurityUtil.addHeaders(target, authHeaders).post(jakarta.ws.rs.client.Entity.json("{}"));
     readResponse(response, OK.getStatusCode());
   }
 

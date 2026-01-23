@@ -20,6 +20,8 @@ import {
 } from '../../generated/tests/testCase';
 import { getRandomHexColor } from '../DataInsightUtils';
 
+const EXCLUDED_CHART_FIELDS = ['schemaTable1', 'schemaTable2'];
+
 export type PrepareChartDataType = {
   testCaseParameterValue: TestCaseParameterValue[];
   testCaseResults: TestCaseResult[];
@@ -45,6 +47,9 @@ export const prepareChartData = ({
   let showAILearningBanner = false;
   testCaseResults.forEach((result) => {
     const values = result.testResultValue?.reduce((acc, curr) => {
+      if (EXCLUDED_CHART_FIELDS.includes(curr.name ?? '')) {
+        return acc;
+      }
       const value = round(parseFloat(curr.value ?? ''), 2) || 0;
 
       return {
@@ -93,12 +98,16 @@ export const prepareChartData = ({
     (result) => result.testResultValue?.length
   );
 
+  const filteredResultValues =
+    testCaseResultParams?.testResultValue?.filter(
+      (info) => !EXCLUDED_CHART_FIELDS.includes(info.name ?? '')
+    ) ?? [];
+
   return {
-    information:
-      testCaseResultParams?.testResultValue?.map((info, i) => ({
-        label: info.name ?? '',
-        color: COLORS[i] ?? getRandomHexColor(),
-      })) ?? [],
+    information: filteredResultValues.map((info, i) => ({
+      label: info.name ?? '',
+      color: COLORS[i] ?? getRandomHexColor(),
+    })),
     data: dataPoints,
     showAILearningBanner,
   };

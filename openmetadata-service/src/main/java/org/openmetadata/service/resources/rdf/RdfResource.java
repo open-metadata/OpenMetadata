@@ -73,18 +73,37 @@ public class RdfResource {
   @Operation(
       operationId = "getRdfStatus",
       summary = "Get RDF service status",
-      description = "Check if RDF service is enabled",
+      description = "Check RDF service status including inference configuration",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "RDF service status",
+            description = "RDF service status with inference information",
             content = @Content(mediaType = MediaType.APPLICATION_JSON))
       })
   public Response getRdfStatus(@Context SecurityContext securityContext) {
-    return Response.ok()
-        .entity("{\"enabled\": " + rdfRepository.isEnabled() + "}")
-        .type(MediaType.APPLICATION_JSON)
-        .build();
+    boolean enabled = rdfRepository.isEnabled();
+    boolean inferenceEnabled = enabled && rdfRepository.isInferenceEnabledByDefault();
+    String defaultInferenceLevel = enabled ? rdfRepository.getDefaultInferenceLevel() : "NONE";
+
+    String statusJson =
+        String.format(
+            """
+            {
+              "enabled": %s,
+              "inference": {
+                "enabled": %s,
+                "defaultLevel": "%s",
+                "availableLevels": ["NONE", "RDFS", "OWL_LITE", "OWL_DL", "CUSTOM"]
+              },
+              "storageType": "%s"
+            }
+            """,
+            enabled,
+            inferenceEnabled,
+            defaultInferenceLevel,
+            enabled ? rdfRepository.getConfig().getStorageType() : "N/A");
+
+    return Response.ok().entity(statusJson).type(MediaType.APPLICATION_JSON).build();
   }
 
   @GET

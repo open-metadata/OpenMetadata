@@ -29,6 +29,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.apis.APICollectionResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -48,7 +49,8 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
   @Override
   public void setFullyQualifiedName(APICollection apiCollection) {
     apiCollection.setFullyQualifiedName(
-        FullyQualifiedName.build(apiCollection.getService().getName(), apiCollection.getName()));
+        FullyQualifiedName.add(
+            apiCollection.getService().getFullyQualifiedName(), apiCollection.getName()));
   }
 
   @Override
@@ -88,7 +90,9 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
     return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
-  public void setFields(APICollection apiCollection, Fields fields) {
+  @Override
+  public void setFields(
+      APICollection apiCollection, Fields fields, RelationIncludes relationIncludes) {
     apiCollection.setService(getContainer(apiCollection.getId()));
     apiCollection.setApiEndpoints(
         fields.contains("apiEndpoints")

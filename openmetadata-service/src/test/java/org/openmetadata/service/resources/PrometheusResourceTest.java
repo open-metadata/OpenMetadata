@@ -162,9 +162,11 @@ class PrometheusResourceTest extends OpenMetadataApplicationTest {
             "Invalid TYPE format: " + line);
       } else if (!line.isEmpty() && !line.startsWith("#")) {
         metricCount++;
+        // Prometheus format allows NaN, +Inf, -Inf as valid values
         assertTrue(
-            line.matches("^[a-zA-Z_:][a-zA-Z0-9_:]*(\\{[^}]*})?\\s+[0-9.eE+-]+$")
-                || line.matches("^[a-zA-Z_:][a-zA-Z0-9_:]*(\\{[^}]*})?\\s+[0-9.]+\\s+[0-9]+$"),
+            line.matches("^[a-zA-Z_:][a-zA-Z0-9_:]*(\\{[^}]*})?\\s+([0-9.eE+-]+|NaN|[+-]?Inf)$")
+                || line.matches(
+                    "^[a-zA-Z_:][a-zA-Z0-9_:]*(\\{[^}]*})?\\s+([0-9.]+|NaN|[+-]?Inf)\\s+[0-9]+$"),
             "Invalid metric format: " + line);
       }
     }

@@ -1036,6 +1036,91 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
 
   @Order(14)
   @Test
+  void test_platformLineageAllViews() throws IOException {
+    // Test platform lineage with all view types to ensure cluster alias is not duplicated
+    // This test verifies the fix for double cluster alias appending issue
+    //
+
+    // Verify cluster alias is configured in test environment
+    String clusterAlias = Entity.getSearchRepository().getClusterAlias();
+    assertNotNull(clusterAlias, "Cluster alias should be configured in test environment");
+    assertEquals("openmetadata", clusterAlias, "Expected cluster alias to be 'openmetadata'");
+
+    // Create lineage relationships
+    addEdge(TABLES.get(0), TABLES.get(1));
+    addEdge(TABLES.get(1), TABLES.get(2));
+
+    // Test 1: Service view
+    // Service view works even with the bug because "service" is not a valid entity type,
+    // so the transformation is skipped
+    WebTarget serviceViewTarget =
+        getResource("lineage/getPlatformLineage")
+            .queryParam("view", "service")
+            .queryParam("includeDeleted", false);
+
+    SearchLineageResult serviceViewResult =
+        TestUtils.get(serviceViewTarget, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(serviceViewResult, "Service view should return a valid response");
+    assertNotNull(serviceViewResult.getNodes(), "Service view should have nodes");
+    assertNotNull(serviceViewResult.getUpstreamEdges(), "Service view should have upstream edges");
+    assertNotNull(
+        serviceViewResult.getDownstreamEdges(), "Service view should have downstream edges");
+
+    // Test 2: Domain view
+    // Without the fix, this would fail with:
+    // "index_not_found_exception: no such index [openmetadata_openmetadata_domain_search_index]"
+    WebTarget domainViewTarget =
+        getResource("lineage/getPlatformLineage")
+            .queryParam("view", "domain")
+            .queryParam("includeDeleted", false);
+
+    SearchLineageResult domainViewResult =
+        TestUtils.get(domainViewTarget, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(domainViewResult, "Domain view should return a valid response");
+    assertNotNull(domainViewResult.getNodes(), "Domain view should have nodes");
+    assertNotNull(domainViewResult.getUpstreamEdges(), "Domain view should have upstream edges");
+    assertNotNull(
+        domainViewResult.getDownstreamEdges(), "Domain view should have downstream edges");
+
+    // Test 3: DataProduct view
+    // Without the fix, this would fail with:
+    // "index_not_found_exception: no such index
+    // [openmetadata_openmetadata_data_product_search_index]"
+    WebTarget dataProductViewTarget =
+        getResource("lineage/getPlatformLineage")
+            .queryParam("view", "dataProduct")
+            .queryParam("includeDeleted", false);
+
+    SearchLineageResult dataProductViewResult =
+        TestUtils.get(dataProductViewTarget, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(dataProductViewResult, "DataProduct view should return a valid response");
+    assertNotNull(dataProductViewResult.getNodes(), "DataProduct view should have nodes");
+    assertNotNull(
+        dataProductViewResult.getUpstreamEdges(), "DataProduct view should have upstream edges");
+    assertNotNull(
+        dataProductViewResult.getDownstreamEdges(),
+        "DataProduct view should have downstream edges");
+
+    // Test 4: All view
+    WebTarget allViewTarget =
+        getResource("lineage/getPlatformLineage")
+            .queryParam("view", "all")
+            .queryParam("includeDeleted", false);
+
+    SearchLineageResult allViewResult =
+        TestUtils.get(allViewTarget, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(allViewResult, "All view should return a valid response");
+    assertNotNull(allViewResult.getNodes(), "All view should have nodes");
+    assertNotNull(allViewResult.getUpstreamEdges(), "All view should have upstream edges");
+    assertNotNull(allViewResult.getDownstreamEdges(), "All view should have downstream edges");
+
+    // Clean up
+    deleteEdge(TABLES.get(0), TABLES.get(1));
+    deleteEdge(TABLES.get(1), TABLES.get(2));
+  }
+
+  @Order(15)
+  @Test
   void test_searchLineageForServiceEntity(TestInfo test) throws IOException {
     // Test that lineage search works correctly for service entities (apiService, databaseService)
 

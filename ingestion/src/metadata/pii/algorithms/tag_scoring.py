@@ -5,13 +5,16 @@ if TYPE_CHECKING:
 
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.type.classificationLanguages import (
+    ClassificationLanguage,
+)
 from metadata.pii.algorithms.preprocessing import preprocess_values
 from metadata.pii.algorithms.presidio_utils import (
     load_nlp_engine,
     set_presidio_logger_level,
 )
 from metadata.pii.models import ScoredTag
-from metadata.pii.tag_analyzer import TagAnalyzer
+from metadata.pii.tag_analyzer import TagAnalysis, TagAnalyzer
 
 
 @final
@@ -54,18 +57,22 @@ class TagScorer:
 
         results: List[ScoredTag] = []
         for analyzer in self._analyzers:
-            content_score = analyzer.analyze_content(values=str_values)
+            content_analysis = analyzer.analyze_content(values=str_values)
+            content_score = content_analysis.score
+
+            column_analysis = None
             column_score = 0.0
             if column_name is not None:
-                column_score = analyzer.analyze_column()
+                column_analysis = analyzer.analyze_column()
+                column_score = column_analysis.score
+
                 column_score *= max(column_score, self._column_name_contribution)
 
             total_score = content_score + column_score
             if total_score > self._score_cutoff:
                 reason = self._build_reason(
-                    analyzer=analyzer,
-                    content_score=content_score,
-                    column_score=column_score,
+                    content_analysis=content_analysis,
+                    column_analysis=column_analysis,
                 )
 
                 scored_tag = ScoredTag(
@@ -79,39 +86,45 @@ class TagScorer:
         return results
 
     def _build_reason(
-        self, analyzer: TagAnalyzer, content_score: float, column_score: float
+        self, content_analysis: TagAnalysis, column_analysis: Optional[TagAnalysis]
     ) -> str:
         """Build a human-readable reason for why this tag was matched."""
-        parts: List[str] = []
-        if content_score > 0:
-            parts.append(f"content match (score: {content_score:.2f})")
-        if column_score > 0:
-            parts.append(f"column name match (score: {column_score:.2f})")
+        reason = f"Content analysis:\n{content_analysis.explanation}\n"
 
-        if not parts:
-            return f"Detected by {analyzer.tag.name.root} recognizer"
+        if column_analysis is not None and column_analysis.explanation is not None:
+            reason += f"Column analysis:\n{column_analysis.explanation}\n"
 
-        return f"Detected by {analyzer.tag.name.root} recognizer: {', '.join(parts)}"
+        return reason
 
 
 class ScoreTagsForColumnService:
     _nlp_engine: "NlpEngine"
+    _language: ClassificationLanguage
 
-    def __init__(self, nlp_engine: Optional["NlpEngine"] = None):
+    def __init__(
+        self,
+        nlp_engine: Optional["NlpEngine"] = None,
+        language: ClassificationLanguage = ClassificationLanguage.en,
+    ):
         if nlp_engine is None:
             nlp_engine = load_nlp_engine()
         self._nlp_engine = nlp_engine
+        self._language = language
 
     def __call__(
         self, column: Column, data: Sequence[Any], tags_to_analyze: List[Tag]
     ) -> List[ScoredTag]:
         # Create analyzers for remaining candidate tags
         tag_analyzers = (
-            TagAnalyzer(tag=tag, column=column, nlp_engine=self._nlp_engine)
+            TagAnalyzer(
+                tag=tag,
+                column=column,
+                nlp_engine=self._nlp_engine,
+                language=self._language,
+            )
             for tag in tags_to_analyze
         )
 
-        # Score all tags
         classifier = TagScorer(tag_analyzers=tag_analyzers)
         column_name_str = (
             column.fullyQualifiedName.root if column.fullyQualifiedName else None

@@ -91,7 +91,6 @@ export const getMetricDetailsPageTabs = ({
   activeTab,
   editLineagePermission,
   editCustomAttributePermission,
-  viewAllPermission,
   viewCustomPropertiesPermission,
   getEntityFeedCount,
   fetchMetricDetails,

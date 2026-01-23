@@ -566,7 +566,7 @@ make unit_ingestion_dev_env  # For Python changes
 
 ## UI Pull Request Review Guidelines
 
-**IMPORTANT: When reviewing UI pull requests, you MUST follow the comprehensive guidelines in [/openmetadata-ui/UI_PR_REVIEW_GUIDELINES.md](../openmetadata-ui/UI_PR_REVIEW_GUIDELINES.md)**
+**IMPORTANT: When reviewing UI pull requests, you MUST follow the comprehensive guidelines in [/openmetadata-ui/UI_PR_REVIEW_GUIDELINES.md](../openmetadata-ui/UI_PR_REVIEW_GUIDELINES.md) and [/openmetadata-ui/src/main/resources/ui/playwright/PLAYWRIGHT_DEVELOPER_HANDBOOK.md](../openmetadata-ui/src/main/resources/ui/playwright/PLAYWRIGHT_DEVELOPER_HANDBOOK.md)**
 
 ### Critical UI Standards to Enforce
 

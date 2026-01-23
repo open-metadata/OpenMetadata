@@ -71,6 +71,8 @@ export const getTopicByFqn = async (fqn: string, params?: ListParams) => {
       params: {
         ...params,
         include: params?.include ?? Include.All,
+        includeRelations:
+          params?.includeRelations ?? 'owners:non-deleted,experts:non-deleted',
       },
     }
   );

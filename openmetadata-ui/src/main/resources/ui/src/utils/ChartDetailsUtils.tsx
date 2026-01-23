@@ -41,7 +41,6 @@ export const getChartDetailPageTabs = ({
   chartDetails,
   editLineagePermission,
   editCustomAttributePermission,
-  viewAllPermission,
   viewCustomPropertiesPermission,
   handleFeedCount,
   feedCount,

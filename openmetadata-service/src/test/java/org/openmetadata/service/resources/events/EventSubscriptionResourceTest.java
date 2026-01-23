@@ -41,6 +41,7 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.openmetadata.schema.alert.type.EmailAlertConfig;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.domains.CreateDomain;
@@ -2597,5 +2598,108 @@ public class EventSubscriptionResourceTest
     deleteEntity(sub4.getId(), ADMIN_AUTH_HEADERS);
     templateTest.deleteEntity(template1.getId(), ADMIN_AUTH_HEADERS);
     templateTest.deleteEntity(template2.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  private void assertSqlInjectionAttempt(Map<String, String> params) throws IOException {
+    ResultList<EventSubscription> results = null;
+    try {
+      results = listEntities(params, ADMIN_AUTH_HEADERS);
+    } catch (HttpResponseException e) {
+      // SQL injection should not crash the server with a 500 error
+      assertTrue(e.getStatusCode() != 500, "SQL injection should not cause internal server error");
+      return;
+    }
+
+    // If no exception is thrown, malicious input must not expose any data
+    assertNotNull(results, "Malicious input should not produce null results");
+    assertTrue(
+        results.getData() == null || results.getData().isEmpty(),
+        "Malicious input should return empty results");
+  }
+
+  @Test
+  void test_parameterizedQueriesPreventSqlInjection(TestInfo test) throws IOException {
+    Map<String, String> sqlInjectionAttempts = new HashMap<>();
+    sqlInjectionAttempts.put("alertType", "Observability' OR '1'='1");
+    assertSqlInjectionAttempt(sqlInjectionAttempts);
+
+    sqlInjectionAttempts.clear();
+    sqlInjectionAttempts.put("alertType", "Observability'--");
+    assertSqlInjectionAttempt(sqlInjectionAttempts);
+
+    sqlInjectionAttempts.clear();
+    sqlInjectionAttempts.put("alertType", "' UNION SELECT * FROM user_entity--");
+    assertSqlInjectionAttempt(sqlInjectionAttempts);
+
+    sqlInjectionAttempts.clear();
+    sqlInjectionAttempts.put(
+        "notificationTemplate", "00000000-0000-0000-0000-000000000000' OR '1'='1");
+    assertSqlInjectionAttempt(sqlInjectionAttempts);
+
+    Map<String, String> validParams = new HashMap<>();
+    validParams.put("alertType", "Observability");
+    ResultList<EventSubscription> validResults = listEntities(validParams, ADMIN_AUTH_HEADERS);
+    assertNotNull(validResults, "Valid alertType should work correctly");
+  }
+
+  @Test
+  void post_createWithNullDestinationConfig_400() {
+    CreateEventSubscription request = createRequest("nullConfig");
+    SubscriptionDestination destination = new SubscriptionDestination();
+    destination.setCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL);
+    destination.setType(SubscriptionDestination.SubscriptionType.EMAIL);
+    request.setDestinations(List.of(destination));
+
+    assertResponse(
+        () -> createEntity(request, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Destination configuration is required for Email type");
+  }
+
+  @Test
+  void post_createWithEmptyEmailReceivers_400() {
+    CreateEventSubscription request = createRequest("emptyReceivers");
+    SubscriptionDestination destination = new SubscriptionDestination();
+    destination.setCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL);
+    destination.setType(SubscriptionDestination.SubscriptionType.EMAIL);
+    destination.setConfig(new EmailAlertConfig());
+    request.setDestinations(List.of(destination));
+
+    assertResponse(
+        () -> createEntity(request, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Email destination requires at least one email address in 'receivers'");
+  }
+
+  @Test
+  void post_createWithInvalidEmailFormat_400() {
+    CreateEventSubscription request = createRequest("invalidEmail");
+    SubscriptionDestination destination = new SubscriptionDestination();
+    destination.setCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL);
+    destination.setType(SubscriptionDestination.SubscriptionType.EMAIL);
+    EmailAlertConfig emailConfig =
+        new EmailAlertConfig().withReceivers(new HashSet<>(List.of("invalid-email")));
+    destination.setConfig(emailConfig);
+    request.setDestinations(List.of(destination));
+
+    assertResponse(
+        () -> createEntity(request, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid email format: 'invalid-email'");
+  }
+
+  @Test
+  void post_createWithMissingWebhookEndpoint_400() {
+    CreateEventSubscription request = createRequest("missingEndpoint");
+    SubscriptionDestination destination = new SubscriptionDestination();
+    destination.setCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL);
+    destination.setType(SubscriptionDestination.SubscriptionType.WEBHOOK);
+    destination.setConfig(new Webhook());
+    request.setDestinations(List.of(destination));
+
+    assertResponse(
+        () -> createEntity(request, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Webhook destination requires an 'endpoint' URL");
   }
 }

@@ -10,16 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ColumnsType } from 'antd/lib/table';
 import { get, toLower } from 'lodash';
-import { Link, NavigateFunction } from 'react-router-dom';
+import { NavigateFunction } from 'react-router-dom';
 import { ReactComponent as ExportIcon } from '../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../assets/svg/ic-import.svg';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import { ManageButtonItemLabel } from '../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
-import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
@@ -35,17 +33,12 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../enums/entity.enum';
-import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { PageType } from '../../generated/system/ui/page';
-import { UsageDetails } from '../../generated/type/entityUsage';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import { exportDatabaseDetailsInCSV } from '../../rest/databaseAPI';
-import { getEntityImportPath, getEntityName } from '../EntityUtils';
+import { getEntityImportPath } from '../EntityUtils';
 import { t } from '../i18next/LocalUtil';
-import { getEntityDetailsPath } from '../RouterUtils';
-import { ownerTableObject } from '../TableColumn.util';
-import { getUsagePercentile } from '../TableUtils';
 import { DatabaseDetailPageTabProps } from './DatabaseClassBase';
 
 export const getQueryFilterForDatabase = (
@@ -73,58 +66,9 @@ export const getQueryFilterForDatabase = (
 
 export const DatabaseFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS}, ${TabSpecificField.DOMAINS},${TabSpecificField.DATA_PRODUCTS}`;
 
-export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
-  {
-    title: t('label.schema-name'),
-    dataIndex: 'name',
-    key: 'name',
-    width: 250,
-    render: (_, record: DatabaseSchema) => (
-      <div className="d-inline-flex w-max-90">
-        <Link
-          className="break-word"
-          data-testid={record.name}
-          to={
-            record.fullyQualifiedName
-              ? getEntityDetailsPath(
-                  EntityType.DATABASE_SCHEMA,
-                  record.fullyQualifiedName
-                )
-              : ''
-          }>
-          {getEntityName(record)}
-        </Link>
-      </div>
-    ),
-  },
-  {
-    title: t('label.description'),
-    dataIndex: 'description',
-    key: 'description',
-    render: (text: string) =>
-      text?.trim() ? (
-        <RichTextEditorPreviewerNew markdown={text} />
-      ) : (
-        <span className="text-grey-muted">
-          {t('label.no-entity', { entity: t('label.description') })}
-        </span>
-      ),
-  },
-  ...ownerTableObject<DatabaseSchema>(),
-  {
-    title: t('label.usage'),
-    dataIndex: 'usageSummary',
-    key: 'usageSummary',
-    width: 120,
-    render: (text: UsageDetails) =>
-      getUsagePercentile(text?.weeklyStats?.percentileRank ?? 0),
-  },
-];
-
 export const getDatabasePageBaseTabs = ({
   activeTab,
   database,
-  viewAllPermission,
   viewCustomPropertiesPermission,
   schemaInstanceCount,
   feedCount,

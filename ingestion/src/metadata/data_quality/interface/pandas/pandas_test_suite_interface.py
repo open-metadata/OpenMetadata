@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
+from metadata.profiler.processor.runner import PandasRunner
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.logger import test_suite_logger
 
@@ -61,13 +62,16 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
             self.partition_details,
         ) = self._get_table_config()
 
-        self.dataset = self.sampler.get_dataset()
+        self._runner = PandasRunner(
+            dataset=self.sampler.get_dataset(),
+            raw_dataset=self.sampler.raw_dataset,
+        )
 
     def _get_validator_builder(
         self, test_case: TestCase, entity_type: str
     ) -> ValidatorBuilder:
         return self.validator_builder_class(
-            runner=self.dataset,
+            runner=self._runner,
             test_case=test_case,
             entity_type=entity_type,
             source_type=SourceType.PANDAS,

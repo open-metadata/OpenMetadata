@@ -175,13 +175,14 @@ export const DomainLabelV2 = <
       hasPermission && (
         <DomainSelectableList
           hasPermission={Boolean(hasPermission)}
+          isClearable={props.isClearable}
           multiple={props.multiple}
           selectedDomain={activeDomain}
           onUpdate={handleDomainSave}
         />
       )
     );
-  }, [hasPermission, activeDomain, handleDomainSave]);
+  }, [hasPermission, activeDomain, handleDomainSave, props.isClearable]);
 
   const label = useMemo(() => {
     if (props.showDomainHeading) {

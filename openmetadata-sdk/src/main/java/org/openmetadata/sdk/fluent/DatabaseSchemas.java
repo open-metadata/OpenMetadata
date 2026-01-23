@@ -71,6 +71,57 @@ public final class DatabaseSchemas {
     return getClient().databaseSchemas().create(request);
   }
 
+  // ==================== Direct Access Methods ====================
+
+  public static DatabaseSchema get(String id) {
+    return getClient().databaseSchemas().get(id);
+  }
+
+  public static DatabaseSchema get(String id, String fields) {
+    return getClient().databaseSchemas().get(id, fields);
+  }
+
+  public static DatabaseSchema get(String id, String fields, String include) {
+    return getClient().databaseSchemas().get(id, fields, include);
+  }
+
+  public static DatabaseSchema getByName(String fqn) {
+    return getClient().databaseSchemas().getByName(fqn);
+  }
+
+  public static DatabaseSchema getByName(String fqn, String fields) {
+    return getClient().databaseSchemas().getByName(fqn, fields);
+  }
+
+  public static DatabaseSchema update(String id, DatabaseSchema entity) {
+    return getClient().databaseSchemas().update(id, entity);
+  }
+
+  public static void delete(String id) {
+    getClient().databaseSchemas().delete(id);
+  }
+
+  public static void delete(String id, java.util.Map<String, String> params) {
+    getClient().databaseSchemas().delete(id, params);
+  }
+
+  public static void restore(String id) {
+    getClient().databaseSchemas().restore(id);
+  }
+
+  public static org.openmetadata.sdk.models.ListResponse<DatabaseSchema> list(
+      org.openmetadata.sdk.models.ListParams params) {
+    return getClient().databaseSchemas().list(params);
+  }
+
+  public static org.openmetadata.schema.type.EntityHistory getVersionList(java.util.UUID id) {
+    return getClient().databaseSchemas().getVersionList(id);
+  }
+
+  public static DatabaseSchema getVersion(String id, Double version) {
+    return getClient().databaseSchemas().getVersion(id, version);
+  }
+
   // ==================== Finding/Retrieval ====================
 
   public static DatabaseSchemaFinder find(String id) {

@@ -63,6 +63,11 @@
             "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
             "type": "string"
         },
+        "databaseSchema": {
+            "title": "Database Schema",
+            "description": "Database Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.",
+            "type": "string"
+        },
         "schemaFilterPattern":{
             "title": "Default Schema Filter Pattern",
             "description": "Regex to only include/exclude schemas that matches the pattern.",

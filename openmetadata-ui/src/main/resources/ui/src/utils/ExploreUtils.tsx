@@ -364,10 +364,17 @@ export const getAggregationOptions = async (
   value: string,
   filter: string,
   isIndependent: boolean,
-  deleted = false
+  deleted = false,
+  size = 10
 ) => {
   return isIndependent
-    ? postAggregateFieldOptions(index, key, value, filter)
+    ? postAggregateFieldOptions({
+        index: Array.isArray(index) ? index.join(',') : index,
+        fieldName: key,
+        fieldValue: value,
+        query: filter,
+        size,
+      })
     : getAggregateFieldOptions(index, key, value, filter, undefined, deleted);
 };
 

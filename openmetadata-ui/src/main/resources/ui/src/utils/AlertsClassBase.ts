@@ -73,9 +73,8 @@ class AlertsClassBase {
     initialData?: EventSubscription
   ) {
     const destinations = data.destinations?.map((d) => {
-      const initialDestination = initialData?.destinations?.find(
-        (destination) => destination.type === d.type
-      );
+      const initialDestination =
+        d.id && initialData?.destinations?.find((dest) => dest.id === d.id);
 
       return {
         ...(initialDestination ?? {}),
@@ -117,8 +116,8 @@ class AlertsClassBase {
     const { alertName, alertDisplayName, destinations } =
       this.getCommonAlertFieldsData(data, initialData);
     // Remove timeout from alert object since it's only for UI
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { timeout, readTimeout, ...finalData } = data;
+
+    const { timeout: _timeout, readTimeout: _readTimeout, ...finalData } = data;
 
     return {
       ...(finalData as CreateEventSubscription),

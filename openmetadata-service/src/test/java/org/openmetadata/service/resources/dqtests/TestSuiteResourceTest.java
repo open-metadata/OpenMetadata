@@ -1190,6 +1190,16 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   private DataQualityReport getDataQualityReport(
       String query, String aggregationQuery, String index, Map<String, String> authHeaders)
       throws IOException {
+    return getDataQualityReport(query, aggregationQuery, index, null, authHeaders);
+  }
+
+  private DataQualityReport getDataQualityReport(
+      String query,
+      String aggregationQuery,
+      String index,
+      String domain,
+      Map<String, String> authHeaders)
+      throws IOException {
     WebTarget target = getResource("dataQuality/testSuites/dataQualityReport");
     if (query != null) {
       // URL encode the query parameter as it contains special characters like {, }, etc.
@@ -1199,7 +1209,141 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     }
     target = target.queryParam("aggregationQuery", aggregationQuery);
     target = target.queryParam("index", index);
+    if (domain != null) {
+      target = target.queryParam("domain", domain);
+    }
     return TestUtils.get(target, DataQualityReport.class, authHeaders);
+  }
+
+  @Test
+  void test_getDataQualityReport_domainFilter(TestInfo testInfo) throws IOException {
+    // Setup: Create tables with different domains
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
+
+    // Create a table with DOMAIN1
+    CreateTable tableWithDomainReq =
+        tableResourceTest
+            .createRequest(testInfo)
+            .withName("domainFilterTestTable_" + UUID.randomUUID())
+            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName(C1)
+                        .withDisplayName("c1")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(10)))
+            .withDomains(List.of(DOMAIN1.getFullyQualifiedName()));
+    Table tableWithDomain =
+        tableResourceTest.createAndCheckEntity(tableWithDomainReq, ADMIN_AUTH_HEADERS);
+    String tableLinkWithDomain =
+        String.format("<#E::table::%s>", tableWithDomain.getFullyQualifiedName());
+
+    // Create a table without domain
+    CreateTable tableWithoutDomainReq =
+        tableResourceTest
+            .createRequest(testInfo)
+            .withName("noDomainFilterTestTable_" + UUID.randomUUID())
+            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName(C1)
+                        .withDisplayName("c1")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(10)));
+    Table tableWithoutDomain =
+        tableResourceTest.createAndCheckEntity(tableWithoutDomainReq, ADMIN_AUTH_HEADERS);
+    String tableLinkWithoutDomain =
+        String.format("<#E::table::%s>", tableWithoutDomain.getFullyQualifiedName());
+
+    // Create test suites for both tables
+    CreateTestSuite createTestSuiteWithDomain =
+        createRequest(tableWithDomain.getFullyQualifiedName());
+    createBasicTestSuite(createTestSuiteWithDomain, ADMIN_AUTH_HEADERS);
+
+    CreateTestSuite createTestSuiteWithoutDomain =
+        createRequest(tableWithoutDomain.getFullyQualifiedName());
+    createBasicTestSuite(createTestSuiteWithoutDomain, ADMIN_AUTH_HEADERS);
+
+    // Create test cases for table with domain
+    for (int i = 0; i < 3; i++) {
+      CreateTestCase createTestCase =
+          testCaseResourceTest
+              .createRequest("DomainTestCase_" + UUID.randomUUID())
+              .withDescription("Test case for table with domain")
+              .withEntityLink(tableLinkWithDomain);
+      testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
+    }
+
+    // Create test cases for table without domain
+    for (int i = 0; i < 2; i++) {
+      CreateTestCase createTestCase =
+          testCaseResourceTest
+              .createRequest("NoDomainTestCase_" + UUID.randomUUID())
+              .withDescription("Test case for table without domain")
+              .withEntityLink(tableLinkWithoutDomain);
+      testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
+    }
+
+    String countAggregation = "bucketName=count:aggType=cardinality:field=fullyQualifiedName";
+
+    // Wait for indexing
+    Awaitility.await()
+        .pollInterval(1, TimeUnit.SECONDS)
+        .atMost(60, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              DataQualityReport report =
+                  getDataQualityReport(null, countAggregation, "testCase", ADMIN_AUTH_HEADERS);
+              assertNotNull(report);
+              assertNotNull(report.getData());
+              assertFalse(report.getData().isEmpty(), "Should have some aggregation data");
+            });
+
+    // Test 1: Get report without domain filter - should return all test cases
+    DataQualityReport reportWithoutFilter =
+        getDataQualityReport(null, countAggregation, "testCase", ADMIN_AUTH_HEADERS);
+    assertNotNull(reportWithoutFilter);
+    assertNotNull(reportWithoutFilter.getData());
+    assertFalse(
+        reportWithoutFilter.getData().isEmpty(),
+        "Report without domain filter should have aggregation data");
+
+    // Test 2: Get report with domain filter - should return only test cases from that domain
+    DataQualityReport reportWithDomainFilter =
+        getDataQualityReport(
+            null,
+            countAggregation,
+            "testCase",
+            DOMAIN1.getFullyQualifiedName(),
+            ADMIN_AUTH_HEADERS);
+    assertNotNull(reportWithDomainFilter);
+    assertNotNull(reportWithDomainFilter.getData());
+
+    // Domain filter should reduce results since we're filtering to only one domain
+    // that contains the table with domain assigned
+    int countWithoutFilter = reportWithoutFilter.getData().size();
+    int countWithFilter = reportWithDomainFilter.getData().size();
+    assertTrue(
+        countWithFilter <= countWithoutFilter,
+        String.format(
+            "Count with domain filter (%d) should be <= count without filter (%d)",
+            countWithFilter, countWithoutFilter));
+
+    // Test 3: Test with testCaseResolutionStatus index (uses different domain field path)
+    String resolutionAggregation =
+        "bucketName=status:aggType=terms:field=testCaseResolutionStatusType";
+    DataQualityReport resolutionReport =
+        getDataQualityReport(
+            null,
+            resolutionAggregation,
+            "testCaseResolutionStatus",
+            DOMAIN1.getFullyQualifiedName(),
+            ADMIN_AUTH_HEADERS);
+    assertNotNull(resolutionReport);
+    assertNotNull(resolutionReport.getData());
   }
 
   @Test

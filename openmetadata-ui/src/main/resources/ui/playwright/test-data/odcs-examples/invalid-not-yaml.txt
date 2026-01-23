@@ -1,0 +1,2 @@
+This is just plain text, not YAML or JSON.
+It should fail to parse.

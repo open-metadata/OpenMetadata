@@ -104,7 +104,7 @@ import org.quartz.SchedulerException;
 @Collection(name = "apps", order = 8)
 @Slf4j
 public class AppResource extends EntityResource<App, AppRepository> {
-  public static final String COLLECTION_PATH = "v1/apps/";
+  public static final String COLLECTION_PATH = "/v1/apps/";
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   private PipelineServiceClientInterface pipelineServiceClient;
   static final String FIELDS = "owners";
@@ -607,7 +607,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    App app = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    if (include != Include.DELETED && !Boolean.TRUE.equals(app.getDeleted())) {
+      return ApplicationHandler.getInstance()
+          .appWithDecryptedAppConfiguration(app, Entity.getCollectionDAO(), searchRepository);
+    } else {
+      return app;
+    }
   }
 
   @GET
@@ -643,7 +649,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    App app = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    if (include != Include.DELETED && !Boolean.TRUE.equals(app.getDeleted())) {
+      return ApplicationHandler.getInstance()
+          .appWithDecryptedAppConfiguration(app, Entity.getCollectionDAO(), searchRepository);
+    } else {
+      return app;
+    }
   }
 
   @GET

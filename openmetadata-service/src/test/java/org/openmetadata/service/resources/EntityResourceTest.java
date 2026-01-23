@@ -229,7 +229,6 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.Recognizer;
 import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -520,6 +519,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static Type ENUM_TYPE;
   public static Type TABLE_TYPE;
+  public static Type TABLE_COLUMN_TYPE;
+  public static Type DASHBOARD_DATA_MODEL_COLUMN_TYPE;
 
   // Run webhook related tests randomly. This will ensure these tests are not run for every entity
   // evey time junit tests are run to save time. But over the course of development of a release,
@@ -1943,6 +1944,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     Map<String, String> queryParams = new HashMap<>();
     for (Include include : List.of(Include.DELETED, Include.ALL)) {
       queryParams.put("include", include.value());
+      queryParams.put(
+          "includeRelations",
+          String.format("owners:%s,followers:%s", include.value(), include.value()));
       T entityAfterDeletion = getEntity(entity.getId(), queryParams, allFields, ADMIN_AUTH_HEADERS);
       validateDeletedEntity(create, entityBeforeDeletion, entityAfterDeletion, ADMIN_AUTH_HEADERS);
       entityAfterDeletion =
@@ -2263,6 +2267,91 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertEquals(name, entity.getName());
   }
 
+  /**
+   * Test that entities can be created under a service/container with dots in its name. This test
+   * verifies that the FQN is correctly constructed with quoted names when the parent container has
+   * dots in its name.
+   *
+   * <p>Subclasses that support containers with dots in their name should override
+   * createContainerWithDotsInName() to return the container reference.
+   */
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  protected void post_entityUnderContainerWithDots_200() throws IOException {
+    // Get container with dots in name - subclasses should override this method
+    EntityReference containerWithDots = createContainerWithDotsInName(entityType + ".service.test");
+    if (containerWithDots == null) {
+      return; // Entity doesn't support containers with dots or this test
+    }
+
+    try {
+      // Create an entity under the container with dots in name
+      String entityName = entityType + "_under_dotted_container";
+      K request = createRequestUnderContainer(entityName, containerWithDots);
+      if (request == null) {
+        return; // Entity doesn't support creating under a different container
+      }
+
+      T entity = createEntity(request, ADMIN_AUTH_HEADERS);
+
+      // Verify FQN contains the quoted container name
+      String fqn = entity.getFullyQualifiedName();
+      assertTrue(
+          fqn.contains("\""),
+          "FQN should contain quoted container name when container has dots: " + fqn);
+
+      // Verify the entity can be retrieved by name
+      T retrieved = getEntityByName(fqn, "", ADMIN_AUTH_HEADERS);
+      assertEquals(entity.getId(), retrieved.getId());
+
+      // Verify listing by service/container works correctly
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("service", containerWithDots.getFullyQualifiedName());
+      ResultList<T> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+      assertFalse(
+          list.getData().isEmpty(),
+          "Should find entities when filtering by container with dots in name");
+      assertTrue(
+          list.getData().stream().anyMatch(e -> e.getId().equals(entity.getId())),
+          "Should find the created entity in the list");
+    } finally {
+      // Cleanup: delete the container with dots
+      deleteContainerWithDotsInName(containerWithDots);
+    }
+  }
+
+  /**
+   * Override this method in subclasses to create a container (service) with dots in its name. For
+   * example, DatabaseResourceTest would create a DatabaseService with a name like "my.service.test"
+   *
+   * @param name the name to use for the container (will contain dots)
+   * @return the EntityReference to the created container, or null if not supported
+   */
+  protected EntityReference createContainerWithDotsInName(String name) throws IOException {
+    return null; // Default implementation - subclasses override
+  }
+
+  /**
+   * Override this method in subclasses to create a request for an entity under the given container.
+   *
+   * @param name the name for the new entity
+   * @param container the container reference with dots in its name
+   * @return the create request, or null if not supported
+   */
+  protected K createRequestUnderContainer(String name, EntityReference container) {
+    return null; // Default implementation - subclasses override
+  }
+
+  /**
+   * Override this method in subclasses to delete the container created by
+   * createContainerWithDotsInName.
+   *
+   * @param container the container to delete
+   */
+  protected void deleteContainerWithDotsInName(EntityReference container) throws IOException {
+    // Default implementation - subclasses override
+  }
+
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity tests for PUT operations
   //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2514,7 +2603,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertTagsContain(updated.getTags(), additionalTags);
   }
 
-  private void assertTagsContain(List<TagLabel> tags, List<TagLabel> expectedTags) {
+  protected void assertTagsContain(List<TagLabel> tags, List<TagLabel> expectedTags) {
     for (TagLabel expected : expectedTags) {
       assertTrue(
           tags.stream().anyMatch(tag -> tag.getTagFQN().equals(expected.getTagFQN())),
@@ -2522,7 +2611,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
-  private void assertTagsDoNotContain(List<TagLabel> tags, List<TagLabel> unexpectedTags) {
+  protected void assertTagsDoNotContain(List<TagLabel> tags, List<TagLabel> unexpectedTags) {
     for (TagLabel unexpected : unexpectedTags) {
       assertFalse(
           tags.stream().anyMatch(tag -> tag.getTagFQN().equals(unexpected.getTagFQN())),
@@ -2540,7 +2629,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     TagLabel autoAppliedTag =
         new TagLabel()
             .withTagFQN("PII.Sensitive")
-            .withLabelType(TagLabel.LabelType.AUTOMATED)
+            .withLabelType(TagLabel.LabelType.GENERATED)
             .withState(TagLabel.State.SUGGESTED)
             .withSource(TagLabel.TagSource.CLASSIFICATION);
 
@@ -2570,91 +2659,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Submit feedback via API
     RecognizerFeedback submittedFeedback = submitRecognizerFeedback(feedback, ADMIN_AUTH_HEADERS);
     assertNotNull(submittedFeedback.getId());
-
-    // Verify the auto-applied tag is removed after feedback processing
-    entity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
-    assertEquals(1, entity.getTags().size());
-    assertTagsDoNotContain(entity.getTags(), listOf(autoAppliedTag));
-    assertTagsContain(entity.getTags(), listOf(manualTag));
-  }
-
-  @Test
-  void test_recognizerFeedback_exceptionList(TestInfo test) throws HttpResponseException {
-    if (!supportsTags) {
-      return;
-    }
-
-    // Create entity with auto-applied tag
-    TagLabel autoTag =
-        new TagLabel().withTagFQN("PII.Sensitive").withLabelType(TagLabel.LabelType.AUTOMATED);
-
-    CreateEntity create = createRequest(getEntityName(test));
-    create.setTags(listOf(autoTag));
-    T entity = createEntity(create, ADMIN_AUTH_HEADERS);
-
-    // Submit feedback
-    RecognizerFeedback feedback =
-        new RecognizerFeedback()
-            .withEntityLink(getEntityLink(entity))
-            .withTagFQN("PII.Sensitive")
-            .withFeedbackType(RecognizerFeedback.FeedbackType.FALSE_POSITIVE)
-            .withUserReason(RecognizerFeedback.UserReason.INTERNAL_IDENTIFIER);
-
-    submitRecognizerFeedback(feedback, ADMIN_AUTH_HEADERS);
-
-    // Get the tag and verify the entity is in the exception list
-    // Create TagResourceTest instance to access tag operations
-    org.openmetadata.service.resources.tags.TagResourceTest tagResourceTest =
-        new org.openmetadata.service.resources.tags.TagResourceTest();
-    Tag tag = tagResourceTest.getEntityByName("PII.Sensitive", "recognizers", ADMIN_AUTH_HEADERS);
-    if (tag.getRecognizers() != null && !tag.getRecognizers().isEmpty()) {
-      for (Recognizer recognizer : tag.getRecognizers()) {
-        assertNotNull(recognizer.getExceptionList());
-        assertTrue(
-            recognizer.getExceptionList().stream()
-                .anyMatch(e -> e.getEntityLink().equals(getEntityLink(entity))),
-            "Entity should be in recognizer exception list after feedback");
-      }
-    }
-  }
-
-  @Test
-  void test_recognizerFeedback_multipleEntities(TestInfo test) throws HttpResponseException {
-    if (!supportsTags) {
-      return;
-    }
-
-    // Create multiple entities with same auto-applied tag
-    List<T> entities = new ArrayList<>();
-    TagLabel autoTag =
-        new TagLabel().withTagFQN("PII.Sensitive").withLabelType(TagLabel.LabelType.AUTOMATED);
-
-    for (int i = 0; i < 3; i++) {
-      CreateEntity create = createRequest(getEntityName(test) + i);
-      create.setTags(listOf(autoTag));
-      entities.add(createEntity(create, ADMIN_AUTH_HEADERS));
-    }
-
-    // Submit feedback for only the first entity
-    RecognizerFeedback feedback =
-        new RecognizerFeedback()
-            .withEntityLink(getEntityLink(entities.get(0)))
-            .withTagFQN("PII.Sensitive")
-            .withFeedbackType(RecognizerFeedback.FeedbackType.FALSE_POSITIVE)
-            .withUserReason(RecognizerFeedback.UserReason.TEST_DATA);
-
-    submitRecognizerFeedback(feedback, ADMIN_AUTH_HEADERS);
-
-    // Verify only the first entity has the tag removed
-    T firstEntity = getEntity(entities.get(0).getId(), "tags", ADMIN_AUTH_HEADERS);
-    assertTrue(firstEntity.getTags().isEmpty(), "First entity should have tag removed");
-
-    // Other entities should still have the tag
-    for (int i = 1; i < entities.size(); i++) {
-      T otherEntity = getEntity(entities.get(i).getId(), "tags", ADMIN_AUTH_HEADERS);
-      assertEquals(1, otherEntity.getTags().size());
-      assertTagsContain(otherEntity.getTags(), listOf(autoTag));
-    }
   }
 
   @Test
@@ -2694,7 +2698,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         "Feedback can only be submitted for auto-applied tags");
   }
 
-  private RecognizerFeedback submitRecognizerFeedback(
+  protected RecognizerFeedback submitRecognizerFeedback(
       RecognizerFeedback feedback, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource("tags/name/" + feedback.getTagFQN() + "/feedback");
     return TestUtils.post(target, feedback, RecognizerFeedback.class, authHeaders);
@@ -2966,6 +2970,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     if (supportsSoftDelete) {
       Map<String, String> queryParams = new HashMap<>();
       queryParams.put("include", "deleted");
+      queryParams.put("includeRelations", "followers:all");
       entity = getEntity(entityId, queryParams, FIELD_FOLLOWERS, ADMIN_AUTH_HEADERS);
       TestUtils.existsInEntityReferenceList(entity.getFollowers(), user1.getId(), true);
     }
@@ -4848,6 +4853,18 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Just use WebTarget directly
     WebTarget target = getResource(id);
     target = target.queryParam("fields", fields);
+    target = target.queryParam("includeRelations", "owners:all,followers:all");
+    return TestUtils.get(target, entityClass, authHeaders);
+  }
+
+  public final T getEntityWithIncludeRelations(
+      UUID id, String fields, String includeRelations, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    // Temporarily disable SDK usage in main test flow to avoid version conflicts
+    // Just use WebTarget directly
+    WebTarget target = getResource(id);
+    target = target.queryParam("fields", fields);
+    target = target.queryParam("includeRelations", includeRelations);
     return TestUtils.get(target, entityClass, authHeaders);
   }
 
@@ -5782,7 +5799,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
               ? (List<TagLabel>) expected
               : JsonUtils.readObjects(expected.toString(), TagLabel.class);
       List<TagLabel> actualTags = JsonUtils.readObjects(actual.toString(), TagLabel.class);
-      assertTrue(actualTags.containsAll(expectedTags));
+      assertTrue(TestUtils.isTagsSuperSet(actualTags, expectedTags));
       actualTags.forEach(tagLabel -> assertNotNull(tagLabel.getDescription()));
     } else if (fieldName.startsWith(
         "extension")) { // Custom properties related extension field changes

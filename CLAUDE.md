@@ -134,6 +134,8 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 - **Theme and Styles**: MUI theme data and styles are defined in `openmetadata-ui-core-components`
 - **Colors and Design Tokens**: Always reference theme colors and design tokens from the MUI theme, not hardcoded values
 - **Legacy Components**: Ant Design components remain in existing code but should be replaced with MUI equivalents when refactoring
+- Do not add unnecessary spacing between logs and code.
+- In Java, avoid wildcards imports (e.g., use `import java.util.List;` instead of `import java.util.*;`)
 - Custom styles in `.less` files with component-specific naming (legacy pattern)
 - Follow BEM naming convention for custom CSS classes
 - Use CSS modules where appropriate
@@ -177,18 +179,25 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 
 ### Comments Policy
 - **Do NOT add unnecessary comments** - write self-documenting code
+- **NEVER add single-line comments that describe what the code obviously does**
 - Only include comments for:
     - Complex business logic that isn't obvious
     - Non-obvious algorithms or workarounds
     - Public API JavaDoc documentation
     - TODO/FIXME with ticket references
-- Avoid obvious comments like `// increment counter` or `// create new user`
+- Bad examples (NEVER do this):
+    - `// Create user` before `createUser()`
+    - `// Get client` before `SdkClients.adminClient()`
+    - `// Verify domain is set` before `assertNotNull(entity.getDomain())`
+    - `// User names are lowercased` when the code `toLowerCase()` makes it obvious
+- If the code needs a comment to be understood, refactor the code to be clearer instead
 
 ### Java Code Requirements
 - **Always mention** running `mvn spotless:apply` when generating/modifying .java files
 - Use clear, descriptive variable and method names instead of comments
 - Follow existing project patterns and conventions
 - Generate production-ready code, not tutorial code
+- Create integration tests in openmetadata-integration-tests
 
 ### TypeScript/Frontend Code Requirements
 - **NEVER use `any` type** in TypeScript code - always use proper types
@@ -202,6 +211,15 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
   3. Relative imports for utilities and components
   4. Asset imports (SVGs, styles)
   5. Type imports grouped separately when needed
+
+### Python Code Requirements
+- **Use pytest, not unittest** - write tests using pytest style with plain `assert` statements
+- Use pytest fixtures for test setup instead of `setUp`/`tearDown` methods
+- Use `unittest.mock` for mocking (MagicMock, patch) - this is compatible with pytest
+- Test classes should not inherit from `TestCase` - use plain classes prefixed with `Test`
+- Use `assert x == y` instead of `self.assertEqual(x, y)`
+- Use `assert x is None` instead of `self.assertIsNone(x)`
+- Use `assert "text" in string` instead of `self.assertIn("text", string)`
 
 ### Response Format
 - Provide clean code blocks without unnecessary explanations

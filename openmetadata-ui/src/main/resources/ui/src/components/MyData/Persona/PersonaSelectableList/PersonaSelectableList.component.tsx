@@ -79,6 +79,10 @@ export const PersonaSelectableList = ({
   const dropdownRef = useRef<RefSelectProps | null>(null);
 
   useEffect(() => {
+    setIsDropdownOpen(popupVisible);
+  }, [popupVisible]);
+
+  useEffect(() => {
     const observer = new MutationObserver(() => {
       const dropdown = document.querySelector(
         '.persona-custom-dropdown-class'
@@ -101,7 +105,7 @@ export const PersonaSelectableList = ({
     }
 
     return () => observer.disconnect();
-  }, [isDropdownOpen]);
+  }, [isDropdownOpen, isDefaultPersona]);
 
   const fetchOptions = async (searchText: string, after?: string) => {
     if (searchText) {
@@ -218,7 +222,7 @@ export const PersonaSelectableList = ({
                 (persona) => persona.fullyQualifiedName as string
               )}
               dropdownStyle={{
-                maxHeight: '200px',
+                maxHeight: 'fit-content',
                 overflow: 'auto',
               }}
               maxTagCount={3}
@@ -228,6 +232,7 @@ export const PersonaSelectableList = ({
                 </span>
               )}
               mode={!isDefaultPersona ? 'multiple' : undefined}
+              open={isDropdownOpen}
               options={selectOptions?.map((persona) => ({
                 label: getEntityName(persona),
                 value: persona.fullyQualifiedName,

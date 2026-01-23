@@ -70,3 +70,15 @@ MYSQL_TEST_GET_QUERIES_SLOW_LOGS = textwrap.dedent(
 SELECT `sql_text` from mysql.slow_log limit 1;
 """
 )
+
+MYSQL_GET_ROUTINES = """
+    SELECT 
+    ROUTINE_NAME AS routine_name,
+    ROUTINE_SCHEMA AS schema_name,
+    ROUTINE_DEFINITION AS definition,
+    ROUTINE_TYPE AS routine_type,
+    ROUTINE_COMMENT AS description
+FROM information_schema.ROUTINES
+WHERE ROUTINE_TYPE IN ('PROCEDURE', 'FUNCTION')
+AND ROUTINE_SCHEMA = '{schema_name}';
+"""

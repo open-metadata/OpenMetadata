@@ -26,7 +26,9 @@ import AddNotificationPage from '../../pages/AddNotificationPage/AddNotification
 import AlertDetailsPage from '../../pages/AlertDetailsPage/AlertDetailsPage';
 import AppearanceConfigSettingsPage from '../../pages/AppearanceConfigSettingsPage/AppearanceConfigSettingsPage';
 import ApplicationPage from '../../pages/Application/ApplicationPage';
+import AuditLogsPage from '../../pages/AuditLogsPage/AuditLogsPage';
 import BotsPageV1 from '../../pages/BotsPageV1/BotsPageV1.component';
+import ColumnBulkOperations from '../../pages/ColumnBulkOperations/ColumnBulkOperations.component';
 import DataAssetRulesPage from '../../pages/Configuration/DataAssetRules/DataAssetRulesPage';
 import EditLoginConfiguration from '../../pages/Configuration/EditLoginConfiguration/EditLoginConfigurationPage';
 import EditUrlConfigurationPage from '../../pages/Configuration/EditUrlConfiguration/EditUrlConfigurationPage';
@@ -522,6 +524,21 @@ const SettingsRouter = () => {
         element={
           <AdminProtectedRoute
             hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.AUDIT_LOG,
+              permissions
+            )}>
+            <AuditLogsPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.ACCESS,
+          GlobalSettingOptions.AUDIT_LOGS
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
               ResourceEntity.USER,
               permissions
             )}>
@@ -618,6 +635,14 @@ const SettingsRouter = () => {
         path={getSettingCategoryPath(
           GlobalSettingsMenuCategory.CUSTOM_PROPERTIES
         )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute hasPermission={false}>
+            <ColumnBulkOperations />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.COLUMN_BULK_OPERATIONS.replace(ROUTES.SETTINGS, '')}
       />
       <Route
         element={

@@ -254,6 +254,9 @@ describe('WorksheetDetailsPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
+    (getDriveAssetByFqn as jest.Mock).mockImplementation(() =>
+      Promise.resolve(mockWorksheetDetails)
+    );
   });
 
   const renderComponent = async (props = {}) => {
@@ -302,7 +305,7 @@ describe('WorksheetDetailsPage', () => {
       error.response = {
         status: 404,
       } as AxiosResponse;
-      (getDriveAssetByFqn as jest.Mock).mockImplementationOnce(() =>
+      (getDriveAssetByFqn as jest.Mock).mockImplementation(() =>
         Promise.reject(error)
       );
 

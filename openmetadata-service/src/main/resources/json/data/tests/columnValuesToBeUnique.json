@@ -46,9 +46,11 @@
         "VARIANT",
         "GEOMETRY",
         "POINT",
-        "POLYGON"
+        "POLYGON",
+        "LOWCARDINALITY"
     ],
     "supportsRowLevelPassedFailed": true,
     "provider": "system",
+  "enabled": true,
     "dataQualityDimension": "Uniqueness"
 }

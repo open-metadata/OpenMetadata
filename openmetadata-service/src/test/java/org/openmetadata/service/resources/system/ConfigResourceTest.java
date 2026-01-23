@@ -102,18 +102,15 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
         SecurityConfigurationManager.getCurrentAuthConfig().getCallbackUrl(),
         auth.getCallbackUrl());
 
-    // For SAML, verify samlConfiguration is present but only contains authorityUrl
+    // For SAML, verify samlConfiguration is present but sensitive fields are excluded
     if (auth.getProvider().name().equals("SAML")
         && SecurityConfigurationManager.getCurrentAuthConfig().getSamlConfiguration() != null) {
       assertNotNull(auth.getSamlConfiguration());
       assertNotNull(auth.getSamlConfiguration().getIdp());
-      assertEquals(
-          SecurityConfigurationManager.getInstance()
-              .getCurrentAuthConfig()
-              .getSamlConfiguration()
-              .getIdp()
-              .getAuthorityUrl(),
-          auth.getSamlConfiguration().getIdp().getAuthorityUrl());
+      // Verify sensitive fields like certificates are not exposed in public config
+      assertNull(auth.getSamlConfiguration().getIdp().getIdpX509Certificate());
+      assertNull(auth.getSamlConfiguration().getSp());
+      assertNull(auth.getSamlConfiguration().getSecurity());
     }
 
     // Verify sensitive/unused fields are excluded

@@ -90,7 +90,7 @@ export class ApiEndpointClass extends EntityClass {
   entityResponseData: ResponseDataWithServiceType =
     {} as ResponseDataWithServiceType;
 
-  constructor(name?: string) {
+  constructor(name?: string, apiEndpointName?: string) {
     super(EntityTypeEndpoint.API_ENDPOINT);
 
     this.serviceName = name ?? `pw-api-service-${uuid()}`;
@@ -115,7 +115,7 @@ export class ApiEndpointClass extends EntityClass {
       service: this.service.name,
     };
 
-    this.apiEndpointName = `pw-api-endpoint-${uuid()}`;
+    this.apiEndpointName = apiEndpointName ?? `pw-api-endpoint-${uuid()}`;
     this.fqn = `${this.service.name}.${this.apiCollection.name}.${this.apiEndpointName}.requestSchema`;
 
     this.children = [

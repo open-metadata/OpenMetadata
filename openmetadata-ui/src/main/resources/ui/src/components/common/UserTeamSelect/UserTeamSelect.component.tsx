@@ -271,7 +271,6 @@ export const UserTeamSelect = ({
     ));
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const dropdownRender = (_menu: React.ReactElement) => (
     <div className="user-team-select-dropdown">
       <Tabs

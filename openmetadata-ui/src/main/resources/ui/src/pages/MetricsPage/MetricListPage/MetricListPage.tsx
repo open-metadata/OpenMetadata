@@ -12,14 +12,13 @@
  */
 import { Button, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, noop } from 'lodash';
+import { noop } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerNew from '../../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../components/common/Table/Table';
 import TableTags from '../../../components/Database/TableTags/TableTags.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
@@ -44,7 +43,10 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getErrorText } from '../../../utils/StringsUtils';
-import { ownerTableObject } from '../../../utils/TableColumn.util';
+import {
+  descriptionTableObject,
+  ownerTableObject,
+} from '../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 const MetricListPage = () => {
@@ -176,23 +178,7 @@ const MetricListPage = () => {
           );
         },
       },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        flex: true,
-        width: 300,
-        key: 'description',
-        render: (description: string) =>
-          isEmpty(description) ? (
-            <Typography.Text className="text-grey-muted">
-              {t('label.no-entity', {
-                entity: t('label.description'),
-              })}
-            </Typography.Text>
-          ) : (
-            <RichTextEditorPreviewerNew markdown={description} />
-          ),
-      },
+      ...descriptionTableObject({ width: 300 }),
       {
         title: t('label.tag-plural'),
         dataIndex: 'tags',

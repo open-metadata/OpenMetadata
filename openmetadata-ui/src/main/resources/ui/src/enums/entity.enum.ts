@@ -13,6 +13,7 @@
 
 export enum EntityType {
   TABLE = 'table',
+  TABLE_COLUMN = 'tableColumn',
   TOPIC = 'topic',
   CLASSIFICATION = 'classification',
   DASHBOARD = 'dashboard',
@@ -155,7 +156,6 @@ export enum TabSpecificField {
   STATE = 'state',
   SUMMARY = 'summary',
   TABLE_CONSTRAINTS = 'tableConstraints',
-  TABLE_PROFILE = 'profile',
   TABLE_QUERIES = 'tableQueries',
   TAGS = 'tags',
   TARGET_DEFINITION = 'targetDefinition',
@@ -238,6 +238,7 @@ export enum EntityTabs {
   TERMS = 'terms',
   GLOSSARY_TERMS = 'glossary_terms',
   ASSETS = 'assets',
+  INPUT_OUTPUT_PORTS = 'input_output_ports',
   EXPRESSION = 'expression',
   INSIGHTS = 'insights',
   DASHBOARD = 'dashboard',

@@ -102,6 +102,11 @@ components/
 - Use Jest + React Testing Library
 - Test files live next to the code they test
 - Cover components, hooks, utils, and API logic
+- **IMPORTANT**: Always write unit tests for utility functions in `@src/utils/`
+  - Every utility function should have corresponding test coverage
+  - Test edge cases, error conditions, and expected behavior
+  - Place test files next to the utility: `utilName.test.ts`
+- Follow [this](./playwright/PLAYWRIGHT_DEVELOPER_HANDBOOK.md) guide for e2e testing.
 
 ## 10. Routing
 
@@ -112,13 +117,26 @@ components/
 
 - Place images, SVGs, fonts, etc. in `@src/assets/`
 - Organize by type or feature
+- **SVG Guidelines**: When adding new SVG files, DO NOT include `width` and `height` attributes in the SVG element
+  - ❌ Bad: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none">`
+  - ✅ Good: `<svg viewBox="0 0 20 20" fill="none">`
+  - This allows flexible sizing via CSS/props without hardcoded dimensions
 
 ## 12. Styles
 
 - Use LESS style for component styles (`.style.less`)
 - Place global styles, variables, and mixins in `@src/styles/` as `.less` files
 
-## 13. UI Library (MUI) and Icons (@untitledui/icons)
+## 13. Translations
+
+- **i18n Translation Rule**: DO NOT use i18n translation functions outside of React components
+  - Only use `t()` from `useTranslation()` hook inside components
+  - Store translation keys (not translated strings) in constants, utilities, hooks, and other non-component files
+  - ❌ Bad: In constants/utils/hooks: `message: i18n('label.name')`
+  - ✅ Good: Store the key `message: 'label.name'`, then translate in component using `t('label.name')`
+  - This prevents initialization order issues and keeps non-component code pure
+
+## 14. UI Library (MUI) and Icons (@untitledui/icons)
 
 - Primary UI library: Material UI (MUI v5).
 - Icon source: @untitledui/icons.
@@ -157,7 +175,7 @@ Recommended project layout for MUI and icons:
   - Prefer named imports to maintain tree-shaking for MUI and icon packages.
   - Keep the icon re-export file limited to used icons; avoid exporting entire icon packs.
 
-## 14. General Rules
+## 15. General Rules
 
 - Keep files small and focused
 - Prefer composition over inheritance

@@ -250,6 +250,9 @@ class TopologyRunnerTest(TestCase):
 
         local_source = MockSource()
 
+        # clear cache before test
+        local_source.cache.clear()
+
         mock_list_all_entities = [
             MockTable(
                 name="table1",

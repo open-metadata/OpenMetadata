@@ -43,6 +43,31 @@ from metadata.sdk.entities.base import BaseEntity
 _global_client: Optional[OpenMetadata] = None
 
 
+def to_entity_reference(entity: Any) -> dict[str, Any]:
+    """Convert any entity to an EntityReference dict.
+
+    This is useful when setting owners, domains, or other reference fields
+    that expect EntityReference objects rather than full entities.
+
+    Args:
+        entity: The entity to convert (must have id, type, and name attributes)
+
+    Returns:
+        A dict with id, type, name, and optionally fullyQualifiedName
+
+    Example:
+        >>> from metadata.sdk import configure, to_entity_reference, Teams, Users
+        >>> configure(host="http://localhost:8585/api", jwt_token="token")
+        >>> team = Teams.retrieve_by_name("engineering")
+        >>> user = Users.retrieve_by_name("john.doe")
+        >>> database.owners = [
+        ...     to_entity_reference(team),
+        ...     to_entity_reference(user)
+        ... ]
+    """
+    return BaseEntity.to_entity_reference(entity)
+
+
 def configure(
     config: OpenMetadataConfig | Mapping[str, Any] | None = None,
     /,
@@ -173,6 +198,7 @@ __all__ = [
     "configure",
     "reset",
     "client",
+    "to_entity_reference",
     "BaseEntity",
     "base_entity",
     "APICollections",

@@ -197,9 +197,7 @@ class RedshiftSource(
         try:
             self.partition_details.clear()
             with self.engine.connect() as conn:
-                results = conn.execute(
-                   statement=REDSHIFT_PARTITION_DETAILS
-                ).fetchall()
+                results = conn.execute(statement=REDSHIFT_PARTITION_DETAILS).fetchall()
                 for row in results:
                     self.partition_details[f"{row.schema}.{row.table}"] = row.diststyle
         except Exception as exe:
@@ -218,9 +216,11 @@ class RedshiftSource(
             result = conn.execute(
                 sql.text(
                     REDSHIFT_GET_ALL_RELATION_INFO.format(
-                        view_filter="OR c.relkind IN ('v', 'm')"
-                        if self.source_config.includeViews
-                        else "AND c.relkind NOT IN ('v', 'm')"
+                        view_filter=(
+                            "OR c.relkind IN ('v', 'm')"
+                            if self.source_config.includeViews
+                            else "AND c.relkind NOT IN ('v', 'm')"
+                        )
                     )
                 ),
                 {"schema": schema_name},
@@ -266,7 +266,7 @@ class RedshiftSource(
         yield from self._execute_database_query(REDSHIFT_GET_DATABASE_NAMES)
 
     def _set_incremental_table_processor(self, database: str):
-        """Prepares the needed data for doing incremental metadata extration for a given database.
+        """Prepares the needed data for doing incremental metadata extraction for a given database.
 
         1. Queries Redshift to get the changes done after the `self.incremental.start_datetime_utc`
         2. Sets the table map with the changes within the RedshiftIncrementalTableProcessor
@@ -407,6 +407,8 @@ class RedshiftSource(
                 ).all()
                 for row in results:
                     stored_procedure = RedshiftStoredProcedure.model_validate(dict(row))
+                    if self.is_stored_procedure_filtered(stored_procedure.name):
+                        continue
                     yield stored_procedure
 
     @calculate_execution_time_generator()

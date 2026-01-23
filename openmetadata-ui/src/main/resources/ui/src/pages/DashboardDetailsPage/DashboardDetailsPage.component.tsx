@@ -63,7 +63,8 @@ const DashboardDetailsPage = () => {
   const USERId = currentUser?.id ?? '';
   const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { fqn: dashboardFQN } = useFqn();
+  const { entityFqn: dashboardFQN } = useFqn({ type: EntityType.DASHBOARD });
+
   const [dashboardDetails, setDashboardDetails] = useState<Dashboard>(
     {} as Dashboard
   );

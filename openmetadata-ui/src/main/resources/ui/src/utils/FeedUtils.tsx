@@ -271,7 +271,7 @@ export const userMentionItemWithAvatar = (
           />
         ) : (
           <div
-            className="flex-center flex-shrink align-middle mention-avatar"
+            className="flex-center shrink align-middle mention-avatar"
             data-testid="avatar"
             style={{ backgroundColor: color }}>
             <span>{character}</span>
@@ -344,7 +344,18 @@ export const getFrontEndFormat = (message: string) => {
     (m) => getEntityLinkDetail(m) ?? []
   );
   entityLinkList.forEach((m, i) => {
-    const markdownLink = entityLinkDetails[i][3];
+    let markdownLink = entityLinkDetails[i]?.[3];
+    const entityType = entityLinkDetails[i]?.[1];
+    const entityFqn = entityLinkDetails[i]?.[2];
+    const linkText = entityLinkDetails[i]?.[4];
+    const entityUrl = entityLinkDetails[i]?.[5];
+
+    if (entityType && entityFqn && entityUrl) {
+      const decodedUrl = getDecodedFqn(entityUrl);
+
+      markdownLink = `[${linkText}](${decodedUrl})`;
+    }
+
     updatedMessage = updatedMessage.replaceAll(m, markdownLink);
   });
 
@@ -386,8 +397,7 @@ export const deletePost = async (
   if (isThread) {
     try {
       const data = await deleteThread(threadId);
-      callback &&
-        callback((prev) => prev.filter((thread) => thread.id !== data.id));
+      callback?.((prev) => prev.filter((thread) => thread.id !== data.id));
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -435,7 +445,7 @@ export const getEntityFieldDisplay = (entityField: string) => {
     return entityFields.map((field, i) => {
       return (
         <span key={`field-${i}`}>
-          {field}
+          {t(`label.${field}`, { defaultValue: field })}
           {i < entityFields.length - 1 ? separator : null}
         </span>
       );
@@ -515,12 +525,12 @@ export const prepareFeedLink = (
 
   const entityLink = entityUtilClassBase.getEntityLink(entityType, entityFQN);
 
-  if (!withoutFeedEntities.includes(entityType as EntityType)) {
+  if (withoutFeedEntities.includes(entityType as EntityType)) {
+    return entityLink;
+  } else {
     const activityFeedLink = `${entityLink}/${TabSpecificField.ACTIVITY_FEED}`;
 
     return subTab ? `${activityFeedLink}/${subTab}` : activityFeedLink;
-  } else {
-    return entityLink;
   }
 };
 
@@ -580,7 +590,7 @@ export const entityDisplayName = (entityType: string, entityFQN: string) => {
 
   // Remove quotes if the name is wrapped in quotes
   if (displayName) {
-    displayName = displayName.replace(/(?:^"+)|(?:"+$)/g, '');
+    displayName = displayName.replaceAll(/(?:^"+)|(?:"+$)/g, '');
   }
 
   return displayName;

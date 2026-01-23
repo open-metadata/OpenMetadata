@@ -11,7 +11,7 @@
 """
 DBT service Topology.
 """
-
+import traceback
 from abc import ABC, abstractmethod
 from typing import Iterable, List
 
@@ -23,12 +23,16 @@ from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseReq
 from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.dbtPipeline import DbtPipeline
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -41,7 +45,10 @@ from metadata.ingestion.source.database.dbt.constants import (
     REQUIRED_NODE_KEYS,
     REQUIRED_RESULTS_KEYS,
 )
-from metadata.ingestion.source.database.dbt.dbt_config import get_dbt_details
+from metadata.ingestion.source.database.dbt.dbt_config import (
+    DBTConfigException,
+    get_dbt_details,
+)
 from metadata.ingestion.source.database.dbt.models import (
     DbtFiles,
     DbtFilteredModel,
@@ -120,6 +127,16 @@ class DbtServiceTopology(ServiceTopology):
             NodeStage(
                 type_=DataModelLink,
                 processor="process_dbt_owners",
+                nullable=True,
+            ),
+            NodeStage(
+                type_=PatchRequest,
+                processor="process_dbt_custom_properties",
+                nullable=True,
+            ),
+            NodeStage(
+                type_=DataModelLink,
+                processor="process_dbt_domain",
                 nullable=True,
             ),
         ],
@@ -232,10 +249,19 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Prepare the DBT files
         """
-        dbt_files = get_dbt_details(self.source_config.dbtConfigSource)
-        for dbt_file in dbt_files:
-            self.context.get().dbt_file = dbt_file
-            yield dbt_file
+        try:
+            dbt_files = get_dbt_details(self.source_config.dbtConfigSource)
+            for dbt_file in dbt_files:
+                self.context.get().dbt_file = dbt_file
+                yield dbt_file
+        except DBTConfigException as exc:
+            self.status.failed(
+                StackTraceError(
+                    name="DBT Configuration Error",
+                    error=str(exc),
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def get_dbt_objects(self) -> Iterable[DbtObjects]:
         """
@@ -364,6 +390,18 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
     def add_dbt_test_result(self, dbt_test: dict):
         """
         After test cases has been processed, add the tests results info
+        """
+
+    @abstractmethod
+    def process_dbt_domain(self, data_model_link: DataModelLink):
+        """
+        Method to process DBT domain using patch APIs
+        """
+
+    @abstractmethod
+    def process_dbt_custom_properties(self, data_model_link: DataModelLink):
+        """
+        Method to process DBT custom properties using patch APIs
         """
 
     def is_filtered(

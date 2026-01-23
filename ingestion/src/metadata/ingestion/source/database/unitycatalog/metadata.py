@@ -367,6 +367,7 @@ class UnitycatalogSource(
                 ),
                 owners=self.get_owner_ref(table.owner),
                 tags=self.get_tag_labels(table_name),
+                locationPath=table.storage_location,
             )
             yield Either(right=table_request)
 
@@ -534,6 +535,7 @@ class UnitycatalogSource(
             parsed_string["tags"] = self.get_column_tag_labels(
                 table_name=table_name, column={"name": column.name}
             )
+            parsed_string["ordinalPosition"] = column.position
             parsed_column = Column(**parsed_string)
             self.add_complex_datatype_descriptions(
                 column=parsed_column,

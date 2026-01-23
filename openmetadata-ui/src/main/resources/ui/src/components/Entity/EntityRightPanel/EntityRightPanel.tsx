@@ -58,7 +58,6 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   afterSlot,
   showTaskHandler = true,
   showDataProductContainer = true,
-  viewAllPermission,
   customProperties,
   editCustomAttributePermission,
   editDataProductPermission,

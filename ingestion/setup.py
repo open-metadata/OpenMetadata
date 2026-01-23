@@ -20,17 +20,19 @@ from setuptools import setup
 
 # Add here versions required for multiple plugins
 VERSIONS = {
-    "airflow": "apache-airflow==3.1.2",
+    "airflow": "apache-airflow==3.1.5",
     "adlfs": "adlfs>=2023.1.0",
-    "avro": "avro>=1.11.3,<1.12",
-    "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
+    "aiobotocore": "aiobotocore~=2.26.0",
+    "avro": "avro>=1.11.4,<1.12",
+    "boto3": "boto3~=1.41.5",
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-monitoring": "google-cloud-monitoring>=2.0.0",
     "google-cloud-storage": "google-cloud-storage>=1.43.0",
-    "gcsfs": "gcsfs>=2023.1.0",
+    "gcsfs": "gcsfs~=2023.12.1",
     "great-expectations": "great-expectations~=0.18.0",
     "great-expectations-1xx": "great-expectations~=1.0",
     "grpc-tools": "grpcio-tools>=1.47.2",
+    "ijson": "ijson~=3.4",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3",
     "pandas": "pandas~=2.0.3",
@@ -56,6 +58,7 @@ VERSIONS = {
     "mongo": "pymongo~=4.3",
     "redshift": "sqlalchemy-redshift==0.8.12",
     "snowflake": "snowflake-sqlalchemy~=1.4",
+    "snowflake-connector": "snowflake-connector-python~=3.18.0",
     "elasticsearch8": "elasticsearch8~=8.9.0",
     "giturlparse": "giturlparse",
     "validators": "validators~=0.22.0",
@@ -63,10 +66,12 @@ VERSIONS = {
     "cockroach": "sqlalchemy-cockroachdb~=2.0",
     "cassandra": "cassandra-driver>=3.28.0",
     "opensearch": "opensearch-py~=2.4.0",
+    "starrocks": "pymysql~=1.0",
     "pydoris": "pydoris-custom>=1.0.2,<1.5",
     "pyiceberg": "pyiceberg==0.5.1",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
-    "pyathena": "pyathena~=3.0",
+    "pyathena": "pyathena~=3.25.0",
+    "s3fs": "s3fs~=2023.12.1",
     "sqlalchemy-bigquery": "sqlalchemy-bigquery~=1.15.0",
     "presidio-analyzer": "presidio-analyzer==2.2.358",
     "asammdf": "asammdf~=7.4.5",
@@ -80,12 +85,14 @@ COMMONS = {
         VERSIONS["asammdf"],
         VERSIONS["avro"],
         VERSIONS["boto3"],
+        VERSIONS["ijson"],
         VERSIONS["pandas"],
         VERSIONS["pyarrow"],
         VERSIONS["numpy"],
         # python-snappy does not work well on 3.11 https://github.com/aio-libs/aiokafka/discussions/931
         # Using this as an alternative
         "cramjam~=2.7",
+        "fastavro>=1.2.0",
     },
     "hive": {
         "pure-transport==0.2.0",
@@ -158,16 +165,17 @@ base_requirements = {
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "sqlalchemy>=1.4.0,<2",
-    "collate-sqllineage~=1.6.0",
+    "collate-sqllineage~=2.0",
     "tabulate==0.9.0",
     "typing-inspect",
     "packaging",  # For version parsing
     "setuptools~=78.1.1",
     "shapely",
-    "collate-data-diff>=0.11.6",
+    "collate-data-diff>=0.11.9",
     "jaraco.functools<4.2.0",  # above 4.2 breaks the build
+    "jaraco.context==6.0.1",
     # TODO: Remove one once we have updated datadiff version
-    "snowflake-connector-python>=3.13.1,<4.0.0",
+    VERSIONS["snowflake-connector"],
     "mysql-connector-python>=8.0.29;python_version<'3.9'",
     "mysql-connector-python>=9.1;python_version>='3.9'",
     "httpx~=0.28.0",
@@ -233,15 +241,19 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["azure-storage-blob"],
         VERSIONS["azure-identity"],
         VERSIONS["adlfs"],
+        VERSIONS["aiobotocore"],
         *COMMONS["datalake"],
     },
     "datalake-gcs": {
         VERSIONS["google-cloud-monitoring"],
         VERSIONS["google-cloud-storage"],
         VERSIONS["gcsfs"],
+        VERSIONS["aiobotocore"],
         *COMMONS["datalake"],
     },
     "datalake-s3": {
+        VERSIONS["s3fs"],
+        VERSIONS["aiobotocore"],
         *COMMONS["datalake"],
     },
     "deltalake": {
@@ -252,7 +264,8 @@ plugins: Dict[str, Set[str]] = {
     "deltalake-storage": {"deltalake>=0.19.0,<0.20"},
     "deltalake-spark": {"delta-spark>=3.0.0,<4.0.0", "pyspark==3.5.6"},
     "domo": {VERSIONS["pydomo"]},
-    "doris": {"pydoris==1.0.2"},
+    "doris": {VERSIONS["pydoris"]},
+    "starrocks": {VERSIONS["pymysql"]},
     "druid": {"pydruid>=0.6.5"},
     "dynamodb": {VERSIONS["boto3"]},
     "elasticsearch": {
@@ -335,7 +348,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "qliksense": {"websocket-client~=1.6.1"},
     "presto": {*COMMONS["hive"], DATA_DIFF["presto"]},
-    "pymssql": {"pymssql~=2.2.0"},
+    "pymssql": {"pymssql~=2.3.9"},
     "quicksight": {VERSIONS["boto3"]},
     "redash": {VERSIONS["packaging"]},
     "redpanda": {*COMMONS["kafka"]},
@@ -348,6 +361,7 @@ plugins: Dict[str, Set[str]] = {
     "sagemaker": {VERSIONS["boto3"]},
     "salesforce": {"simple_salesforce~=1.11", "authlib>=1.3.1"},
     "sample-data": {
+        "cachetools",
         VERSIONS["avro"],
         VERSIONS["grpc-tools"],
         VERSIONS["sqlalchemy-bigquery"],
@@ -397,6 +411,7 @@ test_unit = {
     "pytest==7.0.1",
     "pytest-cov",
     "pytest-order",
+    "pytest-rerunfailures",
     "dirty-equals",
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
     # TODO: Remove once no unit test requires testcontainers
@@ -443,6 +458,7 @@ test = {
     VERSIONS["neo4j"],
     VERSIONS["cockroach"],
     VERSIONS["pydoris"],
+    VERSIONS["starrocks"],
     VERSIONS["pyiceberg"],
     "testcontainers==3.7.1;python_version<'3.9'",
     "testcontainers~=4.8.0;python_version>='3.9'",

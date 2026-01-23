@@ -110,8 +110,16 @@ class WorkflowOutputHandler:
         """Prints the summary information for a Workflow Execution."""
         if debug:
             self._print_debug_summary(steps)
-            self._print_execution_time_summary()
-            self._print_query_parsing_issues()
+
+        self._print_execution_time_summary()
+
+        # In case of large query parsing error summary, this creates
+        # issue of ingestion getting stuck and eventually killed.
+        # Hence commenting it for now.
+        # These are now already logged by the LineageParser
+        # TODO: revisit this in future and see if we can enable it safely
+        # if debug:
+        #     self._print_query_parsing_issues()
 
         self._print_summary(steps)
 
@@ -166,19 +174,43 @@ class WorkflowOutputHandler:
         """Log the ExecutionTimeTracker Summary."""
         tracker = ExecutionTimeTracker()
 
-        summary_table: Dict[str, List[Union[str, float]]] = {
+        summary_table: Dict[str, List[Union[str, int]]] = {
             "Context": [],
-            "Execution Time Aggregate": [],
+            "Total Time": [],
+            "Call Count": [],
+            "Avg Time": [],
+            "Min Time": [],
+            "Max Time": [],
         }
 
         for key in sorted(tracker.state.state.keys()):
+            metrics = tracker.state.state[key]
             summary_table["Context"].append(key)
-            summary_table["Execution Time Aggregate"].append(
-                pretty_print_time_duration(tracker.state.state[key])
+            summary_table["Total Time"].append(
+                pretty_print_time_duration(metrics.total_time)
+            )
+            summary_table["Call Count"].append(metrics.call_count)
+            summary_table["Avg Time"].append(
+                pretty_print_time_duration(metrics.average_time)
+            )
+            summary_table["Min Time"].append(
+                pretty_print_time_duration(metrics.min_time)
+                if metrics.min_time is not None
+                else "N/A"
+            )
+            summary_table["Max Time"].append(
+                pretty_print_time_duration(metrics.max_time)
+                if metrics.max_time is not None
+                else "N/A"
             )
 
+        # Build alignment list: left for Context, right for all numeric/time columns
+        col_align = ["left"] + ["right"] * (len(summary_table) - 1)
+
         log_ansi_encoded_string(bold=True, message="Execution Time Summary")
-        log_ansi_encoded_string(message=f"\n{tabulate(summary_table, tablefmt='grid')}")
+        log_ansi_encoded_string(
+            message=f"\n{tabulate(summary_table, headers='keys', tablefmt='grid', colalign=col_align)}"
+        )
 
     def _print_query_parsing_issues(self):
         """Log the QueryParsingFailures Summary."""
@@ -220,12 +252,16 @@ class WorkflowOutputHandler:
             data = [f for fs in all_data for f in fs]
             # create a dictionary with a key and a list of values from the list
             error_table = {k: [dic[k] for dic in data] for k in data[0]}
-            if len(list(error_table.items())[0][1]) > 100:
+            # We have noticed logging higher number of failures here kills
+            # the ingestion, the reason is unknown. Hence, we will be keeping
+            # the number of failures logged to a smaller number like 10.
+            # TODO: revisit this to see if we can increase this limit
+            if len(list(error_table.items())[0][1]) > 10:
                 log_ansi_encoded_string(
-                    bold=True, message="Showing only the first 100 failures:"
+                    bold=True, message="Showing the first 10 failures:"
                 )
-                # truncate list if number of values are over 100
-                error_table = {k: v[:100] for k, v in error_table.items()}
+                # truncate list if number of values are over 10
+                error_table = {k: v[:10] for k, v in error_table.items()}
             else:
                 log_ansi_encoded_string(bold=True, message="List of failures:")
 

@@ -18,7 +18,6 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconRemove } from '../../../assets/svg/ic-remove.svg';
-import RichTextEditorPreviewerNew from '../../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../components/common/Table/Table';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -27,6 +26,7 @@ import {
   getTeamsWithFqnPath,
   getUserPath,
 } from '../../../utils/RouterUtils';
+import { descriptionTableObject } from '../../../utils/TableColumn.util';
 
 const RolesDetailPageList = ({
   list,
@@ -74,14 +74,7 @@ const RolesDetailPageList = ({
           );
         },
       },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        render: (_, record) => (
-          <RichTextEditorPreviewerNew markdown={record?.description || ''} />
-        ),
-      },
+      ...descriptionTableObject(),
       {
         title: t('label.action-plural'),
         dataIndex: 'actions',

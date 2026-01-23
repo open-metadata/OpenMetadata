@@ -42,6 +42,7 @@ export enum GlobalSettingOptions {
   PERSONA = 'persona',
   ROLES = 'roles',
   POLICIES = 'policies',
+  AUDIT_LOGS = 'audit-logs',
   DATABASES = 'databases',
   DATABASE = 'database',
   DATABASE_SCHEMA = 'databaseSchemas',
@@ -101,6 +102,7 @@ export enum GlobalSettingOptions {
   SPREADSHEETS = 'spreadsheets',
   WORKSHEETS = 'worksheets',
   SSO = 'sso',
+  TABLE_COLUMNS = 'column',
 }
 
 export const SETTINGS_OPTIONS_PATH = {
@@ -198,6 +200,10 @@ export const SETTINGS_OPTIONS_PATH = {
   [GlobalSettingOptions.POLICIES]: [
     GlobalSettingsMenuCategory.ACCESS,
     `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.POLICIES}`,
+  ],
+  [GlobalSettingOptions.AUDIT_LOGS]: [
+    GlobalSettingsMenuCategory.ACCESS,
+    `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.AUDIT_LOGS}`,
   ],
 
   // Open-metadata
@@ -334,5 +340,9 @@ export const SETTING_CUSTOM_PROPERTIES_PATH = {
   [GlobalSettingOptions.WORKSHEETS]: [
     GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
     `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.WORKSHEETS}`,
+  ],
+  [GlobalSettingOptions.TABLE_COLUMNS]: [
+    GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+    `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.TABLE_COLUMNS}`,
   ],
 };

@@ -47,12 +47,8 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.eclipse.jetty.client.HttpClient;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
-import org.glassfish.jersey.jetty.connector.JettyClientProperties;
-import org.glassfish.jersey.jetty.connector.JettyConnectorProvider;
-import org.glassfish.jersey.jetty.connector.JettyHttpClientSupplier;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
@@ -83,6 +79,7 @@ import org.openmetadata.service.resources.events.WebhookCallbackResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
+import org.openmetadata.service.util.JdkHttpClientConnector;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
@@ -94,6 +91,7 @@ import org.testcontainers.utility.DockerImageName;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class OpenMetadataApplicationTest {
   protected static Boolean runWithOpensearch = false;
+  protected static Boolean runWithRdf = false;
 
   protected static final String CONFIG_PATH =
       ResourceHelpers.resourceFilePath("openmetadata-secure-test.yaml");
@@ -361,16 +359,13 @@ public abstract class OpenMetadataApplicationTest {
   }
 
   private static void createClient() {
-    HttpClient httpClient = new HttpClient();
-    httpClient.setIdleTimeout(0);
+    // Use custom JDK HttpClient connector - supports PATCH, handles empty PUT bodies, no Jetty deps
     ClientConfig config = new ClientConfig();
-    config.connectorProvider(new JettyConnectorProvider());
-    config.register(new JettyHttpClientSupplier(httpClient));
+    config.connectorProvider(new JdkHttpClientConnector.Provider());
     config.register(new JacksonFeature(APP.getObjectMapper()));
-    config.property(ClientProperties.CONNECT_TIMEOUT, 0);
-    config.property(ClientProperties.READ_TIMEOUT, 0);
-    config.property(ClientProperties.SUPPRESS_HTTP_COMPLIANCE_VALIDATION, true);
-    config.property(JettyClientProperties.SYNC_LISTENER_RESPONSE_MAX_SIZE, 10 * 1024 * 1024);
+    // Set reasonable timeouts to prevent indefinite hangs
+    config.property(ClientProperties.CONNECT_TIMEOUT, 30_000); // 30 seconds
+    config.property(ClientProperties.READ_TIMEOUT, 120_000); // 2 minutes
     client = ClientBuilder.newClient(config);
   }
 
@@ -552,13 +547,10 @@ public abstract class OpenMetadataApplicationTest {
   }
 
   private static void setupRdfIfEnabled() {
-    String enableRdf = System.getProperty("enableRdf");
-    String rdfContainerImage = System.getProperty("rdfContainerImage");
-    if ("true".equals(enableRdf)) {
-      LOG.info("RDF is enabled for tests. Starting Fuseki container...");
-      if (CommonUtil.nullOrEmpty(rdfContainerImage)) {
-        rdfContainerImage = "stain/jena-fuseki:latest";
-      }
+    if (Boolean.TRUE.equals(runWithRdf) || "true".equals(System.getProperty("enableRdf"))) {
+      String rdfContainerImage = System.getProperty("rdfContainerImage", "stain/jena-fuseki:5.0.0");
+      LOG.info(
+          "RDF is enabled for tests. Starting Fuseki container with image: {}", rdfContainerImage);
 
       try {
         RDF_CONTAINER =
@@ -588,6 +580,7 @@ public abstract class OpenMetadataApplicationTest {
         configOverrides.add(ConfigOverride.config("rdf.username", "admin"));
         configOverrides.add(ConfigOverride.config("rdf.password", "test-admin"));
         configOverrides.add(ConfigOverride.config("rdf.baseUri", "https://open-metadata.org/"));
+        configOverrides.add(ConfigOverride.config("rdf.dataset", "openmetadata"));
 
         LOG.info("RDF configuration overrides added");
       } catch (Exception e) {
@@ -596,7 +589,8 @@ public abstract class OpenMetadataApplicationTest {
         configOverrides.add(ConfigOverride.config("rdf.enabled", "false"));
       }
     } else {
-      LOG.info("RDF not enabled for tests (enableRdf={})", enableRdf);
+      LOG.info("RDF not enabled for tests (runWithRdf={})", runWithRdf);
+      configOverrides.add(ConfigOverride.config("rdf.enabled", "false"));
     }
   }
 

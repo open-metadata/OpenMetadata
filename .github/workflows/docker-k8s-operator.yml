@@ -1,0 +1,150 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: docker-k8s-operator release app
+on:
+  workflow_dispatch:
+    inputs:
+      docker_release_tag:
+        description: "K8s Operator Docker Image Tag"
+        required: true
+      push_latest_tag_to_release:
+        description: "Do you want to update docker image latest tag as well ?"
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  maven-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: 21
+          distribution: 'temurin'
+
+      - name: Build K8s Operator Application
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mvn -DskipTests clean package -pl openmetadata-k8s-operator -am
+
+      - name: Run K8s Operator Tests
+        run: |
+          mvn test -pl openmetadata-k8s-operator
+
+      - name: Upload K8s Operator JAR to Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: k8s-operator-binary
+          path: openmetadata-k8s-operator/target/*.jar
+
+  release-project-event-workflow_dispatch:
+    if: github.event_name == 'workflow_dispatch'
+    name: Release k8s operator with workflow_dispatch event
+    runs-on: ubuntu-latest
+    needs: maven-build
+    steps:
+      - name: Fetch Release Data
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        id: attach_release
+        run: |
+          echo "UPLOAD_URL=$(curl -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GITHUB_TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/open-metadata/OpenMetadata/releases/tags/${{ inputs.docker_release_tag }}-release | jq .upload_url | tr -d '"' )" >> $GITHUB_OUTPUT
+
+      - name: Download application from Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: k8s-operator-binary
+
+      - name: Upload k8s operator to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          asset_path: ./openmetadata-k8s-operator-${{ inputs.docker_release_tag }}-boot.jar
+          upload_url: ${{ steps.attach_release.outputs.UPLOAD_URL }}
+          asset_name: openmetadata-k8s-operator-${{ inputs.docker_release_tag }}.jar
+          asset_content_type: application/java-archive
+
+  push_to_docker_hub:
+    runs-on: ubuntu-latest
+    if: ${{ always() && contains(join(needs.*.result, ','), 'success') }}
+    needs: [ maven-build ]
+    steps:
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@v1.3.4
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 90
+
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          valid-labels: "safe to test"
+          pull-request-number: "${{ github.event.pull_request.number }}"
+          disable-reviews: true
+
+      - name: Check out the Repo
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+
+      - name: Download application from Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: k8s-operator-binary
+          path: openmetadata-k8s-operator/target/
+
+      - name: Set build arguments
+        id: build-args
+        run: |
+          echo "BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+
+      - name: Prepare for Docker Build&Push
+        id: prepare
+        uses: ./.github/actions/prepare-for-docker-build-and-push
+        with:
+          image: openmetadata/omjob-operator
+          tag: ${{ inputs.docker_release_tag || 'pr-test' }}
+          push_latest: ${{ inputs.push_latest_tag_to_release || false }}
+          dockerhub_username: ${{ secrets.DOCKERHUB_OPENMETADATA_USERNAME }}
+          dockerhub_token: ${{ secrets.DOCKERHUB_OPENMETADATA_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        env:
+          DOCKER_BUILD_NO_SUMMARY: true
+        with:
+          context: ./openmetadata-k8s-operator
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name == 'workflow_dispatch' }}
+          tags: ${{ steps.prepare.outputs.tags }}
+          file: ./openmetadata-k8s-operator/Dockerfile
+          build-args: |
+            BUILD_DATE=${{ steps.build-args.outputs.BUILD_DATE }}
+            COMMIT_ID=${{ github.sha }}

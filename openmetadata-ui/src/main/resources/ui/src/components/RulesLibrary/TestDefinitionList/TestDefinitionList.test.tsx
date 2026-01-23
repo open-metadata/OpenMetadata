@@ -1,0 +1,445 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ProviderType } from '../../../generated/entity/bot';
+import {
+  deleteTestDefinitionByFqn,
+  getListTestDefinitions,
+  patchTestDefinition,
+} from '../../../rest/testAPI';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import TestDefinitionForm from '../TestDefinitionForm/TestDefinitionForm.component';
+import TestDefinitionList from './TestDefinitionList.component';
+
+const mockTestDefinitions = {
+  data: [
+    {
+      id: 'test-def-1',
+      name: 'columnValuesToBeNotNull',
+      fullyQualifiedName: 'columnValuesToBeNotNull',
+      displayName: 'Column Values To Be Not Null',
+      description: 'Ensures that all values in a column are not null',
+      entityType: 'COLUMN',
+      testPlatforms: ['OpenMetadata'],
+      enabled: true,
+      provider: ProviderType.User,
+    },
+    {
+      id: 'test-def-2',
+      name: 'tableRowCountToBeBetween',
+      fullyQualifiedName: 'tableRowCountToBeBetween',
+      displayName: 'Table Row Count To Be Between',
+      description: 'Ensures table row count is between min and max values',
+      entityType: 'TABLE',
+      testPlatforms: ['OpenMetadata', 'DBT'],
+      enabled: false,
+      provider: ProviderType.System,
+    },
+  ],
+  paging: {
+    total: 2,
+  },
+};
+
+jest.mock('../../../rest/testAPI', () => ({
+  getListTestDefinitions: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockTestDefinitions)),
+  patchTestDefinition: jest.fn().mockImplementation(() => Promise.resolve({})),
+  deleteTestDefinitionByFqn: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({})),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showSuccessToast: jest.fn(),
+  showErrorToast: jest.fn(),
+}));
+
+jest.mock('../TestDefinitionForm/TestDefinitionForm.component', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="test-definition-form">TestDefinitionForm</div>
+    )),
+}));
+
+jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(({ children }) => (
+      <div data-testid="page-layout">{children}</div>
+    )),
+}));
+
+jest.mock('../../../hooks/paging/usePaging', () => ({
+  usePaging: jest.fn().mockReturnValue({
+    currentPage: 1,
+    pageSize: 15,
+    paging: { total: 2 },
+    handlePagingChange: jest.fn(),
+    handlePageChange: jest.fn(),
+    handlePageSizeChange: jest.fn(),
+    showPagination: false,
+  }),
+}));
+
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    getEntityPermissionByFqn: jest.fn().mockResolvedValue({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      ViewBasic: true,
+      EditAll: true,
+    }),
+    permissions: {
+      testDefinition: {
+        Create: true,
+        Delete: true,
+        ViewAll: true,
+        ViewBasic: true,
+        EditAll: true,
+      },
+    },
+  }),
+}));
+
+jest.mock('../../Modals/EntityDeleteModal/EntityDeleteModal', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(({ visible, onConfirm, onCancel }) =>
+    visible ? (
+      <div data-testid="entity-delete-modal">
+        <button onClick={onCancel}>Cancel</button>
+        <button onClick={onConfirm}>Confirm</button>
+      </div>
+    ) : null
+  ),
+}));
+
+describe('TestDefinitionList Component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should render component with test definitions table', async () => {
+    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('test-definition-table')).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByText('Column Values To Be Not Null')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Table Row Count To Be Between')
+    ).toBeInTheDocument();
+  });
+
+  it('should render all table columns', async () => {
+    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+    await waitFor(() => {
+      const tableHeaders = screen.getAllByRole('columnheader');
+      const labels = tableHeaders.map((header) => header.textContent);
+
+      expect(labels).toContain('label.name');
+      expect(labels).toContain('label.description');
+      expect(labels).toContain('label.entity-type');
+      expect(labels).toContain('label.test-platform-plural');
+      expect(labels).toContain('label.enabled');
+      expect(labels).toContain('label.action-plural');
+    });
+  });
+
+  it('should fetch test definitions on mount', async () => {
+    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+    await waitFor(() => {
+      expect(getListTestDefinitions).toHaveBeenCalledWith({
+        after: undefined,
+        before: undefined,
+        limit: 15,
+      });
+    });
+  });
+
+  it('should render enabled switch for each test definition', async () => {
+    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+    const switches = await screen.findAllByRole('switch');
+
+    expect(switches).toHaveLength(2);
+  });
+
+  it('should call patchTestDefinition when enable switch is toggled', async () => {
+    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('test-definition-table')).toBeInTheDocument();
+    });
+
+    const switches = await screen.findAllByRole('switch');
+    fireEvent.click(switches[1]);
+
+    await waitFor(() => {
+      expect(patchTestDefinition).toHaveBeenCalled();
+      expect(showSuccessToast).toHaveBeenCalled();
+    });
+  });
+
+  it('should render edit and delete action buttons', async () => {
+    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+    const editButtons = await screen.findAllByTestId(/edit-test-definition-/);
+    const deleteButtons = await screen.findAllByTestId(
+      /delete-test-definition-/
+    );
+
+    expect(editButtons).toHaveLength(2);
+    expect(deleteButtons).toHaveLength(2);
+  });
+
+  it('should open form drawer when edit button is clicked', async () => {
+    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+    await waitFor(() => {
+      const editButtons = screen.getAllByTestId(/edit-test-definition-/);
+      fireEvent.click(editButtons[0]);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('test-definition-form')).toBeInTheDocument();
+    });
+  });
+
+  it('should show delete confirmation modal when delete button is clicked', async () => {
+    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+    await waitFor(() => {
+      const deleteButtons = screen.getAllByTestId(/delete-test-definition-/);
+      fireEvent.click(deleteButtons[0]);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('entity-delete-modal')).toBeInTheDocument();
+    });
+  });
+
+  it('should call deleteTestDefinitionByFqn when delete is confirmed', async () => {
+    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+    await waitFor(() => {
+      const deleteButtons = screen.getAllByTestId(/delete-test-definition-/);
+      fireEvent.click(deleteButtons[0]);
+    });
+
+    await waitFor(() => {
+      const confirmButton = screen.getByText('Confirm');
+      fireEvent.click(confirmButton);
+    });
+
+    await waitFor(() => {
+      expect(deleteTestDefinitionByFqn).toHaveBeenCalledWith(
+        'columnValuesToBeNotNull'
+      );
+      expect(showSuccessToast).toHaveBeenCalled();
+    });
+  });
+
+  it('should render add test definition button', async () => {
+    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('add-test-definition-button')
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('should open form drawer when add button is clicked', async () => {
+    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+    const addButton = await screen.findByTestId('add-test-definition-button');
+    fireEvent.click(addButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('test-definition-form')).toBeInTheDocument();
+    });
+  });
+
+  it('should show error toast when API call fails', async () => {
+    const mockError = new Error('API Error');
+
+    (getListTestDefinitions as jest.Mock).mockRejectedValueOnce(mockError);
+
+    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+    await waitFor(() => {
+      expect(showErrorToast).toHaveBeenCalledWith(mockError);
+    });
+  });
+
+  it('should refresh list after successful create/update', async () => {
+    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+    const addButton = await screen.findByTestId('add-test-definition-button');
+    fireEvent.click(addButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('test-definition-form')).toBeInTheDocument();
+    });
+
+    const initialCallCount = (getListTestDefinitions as jest.Mock).mock.calls
+      .length;
+
+    const onSuccessCallback = (TestDefinitionForm as jest.Mock).mock.calls[0][0]
+      .onSuccess;
+    onSuccessCallback();
+
+    await waitFor(() => {
+      expect(getListTestDefinitions).toHaveBeenCalledTimes(
+        initialCallCount + 1
+      );
+    });
+  });
+
+  it('should disable edit and delete buttons for System test definitions', async () => {
+    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+    await waitFor(() => {
+      const editButtons = screen.getAllByTestId(/edit-test-definition-/);
+      const deleteButtons = screen.getAllByTestId(/delete-test-definition-/);
+
+      // First definition is User provider - should be enabled
+      expect(editButtons[0]).not.toBeDisabled();
+      expect(deleteButtons[0]).not.toBeDisabled();
+
+      // Second definition is System provider - should be disabled
+      expect(editButtons[1]).toBeDisabled();
+      expect(deleteButtons[1]).toBeDisabled();
+    });
+  });
+
+  it('should not fetch permissions for System test definitions', async () => {
+    const mockGetEntityPermissionByFqn = jest.fn().mockResolvedValue({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      ViewBasic: true,
+      EditAll: true,
+    });
+
+    const { usePermissionProvider } = jest.requireMock(
+      '../../../context/PermissionProvider/PermissionProvider'
+    );
+
+    (usePermissionProvider as jest.Mock).mockReturnValue({
+      getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
+      permissions: {
+        testDefinition: {
+          Create: true,
+          Delete: true,
+          ViewAll: true,
+          ViewBasic: true,
+          EditAll: true,
+        },
+      },
+    });
+
+    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+    await waitFor(() => {
+      // Permissions fetched for all definitions (including system)
+      expect(mockGetEntityPermissionByFqn).toHaveBeenCalledTimes(2);
+      expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
+        ResourceEntity.TEST_DEFINITION,
+        'columnValuesToBeNotNull'
+      );
+      expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
+        ResourceEntity.TEST_DEFINITION,
+        'tableRowCountToBeBetween'
+      );
+    });
+  });
+
+  it('should disable enabled switch when user lacks EditAll permission', async () => {
+    const { usePermissionProvider } = jest.requireMock(
+      '../../../context/PermissionProvider/PermissionProvider'
+    );
+
+    (usePermissionProvider as jest.Mock).mockReturnValue({
+      getEntityPermissionByFqn: jest.fn().mockResolvedValue({
+        Create: false,
+        Delete: false,
+        ViewAll: true,
+        ViewBasic: true,
+        EditAll: false,
+      }),
+      permissions: {
+        testDefinition: {
+          Create: true,
+          Delete: true,
+          ViewAll: true,
+          ViewBasic: true,
+          EditAll: true,
+        },
+      },
+    });
+
+    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+    const switches = await screen.findAllByRole('switch');
+
+    // First definition should be disabled due to lack of EditAll permission
+    expect(switches[0]).toBeDisabled();
+  });
+
+  it('should enable switch when user has EditAll permission', async () => {
+    const { usePermissionProvider } = jest.requireMock(
+      '../../../context/PermissionProvider/PermissionProvider'
+    );
+
+    (usePermissionProvider as jest.Mock).mockReturnValue({
+      getEntityPermissionByFqn: jest.fn().mockResolvedValue({
+        Create: true,
+        Delete: true,
+        ViewAll: true,
+        ViewBasic: true,
+        EditAll: true,
+      }),
+      permissions: {
+        testDefinition: {
+          Create: true,
+          Delete: true,
+          ViewAll: true,
+          ViewBasic: true,
+          EditAll: true,
+        },
+      },
+    });
+
+    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+    const switches = await screen.findAllByRole('switch');
+
+    // Both definitions should be enabled with EditAll permission
+    expect(switches[0]).not.toBeDisabled();
+    expect(switches[1]).not.toBeDisabled();
+  });
+});

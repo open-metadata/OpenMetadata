@@ -28,9 +28,9 @@ import {
 } from '@mui/material';
 import {
   ArrowLeft as ArrowBackIcon,
+  Check as CheckIcon,
   ChevronDown as ArrowDownIcon,
   ChevronUp as ArrowUpIcon,
-  Check as CheckIcon,
   XClose as CloseIcon,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
@@ -39,6 +39,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { STATUS_COLORS } from '../../../../constants/Color.constants';
 import { PAGE_SIZE_BASE } from '../../../../constants/constants';
+import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../../../constants/TestSuite.constant';
 import { EntityType } from '../../../../enums/entity.enum';
 import { CreateTestCaseResolutionStatus } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
 import {
@@ -417,7 +418,7 @@ const InlineTestCaseIncidentStatus = ({
       <Chip
         data-testid={`${data.testCaseReference?.name}-status`}
         deleteIcon={dropdownIcon}
-        label={statusType}
+        label={TEST_CASE_RESOLUTION_STATUS_LABELS[statusType]}
         sx={{
           px: 1,
           backgroundColor: statusColor.bg,
@@ -479,7 +480,7 @@ const InlineTestCaseIncidentStatus = ({
               },
             }}
             onClick={() => handleStatusChange(status)}>
-            {status}
+            {TEST_CASE_RESOLUTION_STATUS_LABELS[status]}
           </MenuItem>
         ))}
       </Menu>

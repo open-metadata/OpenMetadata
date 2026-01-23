@@ -73,12 +73,16 @@
       "type": "string",
       "enum": [
         "PLAINTEXT",
+        "SASL_PLAINTEXT",
         "SSL",
         "SASL_SSL"
       ],
       "javaEnums": [
         {
           "name": "PLAINTEXT"
+        },
+        {
+          "name": "SASL_PLAINTEXT"
         },
         {
           "name": "SSL"

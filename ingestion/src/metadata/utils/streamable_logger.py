@@ -553,6 +553,7 @@ def setup_streamable_logging_for_workflow(
         logger.info(
             f"Streamable logging configured for pipeline: {pipeline_fqn}, run_id: {model_str(run_id)}"
         )
+        metadata.validate_versions()  # Send the version check log
 
         return handler
 
