@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addDomains;
 import static org.openmetadata.csv.CsvUtil.addExtension;
 import static org.openmetadata.csv.CsvUtil.addField;
@@ -40,7 +39,6 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.services.DatabaseConnection;
@@ -347,10 +345,11 @@ public class DatabaseServiceRepository
 
     private void createDatabaseEntity(CSVPrinter printer, CSVRecord csvRecord, String entityFQN)
         throws IOException {
+      String name = csvRecord.get(0);
       String databaseFqn =
           entityFQN != null
               ? entityFQN
-              : FullyQualifiedName.add(service.getFullyQualifiedName(), csvRecord.get(0));
+              : FullyQualifiedName.add(service.getFullyQualifiedName(), name);
 
       Database existingDatabase = null;
       boolean databaseExists = false;
@@ -374,12 +373,12 @@ public class DatabaseServiceRepository
         recordCreateStatusArray[recordIndex] = !databaseExists;
       }
 
-      // Track field changes using meaningful change detection
-      List<FieldChange> fieldsAdded = new ArrayList<>();
-      List<FieldChange> fieldsUpdated = new ArrayList<>();
-
       // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers, certification,
       // retentionPeriod, sourceUrl, domain, extension
+
+      String displayName = csvRecord.get(1);
+      String description = csvRecord.get(2);
+      List<EntityReference> owners = getOwners(printer, csvRecord, 3);
       List<TagLabel> tagLabels =
           getTagLabels(
               printer,
@@ -389,122 +388,27 @@ public class DatabaseServiceRepository
                   Pair.of(5, TagLabel.TagSource.GLOSSARY),
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
       AssetCertification certification = getCertificationLabels(csvRecord.get(7));
-
-      String displayName = csvRecord.get(1);
-      String description = csvRecord.get(2);
       String sourceUrl = csvRecord.get(9);
+      List<EntityReference> domains = getDomains(printer, csvRecord, 10);
+      Map<String, Object> extension = getExtension(printer, csvRecord, 11);
 
-      if (!databaseExists) {
-        // New database - add all non-empty fields to fieldsAdded
-        if (!nullOrEmpty(displayName)) {
-          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
-        }
-        if (!nullOrEmpty(description)) {
-          fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
-        }
+      EntityRepository<?> repository = Entity.getEntityRepository(DATABASE);
+      CsvChangeTracker tracker =
+          trackCommonFieldChanges(
+              repository,
+              databaseExists ? existingDatabase : null,
+              displayName,
+              description,
+              owners,
+              tagLabels,
+              certification,
+              domains,
+              extension);
 
-        // Separate tags by type for better UI parsing
-        List<TagLabel> classificationTags =
-            filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, false);
-        List<TagLabel> glossaryTerms =
-            filterTagsBySource(tagLabels, TagLabel.TagSource.GLOSSARY, false);
-        List<TagLabel> tiers =
-            filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, true);
+      tracker.trackField(
+          "sourceUrl", databaseExists ? existingDatabase.getSourceUrl() : null, sourceUrl);
 
-        if (classificationTags != null && !classificationTags.isEmpty()) {
-          fieldsAdded.add(new FieldChange().withName("tags").withNewValue(classificationTags));
-        }
-        if (glossaryTerms != null && !glossaryTerms.isEmpty()) {
-          fieldsAdded.add(new FieldChange().withName("glossaryTerms").withNewValue(glossaryTerms));
-        }
-        if (tiers != null && !tiers.isEmpty()) {
-          fieldsAdded.add(new FieldChange().withName("tiers").withNewValue(tiers));
-        }
-
-        if (certification != null && certification.getTagLabel() != null) {
-          fieldsAdded.add(new FieldChange().withName("certification").withNewValue(certification));
-        }
-        if (!nullOrEmpty(sourceUrl)) {
-          fieldsAdded.add(new FieldChange().withName("sourceUrl").withNewValue(sourceUrl));
-        }
-      } else {
-        // Existing database - use meaningful change detection
-        if (CommonUtil.isChanged(existingDatabase.getDisplayName(), displayName)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("displayName")
-                  .withOldValue(existingDatabase.getDisplayName())
-                  .withNewValue(displayName));
-        }
-        if (CommonUtil.isChanged(existingDatabase.getDescription(), description)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("description")
-                  .withOldValue(existingDatabase.getDescription())
-                  .withNewValue(description));
-        }
-
-        // Separate tags by type for better UI parsing
-        List<TagLabel> existingClassificationTags =
-            filterTagsBySource(
-                existingDatabase.getTags(), TagLabel.TagSource.CLASSIFICATION, false);
-        List<TagLabel> existingGlossaryTerms =
-            filterTagsBySource(existingDatabase.getTags(), TagLabel.TagSource.GLOSSARY, false);
-        List<TagLabel> existingTiers =
-            filterTagsBySource(existingDatabase.getTags(), TagLabel.TagSource.CLASSIFICATION, true);
-
-        List<TagLabel> newClassificationTags =
-            filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, false);
-        List<TagLabel> newGlossaryTerms =
-            filterTagsBySource(tagLabels, TagLabel.TagSource.GLOSSARY, false);
-        List<TagLabel> newTiers =
-            filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, true);
-
-        if (CommonUtil.isChanged(existingClassificationTags, newClassificationTags)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("tags")
-                  .withOldValue(existingClassificationTags)
-                  .withNewValue(newClassificationTags));
-        }
-        if (CommonUtil.isChanged(existingGlossaryTerms, newGlossaryTerms)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("glossaryTerms")
-                  .withOldValue(existingGlossaryTerms)
-                  .withNewValue(newGlossaryTerms));
-        }
-        if (CommonUtil.isChanged(existingTiers, newTiers)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("tiers")
-                  .withOldValue(existingTiers)
-                  .withNewValue(newTiers));
-        }
-        if (CommonUtil.isChanged(existingDatabase.getCertification(), certification)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("certification")
-                  .withOldValue(existingDatabase.getCertification())
-                  .withNewValue(certification));
-        }
-        if (CommonUtil.isChanged(existingDatabase.getSourceUrl(), sourceUrl)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("sourceUrl")
-                  .withOldValue(existingDatabase.getSourceUrl())
-                  .withNewValue(sourceUrl));
-        }
-      }
-
-      // Create ChangeDescription and store it
-      ChangeDescription changeDescription = new ChangeDescription();
-      if (!fieldsAdded.isEmpty()) {
-        changeDescription.setFieldsAdded(fieldsAdded);
-      }
-      if (!fieldsUpdated.isEmpty()) {
-        changeDescription.setFieldsUpdated(fieldsUpdated);
-      }
+      ChangeDescription changeDescription = tracker.build();
       if (recordFieldChangesArray != null
           && recordIndex >= 0
           && recordIndex < recordFieldChangesArray.length) {
@@ -512,15 +416,15 @@ public class DatabaseServiceRepository
       }
 
       database
-          .withName(csvRecord.get(0))
+          .withName(name)
           .withDisplayName(displayName)
           .withDescription(description)
-          .withOwners(getOwners(printer, csvRecord, 3))
+          .withOwners(owners)
           .withTags(tagLabels)
           .withCertification(certification)
           .withSourceUrl(sourceUrl)
-          .withDomains(getDomains(printer, csvRecord, 10))
-          .withExtension(getExtension(printer, csvRecord, 11));
+          .withDomains(domains)
+          .withExtension(extension);
 
       if (processRecord) {
         createEntityWithChangeDescription(printer, csvRecord, database, DATABASE);
@@ -557,7 +461,8 @@ public class DatabaseServiceRepository
       DatabaseSchema schema;
       DatabaseSchema existingSchema = null;
       boolean schemaExists = false;
-      String schemaFqn = FullyQualifiedName.add(dbFQN, csvRecord.get(0));
+      String name = csvRecord.get(0);
+      String schemaFqn = FullyQualifiedName.add(dbFQN, name);
       try {
         existingSchema =
             Entity.getEntityByName(DATABASE_SCHEMA, schemaFqn, "*", Include.NON_DELETED);
@@ -587,6 +492,9 @@ public class DatabaseServiceRepository
 
       // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, certification,
       // retentionPeriod, sourceUrl, domain
+      String displayName = csvRecord.get(1);
+      String description = csvRecord.get(2);
+      List<EntityReference> owners = getOwners(printer, csvRecord, 3);
       List<TagLabel> tagLabels =
           getTagLabels(
               printer,
@@ -596,12 +504,8 @@ public class DatabaseServiceRepository
                   Pair.of(5, TagLabel.TagSource.GLOSSARY),
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
       AssetCertification certification = getCertificationLabels(csvRecord.get(7));
-      String displayName = csvRecord.get(1);
-      String description = csvRecord.get(2);
       String retentionPeriod = csvRecord.get(8);
       String sourceUrl = csvRecord.get(9);
-
-      List<EntityReference> owners = getOwners(printer, csvRecord, 3);
       List<EntityReference> domains = getDomains(printer, csvRecord, 10);
       Map<String, Object> extension = getExtension(printer, csvRecord, 11);
 
@@ -634,7 +538,7 @@ public class DatabaseServiceRepository
       }
 
       schema
-          .withName(csvRecord.get(0))
+          .withName(name)
           .withDisplayName(displayName)
           .withFullyQualifiedName(schemaFqn)
           .withDescription(description)

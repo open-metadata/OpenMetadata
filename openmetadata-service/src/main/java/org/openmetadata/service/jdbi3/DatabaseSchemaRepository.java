@@ -767,7 +767,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
           .withSourceUrl(sourceUrl)
           .withColumns(nullOrEmpty(table.getColumns()) ? new ArrayList<>() : table.getColumns())
           .withDomains(newDomains)
-          .withExtension(getExtension(printer, csvRecord, 11));
+          .withExtension(extension);
 
       if (processRecord) {
         createEntityWithChangeDescription(printer, csvRecord, table);

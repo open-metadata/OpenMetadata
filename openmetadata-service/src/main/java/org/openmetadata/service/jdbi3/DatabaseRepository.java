@@ -715,7 +715,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
           .withRetentionPeriod(retentionPeriod)
           .withSourceUrl(sourceUrl)
           .withDomains(newDomains)
-          .withExtension(getExtension(printer, csvRecord, 11));
+          .withExtension(extension);
       if (processRecord) {
         createEntityWithChangeDescription(printer, csvRecord, schema, DATABASE_SCHEMA);
       }
