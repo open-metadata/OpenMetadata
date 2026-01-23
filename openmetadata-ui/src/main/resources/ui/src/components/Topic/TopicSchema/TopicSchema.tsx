@@ -252,7 +252,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             {isVersionView ? (
               <RichTextEditorPreviewerV1 markdown={getEntityName(record)} />
             ) : (
-              getEntityName(record)
+              <span className="text-link-color">{getEntityName(record)}</span>
             )}
           </span>
         </Tooltip>
@@ -353,7 +353,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         width: 220,
         sorter: getColumnSorter<Field, 'name'>('name'),
         render: renderSchemaName,
-        className: 'cursor-pointer',
+        className: 'cursor-pointer hover:text-link-color',
         onCell: (record: Field) => ({
           onClick: (event) => handleColumnClick(record, event),
           'data-testid': 'column-name-cell',
@@ -475,7 +475,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
                 dataSource={messageSchema?.schemaFields}
                 defaultVisibleColumns={DEFAULT_TOPIC_VISIBLE_COLUMNS}
                 expandable={{
-                  ...getTableExpandableConfig<Field>(),
+                  ...getTableExpandableConfig<Field>(false, 'text-link-color'),
                   rowExpandable: (record) => !isEmpty(record.children),
                   onExpandedRowsChange: handleExpandedRowsChange,
                   expandedRowKeys,

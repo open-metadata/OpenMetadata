@@ -552,16 +552,11 @@ test.describe(
 
       // Wait for page to be fully loaded
       await columnsResponse;
-      await page.waitForSelector(
-        '#KnowledgePanel\\.TableSchema [data-testid="loader"]',
-        {
-          state: 'detached',
-        }
-      );
+      await waitForAllLoadersToDisappear(page);
 
       // Check if add button exists and is visible
       const rowSelector =
-        '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.customer_id"] [data-testid="glossary-tags-0"]';
+        '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.customer_id"] [data-testid*="glossary-tags"]';
 
       const addButton = await page.$(`${rowSelector} [data-testid="add-tag"]`);
       if (addButton && (await addButton.isVisible())) {
@@ -657,16 +652,11 @@ test.describe(
 
       // Wait for page to be fully loaded
       await columnsResponse;
-      await page.waitForSelector(
-        '#KnowledgePanel\\.TableSchema [data-testid="loader"]',
-        {
-          state: 'detached',
-        }
-      );
+      await waitForAllLoadersToDisappear(page);
 
       // Check if add button exists and is visible
       const rowSelector =
-        '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"] [data-testid="classification-tags-1"]';
+        '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"] [data-testid*="classification-tags"]';
 
       const addButton = await page.$(`${rowSelector} [data-testid="add-tag"]`);
       if (addButton && (await addButton.isVisible())) {

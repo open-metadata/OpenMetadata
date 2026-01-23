@@ -456,6 +456,8 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Dremio,
   MetadataServiceType.Collibra,
   PipelineServiceType.Mulesoft,
+  DatabaseServiceType.MicrosoftFabric,
+  PipelineServiceType.MicrosoftFabricPipeline,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =
@@ -546,4 +548,6 @@ export const SERVICE_TYPE_WITH_DISPLAY_NAME = new Map<string, string>([
   [PipelineServiceType.OpenLineage, 'Open Lineage'],
   [MetadataServiceType.AlationSink, 'Alation Sink'],
   [SearchServiceType.ElasticSearch, 'Elasticsearch'],
+  [DatabaseServiceType.MicrosoftFabric, 'Microsoft Fabric'],
+  [PipelineServiceType.MicrosoftFabricPipeline, 'Microsoft Fabric Pipeline'],
 ]);
