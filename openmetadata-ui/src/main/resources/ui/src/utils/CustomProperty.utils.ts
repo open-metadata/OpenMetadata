@@ -73,7 +73,6 @@ export const getCustomPropertyMomentFormat = (
   return format;
 };
 
-
 interface PageHeader {
   header: string;
   subHeader: string;

@@ -27,7 +27,7 @@ import org.flowable.bpmn.model.Process;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
-import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.Config__6;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.Config__8;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SinkConfig;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SinkTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.endEvent.EndEventDefinition;
@@ -311,10 +311,10 @@ class TriggerFactoryTest {
     SinkTaskDefinition sinkTask = new SinkTaskDefinition();
     sinkTask.setName(name);
 
-    Config__6 config = new Config__6();
-    config.setSinkType(Config__6.SinkType.GIT);
-    config.setSyncMode(Config__6.SyncMode.OVERWRITE);
-    config.setOutputFormat(Config__6.OutputFormat.YAML);
+    Config__8 config = new Config__8();
+    config.setSinkType(Config__8.SinkType.GIT);
+    config.setSyncMode(Config__8.SyncMode.OVERWRITE);
+    config.setOutputFormat(Config__8.OutputFormat.YAML);
     config.setBatchMode(batchMode);
     config.setTimeoutSeconds(300);
 
@@ -330,10 +330,10 @@ class TriggerFactoryTest {
     SinkTaskDefinition sinkTask = new SinkTaskDefinition();
     sinkTask.setName(name);
 
-    Config__6 config = new Config__6();
-    config.setSinkType(Config__6.SinkType.GIT);
-    config.setSyncMode(Config__6.SyncMode.OVERWRITE);
-    config.setOutputFormat(Config__6.OutputFormat.YAML);
+    Config__8 config = new Config__8();
+    config.setSinkType(Config__8.SinkType.GIT);
+    config.setSyncMode(Config__8.SyncMode.OVERWRITE);
+    config.setOutputFormat(Config__8.OutputFormat.YAML);
     // Note: batchMode is NOT set, should default to true per schema
     config.setTimeoutSeconds(300);
 

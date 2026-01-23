@@ -112,6 +112,8 @@ export interface PipelineConnection {
  * Snowplow Pipeline Connection Config
  *
  * MuleSoft Anypoint Platform Connection Config
+ *
+ * Microsoft Fabric Data Factory Pipeline Connection Config
  */
 export interface ConfigObject {
     /**
@@ -147,6 +149,8 @@ export interface ConfigObject {
      * Regex exclude pipelines.
      *
      * Regex to filter MuleSoft applications by name.
+     *
+     * Regex to only include/exclude pipelines that matches the pattern.
      */
     pipelineFilterPattern?:      FilterPattern;
     supportsMetadataExtraction?: boolean;
@@ -239,6 +243,8 @@ export interface ConfigObject {
     apiHost?: string;
     /**
      * Client ID for DOMO
+     *
+     * Azure Application (client) ID for Service Principal authentication.
      */
     clientId?: string;
     /**
@@ -384,6 +390,22 @@ export interface ConfigObject {
      * accessible environments.
      */
     environmentId?: string;
+    /**
+     * Azure Active Directory authority URI. Defaults to https://login.microsoftonline.com/
+     */
+    authorityUri?: string;
+    /**
+     * Azure Application client secret for Service Principal authentication.
+     */
+    clientSecret?: string;
+    /**
+     * Azure Directory (tenant) ID for Service Principal authentication.
+     */
+    tenantId?: string;
+    /**
+     * The Microsoft Fabric workspace ID where the pipelines are located.
+     */
+    workspaceId?: string;
     [property: string]: any;
 }
 
@@ -492,6 +514,12 @@ export interface AWSCredentials {
      * AWS Session Token.
      */
     awsSessionToken?: string;
+    /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
     /**
      * EndPoint URL for the AWS
      */
@@ -716,6 +744,8 @@ export interface AuthConfigurationType {
  * Regex to only fetch containers that matches the pattern.
  *
  * Regex to filter MuleSoft applications by name.
+ *
+ * Regex to only include/exclude pipelines that matches the pattern.
  */
 export interface FilterPattern {
     /**
@@ -796,6 +826,12 @@ export interface AwsCredentials {
      * AWS Session Token.
      */
     awsSessionToken?: string;
+    /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
     /**
      * EndPoint URL for the AWS
      */
@@ -1123,6 +1159,7 @@ export enum PipelineServiceType {
     KafkaConnect = "KafkaConnect",
     KinesisFirehose = "KinesisFirehose",
     Matillion = "Matillion",
+    MicrosoftFabricPipeline = "MicrosoftFabricPipeline",
     Mulesoft = "Mulesoft",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",
