@@ -252,7 +252,7 @@ const MetricListPage = () => {
                 subHeader: t('message.metric-description'),
               }}
               learningPageId={LEARNING_PAGE_IDS.METRICS}
-              title={t('label.metric-plural')}
+              title={t('label.metric')}
             />
             {permission.Create && (
               <LimitWrapper resource="metric">

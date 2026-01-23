@@ -287,7 +287,7 @@ const PoliciesListPage = () => {
                 subHeader: t(PAGE_HEADERS.POLICIES.subHeader),
               }}
               learningPageId={LEARNING_PAGE_IDS.POLICIES}
-              title={t('label.policy-plural')}
+              title={t('label.policy')}
             />
 
             {addPolicyPermission && (

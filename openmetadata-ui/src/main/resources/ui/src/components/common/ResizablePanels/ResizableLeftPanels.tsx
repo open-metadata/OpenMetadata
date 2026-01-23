@@ -16,6 +16,8 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
 import { ReactComponent as SidebarCollapsedIcon } from '../../../assets/svg/ic-sidebar-collapsed.svg';
+import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
+import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import DocumentTitle from '../DocumentTitle/DocumentTitle';
 import './resizable-panels.less';
 import { ResizablePanelsLeftProps } from './ResizablePanels.interface';
@@ -57,9 +59,15 @@ const ResizableLeftPanels: React.FC<ResizablePanelsLeftProps> = ({
               className="reflex-card card-padding-0"
               title={
                 firstPanel.title && (
-                  <Typography.Text strong className="m-b-0 text-sm">
-                    {firstPanel.title}
-                  </Typography.Text>
+                  <>
+                    <Typography.Text strong className="m-b-0 text-sm">
+                      {firstPanel.title}
+                    </Typography.Text>
+                    <LearningIcon
+                      pageId={LEARNING_PAGE_IDS.EXPLORE}
+                      title={t('label.explore')}
+                    />
+                  </>
                 )
               }>
               {firstPanel.children}

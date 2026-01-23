@@ -323,7 +323,7 @@ const NotificationListPage = () => {
                 subHeader: t(PAGE_HEADERS.NOTIFICATION.subHeader),
               }}
               learningPageId={LEARNING_PAGE_IDS.ALERTS}
-              title={t('label.alert-plural')}
+              title={t('label.alert')}
             />
             {(alertResourcePermission?.Create ||
               alertResourcePermission?.All) && (

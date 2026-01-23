@@ -285,7 +285,7 @@ const RolesListPage = () => {
                 subHeader: t(PAGE_HEADERS.ROLES.subHeader),
               }}
               learningPageId={LEARNING_PAGE_IDS.ROLES}
-              title={t('label.role-plural')}
+              title={t('label.role')}
             />
 
             {addRolePermission && (

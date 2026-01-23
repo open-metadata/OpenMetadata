@@ -496,7 +496,7 @@ const UserListPageV1 = () => {
                   }
             }
             learningPageId={LEARNING_PAGE_IDS.USERS}
-            title={t('label.user-plural')}
+            title={t('label.user')}
           />
         </Col>
         <Col span={12}>
