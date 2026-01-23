@@ -48,9 +48,10 @@ jest.mock('@mui/material', () => ({
   ),
   Divider: () => <hr />,
   Skeleton: () => <div data-testid="skeleton">Loading...</div>,
-  Button: ({ children, ...props }) => (
+  Button: ({ children, endIcon, ...props }) => (
     <button data-testid={props['data-testid']} onClick={props.onClick}>
       {children}
+      {endIcon}
     </button>
   ),
   IconButton: ({ children, ...props }) => (

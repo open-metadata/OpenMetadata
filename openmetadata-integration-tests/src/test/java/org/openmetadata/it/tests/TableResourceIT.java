@@ -1045,15 +1045,15 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertEquals(10, response.getData().size());
     assertEquals(10, response.getPaging().getTotal());
 
-    // Test with custom limit
-    response = client.tables().getColumns(table.getId(), 5, null, null, null);
+    // Test with custom limit, sorted by ordinalPosition for predictable order
+    response = client.tables().getColumns(table.getId(), 5, 0, null, null, "ordinalPosition");
     assertEquals(5, response.getData().size());
     assertEquals(10, response.getPaging().getTotal());
     assertEquals("column1", response.getData().get(0).getName());
     assertEquals("column5", response.getData().get(4).getName());
 
-    // Test with offset
-    response = client.tables().getColumns(table.getId(), 5, 5, null, null);
+    // Test with offset, sorted by ordinalPosition
+    response = client.tables().getColumns(table.getId(), 5, 5, null, null, "ordinalPosition");
     assertEquals(5, response.getData().size());
     assertEquals(10, response.getPaging().getTotal());
     assertEquals("column6", response.getData().get(0).getName());
@@ -1063,6 +1063,46 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     response = client.tables().getColumns(table.getId(), 5, 15, null, null);
     assertEquals(0, response.getData().size());
     assertEquals(10, response.getPaging().getTotal());
+  }
+
+  @Test
+  void test_getTableColumnsSortByOrdinalPosition_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create table with columns that have non-sequential ordinal positions
+    // Names: zebra(ord=3), apple(ord=1), mango(ord=2)
+    List<Column> columns = new ArrayList<>();
+    columns.add(ColumnBuilder.of("zebra", "STRING").ordinalPosition(3).build());
+    columns.add(ColumnBuilder.of("apple", "STRING").ordinalPosition(1).build());
+    columns.add(ColumnBuilder.of("mango", "STRING").ordinalPosition(2).build());
+
+    CreateTable createRequest = createRequest(ns.prefix("sort_test_table"), ns);
+    createRequest.setColumns(columns);
+    Table table = createEntity(createRequest);
+
+    // Default sort should be by name (alphabetical)
+    TableColumnList response = client.tables().getColumns(table.getId(), 10, 0, null, null, null);
+    assertEquals(3, response.getData().size());
+    assertEquals("apple", response.getData().get(0).getName());
+    assertEquals("mango", response.getData().get(1).getName());
+    assertEquals("zebra", response.getData().get(2).getName());
+
+    // Sort by name explicitly
+    response = client.tables().getColumns(table.getId(), 10, 0, null, null, "name");
+    assertEquals(3, response.getData().size());
+    assertEquals("apple", response.getData().get(0).getName());
+    assertEquals("mango", response.getData().get(1).getName());
+    assertEquals("zebra", response.getData().get(2).getName());
+
+    // Sort by ordinalPosition
+    response = client.tables().getColumns(table.getId(), 10, 0, null, null, "ordinalPosition");
+    assertEquals(3, response.getData().size());
+    assertEquals("apple", response.getData().get(0).getName()); // ordinal 1
+    assertEquals(1, response.getData().get(0).getOrdinalPosition());
+    assertEquals("mango", response.getData().get(1).getName()); // ordinal 2
+    assertEquals(2, response.getData().get(1).getOrdinalPosition());
+    assertEquals("zebra", response.getData().get(2).getName()); // ordinal 3
+    assertEquals(3, response.getData().get(2).getOrdinalPosition());
   }
 
   @Test
