@@ -41,6 +41,7 @@ export enum SettingType {
     JwtTokenConfiguration = "jwtTokenConfiguration",
     LineageSettings = "lineageSettings",
     LoginConfiguration = "loginConfiguration",
+    MCPConfiguration = "mcpConfiguration",
     OpenLineageSettings = "openLineageSettings",
     OpenMetadataBaseURLConfiguration = "openMetadataBaseUrlConfiguration",
     ProfilerConfiguration = "profilerConfiguration",
@@ -101,6 +102,8 @@ export enum SettingType {
  *
  * Settings for OpenLineage HTTP API integration. Configure how OpenMetadata receives and
  * processes lineage events from external systems like Spark, Airflow, and Flink.
+ *
+ * This schema defines the Model Context Protocol (MCP) Server configuration
  */
 export interface PipelineServiceClientConfiguration {
     /**
@@ -128,6 +131,8 @@ export interface PipelineServiceClientConfiguration {
      * Is Task Notification Enabled?
      *
      * Enable or disable the OpenLineage HTTP API endpoint.
+     *
+     * Enable or disable the MCP server
      */
     enabled?: boolean;
     /**
@@ -554,6 +559,47 @@ export interface PipelineServiceClientConfiguration {
      * 'prod-postgres'
      */
     namespaceToServiceMapping?: { [key: string]: string };
+    /**
+     * List of allowed origins for CORS on OAuth endpoints. Use specific origins for production
+     * security. Wildcard (*) is NOT recommended.
+     */
+    allowedOrigins?: string[];
+    /**
+     * Base URL for MCP OAuth endpoints. Used for OAuth metadata (issuer, endpoints). If not
+     * set, falls back to system settings. For clustered deployments, set this to the
+     * external-facing URL.
+     */
+    baseUrl?: string;
+    /**
+     * HTTP connection timeout in milliseconds for SSO provider metadata fetching. Default:
+     * 30000ms (30 seconds)
+     */
+    connectTimeout?: number;
+    /**
+     * Name of the MCP server
+     */
+    mcpServerName?: string;
+    /**
+     * Version of the MCP server
+     */
+    mcpServerVersion?: string;
+    /**
+     * Expected origin header URI for validation
+     */
+    originHeaderUri?: string;
+    /**
+     * Enable or disable origin validation for requests
+     */
+    originValidationEnabled?: boolean;
+    /**
+     * Base path for MCP endpoints
+     */
+    path?: string;
+    /**
+     * HTTP read timeout in milliseconds for SSO provider metadata fetching. Default: 30000ms
+     * (30 seconds)
+     */
+    readTimeout?: number;
 }
 
 export interface AllowedFieldValueBoostFields {
