@@ -2,7 +2,6 @@ from copy import deepcopy
 
 import pytest
 
-from _openmetadata_testutils.helpers import retry_flaky
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
     DatabaseServiceAutoClassificationPipeline,
@@ -39,7 +38,7 @@ def run_classifier(
     return ingestion_config
 
 
-@retry_flaky(max_retries=2, delay_sec=30.0)
+@pytest.mark.flaky(reruns=3, reruns_delay=30)
 @pytest.mark.parametrize(
     "table_name",
     (
