@@ -280,6 +280,39 @@ class OMetaPipelineTest(TestCase):
         # # Cleanup
         # self.metadata.delete(entity=Pipeline, entity_id=pipeline.id)
 
+    def test_add_pipeline_status_with_special_chars(self):
+        """
+        Test adding pipeline status when pipeline name contains special characters
+        """
+
+        create_pipeline = CreatePipelineRequest(
+            name="Pipeline/Name (test)",
+            service=self.service_entity.fullyQualifiedName,
+            tasks=[
+                Task(name="task1"),
+            ],
+        )
+
+        pipeline: Pipeline = self.metadata.create_or_update(data=create_pipeline)
+        execution_ts = datetime_to_ts(datetime.strptime("2021-03-07", "%Y-%m-%d"))
+
+        # Add status using the pipeline's FQN directly - should not raise 404/500 error
+        updated = self.metadata.add_pipeline_status(
+            fqn=pipeline.fullyQualifiedName.root,
+            status=PipelineStatus(
+                timestamp=execution_ts,
+                executionStatus=StatusType.Successful,
+                taskStatus=[
+                    TaskStatus(name="task1", executionStatus=StatusType.Successful),
+                ],
+            ),
+        )
+
+        assert updated is not None
+        assert updated.pipelineStatus is not None
+        assert updated.pipelineStatus.executionStatus == StatusType.Successful
+        assert updated.pipelineStatus.timestamp.root == execution_ts
+
     def test_add_tasks(self):
         """
         Check the add task logic
