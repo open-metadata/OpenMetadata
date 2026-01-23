@@ -72,19 +72,25 @@ public class OAuthClientRepository {
     // Convert scope from List<String> to space-separated String
     metadata.setScope(String.join(" ", record.scopes()));
 
-    // HIGH: Handle Fernet decryption failures gracefully
     String decryptedSecret = null;
     if (record.clientSecretEncrypted() != null) {
       try {
         decryptedSecret = fernet.decrypt(record.clientSecretEncrypted());
       } catch (Exception e) {
+        boolean isConfidentialClient =
+            record.tokenEndpointAuthMethod() != null
+                && !record.tokenEndpointAuthMethod().equals("none");
+
         LOG.error(
-            "CRITICAL: Failed to decrypt client secret for client {}. This may indicate Fernet key rotation. "
-                + "Client authentication will fail until secret is re-registered. Error: {}",
-            clientId,
-            e.getMessage());
-        // Continue without secret - public clients may still work
-        // Confidential clients will fail authentication later
+            "Failed to decrypt client secret for client {}. Error: {}", clientId, e.getMessage());
+
+        if (isConfidentialClient) {
+          throw new IllegalStateException(
+              "Failed to decrypt client secret for confidential client "
+                  + clientId
+                  + ". This may indicate Fernet key rotation.",
+              e);
+        }
       }
     }
 

@@ -173,6 +173,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     sanitized.remove("refresh_token");
     sanitized.remove("access_token");
     sanitized.remove("token");
+    sanitized.remove("password");
 
     // Replace code_challenge with indicator (still safe to log)
     if (sanitized.containsKey("code_challenge")) {
@@ -410,15 +411,23 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
             .setRequestContext(request, response);
       }
 
-      AuthorizationHandler.AuthorizationResponse authResponse =
-          authorizationHandler.handle(params).join();
+      try {
+        AuthorizationHandler.AuthorizationResponse authResponse =
+            authorizationHandler.handle(params).join();
 
-      String redirectUrl = authResponse.getRedirectUrl();
-      if (redirectUrl != null) {
-        response.setHeader("Location", redirectUrl);
-        response.setHeader("Cache-Control", "no-store");
-        setCorsHeaders(request, response);
-        response.sendRedirect(redirectUrl);
+        String redirectUrl = authResponse.getRedirectUrl();
+        if (redirectUrl != null) {
+          response.setHeader("Location", redirectUrl);
+          response.setHeader("Cache-Control", "no-store");
+          setCorsHeaders(request, response);
+          response.sendRedirect(redirectUrl);
+        }
+      } finally {
+        if (authProvider
+            instanceof org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider) {
+          ((org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider) authProvider)
+              .clearRequestContext();
+        }
       }
 
     } catch (Exception ex) {
@@ -532,6 +541,25 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       setCorsHeaders(request, response);
       response.setStatus(200);
       getObjectMapper().writeValue(response.getOutputStream(), token);
+    } catch (CompletionException ex) {
+      Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+      logger.error("Token request failed", cause);
+      setCorsHeaders(request, response);
+      response.setContentType("application/json");
+      response.setStatus(400);
+
+      Map<String, String> error = new HashMap<>();
+      if (cause instanceof TokenException) {
+        TokenException tokenEx = (TokenException) cause;
+        error.put("error", tokenEx.getError());
+        error.put("error_description", tokenEx.getErrorDescription());
+      } else {
+        error.put("error", "invalid_grant");
+        error.put(
+            "error_description",
+            cause.getMessage() != null ? cause.getMessage() : ex.getClass().getSimpleName());
+      }
+      getObjectMapper().writeValue(response.getOutputStream(), error);
     } catch (Exception ex) {
       logger.error("Token request failed", ex);
       setCorsHeaders(request, response);
@@ -539,11 +567,10 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       response.setStatus(400);
 
       Map<String, String> error = new HashMap<>();
-      error.put("error", "invalid_grant");
-      Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+      error.put("error", "server_error");
       error.put(
           "error_description",
-          cause.getMessage() != null ? cause.getMessage() : ex.getClass().getSimpleName());
+          ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName());
       getObjectMapper().writeValue(response.getOutputStream(), error);
     }
   }

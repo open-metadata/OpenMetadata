@@ -337,7 +337,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
             authRequestId, pac4jState, pac4jNonce, pac4jCodeVerifier);
         LOG.info("Stored pac4j session data in database for auth request: {}", authRequestId);
       } else {
-        LOG.warn("Could not find pac4j state in session after handleLogin()");
+        LOG.error("Could not find pac4j state in session after handleLogin()");
+        throw new AuthorizeException("server_error", "Failed to initialize SSO session state");
       }
 
       return CompletableFuture.completedFuture("SSO_REDIRECT_INITIATED");
@@ -519,7 +520,9 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
         try {
           basicAuthenticator.recordFailedLoginAttempt(email, email);
         } catch (Exception recordEx) {
-          LOG.error("Failed to record login attempt", recordEx);
+          LOG.error("Failed to record login attempt for security tracking", recordEx);
+          throw new AuthorizeException(
+              "server_error", "Unable to process login attempt - please try again later");
         }
         session.setAttribute(SESSION_MCP_LOGIN_ERROR, "Invalid username or password");
         return displayLoginForm(session, client);
@@ -807,6 +810,12 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
         throw new TokenException("invalid_request", "Missing code_verifier (PKCE required)");
       }
 
+      // RFC 7636: code_verifier must be 43-128 characters
+      if (codeVerifier.length() < 43 || codeVerifier.length() > 128) {
+        throw new TokenException(
+            "invalid_request", "code_verifier must be between 43 and 128 characters per RFC 7636");
+      }
+
       OAuthAuthorizationCodeRecord codeRecord = codeRepository.markAsUsedAtomic(code);
       if (codeRecord == null) {
         String clientIP =
@@ -1038,11 +1047,6 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
       LOG.debug("User status validated: User {} is active and not deleted", userName);
 
-      // Atomic token rotation: Revoke old token and generate new one
-      // This implements the refresh token rotation pattern (RFC 6749 Section 10.4)
-      tokenRepository.revokeRefreshToken(refreshTokenValue);
-      LOG.debug("Old refresh token revoked for user: {}", userName);
-
       // Generate cryptographically secure new refresh token (32 bytes = 256 bits)
       String newRefreshTokenValue = generateSecureToken(32);
       long newRefreshExpiresAt = System.currentTimeMillis() + (REFRESH_TOKEN_EXPIRY_SECONDS * 1000);
@@ -1051,9 +1055,17 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
           new RefreshToken(
               newRefreshTokenValue, client.getClientId(), requestedScopes, newRefreshExpiresAt);
 
-      // Store new refresh token
+      // Store new refresh token before revoking old one
+      // This ensures atomicity: if revocation fails, both tokens work briefly
+      // If storage fails, old token still works - no lock-out
       tokenRepository.storeRefreshToken(
           newRefreshToken, client.getClientId(), userName, requestedScopes);
+      LOG.debug("New refresh token stored for user: {}", userName);
+
+      // Revoke old token after new one is safely stored
+      // This implements the refresh token rotation pattern (RFC 6749 Section 10.4)
+      tokenRepository.revokeRefreshToken(refreshTokenValue);
+      LOG.debug("Old refresh token revoked for user: {}", userName);
 
       LOG.info(
           "New refresh token generated for user: {} (expires in {} days)",
@@ -1160,9 +1172,9 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       }
       return matches;
 
-    } catch (Exception e) {
-      LOG.error("PKCE verification error", e);
-      return false;
+    } catch (NoSuchAlgorithmException e) {
+      LOG.error("PKCE verification system error: SHA-256 not available", e);
+      throw new IllegalStateException("SHA-256 algorithm not available", e);
     }
   }
 }
