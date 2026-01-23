@@ -12,7 +12,6 @@
  */
 import { expect, Page } from '@playwright/test';
 import { get } from 'lodash';
-import { test } from '../fixtures/pages';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -24,6 +23,7 @@ import {
   updateDisplayNameForEntityChildren,
   validateCopiedLinkFormat,
 } from '../../utils/entity';
+import { test } from '../fixtures/pages';
 
 // Grant clipboard permissions for copy link tests
 test.use({
@@ -204,8 +204,12 @@ test('Copy column link button should copy the column URL to clipboard', async ({
 
 test('Copy column link should have valid URL format', async ({ page }) => {
   await redirectToHomePage(page);
+  const columnResponse = page.waitForResponse(
+    `/api/v1/tables/name/${table.entityResponseData?.['fullyQualifiedName']}/columns?*`
+  );
   await table.visitEntityPage(page);
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  const columnData = await columnResponse.then((res) => res.json());
 
   await expect(page.getByTestId('entity-table')).toBeVisible();
 
@@ -231,20 +235,23 @@ test('Copy column link should have valid URL format', async ({ page }) => {
   const sidePanel = page.locator('.column-detail-panel');
   await expect(sidePanel).toBeVisible();
   // Verify the correct column is showing in the panel
-  const columnName = table.entityResponseData.columns?.[0]?.name;
-  if (columnName) {
-    await expect(sidePanel).toContainText(columnName);
-  }
+  const columnName = columnData.data?.[0]?.name;
+
+  await expect(sidePanel).toContainText(columnName);
 
   // Close side panel
   await page.getByTestId('close-button').click();
   await expect(sidePanel).not.toBeVisible();
 
   // Verify URL does not contain the column part
-  await expect(page).toHaveURL(new RegExp(`/table/${table.entityResponseData?.['fullyQualifiedName']}$`));
+  await expect(page).toHaveURL(
+    new RegExp(`/table/${table.entityResponseData?.['fullyQualifiedName']}$`)
+  );
 });
 
-test('Copy nested column link should include full hierarchical path', async ({ page }) => {
+test('Copy nested column link should include full hierarchical path', async ({
+  page,
+}) => {
   await redirectToHomePage(page);
   await table.visitEntityPage(page);
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
@@ -264,7 +271,10 @@ test('Copy nested column link should include full hierarchical path', async ({ p
       const nestedCopyButton = nestedCopyButtons.nth(1);
       await expect(nestedCopyButton).toBeVisible();
 
-      const clipboardText = await copyAndGetClipboardText(page, nestedCopyButton);
+      const clipboardText = await copyAndGetClipboardText(
+        page,
+        nestedCopyButton
+      );
 
       expect(clipboardText).toContain('/table/');
       expect(clipboardText).toContain(
@@ -279,7 +289,8 @@ test('Copy nested column link should include full hierarchical path', async ({ p
       await expect(sidePanel).toBeVisible();
 
       // Verify the correct column is showing in the panel
-      const nestedColumnName = table.entityResponseData.columns?.[0]?.children?.[0]?.name;
+      const nestedColumnName =
+        table.entityResponseData.columns?.[0]?.children?.[0]?.name;
       if (nestedColumnName) {
         await expect(sidePanel).toContainText(nestedColumnName);
       }
@@ -289,7 +300,11 @@ test('Copy nested column link should include full hierarchical path', async ({ p
       await expect(sidePanel).not.toBeVisible();
 
       // Verify URL does not contain the column part
-      await expect(page).toHaveURL(new RegExp(`/table/${table.entityResponseData?.['fullyQualifiedName']}$`));
+      await expect(page).toHaveURL(
+        new RegExp(
+          `/table/${table.entityResponseData?.['fullyQualifiedName']}$`
+        )
+      );
     }
   }
 });
