@@ -34,6 +34,28 @@ interface UpdateEntityFieldResult<T> {
   data?: T;
 }
 
+export const mergeEntityStateUpdate = <T extends object>(
+  previous: T,
+  response: Partial<T>,
+  updatedEntity: T,
+  key?: keyof T
+): T => {
+  if (key && updatedEntity[key] === undefined) {
+    const { [key]: _, ...restFromPrevious } = previous;
+    const { [key]: __, ...restFromResponse } = response;
+
+    return { ...restFromPrevious, ...restFromResponse } as T;
+  }
+
+  const merged = { ...previous, ...response } as T;
+
+  if (key) {
+    merged[key] = (response[key] ?? updatedEntity[key]) as T[keyof T];
+  }
+
+  return merged;
+};
+
 export const updateEntityField = async <T>({
   entityId,
   entityType,

@@ -46,6 +46,16 @@ UPDATE test_definition
   SET json = jsonb_set(json::jsonb, '{enabled}', 'true'::jsonb, true)::json
   WHERE json ->> 'enabled' IS NULL;
 
+-- Migrate termsOfUse from string to object with content and inherited fields
+-- This converts existing termsOfUse string values to the new object structure: { "content": "...", "inherited": false }
+UPDATE data_contract_entity
+  SET json = jsonb_set(
+    json::jsonb,
+    '{termsOfUse}',
+    jsonb_build_object('content', json ->> 'termsOfUse', 'inherited', false)
+  )::json
+  WHERE jsonb_typeof((json::jsonb) -> 'termsOfUse') = 'string';
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_audit_log_event_change_event_id
 ON audit_log_event (change_event_id);
 
@@ -113,3 +123,123 @@ CREATE INDEX IF NOT EXISTS idx_test_suite_updated_at_id ON test_suite(updatedAt 
 CREATE INDEX IF NOT EXISTS idx_test_case_updated_at_id ON test_case(updatedAt DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_api_collection_entity_updated_at_id ON api_collection_entity(updatedAt DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_api_endpoint_entity_updated_at_id ON api_endpoint_entity(updatedAt DESC, id DESC);
+
+-- Distributed Search Indexing Tables
+
+-- Table to track reindex jobs across distributed servers
+CREATE TABLE IF NOT EXISTS search_index_job (
+    id VARCHAR(36) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    jobConfiguration JSONB NOT NULL,
+    targetIndexPrefix VARCHAR(255),
+    stagedIndexMapping JSONB,
+    totalRecords BIGINT NOT NULL DEFAULT 0,
+    processedRecords BIGINT NOT NULL DEFAULT 0,
+    successRecords BIGINT NOT NULL DEFAULT 0,
+    failedRecords BIGINT NOT NULL DEFAULT 0,
+    stats JSONB,
+    createdBy VARCHAR(256) NOT NULL,
+    createdAt BIGINT NOT NULL,
+    startedAt BIGINT,
+    completedAt BIGINT,
+    updatedAt BIGINT NOT NULL,
+    errorMessage TEXT,
+    -- Legacy fields (no longer used but kept for compatibility)
+    registrationDeadline BIGINT,
+    registeredServerCount INT,
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_search_index_job_status ON search_index_job(status);
+CREATE INDEX IF NOT EXISTS idx_search_index_job_created ON search_index_job(createdAt DESC);
+
+-- Table to track partitions within a reindex job
+CREATE TABLE IF NOT EXISTS search_index_partition (
+    id VARCHAR(36) NOT NULL,
+    jobId VARCHAR(36) NOT NULL,
+    entityType VARCHAR(128) NOT NULL,
+    partitionIndex INT NOT NULL,
+    rangeStart BIGINT NOT NULL,
+    rangeEnd BIGINT NOT NULL,
+    estimatedCount BIGINT NOT NULL,
+    workUnits BIGINT NOT NULL,
+    priority INT NOT NULL DEFAULT 50,
+    status VARCHAR(32) NOT NULL DEFAULT 'PENDING',
+    processingCursor BIGINT NOT NULL DEFAULT 0,
+    processedCount BIGINT NOT NULL DEFAULT 0,
+    successCount BIGINT NOT NULL DEFAULT 0,
+    failedCount BIGINT NOT NULL DEFAULT 0,
+    assignedServer VARCHAR(255),
+    claimedAt BIGINT,
+    startedAt BIGINT,
+    completedAt BIGINT,
+    lastUpdateAt BIGINT,
+    lastError TEXT,
+    retryCount INT NOT NULL DEFAULT 0,
+    claimableAt BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE (jobId, entityType, partitionIndex),
+    CONSTRAINT fk_partition_job FOREIGN KEY (jobId) REFERENCES search_index_job(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_partition_job ON search_index_partition(jobId);
+CREATE INDEX IF NOT EXISTS idx_partition_status_priority ON search_index_partition(status, priority DESC);
+CREATE INDEX IF NOT EXISTS idx_partition_claimed ON search_index_partition(claimedAt);
+CREATE INDEX IF NOT EXISTS idx_partition_assigned_server ON search_index_partition(jobId, assignedServer);
+CREATE INDEX IF NOT EXISTS idx_partition_claimable ON search_index_partition(jobId, status, claimableAt);
+
+-- Table for distributed lock to ensure only one reindex job runs at a time
+CREATE TABLE IF NOT EXISTS search_reindex_lock (
+    lockKey VARCHAR(64) NOT NULL,
+    jobId VARCHAR(36) NOT NULL,
+    serverId VARCHAR(255) NOT NULL,
+    acquiredAt BIGINT NOT NULL,
+    lastHeartbeat BIGINT NOT NULL,
+    expiresAt BIGINT NOT NULL,
+    PRIMARY KEY (lockKey)
+);
+
+-- Search Index Failures Table
+-- Purpose: Store individual failure records for entities that fail during reindexing
+
+CREATE TABLE IF NOT EXISTS search_index_failures (
+    id VARCHAR(36) NOT NULL,
+    jobId VARCHAR(36) NOT NULL,
+    serverId VARCHAR(256) NOT NULL,
+    entityType VARCHAR(256) NOT NULL,
+    entityId VARCHAR(36),
+    entityFqn VARCHAR(1024),
+    failureStage VARCHAR(32) NOT NULL,
+    errorMessage TEXT,
+    stackTrace TEXT,
+    timestamp BIGINT NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_search_index_failures_job_id ON search_index_failures(jobId);
+CREATE INDEX IF NOT EXISTS idx_search_index_failures_server_id ON search_index_failures(serverId);
+CREATE INDEX IF NOT EXISTS idx_search_index_failures_entity_type ON search_index_failures(entityType);
+CREATE INDEX IF NOT EXISTS idx_search_index_failures_timestamp ON search_index_failures(timestamp);
+
+-- Search Index Server Stats Table
+-- Purpose: Track per-server stats in distributed indexing mode
+
+CREATE TABLE IF NOT EXISTS search_index_server_stats (
+    id VARCHAR(36) NOT NULL,
+    jobId VARCHAR(36) NOT NULL,
+    serverId VARCHAR(256) NOT NULL,
+    readerSuccess BIGINT DEFAULT 0,
+    readerFailed BIGINT DEFAULT 0,
+    sinkTotal BIGINT DEFAULT 0,
+    sinkSuccess BIGINT DEFAULT 0,
+    sinkFailed BIGINT DEFAULT 0,
+    entityBuildFailures BIGINT DEFAULT 0,
+    partitionsCompleted INT DEFAULT 0,
+    partitionsFailed INT DEFAULT 0,
+    lastUpdatedAt BIGINT NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE (jobId, serverId)
+);
+
+CREATE INDEX IF NOT EXISTS idx_search_index_server_stats_job_id ON search_index_server_stats(jobId);
+
