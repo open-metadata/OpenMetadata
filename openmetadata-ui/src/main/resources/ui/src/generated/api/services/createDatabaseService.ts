@@ -43,7 +43,7 @@ export interface CreateDatabaseService {
     /**
      * Owners of this database service.
      */
-    owners?: EntityReference[];
+    owners?:     EntityReference[];
     serviceType: DatabaseServiceType;
     /**
      * Tags for this Database Service.
@@ -266,7 +266,7 @@ export interface ConfigObject {
     /**
      * Option to include policy tags as part of column description.
      */
-    includePolicyTags?: boolean;
+    includePolicyTags?:       boolean;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -291,19 +291,19 @@ export interface ConfigObject {
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
-    storedProcedureFilterPattern?: FilterPattern;
-    supportsDatabase?: boolean;
-    supportsDataDiff?: boolean;
-    supportsDBTExtraction?: boolean;
+    storedProcedureFilterPattern?:          FilterPattern;
+    supportsDatabase?:                      boolean;
+    supportsDataDiff?:                      boolean;
+    supportsDBTExtraction?:                 boolean;
     supportsIncrementalMetadataExtraction?: boolean;
     /**
      * Supports Lineage Extraction.
      */
-    supportsLineageExtraction?: boolean;
+    supportsLineageExtraction?:  boolean;
     supportsMetadataExtraction?: boolean;
-    supportsProfiler?: boolean;
-    supportsQueryComment?: boolean;
-    supportsSystemProfile?: boolean;
+    supportsProfiler?:           boolean;
+    supportsQueryComment?:       boolean;
+    supportsSystemProfile?:      boolean;
     /**
      * Supports Usage Extraction.
      */
@@ -336,7 +336,7 @@ export interface ConfigObject {
      * multi-regions are not yet in GA.
      */
     usageLocation?: string;
-    awsConfig?: AWSCredentials;
+    awsConfig?:     AWSCredentials;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
@@ -668,8 +668,8 @@ export interface ConfigObject {
      * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
      * client certificate, and private key for mutual TLS authentication.
      */
-    sslConfig?: Config;
-    sslMode?: SSLMode;
+    sslConfig?:                     Config;
+    sslMode?:                       SSLMode;
     supportsViewLineageExtraction?: boolean;
     /**
      * Available sources to fetch the metadata.
@@ -971,7 +971,7 @@ export interface ConfigObject {
      * Pagination limit used while querying the SAP ERP API for fetching the entities
      */
     paginationLimit?: number;
-    verifySSL?: VerifySSL;
+    verifySSL?:       VerifySSL;
     /**
      * Azure Application client secret for service principal authentication.
      *
@@ -1101,8 +1101,8 @@ export interface AuthenticationType {
      *
      * Password for the Dremio Software user account.
      */
-    password?: string;
-    awsConfig?: AWSCredentials;
+    password?:    string;
+    awsConfig?:   AWSCredentials;
     azureConfig?: AzureCredentials;
     /**
      * JWT to connect to source.
@@ -1356,7 +1356,7 @@ export interface Connection {
     /**
      * Berarer token to use for the 'Authorization' header.
      */
-    token?: string;
+    token?:     string;
     awsConfig?: AWSCredentials;
     /**
      * DynamoDB table name.
@@ -1533,7 +1533,7 @@ export interface TaLakeConfigurationSource {
     /**
      * Prefix of the data source.
      */
-    prefix?: string;
+    prefix?:         string;
     securityConfig?: SecurityConfigClass;
 }
 
@@ -1578,7 +1578,7 @@ export interface ConnectionClass {
      * Local path for the local file with metastore data. E.g., /tmp/metastore.db
      */
     metastoreFilePath?: string;
-    securityConfig?: AWSCredentials;
+    securityConfig?:    AWSCredentials;
 }
 
 /**
@@ -1902,9 +1902,9 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */
-    classificationName?: string;
+    classificationName?:  string;
     connectionArguments?: { [key: string]: any };
-    connectionOptions?: { [key: string]: string };
+    connectionOptions?:   { [key: string]: string };
     /**
      * Database of the data source. This is optional parameter, if you would like to restrict
      * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
@@ -1932,7 +1932,7 @@ export interface HiveMetastoreConnectionDetails {
      * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
      * restricted.
      */
-    queryStatementSource?: string;
+    queryStatementSource?:    string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -1946,19 +1946,19 @@ export interface HiveMetastoreConnectionDetails {
      * SSL Configuration details.
      */
     sslConfig?: Config;
-    sslMode?: SSLMode;
+    sslMode?:   SSLMode;
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
     storedProcedureFilterPattern?: FilterPattern;
-    supportsDatabase?: boolean;
-    supportsDataDiff?: boolean;
-    supportsDBTExtraction?: boolean;
-    supportsLineageExtraction?: boolean;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?: boolean;
-    supportsQueryComment?: boolean;
-    supportsUsageExtraction?: boolean;
+    supportsDatabase?:             boolean;
+    supportsDataDiff?:             boolean;
+    supportsDBTExtraction?:        boolean;
+    supportsLineageExtraction?:    boolean;
+    supportsMetadataExtraction?:   boolean;
+    supportsProfiler?:             boolean;
+    supportsQueryComment?:         boolean;
+    supportsUsageExtraction?:      boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
@@ -2005,8 +2005,8 @@ export interface AuthConfigurationType {
     /**
      * Password to connect to source.
      */
-    password?: string;
-    awsConfig?: AWSCredentials;
+    password?:    string;
+    awsConfig?:   AWSCredentials;
     azureConfig?: AzureCredentials;
 }
 
@@ -2037,7 +2037,7 @@ export interface DataStorageConfig {
     /**
      * Prefix of the data source.
      */
-    prefix?: string;
+    prefix?:        string;
     storageConfig?: AwsCredentials;
     [property: string]: any;
 }
@@ -2482,7 +2482,7 @@ export interface TagLabel {
      * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
      * entity must confirm the suggested labels before it is marked as 'Confirmed'.
      */
-    state: State;
+    state:  State;
     style?: Style;
     tagFQN: string;
 }

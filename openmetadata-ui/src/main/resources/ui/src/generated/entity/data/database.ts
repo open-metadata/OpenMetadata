@@ -163,7 +163,7 @@ export interface AssetCertification {
      * The date when the certification expires.
      */
     expiryDate: number;
-    tagLabel: TagLabel;
+    tagLabel:   TagLabel;
 }
 
 /**
@@ -214,7 +214,7 @@ export interface TagLabel {
      * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
      * entity must confirm the suggested labels before it is marked as 'Confirmed'.
      */
-    state: State;
+    state:  State;
     style?: Style;
     tagFQN: string;
 }
@@ -318,7 +318,7 @@ export interface ChangeSummary {
     /**
      * Name of the user or bot who made this change
      */
-    changedBy?: string;
+    changedBy?:    string;
     changeSource?: ChangeSource;
     [property: string]: any;
 }
@@ -422,7 +422,7 @@ export interface DatabaseProfilerConfig {
     /**
      * Percentage of data or no. of rows we want to execute the profiler and tests on
      */
-    profileSample?: number;
+    profileSample?:     number;
     profileSampleType?: ProfileSampleType;
     /**
      * Whether to randomize the sample data or not.
@@ -431,9 +431,9 @@ export interface DatabaseProfilerConfig {
     /**
      * Number of row of sample data to be generated
      */
-    sampleDataCount?: number;
+    sampleDataCount?:         number;
     sampleDataStorageConfig?: SampleDataStorageConfig;
-    samplingMethodType?: SamplingMethodType;
+    samplingMethodType?:      SamplingMethodType;
     [property: string]: any;
 }
 
@@ -472,7 +472,7 @@ export interface DataStorageConfig {
     /**
      * Prefix of the data source.
      */
-    prefix?: string;
+    prefix?:        string;
     storageConfig?: AwsCredentials;
     [property: string]: any;
 }
