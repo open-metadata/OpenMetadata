@@ -161,7 +161,7 @@ base_requirements = {
     "packaging",  # For version parsing
     "setuptools~=70.0",
     "shapely",
-    "collate-data-diff>=0.11.6",
+    "collate-data-diff==0.11.8",
     "jaraco.functools<4.2.0",  # above 4.2 breaks the build
     "jaraco.context==6.0.1",
     # TODO: Remove one once we have updated datadiff version
