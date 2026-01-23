@@ -2403,6 +2403,7 @@
     "ingestion-bot-cant-be-deleted": "取り込みボットは削除できません",
     "ingestion-pipeline-name-message": "このパイプラインを一意に識別する名前",
     "ingestion-pipeline-name-successfully-deployed-entity": "すべて準備完了です！パイプライン '<Ingestion Pipeline Name>' は正常にデプロイされました。{{entity}} はスケジュールに従って定期的に実行されます。",
+    "inherited-contract-cannot-be-deleted": "Inherited contracts cannot be deleted. Remove the entity from the Data Product or create an entity-specific contract.",
     "input-output-port-plural": "入出力ポート",
     "input-output-ports-description": "入出力ポートは、データプロダクトが消費および生成するデータアセットを定義します。データメッシュアーキテクチャにおけるデータリネージと依存関係を理解するために不可欠です。",
     "input-placeholder": "@mention を使用してタグ付けし、コメントを入力...",

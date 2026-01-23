@@ -2403,6 +2403,7 @@
     "ingestion-bot-cant-be-deleted": "لا يمكنك حذف روبوت الاستيعاب.",
     "ingestion-pipeline-name-message": "اسم يحدد مثيل سير العمل هذا بشكل فريد.",
     "ingestion-pipeline-name-successfully-deployed-entity": "أنت جاهز تمامًا! تم نشر <Ingestion Pipeline Name> بنجاح. سيتم تشغيل {{entity}} على فترات منتظمة وفقًا للجدول الزمني.",
+    "inherited-contract-cannot-be-deleted": "Inherited contracts cannot be deleted. Remove the entity from the Data Product or create an entity-specific contract.",
     "input-output-port-plural": "منافذ الإدخال/الإخراج",
     "input-output-ports-description": "تحدد منافذ الإدخال والإخراج أصول البيانات التي يستهلكها منتج البيانات وينتجها. إنها ضرورية لفهم نسب البيانات والتبعيات في بنية شبكة البيانات.",
     "input-placeholder": "استخدم @mention للإشارة والتعليق...",

@@ -2403,6 +2403,7 @@
     "ingestion-bot-cant-be-deleted": "คุณไม่สามารถลบบอทการนำเข้าได้",
     "ingestion-pipeline-name-message": "ชื่อที่ระบุรายละเอียดท่อให้นี้อย่างไม่ซ้ำ",
     "ingestion-pipeline-name-successfully-deployed-entity": "คุณพร้อมแล้ว! <ชื่อท่อการนำเข้า> ถูกเรียกใช้งานสำเร็จแล้ว {{entity}} จะทำงานตามช่วงเวลาที่กำหนด",
+    "inherited-contract-cannot-be-deleted": "Inherited contracts cannot be deleted. Remove the entity from the Data Product or create an entity-specific contract.",
     "input-output-port-plural": "พอร์ตอินพุต/เอาต์พุต",
     "input-output-ports-description": "พอร์ตอินพุตและเอาต์พุตกำหนดว่าผลิตภัณฑ์ข้อมูลใช้และสร้างสินทรัพย์ข้อมูลใด สิ่งเหล่านี้มีความสำคัญต่อการทำความเข้าใจการสืบทอดข้อมูลและการพึ่งพาในสถาปัตยกรรม Data Mesh",
     "input-placeholder": "ใช้ @mention เพื่อแท็กและแสดงความคิดเห็น...",

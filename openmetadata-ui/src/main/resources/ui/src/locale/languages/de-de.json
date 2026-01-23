@@ -2403,6 +2403,7 @@
     "ingestion-bot-cant-be-deleted": "Sie können den Erfassungsbot nicht löschen.",
     "ingestion-pipeline-name-message": "Name, der diese Pipeline-Instanz eindeutig identifiziert.",
     "ingestion-pipeline-name-successfully-deployed-entity": "Sie sind bereit! Die <Ingestion-Pipeline-Name> wurde erfolgreich bereitgestellt. Die {{entity}} wird gemäß dem Zeitplan in regelmäßigen Abständen ausgeführt.",
+    "inherited-contract-cannot-be-deleted": "Inherited contracts cannot be deleted. Remove the entity from the Data Product or create an entity-specific contract.",
     "input-output-port-plural": "Eingabe-/Ausgabe-Ports",
     "input-output-ports-description": "Eingabe- und Ausgabe-Ports definieren, welche Datenassets ein Datenprodukt konsumiert und produziert. Sie sind essentiell für das Verständnis von Datenherkunft und Abhängigkeiten in einer Data-Mesh-Architektur.",
     "input-placeholder": "Verwenden Sie @mention, um zu markieren und zu kommentieren...",

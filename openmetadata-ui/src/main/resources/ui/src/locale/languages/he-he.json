@@ -2403,6 +2403,7 @@
     "ingestion-bot-cant-be-deleted": "אין באפשרותך למחוק את תהליך הקליטה.",
     "ingestion-pipeline-name-message": "שם המזהה שמקצה ליחידת הצנרת הזו זיהוי ייחודי.",
     "ingestion-pipeline-name-successfully-deployed-entity": "כל הכבוד! <Ingestion Pipeline Name> נוצרה בהצלחה. ה{{entity}} ירוץ בפרק זמן קבוע כפי שנקבע בזמנים.",
+    "inherited-contract-cannot-be-deleted": "Inherited contracts cannot be deleted. Remove the entity from the Data Product or create an entity-specific contract.",
     "input-output-port-plural": "יציאות קלט/פלט",
     "input-output-ports-description": "יציאות קלט ופלט מגדירות אילו נכסי נתונים מוצר נתונים צורך ומייצר. הן חיוניות להבנת מקור הנתונים והתלויות בארכיטקטורת Data Mesh.",
     "input-placeholder": "השתמש ב-@mention לתיוג והוספת תגובה...",

@@ -2403,6 +2403,7 @@
     "ingestion-bot-cant-be-deleted": "You cannot delete the ingestion bot.",
     "ingestion-pipeline-name-message": "Name that identifies this pipeline instance uniquely.",
     "ingestion-pipeline-name-successfully-deployed-entity": "You are all set! The <Ingestion Pipeline Name> has been successfully deployed. The {{entity}} will run at a regular interval as per the schedule.",
+    "inherited-contract-cannot-be-deleted": "Inherited contracts cannot be deleted. Remove the entity from the Data Product or create an entity-specific contract.",
     "input-output-port-plural": "Input/Output Ports",
     "input-output-ports-description": "Input and output ports define which data assets a Data Product consumes and produces. They are essential for understanding data lineage and dependencies in a Data Mesh architecture.",
     "input-placeholder": "Use @mention to tag and comment...",
