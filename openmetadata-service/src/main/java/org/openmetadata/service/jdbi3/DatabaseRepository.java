@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addDomains;
 import static org.openmetadata.csv.CsvUtil.addExtension;
 import static org.openmetadata.csv.CsvUtil.addField;
@@ -41,7 +40,6 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.text.StringEscapeUtils;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
@@ -54,7 +52,6 @@ import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DatabaseProfilerConfig;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
@@ -664,11 +661,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
       }
 
       // Track field changes for Phase 2 using ChangeDescription structure
-      List<FieldChange> fieldsAdded = new ArrayList<>();
-      List<FieldChange> fieldsUpdated = new ArrayList<>();
-
-      // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, certification,
-      // retentionPeriod, sourceUrl, domain
       String displayName = csvRecord.get(1);
       String description = csvRecord.get(2);
       List<EntityReference> owners = getOwners(printer, csvRecord, 3);
@@ -684,151 +676,28 @@ public class DatabaseRepository extends EntityRepository<Database> {
       String retentionPeriod = csvRecord.get(8);
       String sourceUrl = csvRecord.get(9);
       List<EntityReference> newDomains = getDomains(printer, csvRecord, 10);
+      Map<String, Object> extension = getExtension(printer, csvRecord, 11);
 
-      if (!schemaExists) {
-        // For new schemas, all non-null fields are "added"
-        if (!nullOrEmpty(displayName)) {
-          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
-        }
-        if (!nullOrEmpty(description)) {
-          fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
-        }
-        if (!nullOrEmpty(owners)) {
-          fieldsAdded.add(new FieldChange().withName("owner").withNewValue(owners));
-        }
-        // Separate tags by type for better UI parsing
-        List<TagLabel> classificationTags =
-            filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, false);
-        List<TagLabel> glossaryTerms =
-            filterTagsBySource(tagLabels, TagLabel.TagSource.GLOSSARY, false);
-        List<TagLabel> tiers =
-            filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, true);
+      EntityRepository<?> repository = Entity.getEntityRepository(DATABASE_SCHEMA);
+      CsvChangeTracker tracker =
+          trackCommonFieldChanges(
+              repository,
+              schemaExists ? schema : null,
+              displayName,
+              description,
+              owners,
+              tagLabels,
+              certification,
+              newDomains,
+              extension);
 
-        if (classificationTags != null && !classificationTags.isEmpty()) {
-          fieldsAdded.add(new FieldChange().withName("tags").withNewValue(classificationTags));
-        }
-        if (glossaryTerms != null && !glossaryTerms.isEmpty()) {
-          fieldsAdded.add(new FieldChange().withName("glossaryTerms").withNewValue(glossaryTerms));
-        }
-        if (tiers != null && !tiers.isEmpty()) {
-          fieldsAdded.add(new FieldChange().withName("tiers").withNewValue(tiers));
-        }
-        if (certification != null) {
-          fieldsAdded.add(new FieldChange().withName("certification").withNewValue(certification));
-        }
-        if (!nullOrEmpty(retentionPeriod)) {
-          fieldsAdded.add(
-              new FieldChange().withName("retentionPeriod").withNewValue(retentionPeriod));
-        }
-        if (!nullOrEmpty(sourceUrl)) {
-          fieldsAdded.add(new FieldChange().withName("sourceUrl").withNewValue(sourceUrl));
-        }
-        if (!nullOrEmpty(newDomains)) {
-          fieldsAdded.add(new FieldChange().withName("domains").withNewValue(newDomains));
-        }
-      } else {
-        // Compare existing values with CSV values to track changes
-        if (CommonUtil.isChanged(schema.getDisplayName(), displayName)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("displayName")
-                  .withOldValue(schema.getDisplayName())
-                  .withNewValue(displayName));
-        }
+      tracker
+          .trackField(
+              "retentionPeriod", schemaExists ? schema.getRetentionPeriod() : null, retentionPeriod)
+          .trackField("sourceUrl", schemaExists ? schema.getSourceUrl() : null, sourceUrl);
 
-        if (CommonUtil.isChanged(schema.getDescription(), description)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("description")
-                  .withOldValue(schema.getDescription())
-                  .withNewValue(description));
-        }
-        if (CommonUtil.isChanged(schema.getOwners(), owners)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("owner")
-                  .withOldValue(schema.getOwners())
-                  .withNewValue(owners));
-        }
+      ChangeDescription changeDescription = tracker.build();
 
-        // Separate tags by type for better UI parsing
-        List<TagLabel> existingClassificationTags =
-            filterTagsBySource(schema.getTags(), TagLabel.TagSource.CLASSIFICATION, false);
-        List<TagLabel> existingGlossaryTerms =
-            filterTagsBySource(schema.getTags(), TagLabel.TagSource.GLOSSARY, false);
-        List<TagLabel> existingTiers =
-            filterTagsBySource(schema.getTags(), TagLabel.TagSource.CLASSIFICATION, true);
-
-        List<TagLabel> newClassificationTags =
-            filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, false);
-        List<TagLabel> newGlossaryTerms =
-            filterTagsBySource(tagLabels, TagLabel.TagSource.GLOSSARY, false);
-        List<TagLabel> newTiers =
-            filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, true);
-
-        if (CommonUtil.isChanged(existingClassificationTags, newClassificationTags)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("tags")
-                  .withOldValue(existingClassificationTags)
-                  .withNewValue(newClassificationTags));
-        }
-        if (CommonUtil.isChanged(existingGlossaryTerms, newGlossaryTerms)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("glossaryTerms")
-                  .withOldValue(existingGlossaryTerms)
-                  .withNewValue(newGlossaryTerms));
-        }
-        if (CommonUtil.isChanged(existingTiers, newTiers)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("tiers")
-                  .withOldValue(existingTiers)
-                  .withNewValue(newTiers));
-        }
-
-        if (CommonUtil.isChanged(schema.getCertification(), certification)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("certification")
-                  .withOldValue(schema.getCertification())
-                  .withNewValue(certification));
-        }
-
-        if (CommonUtil.isChanged(schema.getRetentionPeriod(), retentionPeriod)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("retentionPeriod")
-                  .withOldValue(schema.getRetentionPeriod())
-                  .withNewValue(retentionPeriod));
-        }
-
-        if (CommonUtil.isChanged(schema.getSourceUrl(), sourceUrl)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("sourceUrl")
-                  .withOldValue(schema.getSourceUrl())
-                  .withNewValue(sourceUrl));
-        }
-        if (CommonUtil.isChanged(schema.getDomains(), newDomains)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("domains")
-                  .withOldValue(schema.getDomains())
-                  .withNewValue(newDomains));
-        }
-      }
-
-      // Create ChangeDescription object and store for this record
-      ChangeDescription changeDescription = new ChangeDescription().withPreviousVersion(null);
-      if (!fieldsAdded.isEmpty()) {
-        changeDescription.setFieldsAdded(fieldsAdded);
-      }
-      if (!fieldsUpdated.isEmpty()) {
-        changeDescription.setFieldsUpdated(fieldsUpdated);
-      }
-      // Store change description with null check
       if (recordFieldChangesArray != null
           && recordIndex >= 0
           && recordIndex < recordFieldChangesArray.length) {

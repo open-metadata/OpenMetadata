@@ -27,13 +27,11 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.entity.services.SecurityService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.SecurityConnection;
 import org.openmetadata.schema.type.TagLabel;
@@ -179,9 +177,6 @@ public class SecurityServiceRepository
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
 
       String serviceName = csvRecord.get(0);
-      String serviceDisplayName = csvRecord.get(1);
-      String serviceDescription = csvRecord.get(2);
-      String serviceTypeStr = csvRecord.get(3);
 
       SecurityService existingSecurityService = null;
       boolean serviceExists = false;
@@ -207,102 +202,36 @@ public class SecurityServiceRepository
       }
 
       // Track field changes using meaningful change detection
-      List<FieldChange> fieldsAdded = new ArrayList<>();
-      List<FieldChange> fieldsUpdated = new ArrayList<>();
-
+      String serviceDisplayName = csvRecord.get(1);
+      String serviceDescription = csvRecord.get(2);
+      String serviceTypeStr = csvRecord.get(3);
       List<TagLabel> tagLabels =
           getTagLabels(printer, csvRecord, List.of(Pair.of(5, TagLabel.TagSource.CLASSIFICATION)));
       List<EntityReference> owners = getOwners(printer, csvRecord, 4);
       List<EntityReference> domains = getDomains(printer, csvRecord, 6);
 
-      if (!serviceExists) {
-        // New service - add all non-empty fields to fieldsAdded
-        if (!nullOrEmpty(serviceDisplayName)) {
-          fieldsAdded.add(
-              new FieldChange().withName("displayName").withNewValue(serviceDisplayName));
-        }
-        if (!nullOrEmpty(serviceDescription)) {
-          fieldsAdded.add(
-              new FieldChange().withName("description").withNewValue(serviceDescription));
-        }
-        if (!nullOrEmpty(owners)) {
-          fieldsAdded.add(new FieldChange().withName("owner").withNewValue(owners));
-        }
-        // Separate tags by type for better UI parsing
-        List<TagLabel> classificationTags =
-            filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, false);
-        List<TagLabel> glossaryTerms =
-            filterTagsBySource(tagLabels, TagLabel.TagSource.GLOSSARY, false);
-        List<TagLabel> tiers =
-            filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, true);
+      EntityRepository<?> repository = Entity.getEntityRepository(Entity.SECURITY_SERVICE);
+      CsvChangeTracker tracker =
+          trackCommonFieldChanges(
+              repository,
+              existingSecurityService,
+              serviceDisplayName,
+              serviceDescription,
+              owners,
+              tagLabels,
+              null,
+              domains,
+              null);
+      tracker.trackField(
+          "serviceType",
+          (existingSecurityService != null ? existingSecurityService.getServiceType() : null)
+                  == null
+              ? null
+              : existingSecurityService.getServiceType().toString(),
+          serviceTypeStr);
 
-        if (classificationTags != null && !classificationTags.isEmpty()) {
-          fieldsAdded.add(new FieldChange().withName("tags").withNewValue(classificationTags));
-        }
-        if (glossaryTerms != null && !glossaryTerms.isEmpty()) {
-          fieldsAdded.add(new FieldChange().withName("glossaryTerms").withNewValue(glossaryTerms));
-        }
-        if (tiers != null && !tiers.isEmpty()) {
-          fieldsAdded.add(new FieldChange().withName("tiers").withNewValue(tiers));
-        }
-        if (!nullOrEmpty(domains)) {
-          fieldsAdded.add(new FieldChange().withName("domains").withNewValue(domains));
-        }
-      } else {
-        // Existing service - use meaningful change detection
-        if (CommonUtil.isChanged(
-            existingSecurityService != null ? existingSecurityService.getDisplayName() : null,
-            serviceDisplayName)) {
-          if (existingSecurityService != null) {
-            fieldsUpdated.add(
-                new FieldChange()
-                    .withName("displayName")
-                    .withOldValue(existingSecurityService.getDisplayName())
-                    .withNewValue(serviceDisplayName));
-          }
-        }
-        if (existingSecurityService != null
-            && CommonUtil.isChanged(existingSecurityService.getDescription(), serviceDescription)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("description")
-                  .withOldValue(existingSecurityService.getDescription())
-                  .withNewValue(serviceDescription));
-        }
-        if (existingSecurityService != null
-            && CommonUtil.isChanged(existingSecurityService.getOwners(), owners)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("owner")
-                  .withOldValue(existingSecurityService.getOwners())
-                  .withNewValue(owners));
-        }
-        if (existingSecurityService != null
-            && CommonUtil.isChanged(existingSecurityService.getTags(), tagLabels)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("tags")
-                  .withOldValue(existingSecurityService.getTags())
-                  .withNewValue(tagLabels));
-        }
-        if (existingSecurityService != null
-            && CommonUtil.isChanged(existingSecurityService.getDomains(), domains)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("domains")
-                  .withOldValue(existingSecurityService.getDomains())
-                  .withNewValue(domains));
-        }
-      }
+      ChangeDescription changeDescription = tracker.build();
 
-      // Create ChangeDescription and store it
-      ChangeDescription changeDescription = new ChangeDescription();
-      if (!fieldsAdded.isEmpty()) {
-        changeDescription.setFieldsAdded(fieldsAdded);
-      }
-      if (!fieldsUpdated.isEmpty()) {
-        changeDescription.setFieldsUpdated(fieldsUpdated);
-      }
       if (recordFieldChangesArray != null
           && recordIndex >= 0
           && recordIndex < recordFieldChangesArray.length) {

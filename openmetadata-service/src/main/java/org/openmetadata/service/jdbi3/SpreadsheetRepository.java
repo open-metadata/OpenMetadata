@@ -34,7 +34,6 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.data.CreateSpreadsheet;
 import org.openmetadata.schema.entity.data.Directory;
@@ -42,7 +41,6 @@ import org.openmetadata.schema.entity.data.Spreadsheet;
 import org.openmetadata.schema.entity.services.DriveService;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
@@ -342,9 +340,6 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
         recordCreateStatusArray[recordIndex] = !spreadsheetExists;
       }
 
-      List<FieldChange> fieldsAdded = new ArrayList<>();
-      List<FieldChange> fieldsUpdated = new ArrayList<>();
-
       String displayName = csvRecord.get(1);
       String description = csvRecord.get(2);
       CreateSpreadsheet.SpreadsheetMimeType mimeType =
@@ -365,191 +360,56 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
       Long createdTime = nullOrEmpty(csvRecord.get(15)) ? null : Long.parseLong(csvRecord.get(15));
       Long modifiedTime = nullOrEmpty(csvRecord.get(16)) ? null : Long.parseLong(csvRecord.get(16));
 
-      if (!spreadsheetExists) {
-        if (!nullOrEmpty(displayName)) {
-          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
-        }
-        if (!nullOrEmpty(description)) {
-          fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
-        }
-        if (mimeType != null) {
-          fieldsAdded.add(new FieldChange().withName("mimeType").withNewValue(mimeType.toString()));
-        }
-        if (!nullOrEmpty(path)) {
-          fieldsAdded.add(new FieldChange().withName("path").withNewValue(path));
-        }
-        if (size != null) {
-          fieldsAdded.add(new FieldChange().withName("size").withNewValue(size.toString()));
-        }
-        if (!nullOrEmpty(fileVersion)) {
-          fieldsAdded.add(new FieldChange().withName("fileVersion").withNewValue(fileVersion));
-        }
-        if (!nullOrEmpty(owners)) {
-          fieldsAdded.add(new FieldChange().withName("owner").withNewValue(owners));
-        }
-        // Separate tags by type for better UI parsing
-        List<TagLabel> classificationTags =
-            filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, false);
-        List<TagLabel> glossaryTerms = filterTagsBySource(tags, TagLabel.TagSource.GLOSSARY, false);
-        List<TagLabel> tiers = filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, true);
+      EntityRepository<?> repository = Entity.getEntityRepository(SPREADSHEET);
+      EntityCsv.CsvChangeTracker tracker =
+          trackCommonFieldChanges(
+              repository,
+              spreadsheetExists ? newSpreadsheet : null,
+              displayName,
+              description,
+              owners,
+              tags,
+              null,
+              domains,
+              null);
 
-        if (classificationTags != null && !classificationTags.isEmpty()) {
-          fieldsAdded.add(new FieldChange().withName("tags").withNewValue(classificationTags));
-        }
-        if (glossaryTerms != null && !glossaryTerms.isEmpty()) {
-          fieldsAdded.add(new FieldChange().withName("glossaryTerms").withNewValue(glossaryTerms));
-        }
-        if (tiers != null && !tiers.isEmpty()) {
-          fieldsAdded.add(new FieldChange().withName("tiers").withNewValue(tiers));
-        }
-        if (!nullOrEmpty(domains)) {
-          fieldsAdded.add(new FieldChange().withName("domains").withNewValue(domains));
-        }
-        if (!nullOrEmpty(dataProducts)) {
-          fieldsAdded.add(new FieldChange().withName("dataProducts").withNewValue(dataProducts));
-        }
-        if (createdTime != null) {
-          fieldsAdded.add(
-              new FieldChange().withName("createdTime").withNewValue(createdTime.toString()));
-        }
-        if (modifiedTime != null) {
-          fieldsAdded.add(
-              new FieldChange().withName("modifiedTime").withNewValue(modifiedTime.toString()));
-        }
-      } else {
-        if (CommonUtil.isChanged(newSpreadsheet.getDisplayName(), displayName)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("displayName")
-                  .withOldValue(newSpreadsheet.getDisplayName())
-                  .withNewValue(displayName));
-        }
-        if (CommonUtil.isChanged(newSpreadsheet.getDescription(), description)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("description")
-                  .withOldValue(newSpreadsheet.getDescription())
-                  .withNewValue(description));
-        }
-        if (CommonUtil.isChanged(newSpreadsheet.getMimeType(), mimeType)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("mimeType")
-                  .withOldValue(
-                      newSpreadsheet.getMimeType() != null
-                          ? newSpreadsheet.getMimeType().toString()
-                          : null)
-                  .withNewValue(mimeType != null ? mimeType.toString() : null));
-        }
-        if (CommonUtil.isChanged(newSpreadsheet.getPath(), path)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("path")
-                  .withOldValue(newSpreadsheet.getPath())
-                  .withNewValue(path));
-        }
-        if (CommonUtil.isChanged(newSpreadsheet.getSize(), size)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("size")
-                  .withOldValue(
-                      newSpreadsheet.getSize() != null ? newSpreadsheet.getSize().toString() : null)
-                  .withNewValue(size != null ? size.toString() : null));
-        }
-        if (CommonUtil.isChanged(newSpreadsheet.getFileVersion(), fileVersion)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("fileVersion")
-                  .withOldValue(newSpreadsheet.getFileVersion())
-                  .withNewValue(fileVersion));
-        }
-        if (CommonUtil.isChanged(newSpreadsheet.getOwners(), owners)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("owner")
-                  .withOldValue(newSpreadsheet.getOwners())
-                  .withNewValue(owners));
-        }
-        // Separate tags by type for better UI parsing
-        List<TagLabel> existingClassificationTags =
-            filterTagsBySource(newSpreadsheet.getTags(), TagLabel.TagSource.CLASSIFICATION, false);
-        List<TagLabel> existingGlossaryTerms =
-            filterTagsBySource(newSpreadsheet.getTags(), TagLabel.TagSource.GLOSSARY, false);
-        List<TagLabel> existingTiers =
-            filterTagsBySource(newSpreadsheet.getTags(), TagLabel.TagSource.CLASSIFICATION, true);
+      tracker
+          .trackField(
+              "mimeType",
+              spreadsheetExists && newSpreadsheet.getMimeType() != null
+                  ? newSpreadsheet.getMimeType().toString()
+                  : null,
+              mimeType != null ? mimeType.toString() : null)
+          .trackField("path", spreadsheetExists ? newSpreadsheet.getPath() : null, path)
+          .trackField(
+              "size",
+              spreadsheetExists && newSpreadsheet.getSize() != null
+                  ? newSpreadsheet.getSize().toString()
+                  : null,
+              size != null ? size.toString() : null)
+          .trackField(
+              "fileVersion",
+              spreadsheetExists ? newSpreadsheet.getFileVersion() : null,
+              fileVersion)
+          .trackField(
+              "dataProducts",
+              spreadsheetExists ? newSpreadsheet.getDataProducts() : null,
+              dataProducts)
+          .trackField(
+              "createdTime",
+              spreadsheetExists && newSpreadsheet.getCreatedTime() != null
+                  ? newSpreadsheet.getCreatedTime().toString()
+                  : null,
+              createdTime != null ? createdTime.toString() : null)
+          .trackField(
+              "modifiedTime",
+              spreadsheetExists && newSpreadsheet.getModifiedTime() != null
+                  ? newSpreadsheet.getModifiedTime().toString()
+                  : null,
+              modifiedTime != null ? modifiedTime.toString() : null);
 
-        List<TagLabel> newClassificationTags =
-            filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, false);
-        List<TagLabel> newGlossaryTerms =
-            filterTagsBySource(tags, TagLabel.TagSource.GLOSSARY, false);
-        List<TagLabel> newTiers = filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, true);
+      ChangeDescription changeDescription = tracker.build();
 
-        if (CommonUtil.isChanged(existingClassificationTags, newClassificationTags)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("tags")
-                  .withOldValue(existingClassificationTags)
-                  .withNewValue(newClassificationTags));
-        }
-        if (CommonUtil.isChanged(existingGlossaryTerms, newGlossaryTerms)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("glossaryTerms")
-                  .withOldValue(existingGlossaryTerms)
-                  .withNewValue(newGlossaryTerms));
-        }
-        if (CommonUtil.isChanged(existingTiers, newTiers)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("tiers")
-                  .withOldValue(existingTiers)
-                  .withNewValue(newTiers));
-        }
-
-        if (CommonUtil.isChanged(newSpreadsheet.getDomains(), domains)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("domains")
-                  .withOldValue(newSpreadsheet.getDomains())
-                  .withNewValue(domains));
-        }
-        if (CommonUtil.isChanged(newSpreadsheet.getDataProducts(), dataProducts)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("dataProducts")
-                  .withOldValue(newSpreadsheet.getDataProducts())
-                  .withNewValue(dataProducts));
-        }
-        if (CommonUtil.isChanged(newSpreadsheet.getCreatedTime(), createdTime)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("createdTime")
-                  .withOldValue(
-                      newSpreadsheet.getCreatedTime() != null
-                          ? newSpreadsheet.getCreatedTime().toString()
-                          : null)
-                  .withNewValue(createdTime != null ? createdTime.toString() : null));
-        }
-        if (CommonUtil.isChanged(newSpreadsheet.getModifiedTime(), modifiedTime)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("modifiedTime")
-                  .withOldValue(
-                      newSpreadsheet.getModifiedTime() != null
-                          ? newSpreadsheet.getModifiedTime().toString()
-                          : null)
-                  .withNewValue(modifiedTime != null ? modifiedTime.toString() : null));
-        }
-      }
-
-      ChangeDescription changeDescription = new ChangeDescription();
-      if (!fieldsAdded.isEmpty()) {
-        changeDescription.setFieldsAdded(fieldsAdded);
-      }
-      if (!fieldsUpdated.isEmpty()) {
-        changeDescription.setFieldsUpdated(fieldsUpdated);
-      }
-      // Store change description with null check
       if (recordFieldChangesArray != null
           && recordIndex >= 0
           && recordIndex < recordFieldChangesArray.length) {

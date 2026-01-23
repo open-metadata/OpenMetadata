@@ -48,7 +48,6 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
@@ -59,7 +58,6 @@ import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
-import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
@@ -287,9 +285,6 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         recordCreateStatusArray[recordIndex] = !glossaryTermExists;
       }
 
-      List<FieldChange> fieldsAdded = new ArrayList<>();
-      List<FieldChange> fieldsUpdated = new ArrayList<>();
-
       EntityReference parent = getEntityReference(printer, csvRecord, 0, GLOSSARY_TERM);
       String displayName = csvRecord.get(2);
       String description = csvRecord.get(3);
@@ -303,130 +298,44 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       List<EntityReference> owners = getOwners(printer, csvRecord, 9);
       EntityStatus status = getTermStatus(printer, csvRecord);
       Style style = getStyle(csvRecord);
+      Map<String, Object> extension = getExtension(printer, csvRecord, 13);
 
-      if (!glossaryTermExists) {
-        if (parent != null) {
-          fieldsAdded.add(new FieldChange().withName("parent").withNewValue(parent));
-        }
-        if (!nullOrEmpty(displayName)) {
-          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
-        }
-        if (!nullOrEmpty(description)) {
-          fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
-        }
-        if (!nullOrEmpty(synonyms)) {
-          fieldsAdded.add(new FieldChange().withName("synonyms").withNewValue(synonyms));
-        }
-        if (!nullOrEmpty(relatedTerms)) {
-          fieldsAdded.add(new FieldChange().withName("relatedTerms").withNewValue(relatedTerms));
-        }
-        if (!nullOrEmpty(references)) {
-          fieldsAdded.add(new FieldChange().withName("references").withNewValue(references));
-        }
-        if (!nullOrEmpty(tags)) {
-          fieldsAdded.add(new FieldChange().withName("tags").withNewValue(tags));
-        }
-        if (!nullOrEmpty(reviewers)) {
-          fieldsAdded.add(new FieldChange().withName("reviewers").withNewValue(reviewers));
-        }
-        if (!nullOrEmpty(owners)) {
-          fieldsAdded.add(new FieldChange().withName("owner").withNewValue(owners));
-        }
-        if (status != null) {
-          fieldsAdded.add(new FieldChange().withName("status").withNewValue(status.value()));
-        }
-        if (style != null) {
-          fieldsAdded.add(new FieldChange().withName("style").withNewValue(style));
-        }
-      } else {
-        if (CommonUtil.isChanged(glossaryTerm.getParent(), parent)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("parent")
-                  .withOldValue(glossaryTerm.getParent())
-                  .withNewValue(parent));
-        }
-        if (CommonUtil.isChanged(glossaryTerm.getDisplayName(), displayName)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("displayName")
-                  .withOldValue(glossaryTerm.getDisplayName())
-                  .withNewValue(displayName));
-        }
-        if (CommonUtil.isChanged(glossaryTerm.getDescription(), description)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("description")
-                  .withOldValue(glossaryTerm.getDescription())
-                  .withNewValue(description));
-        }
-        if (CommonUtil.isChanged(glossaryTerm.getSynonyms(), synonyms)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("synonyms")
-                  .withOldValue(glossaryTerm.getSynonyms())
-                  .withNewValue(synonyms));
-        }
-        if (CommonUtil.isChanged(glossaryTerm.getRelatedTerms(), relatedTerms)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("relatedTerms")
-                  .withOldValue(glossaryTerm.getRelatedTerms())
-                  .withNewValue(relatedTerms));
-        }
-        if (CommonUtil.isChanged(glossaryTerm.getReferences(), references)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("references")
-                  .withOldValue(glossaryTerm.getReferences())
-                  .withNewValue(references));
-        }
-        if (CommonUtil.isChanged(glossaryTerm.getTags(), tags)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("tags")
-                  .withOldValue(glossaryTerm.getTags())
-                  .withNewValue(tags));
-        }
-        if (CommonUtil.isChanged(glossaryTerm.getReviewers(), reviewers)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("reviewers")
-                  .withOldValue(glossaryTerm.getReviewers())
-                  .withNewValue(reviewers));
-        }
-        if (CommonUtil.isChanged(glossaryTerm.getOwners(), owners)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("owner")
-                  .withOldValue(glossaryTerm.getOwners())
-                  .withNewValue(owners));
-        }
-        if (status != null && CommonUtil.isChanged(glossaryTerm.getEntityStatus(), status)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("status")
-                  .withOldValue(glossaryTerm.getEntityStatus().value())
-                  .withNewValue(status.value()));
-        }
-        if (CommonUtil.isChanged(glossaryTerm.getStyle(), style)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("style")
-                  .withOldValue(glossaryTerm.getStyle())
-                  .withNewValue(style));
-        }
-      }
+      EntityCsv.CsvChangeTracker tracker =
+          trackCommonFieldChanges(
+              repository,
+              glossaryTermExists ? glossaryTerm : null,
+              displayName,
+              description,
+              owners,
+              tags,
+              null,
+              null,
+              extension);
 
-      ChangeDescription changeDescription = new ChangeDescription().withPreviousVersion(null);
-      if (!fieldsAdded.isEmpty()) {
-        changeDescription.setFieldsAdded(fieldsAdded);
-      }
-      if (!fieldsUpdated.isEmpty()) {
-        changeDescription.setFieldsUpdated(fieldsUpdated);
-      }
-      // Store change description with null check
-      if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+      tracker
+          .trackField("parent", glossaryTermExists ? glossaryTerm.getParent() : null, parent)
+          .trackField("synonyms", glossaryTermExists ? glossaryTerm.getSynonyms() : null, synonyms)
+          .trackField(
+              "relatedTerms",
+              glossaryTermExists ? glossaryTerm.getRelatedTerms() : null,
+              relatedTerms)
+          .trackField(
+              "references", glossaryTermExists ? glossaryTerm.getReferences() : null, references)
+          .trackField(
+              "reviewers", glossaryTermExists ? glossaryTerm.getReviewers() : null, reviewers)
+          .trackField(
+              "status",
+              glossaryTermExists && glossaryTerm.getEntityStatus() != null
+                  ? glossaryTerm.getEntityStatus().value()
+                  : null,
+              status != null ? status.value() : null)
+          .trackField("style", glossaryTermExists ? glossaryTerm.getStyle() : null, style);
+
+      ChangeDescription changeDescription = tracker.build();
+
+      if (recordFieldChangesArray != null
+          && recordIndex >= 0
+          && recordIndex < recordFieldChangesArray.length) {
         recordFieldChangesArray[recordIndex] = changeDescription;
       }
 

@@ -34,13 +34,11 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.services.DriveService;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
@@ -353,13 +351,12 @@ public class DirectoryRepository extends EntityRepository<Directory> {
         return;
       }
 
-      String directoryName = csvRecord.get(0);
+      String name = csvRecord.get(0);
       String parentFqn = csvRecord.get(3);
       String directoryFqn =
           nullOrEmpty(parentFqn)
-              ? FullyQualifiedName.add(
-                  directory.getService().getFullyQualifiedName(), directoryName)
-              : FullyQualifiedName.add(parentFqn, directoryName);
+              ? FullyQualifiedName.add(directory.getService().getFullyQualifiedName(), name)
+              : FullyQualifiedName.add(parentFqn, name);
 
       Directory newDirectory;
       boolean directoryExists;
@@ -370,7 +367,7 @@ public class DirectoryRepository extends EntityRepository<Directory> {
         newDirectory =
             new Directory()
                 .withService(directory.getService())
-                .withName(directoryName)
+                .withName(name)
                 .withFullyQualifiedName(directoryFqn);
         directoryExists = false;
       }
@@ -383,11 +380,10 @@ public class DirectoryRepository extends EntityRepository<Directory> {
         recordCreateStatusArray[recordIndex] = !directoryExists;
       }
 
-      List<FieldChange> fieldsAdded = new ArrayList<>();
-      List<FieldChange> fieldsUpdated = new ArrayList<>();
-
       String displayName = csvRecord.get(1);
       String description = csvRecord.get(2);
+      EntityReference parentRef =
+          !nullOrEmpty(parentFqn) ? getEntityReference(printer, csvRecord, 3, DIRECTORY) : null;
       String path = csvRecord.get(5);
       Boolean isShared = getBoolean(printer, csvRecord, 6);
       List<EntityReference> owners = getOwners(printer, csvRecord, 7);
@@ -400,151 +396,31 @@ public class DirectoryRepository extends EntityRepository<Directory> {
                   Pair.of(9, TagLabel.TagSource.GLOSSARY)));
       List<EntityReference> domains = getDomains(printer, csvRecord, 10);
       List<EntityReference> dataProducts = getDataProducts(printer, csvRecord, 11);
-      EntityReference parentRef =
-          !nullOrEmpty(parentFqn) ? getEntityReference(printer, csvRecord, 3, DIRECTORY) : null;
 
-      if (!directoryExists) {
-        if (!nullOrEmpty(displayName)) {
-          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
-        }
-        if (!nullOrEmpty(description)) {
-          fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
-        }
-        if (parentRef != null) {
-          fieldsAdded.add(new FieldChange().withName("parent").withNewValue(parentRef));
-        }
-        if (!nullOrEmpty(path)) {
-          fieldsAdded.add(new FieldChange().withName("path").withNewValue(path));
-        }
-        if (isShared != null) {
-          fieldsAdded.add(new FieldChange().withName("isShared").withNewValue(isShared));
-        }
-        if (!nullOrEmpty(owners)) {
-          fieldsAdded.add(new FieldChange().withName("owner").withNewValue(owners));
-        }
-        // Separate tags by type for better UI parsing
-        List<TagLabel> classificationTags =
-            filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, false);
-        List<TagLabel> glossaryTerms = filterTagsBySource(tags, TagLabel.TagSource.GLOSSARY, false);
-        List<TagLabel> tiers = filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, true);
+      EntityRepository<?> repository = Entity.getEntityRepository(DIRECTORY);
+      EntityCsv.CsvChangeTracker tracker =
+          trackCommonFieldChanges(
+              repository,
+              directoryExists ? newDirectory : null,
+              displayName,
+              description,
+              owners,
+              tags,
+              null,
+              domains,
+              null);
 
-        if (classificationTags != null && !classificationTags.isEmpty()) {
-          fieldsAdded.add(new FieldChange().withName("tags").withNewValue(classificationTags));
-        }
-        if (glossaryTerms != null && !glossaryTerms.isEmpty()) {
-          fieldsAdded.add(new FieldChange().withName("glossaryTerms").withNewValue(glossaryTerms));
-        }
-        if (tiers != null && !tiers.isEmpty()) {
-          fieldsAdded.add(new FieldChange().withName("tiers").withNewValue(tiers));
-        }
-        if (!nullOrEmpty(domains)) {
-          fieldsAdded.add(new FieldChange().withName("domains").withNewValue(domains));
-        }
-        if (!nullOrEmpty(dataProducts)) {
-          fieldsAdded.add(new FieldChange().withName("dataProducts").withNewValue(dataProducts));
-        }
-      } else {
-        if (CommonUtil.isChanged(newDirectory.getDisplayName(), displayName)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("displayName")
-                  .withOldValue(newDirectory.getDisplayName())
-                  .withNewValue(displayName));
-        }
-        if (CommonUtil.isChanged(newDirectory.getDescription(), description)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("description")
-                  .withOldValue(newDirectory.getDescription())
-                  .withNewValue(description));
-        }
-        if (CommonUtil.isChanged(newDirectory.getParent(), parentRef)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("parent")
-                  .withOldValue(newDirectory.getParent())
-                  .withNewValue(parentRef));
-        }
-        if (CommonUtil.isChanged(newDirectory.getPath(), path)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("path")
-                  .withOldValue(newDirectory.getPath())
-                  .withNewValue(path));
-        }
-        if (isShared != null && CommonUtil.isChanged(newDirectory.getIsShared(), isShared)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("isShared")
-                  .withOldValue(newDirectory.getIsShared())
-                  .withNewValue(isShared));
-        }
-        if (CommonUtil.isChanged(newDirectory.getOwners(), owners)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("owner")
-                  .withOldValue(newDirectory.getOwners())
-                  .withNewValue(owners));
-        }
-        // Separate tags by type for better UI parsing
-        List<TagLabel> existingClassificationTags =
-            filterTagsBySource(newDirectory.getTags(), TagLabel.TagSource.CLASSIFICATION, false);
-        List<TagLabel> existingGlossaryTerms =
-            filterTagsBySource(newDirectory.getTags(), TagLabel.TagSource.GLOSSARY, false);
-        List<TagLabel> existingTiers =
-            filterTagsBySource(newDirectory.getTags(), TagLabel.TagSource.CLASSIFICATION, true);
+      tracker
+          .trackField("parent", directoryExists ? newDirectory.getParent() : null, parentRef)
+          .trackField("path", directoryExists ? newDirectory.getPath() : null, path)
+          .trackField("isShared", directoryExists ? newDirectory.getIsShared() : null, isShared)
+          .trackField(
+              "dataProducts",
+              directoryExists ? newDirectory.getDataProducts() : null,
+              dataProducts);
 
-        List<TagLabel> newClassificationTags =
-            filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, false);
-        List<TagLabel> newGlossaryTerms =
-            filterTagsBySource(tags, TagLabel.TagSource.GLOSSARY, false);
-        List<TagLabel> newTiers = filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, true);
+      ChangeDescription changeDescription = tracker.build();
 
-        if (CommonUtil.isChanged(existingClassificationTags, newClassificationTags)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("tags")
-                  .withOldValue(existingClassificationTags)
-                  .withNewValue(newClassificationTags));
-        }
-        if (CommonUtil.isChanged(existingGlossaryTerms, newGlossaryTerms)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("glossaryTerms")
-                  .withOldValue(existingGlossaryTerms)
-                  .withNewValue(newGlossaryTerms));
-        }
-        if (CommonUtil.isChanged(existingTiers, newTiers)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("tiers")
-                  .withOldValue(existingTiers)
-                  .withNewValue(newTiers));
-        }
-        if (CommonUtil.isChanged(newDirectory.getDomains(), domains)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("domains")
-                  .withOldValue(newDirectory.getDomains())
-                  .withNewValue(domains));
-        }
-        if (CommonUtil.isChanged(newDirectory.getDataProducts(), dataProducts)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("dataProducts")
-                  .withOldValue(newDirectory.getDataProducts())
-                  .withNewValue(dataProducts));
-        }
-      }
-
-      ChangeDescription changeDescription = new ChangeDescription();
-      if (!fieldsAdded.isEmpty()) {
-        changeDescription.setFieldsAdded(fieldsAdded);
-      }
-      if (!fieldsUpdated.isEmpty()) {
-        changeDescription.setFieldsUpdated(fieldsUpdated);
-      }
-      // Store change description with null check
       if (recordFieldChangesArray != null
           && recordIndex >= 0
           && recordIndex < recordFieldChangesArray.length) {

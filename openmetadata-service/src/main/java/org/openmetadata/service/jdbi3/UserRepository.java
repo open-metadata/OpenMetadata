@@ -50,7 +50,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
@@ -61,7 +60,6 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -1003,9 +1001,6 @@ public class UserRepository extends EntityRepository<User> {
         recordCreateStatusArray[recordIndex] = !userExists;
       }
 
-      List<FieldChange> fieldsAdded = new ArrayList<>();
-      List<FieldChange> fieldsUpdated = new ArrayList<>();
-
       // Fields: name, displayName, description, email, timezone, isAdmin, team, roles
       String displayName = csvRecord.get(1);
       String description = csvRecord.get(2);
@@ -1014,79 +1009,30 @@ public class UserRepository extends EntityRepository<User> {
       List<EntityReference> teams = getTeams(printer, csvRecord, userName);
       List<EntityReference> roles = getEntityReferences(printer, csvRecord, 7, ROLE);
 
-      if (!userExists) {
-        if (!nullOrEmpty(displayName)) {
-          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
-        }
-        if (!nullOrEmpty(description)) {
-          fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
-        }
-        if (!nullOrEmpty(timezone)) {
-          fieldsAdded.add(new FieldChange().withName("timezone").withNewValue(timezone));
-        }
-        if (isAdmin != null) {
-          fieldsAdded.add(new FieldChange().withName("isAdmin").withNewValue(isAdmin));
-        }
-        if (!nullOrEmpty(teams)) {
-          fieldsAdded.add(new FieldChange().withName("teams").withNewValue(teams));
-        }
-        if (!nullOrEmpty(roles)) {
-          fieldsAdded.add(new FieldChange().withName("roles").withNewValue(roles));
-        }
-      } else {
-        if (CommonUtil.isChanged(user.getDisplayName(), displayName)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("displayName")
-                  .withOldValue(user.getDisplayName())
-                  .withNewValue(displayName));
-        }
-        if (CommonUtil.isChanged(user.getDescription(), description)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("description")
-                  .withOldValue(user.getDescription())
-                  .withNewValue(description));
-        }
-        if (CommonUtil.isChanged(user.getTimezone(), timezone)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("timezone")
-                  .withOldValue(user.getTimezone())
-                  .withNewValue(timezone));
-        }
-        if (isAdmin != null && CommonUtil.isChanged(user.getIsAdmin(), isAdmin)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("isAdmin")
-                  .withOldValue(user.getIsAdmin())
-                  .withNewValue(isAdmin));
-        }
-        if (CommonUtil.isChanged(user.getTeams(), teams)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("teams")
-                  .withOldValue(user.getTeams())
-                  .withNewValue(teams));
-        }
-        if (CommonUtil.isChanged(user.getRoles(), roles)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("roles")
-                  .withOldValue(user.getRoles())
-                  .withNewValue(roles));
-        }
-      }
+      EntityRepository<?> repository = Entity.getEntityRepository(USER);
+      CsvChangeTracker tracker =
+          trackCommonFieldChanges(
+              repository,
+              userExists ? user : null,
+              displayName,
+              description,
+              null,
+              null,
+              null,
+              null,
+              null);
 
-      ChangeDescription changeDescription = new ChangeDescription();
-      if (!fieldsAdded.isEmpty()) {
-        changeDescription.setFieldsAdded(fieldsAdded);
-      }
-      if (!fieldsUpdated.isEmpty()) {
-        changeDescription.setFieldsUpdated(fieldsUpdated);
-      }
-      // Store change description with null check
-      if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+      tracker
+          .trackField("timezone", userExists ? user.getTimezone() : null, timezone)
+          .trackField("isAdmin", userExists ? user.getIsAdmin() : null, isAdmin)
+          .trackField("teams", userExists ? user.getTeams() : null, teams)
+          .trackField("roles", userExists ? user.getRoles() : null, roles);
+
+      ChangeDescription changeDescription = tracker.build();
+
+      if (recordFieldChangesArray != null
+          && recordIndex >= 0
+          && recordIndex < recordFieldChangesArray.length) {
         recordFieldChangesArray[recordIndex] = changeDescription;
       }
 

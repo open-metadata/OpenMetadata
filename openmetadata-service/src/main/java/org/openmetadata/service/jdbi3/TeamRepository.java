@@ -74,7 +74,6 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
-import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.api.BulkAssets;
@@ -1062,9 +1061,6 @@ public class TeamRepository extends EntityRepository<Team> {
         recordCreateStatusArray[recordIndex] = !teamExists;
       }
 
-      List<FieldChange> fieldsAdded = new ArrayList<>();
-      List<FieldChange> fieldsUpdated = new ArrayList<>();
-
       String displayName = csvRecord.get(1);
       String description = csvRecord.get(2);
       TeamType teamType = TeamType.fromValue(csvRecord.get(3));
@@ -1073,79 +1069,24 @@ public class TeamRepository extends EntityRepository<Team> {
       List<EntityReference> defaultRoles = getEntityReferences(printer, csvRecord, 7, ROLE);
       List<EntityReference> policies = getEntityReferences(printer, csvRecord, 8, POLICY);
 
-      if (!teamExists) {
-        if (!nullOrEmpty(displayName)) {
-          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
-        }
-        if (!nullOrEmpty(description)) {
-          fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
-        }
-        if (teamType != null) {
-          fieldsAdded.add(new FieldChange().withName("teamType").withNewValue(teamType.value()));
-        }
-        if (!nullOrEmpty(owners)) {
-          fieldsAdded.add(new FieldChange().withName("owner").withNewValue(owners));
-        }
-        if (isJoinable != null) {
-          fieldsAdded.add(new FieldChange().withName("isJoinable").withNewValue(isJoinable));
-        }
-        if (!nullOrEmpty(defaultRoles)) {
-          fieldsAdded.add(new FieldChange().withName("defaultRoles").withNewValue(defaultRoles));
-        }
-        if (!nullOrEmpty(policies)) {
-          fieldsAdded.add(new FieldChange().withName("policies").withNewValue(policies));
-        }
-      } else {
-        if (CommonUtil.isChanged(team.getDisplayName(), displayName)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("displayName")
-                  .withOldValue(team.getDisplayName())
-                  .withNewValue(displayName));
-        }
-        if (CommonUtil.isChanged(team.getDescription(), description)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("description")
-                  .withOldValue(team.getDescription())
-                  .withNewValue(description));
-        }
-        if (CommonUtil.isChanged(team.getTeamType(), teamType)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("teamType")
-                  .withOldValue(team.getTeamType().value())
-                  .withNewValue(teamType.value()));
-        }
-        if (CommonUtil.isChanged(team.getOwners(), owners)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("owner")
-                  .withOldValue(team.getOwners())
-                  .withNewValue(owners));
-        }
-        if (isJoinable != null && CommonUtil.isChanged(team.getIsJoinable(), isJoinable)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("isJoinable")
-                  .withOldValue(team.getIsJoinable())
-                  .withNewValue(isJoinable));
-        }
-        if (CommonUtil.isChanged(team.getDefaultRoles(), defaultRoles)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("defaultRoles")
-                  .withOldValue(team.getDefaultRoles())
-                  .withNewValue(defaultRoles));
-        }
-        if (CommonUtil.isChanged(team.getPolicies(), policies)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("policies")
-                  .withOldValue(team.getPolicies())
-                  .withNewValue(policies));
-        }
-      }
+      TeamRepository repository = (TeamRepository) Entity.getEntityRepository(TEAM);
+      EntityCsv.CsvChangeTracker tracker =
+          trackCommonFieldChanges(
+              repository,
+              teamExists ? team : null,
+              displayName,
+              description,
+              owners,
+              null,
+              null,
+              null,
+              null);
+
+      tracker
+          .trackField("teamType", teamExists ? team.getTeamType().value() : null, teamType.value())
+          .trackField("isJoinable", teamExists ? team.getIsJoinable() : null, isJoinable)
+          .trackField("defaultRoles", teamExists ? team.getDefaultRoles() : null, defaultRoles)
+          .trackField("policies", teamExists ? team.getPolicies() : null, policies);
 
       team.withDisplayName(displayName)
           .withDescription(description)
@@ -1159,7 +1100,6 @@ public class TeamRepository extends EntityRepository<Team> {
       getParents(printer, csvRecord, team);
 
       // Validate during dry run to catch logical errors early
-      TeamRepository repository = (TeamRepository) Entity.getEntityRepository(TEAM);
       if (processRecord && importResult.getDryRun()) {
         try {
           repository.validateForDryRun(team, dryRunCreatedEntities);
@@ -1170,29 +1110,11 @@ public class TeamRepository extends EntityRepository<Team> {
       }
 
       if (processRecord) {
-        if (!teamExists) {
-          if (!nullOrEmpty(team.getParents())) {
-            fieldsAdded.add(new FieldChange().withName("parents").withNewValue(team.getParents()));
-          }
-        } else {
-          if (CommonUtil.isChanged(originalParents, team.getParents())) {
-            fieldsUpdated.add(
-                new FieldChange()
-                    .withName("parents")
-                    .withOldValue(originalParents)
-                    .withNewValue(team.getParents()));
-          }
-        }
+        tracker.trackField("parents", teamExists ? originalParents : null, team.getParents());
       }
 
-      ChangeDescription changeDescription = new ChangeDescription();
-      if (!fieldsAdded.isEmpty()) {
-        changeDescription.setFieldsAdded(fieldsAdded);
-      }
-      if (!fieldsUpdated.isEmpty()) {
-        changeDescription.setFieldsUpdated(fieldsUpdated);
-      }
-      // Store change description with null check
+      ChangeDescription changeDescription = tracker.build();
+
       if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
         recordFieldChangesArray[recordIndex] = changeDescription;
       }

@@ -49,7 +49,6 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.jetbrains.annotations.NotNull;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
@@ -1609,143 +1608,47 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                     Pair.of(10, TagLabel.TagSource.CLASSIFICATION),
                     Pair.of(11, TagLabel.TagSource.GLOSSARY)));
 
-        // Track field changes
-        if (!testCaseExists) {
-          // New test case - all fields are added
-          if (!nullOrEmpty(displayName)) {
-            fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
-          }
-          if (!nullOrEmpty(description)) {
-            fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
-          }
-          fieldsAdded.add(new FieldChange().withName("testDefinition").withNewValue(testDefRef));
-          if (!nullOrEmpty(parameterValues)) {
-            fieldsAdded.add(
-                new FieldChange().withName("parameterValues").withNewValue(parameterValues));
-          }
-          if (computePassedFailedRowCount != null) {
-            fieldsAdded.add(
-                new FieldChange()
-                    .withName("computePassedFailedRowCount")
-                    .withNewValue(computePassedFailedRowCount));
-          }
-          if (useDynamicAssertion != null) {
-            fieldsAdded.add(
-                new FieldChange()
-                    .withName("useDynamicAssertion")
-                    .withNewValue(useDynamicAssertion));
-          }
-          if (!nullOrEmpty(inspectionQuery)) {
-            fieldsAdded.add(
-                new FieldChange().withName("inspectionQuery").withNewValue(inspectionQuery));
-          }
-          if (!nullOrEmpty(tagLabels)) {
-            fieldsAdded.add(new FieldChange().withName("tags").withNewValue(tagLabels));
-          }
-        } else {
-          // Existing test case - compare and track updates
-          if (CommonUtil.isChanged(existingTestCase.getDisplayName(), displayName)) {
-            fieldsUpdated.add(
-                new FieldChange()
-                    .withName("displayName")
-                    .withOldValue(existingTestCase.getDisplayName())
-                    .withNewValue(displayName));
-          }
-          if (CommonUtil.isChanged(existingTestCase.getDescription(), description)) {
-            fieldsUpdated.add(
-                new FieldChange()
-                    .withName("description")
-                    .withOldValue(existingTestCase.getDescription())
-                    .withNewValue(description));
-          }
-          if (CommonUtil.isChanged(existingTestCase.getTestDefinition(), testDefRef)) {
-            fieldsUpdated.add(
-                new FieldChange()
-                    .withName("testDefinition")
-                    .withOldValue(existingTestCase.getTestDefinition())
-                    .withNewValue(testDefRef));
-          }
-          if (CommonUtil.isChanged(existingTestCase.getParameterValues(), parameterValues)) {
-            fieldsUpdated.add(
-                new FieldChange()
-                    .withName("parameterValues")
-                    .withOldValue(existingTestCase.getParameterValues())
-                    .withNewValue(parameterValues));
-          }
-          if (computePassedFailedRowCount != null
-              && CommonUtil.isChanged(
-                  existingTestCase.getComputePassedFailedRowCount(), computePassedFailedRowCount)) {
-            fieldsUpdated.add(
-                new FieldChange()
-                    .withName("computePassedFailedRowCount")
-                    .withOldValue(existingTestCase.getComputePassedFailedRowCount())
-                    .withNewValue(computePassedFailedRowCount));
-          }
-          if (useDynamicAssertion != null
-              && CommonUtil.isChanged(
-                  existingTestCase.getUseDynamicAssertion(), useDynamicAssertion)) {
-            fieldsUpdated.add(
-                new FieldChange()
-                    .withName("useDynamicAssertion")
-                    .withOldValue(existingTestCase.getUseDynamicAssertion())
-                    .withNewValue(useDynamicAssertion));
-          }
-          if (CommonUtil.isChanged(existingTestCase.getInspectionQuery(), inspectionQuery)) {
-            fieldsUpdated.add(
-                new FieldChange()
-                    .withName("inspectionQuery")
-                    .withOldValue(existingTestCase.getInspectionQuery())
-                    .withNewValue(inspectionQuery));
-          }
-          // Separate tags by type for better UI parsing
-          List<TagLabel> existingClassificationTags =
-              filterTagsBySource(
-                  existingTestCase.getTags(), TagLabel.TagSource.CLASSIFICATION, false);
-          List<TagLabel> existingGlossaryTerms =
-              filterTagsBySource(existingTestCase.getTags(), TagLabel.TagSource.GLOSSARY, false);
-          List<TagLabel> existingTiers =
-              filterTagsBySource(
-                  existingTestCase.getTags(), TagLabel.TagSource.CLASSIFICATION, true);
+        // Create TestCase object for tracking (new or existing with updates)
+        TestCaseRepository repository = (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
+        EntityCsv.CsvChangeTracker tracker =
+            trackCommonFieldChanges(
+                repository,
+                testCaseExists ? existingTestCase : null,
+                displayName,
+                description,
+                null, // Owners not in CSV
+                tagLabels,
+                null,
+                null, // Domains not in CSV
+                null);
 
-          List<TagLabel> newClassificationTags =
-              filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, false);
-          List<TagLabel> newGlossaryTerms =
-              filterTagsBySource(tagLabels, TagLabel.TagSource.GLOSSARY, false);
-          List<TagLabel> newTiers =
-              filterTagsBySource(tagLabels, TagLabel.TagSource.CLASSIFICATION, true);
+        tracker
+            .trackField(
+                "testDefinition",
+                testCaseExists ? existingTestCase.getTestDefinition() : null,
+                testDefRef)
+            .trackField(
+                "parameterValues",
+                testCaseExists ? existingTestCase.getParameterValues() : null,
+                parameterValues)
+            .trackField(
+                "computePassedFailedRowCount",
+                testCaseExists ? existingTestCase.getComputePassedFailedRowCount() : null,
+                computePassedFailedRowCount)
+            .trackField(
+                "useDynamicAssertion",
+                testCaseExists ? existingTestCase.getUseDynamicAssertion() : null,
+                useDynamicAssertion)
+            .trackField(
+                "inspectionQuery",
+                testCaseExists ? existingTestCase.getInspectionQuery() : null,
+                inspectionQuery);
 
-          if (CommonUtil.isChanged(existingClassificationTags, newClassificationTags)) {
-            fieldsUpdated.add(
-                new FieldChange()
-                    .withName("tags")
-                    .withOldValue(existingClassificationTags)
-                    .withNewValue(newClassificationTags));
-          }
-          if (CommonUtil.isChanged(existingGlossaryTerms, newGlossaryTerms)) {
-            fieldsUpdated.add(
-                new FieldChange()
-                    .withName("glossaryTerms")
-                    .withOldValue(existingGlossaryTerms)
-                    .withNewValue(newGlossaryTerms));
-          }
-          if (CommonUtil.isChanged(existingTiers, newTiers)) {
-            fieldsUpdated.add(
-                new FieldChange()
-                    .withName("tiers")
-                    .withOldValue(existingTiers)
-                    .withNewValue(newTiers));
-          }
-        }
+        ChangeDescription changeDescription = tracker.build();
 
-        ChangeDescription changeDescription = new ChangeDescription();
-        if (!fieldsAdded.isEmpty()) {
-          changeDescription.setFieldsAdded(fieldsAdded);
-        }
-        if (!fieldsUpdated.isEmpty()) {
-          changeDescription.setFieldsUpdated(fieldsUpdated);
-        }
-        // Store change description with null check
-        if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+        if (recordFieldChangesArray != null
+            && recordIndex >= 0
+            && recordIndex < recordFieldChangesArray.length) {
           recordFieldChangesArray[recordIndex] = changeDescription;
         }
 
@@ -1762,8 +1665,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                 .withInspectionQuery(inspectionQuery)
                 .withTags(tagLabels);
 
-        // Handle test suite
-        TestCaseRepository repository = (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
         if (testSuiteFqn != null && !testSuiteFqn.trim().isEmpty()) {
           try {
             TestSuite testSuite =

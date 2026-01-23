@@ -40,7 +40,6 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.entity.data.Spreadsheet;
 import org.openmetadata.schema.entity.data.Worksheet;
@@ -48,7 +47,6 @@ import org.openmetadata.schema.entity.services.DriveService;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
@@ -406,9 +404,6 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
         recordCreateStatusArray[recordIndex] = !worksheetExists;
       }
 
-      List<FieldChange> fieldsAdded = new ArrayList<>();
-      List<FieldChange> fieldsUpdated = new ArrayList<>();
-
       String displayName = csvRecord.get(1);
       String description = csvRecord.get(2);
       String worksheetId = csvRecord.get(4);
@@ -429,187 +424,49 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
       List<EntityReference> domains = getDomains(printer, csvRecord, 13);
       List<EntityReference> dataProducts = getDataProducts(printer, csvRecord, 14);
 
-      if (!worksheetExists) {
-        if (!nullOrEmpty(displayName)) {
-          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
-        }
-        if (!nullOrEmpty(description)) {
-          fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
-        }
-        if (!nullOrEmpty(worksheetId)) {
-          fieldsAdded.add(new FieldChange().withName("worksheetId").withNewValue(worksheetId));
-        }
-        if (index != null) {
-          fieldsAdded.add(new FieldChange().withName("index").withNewValue(index.toString()));
-        }
-        if (rowCount != null) {
-          fieldsAdded.add(new FieldChange().withName("rowCount").withNewValue(rowCount.toString()));
-        }
-        if (columnCount != null) {
-          fieldsAdded.add(
-              new FieldChange().withName("columnCount").withNewValue(columnCount.toString()));
-        }
-        if (isHidden != null) {
-          fieldsAdded.add(new FieldChange().withName("isHidden").withNewValue(isHidden));
-        }
-        if (!nullOrEmpty(columns)) {
-          fieldsAdded.add(new FieldChange().withName("columns").withNewValue(columns));
-        }
-        if (!nullOrEmpty(owners)) {
-          fieldsAdded.add(new FieldChange().withName("owner").withNewValue(owners));
-        }
-        // Separate tags by type for better UI parsing
-        List<TagLabel> classificationTags =
-            filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, false);
-        List<TagLabel> glossaryTerms = filterTagsBySource(tags, TagLabel.TagSource.GLOSSARY, false);
-        List<TagLabel> tiers = filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, true);
+      EntityRepository<?> repository = Entity.getEntityRepository(WORKSHEET);
+      EntityCsv.CsvChangeTracker tracker =
+          trackCommonFieldChanges(
+              repository,
+              worksheetExists ? newWorksheet : null,
+              displayName,
+              description,
+              owners,
+              tags,
+              null,
+              domains,
+              null);
 
-        if (classificationTags != null && !classificationTags.isEmpty()) {
-          fieldsAdded.add(new FieldChange().withName("tags").withNewValue(classificationTags));
-        }
-        if (glossaryTerms != null && !glossaryTerms.isEmpty()) {
-          fieldsAdded.add(new FieldChange().withName("glossaryTerms").withNewValue(glossaryTerms));
-        }
-        if (tiers != null && !tiers.isEmpty()) {
-          fieldsAdded.add(new FieldChange().withName("tiers").withNewValue(tiers));
-        }
-        if (!nullOrEmpty(domains)) {
-          fieldsAdded.add(new FieldChange().withName("domains").withNewValue(domains));
-        }
-        if (!nullOrEmpty(dataProducts)) {
-          fieldsAdded.add(new FieldChange().withName("dataProducts").withNewValue(dataProducts));
-        }
-      } else {
-        if (CommonUtil.isChanged(newWorksheet.getDisplayName(), displayName)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("displayName")
-                  .withOldValue(newWorksheet.getDisplayName())
-                  .withNewValue(displayName));
-        }
-        if (CommonUtil.isChanged(newWorksheet.getDescription(), description)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("description")
-                  .withOldValue(newWorksheet.getDescription())
-                  .withNewValue(description));
-        }
-        if (CommonUtil.isChanged(newWorksheet.getWorksheetId(), worksheetId)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("worksheetId")
-                  .withOldValue(newWorksheet.getWorksheetId())
-                  .withNewValue(worksheetId));
-        }
-        if (CommonUtil.isChanged(newWorksheet.getIndex(), index)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("index")
-                  .withOldValue(
-                      newWorksheet.getIndex() != null ? newWorksheet.getIndex().toString() : null)
-                  .withNewValue(index != null ? index.toString() : null));
-        }
-        if (CommonUtil.isChanged(newWorksheet.getRowCount(), rowCount)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("rowCount")
-                  .withOldValue(
-                      newWorksheet.getRowCount() != null
-                          ? newWorksheet.getRowCount().toString()
-                          : null)
-                  .withNewValue(rowCount != null ? rowCount.toString() : null));
-        }
-        if (CommonUtil.isChanged(newWorksheet.getColumnCount(), columnCount)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("columnCount")
-                  .withOldValue(
-                      newWorksheet.getColumnCount() != null
-                          ? newWorksheet.getColumnCount().toString()
-                          : null)
-                  .withNewValue(columnCount != null ? columnCount.toString() : null));
-        }
-        if (isHidden != null && CommonUtil.isChanged(newWorksheet.getIsHidden(), isHidden)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("isHidden")
-                  .withOldValue(newWorksheet.getIsHidden())
-                  .withNewValue(isHidden));
-        }
-        if (CommonUtil.isChanged(newWorksheet.getColumns(), columns)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("columns")
-                  .withOldValue(newWorksheet.getColumns())
-                  .withNewValue(columns));
-        }
-        if (CommonUtil.isChanged(newWorksheet.getOwners(), owners)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("owner")
-                  .withOldValue(newWorksheet.getOwners())
-                  .withNewValue(owners));
-        }
-        // Separate tags by type for better UI parsing
-        List<TagLabel> existingClassificationTags =
-            filterTagsBySource(newWorksheet.getTags(), TagLabel.TagSource.CLASSIFICATION, false);
-        List<TagLabel> existingGlossaryTerms =
-            filterTagsBySource(newWorksheet.getTags(), TagLabel.TagSource.GLOSSARY, false);
-        List<TagLabel> existingTiers =
-            filterTagsBySource(newWorksheet.getTags(), TagLabel.TagSource.CLASSIFICATION, true);
+      tracker
+          .trackField(
+              "worksheetId", worksheetExists ? newWorksheet.getWorksheetId() : null, worksheetId)
+          .trackField(
+              "index",
+              worksheetExists && newWorksheet.getIndex() != null
+                  ? newWorksheet.getIndex().toString()
+                  : null,
+              index != null ? index.toString() : null)
+          .trackField(
+              "rowCount",
+              worksheetExists && newWorksheet.getRowCount() != null
+                  ? newWorksheet.getRowCount().toString()
+                  : null,
+              rowCount != null ? rowCount.toString() : null)
+          .trackField(
+              "columnCount",
+              worksheetExists && newWorksheet.getColumnCount() != null
+                  ? newWorksheet.getColumnCount().toString()
+                  : null,
+              columnCount != null ? columnCount.toString() : null)
+          .trackField("isHidden", worksheetExists ? newWorksheet.getIsHidden() : null, isHidden)
+          .trackField("columns", worksheetExists ? newWorksheet.getColumns() : null, columns)
+          .trackField(
+              "dataProducts",
+              worksheetExists ? newWorksheet.getDataProducts() : null,
+              dataProducts);
 
-        List<TagLabel> newClassificationTags =
-            filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, false);
-        List<TagLabel> newGlossaryTerms =
-            filterTagsBySource(tags, TagLabel.TagSource.GLOSSARY, false);
-        List<TagLabel> newTiers = filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, true);
+      ChangeDescription changeDescription = tracker.build();
 
-        if (CommonUtil.isChanged(existingClassificationTags, newClassificationTags)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("tags")
-                  .withOldValue(existingClassificationTags)
-                  .withNewValue(newClassificationTags));
-        }
-        if (CommonUtil.isChanged(existingGlossaryTerms, newGlossaryTerms)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("glossaryTerms")
-                  .withOldValue(existingGlossaryTerms)
-                  .withNewValue(newGlossaryTerms));
-        }
-        if (CommonUtil.isChanged(existingTiers, newTiers)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("tiers")
-                  .withOldValue(existingTiers)
-                  .withNewValue(newTiers));
-        }
-
-        if (CommonUtil.isChanged(newWorksheet.getDomains(), domains)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("domains")
-                  .withOldValue(newWorksheet.getDomains())
-                  .withNewValue(domains));
-        }
-        if (CommonUtil.isChanged(newWorksheet.getDataProducts(), dataProducts)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("dataProducts")
-                  .withOldValue(newWorksheet.getDataProducts())
-                  .withNewValue(dataProducts));
-        }
-      }
-
-      ChangeDescription changeDescription = new ChangeDescription();
-      if (!fieldsAdded.isEmpty()) {
-        changeDescription.setFieldsAdded(fieldsAdded);
-      }
-      if (!fieldsUpdated.isEmpty()) {
-        changeDescription.setFieldsUpdated(fieldsUpdated);
-      }
-      // Store change description with null check
       if (recordFieldChangesArray != null
           && recordIndex >= 0
           && recordIndex < recordFieldChangesArray.length) {

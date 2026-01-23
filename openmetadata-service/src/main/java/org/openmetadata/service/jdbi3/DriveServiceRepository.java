@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addDomains;
 import static org.openmetadata.csv.CsvUtil.addExtension;
 import static org.openmetadata.csv.CsvUtil.addField;
@@ -28,13 +27,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Directory;
@@ -43,7 +42,6 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DriveConnection;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
@@ -193,9 +191,6 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
         recordCreateStatusArray[recordIndex] = !directoryExists;
       }
 
-      List<FieldChange> fieldsAdded = new ArrayList<>();
-      List<FieldChange> fieldsUpdated = new ArrayList<>();
-
       String description = csvRecord.get(1);
       String displayName = csvRecord.get(2);
       List<EntityReference> owners = getOwners(printer, csvRecord, 3);
@@ -207,122 +202,26 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
                   Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
                   Pair.of(5, TagLabel.TagSource.GLOSSARY)));
       List<EntityReference> domains = getDomains(printer, csvRecord, 6);
-      Object extension = getExtension(printer, csvRecord, 7);
+      Map<String, Object> extension = getExtension(printer, csvRecord, 7);
 
-      if (!directoryExists) {
-        if (description != null) {
-          fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
-        }
-        if (displayName != null) {
-          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
-        }
-        if (!nullOrEmpty(owners)) {
-          fieldsAdded.add(new FieldChange().withName("owner").withNewValue(owners));
-        }
-        // Separate tags by type for better UI parsing
-        List<TagLabel> classificationTags =
-            filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, false);
-        List<TagLabel> glossaryTerms = filterTagsBySource(tags, TagLabel.TagSource.GLOSSARY, false);
-        List<TagLabel> tiers = filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, true);
+      EntityRepository<?> repository = Entity.getEntityRepository(DIRECTORY);
+      EntityCsv.CsvChangeTracker tracker =
+          trackCommonFieldChanges(
+              repository,
+              directoryExists ? directory : null,
+              displayName,
+              description,
+              owners,
+              tags,
+              null,
+              domains,
+              extension);
 
-        if (classificationTags != null && !classificationTags.isEmpty()) {
-          fieldsAdded.add(new FieldChange().withName("tags").withNewValue(classificationTags));
-        }
-        if (glossaryTerms != null && !glossaryTerms.isEmpty()) {
-          fieldsAdded.add(new FieldChange().withName("glossaryTerms").withNewValue(glossaryTerms));
-        }
-        if (tiers != null && !tiers.isEmpty()) {
-          fieldsAdded.add(new FieldChange().withName("tiers").withNewValue(tiers));
-        }
-        if (!nullOrEmpty(domains)) {
-          fieldsAdded.add(new FieldChange().withName("domains").withNewValue(domains));
-        }
-        if (extension != null) {
-          fieldsAdded.add(new FieldChange().withName("extension").withNewValue(extension));
-        }
-      } else {
-        if (CommonUtil.isChanged(directory.getDescription(), description)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("description")
-                  .withOldValue(directory.getDescription())
-                  .withNewValue(description));
-        }
-        if (CommonUtil.isChanged(directory.getDisplayName(), displayName)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("displayName")
-                  .withOldValue(directory.getDisplayName())
-                  .withNewValue(displayName));
-        }
-        if (CommonUtil.isChanged(directory.getOwners(), owners)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("owner")
-                  .withOldValue(directory.getOwners())
-                  .withNewValue(owners));
-        }
-        // Separate tags by type for better UI parsing
-        List<TagLabel> existingClassificationTags =
-            filterTagsBySource(directory.getTags(), TagLabel.TagSource.CLASSIFICATION, false);
-        List<TagLabel> existingGlossaryTerms =
-            filterTagsBySource(directory.getTags(), TagLabel.TagSource.GLOSSARY, false);
-        List<TagLabel> existingTiers =
-            filterTagsBySource(directory.getTags(), TagLabel.TagSource.CLASSIFICATION, true);
+      ChangeDescription changeDescription = tracker.build();
 
-        List<TagLabel> newClassificationTags =
-            filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, false);
-        List<TagLabel> newGlossaryTerms =
-            filterTagsBySource(tags, TagLabel.TagSource.GLOSSARY, false);
-        List<TagLabel> newTiers = filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, true);
-
-        if (CommonUtil.isChanged(existingClassificationTags, newClassificationTags)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("tags")
-                  .withOldValue(existingClassificationTags)
-                  .withNewValue(newClassificationTags));
-        }
-        if (CommonUtil.isChanged(existingGlossaryTerms, newGlossaryTerms)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("glossaryTerms")
-                  .withOldValue(existingGlossaryTerms)
-                  .withNewValue(newGlossaryTerms));
-        }
-        if (CommonUtil.isChanged(existingTiers, newTiers)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("tiers")
-                  .withOldValue(existingTiers)
-                  .withNewValue(newTiers));
-        }
-
-        if (CommonUtil.isChanged(directory.getDomains(), domains)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("domains")
-                  .withOldValue(directory.getDomains())
-                  .withNewValue(domains));
-        }
-        if (CommonUtil.isChanged(directory.getExtension(), extension)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("extension")
-                  .withOldValue(directory.getExtension())
-                  .withNewValue(extension));
-        }
-      }
-
-      ChangeDescription changeDescription = new ChangeDescription();
-      if (!fieldsAdded.isEmpty()) {
-        changeDescription.setFieldsAdded(fieldsAdded);
-      }
-      if (!fieldsUpdated.isEmpty()) {
-        changeDescription.setFieldsUpdated(fieldsUpdated);
-      }
-      // Store change description with null check
-      if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+      if (recordFieldChangesArray != null
+          && recordIndex >= 0
+          && recordIndex < recordFieldChangesArray.length) {
         recordFieldChangesArray[recordIndex] = changeDescription;
       }
 

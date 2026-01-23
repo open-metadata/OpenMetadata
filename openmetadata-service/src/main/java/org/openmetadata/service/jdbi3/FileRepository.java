@@ -35,7 +35,6 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.data.File;
@@ -43,7 +42,6 @@ import org.openmetadata.schema.entity.services.DriveService;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.FileType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -386,8 +384,6 @@ public class FileRepository extends EntityRepository<File> {
         recordCreateStatusArray[recordIndex] = !fileExists;
       }
 
-      List<FieldChange> fieldsAdded = new ArrayList<>();
-      List<FieldChange> fieldsUpdated = new ArrayList<>();
       String displayName = csvRecord.get(1);
       String description = csvRecord.get(2);
       FileType fileType = FileType.valueOf(csvRecord.get(4));
@@ -408,191 +404,41 @@ public class FileRepository extends EntityRepository<File> {
       List<EntityReference> domains = getDomains(printer, csvRecord, 14);
       List<EntityReference> dataProducts = getDataProducts(printer, csvRecord, 15);
 
-      if (!fileExists) {
-        if (!nullOrEmpty(displayName)) {
-          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
-        }
-        if (!nullOrEmpty(description)) {
-          fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
-        }
-        if (fileType != null) {
-          fieldsAdded.add(new FieldChange().withName("fileType").withNewValue(fileType.toString()));
-        }
-        if (!nullOrEmpty(mimeType)) {
-          fieldsAdded.add(new FieldChange().withName("mimeType").withNewValue(mimeType));
-        }
-        if (!nullOrEmpty(fileExtension)) {
-          fieldsAdded.add(new FieldChange().withName("fileExtension").withNewValue(fileExtension));
-        }
-        if (!nullOrEmpty(path)) {
-          fieldsAdded.add(new FieldChange().withName("path").withNewValue(path));
-        }
-        if (size != null) {
-          fieldsAdded.add(new FieldChange().withName("size").withNewValue(size.toString()));
-        }
-        if (!nullOrEmpty(checksum)) {
-          fieldsAdded.add(new FieldChange().withName("checksum").withNewValue(checksum));
-        }
-        if (isShared != null) {
-          fieldsAdded.add(new FieldChange().withName("isShared").withNewValue(isShared));
-        }
-        if (!nullOrEmpty(owners)) {
-          fieldsAdded.add(new FieldChange().withName("owner").withNewValue(owners));
-        }
-        // Separate tags by type for better UI parsing
-        List<TagLabel> classificationTags =
-            filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, false);
-        List<TagLabel> glossaryTerms = filterTagsBySource(tags, TagLabel.TagSource.GLOSSARY, false);
-        List<TagLabel> tiers = filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, true);
+      EntityRepository<?> repository = Entity.getEntityRepository(FILE);
+      EntityCsv.CsvChangeTracker tracker =
+          trackCommonFieldChanges(
+              repository,
+              fileExists ? newFile : null,
+              displayName,
+              description,
+              owners,
+              tags,
+              null,
+              domains,
+              null);
 
-        if (classificationTags != null && !classificationTags.isEmpty()) {
-          fieldsAdded.add(new FieldChange().withName("tags").withNewValue(classificationTags));
-        }
-        if (glossaryTerms != null && !glossaryTerms.isEmpty()) {
-          fieldsAdded.add(new FieldChange().withName("glossaryTerms").withNewValue(glossaryTerms));
-        }
-        if (tiers != null && !tiers.isEmpty()) {
-          fieldsAdded.add(new FieldChange().withName("tiers").withNewValue(tiers));
-        }
-        if (!nullOrEmpty(domains)) {
-          fieldsAdded.add(new FieldChange().withName("domains").withNewValue(domains));
-        }
-        if (!nullOrEmpty(dataProducts)) {
-          fieldsAdded.add(new FieldChange().withName("dataProducts").withNewValue(dataProducts));
-        }
-      } else {
-        if (CommonUtil.isChanged(newFile.getDisplayName(), displayName)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("displayName")
-                  .withOldValue(newFile.getDisplayName())
-                  .withNewValue(displayName));
-        }
-        if (CommonUtil.isChanged(newFile.getDescription(), description)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("description")
-                  .withOldValue(newFile.getDescription())
-                  .withNewValue(description));
-        }
-        if (CommonUtil.isChanged(newFile.getFileType(), fileType)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("fileType")
-                  .withOldValue(
-                      newFile.getFileType() != null ? newFile.getFileType().toString() : null)
-                  .withNewValue(fileType != null ? fileType.toString() : null));
-        }
-        if (CommonUtil.isChanged(newFile.getMimeType(), mimeType)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("mimeType")
-                  .withOldValue(newFile.getMimeType())
-                  .withNewValue(mimeType));
-        }
-        if (CommonUtil.isChanged(newFile.getFileExtension(), fileExtension)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("fileExtension")
-                  .withOldValue(newFile.getFileExtension())
-                  .withNewValue(fileExtension));
-        }
-        if (CommonUtil.isChanged(newFile.getPath(), path)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("path")
-                  .withOldValue(newFile.getPath())
-                  .withNewValue(path));
-        }
-        if (CommonUtil.isChanged(newFile.getSize(), size)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("size")
-                  .withOldValue(newFile.getSize() != null ? newFile.getSize().toString() : null)
-                  .withNewValue(size != null ? size.toString() : null));
-        }
-        if (CommonUtil.isChanged(newFile.getChecksum(), checksum)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("checksum")
-                  .withOldValue(newFile.getChecksum())
-                  .withNewValue(checksum));
-        }
-        if (isShared != null && CommonUtil.isChanged(newFile.getIsShared(), isShared)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("isShared")
-                  .withOldValue(newFile.getIsShared())
-                  .withNewValue(isShared));
-        }
-        if (CommonUtil.isChanged(newFile.getOwners(), owners)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("owner")
-                  .withOldValue(newFile.getOwners())
-                  .withNewValue(owners));
-        }
-        // Separate tags by type for better UI parsing
-        List<TagLabel> existingClassificationTags =
-            filterTagsBySource(newFile.getTags(), TagLabel.TagSource.CLASSIFICATION, false);
-        List<TagLabel> existingGlossaryTerms =
-            filterTagsBySource(newFile.getTags(), TagLabel.TagSource.GLOSSARY, false);
-        List<TagLabel> existingTiers =
-            filterTagsBySource(newFile.getTags(), TagLabel.TagSource.CLASSIFICATION, true);
+      tracker
+          .trackField(
+              "fileType",
+              fileExists && newFile.getFileType() != null ? newFile.getFileType().toString() : null,
+              fileType != null ? fileType.toString() : null)
+          .trackField("mimeType", fileExists ? newFile.getMimeType() : null, mimeType)
+          .trackField(
+              "fileExtension", fileExists ? newFile.getFileExtension() : null, fileExtension)
+          .trackField("path", fileExists ? newFile.getPath() : null, path)
+          .trackField(
+              "size",
+              fileExists && newFile.getSize() != null ? newFile.getSize().toString() : null,
+              size != null ? size.toString() : null)
+          .trackField("checksum", fileExists ? newFile.getChecksum() : null, checksum)
+          .trackField("isShared", fileExists ? newFile.getIsShared() : null, isShared)
+          .trackField("dataProducts", fileExists ? newFile.getDataProducts() : null, dataProducts);
 
-        List<TagLabel> newClassificationTags =
-            filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, false);
-        List<TagLabel> newGlossaryTerms =
-            filterTagsBySource(tags, TagLabel.TagSource.GLOSSARY, false);
-        List<TagLabel> newTiers = filterTagsBySource(tags, TagLabel.TagSource.CLASSIFICATION, true);
+      ChangeDescription changeDescription = tracker.build();
 
-        if (CommonUtil.isChanged(existingClassificationTags, newClassificationTags)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("tags")
-                  .withOldValue(existingClassificationTags)
-                  .withNewValue(newClassificationTags));
-        }
-        if (CommonUtil.isChanged(existingGlossaryTerms, newGlossaryTerms)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("glossaryTerms")
-                  .withOldValue(existingGlossaryTerms)
-                  .withNewValue(newGlossaryTerms));
-        }
-        if (CommonUtil.isChanged(existingTiers, newTiers)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("tiers")
-                  .withOldValue(existingTiers)
-                  .withNewValue(newTiers));
-        }
-
-        if (CommonUtil.isChanged(newFile.getDomains(), domains)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("domains")
-                  .withOldValue(newFile.getDomains())
-                  .withNewValue(domains));
-        }
-        if (CommonUtil.isChanged(newFile.getDataProducts(), dataProducts)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("dataProducts")
-                  .withOldValue(newFile.getDataProducts())
-                  .withNewValue(dataProducts));
-        }
-      }
-
-      ChangeDescription changeDescription = new ChangeDescription();
-      if (!fieldsAdded.isEmpty()) {
-        changeDescription.setFieldsAdded(fieldsAdded);
-      }
-      if (!fieldsUpdated.isEmpty()) {
-        changeDescription.setFieldsUpdated(fieldsUpdated);
-      }
-      // Store change description with null check
-      if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+      if (recordFieldChangesArray != null
+          && recordIndex >= 0
+          && recordIndex < recordFieldChangesArray.length) {
         recordFieldChangesArray[recordIndex] = changeDescription;
       }
 
