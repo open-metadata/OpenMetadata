@@ -54,6 +54,7 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.mlmodels.MlModelResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -96,7 +97,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public void setFields(MlModel mlModel, Fields fields) {
+  public void setFields(MlModel mlModel, Fields fields, RelationIncludes relationIncludes) {
     mlModel.setService(getContainer(mlModel.getId()));
     mlModel.setDashboard(
         fields.contains("dashboard") ? getDashboard(mlModel) : mlModel.getDashboard());

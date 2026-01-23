@@ -33,7 +33,9 @@ import { EntityReference } from '../../../generated/entity/type';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { postThread } from '../../../rest/feedsAPI';
+import { updateTableColumn } from '../../../rest/tableAPI';
 import { handleColumnFieldUpdate as handleColumnFieldUpdateUtil } from '../../../utils/ColumnUpdateUtils';
+import { EntityDataMapValue } from '../../../utils/ColumnUpdateUtils.interface';
 import {
   getLayoutFromCustomizedPage,
   updateWidgetHeightRecursively,
@@ -52,7 +54,6 @@ import {
   ColumnFieldUpdate,
   ColumnOrTask,
 } from '../../Database/ColumnDetailPanel/ColumnDetailPanel.interface';
-import { EntityDataMapValue } from '../../../utils/ColumnUpdateUtils.interface';
 import {
   GenericContextType,
   GenericProviderProps,
@@ -67,6 +68,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   data,
   type,
   onUpdate,
+  onEntitySync,
   isVersionView,
   permissions,
   currentVersionData,
@@ -74,6 +76,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   customizedPage,
   muiTags = false,
   columnFqn,
+  onColumnsUpdate,
 }: GenericProviderProps<T>) => {
   const GenericContext = createGenericContext<T>();
   const [threadLink, setThreadLink] = useState<string>('');
@@ -134,7 +137,6 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
 
   // Sync selected column when extractedColumns change (e.g., after updates)
   useEffect(() => {
-    // Existing logic for updates
     if (!selectedColumn?.fullyQualifiedName || extractedColumns.length === 0) {
       return;
     }
@@ -145,7 +147,20 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     );
 
     if (updatedColumn) {
-      setSelectedColumn(cleanColumn(updatedColumn));
+      // Only update fields that extractedColumns might have newer data for (e.g., tags, description)
+      // but preserve extension from the original selectedColumn
+      setSelectedColumn((prev) => {
+        if (!prev) {
+          return cleanColumn(updatedColumn);
+        }
+        const prevColumn = prev as Column;
+
+        return cleanColumn({
+          ...updatedColumn,
+          // Use new extension if available, otherwise fallback to prev (which might have full data)
+          extension: updatedColumn.extension ?? prevColumn.extension,
+        });
+      });
     }
   }, [extractedColumns, selectedColumn?.fullyQualifiedName, cleanColumn]);
 
@@ -222,7 +237,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       }
     },
     [
-      data.fullyQualifiedName,
+      data?.fullyQualifiedName,
       type,
       tab,
       navigate,
@@ -235,7 +250,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     setSelectedColumn(null);
 
     // Update URL to remove column FQN
-    if (data.fullyQualifiedName) {
+    if (data?.fullyQualifiedName) {
       const newPath = getEntityDetailsPath(type, data.fullyQualifiedName, tab);
       navigate(newPath, { replace: true });
     } else if (location.hash) {
@@ -245,11 +260,25 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
         { replace: true }
       );
     }
-  }, [data.fullyQualifiedName, type, tab, location, navigate]);
+  }, [data?.fullyQualifiedName, type, tab, location, navigate]);
 
-  // Wrapper for onColumnFieldUpdate that updates selectedColumn after the update completes
+  // Wrapper for onColumnFieldUpdate that updates
   const handleColumnFieldUpdate = useCallback(
     async (fqn: string, update: ColumnFieldUpdate) => {
+      let apiResponseColumn: Column | undefined;
+
+      // For Table entities, use the specific column update endpoint instead of generic patch
+      // This ensures custom properties and other column fields are updated correctly
+      if (type === EntityType.TABLE) {
+        try {
+          apiResponseColumn = await updateTableColumn(fqn, update);
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+
+          return;
+        }
+      }
+
       const { updatedEntity, updatedColumn } = handleColumnFieldUpdateUtil({
         entityType: type,
         entityData: data as unknown as EntityDataMapValue,
@@ -257,17 +286,23 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
         update,
       });
 
-      // Call onUpdate with the updated entity (onUpdate will handle API calls)
-      await onUpdate(updatedEntity as unknown as T);
-
-      // Update selected column if it matches the updated one
-      if (updatedColumn && selectedColumn?.fullyQualifiedName === fqn) {
-        setSelectedColumn(cleanColumn(updatedColumn as ColumnOrTask));
+      if (onEntitySync) {
+        onEntitySync(updatedEntity as unknown as T);
+      } else {
+        await onUpdate(updatedEntity as unknown as T);
       }
 
-      return updatedColumn as ColumnOrTask | undefined;
+      // Use API response column if available (more accurate), otherwise use local calculation
+      const finalColumn = apiResponseColumn ?? updatedColumn;
+
+      // Update selected column if it matches the updated one
+      if (finalColumn && selectedColumn?.fullyQualifiedName === fqn) {
+        setSelectedColumn(cleanColumn(finalColumn as ColumnOrTask));
+      }
+
+      return finalColumn as ColumnOrTask | undefined;
     },
-    [data, type, onUpdate, selectedColumn, cleanColumn]
+    [data, type, onUpdate, onEntitySync, selectedColumn, cleanColumn]
   );
 
   // Extract deleted status from entity data
@@ -414,6 +449,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
           tableFqn={data.fullyQualifiedName}
           onClose={closeColumnDetailPanel}
           onColumnFieldUpdate={handleColumnFieldUpdate}
+          onColumnsUpdate={onColumnsUpdate}
           onNavigate={openColumnDetailPanel}
         />
       )}

@@ -105,7 +105,7 @@ const mockEntityPermissionByFqn = jest
   .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
 
 const COMMON_API_FIELDS =
-  'followers,joins,tags,owners,dataModel,tableConstraints,schemaDefinition,domains,dataProducts,votes,extension';
+  'columns,followers,joins,tags,owners,dataModel,tableConstraints,schemaDefinition,domains,dataProducts,votes,extension';
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
@@ -121,10 +121,17 @@ jest.mock('../../rest/tableAPI', () => ({
       columns: [],
     })
   ),
+  getTableColumnsByFQN: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: [],
+      paging: { total: 0 },
+    })
+  ),
   addFollower: jest.fn(),
   patchTableDetails: jest.fn(),
   removeFollower: jest.fn(),
   restoreTable: jest.fn(),
+  updateTablesVotes: jest.fn(),
 }));
 
 jest.mock('../../rest/suggestionsAPI', () => ({
@@ -341,10 +348,10 @@ describe('TestDetailsPageV1 component', () => {
 
     await act(async () => {
       render(
-      <MemoryRouter>
-        <TableDetailsPageV1 />
-      </MemoryRouter>
-    );
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', {
@@ -363,10 +370,10 @@ describe('TestDetailsPageV1 component', () => {
 
     await act(async () => {
       render(
-      <MemoryRouter>
-        <TableDetailsPageV1 />
-      </MemoryRouter>
-    );
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', {
@@ -383,10 +390,10 @@ describe('TestDetailsPageV1 component', () => {
 
     await act(async () => {
       render(
-      <MemoryRouter>
-        <TableDetailsPageV1 />
-      </MemoryRouter>
-    );
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', {
@@ -429,10 +436,10 @@ describe('TestDetailsPageV1 component', () => {
 
     await act(async () => {
       render(
-      <MemoryRouter>
-        <TableDetailsPageV1 />
-      </MemoryRouter>
-    );
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(await screen.findByText('label.dbt-lowercase')).toBeInTheDocument();
@@ -458,10 +465,10 @@ describe('TestDetailsPageV1 component', () => {
 
     await act(async () => {
       render(
-      <MemoryRouter>
-        <TableDetailsPageV1 />
-      </MemoryRouter>
-    );
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(await screen.findByText('label.dbt-lowercase')).toBeInTheDocument();
@@ -487,10 +494,10 @@ describe('TestDetailsPageV1 component', () => {
 
     await act(async () => {
       render(
-      <MemoryRouter>
-        <TableDetailsPageV1 />
-      </MemoryRouter>
-    );
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(await screen.findByText('label.dbt-lowercase')).toBeInTheDocument();
@@ -515,10 +522,10 @@ describe('TestDetailsPageV1 component', () => {
 
     await act(async () => {
       render(
-      <MemoryRouter>
-        <TableDetailsPageV1 />
-      </MemoryRouter>
-    );
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(screen.getByText('label.schema-definition')).toBeInTheDocument();
@@ -544,10 +551,10 @@ describe('TestDetailsPageV1 component', () => {
 
     await act(async () => {
       render(
-      <MemoryRouter>
-        <TableDetailsPageV1 />
-      </MemoryRouter>
-    );
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(screen.getByText('label.view-definition')).toBeInTheDocument();
@@ -562,10 +569,10 @@ describe('TestDetailsPageV1 component', () => {
 
     await act(async () => {
       render(
-      <MemoryRouter>
-        <TableDetailsPageV1 />
-      </MemoryRouter>
-    );
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', {
@@ -595,10 +602,10 @@ describe('TestDetailsPageV1 component', () => {
 
     await act(async () => {
       render(
-      <MemoryRouter>
-        <TableDetailsPageV1 />
-      </MemoryRouter>
-    );
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(PageLayoutV1).toHaveBeenCalledWith(

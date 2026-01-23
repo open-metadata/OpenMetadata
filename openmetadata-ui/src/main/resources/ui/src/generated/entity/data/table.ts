@@ -187,12 +187,12 @@ export interface Table {
      * Table constraints.
      */
     tableConstraints?: TableConstraint[];
-    tablePartition?:   TablePartition;
+    tablePartition?: TablePartition;
     /**
      * Table Profiler Config to include or exclude columns from profiling.
      */
     tableProfilerConfig?: TableProfilerConfig;
-    tableType?:           TableType;
+    tableType?: TableType;
     /**
      * Tags for this table.
      */
@@ -236,7 +236,7 @@ export interface AssetCertification {
      * The date when the certification expires.
      */
     expiryDate: number;
-    tagLabel:   TagLabel;
+    tagLabel: TagLabel;
 }
 
 /**
@@ -287,7 +287,7 @@ export interface TagLabel {
      * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
      * entity must confirm the suggested labels before it is marked as 'Confirmed'.
      */
-    state:  State;
+    state: State;
     style?: Style;
     tagFQN: string;
 }
@@ -391,7 +391,7 @@ export interface ChangeSummary {
     /**
      * Name of the user or bot who made this change
      */
-    changedBy?:    string;
+    changedBy?: string;
     changeSource?: ChangeSource;
     [property: string]: any;
 }
@@ -472,13 +472,13 @@ export interface Column {
     /**
      * Entity extension data with custom attributes added to the entity.
      */
-    extension?:          any;
+    extension?: any;
     fullyQualifiedName?: string;
     /**
      * Json schema only if the dataType is JSON else null.
      */
     jsonSchema?: string;
-    name:        string;
+    name: string;
     /**
      * Ordinal position of the column.
      */
@@ -958,7 +958,7 @@ export interface DataModel {
      */
     description?: string;
     generatedAt?: Date;
-    modelType:    ModelType;
+    modelType: ModelType;
     /**
      * Owners of this Table.
      */
@@ -1041,7 +1041,7 @@ export enum FileFormat {
  */
 export interface TableJoins {
     columnJoins?: ColumnJoins[];
-    dayCount?:    number;
+    dayCount?: number;
     /**
      * Joins with other tables that are not on a specific column (e.g: UNION join)
      */
@@ -1069,7 +1069,7 @@ export interface ColumnJoins {
  */
 export interface JoinedWith {
     fullyQualifiedName: string;
-    joinCount:          number;
+    joinCount: number;
 }
 
 /**
@@ -1186,6 +1186,7 @@ export enum PipelineServiceType {
     KafkaConnect = "KafkaConnect",
     KinesisFirehose = "KinesisFirehose",
     Matillion = "Matillion",
+    MicrosoftFabricPipeline = "MicrosoftFabricPipeline",
     Mulesoft = "Mulesoft",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",
@@ -1218,12 +1219,12 @@ export interface TableProfile {
     /**
      * Percentage of data or no. of rows we want to execute the profiler and tests on
      */
-    profileSample?:     number;
+    profileSample?: number;
     profileSampleType?: ProfileSampleType;
     /**
      * No.of rows in the table. This is always executed on the whole table.
      */
-    rowCount?:           number;
+    rowCount?: number;
     samplingMethodType?: SamplingMethodType;
     /**
      * Table size in GB
@@ -1301,6 +1302,7 @@ export enum DatabaseServiceType {
     Impala = "Impala",
     MariaDB = "MariaDB",
     MicrosoftAccess = "MicrosoftAccess",
+    MicrosoftFabric = "MicrosoftFabric",
     MongoDB = "MongoDB",
     Mssql = "Mssql",
     Mysql = "Mysql",
@@ -1335,12 +1337,12 @@ export interface TableConstraint {
     /**
      * List of column names corresponding to the constraint.
      */
-    columns?:        string[];
+    columns?: string[];
     constraintType?: ConstraintType;
     /**
      * List of referred columns for the constraint.
      */
-    referredColumns?:  string[];
+    referredColumns?: string[];
     relationshipType?: RelationshipType;
 }
 
@@ -1381,7 +1383,7 @@ export interface PartitionColumnDetails {
     /**
      * partition interval , example hourly, daily, monthly.
      */
-    interval?:     string;
+    interval?: string;
     intervalType?: PartitionIntervalTypes;
 }
 
@@ -1434,7 +1436,7 @@ export interface TableProfilerConfig {
      * Percentage of data or no. of rows used to compute the profiler metrics and run data
      * quality tests
      */
-    profileSample?:     number;
+    profileSample?: number;
     profileSampleType?: ProfileSampleType;
     /**
      * Whether to randomize the sample data or not.
@@ -1443,7 +1445,7 @@ export interface TableProfilerConfig {
     /**
      * Number of sample rows to ingest when 'Generate Sample Data' is enabled
      */
-    sampleDataCount?:    number;
+    sampleDataCount?: number;
     samplingMethodType?: SamplingMethodType;
     /**
      * Table Specific configuration for Profiling it with a Spark Engine. It is ignored for
@@ -1493,7 +1495,7 @@ export interface PartitionProfilerConfig {
     /**
      * The interval to use for the partitioning
      */
-    partitionInterval?:     number;
+    partitionInterval?: number;
     partitionIntervalType?: PartitionIntervalTypes;
     /**
      * unit used for the partition interval
@@ -1561,6 +1563,7 @@ export enum TableType {
     Partitioned = "Partitioned",
     Regular = "Regular",
     SecureView = "SecureView",
+    Stage = "Stage",
     Stream = "Stream",
     Transient = "Transient",
     View = "View",

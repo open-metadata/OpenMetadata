@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test } from '@playwright/test';
+import { APIRequestContext, expect, Page, test } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
-import { redirectToHomePage } from '../../utils/common';
+import { getApiContext, redirectToHomePage } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 
 const navigateToAuditLogsPage = async (page: Page) => {
@@ -1065,5 +1065,658 @@ test.describe('Audit Logs Page - Non-Admin Access', () => {
       const bodyContent = await page.locator('body').textContent();
       expect(bodyContent).toBeTruthy();
     });
+  });
+});
+
+// ==================== Audit Log Event Verification Tests ====================
+// These tests verify that audit log entries are actually created when making changes.
+// They create/update/delete entities and verify the events appear in the audit log.
+
+test.describe('Audit Logs - Event Verification', () => {
+  test.use({ storageState: 'playwright/.auth/admin.json' });
+
+  const POLL_TIMEOUT = 30000;
+  const POLL_INTERVAL = 1000;
+
+  // Helper function to wait for an audit log entry to appear
+  const waitForAuditLogEntry = async (
+    apiContext: APIRequestContext,
+    page: Page,
+    entityFqn: string,
+    entityType: string,
+    eventType: string
+  ): Promise<Record<string, unknown> | null> => {
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < POLL_TIMEOUT) {
+      const response = await apiContext.get(
+        `/api/v1/audit/logs?entityFQN=${encodeURIComponent(entityFqn)}&entityType=${entityType}&eventType=${eventType}&limit=1`
+      );
+
+      if (response.ok()) {
+        const data = await response.json();
+
+        if (data.data && data.data.length > 0) {
+          return data.data[0];
+        }
+      }
+
+      await page.waitForTimeout(POLL_INTERVAL);
+    }
+
+    return null;
+  };
+
+  // Helper to verify audit entry has valid UUIDs
+  const verifyAuditEntryHasValidUUIDs = (
+    entry: Record<string, unknown>,
+    expectedEntityId: string
+  ) => {
+    // Verify changeEventId is a valid UUID (not empty)
+    expect(entry.changeEventId).toBeTruthy();
+    expect(typeof entry.changeEventId).toBe('string');
+    expect((entry.changeEventId as string).length).toBeGreaterThan(0);
+
+    // Verify entityId matches expected
+    expect(entry.entityId).toBeTruthy();
+    expect(entry.entityId).toBe(expectedEntityId);
+  };
+
+  test('should create audit log entry when glossary is created', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+
+    const glossaryName = `AuditTest_Create_${Date.now()}`;
+    let glossaryId = '';
+
+    try {
+      await test.step('Create a glossary via API', async () => {
+        const response = await apiContext.post('/api/v1/glossaries', {
+          data: {
+            name: glossaryName,
+            displayName: 'Audit Test Glossary',
+            description: 'Test glossary for entityCreated audit verification',
+          },
+        });
+
+        expect(response.ok()).toBe(true);
+        const glossary = await response.json();
+        glossaryId = glossary.id;
+        const glossaryFqn = glossary.fullyQualifiedName;
+
+        await test.step('Wait for entityCreated audit log entry', async () => {
+          const auditEntry = await waitForAuditLogEntry(
+            apiContext,
+            page,
+            glossaryFqn,
+            'glossary',
+            'entityCreated'
+          );
+
+          expect(auditEntry).not.toBeNull();
+          expect(auditEntry?.eventType).toBe('entityCreated');
+          verifyAuditEntryHasValidUUIDs(
+            auditEntry as Record<string, unknown>,
+            glossaryId
+          );
+        });
+      });
+    } finally {
+      // Cleanup
+      if (glossaryId) {
+        await apiContext.delete(
+          `/api/v1/glossaries/${glossaryId}?hardDelete=true`
+        );
+      }
+      await afterAction();
+    }
+  });
+
+  test('should create audit log entry when glossary is updated', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+
+    const glossaryName = `AuditTest_Update_${Date.now()}`;
+    let glossaryId = '';
+
+    try {
+      // Create glossary first
+      const createResponse = await apiContext.post('/api/v1/glossaries', {
+        data: {
+          name: glossaryName,
+          displayName: 'Audit Test Glossary',
+          description: 'Original description',
+        },
+      });
+
+      expect(createResponse.ok()).toBe(true);
+      const glossary = await createResponse.json();
+      glossaryId = glossary.id;
+      const glossaryFqn = glossary.fullyQualifiedName;
+
+      // Wait for create event first
+      await waitForAuditLogEntry(
+        apiContext,
+        page,
+        glossaryFqn,
+        'glossary',
+        'entityCreated'
+      );
+
+      await test.step('Update the glossary description', async () => {
+        const patchResponse = await apiContext.patch(
+          `/api/v1/glossaries/${glossaryId}`,
+          {
+            data: [
+              {
+                op: 'replace',
+                path: '/description',
+                value: 'Updated description for audit test',
+              },
+            ],
+            headers: {
+              'Content-Type': 'application/json-patch+json',
+            },
+          }
+        );
+
+        expect(patchResponse.ok()).toBe(true);
+      });
+
+      await test.step(
+        'Wait for entityUpdated/entityFieldsChanged audit log entry',
+        async () => {
+          // Try both event types as update may generate either
+          let auditEntry = await waitForAuditLogEntry(
+            apiContext,
+            page,
+            glossaryFqn,
+            'glossary',
+            'entityUpdated'
+          );
+
+          if (!auditEntry) {
+            auditEntry = await waitForAuditLogEntry(
+              apiContext,
+              page,
+              glossaryFqn,
+              'glossary',
+              'entityFieldsChanged'
+            );
+          }
+
+          expect(auditEntry).not.toBeNull();
+          expect(['entityUpdated', 'entityFieldsChanged']).toContain(
+            auditEntry?.eventType
+          );
+          verifyAuditEntryHasValidUUIDs(
+            auditEntry as Record<string, unknown>,
+            glossaryId
+          );
+        }
+      );
+    } finally {
+      if (glossaryId) {
+        await apiContext.delete(
+          `/api/v1/glossaries/${glossaryId}?hardDelete=true`
+        );
+      }
+      await afterAction();
+    }
+  });
+
+  test('should create audit log entry when glossary is soft deleted', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+
+    const glossaryName = `AuditTest_SoftDelete_${Date.now()}`;
+    let glossaryId = '';
+
+    try {
+      // Create glossary
+      const createResponse = await apiContext.post('/api/v1/glossaries', {
+        data: {
+          name: glossaryName,
+          displayName: 'Audit Test Glossary',
+          description: 'Test for soft delete audit',
+        },
+      });
+
+      expect(createResponse.ok()).toBe(true);
+      const glossary = await createResponse.json();
+      glossaryId = glossary.id;
+      const glossaryFqn = glossary.fullyQualifiedName;
+
+      // Wait for create event
+      await waitForAuditLogEntry(
+        apiContext,
+        page,
+        glossaryFqn,
+        'glossary',
+        'entityCreated'
+      );
+
+      await test.step('Soft delete the glossary', async () => {
+        const deleteResponse = await apiContext.delete(
+          `/api/v1/glossaries/${glossaryId}`
+        );
+
+        expect(deleteResponse.ok()).toBe(true);
+      });
+
+      await test.step('Wait for entitySoftDeleted audit log entry', async () => {
+        const auditEntry = await waitForAuditLogEntry(
+          apiContext,
+          page,
+          glossaryFqn,
+          'glossary',
+          'entitySoftDeleted'
+        );
+
+        expect(auditEntry).not.toBeNull();
+        expect(auditEntry?.eventType).toBe('entitySoftDeleted');
+        verifyAuditEntryHasValidUUIDs(
+          auditEntry as Record<string, unknown>,
+          glossaryId
+        );
+      });
+    } finally {
+      if (glossaryId) {
+        await apiContext.delete(
+          `/api/v1/glossaries/${glossaryId}?hardDelete=true`
+        );
+      }
+      await afterAction();
+    }
+  });
+
+  test('should create audit log entry when glossary is restored', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+
+    const glossaryName = `AuditTest_Restore_${Date.now()}`;
+    let glossaryId = '';
+
+    try {
+      // Create glossary
+      const createResponse = await apiContext.post('/api/v1/glossaries', {
+        data: {
+          name: glossaryName,
+          displayName: 'Audit Test Glossary',
+          description: 'Test for restore audit',
+        },
+      });
+
+      expect(createResponse.ok()).toBe(true);
+      const glossary = await createResponse.json();
+      glossaryId = glossary.id;
+      const glossaryFqn = glossary.fullyQualifiedName;
+
+      // Wait for create event
+      await waitForAuditLogEntry(
+        apiContext,
+        page,
+        glossaryFqn,
+        'glossary',
+        'entityCreated'
+      );
+
+      // Soft delete first
+      await apiContext.delete(`/api/v1/glossaries/${glossaryId}`);
+      await waitForAuditLogEntry(
+        apiContext,
+        page,
+        glossaryFqn,
+        'glossary',
+        'entitySoftDeleted'
+      );
+
+      await test.step('Restore the glossary', async () => {
+        const restoreResponse = await apiContext.put(
+          '/api/v1/glossaries/restore',
+          {
+            data: { id: glossaryId },
+          }
+        );
+
+        expect(restoreResponse.ok()).toBe(true);
+      });
+
+      await test.step('Wait for entityRestored audit log entry', async () => {
+        const auditEntry = await waitForAuditLogEntry(
+          apiContext,
+          page,
+          glossaryFqn,
+          'glossary',
+          'entityRestored'
+        );
+
+        expect(auditEntry).not.toBeNull();
+        expect(auditEntry?.eventType).toBe('entityRestored');
+        verifyAuditEntryHasValidUUIDs(
+          auditEntry as Record<string, unknown>,
+          glossaryId
+        );
+      });
+    } finally {
+      if (glossaryId) {
+        await apiContext.delete(
+          `/api/v1/glossaries/${glossaryId}?hardDelete=true`
+        );
+      }
+      await afterAction();
+    }
+  });
+
+  test('should create audit log entry when glossary is hard deleted', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+
+    const glossaryName = `AuditTest_HardDelete_${Date.now()}`;
+    let glossaryId = '';
+    let glossaryFqn = '';
+
+    try {
+      // Create glossary
+      const createResponse = await apiContext.post('/api/v1/glossaries', {
+        data: {
+          name: glossaryName,
+          displayName: 'Audit Test Glossary',
+          description: 'Test for hard delete audit',
+        },
+      });
+
+      expect(createResponse.ok()).toBe(true);
+      const glossary = await createResponse.json();
+      glossaryId = glossary.id;
+      glossaryFqn = glossary.fullyQualifiedName;
+
+      // Wait for create event
+      await waitForAuditLogEntry(
+        apiContext,
+        page,
+        glossaryFqn,
+        'glossary',
+        'entityCreated'
+      );
+
+      await test.step('Hard delete the glossary', async () => {
+        const deleteResponse = await apiContext.delete(
+          `/api/v1/glossaries/${glossaryId}?hardDelete=true`
+        );
+
+        expect(deleteResponse.ok()).toBe(true);
+        glossaryId = ''; // Mark as deleted
+      });
+
+      await test.step('Wait for entityDeleted audit log entry', async () => {
+        const auditEntry = await waitForAuditLogEntry(
+          apiContext,
+          page,
+          glossaryFqn,
+          'glossary',
+          'entityDeleted'
+        );
+
+        expect(auditEntry).not.toBeNull();
+        expect(auditEntry?.eventType).toBe('entityDeleted');
+        verifyAuditEntryHasValidUUIDs(
+          auditEntry as Record<string, unknown>,
+          glossary.id
+        );
+      });
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test('should verify complete audit trail for entity lifecycle', async ({
+    page,
+  }) => {
+    // This test verifies all events in the full lifecycle of an entity
+    await redirectToHomePage(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+
+    const glossaryName = `AuditTest_FullLifecycle_${Date.now()}`;
+    let glossaryId = '';
+
+    try {
+      // 1. Create
+      const createResponse = await apiContext.post('/api/v1/glossaries', {
+        data: {
+          name: glossaryName,
+          displayName: 'Full Lifecycle Test',
+          description: 'Testing complete audit trail',
+        },
+      });
+
+      expect(createResponse.ok()).toBe(true);
+      const glossary = await createResponse.json();
+      glossaryId = glossary.id;
+      const glossaryFqn = glossary.fullyQualifiedName;
+
+      await test.step('Verify entityCreated event', async () => {
+        const entry = await waitForAuditLogEntry(
+          apiContext,
+          page,
+          glossaryFqn,
+          'glossary',
+          'entityCreated'
+        );
+
+        expect(entry).not.toBeNull();
+        verifyAuditEntryHasValidUUIDs(
+          entry as Record<string, unknown>,
+          glossaryId
+        );
+      });
+
+      // 2. Update
+      await apiContext.patch(`/api/v1/glossaries/${glossaryId}`, {
+        data: [
+          { op: 'replace', path: '/description', value: 'Updated description' },
+        ],
+        headers: { 'Content-Type': 'application/json-patch+json' },
+      });
+
+      await test.step(
+        'Verify entityUpdated/entityFieldsChanged event',
+        async () => {
+          let entry = await waitForAuditLogEntry(
+            apiContext,
+            page,
+            glossaryFqn,
+            'glossary',
+            'entityUpdated'
+          );
+
+          if (!entry) {
+            entry = await waitForAuditLogEntry(
+              apiContext,
+              page,
+              glossaryFqn,
+              'glossary',
+              'entityFieldsChanged'
+            );
+          }
+
+          expect(entry).not.toBeNull();
+          verifyAuditEntryHasValidUUIDs(
+            entry as Record<string, unknown>,
+            glossaryId
+          );
+        }
+      );
+
+      // 3. Soft Delete
+      await apiContext.delete(`/api/v1/glossaries/${glossaryId}`);
+
+      await test.step('Verify entitySoftDeleted event', async () => {
+        const entry = await waitForAuditLogEntry(
+          apiContext,
+          page,
+          glossaryFqn,
+          'glossary',
+          'entitySoftDeleted'
+        );
+
+        expect(entry).not.toBeNull();
+        verifyAuditEntryHasValidUUIDs(
+          entry as Record<string, unknown>,
+          glossaryId
+        );
+      });
+
+      // 4. Restore
+      await apiContext.put('/api/v1/glossaries/restore', {
+        data: { id: glossaryId },
+      });
+
+      await test.step('Verify entityRestored event', async () => {
+        const entry = await waitForAuditLogEntry(
+          apiContext,
+          page,
+          glossaryFqn,
+          'glossary',
+          'entityRestored'
+        );
+
+        expect(entry).not.toBeNull();
+        verifyAuditEntryHasValidUUIDs(
+          entry as Record<string, unknown>,
+          glossaryId
+        );
+      });
+
+      // 5. Hard Delete
+      await apiContext.delete(
+        `/api/v1/glossaries/${glossaryId}?hardDelete=true`
+      );
+      glossaryId = ''; // Mark as deleted
+
+      await test.step('Verify entityDeleted event', async () => {
+        const entry = await waitForAuditLogEntry(
+          apiContext,
+          page,
+          glossaryFqn,
+          'glossary',
+          'entityDeleted'
+        );
+
+        expect(entry).not.toBeNull();
+        verifyAuditEntryHasValidUUIDs(
+          entry as Record<string, unknown>,
+          glossary.id
+        );
+      });
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test('should display audit log entry in UI after entity creation', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+
+    const glossaryName = `AuditTest_UI_${Date.now()}`;
+    let glossaryId = '';
+
+    try {
+      // Create glossary
+      const createResponse = await apiContext.post('/api/v1/glossaries', {
+        data: {
+          name: glossaryName,
+          displayName: 'UI Audit Test',
+          description: 'Test that audit entry appears in UI',
+        },
+      });
+
+      expect(createResponse.ok()).toBe(true);
+      const glossary = await createResponse.json();
+      glossaryId = glossary.id;
+      const glossaryFqn = glossary.fullyQualifiedName;
+
+      // Wait for audit log to be created
+      const auditEntry = await waitForAuditLogEntry(
+        apiContext,
+        page,
+        glossaryFqn,
+        'glossary',
+        'entityCreated'
+      );
+
+      expect(auditEntry).not.toBeNull();
+
+      // Navigate to audit logs page
+      await navigateToAuditLogsPage(page);
+
+      await test.step('Filter by entityType=glossary', async () => {
+        const filtersDropdown = page.getByTestId('filters-dropdown');
+        await filtersDropdown.click();
+
+        const popover = page.locator('.audit-log-filter-popover');
+        await expect(popover).toBeVisible();
+
+        await popover.getByText('Entity Type').click();
+
+        const auditLogResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/audit') &&
+            response.status() === 200
+        );
+
+        await popover.getByText('Glossary', { exact: true }).click();
+        await auditLogResponse;
+      });
+
+      await test.step(
+        'Verify the created glossary appears in the list',
+        async () => {
+          // Search for the glossary name
+          const searchInput = page.getByTestId('audit-log-search');
+          await searchInput.fill(glossaryName);
+
+          const searchResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/audit') &&
+              response.status() === 200
+          );
+
+          await searchInput.press('Enter');
+          const response = await searchResponse;
+          const responseData = await response.json();
+
+          // Should find at least one entry
+          expect(responseData.data.length).toBeGreaterThan(0);
+
+          // The first entry should be our entityCreated event
+          const firstEntry = responseData.data.find(
+            (e: Record<string, unknown>) =>
+              e.entityFQN === glossaryFqn && e.eventType === 'entityCreated'
+          );
+
+          expect(firstEntry).toBeDefined();
+        }
+      );
+    } finally {
+      if (glossaryId) {
+        await apiContext.delete(
+          `/api/v1/glossaries/${glossaryId}?hardDelete=true`
+        );
+      }
+      await afterAction();
+    }
   });
 });

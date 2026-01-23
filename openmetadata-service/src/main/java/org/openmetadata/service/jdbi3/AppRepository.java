@@ -35,6 +35,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.apps.AppResource;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 public class AppRepository extends EntityRepository<App> {
@@ -56,7 +57,7 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   @Override
-  public void setFields(App entity, EntityUtil.Fields fields) {
+  public void setFields(App entity, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     entity.setPipelines(
         fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
     entity.withBot(getBotUser(entity));

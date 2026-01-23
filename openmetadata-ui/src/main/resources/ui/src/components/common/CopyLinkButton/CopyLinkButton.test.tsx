@@ -59,9 +59,7 @@ describe('CopyLinkButton', () => {
 
     render(<CopyLinkButton {...propsWithoutTestId} />);
 
-    expect(
-      screen.getByTestId('copy-field-link-button')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('copy-field-link-button')).toBeInTheDocument();
   });
 
   it('should display copy URL tooltip before clicking', () => {
@@ -132,6 +130,10 @@ describe('CopyLinkButton', () => {
 
     const button = screen.getByTestId('copy-column-link-button');
 
-    expect(button).toHaveClass('cursor-pointer', 'hover-cell-icon', 'flex-center');
+    expect(button).toHaveClass(
+      'cursor-pointer',
+      'hover-cell-icon',
+      'flex-center'
+    );
   });
 });

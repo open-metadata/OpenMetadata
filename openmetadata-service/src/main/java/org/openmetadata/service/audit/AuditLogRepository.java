@@ -80,7 +80,7 @@ public class AuditLogRepository {
 
       AuditLogRecord record =
           AuditLogRecord.builder()
-              .changeEventId(changeEventId)
+              .changeEventId(changeEventId.toString())
               .eventTs(
                   changeEvent.getTimestamp() != null
                       ? changeEvent.getTimestamp()
@@ -91,7 +91,8 @@ public class AuditLogRepository {
               .impersonatedBy(changeEvent.getImpersonatedBy())
               .serviceName(serviceName)
               .entityType(changeEvent.getEntityType())
-              .entityId(changeEvent.getEntityId())
+              .entityId(
+                  changeEvent.getEntityId() != null ? changeEvent.getEntityId().toString() : null)
               .entityFQN(entityFqn)
               .entityFQNHash(entityFqnHash)
               .eventJson(JsonUtils.pojoToJson(changeEvent))
@@ -130,13 +131,13 @@ public class AuditLogRepository {
             long now = System.currentTimeMillis();
             AuditLogRecord record =
                 AuditLogRecord.builder()
-                    .changeEventId(UUID.randomUUID())
+                    .changeEventId(UUID.randomUUID().toString())
                     .eventTs(now)
                     .eventType(eventType)
                     .userName(userName)
                     .actorType(AuditLogRecord.ActorType.USER.name())
                     .entityType(Entity.USER)
-                    .entityId(userId)
+                    .entityId(userId != null ? userId.toString() : null)
                     .createdAt(now)
                     .build();
             auditLogDAO.insert(record);
@@ -461,7 +462,7 @@ public class AuditLogRepository {
 
     return AuditLogEntry.builder()
         .id(record.getId())
-        .changeEventId(record.getChangeEventId())
+        .changeEventId(parseUuid(record.getChangeEventId()))
         .eventTs(record.getEventTs())
         .eventType(record.getEventType())
         .userName(record.getUserName())
@@ -469,7 +470,7 @@ public class AuditLogRepository {
         .impersonatedBy(record.getImpersonatedBy())
         .serviceName(record.getServiceName())
         .entityType(record.getEntityType())
-        .entityId(record.getEntityId())
+        .entityId(parseUuid(record.getEntityId()))
         .entityFQN(record.getEntityFQN())
         .createdAt(record.getCreatedAt())
         .changeEvent(changeEvent)
@@ -610,8 +611,11 @@ public class AuditLogRepository {
         return Entity.getEntityReferenceByName(
             record.getEntityType(), record.getEntityFQN(), Include.NON_DELETED);
       } else if (record.getEntityId() != null) {
-        return Entity.getEntityReferenceById(
-            record.getEntityType(), record.getEntityId(), Include.NON_DELETED);
+        UUID entityId = parseUuid(record.getEntityId());
+        if (entityId != null) {
+          return Entity.getEntityReferenceById(
+              record.getEntityType(), entityId, Include.NON_DELETED);
+        }
       }
     } catch (Exception ex) {
       LOG.debug(

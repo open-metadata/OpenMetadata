@@ -43,7 +43,7 @@ export interface CreateDatabaseService {
     /**
      * Owners of this database service.
      */
-    owners?:     EntityReference[];
+    owners?: EntityReference[];
     serviceType: DatabaseServiceType;
     /**
      * Tags for this Database Service.
@@ -162,6 +162,8 @@ export interface DatabaseConnection {
  *
  * Dremio Connection Config supporting both Dremio Cloud (SaaS) and Dremio Software
  * (self-hosted)
+ *
+ * Microsoft Fabric Warehouse and Lakehouse Connection Config
  */
 export interface ConfigObject {
     /**
@@ -256,12 +258,15 @@ export interface ConfigObject {
      * Host and port of the Cockrooach service.
      *
      * ServiceNow instance URL (e.g., https://your-instance.service-now.com)
+     *
+     * Host and port of the Microsoft Fabric SQL endpoint (e.g.,
+     * your-workspace.datawarehouse.fabric.microsoft.com:1433).
      */
     hostPort?: string;
     /**
      * Option to include policy tags as part of column description.
      */
-    includePolicyTags?:       boolean;
+    includePolicyTags?: boolean;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -282,19 +287,23 @@ export interface ConfigObject {
      *
      * Couchbase driver scheme options.
      */
-    scheme?:                                ConfigScheme;
-    supportsDatabase?:                      boolean;
-    supportsDataDiff?:                      boolean;
-    supportsDBTExtraction?:                 boolean;
+    scheme?: ConfigScheme;
+    /**
+     * Regex to only include/exclude stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?: FilterPattern;
+    supportsDatabase?: boolean;
+    supportsDataDiff?: boolean;
+    supportsDBTExtraction?: boolean;
     supportsIncrementalMetadataExtraction?: boolean;
     /**
      * Supports Lineage Extraction.
      */
-    supportsLineageExtraction?:  boolean;
+    supportsLineageExtraction?: boolean;
     supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    supportsQueryComment?:       boolean;
-    supportsSystemProfile?:      boolean;
+    supportsProfiler?: boolean;
+    supportsQueryComment?: boolean;
+    supportsSystemProfile?: boolean;
     /**
      * Supports Usage Extraction.
      */
@@ -327,7 +336,7 @@ export interface ConfigObject {
      * multi-regions are not yet in GA.
      */
     usageLocation?: string;
-    awsConfig?:     AWSCredentials;
+    awsConfig?: AWSCredentials;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
@@ -377,6 +386,10 @@ export interface ConfigObject {
      *
      * Optional: Restrict metadata ingestion to a specific namespace (source/space). When left
      * blank, all namespaces will be ingested.
+     *
+     * Database of the data source. This is the name of your Fabric Warehouse or Lakehouse. This
+     * is optional parameter, if you would like to restrict the metadata reading to a single
+     * database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.
      */
     database?: string;
     /**
@@ -406,6 +419,9 @@ export interface ConfigObject {
      *
      * Ingest data from all databases in Azure Synapse. You can use databaseFilterPattern on top
      * of this.
+     *
+     * Ingest data from all databases (Warehouses and Lakehouses) in Microsoft Fabric. You can
+     * use databaseFilterPattern on top of this.
      */
     ingestAllDatabases?: boolean;
     /**
@@ -652,8 +668,8 @@ export interface ConfigObject {
      * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
      * client certificate, and private key for mutual TLS authentication.
      */
-    sslConfig?:                     Config;
-    sslMode?:                       SSLMode;
+    sslConfig?: Config;
+    sslMode?: SSLMode;
     supportsViewLineageExtraction?: boolean;
     /**
      * Available sources to fetch the metadata.
@@ -806,6 +822,11 @@ export interface ConfigObject {
      */
     creditCost?: number;
     /**
+     * Optional configuration for ingestion of Snowflake stages (internal and external). By
+     * default, stages are not ingested.
+     */
+    includeStages?: boolean;
+    /**
      * Optional configuration for ingestion of streams, By default, it will skip the streams.
      */
     includeStreams?: boolean;
@@ -867,6 +888,8 @@ export interface ConfigObject {
      * Client ID for DOMO
      *
      * Azure Application (client) ID for service principal authentication.
+     *
+     * Azure Application (client) ID for Service Principal authentication.
      */
     clientId?: string;
     /**
@@ -948,13 +971,17 @@ export interface ConfigObject {
      * Pagination limit used while querying the SAP ERP API for fetching the entities
      */
     paginationLimit?: number;
-    verifySSL?:       VerifySSL;
+    verifySSL?: VerifySSL;
     /**
      * Azure Application client secret for service principal authentication.
+     *
+     * Azure Application client secret for Service Principal authentication.
      */
     clientSecret?: string;
     /**
      * Azure Directory (tenant) ID for service principal authentication.
+     *
+     * Azure Directory (tenant) ID for Service Principal authentication.
      */
     tenantId?: string;
     /**
@@ -1074,8 +1101,8 @@ export interface AuthenticationType {
      *
      * Password for the Dremio Software user account.
      */
-    password?:    string;
-    awsConfig?:   AWSCredentials;
+    password?: string;
+    awsConfig?: AWSCredentials;
     azureConfig?: AzureCredentials;
     /**
      * JWT to connect to source.
@@ -1148,6 +1175,12 @@ export interface AWSCredentials {
      * AWS Session Token.
      */
     awsSessionToken?: string;
+    /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
     /**
      * EndPoint URL for the AWS
      */
@@ -1323,7 +1356,7 @@ export interface Connection {
     /**
      * Berarer token to use for the 'Authorization' header.
      */
-    token?:     string;
+    token?: string;
     awsConfig?: AWSCredentials;
     /**
      * DynamoDB table name.
@@ -1390,6 +1423,12 @@ export interface Credentials {
      * AWS Session Token.
      */
     awsSessionToken?: string;
+    /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
     /**
      * EndPoint URL for the AWS
      */
@@ -1494,7 +1533,7 @@ export interface TaLakeConfigurationSource {
     /**
      * Prefix of the data source.
      */
-    prefix?:         string;
+    prefix?: string;
     securityConfig?: SecurityConfigClass;
 }
 
@@ -1539,7 +1578,7 @@ export interface ConnectionClass {
      * Local path for the local file with metastore data. E.g., /tmp/metastore.db
      */
     metastoreFilePath?: string;
-    securityConfig?:    AWSCredentials;
+    securityConfig?: AWSCredentials;
 }
 
 /**
@@ -1617,6 +1656,12 @@ export interface SecurityConfigClass {
      * AWS Session Token.
      */
     awsSessionToken?: string;
+    /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
     /**
      * EndPoint URL for the AWS
      */
@@ -1790,6 +1835,8 @@ export interface GCPCredentials {
  *
  * Regex to only include/exclude schemas that matches the pattern.
  *
+ * Regex to only include/exclude stored procedures that matches the pattern.
+ *
  * Regex to only include/exclude tables that matches the pattern.
  *
  * Regex to only include/exclude schemas that matches the pattern. System schemas
@@ -1855,9 +1902,9 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */
-    classificationName?:  string;
+    classificationName?: string;
     connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
+    connectionOptions?: { [key: string]: string };
     /**
      * Database of the data source. This is optional parameter, if you would like to restrict
      * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
@@ -1885,7 +1932,7 @@ export interface HiveMetastoreConnectionDetails {
      * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
      * restricted.
      */
-    queryStatementSource?:    string;
+    queryStatementSource?: string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -1898,16 +1945,20 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * SSL Configuration details.
      */
-    sslConfig?:                  Config;
-    sslMode?:                    SSLMode;
-    supportsDatabase?:           boolean;
-    supportsDataDiff?:           boolean;
-    supportsDBTExtraction?:      boolean;
-    supportsLineageExtraction?:  boolean;
+    sslConfig?: Config;
+    sslMode?: SSLMode;
+    /**
+     * Regex to only include/exclude stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?: FilterPattern;
+    supportsDatabase?: boolean;
+    supportsDataDiff?: boolean;
+    supportsDBTExtraction?: boolean;
+    supportsLineageExtraction?: boolean;
     supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    supportsQueryComment?:       boolean;
-    supportsUsageExtraction?:    boolean;
+    supportsProfiler?: boolean;
+    supportsQueryComment?: boolean;
+    supportsUsageExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
@@ -1954,8 +2005,8 @@ export interface AuthConfigurationType {
     /**
      * Password to connect to source.
      */
-    password?:    string;
-    awsConfig?:   AWSCredentials;
+    password?: string;
+    awsConfig?: AWSCredentials;
     azureConfig?: AzureCredentials;
 }
 
@@ -1986,7 +2037,7 @@ export interface DataStorageConfig {
     /**
      * Prefix of the data source.
      */
-    prefix?:        string;
+    prefix?: string;
     storageConfig?: AwsCredentials;
     [property: string]: any;
 }
@@ -2027,6 +2078,12 @@ export interface AwsCredentials {
      * AWS Session Token.
      */
     awsSessionToken?: string;
+    /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
     /**
      * EndPoint URL for the AWS
      */
@@ -2222,6 +2279,7 @@ export enum ConfigType {
     Impala = "Impala",
     MariaDB = "MariaDB",
     MicrosoftAccess = "MicrosoftAccess",
+    MicrosoftFabric = "MicrosoftFabric",
     MongoDB = "MongoDB",
     Mssql = "Mssql",
     Mysql = "Mysql",
@@ -2348,6 +2406,7 @@ export enum DatabaseServiceType {
     Impala = "Impala",
     MariaDB = "MariaDB",
     MicrosoftAccess = "MicrosoftAccess",
+    MicrosoftFabric = "MicrosoftFabric",
     MongoDB = "MongoDB",
     Mssql = "Mssql",
     Mysql = "Mysql",
@@ -2423,7 +2482,7 @@ export interface TagLabel {
      * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
      * entity must confirm the suggested labels before it is marked as 'Confirmed'.
      */
-    state:  State;
+    state: State;
     style?: Style;
     tagFQN: string;
 }

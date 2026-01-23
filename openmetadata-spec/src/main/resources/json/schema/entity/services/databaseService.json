@@ -67,7 +67,8 @@
         "SSAS",
         "Epic",
         "ServiceNow",
-        "Dremio"
+        "Dremio",
+        "MicrosoftFabric"
       ],
       "javaEnums": [
         {
@@ -228,6 +229,9 @@
         },
         {
           "name": "Dremio"
+        },
+        {
+          "name": "MicrosoftFabric"
         }
       ]
     },
@@ -393,6 +397,9 @@
             },
             {
               "$ref": "./connections/database/dremioConnection.json"
+            },
+            {
+              "$ref": "./connections/database/microsoftFabricConnection.json"
             }
           ]
         }

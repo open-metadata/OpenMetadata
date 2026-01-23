@@ -22,7 +22,6 @@ import {
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { FC, useCallback, useMemo, useState } from 'react';
-import { useFqn } from '../../../hooks/useFqn';
 import { useTranslation } from 'react-i18next';
 import {
   HIGHLIGHTED_ROW_SELECTOR,
@@ -40,13 +39,14 @@ import {
   TagLabel,
 } from '../../../generated/entity/data/container';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { useFqn } from '../../../hooks/useFqn';
+import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
+import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import {
   updateContainerColumnDescription,
   updateContainerColumnTags,
 } from '../../../utils/ContainerDetailUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
-import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   getAllTags,
@@ -87,10 +87,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
 
   const schema = pruneEmptyChildren(dataModel?.columns ?? []);
 
-  const {
-    columnFqn: columnPart,
-    fqn,
-  } = useFqn({
+  const { columnFqn: columnPart, fqn } = useFqn({
     type: EntityType.CONTAINER,
   });
   useFqnDeepLink({
@@ -183,7 +180,9 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         render: (_, record: Column) => (
           <div className="d-inline-flex items-center gap-2 hover-icon-group w-max-90">
             <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
-              <Typography.Text>{getEntityName(record)}</Typography.Text>
+              <Typography.Text className="text-link-color">
+                {getEntityName(record)}
+              </Typography.Text>
             </Tooltip>
             {record.fullyQualifiedName && (
               <CopyLinkButton
@@ -314,7 +313,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         dataSource={schema}
         defaultVisibleColumns={DEFAULT_CONTAINER_DATA_MODEL_VISIBLE_COLUMNS}
         expandable={{
-          ...getTableExpandableConfig<Column>(),
+          ...getTableExpandableConfig<Column>(false, 'text-link-color'),
           rowExpandable: (record) => !isEmpty(record.children),
           expandedRowKeys,
           onExpandedRowsChange: (keys) => setExpandedRowKeys(keys as string[]),

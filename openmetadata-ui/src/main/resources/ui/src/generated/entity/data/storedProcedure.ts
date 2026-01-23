@@ -160,7 +160,7 @@ export interface AssetCertification {
      * The date when the certification expires.
      */
     expiryDate: number;
-    tagLabel:   TagLabel;
+    tagLabel: TagLabel;
 }
 
 /**
@@ -211,7 +211,7 @@ export interface TagLabel {
      * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
      * entity must confirm the suggested labels before it is marked as 'Confirmed'.
      */
-    state:  State;
+    state: State;
     style?: Style;
     tagFQN: string;
 }
@@ -315,7 +315,7 @@ export interface ChangeSummary {
     /**
      * Name of the user or bot who made this change
      */
-    changedBy?:    string;
+    changedBy?: string;
     changeSource?: ChangeSource;
     [property: string]: any;
 }
@@ -507,6 +507,7 @@ export enum DatabaseServiceType {
     Impala = "Impala",
     MariaDB = "MariaDB",
     MicrosoftAccess = "MicrosoftAccess",
+    MicrosoftFabric = "MicrosoftFabric",
     MongoDB = "MongoDB",
     Mssql = "Mssql",
     Mysql = "Mysql",

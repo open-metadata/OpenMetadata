@@ -72,7 +72,7 @@ public class AppsResourceIT {
 
   private void waitForAppJobCompletion(String appName) throws Exception {
     HttpClient httpClient = SdkClients.adminClient().getHttpClient();
-    int maxRetries = 30;
+    int maxRetries = 60; // Increase retries for longer-running jobs in CI
     int retryCount = 0;
 
     while (retryCount < maxRetries) {
@@ -83,19 +83,38 @@ public class AppsResourceIT {
                 "/v1/apps/name/" + appName + "/runs/latest",
                 null,
                 AppRunRecord.class);
-        if (latestRun == null
-            || latestRun.getStatus() == null
-            || "SUCCESS".equals(latestRun.getStatus().value())
-            || "FAILED".equals(latestRun.getStatus().value())
-            || "COMPLETED".equals(latestRun.getStatus().value())) {
+
+        if (latestRun == null || latestRun.getStatus() == null) {
+          // No run record exists yet - safe to proceed
           return;
         }
+
+        String status = latestRun.getStatus().value();
+
+        // Check if the job is in a terminal state
+        if ("SUCCESS".equals(status) || "FAILED".equals(status) || "COMPLETED".equals(status)) {
+          // Job is complete - add a small buffer to allow scheduler to fully clean up
+          Thread.sleep(500);
+          return;
+        }
+
+        // Job is still running (RUNNING, STARTED, ACTIVE, PENDING_STATUS_UPDATE, etc.)
+        // Continue waiting
       } catch (Exception e) {
-        return;
+        // On errors (like 500), the job might be starting - continue waiting
+        // Don't log each error to avoid noise in tests
+        if (retryCount % 10 == 0) {
+          // Log every 10th retry to show we're still trying
+          System.out.println(
+              "waitForAppJobCompletion: waiting for " + appName + ", attempt " + retryCount);
+        }
       }
       Thread.sleep(500);
       retryCount++;
     }
+    // After max retries, log a warning and proceed
+    System.out.println(
+        "waitForAppJobCompletion: max retries reached for " + appName + ", proceeding anyway");
   }
 
   @Test
@@ -351,7 +370,30 @@ public class AppsResourceIT {
     String appName = "SearchIndexingApplication";
 
     waitForAppJobCompletion(appName);
-    Apps.trigger(appName).run();
+
+    // Retry trigger with backoff in case a previous job is still finishing up
+    int maxTriggerRetries = 10;
+    boolean triggered = false;
+    Exception lastException = null;
+
+    for (int i = 0; i < maxTriggerRetries && !triggered; i++) {
+      try {
+        Apps.trigger(appName).run();
+        triggered = true;
+      } catch (Exception e) {
+        lastException = e;
+        if (e.getMessage() != null && e.getMessage().contains("already running")) {
+          // Job is still running from previous test, wait and retry
+          Thread.sleep(2000);
+        } else {
+          throw e; // Re-throw if it's a different error
+        }
+      }
+    }
+
+    if (!triggered && lastException != null) {
+      throw lastException;
+    }
 
     Thread.sleep(2000);
 
@@ -374,7 +416,29 @@ public class AppsResourceIT {
     Map<String, Object> config = new HashMap<>();
     config.put("batchSize", 1234);
 
-    httpClient.execute(HttpMethod.POST, "/v1/apps/trigger/" + appName, config, Void.class);
+    // Retry trigger with backoff in case a previous job is still finishing up
+    int maxTriggerRetries = 10;
+    boolean triggered = false;
+    Exception lastException = null;
+
+    for (int i = 0; i < maxTriggerRetries && !triggered; i++) {
+      try {
+        httpClient.execute(HttpMethod.POST, "/v1/apps/trigger/" + appName, config, Void.class);
+        triggered = true;
+      } catch (Exception e) {
+        lastException = e;
+        if (e.getMessage() != null && e.getMessage().contains("already running")) {
+          // Job is still running from previous test, wait and retry
+          Thread.sleep(2000);
+        } else {
+          throw e; // Re-throw if it's a different error
+        }
+      }
+    }
+
+    if (!triggered && lastException != null) {
+      throw lastException;
+    }
 
     Thread.sleep(2000);
 

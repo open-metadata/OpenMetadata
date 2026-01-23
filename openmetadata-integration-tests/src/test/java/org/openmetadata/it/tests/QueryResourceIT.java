@@ -29,6 +29,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.resources.query.QueryResource;
 
 /**
  * Integration tests for Query entity operations.
@@ -48,11 +49,17 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
     supportsNameLengthValidation = false;
     supportsDataProducts = false;
     supportsSoftDelete = false;
+    supportsListHistoryByTimestamp = true;
   }
 
   // ===================================================================
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
   // ===================================================================
+
+  @Override
+  protected String getResourcePath() {
+    return QueryResource.COLLECTION_PATH;
+  }
 
   @Override
   protected CreateQuery createMinimalRequest(TestNamespace ns) {

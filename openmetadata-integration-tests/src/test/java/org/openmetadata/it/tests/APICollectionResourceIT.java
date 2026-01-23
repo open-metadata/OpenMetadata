@@ -40,6 +40,8 @@ public class APICollectionResourceIT extends BaseEntityIT<APICollection, CreateA
   {
     supportsFollowers = false;
     supportsBulkAPI = true;
+    supportsLifeCycle = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   // ===================================================================

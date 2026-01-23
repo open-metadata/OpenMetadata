@@ -49,7 +49,10 @@ import {
   uuid,
   verifyDomainPropagation,
 } from '../../utils/common';
-import { CustomPropertyTypeByName } from '../../utils/customProperty';
+import {
+  CustomPropertyTypeByName,
+  updateCustomPropertyInRightPanel,
+} from '../../utils/customProperty';
 import {
   addMultiOwner,
   closeColumnDetailPanel,
@@ -487,6 +490,15 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             ).toBeVisible();
 
             await closeColumnDetailPanel(page);
+
+            // Verify tag is visible in the main table row
+            await expect(
+              page
+                .locator(
+                  `[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`
+                )
+                .getByTestId('tag-PersonalData.SpecialCategory')
+            ).toBeVisible();
           }
         );
       });
@@ -598,6 +610,19 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             ).toBeVisible();
 
             await closeColumnDetailPanel(page);
+
+            // Verify both tag and glossary term are visible in the main table row
+            const rowLocator = page.locator(
+              `[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`
+            );
+            await expect(
+              rowLocator.getByTestId('tag-PersonalData.SpecialCategory')
+            ).toBeVisible();
+            await expect(
+              rowLocator.getByTestId(
+                `tag-${EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName}`
+              )
+            ).toBeVisible();
           }
         );
       });
@@ -1355,11 +1380,6 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
                 /ant-menu-item-selected/
               );
             }
-            await page.getByTestId('custom-properties-tab').click();
-
-            await expect(page.getByTestId('custom-properties-tab')).toHaveClass(
-              /ant-menu-item-selected/
-            );
 
             await page.getByTestId('overview-tab').click();
 
@@ -1566,6 +1586,25 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             );
           }
         });
+
+        await test.step(
+          `Update ${titleText} Custom Property in Right Panel`,
+          async () => {
+            test.slow();
+            for (const [index, type] of properties.entries()) {
+              await updateCustomPropertyInRightPanel({
+                page,
+                entityName:
+                  entity.entityResponseData['displayName'] ??
+                  entity.entityResponseData['name'],
+                propertyDetails: entity.customPropertyValue[type].property,
+                value: entity.customPropertyValue[type].value,
+                endpoint: entity.endpoint,
+                skipNavigation: index > 0,
+              });
+            }
+          }
+        );
 
         await entity.cleanupCustomProperty(apiContext);
         await afterAction();
