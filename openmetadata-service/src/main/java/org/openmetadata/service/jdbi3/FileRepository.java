@@ -575,13 +575,6 @@ public class FileRepository extends EntityRepository<File> {
                   .withOldValue(newFile.getDomains())
                   .withNewValue(domains));
         }
-        if (CommonUtil.isChanged(newFile.getDomains(), domains)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("domains")
-                  .withOldValue(newFile.getDomains())
-                  .withNewValue(domains));
-        }
         if (CommonUtil.isChanged(newFile.getDataProducts(), dataProducts)) {
           fieldsUpdated.add(
               new FieldChange()

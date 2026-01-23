@@ -521,14 +521,6 @@ public class DirectoryRepository extends EntityRepository<Directory> {
                   .withOldValue(existingTiers)
                   .withNewValue(newTiers));
         }
-
-        if (CommonUtil.isChanged(newDirectory.getDomains(), domains)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("domains")
-                  .withOldValue(newDirectory.getDomains())
-                  .withNewValue(domains));
-        }
         if (CommonUtil.isChanged(newDirectory.getDomains(), domains)) {
           fieldsUpdated.add(
               new FieldChange()

@@ -513,13 +513,6 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
                   .withOldValue(newSpreadsheet.getDomains())
                   .withNewValue(domains));
         }
-        if (CommonUtil.isChanged(newSpreadsheet.getDomains(), domains)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("domains")
-                  .withOldValue(newSpreadsheet.getDomains())
-                  .withNewValue(domains));
-        }
         if (CommonUtil.isChanged(newSpreadsheet.getDataProducts(), dataProducts)) {
           fieldsUpdated.add(
               new FieldChange()

@@ -305,13 +305,6 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
                   .withOldValue(directory.getDomains())
                   .withNewValue(domains));
         }
-        if (CommonUtil.isChanged(directory.getDomains(), domains)) {
-          fieldsUpdated.add(
-              new FieldChange()
-                  .withName("domains")
-                  .withOldValue(directory.getDomains())
-                  .withNewValue(domains));
-        }
         if (CommonUtil.isChanged(directory.getExtension(), extension)) {
           fieldsUpdated.add(
               new FieldChange()
