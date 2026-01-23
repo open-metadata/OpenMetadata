@@ -59,6 +59,7 @@ import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.DataProductRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -721,6 +722,53 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, fqn, patch);
+  }
+
+  @GET
+  @Path("/{id}/dataContract")
+  @Operation(
+      operationId = "getDataProductContract",
+      summary = "Get data contract for a data product",
+      description = "Get the data contract associated with a data product.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The data contract",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.schema.entity.data.DataContract.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Data contract not found for the data product")
+      })
+  public Response getDataContract(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the data product", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string"))
+          @QueryParam("fields")
+          String fieldsParam) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+
+    org.openmetadata.schema.entity.data.DataContract dataContract =
+        repository.getDataProductContract(id);
+
+    if (dataContract == null) {
+      throw EntityNotFoundException.byMessage(
+          String.format("Data contract for data product %s not found", id));
+    }
+
+    return Response.ok(dataContract).build();
   }
 
   @DELETE

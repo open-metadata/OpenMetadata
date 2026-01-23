@@ -874,6 +874,10 @@ export interface ContractSecurity {
      */
     dataClassification?: string;
     /**
+     * If the property is inherited from the Data Product
+     */
+    inherited?: boolean;
+    /**
      * Intended consumers of the data (e.g. internal teams, external partners, etc.)
      */
     policies?: Policy[];
@@ -935,6 +939,10 @@ export interface SemanticsRule {
      */
     ignoredEntities?: string[];
     /**
+     * Whether this rule was inherited from a Data Product.
+     */
+    inherited?: boolean;
+    /**
      * JSON Tree to represents rule in UI.
      */
     jsonTree?: string;
@@ -975,6 +983,10 @@ export interface ContractSLA {
      * Column that represents the refresh time of the data (if applicable)
      */
     columnName?: string;
+    /**
+     * If the property is inherited from the Data Product
+     */
+    inherited?: boolean;
     /**
      * Maximum acceptable latency between data generation and availability (e.g. 4 hours)
      */

@@ -2403,6 +2403,7 @@
     "ingestion-bot-cant-be-deleted": "수집 봇은 삭제할 수 없습니다.",
     "ingestion-pipeline-name-message": "이 파이프라인 인스턴스를 고유하게 식별하는 이름입니다.",
     "ingestion-pipeline-name-successfully-deployed-entity": "모든 준비가 완료되었습니다! <수집 파이프라인 이름>이 성공적으로 배포되었습니다. {{entity}}는 일정에 따라 정기적으로 실행됩니다.",
+    "inherited-contract-cannot-be-deleted": "Inherited contracts cannot be deleted. Remove the entity from the Data Product or create an entity-specific contract.",
     "input-output-port-plural": "입출력 포트",
     "input-output-ports-description": "입출력 포트는 데이터 제품이 소비하고 생산하는 데이터 자산을 정의합니다. 데이터 메시 아키텍처에서 데이터 계보와 종속성을 이해하는 데 필수적입니다.",
     "input-placeholder": "@mention을 사용하여 태그하고 댓글을 남기세요...",
