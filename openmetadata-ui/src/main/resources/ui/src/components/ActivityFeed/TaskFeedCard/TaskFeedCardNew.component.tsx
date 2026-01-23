@@ -130,9 +130,9 @@ const TaskFeedCard = ({
   const taskLinkTitleElement = useMemo(() => {
     const isRecognizerFeedback =
       taskDetails?.type === TaskType.RecognizerFeedbackApproval;
-    const entityName = isRecognizerFeedback
-      ? getNameFromFQN(taskDetails?.feedback?.tagFQN ?? '')
-      : getNameFromFQN(entityFQN);
+    const entityName = getNameFromFQN(
+      isRecognizerFeedback ? taskDetails?.feedback?.tagFQN ?? '' : entityFQN
+    );
 
     return isEntityDetailsAvailable && !isUndefined(taskDetails) ? (
       <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
