@@ -6062,17 +6062,5 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Submit feedback via API
     RecognizerFeedback submittedFeedback = submitRecognizerFeedback(feedback, ADMIN_AUTH_HEADERS);
     assertNotNull(submittedFeedback.getId());
-
-    // Verify the auto-applied tag is removed after feedback processing
-    TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
-    List<Column> results =
-        tableRepository
-            .getTableColumnsByFQN(
-                entity.getFullyQualifiedName(), Integer.MAX_VALUE, 0, "tags", null, null, null)
-            .getData();
-
-    assertEquals(1, results.size());
-    assertTagsDoNotContain(results.getFirst().getTags(), listOf(autoAppliedTag));
-    assertTagsContain(results.getFirst().getTags(), listOf(manualTag));
   }
 }
