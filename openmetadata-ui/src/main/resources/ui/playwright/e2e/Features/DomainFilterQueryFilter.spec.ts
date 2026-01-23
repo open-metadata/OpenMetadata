@@ -1236,4 +1236,122 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await afterAction();
     }
   });
+
+  test('Domain assets tab should NOT show assets from other domains', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+
+    // Create two separate domains where domainA has a subdomain
+    const domainA = new Domain();
+    const domainB = new Domain();
+
+    let subDomainA: SubDomain | undefined;
+
+    // Create one table for each domain/subdomain
+    const tableInDomainA = new TableClass();
+    const tableInSubDomainA = new TableClass();
+    const tableInDomainB = new TableClass();
+
+    try {
+      // Setup: Create both domains, subdomain, and tables
+      await domainA.create(apiContext);
+      await domainB.create(apiContext);
+      subDomainA = new SubDomain(domainA);
+      await subDomainA.create(apiContext);
+
+      await tableInDomainA.create(apiContext);
+      await tableInSubDomainA.create(apiContext);
+      await tableInDomainB.create(apiContext);
+
+      // Assign tableInDomainA to domainA
+      await tableInDomainA.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/domains/0',
+            value: {
+              id: domainA.responseData.id,
+              type: 'domain',
+            },
+          },
+        ],
+      });
+
+      // Assign tableInSubDomainA to subDomainA
+      await tableInSubDomainA.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/domains/0',
+            value: {
+              id: subDomainA.responseData.id,
+              type: 'domain',
+            },
+          },
+        ],
+      });
+
+      // Assign tableInDomainB to domainB
+      await tableInDomainB.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/domains/0',
+            value: {
+              id: domainB.responseData.id,
+              type: 'domain',
+            },
+          },
+        ],
+      });
+
+      // Navigate to domainA's page
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDomain(page, domainA.data);
+
+      // Go to Assets tab
+      await page.getByTestId('assets').click();
+      await waitForAllLoadersToDisappear(page);
+      await page.waitForLoadState('networkidle');
+
+      // Verify domainA's table IS visible
+      await expect(
+        page.locator(
+          `[data-testid="table-data-card_${tableInDomainA.entityResponseData.fullyQualifiedName}"]`
+        )
+      ).toBeVisible();
+
+      // Verify subDomainA's table IS visible (subdomain assets should be included)
+      await expect(
+        page.locator(
+          `[data-testid="table-data-card_${tableInSubDomainA.entityResponseData.fullyQualifiedName}"]`
+        )
+      ).toBeVisible();
+
+      // Verify domainB's table is NOT visible (this is the bug - it should NOT appear)
+      await expect(
+        page.locator(
+          `[data-testid="table-data-card_${tableInDomainB.entityResponseData.fullyQualifiedName}"]`
+        )
+      ).not.toBeVisible();
+
+      // Verify asset count is exactly 2 (domainA + subDomainA assets)
+      await checkAssetsCount(page, 2);
+    } finally {
+      await tableInDomainA.delete(apiContext);
+      await tableInSubDomainA.delete(apiContext);
+      await tableInDomainB.delete(apiContext);
+      if (subDomainA) {
+        await subDomainA.delete(apiContext);
+      }
+      await domainA.delete(apiContext);
+      await domainB.delete(apiContext);
+      await afterAction();
+    }
+  });
 });
