@@ -14,6 +14,7 @@
 import { Cube01 } from '@untitledui/icons';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
+import { ReactComponent as DataQualityRulesIcon } from '../assets/svg/data-observability/data-quality-rules.svg';
 import { ReactComponent as ExploreIcon } from '../assets/svg/explore.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
 import { ReactComponent as AlertIcon } from '../assets/svg/ic-alert.svg';
@@ -94,6 +95,13 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         redirect_url: ROUTES.OBSERVABILITY_ALERTS,
         icon: AlertIcon,
         dataTestId: `app-bar-item-${SidebarItem.OBSERVABILITY_ALERT}`,
+      },
+      {
+        key: ROUTES.RULES_LIBRARY,
+        title: 'label.rules-library',
+        redirect_url: ROUTES.RULES_LIBRARY,
+        icon: DataQualityRulesIcon,
+        dataTestId: `app-bar-item-rules-library`,
       },
     ],
   },

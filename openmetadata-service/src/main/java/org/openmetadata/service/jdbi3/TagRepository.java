@@ -83,6 +83,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
@@ -442,7 +443,7 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
-  public void setFields(Tag tag, Fields fields) {
+  public void setFields(Tag tag, Fields fields, RelationIncludes relationIncludes) {
     tag.withClassification(getClassification(tag)).withParent(getParent(tag));
     if (fields.contains("usageCount")) {
       tag.withUsageCount(getUsageCount(tag));
@@ -655,10 +656,23 @@ public class TagRepository extends EntityRepository<Tag> {
       return new DescriptionTaskWorkflow(threadContext);
     } else if (EntityUtil.isTagTask(taskType)) {
       return new TagTaskWorkflow(threadContext);
+    } else if (isRecognizerFeedbackTask(threadContext.getThread().getId())) {
+      return new RecognizerFeedbackTaskWorkflow(threadContext);
     } else if (!EntityUtil.isTestCaseFailureResolutionTask(taskType)) {
       return new ApprovalTaskWorkflow(threadContext);
     }
     return super.getTaskWorkflow(threadContext);
+  }
+
+  private boolean isRecognizerFeedbackTask(UUID taskId) {
+    try {
+      FeedRepository feedRepository = Entity.getFeedRepository();
+      Thread thread = feedRepository.get(taskId);
+      return thread.getTask() != null && thread.getTask().getFeedback() != null;
+    } catch (Exception e) {
+      LOG.debug("Failed to check if task is recognizer feedback task", e);
+    }
+    return false;
   }
 
   public static class ApprovalTaskWorkflow extends TaskWorkflow {
@@ -680,7 +694,6 @@ public class TagRepository extends EntityRepository<Tag> {
           workflowHandler.resolveTask(
               taskId, workflowHandler.transformToNodeVariables(taskId, variables));
 
-      // If workflow failed (corrupted Flowable task), apply the status directly
       if (!workflowSuccess) {
         LOG.warn(
             "[GlossaryTerm] Workflow failed for taskId='{}', applying status directly", taskId);
@@ -692,7 +705,58 @@ public class TagRepository extends EntityRepository<Tag> {
     }
   }
 
+  public static class RecognizerFeedbackTaskWorkflow extends TaskWorkflow {
+    RecognizerFeedbackTaskWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      Tag tag = (Tag) threadContext.getAboutEntity();
+      TagRepository.checkUpdatedByReviewer(tag, user);
+
+      UUID taskId = threadContext.getThread().getId();
+      Map<String, Object> variables = new HashMap<>();
+      variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
+      variables.put(UPDATED_BY_VARIABLE, user);
+
+      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
+      boolean workflowSuccess =
+          workflowHandler.resolveTask(
+              taskId, workflowHandler.transformToNodeVariables(taskId, variables));
+
+      if (!workflowSuccess) {
+        LOG.warn(
+            "[RecognizerFeedback] Workflow failed for taskId='{}', attempting direct resolution",
+            taskId);
+        try {
+          org.openmetadata.schema.type.RecognizerFeedback feedback =
+              threadContext.getThread().getTask().getFeedback();
+          if (feedback != null) {
+            RecognizerFeedbackRepository repo =
+                new RecognizerFeedbackRepository(Entity.getCollectionDAO());
+
+            boolean approved =
+                resolveTask.getNewValue() != null
+                    && resolveTask.getNewValue().equalsIgnoreCase("approved");
+            if (approved) {
+              repo.applyFeedback(feedback, user);
+            } else {
+              repo.rejectFeedback(feedback, user, null);
+            }
+          }
+        } catch (Exception e) {
+          LOG.error("[RecognizerFeedback] Failed to resolve feedback directly", e);
+        }
+      }
+
+      return tag;
+    }
+  }
+
   public class TagUpdater extends EntityUpdater {
+    private boolean renameProcessed = false;
+
     public TagUpdater(Tag original, Tag updated, Operation operation) {
       super(original, updated, operation);
     }
@@ -723,39 +787,24 @@ public class TagRepository extends EntityRepository<Tag> {
           "autoClassificationPriority",
           original.getAutoClassificationPriority(),
           updated.getAutoClassificationPriority());
-      updateName(original, updated);
-      updateParent(original, updated);
+      updateNameAndParent(updated);
     }
 
-    public void updateName(Tag original, Tag updated) {
-      if (!original.getName().equals(updated.getName())) {
-        if (ProviderType.SYSTEM.equals(original.getProvider())) {
-          throw new IllegalArgumentException(
-              CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
-        }
-        // Category name changed - update tag names starting from classification and all the
-        // children tags
-        LOG.info("Tag name changed from {} to {}", original.getName(), updated.getName());
-        setFullyQualifiedName(updated);
-        daoCollection
-            .tagDAO()
-            .updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
-        daoCollection
-            .tagUsageDAO()
-            .rename(
-                TagSource.CLASSIFICATION.ordinal(),
-                original.getFullyQualifiedName(),
-                updated.getFullyQualifiedName());
-        recordChange("name", original.getName(), updated.getName());
-      }
+    /**
+     * Handle name and parent changes together using getOriginalFqn() for correct FQN tracking.
+     */
+    public void updateNameAndParent(Tag updated) {
+      // Use getOriginalFqn() which was captured at EntityUpdater construction time.
+      String oldFqn = getOriginalFqn();
+      setFullyQualifiedName(updated);
+      String newFqn = updated.getFullyQualifiedName();
 
-      // Populate response fields
-      invalidateTags(original.getId());
-      getChildren(updated);
-    }
+      // Check if this is a name change
+      String[] oldParts = FullyQualifiedName.split(oldFqn);
+      String oldTagName = oldParts.length > 0 ? oldParts[oldParts.length - 1] : "";
+      boolean nameChanged = !oldTagName.equals(updated.getName());
 
-    private void updateParent(Tag original, Tag updated) {
-      // Can't change parent and Classification both at the same time
+      // Check for parent/classification changes
       UUID oldParentId = getId(original.getParent());
       UUID newParentId = getId(updated.getParent());
       boolean parentChanged = !Objects.equals(oldParentId, newParentId);
@@ -763,20 +812,28 @@ public class TagRepository extends EntityRepository<Tag> {
       UUID oldCategoryId = getId(original.getClassification());
       UUID newCategoryId = getId(updated.getClassification());
       boolean classificationChanged = !Objects.equals(oldCategoryId, newCategoryId);
-      if (!parentChanged && !classificationChanged) {
-        return;
+
+      boolean fqnChanged = !oldFqn.equals(newFqn);
+
+      if (fqnChanged && !renameProcessed) {
+        renameProcessed = true;
+
+        if (nameChanged && ProviderType.SYSTEM.equals(original.getProvider())) {
+          throw new IllegalArgumentException(
+              CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
+        }
+
+        LOG.info("Tag FQN changed from {} to {}", oldFqn, newFqn);
+        daoCollection.tagDAO().updateFqn(oldFqn, newFqn);
+        daoCollection.tagUsageDAO().rename(TagSource.CLASSIFICATION.ordinal(), oldFqn, newFqn);
+
+        if (nameChanged) {
+          recordChange("name", oldTagName, updated.getName());
+        }
+
+        updateEntityLinks(oldFqn, newFqn, updated);
       }
 
-      setFullyQualifiedName(updated);
-      daoCollection
-          .tagDAO()
-          .updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
-      daoCollection
-          .tagUsageDAO()
-          .rename(
-              TagSource.CLASSIFICATION.ordinal(),
-              original.getFullyQualifiedName(),
-              updated.getFullyQualifiedName());
       if (classificationChanged) {
         updateClassificationRelationship(original, updated);
         recordChange(
@@ -785,14 +842,18 @@ public class TagRepository extends EntityRepository<Tag> {
             updated.getClassification(),
             true,
             entityReferenceMatch);
-        invalidateTags(original.getId());
+        invalidateTags(updated.getId());
       }
       if (parentChanged) {
         updateParentRelationship(original, updated);
         recordChange(
             "parent", original.getParent(), updated.getParent(), true, entityReferenceMatch);
-        invalidateTags(original.getId());
+        invalidateTags(updated.getId());
       }
+
+      // Populate response fields
+      invalidateTags(updated.getId());
+      getChildren(updated);
     }
 
     private void updateClassificationRelationship(Tag orig, Tag updated) {
@@ -817,6 +878,24 @@ public class TagRepository extends EntityRepository<Tag> {
     private void deleteParentRelationship(Tag term) {
       if (term.getParent() != null) {
         deleteRelationship(term.getParent().getId(), TAG, term.getId(), TAG, Relationship.CONTAINS);
+      }
+    }
+
+    private void updateEntityLinks(String oldFqn, String newFqn, Tag updated) {
+      daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
+
+      MessageParser.EntityLink newAbout = new MessageParser.EntityLink(TAG, newFqn);
+      daoCollection
+          .feedDAO()
+          .updateByEntityId(newAbout.getLinkString(), updated.getId().toString());
+
+      List<EntityReference> childTags = findTo(updated.getId(), TAG, Relationship.CONTAINS, TAG);
+
+      for (EntityReference child : childTags) {
+        newAbout = new MessageParser.EntityLink(TAG, child.getFullyQualifiedName());
+        daoCollection
+            .feedDAO()
+            .updateByEntityId(newAbout.getLinkString(), child.getId().toString());
       }
     }
 

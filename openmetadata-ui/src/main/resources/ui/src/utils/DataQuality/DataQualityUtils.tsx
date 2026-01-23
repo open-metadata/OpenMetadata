@@ -16,8 +16,10 @@ import {
   isArray,
   isNil,
   isUndefined,
+  lowerCase,
   omit,
   omitBy,
+  parseInt,
   startCase,
   uniqBy,
 } from 'lodash';
@@ -462,6 +464,43 @@ export type TestCaseCountByStatus = {
   total: number;
 };
 
+/**
+ * Calculate test case status counts from test cases array
+ * @param testCases Array of test cases with testCaseResult
+ * @returns Object with counts for success, failed, aborted, and total
+ */
+export const calculateTestCaseStatusCounts = (
+  testCases: Array<{
+    testCaseResult?: { testCaseStatus?: string };
+  }>
+): TestCaseCountByStatus => {
+  return (testCases || []).reduce(
+    (acc, testCase) => {
+      const status = lowerCase(testCase.testCaseResult?.testCaseStatus);
+      if (status) {
+        switch (status) {
+          case 'success':
+            acc.success++;
+
+            break;
+          case 'failed':
+            acc.failed++;
+
+            break;
+          case 'aborted':
+            acc.aborted++;
+
+            break;
+        }
+        acc.total++;
+      }
+
+      return acc;
+    },
+    { success: 0, failed: 0, aborted: 0, total: 0 }
+  );
+};
+
 export const aggregateTestResultsByEntity = (
   data: Array<{
     document_count: string;
@@ -509,4 +548,15 @@ export const aggregateTestResultsByEntity = (
     ...entities,
     total: overallTotal,
   };
+};
+
+/**
+ * Extracts the service type from a table entity for test definition filtering
+ * @param table - The table entity
+ * @returns The service type string or undefined if not available
+ */
+export const getServiceTypeForTestDefinition = (
+  table?: Table
+): string | undefined => {
+  return table?.serviceType;
 };

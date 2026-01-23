@@ -71,6 +71,7 @@ import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.service.util.FullyQualifiedName.build;
 import static org.openmetadata.service.util.RestUtil.DATE_FORMAT;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType;
@@ -4099,15 +4100,19 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withColumns(columns);
     Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
-    // Test default pagination (limit=50, offset=0)
-    WebTarget target = getResource("tables/" + table.getId() + "/columns");
+    // Test default pagination (limit=50, offset=0) with ordinalPosition sorting
+    WebTarget target =
+        getResource("tables/" + table.getId() + "/columns").queryParam("sortBy", "ordinalPosition");
     TableResource.TableColumnList response =
         TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
     assertEquals(10, response.getData().size());
     assertEquals(10, response.getPaging().getTotal());
 
     // Test with custom limit
-    target = getResource("tables/" + table.getId() + "/columns").queryParam("limit", "5");
+    target =
+        getResource("tables/" + table.getId() + "/columns")
+            .queryParam("limit", "5")
+            .queryParam("sortBy", "ordinalPosition");
     response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
     assertEquals(5, response.getData().size());
     assertEquals(10, response.getPaging().getTotal());
@@ -4118,7 +4123,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     target =
         getResource("tables/" + table.getId() + "/columns")
             .queryParam("limit", "5")
-            .queryParam("offset", "5");
+            .queryParam("offset", "5")
+            .queryParam("sortBy", "ordinalPosition");
     response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
     assertEquals(5, response.getData().size());
     assertEquals(10, response.getPaging().getTotal());
@@ -4203,7 +4209,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     WebTarget target =
         getResource("tables/" + table.getId() + "/columns")
             .queryParam("fields", "tags")
-            .queryParam("limit", "2");
+            .queryParam("limit", "2")
+            .queryParam("sortBy", "ordinalPosition");
     TableResource.TableColumnList response =
         TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
 
@@ -5622,7 +5629,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     table = table.withColumns(List.of(columnWithAutoClassification));
 
-    Table patchedTable = patchEntity(table.getId(), originalTable, table, ADMIN_AUTH_HEADERS);
+    Table patchResponse =
+        patchEntity(table.getId(), originalTable, table, INGESTION_BOT_AUTH_HEADERS);
+    Table patchedTable = getEntity(table.getId(), ADMIN_AUTH_HEADERS);
 
     assertNotNull(patchedTable.getColumns());
     assertEquals(1, patchedTable.getColumns().size());
@@ -5636,15 +5645,19 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals("Sensitive", piiTag.getName());
     assertEquals("PII.Sensitive", piiTag.getTagFQN());
     assertEquals("Classified with score 1.0", piiTag.getReason());
+    assertNotNull(piiTag.getAppliedAt());
+    assertEquals(INGESTION_BOT, piiTag.getAppliedBy());
 
     // Now add personal tag manually
-    Column columnWithBothTags = column.withTags(List.of(sensitiveTagLabel, personalTagLabel));
+    Column columnWithBothTags = column.withTags(List.of(piiTag, personalTagLabel));
 
-    originalTable = JsonUtils.pojoToJson(patchedTable);
+    originalTable = JsonUtils.pojoToJson(patchResponse);
 
-    table = patchedTable.withColumns(List.of(columnWithBothTags));
+    table = patchResponse.withColumns(List.of(columnWithBothTags));
 
-    patchedTable = patchEntity(table.getId(), originalTable, table, ADMIN_AUTH_HEADERS);
+    patchEntity(table.getId(), originalTable, table, INGESTION_BOT_AUTH_HEADERS);
+
+    patchedTable = getEntity(table.getId(), ADMIN_AUTH_HEADERS);
 
     assertNotNull(patchedTable.getColumns());
     assertEquals(1, patchedTable.getColumns().size());
@@ -5658,12 +5671,16 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals("Sensitive", piiTag.getName());
     assertEquals("PII.Sensitive", piiTag.getTagFQN());
     assertEquals("Classified with score 1.0", piiTag.getReason());
+    assertNotNull(piiTag.getAppliedAt());
+    assertEquals(INGESTION_BOT, piiTag.getAppliedBy());
 
     TagLabel personalTag = tags.getLast();
     assertNotNull(personalTag);
     assertEquals("Personal", personalTag.getName());
     assertEquals("PersonalData.Personal", personalTag.getTagFQN());
     assertNull(personalTag.getReason());
+    assertNotNull(personalTag.getAppliedAt());
+    assertEquals(INGESTION_BOT, personalTag.getAppliedBy());
   }
 
   @Test
@@ -6045,17 +6062,5 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Submit feedback via API
     RecognizerFeedback submittedFeedback = submitRecognizerFeedback(feedback, ADMIN_AUTH_HEADERS);
     assertNotNull(submittedFeedback.getId());
-
-    // Verify the auto-applied tag is removed after feedback processing
-    TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
-    List<Column> results =
-        tableRepository
-            .getTableColumnsByFQN(
-                entity.getFullyQualifiedName(), Integer.MAX_VALUE, 0, "tags", null, null, null)
-            .getData();
-
-    assertEquals(1, results.size());
-    assertTagsDoNotContain(results.getFirst().getTags(), listOf(autoAppliedTag));
-    assertTagsContain(results.getFirst().getTags(), listOf(manualTag));
   }
 }

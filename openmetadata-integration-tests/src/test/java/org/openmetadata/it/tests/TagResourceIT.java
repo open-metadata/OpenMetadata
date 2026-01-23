@@ -36,6 +36,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   {
     supportsFollowers = false; // Tags don't support followers
     supportsTags = false; // Tags don't support tags on themselves
+    supportsListHistoryByTimestamp = true;
   }
 
   // ===================================================================
@@ -72,7 +73,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     // Add unique suffix to avoid collisions when multiple tests create classifications
     String uniqueSuffix = java.util.UUID.randomUUID().toString().substring(0, 8);
     CreateClassification classificationRequest = new CreateClassification();
-    classificationRequest.setName(ns.prefix("classification") + "_" + uniqueSuffix);
+    classificationRequest.setName(ns.uniqueShortId() + "_" + "classification" + "_" + uniqueSuffix);
     classificationRequest.setDescription("Test classification for tags");
     return SdkClients.adminClient().classifications().create(classificationRequest);
   }

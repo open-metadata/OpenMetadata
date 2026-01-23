@@ -96,6 +96,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
@@ -105,9 +106,9 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 public class DataContractRepository extends EntityRepository<DataContract> {
 
   private static final String DATA_CONTRACT_UPDATE_FIELDS =
-      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension";
+      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules";
   private static final String DATA_CONTRACT_PATCH_FIELDS =
-      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension";
+      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules";
 
   public static final String RESULT_EXTENSION = "dataContract.dataContractResult";
   public static final String RESULT_SCHEMA = "dataContractResult";
@@ -146,7 +147,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   @Override
-  public void setFields(DataContract dataContract, Fields fields) {}
+  public void setFields(
+      DataContract dataContract, Fields fields, RelationIncludes relationIncludes) {}
 
   @Override
   public void clearFields(DataContract dataContract, Fields fields) {}
@@ -249,6 +251,15 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
   }
 
+  /**
+   * Public method to validate a data contract's schema against an entity without creating the
+   * contract. This is useful for pre-validation during ODCS import preview.
+   */
+  public SchemaValidation validateContractSchema(
+      DataContract dataContract, EntityReference entityRef) {
+    return validateSchemaFieldsAgainstEntity(dataContract, entityRef);
+  }
+
   private SchemaValidation validateSchemaFieldsAgainstEntity(
       DataContract dataContract, EntityReference entityRef) {
     SchemaValidation validation = new SchemaValidation();
@@ -297,8 +308,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       return getAllContractFieldNames(dataContract);
     }
 
-    Set<String> tableColumnNames =
-        table.getColumns().stream().map(Column::getName).collect(Collectors.toSet());
+    Set<String> tableColumnNames = extractColumnNames(table.getColumns());
 
     return validateContractFieldsAgainstNames(dataContract, tableColumnNames);
   }
@@ -362,8 +372,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       return getAllContractFieldNames(dataContract);
     }
 
-    Set<String> dataModelColumnNames =
-        dashboardDataModel.getColumns().stream().map(Column::getName).collect(Collectors.toSet());
+    Set<String> dataModelColumnNames = extractColumnNames(dashboardDataModel.getColumns());
 
     return validateContractFieldsAgainstNames(dataContract, dataModelColumnNames);
   }
@@ -398,6 +407,21 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       }
     }
     return fieldNames;
+  }
+
+  private Set<String> extractColumnNames(List<Column> columns) {
+    if (columns == null || columns.isEmpty()) {
+      return Collections.emptySet();
+    }
+
+    Set<String> columnNames = new HashSet<>();
+    for (Column column : columns) {
+      columnNames.add(column.getName());
+      if (column.getChildren() != null && !column.getChildren().isEmpty()) {
+        columnNames.addAll(extractColumnNames(column.getChildren()));
+      }
+    }
+    return columnNames;
   }
 
   /**

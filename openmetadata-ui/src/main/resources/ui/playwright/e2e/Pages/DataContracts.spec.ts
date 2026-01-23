@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import {
   DATA_CONTRACT_CONTAIN_SEMANTICS,
   DATA_CONTRACT_DETAILS,
@@ -21,6 +21,7 @@ import {
   DATA_CONTRACT_SEMANTICS1,
   DATA_CONTRACT_SEMANTICS2,
   NEW_TABLE_TEST_CASE,
+  ODCS_WITH_SLA_YAML,
 } from '../../constant/dataContracts';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
@@ -50,7 +51,7 @@ import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
-import { resetTokenFromBotPage } from '../../utils/bot';
+
 import {
   clickOutside,
   getApiContext,
@@ -58,8 +59,17 @@ import {
   toastNotification,
 } from '../../utils/common';
 import {
+  clickAddContractButton,
+  clickEditContractButton,
+  deleteContract,
+  exportContractYaml,
+  importOdcsViaDropdown,
+  navigateToContractTab,
+  openContractActionsDropdown,
   saveAndTriggerDataContractValidation,
+  saveContractAndWait,
   saveSecurityAndSLADetails,
+  triggerContractValidation,
   validateDataContractInsideBundleTestSuites,
   validateSecurityAndSLADetails,
   waitForDataContractExecution,
@@ -74,6 +84,7 @@ import {
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
+import { merge } from 'lodash';
 
 // Define entities that support Data Contracts
 const entitiesWithDataContracts = [
@@ -111,15 +122,10 @@ const entitySupportsQuality = (entityType: string): boolean => {
 
 test.describe('Data Contracts', () => {
   const user = new UserClass();
-
+  test.slow(true)
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { apiContext, afterAction, page } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
-    if (!process.env.PLAYWRIGHT_IS_OSS) {
-      // Todo: Remove this patch once the issue is fixed #19140
-      await resetTokenFromBotPage(page, 'testsuite-bot');
-    }
-
     await afterAction();
   });
 
@@ -160,17 +166,8 @@ test.describe('Data Contracts', () => {
       await test.step(
         'Open contract section and start adding contract',
         async () => {
-          await page.click('[data-testid="contract"]');
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
-
-          await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
-          await expect(page.getByTestId('add-contract-button')).toBeVisible();
-
-          await page.getByTestId('add-contract-button').click();
-
-          await expect(page.getByTestId('add-contract-card')).toBeVisible();
+          await navigateToContractTab(page);
+          await clickAddContractButton(page);
         }
       );
 
@@ -344,18 +341,7 @@ test.describe('Data Contracts', () => {
           dataTestId: 'data-assets-header',
         });
 
-        const runNowResponse = page.waitForResponse(
-          '/api/v1/dataContracts/*/validate'
-        );
-
-        await page.getByTestId('manage-contract-actions').click();
-
-        await page.waitForSelector('.contract-action-dropdown', {
-          state: 'visible',
-        });
-
-        await page.getByTestId('contract-run-now-button').click();
-        await runNowResponse;
+        await triggerContractValidation(page);
 
         await toastNotification(
           page,
@@ -364,7 +350,7 @@ test.describe('Data Contracts', () => {
 
         await page.reload();
 
-        await page.waitForLoadState('networkidle');
+        
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -379,13 +365,7 @@ test.describe('Data Contracts', () => {
         await test.step(
           'Add table test case and validate for quality',
           async () => {
-            await page.getByTestId('manage-contract-actions').click();
-
-            await page.waitForSelector('.contract-action-dropdown', {
-              state: 'visible',
-            });
-
-            await page.getByTestId('contract-edit-button').click();
+            await clickEditContractButton(page);
 
             await page.getByRole('tab', { name: 'Quality' }).click();
 
@@ -474,7 +454,7 @@ test.describe('Data Contracts', () => {
 
             await expect(page.getByRole('dialog')).not.toBeVisible();
 
-            await page.waitForLoadState('networkidle');
+            
             await page.waitForSelector('[data-testid="loader"]', {
               state: 'detached',
             });
@@ -542,15 +522,9 @@ test.describe('Data Contracts', () => {
           async () => {
             await entity.visitEntityPage(page);
 
-            await page.getByTestId('contract').click();
+            await page.getByRole('tab').getByTestId('contract').click();
 
-            await page.getByTestId('manage-contract-actions').click();
-
-            await page.waitForSelector('.contract-action-dropdown', {
-              state: 'visible',
-            });
-
-            await page.getByTestId('contract-edit-button').click();
+            await clickEditContractButton(page);
 
             const qualityResponse = page.waitForResponse(
               '/api/v1/dataQuality/testCases/search/list**'
@@ -589,7 +563,7 @@ test.describe('Data Contracts', () => {
       await test.step('Verify YAML view', async () => {
         await entity.visitEntityPage(page);
 
-        await page.getByTestId('contract').click();
+        await page.getByRole('tab').getByTestId('contract').click();
 
         await page.getByTestId('contract-view-switch-tab-yaml').click();
 
@@ -602,27 +576,18 @@ test.describe('Data Contracts', () => {
       });
 
       await test.step('Export YAML', async () => {
-        const downloadPromise = page.waitForEvent('download');
+        const filename = await exportContractYaml(page, 'native');
+        expect(filename).toBeTruthy();
+      });
 
-        await page.getByTestId('manage-contract-actions').click();
-
-        await page.waitForSelector('.contract-action-dropdown', {
-          state: 'visible',
-        });
-
-        await page.getByTestId('export-contract-button').click();
-        const download = await downloadPromise;
-        // Wait for the download process to complete and save the downloaded file somewhere.
-        await download.saveAs('downloads/' + download.suggestedFilename());
+      await test.step('Export ODCS YAML', async () => {
+        const filename = await exportContractYaml(page, 'odcs');
+        expect(filename).toBeTruthy();
+        await toastNotification(page, 'ODCS Contract exported successfully');
       });
 
       await test.step('Edit and Validate Contract data', async () => {
-        await page.getByTestId('manage-contract-actions').click();
-
-        await page.waitForSelector('.contract-action-dropdown', {
-          state: 'visible',
-        });
-        await page.getByTestId('contract-edit-button').click();
+        await clickEditContractButton(page);
 
         await expect(page.getByTestId('save-contract-btn')).toBeDisabled();
 
@@ -674,16 +639,7 @@ test.describe('Data Contracts', () => {
 
         await expect(page.getByTestId('save-contract-btn')).not.toBeDisabled();
 
-        const saveContractResponse = page.waitForResponse(
-          '/api/v1/dataContracts/*'
-        );
-        await page.getByTestId('save-contract-btn').click();
-        await saveContractResponse;
-
-        await page.waitForLoadState('networkidle');
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await saveContractAndWait(page);
 
         // Validate the Updated Values
         await expect(page.getByTestId('contract-title')).toContainText(
@@ -703,36 +659,30 @@ test.describe('Data Contracts', () => {
       });
 
       await test.step('Delete contract', async () => {
-        const deleteContractResponse = page.waitForResponse(
-          'api/v1/dataContracts/*?hardDelete=true&recursive=true'
-        );
-
-        await page.getByTestId('manage-contract-actions').click();
-
-        await page.waitForSelector('.contract-action-dropdown', {
-          state: 'visible',
-        });
-
-        await page.getByTestId('delete-contract-button').click();
-
-        await expect(
-          page
-            .locator('.ant-modal-title')
-            .getByText(`Delete dataContract "${DATA_CONTRACT_DETAILS.name}"`)
-        ).toBeVisible();
-
-        await page.getByTestId('confirmation-text-input').click();
-        await page.getByTestId('confirmation-text-input').fill('DELETE');
-
-        await expect(page.getByTestId('confirm-button')).toBeEnabled();
-
-        await page.getByTestId('confirm-button').click();
-        await deleteContractResponse;
+        await deleteContract(page, DATA_CONTRACT_DETAILS.name);
 
         await toastNotification(page, '"Contract" deleted successfully!');
 
         await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
         await expect(page.getByTestId('add-contract-button')).toBeVisible();
+      });
+
+      await test.step('Import contract from ODCS YAML', async () => {
+        await importOdcsViaDropdown(page, ODCS_WITH_SLA_YAML, 'contract.yaml');
+
+        await toastNotification(page, 'ODCS Contract imported successfully');
+
+        await expect(page.getByTestId('contract-title')).toBeVisible();
+
+        await expect(page.getByTestId('contract-sla-card')).toBeVisible();
+      });
+
+      await test.step('Delete imported contract', async () => {
+        await deleteContract(page);
+
+        await toastNotification(page, '"Contract" deleted successfully!');
+
+        await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
       });
     });
   });
@@ -749,7 +699,7 @@ test.describe('Data Contracts', () => {
         await redirectToHomePage(page);
         await page.goto(`/table/${entityFQN}`);
 
-        await page.waitForLoadState('networkidle');
+        
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -758,17 +708,8 @@ test.describe('Data Contracts', () => {
       await test.step(
         'Open contract section and start adding contract',
         async () => {
-          await page.click('[data-testid="contract"]');
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
-
-          await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
-          await expect(page.getByTestId('add-contract-button')).toBeVisible();
-
-          await page.getByTestId('add-contract-button').click();
-
-          await expect(page.getByTestId('add-contract-card')).toBeVisible();
+          await navigateToContractTab(page);
+          await clickAddContractButton(page);
         }
       );
 
@@ -855,12 +796,8 @@ test.describe('Data Contracts', () => {
       });
 
       await test.step('Save contract and validate for schema', async () => {
-        const saveContractResponse = page.waitForResponse(
-          '/api/v1/dataContracts/*'
-        );
         await page.getByTestId('save-contract-btn').click();
-
-        await saveContractResponse;
+        await page.waitForResponse('/api/v1/dataContracts/*');
 
         // Check all schema from 1 to 50, and 10 is the max-pagination chip
         await expect(page.getByTitle('10')).toBeVisible();
@@ -884,12 +821,7 @@ test.describe('Data Contracts', () => {
       });
 
       await test.step('Update the Schema and Validate', async () => {
-        await page.getByTestId('manage-contract-actions').click();
-
-        await page.waitForSelector('.contract-action-dropdown', {
-          state: 'visible',
-        });
-        await page.getByTestId('contract-edit-button').click();
+        await clickEditContractButton(page);
 
         const columnResponse = page.waitForResponse(
           'api/v1/tables/name/sample_data.ecommerce_db.shopify.performance_test_table/columns?**'
@@ -913,17 +845,7 @@ test.describe('Data Contracts', () => {
           page.getByRole('checkbox', { name: 'Select all' })
         ).not.toBeChecked();
 
-        const saveContractResponse = page.waitForResponse(
-          '/api/v1/dataContracts/*'
-        );
-        await page.getByTestId('save-contract-btn').click();
-
-        await saveContractResponse;
-
-        await page.waitForLoadState('networkidle');
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+        await saveContractAndWait(page);
 
         // Check all schema from 26 to 50
         for (let i = 26; i <= 50; i++) {
@@ -968,17 +890,7 @@ test.describe('Data Contracts', () => {
               .click();
           }
 
-          const saveContractResponse = page.waitForResponse(
-            '/api/v1/dataContracts/*'
-          );
-          await page.getByTestId('save-contract-btn').click();
-
-          await saveContractResponse;
-
-          await page.waitForLoadState('networkidle');
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
+          await saveContractAndWait(page);
 
           // Check all schema from 1 to 5 and then, the one we didn't touch 26 to 50
           for (let i = 26; i <= 50; i++) {
@@ -1002,38 +914,14 @@ test.describe('Data Contracts', () => {
         await redirectToHomePage(page);
         await page.goto(`/table/${entityFQN}`);
 
-        await page.waitForLoadState('networkidle');
+        
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
 
-        await page.click('[data-testid="contract"]');
+        await navigateToContractTab(page);
 
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
-
-        const deleteContractResponse = page.waitForResponse(
-          'api/v1/dataContracts/*?hardDelete=true&recursive=true'
-        );
-
-        await page.getByTestId('manage-contract-actions').click();
-
-        await page.waitForSelector('.contract-action-dropdown', {
-          state: 'visible',
-        });
-
-        await page.getByTestId('delete-contract-button').click();
-
-        await expect(page.locator('.ant-modal-title')).toBeVisible();
-
-        await page.getByTestId('confirmation-text-input').click();
-        await page.getByTestId('confirmation-text-input').fill('DELETE');
-
-        await expect(page.getByTestId('confirm-button')).toBeEnabled();
-
-        await page.getByTestId('confirm-button').click();
-        await deleteContractResponse;
+        await deleteContract(page);
 
         await toastNotification(page, '"Contract" deleted successfully!');
 
@@ -1065,12 +953,12 @@ test.describe('Data Contracts', () => {
 
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
-    await page.click('[data-testid="contract"]');
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await navigateToContractTab(page);
 
     await page.getByTestId('add-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-menu')).toBeVisible();
+    await page.getByTestId('create-contract-button').click();
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
@@ -1198,29 +1086,15 @@ test.describe('Data Contracts', () => {
     );
     await assignGlossaryTerm(page, testGlossaryTerm.responseData);
 
-    await page.click('[data-testid="contract"]');
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await navigateToContractTab(page);
 
-    const runNowResponse = page.waitForResponse(
-      '/api/v1/dataContracts/*/validate'
-    );
-
-    await page.getByTestId('manage-contract-actions').click();
-
-    await page.waitForSelector('.contract-action-dropdown', {
-      state: 'visible',
-    });
-
-    await page.getByTestId('contract-run-now-button').click();
-    await runNowResponse;
+    await triggerContractValidation(page);
 
     await toastNotification(page, 'Contract validation trigger successfully.');
 
     await page.reload();
 
-    await page.waitForLoadState('networkidle');
+    
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -1252,12 +1126,12 @@ test.describe('Data Contracts', () => {
 
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
-    await page.click('[data-testid="contract"]');
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await navigateToContractTab(page);
 
     await page.getByTestId('add-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-menu')).toBeVisible();
+    await page.getByTestId('create-contract-button').click();
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
@@ -1385,29 +1259,15 @@ test.describe('Data Contracts', () => {
     );
     await assignGlossaryTerm(page, testGlossaryTerm.responseData);
 
-    await page.click('[data-testid="contract"]');
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await navigateToContractTab(page);
 
-    const runNowResponse = page.waitForResponse(
-      '/api/v1/dataContracts/*/validate'
-    );
-
-    await page.getByTestId('manage-contract-actions').click();
-
-    await page.waitForSelector('.contract-action-dropdown', {
-      state: 'visible',
-    });
-
-    await page.getByTestId('contract-run-now-button').click();
-    await runNowResponse;
+    await triggerContractValidation(page);
 
     await toastNotification(page, 'Contract validation trigger successfully.');
 
     await page.reload();
 
-    await page.waitForLoadState('networkidle');
+    
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -1431,12 +1291,12 @@ test.describe('Data Contracts', () => {
     const entityFQN = table.entityResponseData.fullyQualifiedName;
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
-    await page.click('[data-testid="contract"]');
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await navigateToContractTab(page);
 
     await page.getByTestId('add-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-menu')).toBeVisible();
+    await page.getByTestId('create-contract-button').click();
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
@@ -1505,12 +1365,13 @@ test.describe('Data Contracts', () => {
 
     const entityFQN = table.entityResponseData.fullyQualifiedName;
 
-    await page.click('[data-testid="contract"]');
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await navigateToContractTab(page);
 
     await page.getByTestId('add-contract-button').click();
+
+
+    await expect(page.getByTestId('add-contract-menu')).toBeVisible();
+    await page.getByTestId('create-contract-button').click();
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
@@ -1571,7 +1432,7 @@ test.describe('Data Contracts', () => {
 
     await page.reload();
 
-    await page.waitForLoadState('networkidle');
+    
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -1642,12 +1503,12 @@ test.describe('Data Contracts', () => {
 
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
-    await page.click('[data-testid="contract"]');
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await navigateToContractTab(page);
 
     await page.getByTestId('add-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-menu')).toBeVisible();
+    await page.getByTestId('create-contract-button').click();
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
@@ -1723,6 +1584,11 @@ test.describe('Data Contracts', () => {
     await table.visitEntityPage(page);
     await page.click('[data-testid="contract"]');
     await page.getByTestId('add-contract-button').click();
+    await expect(page.getByTestId('add-contract-menu')).toBeVisible();
+    await page.getByTestId('create-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-card')).toBeVisible();
+
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -1814,12 +1680,14 @@ test.describe('Data Contracts', () => {
 
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
-    await page.click('[data-testid="contract"]');
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await navigateToContractTab(page);
 
     await page.getByTestId('add-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-menu')).toBeVisible();
+    await page.getByTestId('create-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-card')).toBeVisible();
     await page.getByRole('tab', { name: 'Semantics' }).click();
 
     await expect(page.getByTestId('add-semantic-button')).toBeDisabled();
@@ -1872,12 +1740,14 @@ test.describe('Data Contracts', () => {
 
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
-    await page.click('[data-testid="contract"]');
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await navigateToContractTab(page);
 
     await page.getByTestId('add-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-menu')).toBeVisible();
+    await page.getByTestId('create-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-card')).toBeVisible();
     await page.getByRole('tab', { name: 'Semantics' }).click();
 
     await expect(page.getByTestId('add-semantic-button')).toBeDisabled();
@@ -1945,12 +1815,14 @@ test.describe('Data Contracts', () => {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
 
-      await page.click('[data-testid="contract"]');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await navigateToContractTab(page);
 
       await page.getByTestId('add-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-menu')).toBeVisible();
+    await page.getByTestId('create-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
       await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
 
@@ -1992,8 +1864,7 @@ test.describe('Data Contracts', () => {
         await expect(
           page.getByTestId(`contract-security-rowFilter-0-${filter.index}`)
         ).toContainText(
-          `${table.columnsName[filter.index]} = ${filter.values[0]},${
-            filter.values[1]
+          `${table.columnsName[filter.index]} = ${filter.values[0]},${filter.values[1]
           }`
         );
       }
@@ -2021,11 +1892,7 @@ test.describe('Data Contracts', () => {
         )
       ).toBeVisible();
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.waitForSelector('.contract-action-dropdown', {
-        state: 'visible',
-      });
+      await openContractActionsDropdown(page);
       await page.getByTestId('contract-edit-button').click();
       await validateSecurityAndSLADetails(
         page,
@@ -2075,8 +1942,7 @@ test.describe('Data Contracts', () => {
           await expect(
             page.getByTestId(`contract-security-rowFilter-0-${filter.index}`)
           ).toContainText(
-            `${table.columnsName[filter.index]} = ${filter.values[0]},${
-              filter.values[1]
+            `${table.columnsName[filter.index]} = ${filter.values[0]},${filter.values[1]
             },${filter.values[2]},${filter.values[3]}`
           );
         }
@@ -2106,12 +1972,7 @@ test.describe('Data Contracts', () => {
           )
         ).toBeVisible();
 
-        await page.getByTestId('manage-contract-actions').click();
-
-        await page.waitForSelector('.contract-action-dropdown', {
-          state: 'visible',
-        });
-        await page.getByTestId('contract-edit-button').click();
+        await clickEditContractButton(page);
         await validateSecurityAndSLADetails(
           page,
           {
@@ -2136,7 +1997,7 @@ test.describe('Data Contracts', () => {
       await page.getByTestId('save-contract-btn').click();
       await saveContractResponse;
 
-      await page.waitForLoadState('networkidle');
+      
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -2145,11 +2006,7 @@ test.describe('Data Contracts', () => {
         page.getByTestId('contract-security-policy-container')
       ).not.toBeVisible();
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.waitForSelector('.contract-action-dropdown', {
-        state: 'visible',
-      });
+      await openContractActionsDropdown(page);
 
       await page.getByTestId('contract-edit-button').click();
 
@@ -2162,6 +2019,187 @@ test.describe('Data Contracts', () => {
       await expect(page.getByTestId('access-policy-input-0')).toBeVisible();
       await expect(page.getByTestId('columnName-input-0-0')).toBeVisible();
     });
+  });
+
+  test('ODCS Import Modal with Merge Mode should preserve existing contract ID', async ({
+    page,
+  }) => {
+    test.slow(true);
+
+    const { apiContext } = await getApiContext(page);
+    const table = new TableClass();
+    await table.create(apiContext);
+
+    try {
+      await test.step('Create initial contract via ODCS import', async () => {
+        await redirectToHomePage(page);
+        await table.visitEntityPage(page);
+        await navigateToContractTab(page);
+        await importOdcsViaDropdown(page, ODCS_WITH_SLA_YAML, 'initial.yaml');
+
+        await toastNotification(page, 'ODCS Contract imported successfully');
+
+        await expect(page.getByTestId('contract-title')).toBeVisible();
+        await expect(page.getByTestId('contract-sla-card')).toBeVisible();
+      });
+
+      await test.step(
+        'Import again via modal with merge mode (default)',
+        async () => {
+          // Click to import via the modal
+          await page.getByTestId('manage-contract-actions').click();
+
+          await page.waitForSelector('.contract-action-dropdown', {
+            state: 'visible',
+          });
+
+          await page.getByTestId('import-odcs-contract-button').click();
+
+          // Modal should be visible
+          await page.getByTestId('import-contract-modal').waitFor();
+
+          // Upload a new ODCS file with different content
+          const dropzone = page.locator('.import-content-wrapper');
+          await dropzone.click();
+
+          const fileInput = page.getByTestId('file-upload-input');
+          await fileInput.setInputFiles({
+            name: 'update.yaml',
+            mimeType: 'application/yaml',
+            buffer: Buffer.from(`apiVersion: v3.1.0
+kind: DataContract
+id: merge-update
+name: Updated via Merge
+version: "2.0.0"
+status: active
+description:
+  purpose: Updated description via merge mode
+`),
+          });
+
+          // Modal should show "existing contract detected" warning and merge/replace options
+          await expect(
+            page.getByTestId('existing-contract-warning')
+          ).toBeVisible();
+
+          // Verify merge is default selected
+          const mergeRadio = page.locator('input[type="radio"][value="merge"]');
+          await expect(mergeRadio).toBeVisible();
+          await expect(mergeRadio).toBeChecked();
+
+          // Import with merge mode
+          const importResponse = page.waitForResponse(
+            '/api/v1/dataContracts/odcs/yaml**mode=merge**'
+          );
+
+          await page.getByRole('button', { name: 'Import' }).click();
+          await importResponse;
+
+          await toastNotification(page, 'ODCS Contract imported successfully');
+
+          // SLA should still be preserved from original import (merge mode preserves fields)
+          await expect(page.getByTestId('contract-sla-card')).toBeVisible();
+        }
+      );
+    } finally {
+      await test.step('Cleanup: Delete contract', async () => {
+        await deleteContract(page);
+      });
+    }
+  });
+
+  test('ODCS Import Modal with Replace Mode should overwrite all fields', async ({
+    page,
+  }) => {
+    test.slow(true);
+
+    const { apiContext } = await getApiContext(page);
+    const table = new TableClass();
+    await table.create(apiContext);
+
+    try {
+      await test.step(
+        'Create initial contract with SLA via ODCS import',
+        async () => {
+          await redirectToHomePage(page);
+          await table.visitEntityPage(page);
+          await navigateToContractTab(page);
+          await importOdcsViaDropdown(page, ODCS_WITH_SLA_YAML, 'initial.yaml');
+
+          await toastNotification(page, 'ODCS Contract imported successfully');
+
+          // Verify SLA is present
+          await expect(page.getByTestId('contract-sla-card')).toBeVisible();
+        }
+      );
+
+      await test.step(
+        'Import again via modal with replace mode',
+        async () => {
+          await page.getByTestId('manage-contract-actions').click();
+
+          await page.waitForSelector('.contract-action-dropdown', {
+            state: 'visible',
+          });
+
+          await page.getByTestId('import-odcs-contract-button').click();
+
+          // Modal should be visible
+          await page.getByTestId('import-contract-modal').waitFor();
+
+          // Upload a new ODCS file with different content
+          const dropzone = page.locator('.import-content-wrapper');
+          await dropzone.click();
+
+          const fileInput = page.getByTestId('file-upload-input');
+          await fileInput.setInputFiles({
+            name: 'replace.yaml',
+            mimeType: 'application/yaml',
+            buffer: Buffer.from(`apiVersion: v3.1.0
+kind: DataContract
+id: replace-contract
+name: Replaced Contract
+version: "3.0.0"
+status: active
+description:
+  purpose: Completely replaced via replace mode
+`),
+          });
+
+          await expect(
+            page.getByTestId('existing-contract-warning')
+          ).toBeVisible();
+
+          // Select replace mode
+          const replaceRadio = page.locator('input[type="radio"][value="replace"]');
+          await expect(replaceRadio).toBeVisible();
+          await replaceRadio.click();
+
+          const importResponse = page.waitForResponse(
+            '/api/v1/dataContracts/odcs/yaml**mode=replace**'
+          );
+
+          await page.getByRole('button', { name: 'Import' }).click();
+          await importResponse;
+
+          await toastNotification(page, 'ODCS Contract imported successfully');
+
+          
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+
+          // SLA should NOT be visible (replace mode clears fields not in import)
+          await expect(
+            page.getByTestId('contract-sla-card')
+          ).not.toBeVisible();
+        }
+      );
+    } finally {
+      await test.step('Cleanup: Delete contract', async () => {
+        await deleteContract(page);
+      });
+    }
   });
 });
 
@@ -2230,10 +2268,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               await entity.visitEntityPage(page);
 
               // Open contract section and start adding contract
-              await page.click('[data-testid="contract"]');
-              await page.waitForSelector('[data-testid="loader"]', {
-                state: 'detached',
-              });
+              await navigateToContractTab(page);
 
               await expect(
                 page.getByTestId('no-data-placeholder')
@@ -2243,6 +2278,9 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               ).toBeVisible();
 
               await page.getByTestId('add-contract-button').click();
+
+              await expect(page.getByTestId('add-contract-menu')).toBeVisible();
+              await page.getByTestId('create-contract-button').click();
 
               await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
@@ -2374,13 +2412,15 @@ entitiesWithDataContracts.forEach((EntityClass) => {
             async () => {
               await redirectToHomePage(page);
               await entity.visitEntityPage(page);
-              await page.waitForLoadState('networkidle');
+              
               await page.waitForSelector('[data-testid="loader"]', {
                 state: 'detached',
               });
 
               // Verify Contract tab is not visible (should be hidden by persona customization)
-              await expect(page.getByTestId('contract')).toBeVisible();
+              await expect(
+                page.getByRole('tab').getByTestId('contract')
+              ).toBeVisible();
 
               // Verify Contract status badge is not visible in header
               await expect(
@@ -2405,7 +2445,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
                 'Store Procedure': 'Stored Procedure',
               };
               await settingClick(page, GlobalSettingOptions.PERSONA);
-              await page.waitForLoadState('networkidle');
+              
               await page.waitForSelector('[data-testid="loader"]', {
                 state: 'detached',
               });
@@ -2417,7 +2457,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
                 true
               );
               await page.getByRole('tab', { name: 'Customize UI' }).click();
-              await page.waitForLoadState('networkidle');
+              
 
               // Navigate to Table customization
               await page
@@ -2456,13 +2496,15 @@ entitiesWithDataContracts.forEach((EntityClass) => {
 
               await redirectToHomePage(page);
               await entity.visitEntityPage(page);
-              await page.waitForLoadState('networkidle');
+              
               await page.waitForSelector('[data-testid="loader"]', {
                 state: 'detached',
               });
 
               // Verify Contract tab is not visible (should be hidden by persona customization)
-              await expect(page.getByTestId('contract')).not.toBeVisible();
+              await expect(
+                page.getByRole('tab').getByTestId('contract')
+              ).not.toBeVisible();
 
               // Verify Contract status badge is not visible in header
               await expect(

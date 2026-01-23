@@ -176,6 +176,14 @@ export interface AssetCertification {
  */
 export interface TagLabel {
     /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
+    /**
      * Description for the tag label.
      */
     description?: string;
@@ -492,6 +500,7 @@ export interface AccessDetails {
 export enum DriveServiceType {
     CustomDrive = "CustomDrive",
     GoogleDrive = "GoogleDrive",
+    SFTP = "Sftp",
     SharePoint = "SharePoint",
 }
 

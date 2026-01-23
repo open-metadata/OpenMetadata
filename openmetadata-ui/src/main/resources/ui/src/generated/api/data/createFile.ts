@@ -19,6 +19,10 @@ export interface CreateFile {
      */
     checksum?: string;
     /**
+     * Column definitions for structured data files (CSV, etc.)
+     */
+    columns?: Column[];
+    /**
      * List of fully qualified names of data products this entity is part of.
      */
     dataProducts?: string[];
@@ -109,82 +113,247 @@ export interface CreateFile {
 }
 
 /**
- * Type of file based on content
+ * This schema defines the type for a column in a table.
  */
-export enum FileType {
-    Archive = "Archive",
-    Audio = "Audio",
-    CSV = "CSV",
-    Code = "Code",
-    Data = "Data",
-    Document = "Document",
-    Image = "Image",
-    Other = "Other",
-    PDF = "PDF",
-    Presentation = "Presentation",
-    Spreadsheet = "Spreadsheet",
-    Text = "Text",
-    Video = "Video",
+export interface Column {
+    /**
+     * Data type used array in dataType. For example, `array<int>` has dataType as `array` and
+     * arrayDataType as `int`.
+     */
+    arrayDataType?: DataType;
+    /**
+     * Child columns if dataType or arrayDataType is `map`, `struct`, or `union` else `null`.
+     */
+    children?: Column[];
+    /**
+     * Column level constraint.
+     */
+    constraint?: Constraint;
+    /**
+     * List of Custom Metrics registered for a table.
+     */
+    customMetrics?: CustomMetric[];
+    /**
+     * Length of `char`, `varchar`, `binary`, `varbinary` `dataTypes`, else null. For example,
+     * `varchar(20)` has dataType as `varchar` and dataLength as `20`.
+     */
+    dataLength?: number;
+    /**
+     * Data type of the column (int, date etc.).
+     */
+    dataType: DataType;
+    /**
+     * Display name used for dataType. This is useful for complex types, such as `array<int>`,
+     * `map<int,string>`, `struct<>`, and union types.
+     */
+    dataTypeDisplay?: string;
+    /**
+     * Description of the column.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this column name.
+     */
+    displayName?: string;
+    /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?:          any;
+    fullyQualifiedName?: string;
+    /**
+     * Json schema only if the dataType is JSON else null.
+     */
+    jsonSchema?: string;
+    name:        string;
+    /**
+     * Ordinal position of the column.
+     */
+    ordinalPosition?: number;
+    /**
+     * The precision of a numeric is the total count of significant digits in the whole number,
+     * that is, the number of digits to both sides of the decimal point. Precision is applicable
+     * Integer types, such as `INT`, `SMALLINT`, `BIGINT`, etc. It also applies to other Numeric
+     * types, such as `NUMBER`, `DECIMAL`, `DOUBLE`, `FLOAT`, etc.
+     */
+    precision?: number;
+    /**
+     * Latest Data profile for a Column.
+     */
+    profile?: ColumnProfile;
+    /**
+     * The scale of a numeric is the count of decimal digits in the fractional part, to the
+     * right of the decimal point. For Integer types, the scale is `0`. It mainly applies to non
+     * Integer Numeric types, such as `NUMBER`, `DECIMAL`, `DOUBLE`, `FLOAT`, etc.
+     */
+    scale?: number;
+    /**
+     * Tags associated with the column.
+     */
+    tags?: TagLabel[];
 }
 
 /**
- * Life Cycle of the entity
+ * Data type used array in dataType. For example, `array<int>` has dataType as `array` and
+ * arrayDataType as `int`.
  *
- * This schema defines Life Cycle Properties.
+ * This enum defines the type of data stored in a column.
+ *
+ * Data type of the column (int, date etc.).
  */
-export interface LifeCycle {
-    /**
-     * Access Details about accessed aspect of the data asset
-     */
-    accessed?: AccessDetails;
-    /**
-     * Access Details about created aspect of the data asset
-     */
-    created?: AccessDetails;
-    /**
-     * Access Details about updated aspect of the data asset
-     */
-    updated?: AccessDetails;
+export enum DataType {
+    AggState = "AGG_STATE",
+    Aggregatefunction = "AGGREGATEFUNCTION",
+    Array = "ARRAY",
+    Bigint = "BIGINT",
+    Binary = "BINARY",
+    Bit = "BIT",
+    Bitmap = "BITMAP",
+    Blob = "BLOB",
+    Boolean = "BOOLEAN",
+    Bytea = "BYTEA",
+    Byteint = "BYTEINT",
+    Bytes = "BYTES",
+    CIDR = "CIDR",
+    Char = "CHAR",
+    Clob = "CLOB",
+    Date = "DATE",
+    Datetime = "DATETIME",
+    Datetimerange = "DATETIMERANGE",
+    Decimal = "DECIMAL",
+    Double = "DOUBLE",
+    Enum = "ENUM",
+    Error = "ERROR",
+    Fixed = "FIXED",
+    Float = "FLOAT",
+    Geography = "GEOGRAPHY",
+    Geometry = "GEOMETRY",
+    Heirarchy = "HEIRARCHY",
+    Hierarchyid = "HIERARCHYID",
+    Hll = "HLL",
+    Hllsketch = "HLLSKETCH",
+    Image = "IMAGE",
+    Inet = "INET",
+    Int = "INT",
+    Interval = "INTERVAL",
+    Ipv4 = "IPV4",
+    Ipv6 = "IPV6",
+    JSON = "JSON",
+    Kpi = "KPI",
+    Largeint = "LARGEINT",
+    Long = "LONG",
+    Longblob = "LONGBLOB",
+    Lowcardinality = "LOWCARDINALITY",
+    Macaddr = "MACADDR",
+    Map = "MAP",
+    Measure = "MEASURE",
+    MeasureHidden = "MEASURE HIDDEN",
+    MeasureVisible = "MEASURE VISIBLE",
+    Mediumblob = "MEDIUMBLOB",
+    Mediumtext = "MEDIUMTEXT",
+    Money = "MONEY",
+    Ntext = "NTEXT",
+    Null = "NULL",
+    Number = "NUMBER",
+    Numeric = "NUMERIC",
+    PGLsn = "PG_LSN",
+    PGSnapshot = "PG_SNAPSHOT",
+    Point = "POINT",
+    Polygon = "POLYGON",
+    QuantileState = "QUANTILE_STATE",
+    Record = "RECORD",
+    Rowid = "ROWID",
+    Set = "SET",
+    Smallint = "SMALLINT",
+    Spatial = "SPATIAL",
+    String = "STRING",
+    Struct = "STRUCT",
+    Super = "SUPER",
+    Table = "TABLE",
+    Text = "TEXT",
+    Time = "TIME",
+    Timestamp = "TIMESTAMP",
+    Timestampz = "TIMESTAMPZ",
+    Tinyint = "TINYINT",
+    Tsquery = "TSQUERY",
+    Tsvector = "TSVECTOR",
+    Tuple = "TUPLE",
+    TxidSnapshot = "TXID_SNAPSHOT",
+    UUID = "UUID",
+    Uint = "UINT",
+    Union = "UNION",
+    Unknown = "UNKNOWN",
+    Varbinary = "VARBINARY",
+    Varchar = "VARCHAR",
+    Variant = "VARIANT",
+    XML = "XML",
+    Year = "YEAR",
 }
 
 /**
- * Access Details about accessed aspect of the data asset
+ * Column level constraint.
  *
- * Access details of an entity
- *
- * Access Details about created aspect of the data asset
- *
- * Access Details about updated aspect of the data asset
+ * This enum defines the type for column constraint.
  */
-export interface AccessDetails {
-    /**
-     * User, Pipeline, Query that created,updated or accessed the data asset
-     */
-    accessedBy?: EntityReference;
-    /**
-     * Any process that accessed the data asset that is not captured in OpenMetadata.
-     */
-    accessedByAProcess?: string;
-    /**
-     * Timestamp of data asset accessed for creation, update, read.
-     */
-    timestamp: number;
+export enum Constraint {
+    NotNull = "NOT_NULL",
+    Null = "NULL",
+    PrimaryKey = "PRIMARY_KEY",
+    Unique = "UNIQUE",
 }
 
 /**
- * User, Pipeline, Query that created,updated or accessed the data asset
+ * Custom Metric definition that we will associate with a column.
+ */
+export interface CustomMetric {
+    /**
+     * Name of the column in a table.
+     */
+    columnName?: string;
+    /**
+     * Description of the Metric.
+     */
+    description?: string;
+    /**
+     * SQL expression to compute the Metric. It should return a single numerical value.
+     */
+    expression: string;
+    /**
+     * Unique identifier of this Custom Metric instance.
+     */
+    id?: string;
+    /**
+     * Name that identifies this Custom Metric.
+     */
+    name: string;
+    /**
+     * Owners of this Custom Metric.
+     */
+    owners?: EntityReference[];
+    /**
+     * Last update time corresponding to the new version of the entity in Unix epoch time
+     * milliseconds.
+     */
+    updatedAt?: number;
+    /**
+     * User who made the update.
+     */
+    updatedBy?: string;
+}
+
+/**
+ * Owners of this Custom Metric.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Owners of this file
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
+ * User, Pipeline, Query that created,updated or accessed the data asset
  */
 export interface EntityReference {
     /**
@@ -230,9 +399,193 @@ export interface EntityReference {
 }
 
 /**
+ * Latest Data profile for a Column.
+ *
+ * This schema defines the type to capture the table's column profile.
+ */
+export interface ColumnProfile {
+    /**
+     * Cardinality distribution showing top categories with an 'Others' bucket.
+     */
+    cardinalityDistribution?: CardinalityDistribution;
+    /**
+     * Custom Metrics profile list bound to a column.
+     */
+    customMetrics?: CustomMetricProfile[];
+    /**
+     * Number of values that contain distinct values.
+     */
+    distinctCount?: number;
+    /**
+     * Proportion of distinct values in a column.
+     */
+    distinctProportion?: number;
+    /**
+     * No.of Rows that contain duplicates in a column.
+     */
+    duplicateCount?: number;
+    /**
+     * First quartile of a column.
+     */
+    firstQuartile?: number;
+    /**
+     * Histogram of a column.
+     */
+    histogram?: any[] | boolean | HistogramClass | number | number | null | string;
+    /**
+     * Inter quartile range of a column.
+     */
+    interQuartileRange?: number;
+    /**
+     * Maximum value in a column.
+     */
+    max?: number | string;
+    /**
+     * Maximum string length in a column.
+     */
+    maxLength?: number;
+    /**
+     * Avg value in a column.
+     */
+    mean?: number;
+    /**
+     * Median of a column.
+     */
+    median?: number;
+    /**
+     * Minimum value in a column.
+     */
+    min?: number | string;
+    /**
+     * Minimum string length in a column.
+     */
+    minLength?: number;
+    /**
+     * Missing count is calculated by subtracting valuesCount - validCount.
+     */
+    missingCount?: number;
+    /**
+     * Missing Percentage is calculated by taking percentage of validCount/valuesCount.
+     */
+    missingPercentage?: number;
+    /**
+     * Column Name.
+     */
+    name: string;
+    /**
+     * Non parametric skew of a column.
+     */
+    nonParametricSkew?: number;
+    /**
+     * No.of null values in a column.
+     */
+    nullCount?: number;
+    /**
+     * No.of null value proportion in columns.
+     */
+    nullProportion?: number;
+    /**
+     * Standard deviation of a column.
+     */
+    stddev?: number;
+    /**
+     * Median value in a column.
+     */
+    sum?: number;
+    /**
+     * First quartile of a column.
+     */
+    thirdQuartile?: number;
+    /**
+     * Timestamp on which profile is taken.
+     */
+    timestamp: number;
+    /**
+     * No. of unique values in the column.
+     */
+    uniqueCount?: number;
+    /**
+     * Proportion of number of unique values in a column.
+     */
+    uniqueProportion?: number;
+    /**
+     * Total count of valid values in this column.
+     */
+    validCount?: number;
+    /**
+     * Total count of the values in this column.
+     */
+    valuesCount?: number;
+    /**
+     * Percentage of values in this column with respect to row count.
+     */
+    valuesPercentage?: number;
+    /**
+     * Variance of a column.
+     */
+    variance?: number;
+}
+
+/**
+ * Cardinality distribution showing top categories with an 'Others' bucket.
+ */
+export interface CardinalityDistribution {
+    /**
+     * Flag indicating that all values in the column are unique, so no distribution is
+     * calculated.
+     */
+    allValuesUnique?: boolean;
+    /**
+     * List of category names including 'Others'.
+     */
+    categories?: string[];
+    /**
+     * List of counts corresponding to each category.
+     */
+    counts?: number[];
+    /**
+     * List of percentages corresponding to each category.
+     */
+    percentages?: number[];
+}
+
+/**
+ * Profiling results of a Custom Metric.
+ */
+export interface CustomMetricProfile {
+    /**
+     * Custom metric name.
+     */
+    name?: string;
+    /**
+     * Profiling results for the metric.
+     */
+    value?: number;
+}
+
+export interface HistogramClass {
+    /**
+     * Boundaries of Histogram.
+     */
+    boundaries?: any[];
+    /**
+     * Frequencies of Histogram.
+     */
+    frequencies?: any[];
+}
+
+/**
  * This schema defines the type for labeling an entity with a Tag.
  */
 export interface TagLabel {
+    /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
     /**
      * Description for the tag label.
      */
@@ -341,4 +694,67 @@ export interface CoverImage {
      * URL of the cover image.
      */
     url?: string;
+}
+
+/**
+ * Type of file based on content
+ */
+export enum FileType {
+    Archive = "Archive",
+    Audio = "Audio",
+    CSV = "CSV",
+    Code = "Code",
+    Data = "Data",
+    Document = "Document",
+    Image = "Image",
+    Other = "Other",
+    PDF = "PDF",
+    Presentation = "Presentation",
+    Spreadsheet = "Spreadsheet",
+    Text = "Text",
+    Video = "Video",
+}
+
+/**
+ * Life Cycle of the entity
+ *
+ * This schema defines Life Cycle Properties.
+ */
+export interface LifeCycle {
+    /**
+     * Access Details about accessed aspect of the data asset
+     */
+    accessed?: AccessDetails;
+    /**
+     * Access Details about created aspect of the data asset
+     */
+    created?: AccessDetails;
+    /**
+     * Access Details about updated aspect of the data asset
+     */
+    updated?: AccessDetails;
+}
+
+/**
+ * Access Details about accessed aspect of the data asset
+ *
+ * Access details of an entity
+ *
+ * Access Details about created aspect of the data asset
+ *
+ * Access Details about updated aspect of the data asset
+ */
+export interface AccessDetails {
+    /**
+     * User, Pipeline, Query that created,updated or accessed the data asset
+     */
+    accessedBy?: EntityReference;
+    /**
+     * Any process that accessed the data asset that is not captured in OpenMetadata.
+     */
+    accessedByAProcess?: string;
+    /**
+     * Timestamp of data asset accessed for creation, update, read.
+     */
+    timestamp: number;
 }

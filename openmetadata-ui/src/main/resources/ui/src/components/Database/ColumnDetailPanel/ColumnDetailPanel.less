@@ -1,0 +1,127 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../styles/variables.less';
+.overview-tab-content {
+  height: auto;
+}
+.ant-drawer-content,
+.navigation-container {
+  background-color: @grey-50 !important;
+}
+.pagination-header-text {
+  color: @grey-700 !important;
+  font-weight: 500 !important;
+}
+.column-detail-panel-vertical-nav {
+  width: 70px;
+}
+
+.column-detail-panel {
+  .ant-drawer-footer {
+    border-top: none;
+    padding-top: 0;
+    position: relative;
+  }
+  .ant-drawer-header {
+    padding: 8px;
+    padding-bottom: 0;
+
+    .ant-drawer-header-title {
+      width: 100%;
+    }
+  }
+
+  .ant-drawer-body {
+    padding: 0;
+    height: 100%;
+  }
+
+  .title-section {
+    padding-bottom: 0;
+    .data-type-chip {
+      margin-top: 6px;
+      width: fit-content;
+      border: 1px solid @blue-30;
+      border-radius: 16px;
+      color: @grey-700;
+      padding: 4px 8px;
+      font-size: 10px;
+      background-color: @blue-29;
+      height: 20px;
+    }
+    .title-container {
+      display: flex;
+      flex-direction: column;
+      height: auto;
+      padding: 16px 12px;
+      padding-top: 0px;
+      border-radius: 6px;
+
+      background-color: @grey-9;
+      .entity-icon {
+        width: 28px;
+        height: 28px;
+        margin-right: 0px;
+        color: @primary-6;
+        justify-content: center;
+        display: inline-flex;
+        align-items: center;
+        stroke-width: 1.5px;
+        svg {
+          width: 16px;
+          height: 16px;
+          color: @grey-700;
+        }
+      }
+
+      .entity-title-link {
+        font-size: 16px;
+        font-weight: 600;
+        color: @grey-900;
+        text-decoration: none;
+      }
+    }
+  }
+
+  .column-detail-panel-container {
+    background-color: @grey-50;
+
+    height: calc(100vh - 170px);
+    display: flex;
+    flex-direction: column;
+
+    .d-flex {
+      height: 100%;
+    }
+
+    .summary-panel-container {
+      flex: 1;
+      height: 100%;
+      background: @grey-50;
+      overflow: hidden;
+      border-radius: 0;
+      margin-left: 8px;
+      .ant-card-body {
+        padding: 0;
+        height: 100%;
+      }
+
+      .content-area {
+        height: 100%;
+        overflow-y: auto;
+
+        max-height: 100%;
+      }
+    }
+  }
+}

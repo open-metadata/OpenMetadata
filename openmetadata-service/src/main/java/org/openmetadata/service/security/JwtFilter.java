@@ -22,7 +22,7 @@ import static org.openmetadata.service.security.SecurityUtil.validateDomainEnfor
 import static org.openmetadata.service.security.SecurityUtil.validatePrincipalClaimsMapping;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.ROLES_CLAIM;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.TOKEN_TYPE;
-import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getAlgorithm;
+import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getAlgorithmFromPublicKey;
 
 import com.auth0.jwk.Jwk;
 import com.auth0.jwk.JwkProvider;
@@ -43,7 +43,6 @@ import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.ext.Provider;
 import java.net.URI;
 import java.net.URL;
-import java.security.interfaces.RSAPublicKey;
 import java.util.Calendar;
 import java.util.HashSet;
 import java.util.List;
@@ -78,6 +77,7 @@ public class JwtFilter implements ContainerRequestFilter {
   public static final String IMPERSONATED_USER_CLAIM = "impersonatedUser";
   @Getter private List<String> jwtPrincipalClaims;
   @Getter private Map<String, String> jwtPrincipalClaimsMapping;
+  @Getter private String jwtTeamClaimMapping;
   private JwkProvider jwkProvider;
   private String principalDomain;
   private Set<String> allowedDomains;
@@ -119,6 +119,7 @@ public class JwtFilter implements ContainerRequestFilter {
             .map(s -> s.split(":"))
             .collect(Collectors.toMap(s -> s[0], s -> s[1]));
     validatePrincipalClaimsMapping(jwtPrincipalClaimsMapping);
+    this.jwtTeamClaimMapping = authenticationConfiguration.getJwtTeamClaimMapping();
 
     ImmutableList.Builder<URL> publicKeyUrlsBuilder = ImmutableList.builder();
     for (String publicKeyUrlStr : authenticationConfiguration.getPublicKeyUrls()) {
@@ -248,7 +249,7 @@ public class JwtFilter implements ContainerRequestFilter {
     try {
       jwt = JWT.decode(token);
     } catch (JWTDecodeException e) {
-      throw AuthenticationException.getInvalidTokenException("Unable to decode the token.");
+      throw AuthenticationException.getInvalidTokenException("Invalid token.");
     }
 
     // Check if expired
@@ -260,13 +261,12 @@ public class JwtFilter implements ContainerRequestFilter {
 
     // Validate JWT with public key
     Jwk jwk = jwkProvider.get(jwt.getKeyId());
-    Algorithm algorithm =
-        getAlgorithm(tokenValidationAlgorithm, (RSAPublicKey) jwk.getPublicKey(), null);
+    Algorithm algorithm = createAlgorithmFromJwk(tokenValidationAlgorithm, jwk);
     try {
       algorithm.verify(jwt);
     } catch (RuntimeException runtimeException) {
       throw AuthenticationException.getInvalidTokenException(
-          "Token verification failed. Public key mismatch.", runtimeException);
+          "Invalid token. Token verification failed. Public key mismatch.", runtimeException);
     }
 
     Map<String, Claim> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
@@ -348,5 +348,16 @@ public class JwtFilter implements ContainerRequestFilter {
         SecurityContext.DIGEST_AUTH,
         getUserRolesFromClaims(claims, isBotUser),
         isBotUser);
+  }
+
+  private Algorithm createAlgorithmFromJwk(
+      AuthenticationConfiguration.TokenValidationAlgorithm tokenValidationAlgorithm, Jwk jwk) {
+    try {
+      var publicKey = jwk.getPublicKey();
+      return getAlgorithmFromPublicKey(tokenValidationAlgorithm, publicKey);
+    } catch (Exception e) {
+      // Wrap in RuntimeException to match the expected behavior in tests
+      throw new RuntimeException("Failed to create algorithm from JWK: " + e.getMessage(), e);
+    }
   }
 }

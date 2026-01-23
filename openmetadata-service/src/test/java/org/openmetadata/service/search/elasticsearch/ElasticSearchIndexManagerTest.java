@@ -405,22 +405,30 @@ class ElasticSearchIndexManagerTest {
 
   @Test
   void testGetIndicesByAlias_SuccessfulRetrieval() throws IOException {
+    when(indicesClient.existsAlias(any(java.util.function.Function.class)))
+        .thenReturn(booleanResponse);
+    when(booleanResponse.value()).thenReturn(true);
     when(indicesClient.getAlias(any(GetAliasRequest.class))).thenReturn(getAliasResponse);
 
     Set<String> result = indexManager.getIndicesByAlias(TEST_ALIAS);
 
+    verify(indicesClient).existsAlias(any(java.util.function.Function.class));
     verify(indicesClient).getAlias(any(GetAliasRequest.class));
     assertNotNull(result);
   }
 
   @Test
   void testGetIndicesByAlias_HandlesException() throws IOException {
+    when(indicesClient.existsAlias(any(java.util.function.Function.class)))
+        .thenReturn(booleanResponse);
+    when(booleanResponse.value()).thenReturn(true);
     when(indicesClient.getAlias(any(GetAliasRequest.class)))
         .thenThrow(new IOException("Get indices by alias failed"));
 
     Set<String> result = indexManager.getIndicesByAlias(TEST_ALIAS);
 
     assertTrue(result.isEmpty());
+    verify(indicesClient).existsAlias(any(java.util.function.Function.class));
     verify(indicesClient).getAlias(any(GetAliasRequest.class));
   }
 
@@ -432,6 +440,72 @@ class ElasticSearchIndexManagerTest {
     Set<String> result = managerWithNullClient.getIndicesByAlias(TEST_ALIAS);
 
     assertTrue(result.isEmpty());
+    verifyNoInteractions(indicesClient);
+  }
+
+  @Test
+  void testDeleteIndexWithBackoff_SuccessfulOnFirstAttempt() throws IOException {
+    when(indicesClient.delete(any(DeleteIndexRequest.class))).thenReturn(deleteIndexResponse);
+    when(deleteIndexResponse.acknowledged()).thenReturn(true);
+
+    assertDoesNotThrow(() -> indexManager.deleteIndexWithBackoff(TEST_INDEX));
+    verify(indicesClient).delete(any(DeleteIndexRequest.class));
+  }
+
+  @Test
+  void testDeleteIndexWithBackoff_SuccessfulAfterRetry() throws IOException {
+    es.co.elastic.clients.elasticsearch._types.ElasticsearchException snapshotException =
+        new es.co.elastic.clients.elasticsearch._types.ElasticsearchException(
+            "Snapshot in progress",
+            new es.co.elastic.clients.elasticsearch._types.ErrorResponse.Builder()
+                .status(503)
+                .build());
+
+    when(indicesClient.delete(any(DeleteIndexRequest.class)))
+        .thenThrow(snapshotException)
+        .thenReturn(deleteIndexResponse);
+    when(deleteIndexResponse.acknowledged()).thenReturn(true);
+
+    assertDoesNotThrow(() -> indexManager.deleteIndexWithBackoff(TEST_INDEX));
+    verify(indicesClient, org.mockito.Mockito.times(2)).delete(any(DeleteIndexRequest.class));
+  }
+
+  @Test
+  void testDeleteIndexWithBackoff_FailsAfterMaxRetries() throws IOException {
+    es.co.elastic.clients.elasticsearch._types.ElasticsearchException snapshotException =
+        new es.co.elastic.clients.elasticsearch._types.ElasticsearchException(
+            "Snapshot in progress",
+            new es.co.elastic.clients.elasticsearch._types.ErrorResponse.Builder()
+                .status(400)
+                .build());
+
+    when(indicesClient.delete(any(DeleteIndexRequest.class))).thenThrow(snapshotException);
+
+    assertDoesNotThrow(() -> indexManager.deleteIndexWithBackoff(TEST_INDEX));
+    verify(indicesClient, org.mockito.Mockito.times(6)).delete(any(DeleteIndexRequest.class));
+  }
+
+  @Test
+  void testDeleteIndexWithBackoff_NonRetryableError() throws IOException {
+    es.co.elastic.clients.elasticsearch._types.ElasticsearchException nonRetryableException =
+        new es.co.elastic.clients.elasticsearch._types.ElasticsearchException(
+            "Index not found",
+            new es.co.elastic.clients.elasticsearch._types.ErrorResponse.Builder()
+                .status(404)
+                .build());
+
+    when(indicesClient.delete(any(DeleteIndexRequest.class))).thenThrow(nonRetryableException);
+
+    assertDoesNotThrow(() -> indexManager.deleteIndexWithBackoff(TEST_INDEX));
+    verify(indicesClient, org.mockito.Mockito.times(1)).delete(any(DeleteIndexRequest.class));
+  }
+
+  @Test
+  void testDeleteIndexWithBackoff_ClientNotAvailable() {
+    ElasticSearchIndexManager managerWithNullClient =
+        new ElasticSearchIndexManager(null, CLUSTER_ALIAS);
+
+    assertDoesNotThrow(() -> managerWithNullClient.deleteIndexWithBackoff(TEST_INDEX));
     verifyNoInteractions(indicesClient);
   }
 }

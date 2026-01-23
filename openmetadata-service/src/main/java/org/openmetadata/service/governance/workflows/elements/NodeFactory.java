@@ -3,29 +3,37 @@ package org.openmetadata.service.governance.workflows.elements;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.NodeSubType;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.ApplyRecognizerFeedbackTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CreateAndRunIngestionPipelineTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.DataCompletenessTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RejectRecognizerFeedbackTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RollbackEntityTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RunAppTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityAttributeTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SinkTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.endEvent.EndEventDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.gateway.ParallelGatewayDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.startEvent.StartEventDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.CreateRecognizerFeedbackApprovalTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.ApplyRecognizerFeedbackTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.DataCompletenessTask;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.RejectRecognizerFeedbackTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.RollbackEntityTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SetEntityAttributeTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTask;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SinkTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.createAndRunIngestionPipeline.CreateAndRunIngestionPipelineTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.runApp.RunAppTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.endEvent.EndEvent;
 import org.openmetadata.service.governance.workflows.elements.nodes.gateway.ParallelGateway;
 import org.openmetadata.service.governance.workflows.elements.nodes.startEvent.StartEvent;
+import org.openmetadata.service.governance.workflows.elements.nodes.userTask.CreateRecognizerFeedbackApprovalTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.UserApprovalTask;
 
 public class NodeFactory {
@@ -53,6 +61,13 @@ public class NodeFactory {
           (DataCompletenessTaskDefinition) nodeDefinition, config);
       case PARALLEL_GATEWAY -> new ParallelGateway(
           (ParallelGatewayDefinition) nodeDefinition, config);
+      case SINK_TASK -> new SinkTask((SinkTaskDefinition) nodeDefinition, config);
+      case CREATE_RECOGNIZER_FEEDBACK_APPROVAL_TASK -> new CreateRecognizerFeedbackApprovalTask(
+          (CreateRecognizerFeedbackApprovalTaskDefinition) nodeDefinition, config);
+      case APPLY_RECOGNIZER_FEEDBACK_TASK -> new ApplyRecognizerFeedbackTask(
+          (ApplyRecognizerFeedbackTaskDefinition) nodeDefinition, config);
+      case REJECT_RECOGNIZER_FEEDBACK_TASK -> new RejectRecognizerFeedbackTask(
+          (RejectRecognizerFeedbackTaskDefinition) nodeDefinition, config);
       default -> throw new IllegalArgumentException(
           "Unsupported node subtype: " + nodeDefinition.getSubType());
     };

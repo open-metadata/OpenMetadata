@@ -64,6 +64,11 @@ export interface EventPublisherJob {
      */
     name?: string;
     /**
+     * Number of entities per partition for distributed indexing. Smaller values create more
+     * partitions for better distribution across servers. Range: 1000-50000.
+     */
+    partitionSize?: number;
+    /**
      * Payload size in bytes depending on config.
      */
     payLoadSize?: number;
@@ -98,6 +103,12 @@ export interface EventPublisherJob {
      */
     status?:    Status;
     timestamp?: number;
+    /**
+     * Enable distributed indexing across multiple servers. When enabled, reindexing work is
+     * partitioned and can be processed by multiple servers concurrently with crash recovery
+     * support.
+     */
+    useDistributedIndexing?: boolean;
 }
 
 /**

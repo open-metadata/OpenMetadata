@@ -55,6 +55,7 @@ export enum SettingType {
     SlackEventPublishers = "slackEventPublishers",
     SlackInstaller = "slackInstaller",
     SlackState = "slackState",
+    TeamsAppConfiguration = "teamsAppConfiguration",
     WorkflowSettings = "workflowSettings",
 }
 
@@ -84,6 +85,8 @@ export enum SettingType {
  * This schema defines the OpenMetadata base URL configuration
  *
  * This schema defines the Slack App Information
+ *
+ * This schema defines the Microsoft Teams App configuration
  *
  * This schema defines the profiler configuration. It is used to configure globally the
  * metrics to compute for specific data types.
@@ -202,9 +205,17 @@ export interface PipelineServiceClientConfiguration {
      */
     jwtPrincipalClaims?: string[];
     /**
-     * Jwt Principal Claim Mapping
+     * Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or
+     * 'email'. Both username and email mappings are required.
      */
     jwtPrincipalClaimsMapping?: string[];
+    /**
+     * JWT claim name that contains team/department information. For SAML SSO, this is the
+     * attribute name (e.g., 'department') from the SAML assertion. For JWT, this is the claim
+     * name in the JWT token. The value from this claim will be used to automatically assign
+     * users to matching teams in OpenMetadata during login.
+     */
+    jwtTeamClaimMapping?: string;
     /**
      * LDAP Configuration in case the Provider is LDAP
      */
@@ -276,6 +287,11 @@ export interface PipelineServiceClientConfiguration {
      */
     useRolesFromProvider?: boolean;
     /**
+     * AWS IAM authentication configuration for OpenSearch. IAM auth must be explicitly enabled.
+     * When enabled, uses standard AWS environment variables or configured credentials.
+     */
+    aws?: Aws;
+    /**
      * Batch Size for Requests
      */
     batchSize?: number;
@@ -288,7 +304,8 @@ export interface PipelineServiceClientConfiguration {
      */
     connectionTimeoutSecs?: number;
     /**
-     * Elastic Search Host
+     * Elastic Search Host. Supports single host or comma-separated list for multiple hosts
+     * (e.g., 'localhost' or 'es-node1:9200,es-node2:9200,es-node3:9200').
      */
     host?: string;
     /**
@@ -318,7 +335,8 @@ export interface PipelineServiceClientConfiguration {
      */
     payLoadSize?: number;
     /**
-     * Elastic Search port
+     * Elastic Search port. Used when host does not include port. Ignored when using
+     * comma-separated hosts with ports.
      */
     port?: number;
     /**
@@ -423,8 +441,20 @@ export interface PipelineServiceClientConfiguration {
     /**
      * User Token
      */
-    userToken?:           string;
-    metricConfiguration?: MetricConfigurationDefinition[];
+    userToken?: string;
+    /**
+     * Azure AD Application (Client) ID for the Teams bot
+     */
+    microsoftAppId?: string;
+    /**
+     * Azure AD Client Secret for the Teams bot
+     */
+    microsoftAppPassword?: string;
+    /**
+     * Azure AD Tenant ID (optional, for single-tenant bots). Use 'common' for multi-tenant.
+     */
+    microsoftAppTenantId?: string;
+    metricConfiguration?:  MetricConfigurationDefinition[];
     /**
      * Configurations of allowed searchable fields for each entity type
      */
@@ -996,9 +1026,17 @@ export interface AuthenticationConfiguration {
      */
     jwtPrincipalClaims: string[];
     /**
-     * Jwt Principal Claim Mapping
+     * Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or
+     * 'email'. Both username and email mappings are required.
      */
     jwtPrincipalClaimsMapping?: string[];
+    /**
+     * JWT claim name that contains team/department information. For SAML SSO, this is the
+     * attribute name (e.g., 'department') from the SAML assertion. For JWT, this is the claim
+     * name in the JWT token. The value from this claim will be used to automatically assign
+     * users to matching teams in OpenMetadata during login.
+     */
+    jwtTeamClaimMapping?: string;
     /**
      * LDAP Configuration in case the Provider is LDAP
      */
@@ -1346,7 +1384,7 @@ export interface SamlSSOClientConfig {
  */
 export interface Idp {
     /**
-     * Authority URL to redirect the users on Sign In page
+     * Authority URL (deprecated, use entityId instead).
      */
     authorityUrl?: string;
     /**
@@ -1358,7 +1396,7 @@ export interface Idp {
      */
     idpX509Certificate?: string;
     /**
-     * Authority URL to redirect the users on Sign In page
+     * Name ID format for SAML assertions
      */
     nameId?: string;
     /**
@@ -1451,6 +1489,9 @@ export interface SP {
  * Token Validation Algorithm to use.
  */
 export enum TokenValidationAlgorithm {
+    Es256 = "ES256",
+    Es384 = "ES384",
+    Es512 = "ES512",
     Rs256 = "RS256",
     Rs384 = "RS384",
     Rs512 = "RS512",
@@ -1507,6 +1548,24 @@ export interface AuthorizerConfiguration {
      * Use Roles from Provider
      */
     useRolesFromProvider?: boolean;
+}
+
+/**
+ * AWS IAM authentication configuration for OpenSearch. IAM auth must be explicitly enabled.
+ * When enabled, uses standard AWS environment variables or configured credentials.
+ */
+export interface Aws {
+    /**
+     * Enable AWS IAM authentication for OpenSearch. When enabled, requires region to be
+     * configured. Defaults to false for backward compatibility.
+     */
+    enabled?: boolean;
+    /**
+     * AWS service name for signing (es for Elasticsearch/OpenSearch, aoss for OpenSearch
+     * Serverless)
+     */
+    serviceName?: string;
+    [property: string]: any;
 }
 
 /**
@@ -1824,6 +1883,12 @@ export interface AWSCredentials {
      */
     awsSessionToken?: string;
     /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
+    /**
      * EndPoint URL for the AWS
      */
     endPointURL?: string;
@@ -2026,6 +2091,11 @@ export interface NaturalLanguageSearch {
      */
     enabled?: boolean;
     /**
+     * OpenAI configuration for embedding generation. Supports both OpenAI and Azure OpenAI
+     * endpoints.
+     */
+    openai?: Openai;
+    /**
      * Fully qualified class name of the NLQService implementation to use
      */
     providerClass?: string;
@@ -2036,9 +2106,9 @@ export interface NaturalLanguageSearch {
  */
 export interface Bedrock {
     /**
-     * AWS access key for Bedrock service authentication
+     * AWS credentials configuration for Bedrock service
      */
-    accessKey?: string;
+    awsConfig?: AWSBaseConfig;
     /**
      * Dimension of the embedding vector
      */
@@ -2051,18 +2121,49 @@ export interface Bedrock {
      * Bedrock model identifier to use for query transformation
      */
     modelId?: string;
+}
+
+/**
+ * AWS credentials configuration for Bedrock service
+ *
+ * Base AWS configuration for authentication. Supports static credentials, IAM roles, and
+ * default credential provider chain.
+ */
+export interface AWSBaseConfig {
     /**
-     * AWS Region for Bedrock service
+     * AWS Access Key ID. Falls back to default credential provider chain if not set.
+     */
+    accessKeyId?: string;
+    /**
+     * ARN of IAM role to assume for cross-account access.
+     */
+    assumeRoleArn?: string;
+    /**
+     * Session name for assumed role.
+     */
+    assumeRoleSessionName?: string;
+    /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
+    /**
+     * Custom endpoint URL for AWS-compatible services (MinIO, LocalStack).
+     */
+    endpointUrl?: string;
+    /**
+     * AWS Region (e.g., us-east-1). Required when AWS authentication is enabled.
      */
     region?: string;
     /**
-     * AWS secret key for Bedrock service authentication
+     * AWS Secret Access Key. Falls back to default credential provider chain if not set.
      */
-    secretKey?: string;
+    secretAccessKey?: string;
     /**
-     * Set to true to use IAM role based authentication instead of access/secret keys.
+     * AWS Session Token for temporary credentials.
      */
-    useIamRole?: boolean;
+    sessionToken?: string;
 }
 
 /**
@@ -2073,6 +2174,38 @@ export interface Djl {
      * DJL model name for embedding generation
      */
     embeddingModel?: string;
+}
+
+/**
+ * OpenAI configuration for embedding generation. Supports both OpenAI and Azure OpenAI
+ * endpoints.
+ */
+export interface Openai {
+    /**
+     * API key for authenticating with OpenAI or Azure OpenAI.
+     */
+    apiKey?: string;
+    /**
+     * Azure OpenAI API version. Only used with Azure OpenAI.
+     */
+    apiVersion?: string;
+    /**
+     * Azure OpenAI deployment name. Required when using Azure OpenAI.
+     */
+    deploymentName?: string;
+    /**
+     * Dimension of the embedding vector. Default is 1536 for text-embedding-3-small.
+     */
+    embeddingDimension?: number;
+    /**
+     * OpenAI embedding model identifier (e.g., text-embedding-3-small, text-embedding-ada-002).
+     */
+    embeddingModelId?: string;
+    /**
+     * Custom endpoint URL. For Azure OpenAI, use the Azure resource endpoint (e.g.,
+     * https://your-resource.openai.azure.com). Leave empty for standard OpenAI API.
+     */
+    endpoint?: string;
 }
 
 /**

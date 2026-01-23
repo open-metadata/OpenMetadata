@@ -1,0 +1,148 @@
+# Copyright 2026 Collate.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# Multi-Object ODCS Contract for OpenMetadata Sample Data
+# This contract contains multiple schema objects from the ecommerce_db
+# Use for testing multi-object import functionality
+apiVersion: v3.1.0
+kind: DataContract
+id: ecommerce-multi-object-contract
+name: E-commerce Multi-Object Data Contract
+version: "1.0.0"
+status: active
+description:
+  purpose: Comprehensive data contract covering multiple e-commerce dimension tables
+  usage: Select the appropriate schema object when importing to match your target table
+schema:
+  - name: dim_address
+    logicalType: object
+    physicalType: table
+    description: Customer billing and shipping addresses
+    properties:
+      - name: address_id
+        logicalType: integer
+        required: true
+        primaryKey: true
+        description: Unique identifier for the address
+      - name: shop_id
+        logicalType: integer
+        required: true
+        description: The ID of the store
+      - name: first_name
+        logicalType: string
+        description: First name of the customer
+      - name: last_name
+        logicalType: string
+        description: Last name of the customer
+      - name: address1
+        logicalType: string
+        description: The first address line
+      - name: city
+        logicalType: string
+        description: City name
+      - name: region
+        logicalType: string
+        description: Region/state/province name
+      - name: zip
+        logicalType: string
+        description: ZIP or postal code
+      - name: country
+        logicalType: string
+        description: Country name
+      - name: phone
+        logicalType: string
+        description: Phone number
+
+  - name: dim_customer
+    logicalType: object
+    physicalType: table
+    description: Customer metrics and segmentation data
+    properties:
+      - name: customer_id
+        logicalType: integer
+        required: true
+        primaryKey: true
+        description: Customer ID (primary key)
+      - name: shop_id
+        logicalType: integer
+        description: Store ID
+      - name: average_order_size
+        logicalType: number
+        description: Average order value
+      - name: total_order_count
+        logicalType: integer
+        description: Total orders placed
+      - name: total_order_value
+        logicalType: number
+        description: Lifetime value
+      - name: first_order_date
+        logicalType: timestamp
+        description: First order timestamp
+      - name: last_order_date
+        logicalType: timestamp
+        description: Most recent order timestamp
+      - name: new
+        logicalType: boolean
+        description: New customer flag
+      - name: returning
+        logicalType: boolean
+        description: Returning customer flag
+      - name: loyal
+        logicalType: boolean
+        description: Loyal customer flag
+
+  - name: dim_location
+    logicalType: object
+    physicalType: table
+    description: Store location information
+    properties:
+      - name: location_id
+        logicalType: integer
+        required: true
+        primaryKey: true
+        description: Location ID
+      - name: shop_id
+        logicalType: integer
+        description: Store ID
+      - name: name
+        logicalType: string
+        description: Location name
+      - name: address
+        logicalType: string
+        description: Location address
+      - name: city
+        logicalType: string
+        description: City
+      - name: zip
+        logicalType: string
+        description: ZIP code
+      - name: province
+        logicalType: string
+        description: Province/state
+      - name: country
+        logicalType: string
+        description: Country
+      - name: phone
+        logicalType: string
+        description: Contact phone
+      - name: active
+        logicalType: boolean
+        description: Whether location is active
+
+slaProperties:
+  - property: freshness
+    value: "24"
+    unit: hours
+  - property: availability
+    value: "99.5"
+    unit: percent
+team:
+  - username: ecommerce_data_team
+    role: owner

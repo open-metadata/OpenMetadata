@@ -74,7 +74,7 @@ public class MessagingServiceResource
     extends ServiceEntityResource<
         MessagingService, MessagingServiceRepository, MessagingConnection> {
   private final MessagingServiceMapper mapper = new MessagingServiceMapper();
-  public static final String COLLECTION_PATH = "v1/services/messagingServices/";
+  public static final String COLLECTION_PATH = "/v1/services/messagingServices/";
   public static final String FIELDS = "owners,domains,followers";
 
   public MessagingServiceResource(Authorizer authorizer, Limits limits) {
@@ -174,9 +174,18 @@ public class MessagingServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
     MessagingService messagingService =
-        getInternal(uriInfo, securityContext, id, fieldsParam, include);
+        getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
     return decryptOrNullify(securityContext, messagingService);
   }
 
@@ -214,9 +223,18 @@ public class MessagingServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
     MessagingService messagingService =
-        getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+        getByNameInternal(uriInfo, securityContext, name, fieldsParam, include, includeRelations);
     return decryptOrNullify(securityContext, messagingService);
   }
 

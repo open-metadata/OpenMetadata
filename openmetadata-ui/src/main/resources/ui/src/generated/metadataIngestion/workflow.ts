@@ -251,6 +251,8 @@ export interface ServiceConnection {
  *
  * Doris Database Connection Config
  *
+ * StarRocks Database Connection Config
+ *
  * UnityCatalog Connection Config
  *
  * SAS Connection Config
@@ -272,6 +274,11 @@ export interface ServiceConnection {
  * Epic FHIR Connection Config
  *
  * ServiceNow Connection Config
+ *
+ * Dremio Connection Config supporting both Dremio Cloud (SaaS) and Dremio Software
+ * (self-hosted)
+ *
+ * Microsoft Fabric Warehouse and Lakehouse Connection Config
  *
  * Kafka Connection Config
  *
@@ -341,6 +348,8 @@ export interface ServiceConnection {
  *
  * MuleSoft Anypoint Platform Connection Config
  *
+ * Microsoft Fabric Data Factory Pipeline Connection Config
+ *
  * MlFlow Connection Config
  *
  * Sklearn Connection Config
@@ -374,6 +383,8 @@ export interface ServiceConnection {
  *
  * SharePoint Connection Config
  *
+ * SFTP Connection Config for secure file transfer protocol servers.
+ *
  * Custom Drive Connection to build a source that is not supported.
  */
 export interface ConfigObject {
@@ -381,6 +392,10 @@ export interface ConfigObject {
      * Regex to only fetch api collections with names matching the pattern.
      */
     apiCollectionFilterPattern?: FilterPattern;
+    /**
+     * Regex to only fetch api endpoints with names matching the pattern.
+     */
+    apiEndpointFilterPattern?: FilterPattern;
     /**
      * Documentation URL for the schema.
      */
@@ -448,6 +463,8 @@ export interface ConfigObject {
      *
      * Azure Application (client) ID for service principal authentication.
      *
+     * Azure Application (client) ID for Service Principal authentication.
+     *
      * Application (client) ID from Azure Active Directory
      */
     clientId?: string;
@@ -459,6 +476,8 @@ export interface ConfigObject {
      * clientSecret for Sigma.
      *
      * Azure Application client secret for service principal authentication.
+     *
+     * Azure Application client secret for Service Principal authentication.
      *
      * Application (client) secret from Azure Active Directory
      */
@@ -559,6 +578,8 @@ export interface ConfigObject {
      *
      * Host and port of the Doris service.
      *
+     * Host and port of the StarRocks service.
+     *
      * Host and port of the Teradata service.
      *
      * Host and Port of the SAP ERP instance.
@@ -568,6 +589,9 @@ export interface ConfigObject {
      * Host and port of the Cockrooach service.
      *
      * ServiceNow instance URL (e.g., https://your-instance.service-now.com)
+     *
+     * Host and port of the Microsoft Fabric SQL endpoint (e.g.,
+     * your-workspace.datawarehouse.fabric.microsoft.com:1433).
      *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
      * bolt://localhost:7687.
@@ -670,6 +694,8 @@ export interface ConfigObject {
      * Password to connect to Couchbase.
      *
      * Password to connect to Doris.
+     *
+     * Password to connect to StarRocks.
      *
      * Password to connect to SAS Viya
      *
@@ -776,6 +802,9 @@ export interface ConfigObject {
      * Username to connect to Doris. This user should have privileges to read all the metadata
      * in Doris.
      *
+     * Username to connect to StarRocks. This user should have privileges to read all the
+     * metadata in StarRocks.
+     *
      * Username to connect to SAS Viya.
      *
      * Username to connect to Teradata. This user should have privileges to read all the
@@ -834,6 +863,8 @@ export interface ConfigObject {
      *
      * Azure Directory (tenant) ID for service principal authentication.
      *
+     * Azure Directory (tenant) ID for Service Principal authentication.
+     *
      * Directory (tenant) ID from Azure Active Directory
      */
     tenantId?: string;
@@ -882,9 +913,13 @@ export interface ConfigObject {
      *
      * Choose Auth Config Type.
      *
+     * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
+     *
      * Types of methods used to authenticate to the alation instance
      *
      * Authentication type to connect to Apache Ranger.
+     *
+     * Authentication method: username/password or SSH private key
      */
     authType?: AuthenticationTypeForTableau | NoConfigAuthenticationTypes;
     /**
@@ -907,6 +942,9 @@ export interface ConfigObject {
      */
     siteName?: string;
     /**
+     * SSL Configuration details for DB2 connection. Provide CA certificate for server
+     * validation, and optionally client certificate and key for mutual TLS authentication.
+     *
      * SSL Configuration details.
      *
      * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
@@ -1068,6 +1106,9 @@ export interface ConfigObject {
     credentials?: GCPCredentials;
     /**
      * Regex to only include/exclude databases that matches the pattern.
+     *
+     * Regex to only include/exclude namespaces (sources/spaces) that match the pattern. In
+     * Dremio Cloud, namespaces are mapped as databases.
      */
     databaseFilterPattern?: FilterPattern;
     /**
@@ -1078,7 +1119,13 @@ export interface ConfigObject {
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      *
+     * Regex to only include/exclude schemas that matches the pattern. System schemas
+     * (information_schema, _statistics_, sys) are excluded by default.
+     *
      * Regex to include/exclude FHIR resource categories
+     *
+     * Regex to only include/exclude folders that match the pattern. In Dremio Cloud, folders
+     * are mapped as schemas.
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -1088,7 +1135,11 @@ export interface ConfigObject {
      *
      * Couchbase driver scheme options.
      */
-    scheme?:                                ConfigScheme;
+    scheme?: ConfigScheme;
+    /**
+     * Regex to only include/exclude stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?:          FilterPattern;
     supportsDatabase?:                      boolean;
     supportsDataDiff?:                      boolean;
     supportsDBTExtraction?:                 boolean;
@@ -1108,6 +1159,8 @@ export interface ConfigObject {
      * Regex to only include/exclude tables that matches the pattern.
      *
      * Regex to include/exclude FHIR resource types
+     *
+     * Regex to only include/exclude tables that match the pattern.
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -1167,6 +1220,13 @@ export interface ConfigObject {
      *
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
+     *
+     * Optional: Restrict metadata ingestion to a specific namespace (source/space). When left
+     * blank, all namespaces will be ingested.
+     *
+     * Database of the data source. This is the name of your Fabric Warehouse or Lakehouse. This
+     * is optional parameter, if you would like to restrict the metadata reading to a single
+     * database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.
      */
     database?: string;
     /**
@@ -1196,6 +1256,9 @@ export interface ConfigObject {
      *
      * Ingest data from all databases in Azure Synapse. You can use databaseFilterPattern on top
      * of this.
+     *
+     * Ingest data from all databases (Warehouses and Lakehouses) in Microsoft Fabric. You can
+     * use databaseFilterPattern on top of this.
      */
     ingestAllDatabases?: boolean;
     /**
@@ -1265,6 +1328,7 @@ export interface ConfigObject {
      * License file name to connect to DB2.
      */
     licenseFileName?:               string;
+    sslMode?:                       SSLMode;
     supportsViewLineageExtraction?: boolean;
     /**
      * Available sources to fetch the metadata.
@@ -1340,7 +1404,13 @@ export interface ConfigObject {
      * Custom OpenMetadata Classification name for TimescaleDB policy tags.
      */
     classificationName?: string;
-    sslMode?:            SSLMode;
+    /**
+     * Fully qualified name of the view or table to use for query logs. If not provided,
+     * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
+     * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
+     * restricted.
+     */
+    queryStatementSource?: string;
     /**
      * Protocol ( Connection Argument ) to connect to Presto.
      */
@@ -1410,6 +1480,11 @@ export interface ConfigObject {
      * Cost of credit for the Snowflake account.
      */
     creditCost?: number;
+    /**
+     * Optional configuration for ingestion of Snowflake stages (internal and external). By
+     * default, stages are not ingested.
+     */
+    includeStages?: boolean;
     /**
      * Optional configuration for ingestion of streams, By default, it will skip the streams.
      */
@@ -1807,6 +1882,8 @@ export interface ConfigObject {
      * Regex exclude pipelines.
      *
      * Regex to filter MuleSoft applications by name.
+     *
+     * Regex to only include/exclude pipelines that matches the pattern.
      */
     pipelineFilterPattern?: FilterPattern;
     /**
@@ -1829,6 +1906,8 @@ export interface ConfigObject {
      * URL to the Dagster instance
      *
      * DBT cloud Access URL.
+     *
+     * SFTP server hostname or IP address
      */
     host?: string;
     /**
@@ -1942,6 +2021,14 @@ export interface ConfigObject {
      */
     environmentId?: string;
     /**
+     * Azure Active Directory authority URI. Defaults to https://login.microsoftonline.com/
+     */
+    authorityUri?: string;
+    /**
+     * The Microsoft Fabric workspace ID where the pipelines are located.
+     */
+    workspaceId?: string;
+    /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
     mlModelFilterPattern?: FilterPattern;
@@ -1984,6 +2071,8 @@ export interface ConfigObject {
     delegatedEmail?: string;
     /**
      * Regex to only include/exclude directories that matches the pattern.
+     *
+     * Regex to only include/exclude directories that match the pattern.
      */
     directoryFilterPattern?: FilterPattern;
     /**
@@ -1994,6 +2083,8 @@ export interface ConfigObject {
     driveId?: string;
     /**
      * Regex to only include/exclude files that matches the pattern.
+     *
+     * Regex to only include/exclude files that match the pattern.
      */
     fileFilterPattern?: FilterPattern;
     /**
@@ -2016,6 +2107,25 @@ export interface ConfigObject {
      * SharePoint site URL
      */
     siteUrl?: string;
+    /**
+     * When enabled, extract sample data from structured files (CSV, TSV). This is disabled by
+     * default to avoid performance overhead.
+     */
+    extractSampleData?: boolean;
+    /**
+     * SFTP server port number
+     */
+    port?: number;
+    /**
+     * List of root directories to scan for files and subdirectories. If not specified, defaults
+     * to the user's home directory.
+     */
+    rootDirectories?: string[];
+    /**
+     * When enabled, only catalog structured data files (CSV, TSV) that can have schema
+     * extracted. Non-structured files like images, PDFs, videos, etc. will be skipped.
+     */
+    structuredDataFilesOnly?: boolean;
     [property: string]: any;
 }
 
@@ -2040,6 +2150,8 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to only fetch entities that matches the pattern.
  *
+ * Regex to only fetch api endpoints with names matching the pattern.
+ *
  * Regex exclude or include charts that matches the pattern.
  *
  * Regex to exclude or include dashboards that matches the pattern.
@@ -2052,11 +2164,24 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to only include/exclude schemas that matches the pattern.
  *
+ * Regex to only include/exclude stored procedures that matches the pattern.
+ *
  * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern. System schemas
+ * (information_schema, _statistics_, sys) are excluded by default.
  *
  * Regex to include/exclude FHIR resource categories
  *
  * Regex to include/exclude FHIR resource types
+ *
+ * Regex to only include/exclude namespaces (sources/spaces) that match the pattern. In
+ * Dremio Cloud, namespaces are mapped as databases.
+ *
+ * Regex to only include/exclude folders that match the pattern. In Dremio Cloud, folders
+ * are mapped as schemas.
+ *
+ * Regex to only include/exclude tables that match the pattern.
  *
  * Regex to only fetch topics that matches the pattern.
  *
@@ -2070,6 +2195,8 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to filter MuleSoft applications by name.
  *
+ * Regex to only include/exclude pipelines that matches the pattern.
+ *
  * Regex to only fetch MlModels with names matching the pattern.
  *
  * Regex to only fetch search indexes that matches the pattern.
@@ -2081,6 +2208,10 @@ export interface UsernamePasswordAuthentication {
  * Regex to only include/exclude spreadsheets that matches the pattern.
  *
  * Regex to only include/exclude worksheets that matches the pattern.
+ *
+ * Regex to only include/exclude directories that match the pattern.
+ *
+ * Regex to only include/exclude files that match the pattern.
  *
  * Regex to only fetch databases that matches the pattern.
  *
@@ -2205,6 +2336,14 @@ export enum AuthProvider {
  *
  * Configuration for connecting to DataStax Astra DB in the cloud.
  *
+ * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
+ *
+ * Authentication configuration for Dremio Cloud using Personal Access Token (PAT). Dremio
+ * Cloud is a fully managed SaaS platform.
+ *
+ * Authentication configuration for self-hosted Dremio Software using username and password.
+ * Dremio Software is deployed on-premises or in your own cloud infrastructure.
+ *
  * ThoughtSpot authentication configuration
  *
  * Types of methods used to authenticate to the alation instance
@@ -2220,6 +2359,12 @@ export enum AuthProvider {
  * Authentication type to connect to Apache Ranger.
  *
  * Configuration for connecting to Ranger Basic Auth.
+ *
+ * Authentication method: username/password or SSH private key
+ *
+ * Username and password authentication for SFTP
+ *
+ * SSH private key authentication for SFTP
  */
 export interface AuthenticationTypeForTableau {
     /**
@@ -2227,17 +2372,26 @@ export interface AuthenticationTypeForTableau {
      *
      * Password to connect to source.
      *
+     * Password for the Dremio Software user account.
+     *
      * Elastic Search Password for Login
      *
      * Ranger password to authenticate to the API.
+     *
+     * SFTP password
      */
     password?: string;
     /**
      * Username to access the service.
      *
+     * Username for authenticating with Dremio Software. This user should have appropriate
+     * permissions to access metadata.
+     *
      * Elastic Search Username for Login
      *
      * Ranger user to authenticate to the API.
+     *
+     * SFTP username
      */
     username?: string;
     /**
@@ -2285,6 +2439,26 @@ export interface AuthenticationTypeForTableau {
      * Configuration for connecting to DataStax Astra DB in the cloud.
      */
     cloudConfig?: DataStaxAstraDBConfiguration;
+    /**
+     * Personal Access Token for authenticating with Dremio Cloud. Generate this token from your
+     * Dremio Cloud account settings under Settings -> Personal Access Tokens.
+     */
+    personalAccessToken?: string;
+    /**
+     * Dremio Cloud Project ID (required). This unique identifier can be found in your Dremio
+     * Cloud project URL or project settings.
+     */
+    projectId?: string;
+    /**
+     * Dremio Cloud region where your organization is hosted. Choose 'US' for United States
+     * region or 'EU' for European region.
+     */
+    region?: CloudRegion;
+    /**
+     * URL to your self-hosted Dremio Software instance, including protocol and port (e.g.,
+     * http://localhost:9047 or https://dremio.example.com:9047).
+     */
+    hostPort?: string;
     /**
      * Access Token for the API
      */
@@ -2334,6 +2508,12 @@ export interface AuthenticationTypeForTableau {
      */
     awsSessionToken?: string;
     /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
+    /**
      * EndPoint URL for the AWS
      */
     endPointURL?: string;
@@ -2341,6 +2521,14 @@ export interface AuthenticationTypeForTableau {
      * The name of a profile to use with the boto session.
      */
     profileName?: string;
+    /**
+     * SSH private key content in PEM format. Supports RSA, Ed25519, ECDSA, and DSS keys.
+     */
+    privateKey?: string;
+    /**
+     * Passphrase for the private key (if encrypted)
+     */
+    privateKeyPassphrase?: string;
 }
 
 /**
@@ -2379,6 +2567,12 @@ export interface AWSCredentials {
      * AWS Session Token.
      */
     awsSessionToken?: string;
+    /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
     /**
      * EndPoint URL for the AWS
      */
@@ -2445,6 +2639,15 @@ export interface DataStaxAstraDBConfiguration {
      */
     token?: string;
     [property: string]: any;
+}
+
+/**
+ * Dremio Cloud region where your organization is hosted. Choose 'US' for United States
+ * region or 'EU' for European region.
+ */
+export enum CloudRegion {
+    Eu = "EU",
+    Us = "US",
 }
 
 /**
@@ -2657,6 +2860,12 @@ export interface AWSCredentialsClass {
      */
     awsSessionToken?: string;
     /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
+    /**
      * EndPoint URL for the AWS
      */
     endPointURL?: string;
@@ -2757,6 +2966,9 @@ export interface Qlik {
  * Client SSL configuration
  *
  * SSL Configuration details.
+ *
+ * SSL Configuration details for DB2 connection. Provide CA certificate for server
+ * validation, and optionally client certificate and key for mutual TLS authentication.
  *
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
@@ -2990,6 +3202,12 @@ export interface Credentials {
      */
     awsSessionToken?: string;
     /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
+    /**
      * EndPoint URL for the AWS
      */
     endPointURL?: string;
@@ -3207,7 +3425,14 @@ export interface ConfigConnection {
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
      */
-    ingestAllDatabases?:      boolean;
+    ingestAllDatabases?: boolean;
+    /**
+     * Fully qualified name of the view or table to use for query logs. If not provided,
+     * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
+     * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
+     * restricted.
+     */
+    queryStatementSource?:    string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -3216,16 +3441,20 @@ export interface ConfigConnection {
     /**
      * SQLAlchemy driver scheme options.
      */
-    scheme?:                     ConnectionScheme;
-    sslMode?:                    SSLMode;
-    supportsDatabase?:           boolean;
-    supportsDataDiff?:           boolean;
-    supportsDBTExtraction?:      boolean;
-    supportsLineageExtraction?:  boolean;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    supportsQueryComment?:       boolean;
-    supportsUsageExtraction?:    boolean;
+    scheme?:  ConnectionScheme;
+    sslMode?: SSLMode;
+    /**
+     * Regex to only include/exclude stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?: FilterPattern;
+    supportsDatabase?:             boolean;
+    supportsDataDiff?:             boolean;
+    supportsDBTExtraction?:        boolean;
+    supportsLineageExtraction?:    boolean;
+    supportsMetadataExtraction?:   boolean;
+    supportsProfiler?:             boolean;
+    supportsQueryComment?:         boolean;
+    supportsUsageExtraction?:      boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
@@ -3366,6 +3595,12 @@ export interface AwsCredentials {
      */
     awsSessionToken?: string;
     /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
+    /**
      * EndPoint URL for the AWS
      */
     endPointURL?: string;
@@ -3391,6 +3626,9 @@ export enum ConnectionScheme {
  * OpenMetadata Client configured to validate SSL certificates.
  *
  * SSL Configuration details.
+ *
+ * SSL Configuration details for DB2 connection. Provide CA certificate for server
+ * validation, and optionally client certificate and key for mutual TLS authentication.
  *
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
@@ -3563,15 +3801,19 @@ export interface DatabaseConnectionClass {
      * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
      * client certificate, and private key for mutual TLS authentication.
      */
-    sslConfig?:                  ConsumerConfigSSLClass;
-    supportsDatabase?:           boolean;
-    supportsDataDiff?:           boolean;
-    supportsDBTExtraction?:      boolean;
-    supportsLineageExtraction?:  boolean;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    supportsQueryComment?:       boolean;
-    supportsUsageExtraction?:    boolean;
+    sslConfig?: ConsumerConfigSSLClass;
+    /**
+     * Regex to only include/exclude stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?: FilterPattern;
+    supportsDatabase?:             boolean;
+    supportsDataDiff?:             boolean;
+    supportsDBTExtraction?:        boolean;
+    supportsLineageExtraction?:    boolean;
+    supportsMetadataExtraction?:   boolean;
+    supportsProfiler?:             boolean;
+    supportsQueryComment?:         boolean;
+    supportsUsageExtraction?:      boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
@@ -3747,7 +3989,14 @@ export interface HiveMetastoreConnectionDetails {
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
      */
-    ingestAllDatabases?:      boolean;
+    ingestAllDatabases?: boolean;
+    /**
+     * Fully qualified name of the view or table to use for query logs. If not provided,
+     * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
+     * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
+     * restricted.
+     */
+    queryStatementSource?:    string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -3760,16 +4009,20 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * SSL Configuration details.
      */
-    sslConfig?:                  ConsumerConfigSSLClass;
-    sslMode?:                    SSLMode;
-    supportsDatabase?:           boolean;
-    supportsDataDiff?:           boolean;
-    supportsDBTExtraction?:      boolean;
-    supportsLineageExtraction?:  boolean;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    supportsQueryComment?:       boolean;
-    supportsUsageExtraction?:    boolean;
+    sslConfig?: ConsumerConfigSSLClass;
+    sslMode?:   SSLMode;
+    /**
+     * Regex to only include/exclude stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?: FilterPattern;
+    supportsDatabase?:             boolean;
+    supportsDataDiff?:             boolean;
+    supportsDBTExtraction?:        boolean;
+    supportsLineageExtraction?:    boolean;
+    supportsMetadataExtraction?:   boolean;
+    supportsProfiler?:             boolean;
+    supportsQueryComment?:         boolean;
+    supportsUsageExtraction?:      boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
@@ -4136,6 +4389,9 @@ export enum SpaceType {
  *
  * SSL Configuration details.
  *
+ * SSL Configuration details for DB2 connection. Provide CA certificate for server
+ * validation, and optionally client certificate and key for mutual TLS authentication.
+ *
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
  *
@@ -4326,6 +4582,8 @@ export enum TokenType {
  *
  * SharePoint service type
  *
+ * SFTP service type
+ *
  * Custom Drive service type
  */
 export enum PurpleType {
@@ -4365,6 +4623,7 @@ export enum PurpleType {
     DomoDatabase = "DomoDatabase",
     DomoPipeline = "DomoPipeline",
     Doris = "Doris",
+    Dremio = "Dremio",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
     ElasticSearch = "ElasticSearch",
@@ -4393,6 +4652,8 @@ export enum PurpleType {
     Metabase = "Metabase",
     MetadataES = "MetadataES",
     MicroStrategy = "MicroStrategy",
+    MicrosoftFabric = "MicrosoftFabric",
+    MicrosoftFabricPipeline = "MicrosoftFabricPipeline",
     Mlflow = "Mlflow",
     Mode = "Mode",
     MongoDB = "MongoDB",
@@ -4419,6 +4680,7 @@ export enum PurpleType {
     Redshift = "Redshift",
     S3 = "S3",
     SAS = "SAS",
+    SFTP = "Sftp",
     SQLite = "SQLite",
     SageMaker = "SageMaker",
     Salesforce = "Salesforce",
@@ -4435,6 +4697,7 @@ export enum PurpleType {
     Spline = "Spline",
     Ssas = "SSAS",
     Ssis = "SSIS",
+    StarRocks = "StarRocks",
     Stitch = "Stitch",
     Superset = "Superset",
     Synapse = "Synapse",
@@ -4563,10 +4826,6 @@ export interface Pipeline {
      */
     markDeletedTables?: boolean;
     /**
-     * Set the 'Override Lineage' toggle to control whether to override the existing lineage.
-     */
-    overrideLineage?: boolean;
-    /**
      * Set the 'Override Metadata' toggle to control whether to override the existing metadata
      * in the OpenMetadata server with the metadata fetched from the source. If the toggle is
      * set to true, the metadata fetched from the source will override the existing metadata in
@@ -4599,6 +4858,12 @@ export interface Pipeline {
      * Regex to only fetch tables or databases that matches the pattern.
      */
     schemaFilterPattern?: FilterPattern;
+    /**
+     * Regex to only include/exclude stored procedures that matches the pattern.
+     *
+     * Regex to only fetch stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?: FilterPattern;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      *
@@ -4687,9 +4952,9 @@ export interface Pipeline {
      */
     processViewLineage?: boolean;
     /**
-     * Regex to only fetch stored procedures that matches the pattern.
+     * Configuration for SQL query parser selection for lineage extraction.
      */
-    storedProcedureFilterPattern?: FilterPattern;
+    queryParserConfig?: QueryParserConfig;
     /**
      * Regex exclude or include charts that matches the pattern.
      */
@@ -4727,6 +4992,10 @@ export interface Pipeline {
      * lineage, etc., with that data models will be deleted
      */
     markDeletedDataModels?: boolean;
+    /**
+     * Set the 'Override Lineage' toggle to control whether to override the existing lineage.
+     */
+    overrideLineage?: boolean;
     /**
      * Regex to exclude or include projects that matches the pattern.
      */
@@ -4793,6 +5062,11 @@ export interface Pipeline {
      * be found in the documentation: https://docs.openmetadata.org/latest/profler
      */
     useStatistics?: boolean;
+    /**
+     * Language to use for auto classification recognizers. Only recognizers that support this
+     * language will be used.
+     */
+    classificationLanguage?: ClassificationLanguage;
     /**
      * Set the Confidence value for which you want the column to be tagged as PII. Confidence
      * value ranges from 0 to 100. A higher number will yield less false positives but more
@@ -5021,6 +5295,10 @@ export interface Pipeline {
      */
     apiCollectionFilterPattern?: FilterPattern;
     /**
+     * Regex to only fetch api endpoints with names matching the pattern.
+     */
+    apiEndpointFilterPattern?: FilterPattern;
+    /**
      * Optional configuration to soft delete api collections in OpenMetadata if the source
      * collections are deleted. Also, if the collection is deleted, all the associated entities
      * like endpoints, etc., with that collection will be deleted
@@ -5061,7 +5339,7 @@ export interface Pipeline {
 export interface CollateAIAppConfig {
     /**
      * Query filter to be passed to ES. E.g.,
-     * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domain.displayName.keyword":"DG
+     * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domains.displayName.keyword":"DG
      * Anim"}}]}}]}}}`. This is the same payload as in the Explore page.
      */
     filter?: string;
@@ -5163,6 +5441,11 @@ export interface CollateAIAppConfig {
      */
     maxRetries?: number;
     /**
+     * Number of entities per partition for distributed indexing. Smaller values create more
+     * partitions for better distribution across servers. Range: 1000-50000.
+     */
+    partitionSize?: number;
+    /**
      * Maximum number of events sent in a batch (Default 100).
      */
     payLoadSize?: number;
@@ -5184,6 +5467,11 @@ export interface CollateAIAppConfig {
      * Recreate Indexes with updated Language
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
+    /**
+     * Enable distributed indexing to scale reindexing across multiple servers with fault
+     * tolerance and parallel processing
+     */
+    useDistributedIndexing?: boolean;
     /**
      * Force cache warmup even if another instance is detected (use with caution).
      */
@@ -5570,6 +5858,14 @@ export enum MetadataAttribute {
  */
 export interface TagLabel {
     /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
+    /**
      * Description for the tag label.
      *
      * Optional description of entity.
@@ -5717,6 +6013,14 @@ export interface CoverImage {
  * tier to apply
  */
 export interface TierElement {
+    /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
     /**
      * Description for the tag label.
      */
@@ -5971,7 +6275,7 @@ export interface Resource {
     filterJsonTree?: string;
     /**
      * Query filter to be passed to ES. E.g.,
-     * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domain.displayName.keyword":"DG
+     * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domains.displayName.keyword":"DG
      * Anim"}}]}}]}}}`. This is the same payload as in the Explore page.
      */
     queryFilter?: string;
@@ -6040,6 +6344,96 @@ export interface AppLimitsConfig {
      * LimitsConfiguration in openmetadata.yaml
      */
     billingCycleStart?: Date;
+}
+
+/**
+ * Language to use for auto classification recognizers. Only recognizers that support this
+ * language will be used.
+ *
+ * Supported languages for auto classification recognizers (ISO 639-1 codes)
+ */
+export enum ClassificationLanguage {
+    AF = "af",
+    Am = "am",
+    Ar = "ar",
+    Az = "az",
+    Be = "be",
+    Bg = "bg",
+    Bn = "bn",
+    Bs = "bs",
+    CA = "ca",
+    CS = "cs",
+    Cy = "cy",
+    Da = "da",
+    De = "de",
+    El = "el",
+    En = "en",
+    Es = "es",
+    Et = "et",
+    Eu = "eu",
+    Fa = "fa",
+    Fi = "fi",
+    Fr = "fr",
+    Ga = "ga",
+    Gl = "gl",
+    Gu = "gu",
+    HT = "ht",
+    He = "he",
+    Hi = "hi",
+    Hr = "hr",
+    Hu = "hu",
+    Hy = "hy",
+    ID = "id",
+    Is = "is",
+    It = "it",
+    Ja = "ja",
+    KM = "km",
+    Ka = "ka",
+    Kk = "kk",
+    Kn = "kn",
+    Ko = "ko",
+    Ku = "ku",
+    Ky = "ky",
+    LV = "lv",
+    Lo = "lo",
+    Lt = "lt",
+    MS = "ms",
+    MT = "mt",
+    Mi = "mi",
+    Mk = "mk",
+    Ml = "ml",
+    Mn = "mn",
+    Mr = "mr",
+    My = "my",
+    Ne = "ne",
+    Nl = "nl",
+    No = "no",
+    PS = "ps",
+    Pa = "pa",
+    Pl = "pl",
+    Pt = "pt",
+    Ro = "ro",
+    Ru = "ru",
+    Si = "si",
+    Sk = "sk",
+    Sl = "sl",
+    So = "so",
+    Sq = "sq",
+    Sr = "sr",
+    Sv = "sv",
+    Sw = "sw",
+    Ta = "ta",
+    Te = "te",
+    Th = "th",
+    Tl = "tl",
+    Tr = "tr",
+    Uk = "uk",
+    Ur = "ur",
+    Uz = "uz",
+    Vi = "vi",
+    Yi = "yi",
+    Zh = "zh",
+    Zu = "zu",
 }
 
 /**
@@ -6351,6 +6745,42 @@ export enum ProcessingEngineType {
 export enum ProfileSampleType {
     Percentage = "PERCENTAGE",
     Rows = "ROWS",
+}
+
+/**
+ * Configuration for SQL query parser selection for lineage extraction.
+ *
+ * Configuration for SQL query parser selection for lineage and usage extraction.
+ */
+export interface QueryParserConfig {
+    /**
+     * Choose the SQL parser for lineage extraction:
+     * • Auto (default): Automatically tries SqlGlot first, falls back to SqlFluff, then
+     * SqlParse. Recommended for best results.
+     * • SqlGlot: High-performance parser with excellent dialect support. Falls back to SqlParse
+     * on failure.
+     * • SqlFluff: Comprehensive parser with strong dialect support. Falls back to SqlParse on
+     * failure.
+     */
+    type?: QueryParserType;
+}
+
+/**
+ * Choose the SQL parser for lineage extraction:
+ * • Auto (default): Automatically tries SqlGlot first, falls back to SqlFluff, then
+ * SqlParse. Recommended for best results.
+ * • SqlGlot: High-performance parser with excellent dialect support. Falls back to SqlParse
+ * on failure.
+ * • SqlFluff: Comprehensive parser with strong dialect support. Falls back to SqlParse on
+ * failure.
+ *
+ * Type of SQL query parser to use for lineage and usage extraction. Auto mode is
+ * recommended for best results.
+ */
+export enum QueryParserType {
+    Auto = "Auto",
+    SQLFluff = "SqlFluff",
+    SQLGlot = "SqlGlot",
 }
 
 /**

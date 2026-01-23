@@ -257,7 +257,7 @@ export const selectDataProduct = async (
   });
 };
 
-const goToAssetsTab = async (
+export const goToAssetsTab = async (
   page: Page,
   domain: Domain['data'],
   skipDomainSelection = false
@@ -275,6 +275,25 @@ const goToAssetsTab = async (
 
   await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+};
+
+export const verifyAssetsInDomain = async (
+  page: Page,
+  domain: Domain['data'],
+  tables: TableClass[],
+  expectedVisible: boolean
+) => {
+  await goToAssetsTab(page, domain);
+
+  for (const table of tables) {
+    const tableFqn = table.entityResponseData.fullyQualifiedName;
+    const tableCard = page.locator(`[data-testid="table-data-card_${tableFqn}"]`);
+    if (expectedVisible) {
+      await expect(tableCard).toBeVisible({ timeout: 10000 });
+    } else {
+      await expect(tableCard).not.toBeVisible({ timeout: 5000 });
+    }
+  }
 };
 
 const fillCommonFormItems = async (
@@ -1148,4 +1167,241 @@ export const setupNoDomainRule = async (apiContext: APIRequestContext) => {
     domainTeam,
     cleanup,
   };
+};
+
+/**
+ * Creates a data product under a subdomain via direct API call.
+ * Use this when you need to create a data product that belongs to a subdomain
+ * rather than a parent domain.
+ */
+export const createDataProductForSubDomain = async (
+  apiContext: APIRequestContext,
+  subDomain: SubDomain
+) => {
+  const id = uuid();
+  const response = await apiContext.post('/api/v1/dataProducts', {
+    data: {
+      name: `PW%dataProduct.${id}`,
+      displayName: `PW SubDomain Data Product ${id}`,
+      description: 'playwright subdomain data product description',
+      domains: [subDomain.responseData.fullyQualifiedName],
+    },
+  });
+
+  if (!response.ok()) {
+    throw new Error(
+      `Failed to create data product for subdomain: ${response.status()} ${await response.text()}`
+    );
+  }
+
+  const responseData = await response.json();
+
+  return {
+    ...responseData,
+    async delete(deleteContext: APIRequestContext) {
+      await deleteContext.delete(
+        `/api/v1/dataProducts/name/${encodeURIComponent(
+          responseData.fullyQualifiedName
+        )}`
+      );
+    },
+  };
+};
+
+/**
+ * Verifies the data products count displayed in the Data Products tab.
+ * Clicks on the Data Products tab and checks if the count matches the expected value.
+ */
+export const verifyDataProductsCount = async (
+  page: Page,
+  expectedCount: number
+) => {
+  await page.getByTestId('data_products').click();
+  await waitForAllLoadersToDisappear(page);
+  await page.waitForLoadState('networkidle');
+
+  const dataProductCountElement = page
+    .getByTestId('data_products')
+    .getByTestId('count');
+  const countText = await dataProductCountElement.textContent();
+  const displayedCount = parseInt(countText ?? '0', 10);
+
+  expect(displayedCount).toBe(expectedCount);
+};
+
+/**
+ * Navigates to a subdomain from the current domain/subdomain page.
+ * Clicks on the Sub Domains tab and then clicks on the specified subdomain.
+ */
+export const navigateToSubDomain = async (
+  page: Page,
+  subDomainData: { name: string }
+) => {
+  await page.getByTestId('subdomains').getByText('Sub Domains').click();
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  await Promise.all([
+    page.getByTestId(subDomainData.name).click(),
+    page.waitForResponse('/api/v1/domains/name/*'),
+  ]);
+};
+
+/**
+ * Navigates to the Input/Output Ports tab on a data product page.
+ */
+export const navigateToPortsTab = async (page: Page) => {
+  await page.getByTestId('input_output_ports').click();
+  await waitForAllLoadersToDisappear(page);
+};
+
+/**
+ * Expands the lineage section in the InputOutputPortsTab.
+ * Only expands if currently collapsed.
+ */
+export const expandLineageSection = async (page: Page) => {
+  const portsViewRes = page.waitForResponse((response) =>
+    response.url().includes('/portsView')
+  );
+  await page.getByTestId('toggle-lineage-collapse').click();
+  await portsViewRes;
+  await waitForAllLoadersToDisappear(page);
+};
+
+/**
+ * Verifies the port counts displayed in the InputOutputPortsTab.
+ */
+export const verifyPortCounts = async (
+  page: Page,
+  expectedInputCount: number,
+  expectedOutputCount: number
+) => {
+  const inputPortsSection = page.locator('[data-testid="input-output-ports-tab"]').locator('text=Input Ports').first();
+  const outputPortsSection = page.locator('[data-testid="input-output-ports-tab"]').locator('text=Output Ports').first();
+
+  await expect(inputPortsSection.locator('..').locator('span').filter({ hasText: `(${expectedInputCount})` })).toBeVisible();
+  await expect(outputPortsSection.locator('..').locator('span').filter({ hasText: `(${expectedOutputCount})` })).toBeVisible();
+};
+
+/**
+ * Adds an input port to a data product via UI.
+ */
+export const addInputPortToDataProduct = async (
+  page: Page,
+  asset: EntityClass
+) => {
+  const name = get(asset, 'entityResponseData.name');
+  const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+  const displayName = get(asset, 'entityResponseData.displayName') ?? name;
+
+  await page.getByTestId('add-input-port-button').click();
+
+  await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+    state: 'visible',
+  });
+
+  const searchBar = page
+    .getByTestId('asset-selection-modal')
+    .getByTestId('searchbar');
+
+  const searchRes = page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/search/query') &&
+      res.request().method() === 'GET'
+  );
+  await searchBar.fill(displayName);
+  await searchRes;
+
+  await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+
+  const addRes = page.waitForResponse(
+    (res) =>
+      res.url().includes('/inputPorts/add') &&
+      res.request().method() === 'PUT'
+  );
+  await page.getByTestId('save-btn').click();
+  await addRes;
+};
+
+/**
+ * Adds an output port to a data product via UI.
+ */
+export const addOutputPortToDataProduct = async (
+  page: Page,
+  asset: EntityClass
+) => {
+  const name = get(asset, 'entityResponseData.name');
+  const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+  const displayName = get(asset, 'entityResponseData.displayName') ?? name;
+
+  await page.getByTestId('add-output-port-button').click();
+
+  await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+    state: 'visible',
+  });
+
+  const searchBar = page
+    .getByTestId('asset-selection-modal')
+    .getByTestId('searchbar');
+
+  const searchRes = page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/search/query') &&
+      res.request().method() === 'GET'
+  );
+  await searchBar.fill(displayName);
+  await searchRes;
+
+  await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+
+  const addRes = page.waitForResponse(
+    (res) =>
+      res.url().includes('/outputPorts/add') &&
+      res.request().method() === 'PUT'
+  );
+  await page.getByTestId('save-btn').click();
+  await addRes;
+};
+
+/**
+ * Removes a port from a data product via UI.
+ */
+export const removePortFromDataProduct = async (
+  page: Page,
+  portId: string,
+  portType: 'input' | 'output'
+) => {
+  await page.getByTestId(`port-actions-${portId}`).click();
+  await page.getByRole('menuitem', { name: 'Remove' }).click();
+
+  const removeRes = page.waitForResponse(
+    (res) =>
+      res.url().includes(`/${portType}Ports/remove`) &&
+      res.request().method() === 'PUT'
+  );
+  await page.getByRole('button', { name: 'Remove' }).click();
+  await removeRes;
+};
+
+/**
+ * Renames a domain or subdomain via the UI.
+ * Opens the manage menu, clicks rename, fills the new name and saves.
+ */
+export const renameDomain = async (page: Page, newName: string) => {
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('rename-button-title').click();
+
+  await expect(page.getByRole('dialog')).toBeVisible();
+
+  await page.locator('#name').clear();
+  await page.locator('#name').fill(newName);
+
+  const patchRes = page.waitForResponse('/api/v1/domains/*');
+  await page.getByTestId('save-button').click();
+  await patchRes;
+
+  await page.reload();
+  await waitForAllLoadersToDisappear(page);
 };

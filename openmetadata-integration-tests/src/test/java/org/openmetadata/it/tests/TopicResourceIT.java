@@ -40,6 +40,11 @@ import org.openmetadata.sdk.models.ListResponse;
 @Execution(ExecutionMode.CONCURRENT)
 public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
 
+  {
+    supportsLifeCycle = true;
+    supportsListHistoryByTimestamp = true;
+  }
+
   // ===================================================================
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
   // ===================================================================

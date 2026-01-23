@@ -80,7 +80,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 @Collection(name = "driveServices")
 public class DriveServiceResource
     extends ServiceEntityResource<DriveService, DriveServiceRepository, DriveConnection> {
-  public static final String COLLECTION_PATH = "v1/services/driveServices/";
+  public static final String COLLECTION_PATH = "/v1/services/driveServices/";
   public static final String FIELDS = "pipelines,owners,tags,domains,followers";
   private final DriveServiceMapper driveServiceMapper = new DriveServiceMapper();
 
@@ -191,8 +191,18 @@ public class DriveServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    DriveService driveService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    DriveService driveService =
+        getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
     return decryptOrNullify(securityContext, driveService);
   }
 
@@ -232,9 +242,18 @@ public class DriveServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
     DriveService driveService =
-        getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+        getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include, includeRelations);
     return decryptOrNullify(securityContext, driveService);
   }
 
@@ -520,6 +539,7 @@ public class DriveServiceResource
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public CsvImportResult importCsv(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Drive Service", schema = @Schema(type = "string"))
           @PathParam("name")
@@ -537,7 +557,7 @@ public class DriveServiceResource
           boolean recursive,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun, recursive);
+    return importCsvInternal(uriInfo, securityContext, name, csv, dryRun, recursive);
   }
 
   @GET

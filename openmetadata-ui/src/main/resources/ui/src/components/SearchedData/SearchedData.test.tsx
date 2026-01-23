@@ -220,7 +220,7 @@ describe('Test SearchedData Component', () => {
 
     expect(searchedDataContainer).toBeInTheDocument();
     expect(getByTestId(container, 'matches-stats')).toHaveTextContent(
-      'label.matches:1 in Name,1 in Display Name'
+      'label.matches:1 label.in-lowercase Name,1 label.in-lowercase Display Name'
     );
   });
 });

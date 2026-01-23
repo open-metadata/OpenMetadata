@@ -47,6 +47,11 @@ import org.openmetadata.sdk.models.ListResponse;
 @Execution(ExecutionMode.CONCURRENT)
 public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEndpoint> {
 
+  {
+    supportsLifeCycle = true;
+    supportsListHistoryByTimestamp = true;
+  }
+
   // ===================================================================
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
   // ===================================================================

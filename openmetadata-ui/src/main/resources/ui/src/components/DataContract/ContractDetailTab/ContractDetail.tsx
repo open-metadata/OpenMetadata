@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, { PlusOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons';
+import { AddOutlined, ExpandMore } from '@mui/icons-material';
+import { Button, Menu, MenuItem } from '@mui/material';
 import {
-  Button,
   Card,
   Col,
   Divider,
@@ -24,7 +25,7 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import { MenuInfo } from 'rc-menu/lib/interface';
+import type { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import approvedIcon from '../../../assets/img/approved.png';
@@ -33,10 +34,14 @@ import { ReactComponent as EmptyContractIcon } from '../../../assets/svg/empty-c
 import { ReactComponent as FlagIcon } from '../../../assets/svg/flag.svg';
 import { ReactComponent as RunIcon } from '../../../assets/svg/ic-circle-pause.svg';
 import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export-box.svg';
+import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
 import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-gear.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
+import { ReactComponent as ImportIconSelected } from '../../../assets/svg/import-icon-selected.svg';
+import { ReactComponent as ImportIconContract } from '../../../assets/svg/import-icon.svg';
+import { PRIMARY_COLOR } from '../../../constants/Color.constants';
 import {
-  CONTRACT_DATE_TIME_FORMAT,
+  ContractImportFormat,
   DataContractMode,
   DATA_CONTRACT_ACTION_DROPDOWN_KEY,
 } from '../../../constants/DataContract.constants';
@@ -55,7 +60,7 @@ import {
   downloadContractYamlFile,
   getConstraintStatus,
 } from '../../../utils/DataContract/DataContractUtils';
-import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
+import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getPopupContainer } from '../../../utils/formUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
@@ -74,18 +79,39 @@ import ContractSemantics from '../ContractSemantics/ContractSemantics.component'
 import ContractSLA from '../ContractSLACard/ContractSLA.component';
 import ContractViewSwitchTab from '../ContractViewSwitchTab/ContractViewSwitchTab.component';
 import ContractYaml from '../ContractYaml/ContractYaml.component';
+import ContractImportModal from '../ODCSImportModal';
 import './contract-detail.less';
 
 const ContractDetail: React.FC<{
   contract?: DataContract | null;
+  entityId: string;
+  entityType: string;
+  entityName?: string;
   onEdit: () => void;
   onDelete: () => void;
-}> = ({ contract, onEdit, onDelete }) => {
+  onContractUpdated?: () => void;
+}> = ({
+  contract,
+  entityId,
+  entityType,
+  entityName,
+  onEdit,
+  onDelete,
+  onContractUpdated,
+}) => {
   const { t } = useTranslation();
   const [validateLoading, setValidateLoading] = useState(false);
   const [latestContractResults, setLatestContractResults] =
     useState<DataContractResult>();
   const [mode, setMode] = useState<DataContractMode>(DataContractMode.UI);
+  const [isImportModalVisible, setIsImportModalVisible] = useState(false);
+  const [importFormat, setImportFormat] =
+    useState<ContractImportFormat>('odcs');
+  const [addContractMenuAnchor, setAddContractMenuAnchor] =
+    useState<null | HTMLElement>(null);
+  const [hoveredAddContractItem, setHoveredAddContractItem] = useState<
+    string | null
+  >(null);
 
   const fetchLatestContractResults = async () => {
     try {
@@ -121,6 +147,51 @@ const ContractDetail: React.FC<{
     );
   }, [latestContractResults]);
 
+  const addContractActionsItems = useMemo(() => {
+    return [
+      {
+        label: t('label.create-contract-with-ui'),
+        key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.CREATE,
+        icon: (
+          <AddOutlined
+            sx={{
+              color:
+                hoveredAddContractItem ===
+                DATA_CONTRACT_ACTION_DROPDOWN_KEY.CREATE
+                  ? PRIMARY_COLOR
+                  : 'inherit',
+            }}
+          />
+        ),
+        testId: 'create-contract-button',
+      },
+      {
+        label: t('label.import-om'),
+        key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_OPENMETADATA,
+        icon:
+          hoveredAddContractItem ===
+          DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_OPENMETADATA ? (
+            <ImportIconSelected />
+          ) : (
+            <ImportIconContract />
+          ),
+        testId: 'import-openmetadata-contract-button',
+      },
+      {
+        label: t('label.import-odcs'),
+        key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_ODCS,
+        icon:
+          hoveredAddContractItem ===
+          DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_ODCS ? (
+            <ImportIconSelected />
+          ) : (
+            <ImportIconContract />
+          ),
+        testId: 'import-odcs-contract-button',
+      },
+    ];
+  }, [t, hoveredAddContractItem]);
+
   const contractActionsItems: MenuProps['items'] = useMemo(() => {
     return [
       {
@@ -146,6 +217,30 @@ const ContractDetail: React.FC<{
           </div>
         ),
         key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.RUN_NOW,
+      },
+      {
+        label: (
+          <div
+            className="contract-action-dropdown-item"
+            data-testid="import-openmetadata-contract-button">
+            <ImportIcon className="anticon" />
+
+            {t('label.import')}
+          </div>
+        ),
+        key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_OPENMETADATA,
+      },
+      {
+        label: (
+          <div
+            className="contract-action-dropdown-item"
+            data-testid="import-odcs-contract-button">
+            <ImportIcon className="anticon" />
+
+            {t('label.import-odcs')}
+          </div>
+        ),
+        key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_ODCS,
       },
       {
         label: (
@@ -206,7 +301,7 @@ const ContractDetail: React.FC<{
       const yamlContent = await exportContractToODCSYaml(contract.id);
       downloadContractAsODCSYaml(yamlContent, contract.name ?? 'contract');
       showSuccessToast(
-        t('message.export-entity-successfully', {
+        t('message.entity-exported-successfully', {
           entity: t('label.odcs-contract'),
         })
       );
@@ -214,6 +309,20 @@ const ContractDetail: React.FC<{
       showErrorToast(err as AxiosError);
     }
   }, [contract]);
+
+  const handleImportContract = useCallback((format: ContractImportFormat) => {
+    setImportFormat(format);
+    setIsImportModalVisible(true);
+  }, []);
+
+  const handleImportModalClose = useCallback(() => {
+    setIsImportModalVisible(false);
+  }, []);
+
+  const handleImportSuccess = useCallback(() => {
+    setIsImportModalVisible(false);
+    onContractUpdated?.();
+  }, [onContractUpdated]);
 
   const handleRunNow = async () => {
     if (contract?.id) {
@@ -229,6 +338,32 @@ const ContractDetail: React.FC<{
     }
   };
 
+  const handleAddContractMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAddContractMenuAnchor(event.currentTarget);
+  };
+
+  const handleAddContractMenuClose = () => {
+    setAddContractMenuAnchor(null);
+  };
+
+  const handleAddContractAction = useCallback(
+    (key: string) => {
+      handleAddContractMenuClose();
+      switch (key) {
+        case DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_ODCS:
+          return handleImportContract('odcs');
+
+        case DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_OPENMETADATA:
+          return handleImportContract('openmetadata');
+
+        case DATA_CONTRACT_ACTION_DROPDOWN_KEY.CREATE:
+        default:
+          return onEdit();
+      }
+    },
+    [onEdit, handleImportContract]
+  );
+
   const handleContractAction = useCallback(
     (item: MenuInfo) => {
       switch (item.key) {
@@ -240,6 +375,12 @@ const ContractDetail: React.FC<{
 
         case DATA_CONTRACT_ACTION_DROPDOWN_KEY.EXPORT_ODCS:
           return handleExportODCSContract();
+
+        case DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_ODCS:
+          return handleImportContract('odcs');
+
+        case DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_OPENMETADATA:
+          return handleImportContract('openmetadata');
 
         case DATA_CONTRACT_ACTION_DROPDOWN_KEY.DELETE:
           return onDelete();
@@ -254,6 +395,7 @@ const ContractDetail: React.FC<{
       handleRunNow,
       handleExportContract,
       handleExportODCSContract,
+      handleImportContract,
     ]
   );
 
@@ -308,14 +450,14 @@ const ContractDetail: React.FC<{
                 <Button
                   className="contract-action-button"
                   data-testid="manage-contract-actions"
-                  icon={<Icon component={SettingIcon} />}
+                  startIcon={<Icon component={SettingIcon} />}
                   title={t('label.contract')}
-                  type="text"
+                  variant="text"
                 />
               </Dropdown>
             </div>
           </Col>
-          <Col className="d-flex items-center gap-2" span={24}>
+          <Col className="d-flex items-center gap-2 flex-wrap" span={24}>
             {contract.createdBy && (
               <>
                 <div className="d-flex items-center">
@@ -351,10 +493,7 @@ const ContractDetail: React.FC<{
                   <Typography.Text
                     className="contract-sub-header-value"
                     data-testid="contract-created-at-value">
-                    {customFormatDateTime(
-                      contract.createdAt,
-                      CONTRACT_DATE_TIME_FORMAT
-                    )}
+                    {formatDateTime(contract.createdAt)}
                   </Typography.Text>
                 </div>
 
@@ -429,184 +568,286 @@ const ContractDetail: React.FC<{
 
   if (!contract) {
     return (
-      <ErrorPlaceHolder
-        icon={
-          <EmptyContractIcon className="empty-contract-icon" height={140} />
-        }
-        type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}>
-        <Typography.Paragraph className="m-t-md w-80" type="secondary">
-          {t('message.create-contract-description')}
-        </Typography.Paragraph>
+      <>
+        <ContractImportModal
+          entityId={entityId}
+          entityName={entityName}
+          entityType={entityType}
+          existingContract={null}
+          format={importFormat}
+          visible={isImportModalVisible}
+          onClose={handleImportModalClose}
+          onSuccess={handleImportSuccess}
+        />
+        <ErrorPlaceHolder
+          icon={
+            <EmptyContractIcon className="empty-contract-icon" height={140} />
+          }
+          type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}>
+          <Typography.Paragraph className="m-t-md w-80" type="secondary">
+            {t('message.create-contract-description')}
+          </Typography.Paragraph>
 
-        <Button
-          className="m-t-md"
-          data-testid="add-contract-button"
-          icon={<PlusOutlined />}
-          type="primary"
-          onClick={onEdit}>
-          {t('label.add-entity', { entity: t('label.contract') })}
-        </Button>
-      </ErrorPlaceHolder>
+          <>
+            <Button
+              aria-controls={
+                addContractMenuAnchor ? 'add-contract-menu' : undefined
+              }
+              aria-expanded={addContractMenuAnchor ? 'true' : 'false'}
+              aria-haspopup="true"
+              data-testid="add-contract-button"
+              endIcon={<ExpandMore />}
+              id="add-contract-button"
+              sx={{ marginTop: 2 }}
+              variant="contained"
+              onClick={handleAddContractMenuOpen}>
+              {t('label.add-entity', { entity: t('label.contract') })}
+            </Button>
+            <Menu
+              anchorEl={addContractMenuAnchor}
+              aria-labelledby="add-contract-button"
+              data-testid="add-contract-menu"
+              id="add-contract-menu"
+              open={Boolean(addContractMenuAnchor)}
+              sx={{
+                '& .MuiPaper-root': {
+                  borderRadius: '8px',
+                  border: '1px solid var(--grey-15)',
+                  boxShadow: 'var(--button-box-shadow-default)',
+                  whiteSpace: 'nowrap',
+                  width: 'auto',
+                  minWidth: 'auto',
+                },
+
+                '& .MuiMenu-list': {
+                  padding: 0,
+                },
+
+                '& .MuiMenuItem-root': {
+                  padding: '10px 0',
+                  minHeight: 'auto',
+                  margin: 0,
+
+                  '& .contract-action-dropdown-item': {
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    color: 'var(--grey-700)',
+                    padding: '0 16px',
+
+                    '& svg': {
+                      width: '16px',
+                      height: '16px',
+                      color: 'var(--grey-700)',
+                    },
+                  },
+
+                  '&:hover': {
+                    backgroundColor: '#f5faff',
+
+                    '& .contract-action-dropdown-item': {
+                      color: '#1570ef',
+
+                      '& svg': {
+                        color: '#1570ef',
+                      },
+                    },
+                  },
+                },
+              }}
+              onClose={handleAddContractMenuClose}>
+              {addContractActionsItems.map((item) => (
+                <MenuItem
+                  data-testid={item.testId}
+                  key={item.key}
+                  onClick={() => handleAddContractAction(item.key as string)}
+                  onMouseEnter={() => setHoveredAddContractItem(item.key)}
+                  onMouseLeave={() => setHoveredAddContractItem(null)}>
+                  <span className="contract-action-dropdown-item">
+                    {item.icon}
+                    {item.label}
+                  </span>
+                </MenuItem>
+              ))}
+            </Menu>
+          </>
+        </ErrorPlaceHolder>
+      </>
     );
   }
 
   return (
-    <Card
-      className="contract-card-container"
-      style={{ marginBottom: 16 }}
-      title={renderDataContractHeader}>
-      {mode === DataContractMode.YAML ? (
-        <ContractYaml contract={contract} />
-      ) : (
-        <Row className="contract-detail-container">
-          {showContractStatusAlert && (
-            <Col className="contract-card-items" span={24}>
-              <AlertBar
-                defafultExpand
-                className="h-full"
-                message={latestContractResults?.result ?? ''}
-                type="error"
-              />
-            </Col>
-          )}
+    <>
+      <ContractImportModal
+        entityId={entityId}
+        entityName={entityName}
+        entityType={entityType}
+        existingContract={contract}
+        format={importFormat}
+        visible={isImportModalVisible}
+        onClose={handleImportModalClose}
+        onSuccess={handleImportSuccess}
+      />
+      <Card
+        className="contract-card-container"
+        style={{ marginBottom: 16 }}
+        title={renderDataContractHeader}>
+        {mode === DataContractMode.YAML ? (
+          <ContractYaml contract={contract} />
+        ) : (
+          <Row className="contract-detail-container">
+            {showContractStatusAlert && (
+              <Col className="contract-card-items" span={24}>
+                <AlertBar
+                  defafultExpand
+                  className="h-full"
+                  message={latestContractResults?.result ?? ''}
+                  type="error"
+                />
+              </Col>
+            )}
 
-          {/* Description Component */}
-          {!isDescriptionContentEmpty(contract.description ?? '') && (
-            <Col className="contract-card-items" span={24}>
-              <div className="contract-card-header-container">
-                <Typography.Text className="contract-card-header">
-                  {t('label.description')}
-                </Typography.Text>
-                <Divider className="contract-dash-separator" />
-              </div>
+            {/* Description Component */}
+            {!isDescriptionContentEmpty(contract.description ?? '') && (
+              <Col className="contract-card-items" span={24}>
+                <div className="contract-card-header-container">
+                  <Typography.Text className="contract-card-header">
+                    {t('label.description')}
+                  </Typography.Text>
+                  <Divider className="contract-dash-separator" />
+                </div>
 
-              <RichTextEditorPreviewerV1
-                enableSeeMoreVariant
-                markdown={contract.description ?? ''}
-              />
-            </Col>
-          )}
+                <RichTextEditorPreviewerV1
+                  enableSeeMoreVariant
+                  markdown={contract.description ?? ''}
+                />
+              </Col>
+            )}
 
-          {/* Terms of Use Component */}
-          {!isDescriptionContentEmpty(contract.termsOfUse ?? '') && (
-            <Col className="contract-card-items" span={24}>
-              <div className="contract-card-header-container">
-                <Typography.Text className="contract-card-header">
-                  {t('label.terms-of-service')}
-                </Typography.Text>
-                <Divider className="contract-dash-separator" />
-              </div>
+            {/* Terms of Use Component */}
+            {!isDescriptionContentEmpty(contract.termsOfUse ?? '') && (
+              <Col className="contract-card-items" span={24}>
+                <div className="contract-card-header-container">
+                  <Typography.Text className="contract-card-header">
+                    {t('label.terms-of-service')}
+                  </Typography.Text>
+                  <Divider className="contract-dash-separator" />
+                </div>
 
-              <RichTextEditorPreviewerV1
-                enableSeeMoreVariant
-                markdown={contract.termsOfUse ?? ''}
-              />
-            </Col>
-          )}
+                <RichTextEditorPreviewerV1
+                  enableSeeMoreVariant
+                  markdown={contract.termsOfUse ?? ''}
+                />
+              </Col>
+            )}
 
-          {/* SLA Component */}
-          <ContractSLA contract={contract} />
+            {/* SLA Component */}
+            <ContractSLA contract={contract} />
 
-          {/* Schema Component */}
-          {!isEmpty(schemaDetail) && (
-            <Col
-              className="contract-card-items"
-              data-testid="schema-table-card"
-              span={24}>
-              <div className="contract-card-header-container">
-                <Typography.Text className="contract-card-header">
-                  {t('label.schema')}
-                </Typography.Text>
-                <Divider className="contract-dash-separator" />
-              </div>
+            {/* Schema Component */}
+            {!isEmpty(schemaDetail) && (
+              <Col
+                className="contract-card-items"
+                data-testid="schema-table-card"
+                span={24}>
+                <div className="contract-card-header-container">
+                  <Typography.Text className="contract-card-header">
+                    {t('label.schema')}
+                  </Typography.Text>
+                  <Divider className="contract-dash-separator" />
+                </div>
 
-              <ContractSchemaTable
-                contractStatus={constraintStatus['schema']}
-                latestSchemaValidationResult={
-                  latestContractResults?.schemaValidation
-                }
-                schemaDetail={schemaDetail}
-              />
-            </Col>
-          )}
+                <ContractSchemaTable
+                  contractStatus={constraintStatus['schema']}
+                  latestSchemaValidationResult={
+                    latestContractResults?.schemaValidation
+                  }
+                  schemaDetail={schemaDetail}
+                />
+              </Col>
+            )}
 
-          {/* Security Component */}
-          {!isEmpty(contract.security) && (
-            <Col
-              className="contract-card-items"
-              data-testid="security-card"
-              span={24}>
-              <div className="contract-card-header-container">
-                <Typography.Text className="contract-card-header">
-                  {t('label.security')}
-                </Typography.Text>
-                <Divider className="contract-dash-separator" />
-              </div>
+            {/* Security Component */}
+            {!isEmpty(contract.security) && (
+              <Col
+                className="contract-card-items"
+                data-testid="security-card"
+                span={24}>
+                <div className="contract-card-header-container">
+                  <Typography.Text className="contract-card-header">
+                    {t('label.security')}
+                  </Typography.Text>
+                  <Divider className="contract-dash-separator" />
+                </div>
 
-              <ContractSecurityCard security={contract.security} />
-            </Col>
-          )}
+                <ContractSecurityCard security={contract.security} />
+              </Col>
+            )}
 
-          {/* Semantics Component */}
-          {contract?.semantics && contract?.semantics.length > 0 && (
-            <Col
-              className="contract-card-items"
-              data-testid="semantics-card"
-              span={24}>
-              <div className="contract-card-header-container">
-                <Typography.Text className="contract-card-header">
-                  {t('label.semantic-plural')}
-                </Typography.Text>
-                <Divider className="contract-dash-separator" />
-              </div>
+            {/* Semantics Component */}
+            {contract?.semantics && contract?.semantics.length > 0 && (
+              <Col
+                className="contract-card-items"
+                data-testid="semantics-card"
+                span={24}>
+                <div className="contract-card-header-container">
+                  <Typography.Text className="contract-card-header">
+                    {t('label.semantic-plural')}
+                  </Typography.Text>
+                  <Divider className="contract-dash-separator" />
+                </div>
 
-              <ContractSemantics
-                contractStatus={constraintStatus['semantic']}
-                latestContractResults={latestContractResults}
-                semantics={contract?.semantics}
-              />
-            </Col>
-          )}
+                <ContractSemantics
+                  contractStatus={constraintStatus['semantic']}
+                  latestContractResults={latestContractResults}
+                  semantics={contract?.semantics}
+                />
+              </Col>
+            )}
 
-          {/* Quality Component */}
-          {contract?.testSuite?.id && (
-            <Col
-              className="contract-card-items"
-              data-testid="data-quality-card"
-              span={24}>
-              <div className="contract-card-header-container">
-                <Typography.Text className="contract-card-header">
-                  {t('label.quality')}
-                </Typography.Text>
-                <Divider className="contract-dash-separator" />
-              </div>
+            {/* Quality Component */}
+            {contract?.testSuite?.id && (
+              <Col
+                className="contract-card-items"
+                data-testid="data-quality-card"
+                span={24}>
+                <div className="contract-card-header-container">
+                  <Typography.Text className="contract-card-header">
+                    {t('label.quality')}
+                  </Typography.Text>
+                  <Divider className="contract-dash-separator" />
+                </div>
 
-              <ContractQualityCard
-                contract={contract}
-                contractStatus={constraintStatus['quality']}
-              />
-            </Col>
-          )}
+                <ContractQualityCard
+                  contract={contract}
+                  contractStatus={constraintStatus['quality']}
+                />
+              </Col>
+            )}
 
-          {/* Contract Execution Chart */}
-          {contract.id && contract.latestResult?.resultId && (
-            <Col
-              className="contract-card-items"
-              data-testid="schema-table-card"
-              span={24}>
-              <div className="contract-card-header-container">
-                <Typography.Text className="contract-card-header">
-                  {t('label.execution-history')}
-                </Typography.Text>
-                <Divider className="contract-dash-separator" />
-              </div>
+            {/* Contract Execution Chart */}
+            {contract.id && contract.latestResult?.resultId && (
+              <Col
+                className="contract-card-items"
+                data-testid="schema-table-card"
+                span={24}>
+                <div className="contract-card-header-container">
+                  <Typography.Text className="contract-card-header">
+                    {t('label.execution-history')}
+                  </Typography.Text>
+                  <Divider className="contract-dash-separator" />
+                </div>
 
-              <ContractExecutionChart contract={contract} />
-            </Col>
-          )}
-        </Row>
-      )}
-    </Card>
+                <ContractExecutionChart contract={contract} />
+              </Col>
+            )}
+          </Row>
+        )}
+      </Card>
+    </>
   );
 };
 

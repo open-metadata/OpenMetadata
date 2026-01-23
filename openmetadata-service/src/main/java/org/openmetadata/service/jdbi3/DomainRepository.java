@@ -19,6 +19,7 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNameAlreadyExists;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -38,6 +39,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
@@ -46,12 +48,14 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DomainResource;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.LineageUtil;
 
@@ -70,6 +74,7 @@ public class DomainRepository extends EntityRepository<Domain> {
         UPDATE_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
+    renameAllowed = true;
 
     // Initialize inherited field search
     if (searchRepository != null) {
@@ -83,7 +88,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   @Override
-  public void setFields(Domain entity, Fields fields) {
+  public void setFields(Domain entity, Fields fields, RelationIncludes relationIncludes) {
     entity.withParent(getParent(entity));
     entity.withChildrenCount(
         fields.contains("childrenCount") ? getChildrenCount(entity) : entity.getChildrenCount());
@@ -157,7 +162,8 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   @Override
   public void setInheritedFields(Domain domain, Fields fields) {
-    // If subdomain does not have owners and experts, then inherit it from parent domain
+    // If subdomain does not have owners and experts, then inherit it from parent
+    // domain
     EntityReference parentRef = domain.getParent() != null ? domain.getParent() : getParent(domain);
     if (parentRef != null) {
       Domain parent = Entity.getEntity(DOMAIN, parentRef.getId(), "owners,experts", ALL);
@@ -392,6 +398,8 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   public class DomainUpdater extends EntityUpdater {
+    private boolean renameProcessed = false;
+
     public DomainUpdater(Domain original, Domain updated, Operation operation) {
       super(original, updated, operation);
     }
@@ -399,8 +407,110 @@ public class DomainRepository extends EntityRepository<Domain> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      updateName(updated);
       recordChange("domainType", original.getDomainType(), updated.getDomainType());
     }
+
+    private void updateName(Domain updated) {
+      // Use getOriginalFqn() which was captured at EntityUpdater construction time.
+      // This is reliable even after revert() reassigns 'original' to 'previous'.
+      String oldFqn = getOriginalFqn();
+      setFullyQualifiedName(updated);
+      String newFqn = updated.getFullyQualifiedName();
+
+      if (oldFqn.equals(newFqn)) {
+        return;
+      }
+
+      // Only process the rename once per update operation.
+      // entitySpecificUpdate is called multiple times during the update flow
+      // (incrementalChange, revert, final updateInternal).
+      if (renameProcessed) {
+        return;
+      }
+      renameProcessed = true;
+
+      Domain existing = findByNameOrNull(updated.getName(), ALL);
+      if (existing != null && !existing.getId().equals(updated.getId())) {
+        throw new IllegalArgumentException(entityNameAlreadyExists(DOMAIN, updated.getName()));
+      }
+
+      LOG.info("Domain FQN changed from {} to {}", oldFqn, newFqn);
+
+      // Update all child domains' FQNs and FQN hashes
+      daoCollection.domainDAO().updateFqn(oldFqn, newFqn);
+
+      // Update data products' FQNs under this domain
+      daoCollection.dataProductDAO().updateFqn(oldFqn, newFqn);
+
+      recordChange("name", FullyQualifiedName.unquoteName(oldFqn), updated.getName());
+      updateEntityLinks(oldFqn, newFqn, updated);
+      updateSearchIndexes(oldFqn, newFqn, updated);
+      updateTagUsage(oldFqn, newFqn);
+    }
+
+    private void updateEntityLinks(String oldFqn, String newFqn, Domain updated) {
+      // Update field relationships for feed
+      daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
+
+      // Update feed entity links for the domain
+      EntityLink newAbout = new EntityLink(DOMAIN, newFqn);
+      daoCollection
+          .feedDAO()
+          .updateByEntityId(newAbout.getLinkString(), updated.getId().toString());
+
+      // Update feed entity links for all child domains
+      List<Domain> childDomains = getNestedDomains(updated);
+      for (Domain child : childDomains) {
+        EntityLink childAbout = new EntityLink(DOMAIN, child.getFullyQualifiedName());
+        daoCollection
+            .feedDAO()
+            .updateByEntityId(childAbout.getLinkString(), child.getId().toString());
+      }
+    }
+
+    private void updateSearchIndexes(String oldFqn, String newFqn, Domain updated) {
+      LOG.info(
+          "Updating search indexes after renaming domain from {} to {} using bulk operations",
+          oldFqn,
+          newFqn);
+
+      // Update parent domain in search index with new FQN
+      Domain parentWithFields = get(null, updated.getId(), getFields("parent,owners,experts"));
+      parentWithFields.setFullyQualifiedName(newFqn);
+      parentWithFields.setName(updated.getName());
+      searchRepository.updateEntityIndex(parentWithFields);
+
+      // Bulk update all domain entities' FQNs and parent.fullyQualifiedName in search
+      // index
+      // This updates domain_search_index for all nested domains
+      searchRepository.updateDomainFqnByPrefix(oldFqn, newFqn);
+      LOG.info("Bulk updated all domain FQNs in search index from {} to {}", oldFqn, newFqn);
+
+      // Bulk update all asset domain references across all indices via global alias
+      // This updates the domains[].fullyQualifiedName field in all assets
+      searchRepository.updateAssetDomainFqnByPrefix(oldFqn, newFqn);
+      LOG.info(
+          "Bulk updated all asset domain references in search index from {} to {}", oldFqn, newFqn);
+    }
+
+    private void updateTagUsage(String oldFqn, String newFqn) {
+      // Update exact match for the domain itself
+      daoCollection.tagUsageDAO().updateTargetFQNHash(oldFqn, newFqn);
+
+      // Update prefix matches for child domains (subdomains)
+      daoCollection
+          .tagUsageDAO()
+          .renameByTargetFQNHash(TagSource.CLASSIFICATION.ordinal(), oldFqn, newFqn);
+      daoCollection
+          .tagUsageDAO()
+          .renameByTargetFQNHash(TagSource.GLOSSARY.ordinal(), oldFqn, newFqn);
+    }
+  }
+
+  private List<Domain> getNestedDomains(Domain domain) {
+    List<String> jsons = daoCollection.domainDAO().getNestedDomains(domain.getFullyQualifiedName());
+    return JsonUtils.readObjects(jsons, Domain.class);
   }
 
   private Map<UUID, EntityReference> batchFetchParents(List<Domain> domains) {

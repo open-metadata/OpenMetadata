@@ -8,13 +8,17 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.EntityValidation;
@@ -29,6 +33,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.Users;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.util.TestUtils;
 
 /**
  * Base class for all entity integration tests.
@@ -109,6 +114,14 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   protected abstract String getEntityType();
 
   /**
+   * Get the resource path for this entity (e.g., "/v1/tables", "/v1/databases").
+   * Used for making raw HTTP calls to endpoints not exposed through the SDK.
+   */
+  protected String getResourcePath() {
+    return "/v1/" + TestUtils.plurializeEntityType(getEntityType()) + "/";
+  }
+
+  /**
    * Validate that the created entity matches the create request.
    * Subclasses should add entity-specific validations.
    */
@@ -140,6 +153,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       true; // Override if include=deleted query param not supported
   protected boolean supportsImportExport =
       false; // Override in subclasses that support CSV import/export
+  protected boolean supportsListHistoryByTimestamp =
+      false; // Override in subclasses that support listing all versions by timestamp
 
   // ===================================================================
   // CHANGE TYPE - Controls how version changes are validated
@@ -1056,8 +1071,44 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       return;
     }
 
-    TagLabel tag1 = new TagLabel().withTagFQN("PII.Sensitive");
-    TagLabel tag2 = new TagLabel().withTagFQN("Tier.Tier1");
+    // Create test-specific classification and tags to avoid deadlocks with parallel tests
+    OpenMetadataClient client = SdkClients.adminClient();
+    String classificationName = ns.prefix("TagPutClassification");
+
+    org.openmetadata.schema.api.classification.CreateClassification createClassification =
+        new org.openmetadata.schema.api.classification.CreateClassification()
+            .withName(classificationName)
+            .withDescription("Classification for tag PUT test");
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/classifications",
+            createClassification,
+            org.openmetadata.schema.entity.classification.Classification.class);
+
+    // Create test-specific tags
+    String tag1Name = "PutTag1";
+    String tag2Name = "PutTag2";
+    String tag3Name = "PutTag3";
+
+    for (String tagName : List.of(tag1Name, tag2Name, tag3Name)) {
+      org.openmetadata.schema.api.classification.CreateTag createTag =
+          new org.openmetadata.schema.api.classification.CreateTag()
+              .withName(tagName)
+              .withDescription("Tag for PUT test")
+              .withClassification(classificationName);
+      client
+          .getHttpClient()
+          .execute(
+              HttpMethod.PUT,
+              "/v1/tags",
+              createTag,
+              org.openmetadata.schema.entity.classification.Tag.class);
+    }
+
+    TagLabel tag1 = new TagLabel().withTagFQN(classificationName + "." + tag1Name);
+    TagLabel tag2 = new TagLabel().withTagFQN(classificationName + "." + tag2Name);
 
     // Create entity first without tags, then patch to add tags
     K create = createRequest(ns.prefix("tag_put_test"), ns);
@@ -1073,7 +1124,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     assertTagsContain(fetched.getTags(), List.of(tag1, tag2));
 
     // PATCH with one new tag - SDK PATCH merges tags, not replaces
-    TagLabel tag3 = new TagLabel().withTagFQN("PersonalData.Personal");
+    TagLabel tag3 = new TagLabel().withTagFQN(classificationName + "." + tag3Name);
     fetched.setTags(List.of(tag1, tag2, tag3));
     T updated = patchEntity(fetched.getId().toString(), fetched);
 
@@ -1090,8 +1141,45 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       return;
     }
 
-    TagLabel tag1 = new TagLabel().withTagFQN("PII.Sensitive");
-    TagLabel tag2 = new TagLabel().withTagFQN("Tier.Tier1");
+    // Create test-specific classification and tags to avoid deadlocks with parallel tests
+    OpenMetadataClient client = SdkClients.adminClient();
+    String classificationName = ns.prefix("TagPatchClassification");
+
+    org.openmetadata.schema.api.classification.CreateClassification createClassification =
+        new org.openmetadata.schema.api.classification.CreateClassification()
+            .withName(classificationName)
+            .withDescription("Classification for tag PATCH test");
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/classifications",
+            createClassification,
+            org.openmetadata.schema.entity.classification.Classification.class);
+
+    // Create test-specific tags
+    String tag1Name = "Tag1";
+    String tag2Name = "Tag2";
+    String tag3Name = "Tag3";
+    String tag4Name = "Tag4";
+
+    for (String tagName : List.of(tag1Name, tag2Name, tag3Name, tag4Name)) {
+      org.openmetadata.schema.api.classification.CreateTag createTag =
+          new org.openmetadata.schema.api.classification.CreateTag()
+              .withName(tagName)
+              .withDescription("Tag for PATCH test")
+              .withClassification(classificationName);
+      client
+          .getHttpClient()
+          .execute(
+              HttpMethod.PUT,
+              "/v1/tags",
+              createTag,
+              org.openmetadata.schema.entity.classification.Tag.class);
+    }
+
+    TagLabel tag1 = new TagLabel().withTagFQN(classificationName + "." + tag1Name);
+    TagLabel tag2 = new TagLabel().withTagFQN(classificationName + "." + tag2Name);
 
     // Create entity first without tags
     K create = createRequest(ns.prefix("tag_patch_test"), ns);
@@ -1106,8 +1194,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     assertTagsContain(fetched.getTags(), List.of(tag1, tag2));
 
     // PATCH with different tags - SDK PATCH merges, so we need all 4 tags
-    TagLabel tag3 = new TagLabel().withTagFQN("PersonalData.Personal");
-    TagLabel tag4 = new TagLabel().withTagFQN("Certification.Bronze");
+    TagLabel tag3 = new TagLabel().withTagFQN(classificationName + "." + tag3Name);
+    TagLabel tag4 = new TagLabel().withTagFQN(classificationName + "." + tag4Name);
 
     fetched.setTags(List.of(tag1, tag2, tag3, tag4));
     T patched = patchEntity(fetched.getId().toString(), fetched);
@@ -1124,6 +1212,43 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       return;
     }
 
+    // Create test-specific classification and tags to avoid deadlocks with parallel tests
+    OpenMetadataClient client = SdkClients.adminClient();
+    String classificationName = ns.prefix("TagLargeClassification");
+
+    org.openmetadata.schema.api.classification.CreateClassification createClassification =
+        new org.openmetadata.schema.api.classification.CreateClassification()
+            .withName(classificationName)
+            .withDescription("Classification for large scale tag test");
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/classifications",
+            createClassification,
+            org.openmetadata.schema.entity.classification.Classification.class);
+
+    // Create test-specific tags
+    String tag1Name = "LargeTag1";
+    String tag2Name = "LargeTag2";
+    String tag3Name = "LargeTag3";
+    String tag4Name = "LargeTag4";
+
+    for (String tagName : List.of(tag1Name, tag2Name, tag3Name, tag4Name)) {
+      org.openmetadata.schema.api.classification.CreateTag createTag =
+          new org.openmetadata.schema.api.classification.CreateTag()
+              .withName(tagName)
+              .withDescription("Tag for large scale test")
+              .withClassification(classificationName);
+      client
+          .getHttpClient()
+          .execute(
+              HttpMethod.PUT,
+              "/v1/tags",
+              createTag,
+              org.openmetadata.schema.entity.classification.Tag.class);
+    }
+
     // Create entity first without tags
     K create = createRequest(ns.prefix("tag_large_test"), ns);
     T entity = createEntity(create);
@@ -1132,12 +1257,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     List<TagLabel> initialTags = new ArrayList<>();
     initialTags.add(
         new TagLabel()
-            .withTagFQN("PII.Sensitive")
+            .withTagFQN(classificationName + "." + tag1Name)
             .withLabelType(TagLabel.LabelType.MANUAL)
             .withState(TagLabel.State.CONFIRMED));
     initialTags.add(
         new TagLabel()
-            .withTagFQN("Tier.Tier1")
+            .withTagFQN(classificationName + "." + tag2Name)
             .withLabelType(TagLabel.LabelType.MANUAL)
             .withState(TagLabel.State.CONFIRMED));
 
@@ -1152,12 +1277,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     List<TagLabel> additionalTags = new ArrayList<>();
     additionalTags.add(
         new TagLabel()
-            .withTagFQN("PersonalData.Personal")
+            .withTagFQN(classificationName + "." + tag3Name)
             .withLabelType(TagLabel.LabelType.MANUAL)
             .withState(TagLabel.State.CONFIRMED));
     additionalTags.add(
         new TagLabel()
-            .withTagFQN("Certification.Bronze")
+            .withTagFQN(classificationName + "." + tag4Name)
             .withLabelType(TagLabel.LabelType.MANUAL)
             .withState(TagLabel.State.CONFIRMED));
 
@@ -2084,6 +2209,150 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   }
 
   /**
+   * Test: Verify lifecycle updates do NOT cause version pollution
+   * This test verifies the fix for https://github.com/open-metadata/OpenMetadata/issues/21326
+   *
+   * The bug was: Every time usage ingestion runs, it updates the lifecycle "accessed" timestamp,
+   * which caused the entity version to increment. Over time, this led to entities with
+   * extremely high version numbers (e.g., version 598.4), making the version history UI
+   * slow and potentially causing crashes.
+   *
+   * The fix: Lifecycle-only changes should NOT increment the entity version.
+   */
+  @Test
+  void patch_entityLifeCycle_noVersionPollution(TestNamespace ns) {
+    if (!supportsLifeCycle || !supportsPatch) return;
+
+    // Create entity without lifecycle
+    K createRequest = createMinimalRequest(ns);
+    T entity = createEntity(createRequest);
+    Double initialVersion = entity.getVersion();
+
+    // Add initial lifecycle with accessed timestamp
+    org.openmetadata.schema.type.AccessDetails accessed =
+        new org.openmetadata.schema.type.AccessDetails()
+            .withTimestamp(1695059900L)
+            .withAccessedBy(testUser2Ref());
+
+    org.openmetadata.schema.type.LifeCycle lifeCycle =
+        new org.openmetadata.schema.type.LifeCycle().withAccessed(accessed);
+
+    entity.setLifeCycle(lifeCycle);
+    T updated = patchEntity(entity.getId().toString(), entity);
+    Double versionAfterFirstLifeCycleUpdate = updated.getVersion();
+
+    // Verify lifecycle was set but version did not change
+    assertEquals(
+        initialVersion,
+        versionAfterFirstLifeCycleUpdate,
+        "Lifecycle-only changes should NOT increment version");
+
+    // Simulate usage run updating accessed time with a newer timestamp
+    // This is what happens when usage ingestion runs repeatedly
+    T fetched = getEntityWithFields(updated.getId().toString(), "lifeCycle");
+    org.openmetadata.schema.type.AccessDetails accessedNewer =
+        new org.openmetadata.schema.type.AccessDetails()
+            .withTimestamp(1695060000L)
+            .withAccessedBy(testUser2Ref());
+
+    org.openmetadata.schema.type.LifeCycle lifeCycleNewer =
+        new org.openmetadata.schema.type.LifeCycle().withAccessed(accessedNewer);
+
+    fetched.setLifeCycle(lifeCycleNewer);
+    T updated2 = patchEntity(fetched.getId().toString(), fetched);
+    Double versionAfterSecondLifeCycleUpdate = updated2.getVersion();
+
+    // Verify version did NOT increment for lifecycle-only change
+    assertEquals(
+        versionAfterFirstLifeCycleUpdate,
+        versionAfterSecondLifeCycleUpdate,
+        "Lifecycle-only changes should NOT increment version");
+
+    // Simulate another usage run with even newer timestamp
+    T fetched2 = getEntityWithFields(updated2.getId().toString(), "lifeCycle");
+    org.openmetadata.schema.type.AccessDetails accessedEvenNewer =
+        new org.openmetadata.schema.type.AccessDetails()
+            .withTimestamp(1695060100L)
+            .withAccessedBy(testUser2Ref());
+
+    org.openmetadata.schema.type.LifeCycle lifeCycleEvenNewer =
+        new org.openmetadata.schema.type.LifeCycle().withAccessed(accessedEvenNewer);
+
+    fetched2.setLifeCycle(lifeCycleEvenNewer);
+    T updated3 = patchEntity(fetched2.getId().toString(), fetched2);
+    Double versionAfterThirdLifeCycleUpdate = updated3.getVersion();
+
+    // Verify version still did NOT increment
+    assertEquals(
+        versionAfterSecondLifeCycleUpdate,
+        versionAfterThirdLifeCycleUpdate,
+        "Lifecycle-only changes should NOT increment version");
+
+    // Verify the lifecycle data was actually updated even though version didn't change
+    T finalEntity = getEntityWithFields(updated3.getId().toString(), "lifeCycle");
+    assertNotNull(finalEntity.getLifeCycle(), "Lifecycle should still be present");
+    assertEquals(
+        1695060100L,
+        finalEntity.getLifeCycle().getAccessed().getTimestamp(),
+        "Lifecycle accessed timestamp should be updated to latest value");
+  }
+
+  /**
+   * Test: When lifecycle AND other fields change together, version SHOULD increment
+   * This ensures that the fix for lifecycle version pollution doesn't break
+   * normal versioning when real changes occur alongside lifecycle updates.
+   */
+  @Test
+  void patch_entityLifeCycleWithOtherChanges_versionIncrements(TestNamespace ns) {
+    if (!supportsLifeCycle || !supportsPatch) return;
+
+    // Create entity without lifecycle
+    K createRequest = createMinimalRequest(ns);
+    T entity = createEntity(createRequest);
+    Double initialVersion = entity.getVersion();
+
+    // Add lifecycle AND change description at the same time
+    org.openmetadata.schema.type.AccessDetails accessed =
+        new org.openmetadata.schema.type.AccessDetails()
+            .withTimestamp(1695059900L)
+            .withAccessedBy(testUser2Ref());
+
+    org.openmetadata.schema.type.LifeCycle lifeCycle =
+        new org.openmetadata.schema.type.LifeCycle().withAccessed(accessed);
+
+    entity.setLifeCycle(lifeCycle);
+    entity.setDescription("Updated description for version test");
+    T updated = patchEntity(entity.getId().toString(), entity);
+
+    // Version SHOULD increment because description changed (not because of lifecycle)
+    assertTrue(
+        updated.getVersion() > initialVersion,
+        "Version should increment when description changes alongside lifecycle. "
+            + "Initial: "
+            + initialVersion
+            + ", After: "
+            + updated.getVersion());
+
+    // Now update ONLY lifecycle (no description change) - version should NOT increment
+    T fetched = getEntityWithFields(updated.getId().toString(), "lifeCycle");
+    Double versionAfterDescriptionChange = fetched.getVersion();
+
+    org.openmetadata.schema.type.AccessDetails accessedNewer =
+        new org.openmetadata.schema.type.AccessDetails()
+            .withTimestamp(1695060000L)
+            .withAccessedBy(testUser2Ref());
+
+    fetched.setLifeCycle(new org.openmetadata.schema.type.LifeCycle().withAccessed(accessedNewer));
+    T updated2 = patchEntity(fetched.getId().toString(), fetched);
+
+    // Version should NOT increment since only lifecycle changed
+    assertEquals(
+        versionAfterDescriptionChange,
+        updated2.getVersion(),
+        "Version should NOT increment when only lifecycle changes");
+  }
+
+  /**
    * Helper method to get entity with lifecycle field.
    * Subclasses should override getEntityWithFields to include lifecycle.
    */
@@ -2638,13 +2907,48 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void test_sdkEntityWithTags(TestNamespace ns) {
     if (!supportsTags) return;
 
+    // Create test-specific classification and tags to avoid deadlocks with parallel tests
+    OpenMetadataClient client = SdkClients.adminClient();
+    String classificationName = ns.prefix("SdkTagsClassification");
+
+    org.openmetadata.schema.api.classification.CreateClassification createClassification =
+        new org.openmetadata.schema.api.classification.CreateClassification()
+            .withName(classificationName)
+            .withDescription("Classification for SDK tags test");
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/classifications",
+            createClassification,
+            org.openmetadata.schema.entity.classification.Classification.class);
+
+    // Create test-specific tags
+    String tag1Name = "SdkTag1";
+    String tag2Name = "SdkTag2";
+
+    for (String tagName : List.of(tag1Name, tag2Name)) {
+      org.openmetadata.schema.api.classification.CreateTag createTag =
+          new org.openmetadata.schema.api.classification.CreateTag()
+              .withName(tagName)
+              .withDescription("Tag for SDK test")
+              .withClassification(classificationName);
+      client
+          .getHttpClient()
+          .execute(
+              HttpMethod.PUT,
+              "/v1/tags",
+              createTag,
+              org.openmetadata.schema.entity.classification.Tag.class);
+    }
+
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
 
     // Add tags
-    TagLabel tag1 = new TagLabel().withTagFQN("PII.Sensitive");
-    TagLabel tag2 = new TagLabel().withTagFQN("Tier.Tier1");
+    TagLabel tag1 = new TagLabel().withTagFQN(classificationName + "." + tag1Name);
+    TagLabel tag2 = new TagLabel().withTagFQN(classificationName + "." + tag2Name);
     entity.setTags(List.of(tag1, tag2));
     T withTags = patchEntity(entity.getId().toString(), entity);
 
@@ -3349,15 +3653,20 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
 
-    // Wait for entity to be indexed
-    waitForSearchIndexing();
-
-    // Search for the entity
-    String searchResponse = searchForEntity(entity.getId().toString());
-    assertNotNull(searchResponse, "Search response should not be null");
-    assertTrue(
-        searchResponse.contains(entity.getId().toString()),
-        "Entity should be present in search index");
+    // Poll until entity appears in search index (async indexing may take time)
+    // Use 60 second timeout since search indexing can be slow under load
+    Awaitility.await("Wait for entity to appear in search index")
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(
+            () -> {
+              String searchResponse = searchForEntity(entity.getId().toString());
+              assertNotNull(searchResponse, "Search response should not be null");
+              assertTrue(
+                  searchResponse.contains(entity.getId().toString()),
+                  "Entity should be present in search index");
+            });
   }
 
   /**
@@ -3372,25 +3681,28 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
 
-    // Wait for entity to be indexed
-    waitForSearchIndexing();
-
-    // Verify entity can be searched (may or may not be in index yet due to async nature)
-    String searchResponse = searchForEntity(entity.getId().toString());
-    // The search index is async - entity might not be indexed immediately
-    // Skip the pre-delete assertion if not indexed yet
-    boolean entityInSearchBeforeDelete = searchResponse.contains(entity.getId().toString());
+    // Poll until entity appears in search index before delete
+    Awaitility.await("Wait for entity to appear in search index")
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .atMost(Duration.ofSeconds(60))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String searchResponse = searchForEntity(entity.getId().toString());
+              assertNotNull(searchResponse, "Search response should not be null");
+              assertTrue(
+                  searchResponse.contains(entity.getId().toString()),
+                  "Entity should be present in search index before delete");
+            });
 
     // Delete entity
     deleteEntity(entity.getId().toString());
 
-    // Wait for search to sync
-    waitForSearchIndexing();
-
     // Verify entity is no longer in search (or marked deleted)
-    String searchAfterDelete = searchForEntity(entity.getId().toString());
     // After soft delete, entity may still be in index but marked as deleted
     // This is acceptable behavior - the key is the delete operation succeeded
+    String searchAfterDelete = searchForEntity(entity.getId().toString());
     assertNotNull(searchAfterDelete, "Search should still work after delete");
   }
 
@@ -3405,16 +3717,19 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
 
-    waitForSearchIndexing();
-
-    Awaitility.await("Wait for search index to be available")
-        .pollInterval(Duration.ofMillis(500))
-        .atMost(Duration.ofSeconds(30))
+    // Poll until entity appears in search index
+    Awaitility.await("Wait for entity to appear in search index")
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .atMost(Duration.ofSeconds(60))
         .ignoreExceptions()
-        .until(
+        .untilAsserted(
             () -> {
-              String searchResponse = searchEntities();
-              return searchResponse != null;
+              String searchResponse = searchForEntity(entity.getId().toString());
+              assertNotNull(searchResponse, "Search response should not be null");
+              assertTrue(
+                  searchResponse.contains(entity.getId().toString()),
+                  "Entity should be present in search index");
             });
   }
 
@@ -3430,22 +3745,38 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
 
-    waitForSearchIndexing();
+    // First wait for entity to appear in search index
+    Awaitility.await("Wait for entity to appear in search index")
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .atMost(Duration.ofSeconds(60))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String searchResponse = searchForEntity(entity.getId().toString());
+              assertNotNull(searchResponse, "Search response should not be null");
+              assertTrue(
+                  searchResponse.contains(entity.getId().toString()),
+                  "Entity should be present in search index");
+            });
 
     String newDescription = "Updated description for search test " + UUID.randomUUID();
     entity.setDescription(newDescription);
     T updated = patchEntity(entity.getId().toString(), entity);
 
-    waitForSearchIndexing();
-
+    // Wait for updated entity to be reflected in search
     Awaitility.await("Wait for search to reflect update")
-        .pollInterval(Duration.ofMillis(500))
-        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .atMost(Duration.ofSeconds(60))
         .ignoreExceptions()
-        .until(
+        .untilAsserted(
             () -> {
               String searchResponse = searchForEntity(updated.getId().toString());
-              return searchResponse != null;
+              assertNotNull(searchResponse, "Search response should not be null");
+              assertTrue(
+                  searchResponse.contains(newDescription),
+                  "Updated description should be in search index");
             });
   }
 
@@ -3910,6 +4241,268 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
           originalLines[0], reExportedLines[0], "CSV headers should match after round-trip");
     } catch (org.openmetadata.sdk.exceptions.OpenMetadataException e) {
       fail("Import/export round-trip failed: " + e.getMessage());
+    }
+  }
+
+  private static final ObjectMapper MAPPER = new ObjectMapper();
+
+  @Nested
+  class ListEntityHistoryByTimestampPaginationTest {
+    @Test
+    void test_listEntityHistoryByTimestamp_pagination(TestNamespace ns) throws Exception {
+      Assumptions.assumeTrue(
+          supportsListHistoryByTimestamp,
+          "Entity does not support listEntityHistoryByTimestamp endpoint");
+      Assumptions.assumeTrue(supportsPatch, "Entity does not support patch operations");
+
+      OpenMetadataClient client = SdkClients.adminClient();
+      long startTs = System.currentTimeMillis();
+
+      List<T> createdEntities = new ArrayList<>();
+      for (int i = 0; i < 3; i++) {
+        K createRequest = createRequest(ns.prefix("versions_test_" + i), ns);
+        T entity = createEntity(createRequest);
+        createdEntities.add(entity);
+
+        entity.setDescription("Updated description v2 - " + System.currentTimeMillis());
+        patchEntity(entity.getId().toString(), entity);
+
+        entity.setDescription("Updated description v3 - " + System.currentTimeMillis());
+        patchEntity(entity.getId().toString(), entity);
+      }
+
+      long endTs = System.currentTimeMillis();
+      String basePath = getResourcePath() + "history";
+
+      String response =
+          client
+              .getHttpClient()
+              .executeForString(
+                  HttpMethod.GET,
+                  basePath + "?startTs=" + startTs + "&endTs=" + endTs + "&limit=2",
+                  null);
+
+      assertNotNull(response, "Response should not be null");
+      JsonNode result = MAPPER.readTree(response);
+
+      assertTrue(result.has("data"), "Response should have 'data' field");
+      JsonNode data = result.get("data");
+      assertTrue(data.isArray(), "Data should be an array");
+      assertTrue(data.size() <= 2, "Data size should respect limit of 2");
+
+      if (result.has("paging") && result.get("paging").has("after")) {
+        String afterCursor = result.get("paging").get("after").asText();
+        assertNotNull(afterCursor, "After cursor should be present for paginated results");
+
+        String page2Response =
+            client
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.GET,
+                    basePath
+                        + "?startTs="
+                        + startTs
+                        + "&endTs="
+                        + endTs
+                        + "&limit=2&after="
+                        + afterCursor,
+                    null);
+
+        JsonNode page2Result = MAPPER.readTree(page2Response);
+        assertTrue(page2Result.has("data"), "Page 2 response should have 'data' field");
+        JsonNode page2Data = page2Result.get("data");
+        assertTrue(page2Data.isArray(), "Page 2 data should be an array");
+
+        if (page2Result.has("paging") && page2Result.get("paging").has("before")) {
+          String beforeCursor = page2Result.get("paging").get("before").asText();
+
+          String backResponse =
+              client
+                  .getHttpClient()
+                  .executeForString(
+                      HttpMethod.GET,
+                      basePath
+                          + "?startTs="
+                          + startTs
+                          + "&endTs="
+                          + endTs
+                          + "&limit=2&before="
+                          + beforeCursor,
+                      null);
+
+          JsonNode backResult = MAPPER.readTree(backResponse);
+          assertTrue(backResult.has("data"), "Back navigation response should have 'data' field");
+        }
+      }
+    }
+
+    @Test
+    void test_listEntityHistoryByTimestamp_withInvalidLimit(TestNamespace ns) throws Exception {
+      Assumptions.assumeTrue(
+          supportsListHistoryByTimestamp,
+          "Entity does not support listEntityHistoryByTimestamp endpoint");
+
+      OpenMetadataClient client = SdkClients.adminClient();
+      long now = System.currentTimeMillis();
+      String basePath = getResourcePath() + "history";
+
+      assertThrows(
+          Exception.class,
+          () ->
+              client
+                  .getHttpClient()
+                  .executeForString(
+                      HttpMethod.GET,
+                      basePath + "?startTs=" + (now - 1000) + "&endTs=" + now + "&limit=0",
+                      null),
+          "Limit of 0 should fail validation");
+
+      assertThrows(
+          Exception.class,
+          () ->
+              client
+                  .getHttpClient()
+                  .executeForString(
+                      HttpMethod.GET,
+                      basePath + "?startTs=" + (now - 1000) + "&endTs=" + now + "&limit=-1",
+                      null),
+          "Negative limit should fail validation");
+    }
+
+    @Test
+    void test_listEntityHistoryByTimestamp_emptyTimeRange(TestNamespace ns) throws Exception {
+      Assumptions.assumeTrue(
+          supportsListHistoryByTimestamp,
+          "Entity does not support listEntityHistoryByTimestamp endpoint");
+
+      OpenMetadataClient client = SdkClients.adminClient();
+      long futureStart = System.currentTimeMillis() + 86400000;
+      long futureEnd = futureStart + 1000;
+      String basePath = getResourcePath() + "history";
+
+      String response =
+          client
+              .getHttpClient()
+              .executeForString(
+                  HttpMethod.GET,
+                  basePath + "?startTs=" + futureStart + "&endTs=" + futureEnd + "&limit=10",
+                  null);
+
+      JsonNode result = MAPPER.readTree(response);
+      assertTrue(result.has("data"), "Response should have 'data' field");
+      JsonNode data = result.get("data");
+      assertTrue(data.isArray(), "Data should be an array");
+      assertEquals(0, data.size(), "Data should be empty for future time range");
+    }
+
+    @Test
+    @Timeout(180)
+    void test_listEntityHistoryByTimestamp_completePaginationCycle(TestNamespace ns)
+        throws Exception {
+      Assumptions.assumeTrue(
+          supportsListHistoryByTimestamp,
+          "Entity does not support listEntityHistoryByTimestamp endpoint");
+      Assumptions.assumeTrue(supportsPatch, "Entity does not support patch operations");
+
+      OpenMetadataClient client = SdkClients.adminClient();
+      long startTs = System.currentTimeMillis();
+
+      for (int i = 0; i < 5; i++) {
+        K createRequest = createRequest(ns.prefix("pagination_cycle_" + i), ns);
+        T entity = createEntity(createRequest);
+
+        entity.setDescription("Updated v2 - " + System.currentTimeMillis());
+        patchEntity(entity.getId().toString(), entity);
+      }
+
+      long endTs = System.currentTimeMillis();
+      String basePath = getResourcePath() + "history";
+      int limit = 3;
+
+      List<String> allIds = new ArrayList<>();
+      List<String> afterCursors = new ArrayList<>();
+      String afterCursor = null;
+      String lastPageBeforeCursor = null;
+      int forwardPageCount = 0;
+
+      do {
+        String url = basePath + "?startTs=" + startTs + "&endTs=" + endTs + "&limit=" + limit;
+        if (afterCursor != null) {
+          url += "&after=" + afterCursor;
+        }
+
+        String response = client.getHttpClient().executeForString(HttpMethod.GET, url, null);
+        JsonNode result = MAPPER.readTree(response);
+        JsonNode data = result.get("data");
+
+        for (JsonNode item : data) {
+          if (item.has("id")) {
+            allIds.add(item.get("id").asText());
+          }
+        }
+
+        forwardPageCount++;
+        afterCursor = null;
+        if (result.has("paging") && !result.get("paging").isNull()) {
+          JsonNode paging = result.get("paging");
+          if (paging.has("after") && !paging.get("after").isNull()) {
+            afterCursor = paging.get("after").asText();
+            afterCursors.add(afterCursor);
+          }
+          if (paging.has("before") && !paging.get("before").isNull()) {
+            lastPageBeforeCursor = paging.get("before").asText();
+          }
+        }
+      } while (afterCursor != null);
+
+      assertTrue(forwardPageCount > 1, "Should have paginated through multiple pages forward");
+      assertFalse(allIds.isEmpty(), "Should have collected entity version IDs");
+
+      if (!afterCursors.isEmpty() && lastPageBeforeCursor != null) {
+        String beforeCursor = lastPageBeforeCursor;
+
+        int backwardPageCount = 0;
+        while (beforeCursor != null) {
+          String backUrl =
+              basePath
+                  + "?startTs="
+                  + startTs
+                  + "&endTs="
+                  + endTs
+                  + "&limit="
+                  + limit
+                  + "&before="
+                  + beforeCursor;
+          String backResponse =
+              client.getHttpClient().executeForString(HttpMethod.GET, backUrl, null);
+          JsonNode backResult = MAPPER.readTree(backResponse);
+
+          backwardPageCount++;
+          beforeCursor = null;
+          if (backResult.has("paging") && !backResult.get("paging").isNull()) {
+            JsonNode paging = backResult.get("paging");
+            if (paging.has("before") && !paging.get("before").isNull()) {
+              beforeCursor = paging.get("before").asText();
+            }
+          }
+        }
+
+        assertTrue(
+            backwardPageCount >= 1, "Should have been able to navigate backward at least once");
+
+        String firstPageUrl =
+            basePath + "?startTs=" + startTs + "&endTs=" + endTs + "&limit=" + limit;
+        String firstPageResponse =
+            client.getHttpClient().executeForString(HttpMethod.GET, firstPageUrl, null);
+        JsonNode firstPageResult = MAPPER.readTree(firstPageResponse);
+
+        boolean hasBeforeOnFirstPage = false;
+        if (firstPageResult.has("paging") && !firstPageResult.get("paging").isNull()) {
+          JsonNode paging = firstPageResult.get("paging");
+          hasBeforeOnFirstPage = paging.has("before") && !paging.get("before").isNull();
+        }
+        assertFalse(hasBeforeOnFirstPage, "First page should not have 'before' cursor");
+      }
     }
   }
 }
