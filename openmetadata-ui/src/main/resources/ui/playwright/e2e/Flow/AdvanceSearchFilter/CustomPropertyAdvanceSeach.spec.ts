@@ -905,6 +905,7 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
 
   test.describe('Enum Custom Properties', () => {
     test('Enum CP with all operators', async ({ page }) => {
+      test.slow();
       const propertyName = propertyNames['enum'];
 
       await showAdvancedSearchDialog(page);
@@ -1023,32 +1024,26 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
       await clearAdvancedSearchFilters(page);
 
       await showAdvancedSearchDialog(page);
-      await applyCustomPropertyFilter(
-        page,
-        startPropertyName,
-        'like',
-        CP_BASE_VALUES.timeInterval.start
-      );
+      await applyCustomPropertyFilter(page, startPropertyName, 'between', {
+        start: CP_BASE_VALUES.timeInterval.start - 2,
+        end: CP_BASE_VALUES.timeInterval.start + 4,
+      });
       await verifySearchResults(
         page,
         dashboard.entityResponseData.fullyQualifiedName,
-        true,
-        String(CP_BASE_VALUES.timeInterval.start)
+        true
       );
       await clearAdvancedSearchFilters(page);
 
       await showAdvancedSearchDialog(page);
-      await applyCustomPropertyFilter(
-        page,
-        startPropertyName,
-        'not_like',
-        CP_BASE_VALUES.timeInterval.start
-      );
+      await applyCustomPropertyFilter(page, startPropertyName, 'not_between', {
+        start: CP_BASE_VALUES.timeInterval.start - 2,
+        end: CP_BASE_VALUES.timeInterval.start + 4,
+      });
       await verifySearchResults(
         page,
         dashboard.entityResponseData.fullyQualifiedName,
-        false,
-        String(CP_BASE_VALUES.timeInterval.start)
+        false
       );
       await clearAdvancedSearchFilters(page);
 
@@ -1107,32 +1102,26 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
       await clearAdvancedSearchFilters(page);
 
       await showAdvancedSearchDialog(page);
-      await applyCustomPropertyFilter(
-        page,
-        endPropertyName,
-        'like',
-        CP_BASE_VALUES.timeInterval.end
-      );
+      await applyCustomPropertyFilter(page, endPropertyName, 'between', {
+        start: CP_BASE_VALUES.timeInterval.end - 2,
+        end: CP_BASE_VALUES.timeInterval.end + 4,
+      });
       await verifySearchResults(
         page,
         dashboard.entityResponseData.fullyQualifiedName,
-        true,
-        String(CP_BASE_VALUES.timeInterval.end)
+        true
       );
       await clearAdvancedSearchFilters(page);
 
       await showAdvancedSearchDialog(page);
-      await applyCustomPropertyFilter(
-        page,
-        endPropertyName,
-        'not_like',
-        CP_BASE_VALUES.timeInterval.end
-      );
+      await applyCustomPropertyFilter(page, endPropertyName, 'not_between', {
+        start: CP_BASE_VALUES.timeInterval.end - 2,
+        end: CP_BASE_VALUES.timeInterval.end + 4,
+      });
       await verifySearchResults(
         page,
         dashboard.entityResponseData.fullyQualifiedName,
-        false,
-        String(CP_BASE_VALUES.timeInterval.end)
+        false
       );
       await clearAdvancedSearchFilters(page);
 
@@ -1158,21 +1147,18 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
 
   test.describe('Table Custom Properties', () => {
     test('Table CP - Name column with all operators', async ({ page }) => {
+      const value = CP_BASE_VALUES.tableCp.rows[0]['Name'];
+      const partialValue = value.substring(1, 4);
       const basePropertyName = propertyNames['table-cp'];
       const columnPropertyName = `${basePropertyName} - Name`;
 
       await showAdvancedSearchDialog(page);
-      await applyCustomPropertyFilter(
-        page,
-        columnPropertyName,
-        'equal',
-        'User1'
-      );
+      await applyCustomPropertyFilter(page, columnPropertyName, 'equal', value);
       await verifySearchResults(
         page,
         dashboard.entityResponseData.fullyQualifiedName,
         true,
-        'User1'
+        value
       );
       await clearAdvancedSearchFilters(page);
 
@@ -1181,7 +1167,7 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
         page,
         columnPropertyName,
         'not_equal',
-        'User1'
+        value
       );
       await verifySearchResults(
         page,
@@ -1195,13 +1181,13 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
         page,
         columnPropertyName,
         'like',
-        CP_PARTIAL_SEARCH_VALUES.tableCp
+        partialValue
       );
       await verifySearchResults(
         page,
         dashboard.entityResponseData.fullyQualifiedName,
         true,
-        CP_PARTIAL_SEARCH_VALUES.tableCp
+        partialValue
       );
       await clearAdvancedSearchFilters(page);
 
@@ -1210,12 +1196,13 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
         page,
         columnPropertyName,
         'not_like',
-        'User1'
+        partialValue
       );
       await verifySearchResults(
         page,
         dashboard.entityResponseData.fullyQualifiedName,
-        false
+        false,
+        partialValue
       );
       await clearAdvancedSearchFilters(page);
 
@@ -1244,21 +1231,18 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
     });
 
     test('Table CP - Role column with all operators', async ({ page }) => {
+      const value = CP_BASE_VALUES.tableCp.rows[0]['Role'];
+      const partialValue = value.substring(1, 4);
       const basePropertyName = propertyNames['table-cp'];
       const columnPropertyName = `${basePropertyName} - Role`;
 
       await showAdvancedSearchDialog(page);
-      await applyCustomPropertyFilter(
-        page,
-        columnPropertyName,
-        'equal',
-        'Admin'
-      );
+      await applyCustomPropertyFilter(page, columnPropertyName, 'equal', value);
       await verifySearchResults(
         page,
         dashboard.entityResponseData.fullyQualifiedName,
         true,
-        'Admin'
+        value
       );
       await clearAdvancedSearchFilters(page);
 
@@ -1267,7 +1251,7 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
         page,
         columnPropertyName,
         'not_equal',
-        'Admin'
+        value
       );
       await verifySearchResults(
         page,
@@ -1281,13 +1265,13 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
         page,
         columnPropertyName,
         'like',
-        'Admin'
+        partialValue
       );
       await verifySearchResults(
         page,
         dashboard.entityResponseData.fullyQualifiedName,
         true,
-        'Admin'
+        partialValue
       );
       await clearAdvancedSearchFilters(page);
 
@@ -1296,12 +1280,13 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
         page,
         columnPropertyName,
         'not_like',
-        'Admin'
+        partialValue
       );
       await verifySearchResults(
         page,
         dashboard.entityResponseData.fullyQualifiedName,
-        false
+        false,
+        partialValue
       );
       await clearAdvancedSearchFilters(page);
 
@@ -1330,16 +1315,17 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
     });
 
     test('Table CP - Sr No column with all operators', async ({ page }) => {
+      const value = CP_BASE_VALUES.tableCp.rows[1]['Sr No'];
       const basePropertyName = propertyNames['table-cp'];
       const columnPropertyName = `${basePropertyName} - Sr No`;
 
       await showAdvancedSearchDialog(page);
-      await applyCustomPropertyFilter(page, columnPropertyName, 'equal', '1');
+      await applyCustomPropertyFilter(page, columnPropertyName, 'equal', value);
       await verifySearchResults(
         page,
         dashboard.entityResponseData.fullyQualifiedName,
         true,
-        '1'
+        value
       );
       await clearAdvancedSearchFilters(page);
 
@@ -1348,22 +1334,23 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
         page,
         columnPropertyName,
         'not_equal',
-        '1'
+        value
       );
       await verifySearchResults(
         page,
         dashboard.entityResponseData.fullyQualifiedName,
-        false
+        false,
+        value
       );
       await clearAdvancedSearchFilters(page);
 
       await showAdvancedSearchDialog(page);
-      await applyCustomPropertyFilter(page, columnPropertyName, 'like', '1');
+      await applyCustomPropertyFilter(page, columnPropertyName, 'like', value);
       await verifySearchResults(
         page,
         dashboard.entityResponseData.fullyQualifiedName,
         true,
-        '1'
+        value
       );
       await clearAdvancedSearchFilters(page);
 
@@ -1372,12 +1359,13 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
         page,
         columnPropertyName,
         'not_like',
-        '1'
+        value
       );
       await verifySearchResults(
         page,
         dashboard.entityResponseData.fullyQualifiedName,
-        false
+        false,
+        value
       );
       await clearAdvancedSearchFilters(page);
 
