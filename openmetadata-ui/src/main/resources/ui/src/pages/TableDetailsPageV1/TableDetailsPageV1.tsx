@@ -213,8 +213,8 @@ const TableDetailsPageV1: React.FC = () => {
         const [details, columnsResponse] = await Promise.all([
           getTableDetailsByFQN(tableFqn, { fields }),
           getTableColumnsByFQN(tableFqn, {
-            fields: 'tags,customMetrics,extension', 
-          }).catch(() => null), 
+            fields: 'tags,customMetrics,extension',
+          }).catch(() => null),
         ]);
 
         let finalColumns = details.columns || [];
@@ -920,12 +920,12 @@ const TableDetailsPageV1: React.FC = () => {
   return (
     <PageLayoutV1 pageTitle={entityName} title="Table details">
       <GenericProvider<Table>
-        key={tableFqn}
         columnFqn={columnFqn}
         customizedPage={customizedPage}
         data={tableDetails}
         isTabExpanded={isTabExpanded}
         isVersionView={false}
+        key={tableFqn}
         permissions={tablePermissions}
         type={EntityType.TABLE}
         onColumnsUpdate={handleColumnsUpdate}
