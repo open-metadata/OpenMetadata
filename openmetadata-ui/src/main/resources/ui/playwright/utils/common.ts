@@ -95,6 +95,53 @@ export const removeLandingBanner = async (page: Page) => {
   }
 };
 
+export const dismissAllPromotionalPopups = async (page: Page) => {
+  // Dismiss "What's New" alert if visible
+  try {
+    const whatsNewCloseButton = page
+      .getByTestId('whats-new-alert-card')
+      .locator('.whats-new-alert-close');
+
+    await whatsNewCloseButton.waitFor({ state: 'visible', timeout: 3000 });
+    await whatsNewCloseButton.click();
+    // Wait for the popup to be dismissed
+    await page.waitForTimeout(500);
+  } catch {
+    // Popup not present, continue
+  }
+
+  // Dismiss GitHub star popup if visible
+  // This popup may appear immediately or after a delay
+  try {
+    const githubStarPopup = page.getByTestId('github-star-popup-card');
+    await githubStarPopup.waitFor({ state: 'visible', timeout: 5000 });
+
+    // Find the close button within the popup and click with force
+    const closeButton = page.locator(
+      '[data-testid="close-github-star-popup-card"]'
+    );
+    await closeButton.click({ force: true });
+    await page.waitForTimeout(300);
+  } catch {
+    // Popup not present, continue
+  }
+
+  // Dismiss welcome screen if visible
+  try {
+    const welcomeScreenCloseButton = page.getByTestId(
+      'welcome-screen-close-btn'
+    );
+
+    await welcomeScreenCloseButton.waitFor({ state: 'visible', timeout: 3000 });
+    await welcomeScreenCloseButton.click();
+  } catch {
+    // Popup not present, continue
+  }
+
+  // Press Escape to close any remaining popups
+  await page.keyboard.press('Escape');
+};
+
 export const createNewPage = async (browser: Browser) => {
   // create a new page
   const page = await browser.newPage();
