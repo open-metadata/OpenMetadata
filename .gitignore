@@ -87,6 +87,7 @@ openmetadata-ui/src/main/resources/ui/playwright/e2e/.cache/
 openmetadata-ui/src/main/resources/ui/.env
 openmetadata-ui/src/main/resources/ui/playwright/.auth
 openmetadata-ui/src/main/resources/ui/blob-report
+openmetadata-ui/src/main/resources/ui/test-results/
 
 #UI - Dereferenced Schemas
 openmetadata-ui/src/main/resources/ui/src/jsons/*
