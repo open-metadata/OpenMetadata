@@ -41,12 +41,15 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.data.ContractSLA;
+import org.openmetadata.schema.api.data.ContractSecurity;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.LatestResult;
+import org.openmetadata.schema.entity.data.TermsOfUse;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.datacontract.FailedRule;
@@ -497,7 +500,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
             Entity.DIRECTORY,
             Entity.FILE,
             Entity.SPREADSHEET,
-            Entity.WORKSHEET)
+            Entity.WORKSHEET,
+            Entity.DATA_PRODUCT)
         .contains(entityType);
   }
 
@@ -741,6 +745,86 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     // Add the result to the data contract and update the time series
     return addContractResult(dataContract, result);
+  }
+
+  /**
+   * Materialize an empty contract for an entity that currently only has an inherited contract.
+   * This allows the entity to have its own contract to store validation results, while still
+   * inheriting properties from the Data Product contract.
+   *
+   * @param entity The entity to create the contract for
+   * @param dataProductContractName The name of the Data Product contract being inherited from
+   * @param user The user creating the contract
+   */
+  public DataContract materializeInheritedContract(
+      EntityInterface entity, String dataProductContractName, String user) {
+    // Name format: "<Data Product Contract> - <entity name>"
+    String contractName = dataProductContractName + " - " + entity.getName();
+    String contractFqn = entity.getFullyQualifiedName() + ".contract";
+
+    DataContract newContract =
+        new DataContract()
+            .withId(UUID.randomUUID())
+            .withName(contractName)
+            .withFullyQualifiedName(contractFqn)
+            .withEntity(entity.getEntityReference())
+            .withEntityStatus(EntityStatus.DRAFT)
+            .withUpdatedBy(user)
+            .withUpdatedAt(System.currentTimeMillis());
+
+    return createInternal(newContract);
+  }
+
+  /**
+   * Validate a contract using the effective contract rules (which may include inherited properties)
+   * but store the results against the provided contract entity.
+   */
+  public RestUtil.PutResponse<DataContractResult> validateContractWithEffective(
+      DataContract contractForResults, DataContract effectiveContract) {
+    // Check if there's a running validation and abort it
+    abortRunningValidation(contractForResults);
+
+    DataContractResult result =
+        new DataContractResult()
+            .withId(UUID.randomUUID())
+            .withDataContractFQN(contractForResults.getFullyQualifiedName())
+            .withContractExecutionStatus(ContractExecutionStatus.Running)
+            .withTimestamp(System.currentTimeMillis());
+    addContractResult(contractForResults, result);
+
+    // Validate schema using effective contract's schema (if any)
+    if (effectiveContract.getSchema() != null && !effectiveContract.getSchema().isEmpty()) {
+      SchemaValidation schemaValidation =
+          validateSchemaFieldsAgainstEntity(effectiveContract, effectiveContract.getEntity());
+      result.withSchemaValidation(schemaValidation);
+    }
+
+    // Validate semantics using effective contract's rules (includes inherited rules)
+    if (!nullOrEmpty(effectiveContract.getSemantics())) {
+      SemanticsValidation semanticsValidation = validateSemantics(effectiveContract);
+      result.withSemanticsValidation(semanticsValidation);
+    }
+
+    // Handle quality expectations
+    if (!nullOrEmpty(effectiveContract.getQualityExpectations())) {
+      try {
+        deployAndTriggerDQValidation(effectiveContract);
+      } catch (Exception e) {
+        LOG.error(
+            "Failed to trigger DQ validation for data contract {}: {}",
+            contractForResults.getFullyQualifiedName(),
+            e.getMessage());
+        result
+            .withContractExecutionStatus(ContractExecutionStatus.Aborted)
+            .withResult("Failed to trigger DQ validation: " + e.getMessage());
+        compileResult(result, ContractExecutionStatus.Aborted);
+      }
+    } else {
+      compileResult(result, ContractExecutionStatus.Success);
+    }
+
+    // Store results against the entity's own contract
+    return addContractResult(contractForResults, result);
   }
 
   public void deployAndTriggerDQValidation(DataContract dataContract) {
@@ -1126,6 +1210,155 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
   }
 
+  public DataContract getEffectiveDataContract(EntityInterface entity) {
+    DataContract entityContract = getEntityDataContractSafely(entity);
+
+    List<EntityReference> dataProducts = entity.getDataProducts();
+    if (nullOrEmpty(dataProducts)) {
+      return entityContract;
+    }
+
+    // If entity belongs to multiple data products, we cannot determine which contract to inherit
+    // Return only the entity's own contract
+    if (dataProducts.size() > 1) {
+      LOG.debug(
+          "Entity {} belongs to {} data products. Skipping contract inheritance to avoid ambiguity.",
+          entity.getId(),
+          dataProducts.size());
+      return entityContract;
+    }
+
+    DataContract dataProductContract = null;
+    EntityReference dataProductRef = dataProducts.get(0);
+    try {
+      dataProductContract = loadEntityDataContract(dataProductRef);
+      if (dataProductContract != null
+          && dataProductContract.getEntityStatus() != EntityStatus.APPROVED) {
+        dataProductContract = null;
+      }
+    } catch (Exception e) {
+      LOG.debug(
+          "No contract found for data product {}: {}", dataProductRef.getId(), e.getMessage());
+    }
+
+    if (dataProductContract == null) {
+      return entityContract;
+    }
+
+    if (entityContract == null) {
+      return inheritFromDataProductContract(entity, dataProductContract);
+    }
+
+    return mergeContracts(entityContract, dataProductContract);
+  }
+
+  private DataContract inheritFromDataProductContract(
+      EntityInterface entity, DataContract dataProductContract) {
+    DataContract inherited = JsonUtils.deepCopy(dataProductContract, DataContract.class);
+
+    // Update the entity reference to point to the actual entity, not the data product
+    inherited.setEntity(entity.getEntityReference());
+
+    // Clear entity-specific fields that should not be inherited
+    inherited.setQualityExpectations(null);
+    inherited.setSchema(null);
+    inherited.setTestSuite(null);
+
+    // Clear execution-related fields - inherited contracts have no execution history
+    inherited.setLatestResult(null);
+    inherited.setContractUpdates(null);
+    inherited.setEntityStatus(EntityStatus.DRAFT);
+
+    // Mark all fields as inherited
+    if (inherited.getTermsOfUse() != null) {
+      inherited.getTermsOfUse().setInherited(true);
+    }
+    if (inherited.getSecurity() != null) {
+      inherited.getSecurity().setInherited(true);
+    }
+    if (inherited.getSla() != null) {
+      inherited.getSla().setInherited(true);
+    }
+
+    // Mark semantic rules as inherited
+    if (inherited.getSemantics() != null) {
+      for (SemanticsRule rule : inherited.getSemantics()) {
+        rule.setInherited(true);
+      }
+    }
+
+    // Mark the entire contract as inherited (asset has no contract of its own)
+    inherited.setInherited(true);
+
+    return inherited;
+  }
+
+  private DataContract mergeContracts(
+      DataContract entityContract, DataContract dataProductContract) {
+    DataContract merged = JsonUtils.deepCopy(entityContract, DataContract.class);
+
+    // Inherit terms of use if not defined in entity
+    if (merged.getTermsOfUse() == null && dataProductContract.getTermsOfUse() != null) {
+      merged.setTermsOfUse(
+          JsonUtils.deepCopy(dataProductContract.getTermsOfUse(), TermsOfUse.class));
+      if (merged.getTermsOfUse() != null) {
+        merged.getTermsOfUse().setInherited(true);
+      }
+    }
+
+    // Merge semantics - inherited rules from Data Product + entity's own rules
+    if (dataProductContract.getSemantics() != null) {
+      List<SemanticsRule> mergedSemantics = new ArrayList<>();
+
+      // Collect entity rule names to avoid duplicates
+      Set<String> entityRuleNames =
+          merged.getSemantics() != null
+              ? merged.getSemantics().stream()
+                  .map(SemanticsRule::getName)
+                  .collect(Collectors.toSet())
+              : Collections.emptySet();
+
+      // Add Data Product semantics and mark as inherited (skip if entity already has the rule)
+      for (SemanticsRule dpRule : dataProductContract.getSemantics()) {
+        if (!entityRuleNames.contains(dpRule.getName())) {
+          SemanticsRule inheritedRule = JsonUtils.deepCopy(dpRule, SemanticsRule.class);
+          inheritedRule.setInherited(true);
+          mergedSemantics.add(inheritedRule);
+        }
+      }
+
+      // Add entity's own semantics (not inherited)
+      if (merged.getSemantics() != null) {
+        for (SemanticsRule entityRule : merged.getSemantics()) {
+          // Keep the inherited flag as-is from the entity rule (should be false/null for native
+          // rules)
+          mergedSemantics.add(entityRule);
+        }
+      }
+
+      merged.setSemantics(mergedSemantics);
+    }
+
+    // Inherit security if not defined in entity
+    if (merged.getSecurity() == null && dataProductContract.getSecurity() != null) {
+      merged.setSecurity(
+          JsonUtils.deepCopy(dataProductContract.getSecurity(), ContractSecurity.class));
+      if (merged.getSecurity() != null) {
+        merged.getSecurity().setInherited(true);
+      }
+    }
+
+    // Inherit SLA if not defined in entity
+    if (merged.getSla() == null && dataProductContract.getSla() != null) {
+      merged.setSla(JsonUtils.deepCopy(dataProductContract.getSla(), ContractSLA.class));
+      if (merged.getSla() != null) {
+        merged.getSla().setInherited(true);
+      }
+    }
+
+    return merged;
+  }
+
   @Override
   public void storeEntity(DataContract dataContract, boolean update) {
     store(dataContract, update);
@@ -1220,7 +1453,15 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   @Override
   protected void preDelete(DataContract entity, String deletedBy) {
-    // A data contract in `Draft` state can only be deleted by the reviewers
+    // Inherited contracts cannot be deleted - they are virtual contracts derived from Data Product
+    if (Boolean.TRUE.equals(entity.getInherited())) {
+      throw BadRequestException.of(
+          "Cannot delete an inherited data contract. The contract is inherited from a Data Product "
+              + "and can only be removed by removing the entity from the Data Product or by creating "
+              + "an entity-specific contract that overrides the inherited one.");
+    }
+
+    // A data contract in `IN_REVIEW` state can only be deleted by the reviewers
     if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
       checkUpdatedByReviewer(entity, deletedBy);
     }

@@ -282,6 +282,12 @@
         },
         "provider": {
           "$ref": "#/definitions/providerType"
+        },
+        "inherited": {
+          "title": "Inherited",
+          "description": "Whether this rule was inherited from a Data Product.",
+          "type": "boolean",
+          "default": false
         }
       },
       "required": [

@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from 'antd';
+import { Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FailIcon } from '../../../assets/svg/ic-fail.svg';
+import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
 import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-successful.svg';
 import { ReactComponent as DefaultIcon } from '../../../assets/svg/ic-task.svg';
 import { SemanticsRule } from '../../../generated/entity/data/dataContract';
@@ -50,28 +51,42 @@ const ContractSemantics: React.FC<{
   return (
     <div className="contract-semantic-component-container">
       <div className="rule-item-container">
-        {semantics.map((item) => (
-          <div className="rule-item" key={item.rule}>
-            <Icon
-              className={classNames('rule-icon', {
-                'rule-icon-default': !latestContractResults,
-              })}
-              component={getSemanticIconPerLastExecution(item.name)}
-            />
-            <div className="rule-item-content">
-              <Typography.Text className="rule-name">
-                {item.name}
-              </Typography.Text>
-              <Typography.Text className="rule-description">
-                <RichTextEditorPreviewerNew
-                  enableSeeMoreVariant
-                  markdown={item.description}
-                  maxLineLength="3"
-                />
-              </Typography.Text>
+        {semantics.map((item) => {
+          const inheritedIcon = item.inherited ? (
+            <Tooltip
+              title={t('label.inherited-entity', {
+                entity: t('label.semantic-plural'),
+              })}>
+              <InheritIcon className="inherit-icon cursor-pointer" width={14} />
+            </Tooltip>
+          ) : null;
+
+          return (
+            <div className="rule-item" key={item.rule}>
+              <Icon
+                className={classNames('rule-icon', {
+                  'rule-icon-default': !latestContractResults,
+                })}
+                component={getSemanticIconPerLastExecution(item.name)}
+              />
+              <div className="rule-item-content">
+                <div className="d-flex items-center gap-1">
+                  <Typography.Text className="rule-name">
+                    {item.name}
+                  </Typography.Text>
+                  {inheritedIcon}
+                </div>
+                <Typography.Text className="rule-description">
+                  <RichTextEditorPreviewerNew
+                    enableSeeMoreVariant
+                    markdown={item.description}
+                    maxLineLength="3"
+                  />
+                </Typography.Text>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       {contractStatus && (
         <div className="contract-status-container">

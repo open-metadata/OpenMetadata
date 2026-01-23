@@ -104,13 +104,18 @@
       "type": "string"
     },
     "aws": {
-      "description": "AWS IAM authentication configuration for OpenSearch. IAM auth is automatically enabled when region is configured. Uses standard AWS environment variables (AWS_DEFAULT_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN).",
+      "description": "AWS IAM authentication configuration for OpenSearch. IAM auth must be explicitly enabled. When enabled, uses standard AWS environment variables or configured credentials.",
       "type": "object",
       "javaType": "org.openmetadata.schema.service.configuration.elasticsearch.AwsConfiguration",
       "extends": {
         "$ref": "../security/credentials/awsBaseConfig.json"
       },
       "properties": {
+        "enabled": {
+          "description": "Enable AWS IAM authentication for OpenSearch. When enabled, requires region to be configured. Defaults to false for backward compatibility.",
+          "type": "boolean",
+          "default": false
+        },
         "serviceName": {
           "description": "AWS service name for signing (es for Elasticsearch/OpenSearch, aoss for OpenSearch Serverless)",
           "type": "string",
