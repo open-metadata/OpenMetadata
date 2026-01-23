@@ -72,7 +72,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
   private final JwtFilter jwtFilter;
 
-  private final List<String> allowedOrigins;
+  private volatile List<String> allowedOrigins;
 
   private final OAuthAuthorizationServerProvider authProvider;
 
@@ -143,6 +143,26 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
     logger.info("OAuthHttpServletSseServerTransportProvider initialized with base URL: " + baseUrl);
     logger.info("CORS allowed origins: " + allowedOrigins);
+  }
+
+  /**
+   * Updates the allowed origins configuration for CORS.
+   * This method allows dynamic configuration updates without recreating the transport provider.
+   * @param newAllowedOrigins The new list of allowed origins
+   */
+  public synchronized void updateAllowedOrigins(List<String> newAllowedOrigins) {
+    if (newAllowedOrigins != null) {
+      this.allowedOrigins = newAllowedOrigins;
+      logger.info("Updated CORS allowed origins: " + newAllowedOrigins);
+    }
+  }
+
+  /**
+   * Gets the current allowed origins for CORS.
+   * @return The list of allowed origins
+   */
+  public List<String> getAllowedOrigins() {
+    return allowedOrigins;
   }
 
   /**

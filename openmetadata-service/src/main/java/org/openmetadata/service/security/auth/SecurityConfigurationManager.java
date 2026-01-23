@@ -18,6 +18,8 @@ import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURA
 import static org.openmetadata.schema.settings.SettingsType.MCP_CONFIGURATION;
 
 import io.dropwizard.core.setup.Environment;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
@@ -33,6 +35,25 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 
 @Slf4j
 public class SecurityConfigurationManager {
+
+  /**
+   * Listener interface for configuration change notifications.
+   * Implementations can be registered to receive callbacks when configuration is reloaded.
+   */
+  @FunctionalInterface
+  public interface ConfigurationChangeListener {
+    /**
+     * Called when configuration has been reloaded.
+     * @param authConfig The new authentication configuration
+     * @param authzConfig The new authorizer configuration
+     * @param mcpConfig The new MCP configuration
+     */
+    void onConfigurationChanged(
+        AuthenticationConfiguration authConfig,
+        AuthorizerConfiguration authzConfig,
+        MCPConfiguration mcpConfig);
+  }
+
   private static class Holder {
     private static final SecurityConfigurationManager INSTANCE = new SecurityConfigurationManager();
   }
@@ -40,6 +61,7 @@ public class SecurityConfigurationManager {
   private AuthenticationConfiguration currentAuthConfig;
   private AuthorizerConfiguration currentAuthzConfig;
   private MCPConfiguration currentMcpConfig;
+  private final List<ConfigurationChangeListener> listeners = new ArrayList<>();
 
   public void setCurrentAuthConfig(AuthenticationConfiguration authConfig) {
     this.currentAuthConfig = authConfig;
@@ -136,11 +158,52 @@ public class SecurityConfigurationManager {
 
       application.reinitializeAuthSystem(appConfig, environment);
 
+      notifyListeners();
+
       LOG.info("Successfully reloaded security system with new configuration");
     } catch (Exception e) {
       LOG.error("Failed to reload security system", e);
       rollbackConfiguration();
       throw new AuthenticationException("Failed to reload security system", e);
+    }
+  }
+
+  /**
+   * Register a listener to be notified of configuration changes.
+   * @param listener The listener to register
+   */
+  public synchronized void addConfigurationChangeListener(ConfigurationChangeListener listener) {
+    if (listener != null && !listeners.contains(listener)) {
+      listeners.add(listener);
+      LOG.info("Registered configuration change listener: {}", listener.getClass().getSimpleName());
+    }
+  }
+
+  /**
+   * Remove a previously registered listener.
+   * @param listener The listener to remove
+   */
+  public synchronized void removeConfigurationChangeListener(ConfigurationChangeListener listener) {
+    if (listeners.remove(listener)) {
+      LOG.info("Removed configuration change listener: {}", listener.getClass().getSimpleName());
+    }
+  }
+
+  /**
+   * Notify all registered listeners of configuration changes.
+   */
+  private synchronized void notifyListeners() {
+    for (ConfigurationChangeListener listener : listeners) {
+      try {
+        listener.onConfigurationChanged(currentAuthConfig, currentAuthzConfig, currentMcpConfig);
+        LOG.debug(
+            "Notified configuration change listener: {}", listener.getClass().getSimpleName());
+      } catch (Exception e) {
+        LOG.error(
+            "Error notifying configuration change listener: {}",
+            listener.getClass().getSimpleName(),
+            e);
+      }
     }
   }
 

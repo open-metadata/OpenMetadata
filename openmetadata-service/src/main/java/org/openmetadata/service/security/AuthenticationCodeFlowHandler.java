@@ -220,6 +220,32 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     this.maxAge = authenticationConfiguration.getOidcConfiguration().getMaxAge();
     this.promptType = authenticationConfiguration.getOidcConfiguration().getPrompt();
     this.clientAuthentication = getClientAuthentication(client.getConfiguration());
+
+    configureHttpTimeouts();
+  }
+
+  private void configureHttpTimeouts() {
+    try {
+      org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfig =
+          org.openmetadata.service.security.auth.SecurityConfigurationManager.getCurrentMcpConfig();
+      if (mcpConfig != null) {
+        Integer connectTimeout = mcpConfig.getConnectTimeout();
+        Integer readTimeout = mcpConfig.getReadTimeout();
+
+        if (connectTimeout != null) {
+          System.setProperty("http.connection.timeout", String.valueOf(connectTimeout));
+          System.setProperty("https.connection.timeout", String.valueOf(connectTimeout));
+          LOG.info("Set HTTP connection timeout to {}ms from MCP configuration", connectTimeout);
+        }
+        if (readTimeout != null) {
+          System.setProperty("http.read.timeout", String.valueOf(readTimeout));
+          System.setProperty("https.read.timeout", String.valueOf(readTimeout));
+          LOG.info("Set HTTP read timeout to {}ms from MCP configuration", readTimeout);
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to configure HTTP timeouts from MCP config: {}", e.getMessage());
+    }
   }
 
   private OidcClient buildOidcClient(OidcClientConfig clientConfig) {

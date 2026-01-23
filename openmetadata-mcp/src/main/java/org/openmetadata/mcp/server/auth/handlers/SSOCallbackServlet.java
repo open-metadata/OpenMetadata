@@ -79,10 +79,7 @@ public class SSOCallbackServlet extends HttpServlet {
   private final UserSSOOAuthProvider userSSOProvider;
   private final AuthenticationCodeFlowHandler ssoHandler;
   private final McpPendingAuthRequestRepository pendingAuthRepository;
-  private final Map<String, String> claimsMapping;
-  private final String[] claimsOrder;
-  private final String principalDomain;
-  private final IdTokenValidator idTokenValidator;
+  private final SSOAuthMechanism.SsoServiceType ssoServiceType;
 
   public SSOCallbackServlet(
       UserSSOOAuthProvider userSSOProvider,
@@ -91,12 +88,55 @@ public class SSOCallbackServlet extends HttpServlet {
     this.userSSOProvider = userSSOProvider;
     this.ssoHandler = ssoHandler;
     this.pendingAuthRepository = new McpPendingAuthRequestRepository();
+    this.ssoServiceType = ssoServiceType;
 
-    this.claimsMapping = Map.of();
-    this.claimsOrder = new String[] {"email", "preferred_username", "sub"};
-    this.principalDomain = "";
+    LOG.info("Initialized SSOCallbackServlet for MCP OAuth with SSO provider: {}", ssoServiceType);
+  }
 
-    // Initialize ID token validator with JWKS endpoints from authentication configuration
+  private Map<String, String> getClaimsMapping() {
+    try {
+      var authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
+      if (authConfig != null && authConfig.getJwtPrincipalClaimsMapping() != null) {
+        Map<String, String> mapping = new TreeMap<>();
+        for (String claimPair : authConfig.getJwtPrincipalClaimsMapping()) {
+          String[] parts = claimPair.split(":");
+          if (parts.length == 2) {
+            mapping.put(parts[0], parts[1]);
+          }
+        }
+        return mapping;
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to get claims mapping from config: {}", e.getMessage());
+    }
+    return Map.of();
+  }
+
+  private String[] getClaimsOrder() {
+    try {
+      var authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
+      if (authConfig != null && authConfig.getJwtPrincipalClaims() != null) {
+        return authConfig.getJwtPrincipalClaims().toArray(new String[0]);
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to get claims order from config: {}", e.getMessage());
+    }
+    return new String[] {"email", "preferred_username", "sub"};
+  }
+
+  private String getPrincipalDomain() {
+    try {
+      var authzConfig = SecurityConfigurationManager.getCurrentAuthzConfig();
+      if (authzConfig != null && authzConfig.getPrincipalDomain() != null) {
+        return authzConfig.getPrincipalDomain();
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to get principal domain from config: {}", e.getMessage());
+    }
+    return "";
+  }
+
+  private IdTokenValidator createIdTokenValidator() {
     var authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
     String expectedIssuer;
     try {
@@ -109,17 +149,11 @@ public class SSOCallbackServlet extends HttpServlet {
       expectedIssuer = authConfig.getAuthority();
     }
 
-    this.idTokenValidator =
-        new IdTokenValidator(
-            authConfig.getPublicKeyUrls(),
-            expectedIssuer,
-            null // Audience (client ID) validation is optional - some providers don't set it
-            );
-
-    LOG.info(
-        "Initialized SSOCallbackServlet for MCP OAuth with SSO provider: {}, expected issuer: {}",
-        ssoServiceType,
-        expectedIssuer);
+    return new IdTokenValidator(
+        authConfig.getPublicKeyUrls(),
+        expectedIssuer,
+        null // Audience (client ID) validation is optional - some providers don't set it
+        );
   }
 
   @Override
@@ -220,10 +254,14 @@ public class SSOCallbackServlet extends HttpServlet {
       claims.putAll(claimsSet.getClaims());
 
       String userName =
-          findUserNameFromClaims(claimsMapping, java.util.Arrays.asList(claimsOrder), claims);
+          findUserNameFromClaims(
+              getClaimsMapping(), java.util.Arrays.asList(getClaimsOrder()), claims);
       String email =
           findEmailFromClaims(
-              claimsMapping, java.util.Arrays.asList(claimsOrder), claims, principalDomain);
+              getClaimsMapping(),
+              java.util.Arrays.asList(getClaimsOrder()),
+              claims,
+              getPrincipalDomain());
 
       LOG.info("Extracted user identity from SSO: username={}, email={}", userName, email);
 
@@ -287,7 +325,7 @@ public class SSOCallbackServlet extends HttpServlet {
     // Validate ID token signature using JWKS public keys (SECURITY FIX)
     JWTClaimsSet claimsSet;
     try {
-      claimsSet = idTokenValidator.validateAndDecode(idTokenString);
+      claimsSet = createIdTokenValidator().validateAndDecode(idTokenString);
       LOG.info(
           "ID token signature validated successfully for auth request: {}. Issuer: {}, Subject: {}",
           authRequestId,
@@ -307,10 +345,14 @@ public class SSOCallbackServlet extends HttpServlet {
     claims.putAll(claimsSet.getClaims());
 
     String userName =
-        findUserNameFromClaims(claimsMapping, java.util.Arrays.asList(claimsOrder), claims);
+        findUserNameFromClaims(
+            getClaimsMapping(), java.util.Arrays.asList(getClaimsOrder()), claims);
     String email =
         findEmailFromClaims(
-            claimsMapping, java.util.Arrays.asList(claimsOrder), claims, principalDomain);
+            getClaimsMapping(),
+            java.util.Arrays.asList(getClaimsOrder()),
+            claims,
+            getPrincipalDomain());
 
     // Validate required user information was extracted
     if (userName == null || userName.trim().isEmpty()) {
