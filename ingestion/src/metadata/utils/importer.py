@@ -258,7 +258,7 @@ def import_test_case_class(
         "metadata.data_quality.validations.{}.{}.{}.{}".format(  # pylint: disable=consider-using-f-string
             test_type.lower(),
             runner_type,
-            test_definition,
+            "ruleLibrarySqlExpressionValidator" if validator_class == "RuleLibrarySqlExpressionValidator" else test_definition,
             validator_class,
         )
     )

@@ -32,10 +32,10 @@ logger = test_suite_logger()
 RESERVED_PARAMS = {"column_name", "table_name"}
 
 DATABASES_WITHOUT_DATABASE_CONCEPT = {
-    DatabaseServiceType.Mysql,
-    DatabaseServiceType.MariaDB,
-    DatabaseServiceType.SQLite,
-    DatabaseServiceType.Cockroach,
+    DatabaseServiceType.Mysql.value,
+    DatabaseServiceType.MariaDB.value,
+    DatabaseServiceType.SQLite.value,
+    DatabaseServiceType.Cockroach.value,
 }
 
 
@@ -137,7 +137,7 @@ class RuleLibrarySqlExpressionValidator(BaseTestValidator):
 
         db_type = self.runtime_params.conn_config.config.type
 
-        if db_type in DATABASES_WITHOUT_DATABASE_CONCEPT:
+        if db_type.value in DATABASES_WITHOUT_DATABASE_CONCEPT:
             return ".".join(parts[2:])
         return ".".join(parts[1:])
 

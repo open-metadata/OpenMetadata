@@ -67,9 +67,6 @@ class RuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
     def _run_results(self, sql_expression: Tuple[str, Dict[str, str]]) -> int:
         """Execute the compiled SQL and return the row count.
 
-        Wraps the user query in COUNT(*) to prevent OOM issues from
-        loading all matching rows into memory.
-
         Args:
             sql_expression: Tuple of (SQL string, bind params dict)
 
@@ -81,13 +78,9 @@ class RuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
         if not is_safe_sql_query(compiled_sql):
             raise RuntimeError(f"SQL expression is not safe\n\n{compiled_sql}")
 
-        count_query = f"SELECT COUNT(*) FROM ({compiled_sql}) AS subquery"
-
         try:
-            result = self.runner._session.execute(
-                text(count_query), bind_params
-            ).scalar()
-            return result or 0
+            result = self.runner._session.execute(text(compiled_sql), bind_params)
+            return len(result.fetchall())
         except Exception as exc:
             self.runner._session.rollback()
             logger.exception(f"Error executing SQL expression: {exc}")

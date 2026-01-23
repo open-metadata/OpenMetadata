@@ -38,8 +38,12 @@ from metadata.data_quality.validations.table.sqlalchemy.tableDiff import (
     TableDiffValidator,
 )
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.sampler.sampler_interface import SamplerInterface
+from metadata.utils.logger import test_suite_logger
+
+logger = test_suite_logger()
 
 
 def removesuffix(s: str, suffix: str) -> str:
@@ -70,12 +74,16 @@ class RuntimeParameterSetterFactory:
 
     def __init__(self) -> None:
         """Set"""
+        # Map test definition FQN to param setters (for built-in validators)
         self._setter_map: Dict[str, Set[Type[RuntimeParameterSetter]]] = {
             validator_name(TableDiffValidator): {TableDiffParamsSetter},
             validator_name(TableCustomSQLQueryValidator): {
                 TableCustomSQLQueryParamsSetter
             },
-            validator_name(RuleLibrarySqlExpressionValidator): {
+        }
+        # Map validatorClass names to param setters (for rule library validators)
+        self._validator_class_map: Dict[str, Set[Type[RuntimeParameterSetter]]] = {
+            RuleLibrarySqlExpressionValidator.__name__: {
                 RuleLibrarySqlExpressionParamsSetter
             },
         }
@@ -88,7 +96,29 @@ class RuntimeParameterSetterFactory:
         table_entity: Table,
         sampler: SamplerInterface,
     ) -> Set[RuntimeParameterSetter]:
-        """Get the runtime parameter setter"""
+        """Get the runtime parameter setter.
+
+        First checks if the test definition FQN matches a built-in validator.
+        If not found, fetches the test definition and checks the validatorClass
+        field for rule library validators.
+        """
+        # Check built-in validators by FQN
+        setter_classes = self._setter_map.get(name, set())
+
+        # If not found, check if it's a rule library validator by validatorClass
+        if not setter_classes:
+            try:
+                test_definition = ometa.get_by_name(
+                    entity=TestDefinition,
+                    fqn=name,
+                )
+                if test_definition and test_definition.validatorClass:
+                    setter_classes = self._validator_class_map.get(
+                        test_definition.validatorClass, set()
+                    )
+            except Exception as exc:
+                logger.debug(f"Could not fetch test definition {name}: {exc}")
+
         return {
             setter(
                 ometa,
@@ -96,5 +126,5 @@ class RuntimeParameterSetterFactory:
                 table_entity,
                 sampler,
             )
-            for setter in self._setter_map.get(name, set())
+            for setter in setter_classes
         }
