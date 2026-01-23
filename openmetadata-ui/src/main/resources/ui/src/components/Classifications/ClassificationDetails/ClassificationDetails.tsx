@@ -56,6 +56,7 @@ import {
   getClassificationVersionsPath,
 } from '../../../utils/RouterUtils';
 import { getErrorText } from '../../../utils/StringsUtils';
+import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AppBadge from '../../common/Badge/Badge.component';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
@@ -480,7 +481,7 @@ const ClassificationDetails = forwardRef(
         )}
 
         <GenericProvider<Classification>
-          data={currentClassification as Classification}
+          data={(currentClassification as Classification) ?? {}}
           isVersionView={isVersionView}
           permissions={classificationPermissions}
           type={EntityType.CLASSIFICATION as CustomizeEntityType}
@@ -543,6 +544,7 @@ const ClassificationDetails = forwardRef(
                   dataTestId="classification-owner-name"
                   hasPermission={editOwnerPermission}
                 />
+                {tagClassBase.getClassificationReviewerWidget()}
               </div>
             </Col>
           </Row>
