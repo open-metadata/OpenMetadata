@@ -71,10 +71,6 @@ import {
   patchGlossaryTerm,
 } from '../../../rest/glossaryAPI';
 import { getLineageDataByFQN } from '../../../rest/lineageAPI';
-import {
-  getContainerByFQN,
-  patchContainerDetails,
-} from '../../../rest/storageAPI';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { getMetricByFqn, patchMetric } from '../../../rest/metricsAPI';
 import { getMlModelByFQN, patchMlModelDetails } from '../../../rest/mlModelAPI';
@@ -86,6 +82,10 @@ import {
   getSearchIndexDetailsByFQN,
   patchSearchIndexDetails,
 } from '../../../rest/SearchIndexAPI';
+import {
+  getContainerByFQN,
+  patchContainerDetails,
+} from '../../../rest/storageAPI';
 
 import {
   getStoredProceduresByFqn,
