@@ -7,7 +7,6 @@ import io.modelcontextprotocol.server.McpStatelessSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.servlet.DispatcherType;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -92,70 +91,9 @@ public class McpServer implements McpServerProvider {
               .resources(true, true)
               .build();
       // Create unified OAuth provider for MCP authentication (supports both SSO and Basic Auth)
-      // Get base URL from system settings, fallback to localhost for development
-      String baseUrl = getBaseUrlFromSettings();
-      if (baseUrl == null || baseUrl.trim().isEmpty()) {
-        baseUrl = "http://localhost:8585";
-        LOG.warn("Base URL not configured, using default: {}", baseUrl);
-      }
-
-      org.openmetadata.service.security.AuthenticationCodeFlowHandler ssoHandler = null;
-      int maxRetries = 3;
-      int retryDelayMs = 2000;
-
-      // Increase default HTTP connection and read timeouts for SSO provider metadata fetching
-      // pac4j uses HttpURLConnection which respects these system properties
-      String originalConnectTimeout = System.getProperty("sun.net.client.defaultConnectTimeout");
-      String originalReadTimeout = System.getProperty("sun.net.client.defaultReadTimeout");
-      System.setProperty("sun.net.client.defaultConnectTimeout", "30000"); // 30 seconds
-      System.setProperty("sun.net.client.defaultReadTimeout", "30000"); // 30 seconds
-
-      try {
-        for (int attempt = 1; attempt <= maxRetries; attempt++) {
-          try {
-            ssoHandler =
-                org.openmetadata.service.security.AuthenticationCodeFlowHandler.getInstance();
-            LOG.info(
-                "SSO AuthenticationCodeFlowHandler initialized for MCP OAuth (attempt {})",
-                attempt);
-            break;
-          } catch (Exception e) {
-            if (attempt < maxRetries) {
-              LOG.warn(
-                  "SSO AuthenticationCodeFlowHandler initialization failed (attempt {}/{}), retrying in {}ms. Error: {}",
-                  attempt,
-                  maxRetries,
-                  retryDelayMs,
-                  e.getMessage());
-              try {
-                Thread.sleep(retryDelayMs);
-              } catch (InterruptedException ie) {
-                Thread.currentThread().interrupt();
-                LOG.warn("Retry sleep interrupted, stopping SSO initialization attempts");
-                break;
-              }
-            } else {
-              LOG.warn(
-                  "SSO AuthenticationCodeFlowHandler not initialized after {} attempts. SSO OAuth flow will not be available. Basic Auth will still work. Last error: {}",
-                  maxRetries,
-                  e.getMessage(),
-                  e);
-            }
-          }
-        }
-      } finally {
-        // Restore original timeout values
-        if (originalConnectTimeout != null) {
-          System.setProperty("sun.net.client.defaultConnectTimeout", originalConnectTimeout);
-        } else {
-          System.clearProperty("sun.net.client.defaultConnectTimeout");
-        }
-        if (originalReadTimeout != null) {
-          System.setProperty("sun.net.client.defaultReadTimeout", originalReadTimeout);
-        } else {
-          System.clearProperty("sun.net.client.defaultReadTimeout");
-        }
-      }
+      // Get base URL from MCP configuration or system settings
+      String baseUrl = getBaseUrlFromConfig();
+      LOG.info("MCP OAuth initialized with base URL: {}", baseUrl);
 
       org.openmetadata.service.security.jwt.JWTTokenGenerator jwtGenerator =
           org.openmetadata.service.security.jwt.JWTTokenGenerator.getInstance();
@@ -167,40 +105,11 @@ public class McpServer implements McpServerProvider {
 
       org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider authProvider =
           new org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider(
-              ssoHandler, jwtGenerator, basicAuthenticator, baseUrl);
+              jwtGenerator, basicAuthenticator);
 
-      // Configure allowed origins for CORS
-      // Check if we're in development mode (baseUrl contains localhost or is empty)
-      // In production, these should be configured via MCPConfiguration
-      List<String> allowedOrigins;
-      boolean isDevelopmentMode =
-          baseUrl == null
-              || baseUrl.isEmpty()
-              || baseUrl.contains("localhost")
-              || baseUrl.contains("127.0.0.1");
-
-      if (isDevelopmentMode) {
-        // Development mode: Allow common localhost ports with warning
-        LOG.warn(
-            "MCP OAuth CORS: Using default localhost origins (development mode detected). "
-                + "For production, configure allowedOrigins via MCPConfiguration in openmetadata.yaml");
-        allowedOrigins =
-            Arrays.asList(
-                "http://localhost:3000",
-                "http://localhost:8585",
-                "http://localhost:9090",
-                "http://localhost:6274", // MCP Inspector
-                "http://localhost:6275",
-                "http://localhost:6276",
-                "http://localhost:6277");
-      } else {
-        // Production mode: Use minimal CORS (same origin only)
-        // TODO: Wire MCPConfiguration.getAllowedOrigins() when available
-        LOG.warn(
-            "MCP OAuth CORS: Production mode detected. Using same-origin policy only. "
-                + "Configure allowedOrigins via MCPConfiguration for cross-origin access.");
-        allowedOrigins = Collections.emptyList(); // No cross-origin requests allowed
-      }
+      // Get allowed origins from MCP configuration (database-backed)
+      List<String> allowedOrigins = getAllowedOriginsFromConfig();
+      LOG.info("MCP OAuth CORS: Using allowed origins from configuration: {}", allowedOrigins);
 
       // Initialize OAuth token cleanup scheduler (runs hourly to delete expired tokens)
       OAuthTokenCleanupScheduler.initialize();
@@ -246,6 +155,8 @@ public class McpServer implements McpServerProvider {
         LOG.warn("Could not determine SSO provider type, using default GOOGLE", e);
       }
 
+      org.openmetadata.service.security.AuthenticationCodeFlowHandler ssoHandler =
+          org.openmetadata.service.security.AuthenticationCodeFlowHandler.getInstance();
       org.openmetadata.mcp.server.auth.handlers.SSOCallbackServlet ssoCallbackServlet =
           new org.openmetadata.mcp.server.auth.handlers.SSOCallbackServlet(
               authProvider, ssoHandler, ssoServiceType);
@@ -292,6 +203,33 @@ public class McpServer implements McpServerProvider {
     return new McpStatelessServerFeatures.SyncPromptSpecification(
         prompt,
         (exchange, arguments) -> promptsContext.callPrompt(jwtFilter, prompt.name(), arguments));
+  }
+
+  private String getBaseUrlFromConfig() {
+    try {
+      org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfig =
+          SecurityConfigurationManager.getCurrentMcpConfig();
+      if (mcpConfig != null && mcpConfig.getBaseUrl() != null) {
+        LOG.info("Base URL retrieved from MCP configuration: {}", mcpConfig.getBaseUrl());
+        return mcpConfig.getBaseUrl();
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to get base URL from MCP config: {}", e.getMessage());
+    }
+    return getBaseUrlFromSettings();
+  }
+
+  private List<String> getAllowedOriginsFromConfig() {
+    try {
+      org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfig =
+          SecurityConfigurationManager.getCurrentMcpConfig();
+      if (mcpConfig != null && mcpConfig.getAllowedOrigins() != null) {
+        return mcpConfig.getAllowedOrigins();
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to get allowed origins from MCP config: {}", e.getMessage());
+    }
+    return Arrays.asList("http://localhost:3000", "http://localhost:8585", "http://localhost:9090");
   }
 
   /**

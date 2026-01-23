@@ -13,6 +13,7 @@ import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.HashMap;
@@ -93,10 +94,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   private static final long REFRESH_TOKEN_EXPIRY_DAYS = 30L;
   private static final long REFRESH_TOKEN_EXPIRY_SECONDS = REFRESH_TOKEN_EXPIRY_DAYS * 24 * 60 * 60;
 
-  private final AuthenticationCodeFlowHandler ssoHandler;
   private final JWTTokenGenerator jwtGenerator;
   private final BasicAuthenticator basicAuthenticator;
-  private final String baseUrl;
 
   private final OAuthClientRepository clientRepository;
   private final OAuthAuthorizationCodeRepository codeRepository;
@@ -112,14 +111,9 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
   public UserSSOOAuthProvider(
-      AuthenticationCodeFlowHandler ssoHandler,
-      JWTTokenGenerator jwtGenerator,
-      BasicAuthenticator basicAuthenticator,
-      String baseUrl) {
-    this.ssoHandler = ssoHandler;
+      JWTTokenGenerator jwtGenerator, BasicAuthenticator basicAuthenticator) {
     this.jwtGenerator = jwtGenerator;
     this.basicAuthenticator = basicAuthenticator;
-    this.baseUrl = baseUrl;
 
     this.clientRepository = new OAuthClientRepository();
     this.codeRepository = new OAuthAuthorizationCodeRepository();
@@ -127,9 +121,57 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     this.pendingAuthRepository = new McpPendingAuthRequestRepository();
     this.revocationHandler = new RevocationHandler(tokenRepository);
 
-    LOG.info(
-        "Initialized UserSSOOAuthProvider with unified auth (SSO + Basic Auth) and baseUrl: {}",
-        baseUrl);
+    LOG.info("Initialized UserSSOOAuthProvider with unified auth (SSO + Basic Auth)");
+  }
+
+  /**
+   * Gets the SSO handler from SecurityConfigurationManager. This is resolved dynamically from
+   * database configuration, allowing configuration changes without server restart.
+   */
+  private AuthenticationCodeFlowHandler getSsoHandler() {
+    try {
+      return AuthenticationCodeFlowHandler.getInstance();
+    } catch (Exception e) {
+      LOG.warn("SSO handler not available: {}", e.getMessage());
+      return null;
+    }
+  }
+
+  /**
+   * Gets the base URL from MCP configuration or system settings. This is resolved dynamically from
+   * database configuration.
+   */
+  private String getBaseUrl() {
+    try {
+      org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfig =
+          org.openmetadata.service.security.auth.SecurityConfigurationManager.getCurrentMcpConfig();
+      if (mcpConfig != null && mcpConfig.getBaseUrl() != null) {
+        return mcpConfig.getBaseUrl();
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to get base URL from MCP config: {}", e.getMessage());
+    }
+
+    // Fallback to system settings
+    try {
+      org.openmetadata.service.jdbi3.SystemRepository systemRepo =
+          org.openmetadata.service.Entity.getSystemRepository();
+      org.openmetadata.schema.settings.Settings baseUrlSettings =
+          systemRepo.getOMBaseUrlConfigInternal();
+      if (baseUrlSettings != null) {
+        org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration baseUrlConfig =
+            (org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration)
+                baseUrlSettings.getConfigValue();
+        if (baseUrlConfig != null) {
+          return baseUrlConfig.getOpenMetadataUrl();
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to get base URL from system settings: {}", e.getMessage());
+    }
+
+    // Final fallback
+    return "http://localhost:8585";
   }
 
   /**
@@ -194,6 +236,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
   private CompletableFuture<String> handleSSOAuthorization(
       OAuthClientInformation client, AuthorizationParams params) throws AuthorizeException {
+    AuthenticationCodeFlowHandler ssoHandler = getSsoHandler();
     if (ssoHandler == null) {
       throw new AuthorizeException(
           "server_error", "SSO authentication is not available. SSO handler not initialized.");
@@ -258,9 +301,9 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
       LOG.debug("Created pending auth request: {}", authRequestId);
 
-      String mcpCallbackUrl = baseUrl + "/mcp/callback";
+      String mcpCallbackUrl = getBaseUrl() + "/mcp/callback";
       LOG.info(
-          "Starting SSO redirect for MCP OAuth with callback URL: {} (registered with Google)",
+          "Starting SSO redirect for MCP OAuth with callback URL: {} (registered with SSO provider)",
           mcpCallbackUrl);
 
       HttpServletRequest wrappedRequest =
