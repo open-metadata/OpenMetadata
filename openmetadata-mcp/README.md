@@ -37,16 +37,17 @@ This module implements a complete OAuth 2.0 Authorization Code Flow with PKCE fo
 
 ### Core Components
 
-**UserSSOOAuthProvider** (1148 lines)
+**UserSSOOAuthProvider**
 - Main OAuth provider implementing authorization code flow
 - Handles both Google SSO and Basic Auth flows
 - Token generation, validation, and refresh logic
-- PKCE challenge/verifier validation
+- PKCE challenge/verifier validation with timing-safe comparison
 
-**OAuthHttpStatelessServerTransportProvider** (511 lines)
+**OAuthHttpStatelessServerTransportProvider**
 - HTTP transport layer for OAuth endpoints
 - Routes authorization, token, and discovery requests
 - Servlet-based stateless request handling
+- Provider-aware OAuth scope configuration
 
 **McpAuthFilter**
 - Authentication filter for MCP endpoints
@@ -67,7 +68,7 @@ This module implements a complete OAuth 2.0 Authorization Code Flow with PKCE fo
 
 Five core OAuth tables with audit logging:
 
-- **oauth_clients** - Registered MCP clients (Claude Desktop, custom clients)
+- **oauth_clients** - Dynamically registered MCP clients via RFC 7591
 - **oauth_authorization_codes** - Short-lived codes (10 min TTL) with PKCE challenge
 - **oauth_access_tokens** - JWT access tokens (1 hour TTL) with encryption
 - **oauth_refresh_tokens** - Refresh tokens (7 days TTL) with automatic rotation
@@ -91,7 +92,7 @@ Five core OAuth tables with audit logging:
        │     Calculate code_challenge = BASE64URL(SHA256(verifier))      │
        │                                                                  │
        │  2. GET /api/v1/mcp/authorize                                   │
-       │     ?client_id=claude-desktop                                   │
+       │     ?client_id={registered_client_id}                          │
        │     &redirect_uri=http://127.0.0.1:XXXXX/callback              │
        │     &code_challenge={challenge}                                 │
        │     &code_challenge_method=S256                                 │
@@ -137,7 +138,7 @@ Five core OAuth tables with audit logging:
        │     grant_type=authorization_code                               │
        │     code={auth_code}                                            │
        │     code_verifier={verifier}                                    │
-       │     client_id=claude-desktop                                    │
+       │     client_id={registered_client_id}                           │
        │     redirect_uri=http://127.0.0.1:XXXXX/callback              │
        │─────────────────────────────────────────────────────────────────>│
        │                                                                  │
@@ -221,14 +222,14 @@ The OAuth server is configured in `openmetadata.yaml`:
 
 ### Client Registration
 
-Clients are registered via POST /api/v1/mcp/register:
+MCP clients use **Dynamic Client Registration (RFC 7591)** via `POST /api/v1/mcp/register`:
 
-- **client_id** - Unique identifier (e.g., "claude-desktop")
-- **redirect_uris** - Allowed callback URLs (localhost for Claude Desktop)
-- **scopes** - Requested OAuth scopes
+- **client_name** - Human-readable client name
+- **redirect_uris** - Allowed callback URLs for OAuth redirects
+- **scopes** - Requested OAuth scopes (openid, profile, email, offline_access)
 - **grant_types** - Supported grant types (authorization_code, refresh_token)
 
-Claude Desktop is pre-registered with localhost redirect URIs.
+The registration endpoint returns a `client_id` and optional `client_secret` for the OAuth flow.
 
 ## MCP Tools Integration
 
@@ -237,7 +238,8 @@ All MCP tools authenticate using the Bearer token from the OAuth flow:
 - **GetLineageTool** - Retrieve entity lineage with authorization checks
 - **SearchTool** - Search metadata with user permissions
 - **DiscoveryTool** - Discover entities with access control
-- **User Impersonation** - ImpersonationContext ThreadLocal for impersonated requests
+
+**Permission Model**: Tool permissions are enforced by OpenMetadata's Authorizer using the user's identity from the JWT. This ensures MCP users have the same access as they would in the OpenMetadata UI - respecting all policies, roles, and ownership rules. OAuth authenticates the user; the Authorizer enforces what they can access.
 
 The McpAuthFilter extracts and validates the JWT on every request, setting up the security context for downstream MCP tool execution.
 
@@ -271,12 +273,12 @@ Tests Google OAuth integration using pac4j with mock Google Identity Provider.
 
 ### Database Migrations
 
-Schema migrations in `bootstrap/sql/migrations/native/1.12.1/`:
+Schema migrations in `bootstrap/sql/migrations/native/1.12.0/`:
 
 - **mysql/schemaChanges.sql** - OAuth tables creation for MySQL
 - **postgres/schemaChanges.sql** - OAuth tables creation for PostgreSQL
-- **mysql/postDataMigration.sql** - Snowflake backward compatibility migration
-- **postgres/postDataMigration.sql** - Snowflake backward compatibility migration
+- **mysql/postDataMigrationSQLScript.sql** - Snowflake backward compatibility migration
+- **postgres/postDataMigrationSQLScript.sql** - Snowflake backward compatibility migration
 
 ### Server Initialization
 
@@ -305,6 +307,8 @@ OAuth components initialized in `McpApplication`:
 - **Rate Limiting** - Protection against brute force and token exhaustion attacks
 - **Single-Use Codes** - Authorization codes deleted after exchange
 - **Token Rotation** - Refresh tokens rotated on every refresh to limit exposure
+- **Timing-Safe Comparisons** - CSRF and PKCE validation use MessageDigest.isEqual() to prevent timing attacks
+- **Provider-Aware Scopes** - OAuth scopes automatically adjusted based on SSO provider (Google, Okta, Azure, etc.)
 
 ## License
 
