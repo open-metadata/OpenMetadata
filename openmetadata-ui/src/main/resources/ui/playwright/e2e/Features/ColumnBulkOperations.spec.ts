@@ -17,8 +17,7 @@ import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
-import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage, uuid } from '../../utils/common';
+import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -361,7 +360,7 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
   const sharedColumnName = 'customer_id';
 
   test.beforeAll('Setup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
 
     // Create glossary and terms for testing
     await glossary.create(apiContext);
@@ -1451,14 +1450,14 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
   let structColumnName: string;
 
   test.beforeAll('Setup table with STRUCT columns', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
     await table.create(apiContext);
     structColumnName = table.columnsName[2];
     await afterAction();
   });
 
   test.afterAll('Cleanup STRUCT test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
     await table.delete(apiContext);
     await afterAction();
   });
