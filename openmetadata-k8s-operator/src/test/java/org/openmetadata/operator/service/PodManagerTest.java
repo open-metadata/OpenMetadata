@@ -26,6 +26,8 @@ import io.fabric8.kubernetes.api.model.ObjectMetaBuilder;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodBuilder;
 import io.fabric8.kubernetes.api.model.PodList;
+import io.fabric8.kubernetes.api.model.PodSecurityContext;
+import io.fabric8.kubernetes.api.model.SecurityContext;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.PodResource;
@@ -153,6 +155,148 @@ class PodManagerTest {
             "valueFrom must have valid references");
       }
     }
+  }
+
+  @Test
+  void testContainerSecurityContextDerivedFromPodSpec() {
+    // Setup OMJob with pod security context
+    OMJobResource omJob = createOMJobWithSecurityContext();
+
+    // Setup mocks
+    when(podOperations.inNamespace(anyString())).thenReturn(podOperations);
+    when(podOperations.resource(any(Pod.class))).thenReturn(podResource);
+
+    Pod createdPod =
+        new PodBuilder()
+            .withNewMetadata()
+            .withName("test-pod-main")
+            .withNamespace("test-namespace")
+            .endMetadata()
+            .build();
+
+    when(podResource.create()).thenReturn(createdPod);
+
+    // Execute
+    Pod result = podManager.createMainPod(omJob);
+
+    // Verify pod was created
+    assertNotNull(result);
+
+    // Capture the pod that was created
+    ArgumentCaptor<Pod> podCaptor = ArgumentCaptor.forClass(Pod.class);
+    verify(podOperations).resource(podCaptor.capture());
+
+    Pod capturedPod = podCaptor.getValue();
+    assertNotNull(capturedPod);
+
+    // Verify container security context was derived from pod spec
+    Container container = capturedPod.getSpec().getContainers().get(0);
+    SecurityContext securityContext = container.getSecurityContext();
+
+    assertNotNull(securityContext);
+    // These should come from the pod spec's security context
+    assertTrue(securityContext.getRunAsNonRoot(), "runAsNonRoot should match pod spec");
+    assertEquals(1000L, securityContext.getRunAsUser(), "runAsUser should match pod spec");
+    assertEquals(1000L, securityContext.getRunAsGroup(), "runAsGroup should match pod spec");
+    // These are secure defaults always applied
+    assertFalse(
+        securityContext.getAllowPrivilegeEscalation(), "Should not allow privilege escalation");
+    assertNotNull(securityContext.getCapabilities(), "Should have capabilities set");
+    assertTrue(
+        securityContext.getCapabilities().getDrop().contains("ALL"),
+        "Should drop ALL capabilities");
+  }
+
+  @Test
+  void testContainerSecurityContextWithoutPodSpec() {
+    // Setup OMJob without pod security context
+    OMJobResource omJob = createOMJobWithEmptyValueFrom();
+
+    // Setup mocks
+    when(podOperations.inNamespace(anyString())).thenReturn(podOperations);
+    when(podOperations.resource(any(Pod.class))).thenReturn(podResource);
+
+    Pod createdPod =
+        new PodBuilder()
+            .withNewMetadata()
+            .withName("test-pod-main")
+            .withNamespace("test-namespace")
+            .endMetadata()
+            .build();
+
+    when(podResource.create()).thenReturn(createdPod);
+
+    // Execute
+    Pod result = podManager.createMainPod(omJob);
+
+    // Capture the pod
+    ArgumentCaptor<Pod> podCaptor = ArgumentCaptor.forClass(Pod.class);
+    verify(podOperations).resource(podCaptor.capture());
+
+    Pod capturedPod = podCaptor.getValue();
+    Container container = capturedPod.getSpec().getContainers().get(0);
+    SecurityContext securityContext = container.getSecurityContext();
+
+    assertNotNull(securityContext);
+    // Secure defaults should still be applied
+    assertFalse(securityContext.getAllowPrivilegeEscalation());
+    assertNotNull(securityContext.getCapabilities());
+    assertTrue(securityContext.getCapabilities().getDrop().contains("ALL"));
+  }
+
+  private OMJobResource createOMJobWithSecurityContext() {
+    List<EnvVar> envVars =
+        Arrays.asList(
+            new EnvVarBuilder().withName("pipelineType").withValue("metadata").build(),
+            new EnvVarBuilder().withName("pipelineRunId").withValue("test-run-id").build());
+
+    PodSecurityContext podSecurityContext = new PodSecurityContext();
+    podSecurityContext.setRunAsNonRoot(true);
+    podSecurityContext.setRunAsUser(1000L);
+    podSecurityContext.setRunAsGroup(1000L);
+    podSecurityContext.setFsGroup(1000L);
+
+    OMJobSpec.OMJobPodSpec mainPodSpec = new OMJobSpec.OMJobPodSpec();
+    mainPodSpec.setImage("openmetadata/ingestion:test");
+    mainPodSpec.setImagePullPolicy("IfNotPresent");
+    mainPodSpec.setCommand(Arrays.asList("python", "main.py"));
+    mainPodSpec.setEnv(envVars);
+    mainPodSpec.setServiceAccountName("test-sa");
+    mainPodSpec.setSecurityContext(podSecurityContext);
+
+    OMJobSpec.OMJobPodSpec exitHandlerSpec = new OMJobSpec.OMJobPodSpec();
+    exitHandlerSpec.setImage("openmetadata/ingestion:test");
+    exitHandlerSpec.setImagePullPolicy("IfNotPresent");
+    exitHandlerSpec.setCommand(Arrays.asList("python", "exit_handler.py"));
+    exitHandlerSpec.setEnv(envVars);
+    exitHandlerSpec.setServiceAccountName("test-sa");
+    exitHandlerSpec.setSecurityContext(podSecurityContext);
+
+    OMJobSpec spec = new OMJobSpec();
+    spec.setMainPodSpec(mainPodSpec);
+    spec.setExitHandlerSpec(exitHandlerSpec);
+    spec.setTtlSecondsAfterFinished(3600);
+
+    OMJobResource omJob = new OMJobResource();
+    omJob.setApiVersion("pipelines.openmetadata.org/v1");
+    omJob.setKind("OMJob");
+
+    ObjectMeta metadata =
+        new ObjectMetaBuilder()
+            .withName("test-omjob-security")
+            .withNamespace("test-namespace")
+            .withUid("test-uid-security")
+            .withLabels(
+                Map.of(
+                    "app.kubernetes.io/name", "openmetadata",
+                    "app.kubernetes.io/component", "ingestion"))
+            .build();
+
+    omJob.setMetadata(metadata);
+    omJob.setSpec(spec);
+    omJob.setStatus(new org.openmetadata.operator.model.OMJobStatus());
+
+    return omJob;
   }
 
   private OMJobResource createOMJobWithEmptyValueFrom() {

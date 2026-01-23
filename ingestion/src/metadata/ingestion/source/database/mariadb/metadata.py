@@ -82,7 +82,12 @@ class MariadbSource(CommonDbSourceService):
         results = self.engine.execute(query).all()
         for row in results:
             try:
-                yield MariaDBStoredProcedure.model_validate(dict(row._mapping))
+                stored_procedure = MariaDBStoredProcedure.model_validate(
+                    dict(row._mapping)
+                )
+                if self.is_stored_procedure_filtered(stored_procedure.name):
+                    continue
+                yield stored_procedure
             except Exception as exc:
                 error = f"Error parsing Stored Procedure payload: {exc}"
                 logger.error(error)

@@ -230,6 +230,64 @@ test.describe('Glossary Bulk Import Export', () => {
       }
     );
 
+    await test.step(
+      'should verify bulk import details in version history',
+      async () => {
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, glossary1.data.displayName);
+        const versionResponse = page.waitForResponse(
+          /\/api\/v1\/glossaries\/[^/]+\/versions\/[^/]+$/
+        );
+        await page.click('[data-testid="version-button"]');
+        await versionResponse;
+        await page.waitForSelector('[role="dialog"]', { state: 'visible' });
+
+        await page.waitForSelector('[data-testid="processed-row"]');
+        const processedRow = await page.$eval(
+          '[data-testid="processed-row"]',
+          (el) => el.textContent
+        );
+
+        expect(processedRow).toBe('3');
+
+        const passedRow = await page.$eval(
+          '[data-testid="passed-row"]',
+          (el) => el.textContent
+        );
+
+        expect(passedRow).toBe('3');
+
+        const failedRow = await page.$eval(
+          '[data-testid="failed-row"]',
+          (el) => el.textContent
+        );
+
+        expect(failedRow).toBe('0');
+
+        await expect(page.getByTestId('view-more-button')).toBeVisible();
+
+        await page.getByTestId('view-more-button').click();
+
+        await expect(
+          page.getByTestId('bulk-import-details-modal')
+        ).toBeVisible();
+
+        await expect(
+          page
+            .getByTestId('bulk-import-details-modal')
+            .locator('.rdg-header-row')
+        ).toBeVisible();
+
+        await page.getByTestId('close-modal-button').click();
+
+        await expect(
+          page.getByTestId('bulk-import-details-modal')
+        ).not.toBeVisible();
+
+        await page.getByRole('dialog').getByRole('img').click();
+      }
+    );
+
     await test.step('should have term in review state', async () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);

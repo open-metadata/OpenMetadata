@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { useRequiredParams } from '../utils/useRequiredParams';
 import entityUtilClassBase from '../utils/EntityUtilClassBase';
+import { useRequiredParams } from '../utils/useRequiredParams';
 
 type Fqn = { fqn: string; ingestionFQN: string; ruleName: string };
 

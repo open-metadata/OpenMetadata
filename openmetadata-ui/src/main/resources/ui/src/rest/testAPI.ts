@@ -83,6 +83,7 @@ export type ListTestDefinitionsParams = ListParams & {
   testPlatform?: TestPlatform;
   supportedDataType?: string;
   enabled?: boolean;
+  supportedService?: string;
 };
 
 export type ListTestCaseResultsParams = Omit<

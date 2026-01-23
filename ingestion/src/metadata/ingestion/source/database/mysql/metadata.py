@@ -90,6 +90,8 @@ class MysqlSource(CommonDbSourceService):
                     stored_procedure = MysqlRoutine.model_validate(
                         dict(row._mapping)  # pylint: disable=protected-access
                     )
+                    if self.is_stored_procedure_filtered(stored_procedure.name):
+                        continue
                     yield stored_procedure
                 except Exception as exc:
                     logger.debug(traceback.format_exc())

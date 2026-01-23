@@ -1,0 +1,102 @@
+{
+  "name": "RecognizerFeedbackReviewWorkflow",
+  "displayName": "Recognizer Feedback Review Workflow",
+  "description": "When feedback is submitted on auto-applied tags, check if tag has reviewers and either auto-apply or create approval task",
+  "config": {
+    "storeStageStatus": true
+  },
+  "trigger": {
+    "type": "eventBasedEntity",
+    "config": {
+      "entityTypes": ["recognizerFeedback"],
+      "events": ["Created", "Updated"],
+      "exclude": ["reviewers"],
+      "filter": {}
+    },
+    "output": ["relatedEntity", "updatedBy", "triggeringObjectId"]
+  },
+  "nodes": [
+    {
+      "type": "startEvent",
+      "subType": "startEvent",
+      "name": "FeedbackSubmitted",
+      "displayName": "Feedback Submitted"
+    },
+    {
+      "type": "userTask",
+      "subType": "createRecognizerFeedbackApprovalTask",
+      "name": "ReviewFeedback",
+      "displayName": "Review Recognizer Feedback",
+      "config": {
+        "assignees": {
+          "addReviewers": true
+        },
+        "approvalThreshold": 1,
+        "rejectionThreshold": 1
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "global",
+        "triggeringObjectId": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "applyRecognizerFeedbackTask",
+      "name": "ApplyApprovedFeedback",
+      "displayName": "Apply Feedback (Approved)",
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "global",
+        "triggeringObjectId": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "rejectRecognizerFeedbackTask",
+      "name": "RejectFeedback",
+      "displayName": "Reject Feedback",
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "global",
+        "triggeringObjectId": "global"
+      }
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "FeedbackApplied",
+      "displayName": "Feedback Applied"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "FeedbackRejected",
+      "displayName": "Feedback Rejected"
+    }
+  ],
+  "edges": [
+    {
+      "from": "FeedbackSubmitted",
+      "to": "ReviewFeedback"
+    },
+    {
+      "from": "ReviewFeedback",
+      "to": "ApplyApprovedFeedback",
+      "condition": "true"
+    },
+    {
+      "from": "ReviewFeedback",
+      "to": "RejectFeedback",
+      "condition": "false"
+    },
+    {
+      "from": "ApplyApprovedFeedback",
+      "to": "FeedbackApplied"
+    },
+    {
+      "from": "RejectFeedback",
+      "to": "FeedbackRejected"
+    }
+  ]
+}

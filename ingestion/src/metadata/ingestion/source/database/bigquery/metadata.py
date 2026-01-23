@@ -1038,6 +1038,8 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             ).all()
             for row in results:
                 stored_procedure = BigQueryStoredProcedure.model_validate(dict(row))
+                if self.is_stored_procedure_filtered(stored_procedure.name):
+                    continue
                 yield stored_procedure
 
     def yield_stored_procedure(

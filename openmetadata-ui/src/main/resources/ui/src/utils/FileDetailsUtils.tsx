@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
-import { get } from 'lodash';
+import { get, isEmpty } from 'lodash';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
+import FileColumnsTable from '../components/DriveService/File/FileColumnsTable/FileColumnsTable';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
+import { File } from '../generated/entity/data/file';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import i18n from './i18next/LocalUtil';
@@ -30,6 +32,7 @@ export interface FileDetailPageTabProps {
     totalCount: number;
   };
   labelMap?: Record<EntityTabs, string>;
+  fileDetails?: File;
 }
 
 export const fileDefaultFields = [
@@ -43,6 +46,8 @@ export const fileDefaultFields = [
   TabSpecificField.FILE_TYPE,
   TabSpecificField.FILE_EXTENSION,
   TabSpecificField.FILE_VERSION,
+  TabSpecificField.COLUMNS,
+  TabSpecificField.SAMPLE_DATA,
 ].join(',');
 
 export const getFileDetailsPageTabs = ({
@@ -52,8 +57,11 @@ export const getFileDetailsPageTabs = ({
   activeTab,
   feedCount,
   labelMap,
+  fileDetails,
 }: FileDetailPageTabProps) => {
-  return [
+  const hasColumns = !isEmpty(fileDetails?.columns);
+
+  const tabs = [
     {
       label: (
         <TabsLabel
@@ -116,6 +124,24 @@ export const getFileDetailsPageTabs = ({
       children: customPropertiesTab,
     },
   ];
+
+  // Add SCHEMA tab if the file has columns (e.g., CSV files)
+  if (hasColumns) {
+    tabs.splice(1, 0, {
+      label: (
+        <TabsLabel
+          count={fileDetails?.columns?.length}
+          id={EntityTabs.SCHEMA}
+          isActive={activeTab === EntityTabs.SCHEMA}
+          name={get(labelMap, EntityTabs.SCHEMA, i18n.t('label.schema'))}
+        />
+      ),
+      key: EntityTabs.SCHEMA,
+      children: <FileColumnsTable />,
+    });
+  }
+
+  return tabs;
 };
 
 export const getFileWidgetsFromKey = (widgetConfig: WidgetConfig) => {

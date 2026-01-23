@@ -86,6 +86,11 @@
         "excludes": ["^template1$"]
       }
     },
+    "storedProcedureFilterPattern": {
+      "title": "Default Stored Procedure Filter Pattern",
+      "description": "Regex to only include/exclude stored procedures that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
     "sslMode": {
       "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslMode"
     },

@@ -194,10 +194,10 @@ describe('StoredProcedure component', () => {
 
     await act(async () => {
       render(
-      <MemoryRouter>
-        <StoredProcedurePage />
-      </MemoryRouter>
-    );
+        <MemoryRouter>
+          <StoredProcedurePage />
+        </MemoryRouter>
+      );
     });
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
@@ -217,10 +217,10 @@ describe('StoredProcedure component', () => {
 
     await act(async () => {
       render(
-      <MemoryRouter>
-        <StoredProcedurePage />
-      </MemoryRouter>
-    );
+        <MemoryRouter>
+          <StoredProcedurePage />
+        </MemoryRouter>
+      );
     });
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
@@ -238,10 +238,10 @@ describe('StoredProcedure component', () => {
 
     await act(async () => {
       render(
-      <MemoryRouter>
-        <StoredProcedurePage />
-      </MemoryRouter>
-    );
+        <MemoryRouter>
+          <StoredProcedurePage />
+        </MemoryRouter>
+      );
     });
 
     expect(await screen.findByText('testErrorPlaceHolder')).toBeInTheDocument();
@@ -256,10 +256,10 @@ describe('StoredProcedure component', () => {
 
     await act(async () => {
       render(
-      <MemoryRouter>
-        <StoredProcedurePage />
-      </MemoryRouter>
-    );
+        <MemoryRouter>
+          <StoredProcedurePage />
+        </MemoryRouter>
+      );
     });
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
@@ -287,10 +287,10 @@ describe('StoredProcedure component', () => {
 
     await act(async () => {
       render(
-      <MemoryRouter>
-        <StoredProcedurePage />
-      </MemoryRouter>
-    );
+        <MemoryRouter>
+          <StoredProcedurePage />
+        </MemoryRouter>
+      );
     });
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
@@ -320,10 +320,10 @@ describe('StoredProcedure component', () => {
 
     await act(async () => {
       render(
-      <MemoryRouter>
-        <StoredProcedurePage />
-      </MemoryRouter>
-    );
+        <MemoryRouter>
+          <StoredProcedurePage />
+        </MemoryRouter>
+      );
     });
 
     expect(PageLayoutV1).toHaveBeenCalledWith(

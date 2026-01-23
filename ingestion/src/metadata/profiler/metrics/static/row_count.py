@@ -12,7 +12,7 @@
 """
 Table Count Metric definition
 """
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, Optional
 
 from sqlalchemy import func
 
@@ -25,6 +25,8 @@ from metadata.utils.logger import profiler_logger
 
 if TYPE_CHECKING:
     import pandas as pd
+
+    from metadata.profiler.processor.runner import PandasRunner
 
 logger = profiler_logger()
 
@@ -56,8 +58,10 @@ class RowCount(StaticMetric):
         """sqlalchemy function"""
         return func.count()
 
-    def df_fn(self, dfs=None):
+    def df_fn(self, dfs: Optional["PandasRunner"] = None):
         """pandas function"""
+        if dfs is None:
+            return None
         try:
             computation = self.get_pandas_computation()
             accumulator = computation.create_accumulator()

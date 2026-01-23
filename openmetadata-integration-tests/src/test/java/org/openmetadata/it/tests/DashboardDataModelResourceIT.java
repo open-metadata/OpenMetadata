@@ -33,6 +33,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.resources.datamodels.DashboardDataModelResource;
 
 /**
  * Integration tests for DashboardDataModel entity operations.
@@ -48,6 +49,12 @@ public class DashboardDataModelResourceIT
 
   {
     supportsLifeCycle = true;
+    supportsListHistoryByTimestamp = true;
+  }
+
+  @Override
+  protected String getResourcePath() {
+    return DashboardDataModelResource.COLLECTION_PATH;
   }
 
   // ===================================================================

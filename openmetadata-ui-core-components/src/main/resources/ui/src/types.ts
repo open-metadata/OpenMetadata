@@ -40,6 +40,7 @@ export interface ThemeColors {
   blueGray: Partial<ColorPalette> & {
     40: string; // Custom shade for search field background
     75: string; // Custom shade for chip background
+    125: string; // Custom shade for card header fills
     150: string; // Custom shade for chip border
     250: string; // Custom shade for search field borders
   };

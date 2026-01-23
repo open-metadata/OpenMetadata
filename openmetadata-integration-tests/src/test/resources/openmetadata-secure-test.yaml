@@ -75,6 +75,11 @@ jwtTokenConfiguration:
   rsaprivateKeyFilePath: "src/test/resources/private_key.der"
   jwtissuer: "open-metadata.org"
   keyId: "test-key"
+eventHandlerConfiguration:
+  eventHandlerClassNames:
+    - "org.openmetadata.service.events.AuditEventHandler"
+    - "org.openmetadata.service.events.ChangeEventHandler"
+
 eventMonitoringConfiguration:
   eventMonitor: "prometheus"
   batchSize: 10
