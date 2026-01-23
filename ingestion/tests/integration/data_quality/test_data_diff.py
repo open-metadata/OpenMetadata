@@ -493,7 +493,7 @@ def test_happy_paths(
             ),
             TestCaseResult(
                 timestamp=int(datetime.now().timestamp() * 1000),
-                testCaseStatus=TestCaseStatus.Success,
+                testCaseStatus=TestCaseStatus.Failed,
                 failedRows=0,
                 passedRows=599,
                 testResultValue=[
