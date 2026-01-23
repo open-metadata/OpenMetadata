@@ -218,6 +218,8 @@ jest.mock('react-i18next', () => ({
       const translations: Record<string, string> = {
         'label.edit': 'Edit',
         'label.delete': 'Delete',
+        'message.inherited-contract-cannot-be-deleted':
+          'Inherited contracts cannot be deleted',
         'label.validate': 'Validate',
         'label.download': 'Download',
         'label.contract': 'Contract',
@@ -461,6 +463,58 @@ describe('ContractDetail', () => {
       fireEvent.click(deleteButton);
 
       expect(mockOnDelete).toHaveBeenCalled();
+    });
+
+    it('should disable delete button for inherited contracts', () => {
+      const inheritedContract: DataContract = {
+        ...mockContract,
+        inherited: true,
+      };
+
+      render(
+        <ContractDetail
+          contract={inheritedContract}
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      fireEvent.click(screen.getByTestId('manage-contract-actions'));
+      const deleteButton = screen.getByTestId('delete-contract-button');
+
+      // The delete menu item should have disabled class
+      expect(deleteButton).toHaveClass('disabled');
+
+      // Clicking should not call onDelete since the menu item is disabled
+      mockOnDelete.mockClear();
+      fireEvent.click(deleteButton);
+
+      // Note: The actual click prevention is handled by antd's Menu disabled prop,
+      // but we verify the disabled class is applied
+      expect(deleteButton.closest('[class*="disabled"]')).toBeTruthy();
+    });
+
+    it('should not disable delete button for non-inherited contracts', () => {
+      const nonInheritedContract: DataContract = {
+        ...mockContract,
+        inherited: false,
+      };
+
+      render(
+        <ContractDetail
+          contract={nonInheritedContract}
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      fireEvent.click(screen.getByTestId('manage-contract-actions'));
+      const deleteButton = screen.getByTestId('delete-contract-button');
+
+      // The delete menu item should NOT have disabled class
+      expect(deleteButton).not.toHaveClass('disabled');
     });
 
     it('should validate contract when validate button is clicked', async () => {

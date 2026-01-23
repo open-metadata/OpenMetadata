@@ -23,10 +23,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-new.svg';
 import { ReactComponent as KeyIcon } from '../../../assets/svg/icon-key.svg';
-import {
-  ENTITY_PATH,
-  PAGE_SIZE_LARGE,
-} from '../../../constants/constants';
+import { ENTITY_PATH, PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
 import { Type } from '../../../generated/entity/type';

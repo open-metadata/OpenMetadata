@@ -12,7 +12,6 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
 import { CustomProperty } from '../../../../generated/entity/type';
 import CustomPropertyInput from './CustomPropertyInput';
 
@@ -50,20 +49,18 @@ jest.mock(
 jest.mock(
   '../../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList',
   () =>
-    jest
-      .fn()
-      .mockImplementation(({ onChange }) => (
-        <input
-          data-testid="async-select"
-          onChange={(e) =>
-            onChange({
-              value: e.target.value,
-              label: e.target.value,
-              reference: { id: 'id', type: 'table', name: e.target.value },
-            })
-          }
-        />
-      ))
+    jest.fn().mockImplementation(({ onChange }) => (
+      <input
+        data-testid="async-select"
+        onChange={(e) =>
+          onChange({
+            value: e.target.value,
+            label: e.target.value,
+            reference: { id: 'id', type: 'table', name: e.target.value },
+          })
+        }
+      />
+    ))
 );
 
 jest.mock('../../../common/InlineEdit/InlineEdit.component', () => {
@@ -109,12 +106,14 @@ jest.mock(
 );
 
 jest.mock('../../../Database/SchemaEditor/SchemaEditor', () =>
-  jest.fn().mockImplementation(({ onChange }) => (
-    <textarea
-      data-testid="schema-editor"
-      onChange={(e) => onChange(e.target.value)}
-    />
-  ))
+  jest
+    .fn()
+    .mockImplementation(({ onChange }) => (
+      <textarea
+        data-testid="schema-editor"
+        onChange={(e) => onChange(e.target.value)}
+      />
+    ))
 );
 
 const mockOnHideInput = jest.fn();

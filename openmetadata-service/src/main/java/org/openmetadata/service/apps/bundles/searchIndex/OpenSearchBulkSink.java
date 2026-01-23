@@ -60,10 +60,14 @@ public class OpenSearchBulkSink implements BulkSink {
   private final AtomicLong totalSubmitted = new AtomicLong(0);
   private final AtomicLong totalSuccess = new AtomicLong(0);
   private final AtomicLong totalFailed = new AtomicLong(0);
+  private final AtomicLong entityBuildFailures = new AtomicLong(0);
 
   // Configuration
   private volatile int batchSize;
   private volatile int maxConcurrentRequests;
+
+  // Failure callback
+  private volatile FailureCallback failureCallback;
 
   public OpenSearchBulkSink(
       SearchRepository searchRepository,
@@ -205,9 +209,31 @@ public class OpenSearchBulkSink implements BulkSink {
       }
     } catch (EntityNotFoundException e) {
       LOG.error("Entity Not Found Due to : {}", e.getMessage(), e);
+      entityBuildFailures.incrementAndGet();
+      totalFailed.incrementAndGet();
+      updateStats();
+      if (failureCallback != null) {
+        String entityTypeName = Entity.getEntityTypeFromObject(entity);
+        failureCallback.onFailure(
+            entityTypeName,
+            entity.getId() != null ? entity.getId().toString() : null,
+            entity.getFullyQualifiedName(),
+            e.getMessage());
+      }
     } catch (Exception e) {
       LOG.error(
           "Encountered Issue while building SearchDoc from Entity Due to : {}", e.getMessage(), e);
+      entityBuildFailures.incrementAndGet();
+      totalFailed.incrementAndGet();
+      updateStats();
+      if (failureCallback != null) {
+        String entityTypeName = Entity.getEntityTypeFromObject(entity);
+        failureCallback.onFailure(
+            entityTypeName,
+            entity.getId() != null ? entity.getId().toString() : null,
+            entity.getFullyQualifiedName(),
+            e.getMessage());
+      }
     }
   }
 
@@ -227,9 +253,29 @@ public class OpenSearchBulkSink implements BulkSink {
       bulkProcessor.add(operation);
     } catch (EntityNotFoundException e) {
       LOG.error("Entity Not Found Due to : {}", e.getMessage(), e);
+      entityBuildFailures.incrementAndGet();
+      totalFailed.incrementAndGet();
+      updateStats();
+      if (failureCallback != null) {
+        failureCallback.onFailure(
+            entityType,
+            entity.getId() != null ? entity.getId().toString() : null,
+            null,
+            e.getMessage());
+      }
     } catch (Exception e) {
       LOG.error(
           "Encountered Issue while building SearchDoc from Entity Due to : {}", e.getMessage(), e);
+      entityBuildFailures.incrementAndGet();
+      totalFailed.incrementAndGet();
+      updateStats();
+      if (failureCallback != null) {
+        failureCallback.onFailure(
+            entityType,
+            entity.getId() != null ? entity.getId().toString() : null,
+            null,
+            e.getMessage());
+      }
     }
   }
 
@@ -247,10 +293,15 @@ public class OpenSearchBulkSink implements BulkSink {
 
   @Override
   public StepStats getStats() {
+    // Read directly from atomic counters for accurate real-time stats
+    // Use success + failed as total to ensure invariant holds (total = success + failed)
+    // This handles entity build failures which increment failed but not submitted
+    long success = totalSuccess.get();
+    long failed = totalFailed.get();
     return new StepStats()
-        .withTotalRecords(stats.getTotalRecords())
-        .withSuccessRecords(stats.getSuccessRecords())
-        .withFailedRecords(stats.getFailedRecords());
+        .withTotalRecords((int) (success + failed))
+        .withSuccessRecords((int) success)
+        .withFailedRecords((int) failed);
   }
 
   @Override
@@ -264,9 +315,39 @@ public class OpenSearchBulkSink implements BulkSink {
       if (!terminated) {
         LOG.warn("Bulk processor did not terminate within timeout");
       }
+
+      // Final stats update to ensure all processed records are reflected
+      updateStats();
+
+      LOG.info(
+          "Sink closed - final stats: submitted={}, success={}, failed={}, entityBuildFailures={}",
+          totalSubmitted.get(),
+          totalSuccess.get(),
+          totalFailed.get(),
+          entityBuildFailures.get());
+
     } catch (InterruptedException e) {
       LOG.warn("Interrupted while closing bulk processor", e);
       Thread.currentThread().interrupt();
+    }
+  }
+
+  @Override
+  public boolean flushAndAwait(int timeoutSeconds) {
+    try {
+      boolean completed = bulkProcessor.flushAndWait(timeoutSeconds, TimeUnit.SECONDS);
+      if (completed) {
+        LOG.debug(
+            "Flush complete - stats: submitted={}, success={}, failed={}",
+            totalSubmitted.get(),
+            totalSuccess.get(),
+            totalFailed.get());
+      }
+      return completed;
+    } catch (InterruptedException e) {
+      LOG.warn("Interrupted while waiting for flush to complete", e);
+      Thread.currentThread().interrupt();
+      return false;
     }
   }
 
@@ -276,6 +357,18 @@ public class OpenSearchBulkSink implements BulkSink {
 
   public int getConcurrentRequests() {
     return maxConcurrentRequests;
+  }
+
+  public long getEntityBuildFailures() {
+    return entityBuildFailures.get();
+  }
+
+  @Override
+  public void setFailureCallback(FailureCallback callback) {
+    this.failureCallback = callback;
+    if (bulkProcessor != null) {
+      bulkProcessor.setFailureCallback(callback);
+    }
   }
 
   public void updateBatchSize(int newBatchSize) {
@@ -316,6 +409,7 @@ public class OpenSearchBulkSink implements BulkSink {
     private final long initialBackoffMillis;
     private final int maxRetries;
     private volatile boolean closed = false;
+    private volatile FailureCallback failureCallback;
 
     CustomBulkProcessor(
         OpenSearchClient client,
@@ -343,6 +437,10 @@ public class OpenSearchBulkSink implements BulkSink {
 
       scheduler.scheduleAtFixedRate(
           this::flushIfNeeded, flushIntervalMillis, flushIntervalMillis, TimeUnit.MILLISECONDS);
+    }
+
+    void setFailureCallback(FailureCallback callback) {
+      this.failureCallback = callback;
     }
 
     void add(BulkOperation operation) {
@@ -386,6 +484,33 @@ public class OpenSearchBulkSink implements BulkSink {
       } finally {
         lock.unlock();
       }
+    }
+
+    /**
+     * Flush pending requests and wait for all active bulk requests to complete. Unlike awaitClose,
+     * this does not close the processor - it can continue to be used after this call.
+     *
+     * @param timeout Maximum time to wait
+     * @param unit Time unit for timeout
+     * @return true if all requests completed within timeout
+     */
+    boolean flushAndWait(long timeout, TimeUnit unit) throws InterruptedException {
+      flush();
+
+      long timeoutMillis = unit.toMillis(timeout);
+      long startTime = System.currentTimeMillis();
+
+      // Wait for all active bulk requests to complete
+      while (activeBulkRequests.get() > 0) {
+        long elapsed = System.currentTimeMillis() - startTime;
+        if (elapsed >= timeoutMillis) {
+          LOG.warn(
+              "Timeout waiting for {} active bulk requests to complete", activeBulkRequests.get());
+          return false;
+        }
+        Thread.sleep(100);
+      }
+      return true;
     }
 
     private void flushIfNeeded() {
@@ -509,6 +634,10 @@ public class OpenSearchBulkSink implements BulkSink {
           } else {
             LOG.warn("Failed to index document {}: {}", item.id(), failureMessage);
           }
+          if (failureCallback != null) {
+            String entityType = extractEntityTypeFromIndex(item.index());
+            failureCallback.onFailure(entityType, item.id(), null, failureMessage);
+          }
         }
       }
       int successes = numberOfActions - failures;
@@ -523,6 +652,19 @@ public class OpenSearchBulkSink implements BulkSink {
       statsUpdater.run();
     }
 
+    private String extractEntityTypeFromIndex(String indexName) {
+      if (indexName == null || indexName.isEmpty()) {
+        return "unknown";
+      }
+      // Index names are like "table_search_index" or "dashboard_search_index"
+      // Extract entity type by removing "_search_index" suffix
+      String suffix = "_search_index";
+      if (indexName.endsWith(suffix)) {
+        return indexName.substring(0, indexName.length() - suffix.length());
+      }
+      return indexName;
+    }
+
     private boolean shouldRetry(int attemptNumber, Throwable error) {
       if (attemptNumber >= maxRetries) {
         return false;
@@ -531,11 +673,27 @@ public class OpenSearchBulkSink implements BulkSink {
       if (errorMessage == null) {
         return true;
       }
-      return errorMessage.contains("rejected_execution_exception")
-          || errorMessage.contains("EsRejectedExecutionException")
-          || errorMessage.contains("RemoteTransportException")
-          || errorMessage.contains("ConnectException")
-          || errorMessage.contains("timeout");
+      String lowerCaseMessage = errorMessage.toLowerCase();
+      return lowerCaseMessage.contains("rejected_execution_exception")
+          || lowerCaseMessage.contains("esrejectedexecutionexception")
+          || lowerCaseMessage.contains("remotetransportexception")
+          || lowerCaseMessage.contains("connectexception")
+          || lowerCaseMessage.contains("timeout")
+          || lowerCaseMessage.contains("request entity too large")
+          || lowerCaseMessage.contains("content too long")
+          || lowerCaseMessage.contains("413")
+          || lowerCaseMessage.contains("circuit_breaking_exception")
+          || lowerCaseMessage.contains("too_many_requests");
+    }
+
+    boolean isPayloadTooLargeError(Throwable error) {
+      if (error == null || error.getMessage() == null) {
+        return false;
+      }
+      String lowerCaseMessage = error.getMessage().toLowerCase();
+      return lowerCaseMessage.contains("request entity too large")
+          || lowerCaseMessage.contains("content too long")
+          || lowerCaseMessage.contains("413");
     }
 
     private long calculateBackoff(int attemptNumber) {
