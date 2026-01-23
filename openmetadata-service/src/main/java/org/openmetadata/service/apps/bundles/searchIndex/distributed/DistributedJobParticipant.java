@@ -269,6 +269,7 @@ public class DistributedJobParticipant implements Managed {
       int partitionsProcessed = 0;
       long totalReaderSuccess = 0;
       long totalReaderFailed = 0;
+      long totalReaderWarnings = 0;
       final BulkSink sinkForStats = bulkSink;
 
       // Process partitions until none are available or job completes
@@ -320,13 +321,15 @@ public class DistributedJobParticipant implements Managed {
           partitionsProcessed++;
           totalReaderSuccess += result.successCount();
           totalReaderFailed += result.readerFailed();
+          totalReaderWarnings += result.readerWarnings();
 
           LOG.info(
-              "Participant completed partition {} (success: {}, failed: {}, readerFailed: {})",
+              "Participant completed partition {} (success: {}, failed: {}, readerFailed: {}, readerWarnings: {})",
               partition.getId(),
               result.successCount(),
               result.failedCount(),
-              result.readerFailed());
+              result.readerFailed(),
+              result.readerWarnings());
 
           // Persist stats after each partition completion
           persistServerStats(
@@ -334,7 +337,8 @@ public class DistributedJobParticipant implements Managed {
               sinkForStats,
               partitionsProcessed,
               totalReaderSuccess,
-              totalReaderFailed);
+              totalReaderFailed,
+              totalReaderWarnings);
 
         } catch (Exception e) {
           LOG.error("Error processing partition {}", partition.getId(), e);
@@ -352,7 +356,12 @@ public class DistributedJobParticipant implements Managed {
 
       // Persist final server stats before exiting (ensures final state is captured)
       persistServerStats(
-          job.getId(), sinkForStats, partitionsProcessed, totalReaderSuccess, totalReaderFailed);
+          job.getId(),
+          sinkForStats,
+          partitionsProcessed,
+          totalReaderSuccess,
+          totalReaderFailed,
+          totalReaderWarnings);
 
       LOG.info(
           "Server {} finished participating in job {}, processed {} partitions",
@@ -388,7 +397,8 @@ public class DistributedJobParticipant implements Managed {
       BulkSink bulkSink,
       int partitionsCompleted,
       long readerSuccess,
-      long readerFailed) {
+      long readerFailed,
+      long readerWarnings) {
     if (bulkSink == null) {
       return;
     }
@@ -396,9 +406,13 @@ public class DistributedJobParticipant implements Managed {
     try {
       org.openmetadata.schema.system.StepStats sinkStats = bulkSink.getStats();
       long entityBuildFailures = bulkSink.getEntityBuildFailures();
-      
+
       long totalFailed = sinkStats != null ? sinkStats.getFailedRecords() : 0;
       long actualSinkFailed = totalFailed - entityBuildFailures;
+      long sinkWarnings =
+          sinkStats != null && sinkStats.getWarningRecords() != null
+              ? sinkStats.getWarningRecords()
+              : 0;
 
       String statsId = UUID.nameUUIDFromBytes((jobId.toString() + serverId).getBytes()).toString();
 
@@ -410,9 +424,11 @@ public class DistributedJobParticipant implements Managed {
               serverId,
               readerSuccess,
               readerFailed,
+              readerWarnings,
               sinkStats != null ? sinkStats.getTotalRecords() : 0,
               sinkStats != null ? sinkStats.getSuccessRecords() : 0,
               actualSinkFailed,
+              sinkWarnings,
               entityBuildFailures,
               partitionsCompleted,
               0, // partitionsFailed - not tracked here
@@ -420,15 +436,14 @@ public class DistributedJobParticipant implements Managed {
 
       LOG.info(
           "Participant {} persisted server stats for job {}: readerSuccess={}, readerFailed={}, "
-              + "sinkTotal={}, sinkSuccess={}, sinkFailed={}, entityBuildFailures={}, partitionsCompleted={}",
+              + "readerWarnings={}, sinkFailed={}, sinkWarnings={}, partitionsCompleted={}",
           serverId,
           jobId,
           readerSuccess,
           readerFailed,
-          sinkStats != null ? sinkStats.getTotalRecords() : 0,
-          sinkStats != null ? sinkStats.getSuccessRecords() : 0,
+          readerWarnings,
           actualSinkFailed,
-          entityBuildFailures,
+          sinkWarnings,
           partitionsCompleted);
 
     } catch (Exception e) {

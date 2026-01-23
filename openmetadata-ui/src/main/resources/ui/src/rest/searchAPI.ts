@@ -281,3 +281,48 @@ export const getNLPEnabledStatus = async () => {
 
   return response.data;
 };
+
+export interface SearchIndexFailureRecord {
+  id: string;
+  jobId: string;
+  runId: string;
+  entityType: string;
+  entityId?: string;
+  entityFqn?: string;
+  failureStage: string;
+  errorMessage?: string;
+  stackTrace?: string;
+  timestamp: number;
+}
+
+export interface ReindexFailuresResponse {
+  data: SearchIndexFailureRecord[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
+export interface GetReindexFailuresParams {
+  offset?: number;
+  limit?: number;
+  entityType?: string;
+}
+
+export const getReindexFailures = async (
+  params: GetReindexFailuresParams = {}
+): Promise<ReindexFailuresResponse> => {
+  const { offset = 0, limit = 50, entityType } = params;
+
+  const response = await APIClient.get<ReindexFailuresResponse>(
+    '/search/reindex/failures',
+    {
+      params: {
+        offset,
+        limit,
+        entityType: entityType || undefined,
+      },
+    }
+  );
+
+  return response.data;
+};

@@ -658,7 +658,7 @@ public class SearchResource {
           @QueryParam("timeoutMinutes")
           int timeoutMinutes,
       @Valid List<EntityReference> entities) {
-    authorizer.authorizeAdmin(securityContext);
+    authorizer.authorizeAdminOrBot(securityContext);
     final int maxEntitiesPerRequest = 500;
     final int maxTimeoutMinutes = 10;
 
