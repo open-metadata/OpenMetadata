@@ -639,7 +639,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
     protected void createEntityWithoutRecursion(CSVPrinter printer, List<CSVRecord> csvRecords)
         throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
-      String schemaFqn = FullyQualifiedName.add(database.getFullyQualifiedName(), csvRecord.get(0));
+      String name = csvRecord.get(0);
+      String schemaFqn = FullyQualifiedName.add(database.getFullyQualifiedName(), name);
       DatabaseSchema schema;
       boolean schemaExists;
       try {
@@ -668,6 +669,9 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
       // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, certification,
       // retentionPeriod, sourceUrl, domain
+      String displayName = csvRecord.get(1);
+      String description = csvRecord.get(2);
+      List<EntityReference> owners = getOwners(printer, csvRecord, 3);
       List<TagLabel> tagLabels =
           getTagLabels(
               printer,
@@ -676,17 +680,18 @@ public class DatabaseRepository extends EntityRepository<Database> {
                   Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
                   Pair.of(5, TagLabel.TagSource.GLOSSARY),
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
-
       AssetCertification certification = getCertificationLabels(csvRecord.get(7));
-      List<EntityReference> owners = getOwners(printer, csvRecord, 3);
+      String retentionPeriod = csvRecord.get(8);
+      String sourceUrl = csvRecord.get(9);
+      List<EntityReference> newDomains = getDomains(printer, csvRecord, 10);
 
       if (!schemaExists) {
         // For new schemas, all non-null fields are "added"
-        if (!nullOrEmpty(csvRecord.get(1))) {
-          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(csvRecord.get(1)));
+        if (!nullOrEmpty(displayName)) {
+          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
         }
-        if (!nullOrEmpty(csvRecord.get(2))) {
-          fieldsAdded.add(new FieldChange().withName("description").withNewValue(csvRecord.get(2)));
+        if (!nullOrEmpty(description)) {
+          fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
         }
         if (!nullOrEmpty(owners)) {
           fieldsAdded.add(new FieldChange().withName("owner").withNewValue(owners));
@@ -711,36 +716,32 @@ public class DatabaseRepository extends EntityRepository<Database> {
         if (certification != null) {
           fieldsAdded.add(new FieldChange().withName("certification").withNewValue(certification));
         }
-        if (!nullOrEmpty(csvRecord.get(8))) {
+        if (!nullOrEmpty(retentionPeriod)) {
           fieldsAdded.add(
-              new FieldChange().withName("retentionPeriod").withNewValue(csvRecord.get(8)));
+              new FieldChange().withName("retentionPeriod").withNewValue(retentionPeriod));
         }
-        if (!nullOrEmpty(csvRecord.get(9))) {
-          fieldsAdded.add(new FieldChange().withName("sourceUrl").withNewValue(csvRecord.get(9)));
+        if (!nullOrEmpty(sourceUrl)) {
+          fieldsAdded.add(new FieldChange().withName("sourceUrl").withNewValue(sourceUrl));
         }
-
-        List<EntityReference> newDomains = getDomains(printer, csvRecord, 10);
         if (!nullOrEmpty(newDomains)) {
           fieldsAdded.add(new FieldChange().withName("domains").withNewValue(newDomains));
         }
       } else {
         // Compare existing values with CSV values to track changes
-        String newDisplayName = csvRecord.get(1);
-        if (CommonUtil.isChanged(schema.getDisplayName(), newDisplayName)) {
+        if (CommonUtil.isChanged(schema.getDisplayName(), displayName)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("displayName")
                   .withOldValue(schema.getDisplayName())
-                  .withNewValue(newDisplayName));
+                  .withNewValue(displayName));
         }
 
-        String newDescription = csvRecord.get(2);
-        if (CommonUtil.isChanged(schema.getDescription(), newDescription)) {
+        if (CommonUtil.isChanged(schema.getDescription(), description)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("description")
                   .withOldValue(schema.getDescription())
-                  .withNewValue(newDescription));
+                  .withNewValue(description));
         }
         if (CommonUtil.isChanged(schema.getOwners(), owners)) {
           fieldsUpdated.add(
@@ -795,25 +796,21 @@ public class DatabaseRepository extends EntityRepository<Database> {
                   .withNewValue(certification));
         }
 
-        String newRetentionPeriod = csvRecord.get(8);
-        if (CommonUtil.isChanged(schema.getRetentionPeriod(), newRetentionPeriod)) {
+        if (CommonUtil.isChanged(schema.getRetentionPeriod(), retentionPeriod)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("retentionPeriod")
                   .withOldValue(schema.getRetentionPeriod())
-                  .withNewValue(newRetentionPeriod));
+                  .withNewValue(retentionPeriod));
         }
 
-        String newSourceUrl = csvRecord.get(9);
-        if (CommonUtil.isChanged(schema.getSourceUrl(), newSourceUrl)) {
+        if (CommonUtil.isChanged(schema.getSourceUrl(), sourceUrl)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("sourceUrl")
                   .withOldValue(schema.getSourceUrl())
-                  .withNewValue(newSourceUrl));
+                  .withNewValue(sourceUrl));
         }
-
-        List<EntityReference> newDomains = getDomains(printer, csvRecord, 10);
         if (CommonUtil.isChanged(schema.getDomains(), newDomains)) {
           fieldsUpdated.add(
               new FieldChange()
@@ -839,16 +836,16 @@ public class DatabaseRepository extends EntityRepository<Database> {
       }
 
       schema
-          .withName(csvRecord.get(0))
+          .withName(name)
           .withFullyQualifiedName(schemaFqn)
-          .withDisplayName(csvRecord.get(1))
-          .withDescription(csvRecord.get(2))
-          .withOwners(getOwners(printer, csvRecord, 3))
+          .withDisplayName(displayName)
+          .withDescription(description)
+          .withOwners(owners)
           .withTags(tagLabels)
           .withCertification(certification)
-          .withRetentionPeriod(csvRecord.get(8))
-          .withSourceUrl(csvRecord.get(9))
-          .withDomains(getDomains(printer, csvRecord, 10))
+          .withRetentionPeriod(retentionPeriod)
+          .withSourceUrl(sourceUrl)
+          .withDomains(newDomains)
           .withExtension(getExtension(printer, csvRecord, 11));
       if (processRecord) {
         createEntityWithChangeDescription(printer, csvRecord, schema, DATABASE_SCHEMA);

@@ -316,7 +316,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return getEntityReference(printer, csvRecord, fieldNumber, Entity.USER, owner);
   }
 
-  protected final Boolean getBoolean(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
+  protected Boolean getBoolean(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
       throws IOException {
     String field = csvRecord.get(fieldNumber);
     if (nullOrEmpty(field)) {
@@ -333,7 +333,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return false;
   }
 
-  protected final EntityReference getEntityReference(
+  protected EntityReference getEntityReference(
       CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType)
       throws IOException {
     if (!processRecord) {
@@ -353,7 +353,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return entity;
   }
 
-  protected final EntityReference getEntityReference(
+  protected EntityReference getEntityReference(
       CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType, String fqn)
       throws IOException {
     if (nullOrEmpty(fqn)) {
@@ -368,7 +368,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return entity.getEntityReference();
   }
 
-  protected final List<EntityReference> getEntityReferences(
+  protected List<EntityReference> getEntityReferences(
       CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType)
       throws IOException {
     if (!processRecord) {
@@ -393,7 +393,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return refs.isEmpty() ? null : refs;
   }
 
-  protected final List<EntityReference> getEntityReferencesForGlossaryTerms(
+  protected List<EntityReference> getEntityReferencesForGlossaryTerms(
       CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
     if (!processRecord) {
       return null;
@@ -437,7 +437,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return refs.isEmpty() ? null : refs;
   }
 
-  protected final List<TagLabel> getTagLabels(
+  protected List<TagLabel> getTagLabels(
       CSVPrinter printer,
       CSVRecord csvRecord,
       List<Pair<Integer, TagSource>> fieldNumbersWithSource)

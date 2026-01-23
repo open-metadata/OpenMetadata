@@ -63,6 +63,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
@@ -97,6 +98,7 @@ import org.openmetadata.schema.type.TableJoins;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
@@ -2037,6 +2039,20 @@ public class TableRepository extends EntityRepository<Table> {
       List<FieldChange> fieldsAdded = new ArrayList<>();
       List<FieldChange> fieldsUpdated = new ArrayList<>();
 
+      String displayName = csvRecord.get(1);
+      String description = csvRecord.get(2);
+      String dataTypeDisplay = csvRecord.get(3);
+      String dataType = csvRecord.get(4);
+      String arrayDataType = csvRecord.get(5);
+      String dataLength = csvRecord.get(6);
+      List<TagLabel> newTagLabels =
+          getTagLabels(
+              printer,
+              csvRecord,
+              List.of(
+                  Pair.of(7, TagLabel.TagSource.CLASSIFICATION),
+                  Pair.of(8, TagLabel.TagSource.GLOSSARY)));
+
       if (!columnExists) {
         // Create Column, if not found
         column =
@@ -2046,46 +2062,43 @@ public class TableRepository extends EntityRepository<Table> {
                     table.getFullyQualifiedName() + Entity.SEPARATOR + columnFqn);
 
         // For new columns, all non-null fields are "added"
-        if (!nullOrEmpty(csvRecord.get(1))) {
-          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(csvRecord.get(1)));
+        if (!nullOrEmpty(displayName)) {
+          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
         }
-        if (!nullOrEmpty(csvRecord.get(2))) {
-          fieldsAdded.add(new FieldChange().withName("description").withNewValue(csvRecord.get(2)));
+        if (!nullOrEmpty(description)) {
+          fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
         }
-        if (!nullOrEmpty(csvRecord.get(4))) {
-          fieldsAdded.add(new FieldChange().withName("dataType").withNewValue(csvRecord.get(4)));
+        if (!nullOrEmpty(dataType)) {
+          fieldsAdded.add(new FieldChange().withName("dataType").withNewValue(dataType));
         }
       } else {
         // Compare existing values with CSV values to track changes with actual values
-        String newDisplayName = csvRecord.get(1);
-        if (CommonUtil.isChanged(column.getDisplayName(), newDisplayName)) {
+        if (CommonUtil.isChanged(column.getDisplayName(), displayName)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("displayName")
                   .withOldValue(column.getDisplayName())
-                  .withNewValue(newDisplayName));
+                  .withNewValue(displayName));
         }
 
-        String newDescription = csvRecord.get(2);
-        if (CommonUtil.isChanged(column.getDescription(), newDescription)) {
+        if (CommonUtil.isChanged(column.getDescription(), description)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("description")
                   .withOldValue(column.getDescription())
-                  .withNewValue(newDescription));
+                  .withNewValue(description));
         }
 
-        String newDataTypeDisplay = csvRecord.get(3);
-        if (CommonUtil.isChanged(column.getDataTypeDisplay(), newDataTypeDisplay)) {
+        if (CommonUtil.isChanged(column.getDataTypeDisplay(), dataTypeDisplay)) {
           fieldsUpdated.add(
               new FieldChange()
                   .withName("dataTypeDisplay")
                   .withOldValue(column.getDataTypeDisplay())
-                  .withNewValue(newDataTypeDisplay));
+                  .withNewValue(dataTypeDisplay));
         }
 
         ColumnDataType newDataType =
-            nullOrEmpty(csvRecord.get(4)) ? null : ColumnDataType.fromValue(csvRecord.get(4));
+            nullOrEmpty(dataType) ? null : ColumnDataType.fromValue(dataType);
         if (CommonUtil.isChanged(column.getDataType(), newDataType)) {
           fieldsUpdated.add(
               new FieldChange()
@@ -2096,7 +2109,7 @@ public class TableRepository extends EntityRepository<Table> {
         }
 
         ColumnDataType newArrayDataType =
-            nullOrEmpty(csvRecord.get(5)) ? null : ColumnDataType.fromValue(csvRecord.get(5));
+            nullOrEmpty(arrayDataType) ? null : ColumnDataType.fromValue(arrayDataType);
         if (CommonUtil.isChanged(column.getArrayDataType(), newArrayDataType)) {
           fieldsUpdated.add(
               new FieldChange()
@@ -2108,8 +2121,7 @@ public class TableRepository extends EntityRepository<Table> {
                   .withNewValue(newArrayDataType == null ? null : newArrayDataType.toString()));
         }
 
-        Integer newDataLength =
-            nullOrEmpty(csvRecord.get(6)) ? null : Integer.parseInt(csvRecord.get(6));
+        Integer newDataLength = nullOrEmpty(dataLength) ? null : Integer.parseInt(dataLength);
         if (CommonUtil.isChanged(column.getDataLength(), newDataLength)) {
           fieldsUpdated.add(
               new FieldChange()
@@ -2119,23 +2131,24 @@ public class TableRepository extends EntityRepository<Table> {
                   .withNewValue(newDataLength == null ? null : newDataLength.toString()));
         }
 
-        List<TagLabel> newTagLabels =
-            getTagLabels(
-                printer,
-                csvRecord,
-                List.of(
-                    Pair.of(7, TagLabel.TagSource.CLASSIFICATION),
-                    Pair.of(8, TagLabel.TagSource.GLOSSARY)));
-        if (CommonUtil.isChanged(column.getTags(), newTagLabels)) {
-          // Convert tag lists to JSON for proper storage in FieldChange
-          String oldTagsJson =
-              column.getTags() == null ? null : JsonUtils.pojoToJson(column.getTags());
-          String newTagsJson = newTagLabels == null ? null : JsonUtils.pojoToJson(newTagLabels);
+        List<TagLabel> newTags = filterTagsBySource(newTagLabels, TagSource.CLASSIFICATION, false);
+        List<TagLabel> oldTags =
+            filterTagsBySource(column.getTags(), TagSource.CLASSIFICATION, false);
+        if (CommonUtil.isChanged(oldTags, newTags)) {
+          fieldsUpdated.add(
+              new FieldChange().withName("tags").withOldValue(oldTags).withNewValue(newTags));
+        }
+
+        List<TagLabel> newGlossaryTerms =
+            filterTagsBySource(newTagLabels, TagSource.GLOSSARY, false);
+        List<TagLabel> oldGlossaryTerms =
+            filterTagsBySource(column.getTags(), TagSource.GLOSSARY, false);
+        if (CommonUtil.isChanged(oldGlossaryTerms, newGlossaryTerms)) {
           fieldsUpdated.add(
               new FieldChange()
-                  .withName("tags")
-                  .withOldValue(oldTagsJson)
-                  .withNewValue(newTagsJson));
+                  .withName("glossaryTerms")
+                  .withOldValue(oldGlossaryTerms)
+                  .withNewValue(newGlossaryTerms));
         }
       }
 
@@ -2155,23 +2168,14 @@ public class TableRepository extends EntityRepository<Table> {
       }
 
       // Apply the updates
-      column.withDisplayName(csvRecord.get(1));
-      column.withDescription(csvRecord.get(2));
-      column.withDataTypeDisplay(csvRecord.get(3));
-      column.withDataType(
-          nullOrEmpty(csvRecord.get(4)) ? null : ColumnDataType.fromValue(csvRecord.get(4)));
+      column.withDisplayName(displayName);
+      column.withDescription(description);
+      column.withDataTypeDisplay(dataTypeDisplay);
+      column.withDataType(nullOrEmpty(dataType) ? null : ColumnDataType.fromValue(dataType));
       column.withArrayDataType(
-          nullOrEmpty(csvRecord.get(5)) ? null : ColumnDataType.fromValue(csvRecord.get(5)));
-      column.withDataLength(
-          nullOrEmpty(csvRecord.get(6)) ? null : Integer.parseInt(csvRecord.get(6)));
-      List<TagLabel> tagLabels =
-          getTagLabels(
-              printer,
-              csvRecord,
-              List.of(
-                  Pair.of(7, TagLabel.TagSource.CLASSIFICATION),
-                  Pair.of(8, TagLabel.TagSource.GLOSSARY)));
-      column.withTags(nullOrEmpty(tagLabels) ? null : tagLabels);
+          nullOrEmpty(arrayDataType) ? null : ColumnDataType.fromValue(arrayDataType));
+      column.withDataLength(nullOrEmpty(dataLength) ? null : Integer.parseInt(dataLength));
+      column.withTags(nullOrEmpty(newTagLabels) ? null : newTagLabels);
       column.withOrdinalPosition(
           nullOrDefault(
               column.getOrdinalPosition(),
@@ -2256,6 +2260,151 @@ public class TableRepository extends EntityRepository<Table> {
         }
       }
       return null;
+    }
+
+    /*
+    Standard EntityCsv helper methods enforce a "Fail Fast" approach by disabling record processing (processRecord = false) immediately upon encountering an invalid field.
+    This behavior conflicts with TableRepository's import logic, where multiple CSV rows (columns) contribute to a single Table entity.
+    We need to support Partial Success: failing individual invalid column rows without aborting the entire Table construction.
+    The Fix: Unsealed EntityCsv's helper methods and suppressed the processRecord = false side-effect within TableRepository overrides.
+    This allows TableCsv to record specific row failures while keeping the main processing loop active for valid columns.
+     */
+    @Override
+    protected Boolean getBoolean(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) {
+      String field = csvRecord.get(fieldNumber);
+      if (nullOrEmpty(field)) {
+        return null;
+      }
+      if (field.equals(Boolean.TRUE.toString())) {
+        return true;
+      }
+      if (field.equals(Boolean.FALSE.toString())) {
+        return false;
+      }
+      importFailure(printer, invalidBoolean(fieldNumber, field), csvRecord);
+      return false;
+    }
+
+    @Override
+    protected EntityReference getEntityReference(
+        CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType)
+        throws IOException {
+      if (!processRecord) {
+        return null;
+      }
+      String fqn = csvRecord.get(fieldNumber);
+      return getEntityReference(printer, csvRecord, fieldNumber, entityType, fqn);
+    }
+
+    @Override
+    protected EntityReference getEntityReference(
+        CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType, String fqn)
+        throws IOException {
+      if (nullOrEmpty(fqn)) {
+        return null;
+      }
+      EntityInterface entity = getEntityByName(entityType, fqn);
+      if (entity == null) {
+        importFailure(printer, entityNotFound(fieldNumber, entityType, fqn), csvRecord);
+        return null;
+      }
+      return entity.getEntityReference();
+    }
+
+    @Override
+    protected List<EntityReference> getEntityReferences(
+        CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType)
+        throws IOException {
+      if (!processRecord) {
+        return null;
+      }
+      String fqns = csvRecord.get(fieldNumber);
+      if (nullOrEmpty(fqns)) {
+        return null;
+      }
+      List<String> fqnList = listOrEmpty(CsvUtil.fieldToStrings(fqns));
+      List<EntityReference> refs = new ArrayList<>();
+      for (String fqn : fqnList) {
+        EntityReference ref = getEntityReference(printer, csvRecord, fieldNumber, entityType, fqn);
+        if (!processRecord) {
+          return null;
+        }
+        if (ref != null) {
+          refs.add(ref);
+        }
+      }
+      refs.sort(Comparator.comparing(EntityReference::getName));
+      return refs.isEmpty() ? null : refs;
+    }
+
+    @Override
+    protected List<EntityReference> getEntityReferencesForGlossaryTerms(
+        CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) {
+      if (!processRecord) {
+        return null;
+      }
+      String fqns = csvRecord.get(fieldNumber);
+      if (nullOrEmpty(fqns)) {
+        return null;
+      }
+      List<String> fqnList = listOrEmpty(CsvUtil.fieldToStrings(fqns));
+      List<EntityReference> refs = new ArrayList<>();
+      for (String fqn : fqnList) {
+        EntityInterface entity = getEntityByName(Entity.GLOSSARY_TERM, fqn);
+        if (entity == null) {
+          importFailure(printer, entityNotFound(fieldNumber, Entity.GLOSSARY_TERM, fqn), csvRecord);
+          return null;
+        }
+
+        // Validate that the glossary term has APPROVED status
+        org.openmetadata.schema.entity.data.GlossaryTerm term =
+            (org.openmetadata.schema.entity.data.GlossaryTerm) entity;
+        if (term.getEntityStatus() != org.openmetadata.schema.type.EntityStatus.APPROVED) {
+          LOG.error(
+              "[VALIDATION] VALIDATION FAILED! Term '{}' status is {} not APPROVED",
+              fqn,
+              term.getEntityStatus());
+          importFailure(
+              printer,
+              invalidField(
+                  fieldNumber,
+                  String.format(
+                      "Glossary term '%s' must have APPROVED status to be linked. Current status: %s",
+                      fqn, term.getEntityStatus())),
+              csvRecord);
+          return null;
+        }
+        refs.add(entity.getEntityReference());
+      }
+      refs.sort(Comparator.comparing(EntityReference::getName));
+      return refs.isEmpty() ? null : refs;
+    }
+
+    @Override
+    protected List<TagLabel> getTagLabels(
+        CSVPrinter printer,
+        CSVRecord csvRecord,
+        List<Pair<Integer, TagSource>> fieldNumbersWithSource)
+        throws IOException {
+      if (!processRecord) {
+        return null;
+      }
+      List<TagLabel> tagLabels = new ArrayList<>();
+      for (Pair<Integer, TagSource> pair : fieldNumbersWithSource) {
+        int fieldNumbers = pair.getLeft();
+        TagSource source = pair.getRight();
+        List<EntityReference> refs =
+            source == TagSource.CLASSIFICATION
+                ? getEntityReferences(printer, csvRecord, fieldNumbers, Entity.TAG)
+                : getEntityReferencesForGlossaryTerms(printer, csvRecord, fieldNumbers);
+        if (processRecord && !nullOrEmpty(refs)) {
+          for (EntityReference ref : refs) {
+            tagLabels.add(
+                new TagLabel().withSource(source).withTagFQN(ref.getFullyQualifiedName()));
+          }
+        }
+      }
+      return tagLabels;
     }
   }
 

@@ -244,8 +244,8 @@ public class DatabaseServiceRepository
 
     private Database processRecordFromCsv(CSVPrinter printer, CSVRecord csvRecord)
         throws IOException {
-      String databaseFqn =
-          FullyQualifiedName.add(service.getFullyQualifiedName(), csvRecord.get(0));
+      String name = csvRecord.get(0);
+      String databaseFqn = FullyQualifiedName.add(service.getFullyQualifiedName(), name);
       Database database;
       boolean databaseExists;
       try {
@@ -271,6 +271,9 @@ public class DatabaseServiceRepository
 
       // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers, certification,
       // domain, extension
+      String displayName = csvRecord.get(1);
+      String description = csvRecord.get(2);
+      List<EntityReference> owners = getOwners(printer, csvRecord, 3);
       List<TagLabel> tagLabels =
           getTagLabels(
               printer,
@@ -281,10 +284,6 @@ public class DatabaseServiceRepository
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
 
       AssetCertification certification = getCertificationLabels(csvRecord.get(7));
-      List<EntityReference> owners = getOwners(printer, csvRecord, 3);
-
-      String displayName = csvRecord.get(1);
-      String description = csvRecord.get(2);
 
       if (!databaseExists) {
         // For new databases, all non-null fields are "added"
@@ -420,7 +419,7 @@ public class DatabaseServiceRepository
       }
 
       database
-          .withName(csvRecord.get(0))
+          .withName(name)
           .withFullyQualifiedName(databaseFqn)
           .withDisplayName(displayName)
           .withDescription(description)

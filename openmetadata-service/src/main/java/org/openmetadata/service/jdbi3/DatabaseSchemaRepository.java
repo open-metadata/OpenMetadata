@@ -687,7 +687,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     protected void createEntityWithoutRecursion(CSVPrinter printer, List<CSVRecord> csvRecords)
         throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
-      String tableFqn = FullyQualifiedName.add(schema.getFullyQualifiedName(), csvRecord.get(0));
+      String name = csvRecord.get(0);
+      String tableFqn = FullyQualifiedName.add(schema.getFullyQualifiedName(), name);
       Table table;
       boolean tableExists;
       try {
@@ -717,6 +718,9 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
       // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers, certification,
       // retentionPeriod, sourceUrl, domain
+      String displayName = csvRecord.get(1);
+      String description = csvRecord.get(2);
+      List<EntityReference> owners = getOwners(printer, csvRecord, 3);
       List<TagLabel> tagLabels =
           getTagLabels(
               printer,
@@ -727,15 +731,16 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
 
       AssetCertification certification = getCertificationLabels(csvRecord.get(7));
-      List<EntityReference> owners = getOwners(printer, csvRecord, 3);
-
+      String retentionPeriod = csvRecord.get(8);
+      String sourceUrl = csvRecord.get(9);
+      List<EntityReference> newDomains = getDomains(printer, csvRecord, 10);
       if (!tableExists) {
         // For new tables, all non-null fields are "added"
-        if (!nullOrEmpty(csvRecord.get(1))) {
-          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(csvRecord.get(1)));
+        if (!nullOrEmpty(displayName)) {
+          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
         }
-        if (!nullOrEmpty(csvRecord.get(2))) {
-          fieldsAdded.add(new FieldChange().withName("description").withNewValue(csvRecord.get(2)));
+        if (!nullOrEmpty(description)) {
+          fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
         }
         if (!nullOrEmpty(owners)) {
           fieldsAdded.add(new FieldChange().withName("owner").withNewValue(owners));
@@ -762,21 +767,19 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         if (certification != null) {
           fieldsAdded.add(new FieldChange().withName("certification").withNewValue(certification));
         }
-        if (!nullOrEmpty(csvRecord.get(8))) {
+        if (!nullOrEmpty(retentionPeriod)) {
           fieldsAdded.add(
-              new FieldChange().withName("retentionPeriod").withNewValue(csvRecord.get(8)));
+              new FieldChange().withName("retentionPeriod").withNewValue(retentionPeriod));
         }
-        if (!nullOrEmpty(csvRecord.get(9))) {
-          fieldsAdded.add(new FieldChange().withName("sourceUrl").withNewValue(csvRecord.get(9)));
+        if (!nullOrEmpty(sourceUrl)) {
+          fieldsAdded.add(new FieldChange().withName("sourceUrl").withNewValue(sourceUrl));
         }
-
-        List<EntityReference> newDomains = getDomains(printer, csvRecord, 10);
         if (!nullOrEmpty(newDomains)) {
           fieldsAdded.add(new FieldChange().withName("domains").withNewValue(newDomains));
         }
       } else {
         // Compare existing values with CSV values to track changes
-        String newDisplayName = csvRecord.get(1);
+        String newDisplayName = displayName;
         if (CommonUtil.isChanged(table.getDisplayName(), newDisplayName)) {
           fieldsUpdated.add(
               new FieldChange()
@@ -785,7 +788,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
                   .withNewValue(newDisplayName));
         }
 
-        String newDescription = csvRecord.get(2);
+        String newDescription = description;
         if (CommonUtil.isChanged(table.getDescription(), newDescription)) {
           fieldsUpdated.add(
               new FieldChange()
@@ -846,7 +849,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
                   .withNewValue(certification));
         }
 
-        String newRetentionPeriod = csvRecord.get(8);
+        String newRetentionPeriod = retentionPeriod;
         if (CommonUtil.isChanged(table.getRetentionPeriod(), newRetentionPeriod)) {
           fieldsUpdated.add(
               new FieldChange()
@@ -855,7 +858,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
                   .withNewValue(newRetentionPeriod));
         }
 
-        String newSourceUrl = csvRecord.get(9);
+        String newSourceUrl = sourceUrl;
         if (CommonUtil.isChanged(table.getSourceUrl(), newSourceUrl)) {
           fieldsUpdated.add(
               new FieldChange()
@@ -863,8 +866,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
                   .withOldValue(table.getSourceUrl())
                   .withNewValue(newSourceUrl));
         }
-
-        List<EntityReference> newDomains = getDomains(printer, csvRecord, 10);
         if (CommonUtil.isChanged(table.getDomains(), newDomains)) {
           fieldsUpdated.add(
               new FieldChange()
@@ -890,17 +891,17 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       }
 
       table
-          .withName(csvRecord.get(0))
+          .withName(name)
           .withFullyQualifiedName(tableFqn)
-          .withDisplayName(csvRecord.get(1))
-          .withDescription(csvRecord.get(2))
-          .withOwners(getOwners(printer, csvRecord, 3))
+          .withDisplayName(displayName)
+          .withDescription(description)
+          .withOwners(owners)
           .withTags(tagLabels)
           .withCertification(certification)
-          .withRetentionPeriod(csvRecord.get(8))
-          .withSourceUrl(csvRecord.get(9))
+          .withRetentionPeriod(retentionPeriod)
+          .withSourceUrl(sourceUrl)
           .withColumns(nullOrEmpty(table.getColumns()) ? new ArrayList<>() : table.getColumns())
-          .withDomains(getDomains(printer, csvRecord, 10))
+          .withDomains(newDomains)
           .withExtension(getExtension(printer, csvRecord, 11));
 
       if (processRecord) {
