@@ -2619,6 +2619,7 @@
     "only-reviewers-can-approve-or-reject": "يمكن للمراجعين فقط الموافقة أو الرفض",
     "only-show-columns-with-lineage": "إظهار الأعمدة ذات سلسلة البيانات فقط",
     "optional-configuration-update-description-dbt": "تكوين اختياري لتحديث الوصف من dbt أو لا",
+    "orphan-indexes-deleted-successfully": "Successfully deleted {{count}} orphan index(es).",
     "owners-coverage-widget-description": "تغطية المالكين لجميع أصول البيانات في الخدمة. <0>تعرف على المزيد.</0>",
     "page-is-not-available": "الصفحة التي تبحث عنها غير متاحة",
     "page-sub-header-for-activity-feed": "ملخص النشاط الذي يمكّنك من عرض ملخص لأحداث تغيير البيانات.",

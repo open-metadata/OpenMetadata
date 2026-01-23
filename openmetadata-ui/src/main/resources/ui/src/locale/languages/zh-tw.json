@@ -2619,6 +2619,7 @@
     "only-reviewers-can-approve-or-reject": "只有審核者可以核准或拒絕",
     "only-show-columns-with-lineage": "僅顯示具有血緣關係的欄位",
     "optional-configuration-update-description-dbt": "是否從 dbt 更新描述的選用組態",
+    "orphan-indexes-deleted-successfully": "Successfully deleted {{count}} orphan index(es).",
     "owners-coverage-widget-description": "服務中所有資料資產的擁有者涵蓋範圍。<0>了解更多。</0>",
     "page-is-not-available": "您正在尋找的頁面不可用",
     "page-sub-header-for-activity-feed": "活動摘要，可讓您檢視資料變更事件的摘要。",

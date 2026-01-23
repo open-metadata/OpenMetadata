@@ -2619,6 +2619,7 @@
     "only-reviewers-can-approve-or-reject": "רק בודקים יכולים לאשר או לדחות",
     "only-show-columns-with-lineage": "הצג רק עמודות עם Lineage",
     "optional-configuration-update-description-dbt": "הגדרת אופציונלית לעדכון התיאור מ-dbT או לא",
+    "orphan-indexes-deleted-successfully": "Successfully deleted {{count}} orphan index(es).",
     "owners-coverage-widget-description": "כיסוי בעלים עבור כל נכסי הנתונים בשירות. <0>למד עוד</0>.",
     "page-is-not-available": "הדף שאתה מחפש לא זמין",
     "page-sub-header-for-activity-feed": "הזרמת פעילות שמאפשרת לך לראות סיכומים של אירועי שינוי בנתונים.",

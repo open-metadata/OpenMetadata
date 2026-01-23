@@ -67,8 +67,8 @@ const SearchInsightsPage = () => {
       setIsCleaningOrphans(true);
       const result = await cleanOrphanIndexes();
       showSuccessToast(
-        t('server.delete-entity-success', {
-          entity: `${result.deletedCount} ${t('label.orphan-indexes')}`,
+        t('message.orphan-indexes-deleted-successfully', {
+          count: result.deletedCount,
         })
       );
       setShowConfirmModal(false);
@@ -253,7 +253,11 @@ const SearchInsightsPage = () => {
               <Table
                 columns={indexColumns}
                 dataSource={stats.indexes}
-                pagination={{ pageSize: 10 }}
+                pagination={{
+                  defaultPageSize: 10,
+                  pageSizeOptions: ['10', '20', '30', '50'],
+                  showSizeChanger: true,
+                }}
                 rowKey="name"
                 size="small"
               />

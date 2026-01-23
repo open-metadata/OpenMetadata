@@ -2619,6 +2619,7 @@
     "only-reviewers-can-approve-or-reject": "Yalnızca İnceleyiciler Onaylayabilir veya Reddedebilir",
     "only-show-columns-with-lineage": "Yalnızca Lineage olan sütunları göster",
     "optional-configuration-update-description-dbt": "Açıklamayı dbt'den güncellemek veya güncellememek için isteğe bağlı yapılandırma",
+    "orphan-indexes-deleted-successfully": "Successfully deleted {{count}} orphan index(es).",
     "owners-coverage-widget-description": "Servisteki tüm veri varlıkları için sahip kapsamı. <0>daha fazla bilgi edinin.</0>",
     "page-is-not-available": "Aradığınız sayfa mevcut değil",
     "page-sub-header-for-activity-feed": "Veri değişikliği olaylarının bir özetini görüntülemenizi sağlayan aktivite akışı.",

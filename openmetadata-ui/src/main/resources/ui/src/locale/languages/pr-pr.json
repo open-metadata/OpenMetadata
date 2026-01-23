@@ -2619,6 +2619,7 @@
     "only-reviewers-can-approve-or-reject": "فقط بازبینان می‌توانند تأیید یا رد کنند.",
     "only-show-columns-with-lineage": "فقط ستون‌هایی با Lineage را نمایش بده",
     "optional-configuration-update-description-dbt": "پیکربندی اختیاری برای به‌روزرسانی توضیحات از dbt یا خیر.",
+    "orphan-indexes-deleted-successfully": "Successfully deleted {{count}} orphan index(es).",
     "owners-coverage-widget-description": "پوشش مالکان برای تمام دارایی‌های داده در سرویس. <0>بیشتر بدانید.</0>",
     "page-is-not-available": "صفحه‌ای که به دنبال آن هستید در دسترس نیست.",
     "page-sub-header-for-activity-feed": "فید فعالیت که به شما امکان می‌دهد خلاصه‌ای از رویدادهای تغییر داده را مشاهده کنید.",

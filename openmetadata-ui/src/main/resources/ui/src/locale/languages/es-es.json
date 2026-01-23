@@ -2619,6 +2619,7 @@
     "only-reviewers-can-approve-or-reject": "Solo los Revisores pueden Aprobar o Rechazar",
     "only-show-columns-with-lineage": "Mostrar solo columnas con Lineage",
     "optional-configuration-update-description-dbt": "Configuración opcional para actualizar la descripción de dbt",
+    "orphan-indexes-deleted-successfully": "Successfully deleted {{count}} orphan index(es).",
     "owners-coverage-widget-description": "Cobertura de propietarios para todos los activos de datos en el servicio. <0>saber más.</0>",
     "page-is-not-available": "La página que estás buscando no está disponible",
     "page-sub-header-for-activity-feed": "Feed de actividad que te permite ver un resumen de los eventos de cambio de datos.",
