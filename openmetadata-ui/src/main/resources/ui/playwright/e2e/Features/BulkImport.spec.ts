@@ -1066,23 +1066,23 @@ test.describe('Bulk Import Export', () => {
   test('Cell highlight functionality', async ({ page }) => {
     test.slow(true);
 
-    const dbService = new DatabaseServiceClass();
+    const tableEntity = new TableClass();
 
     const { apiContext, afterAction } = await getApiContext(page);
-    await dbService.create(apiContext);
+    await tableEntity.create(apiContext);
 
-    await test.step('should export data database service details', async () => {
-      await dbService.visitEntityPage(page);
-      await performBulkDownload(page, dbService.entity.name);
+    await test.step('should export data table details', async () => {
+      await tableEntity.visitEntityPage(page);
+      await performBulkDownload(page, tableEntity.entity.name);
     });
 
     await test.step('Verify edited cells are highlighted with cell-updated class after validation', async () => {
-      await dbService.visitEntityPage(page);
+      await tableEntity.visitEntityPage(page);
       await page.click('[data-testid="manage-button"] > .anticon');
       await page.click('[data-testid="import-button-title"]');
       const fileInput = page.getByTestId('upload-file-widget');
       await fileInput?.setInputFiles([
-        'downloads/' + dbService.entity.name + '.csv',
+        'downloads/' + tableEntity.entity.name + '.csv',
       ]);
 
       await page.waitForTimeout(500);
@@ -1090,7 +1090,10 @@ test.describe('Bulk Import Export', () => {
       await expect(page.locator('.rdg-header-row')).toBeVisible();
       await expect(page.getByTestId('add-row-btn')).toBeVisible();
 
-      const displayNameCell = page.locator('.rdg-cell-displayName').first();
+      await page.waitForTimeout(500);
+
+      const displayNameCell = page.locator('.rdg-cell-columndisplayName').first();
+
       await displayNameCell.dblclick();
 
       await page.keyboard.type('Updated Display Name');
@@ -1121,7 +1124,7 @@ test.describe('Bulk Import Export', () => {
       expect(updatedCellCount).toBeLessThan(totalCellCount);
     });
 
-    await dbService.delete(apiContext);
+    await tableEntity.delete(apiContext);
     await afterAction();
   });
 

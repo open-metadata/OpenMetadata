@@ -497,7 +497,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
 
           await expect(page.locator('.rdg-header-row')).toBeVisible();
 
-          await page.getByRole('button', { name: 'Next' }).click();
+          await page.getByRole('button', { name: 'Preview' }).click();
 
           const loader = page.locator(
             '.inovua-react-toolkit-load-mask__background-layer'
@@ -558,7 +558,7 @@ ${parentRefGlossary.data.name}.NonExistentParent,childTerm,childTerm,<p>Child wi
 
         await expect(page.locator('.rdg-header-row')).toBeVisible();
 
-        await page.getByRole('button', { name: 'Next' }).click();
+        await page.getByRole('button', { name: 'Preview' }).click();
 
         const loader = page.locator(
           '.inovua-react-toolkit-load-mask__background-layer'
@@ -625,7 +625,7 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
 
           await expect(page.locator('.rdg-header-row')).toBeVisible();
 
-          await page.getByRole('button', { name: 'Next' }).click();
+          await page.getByRole('button', { name: 'Preview' }).click();
 
           const loader = page.locator(
             '.inovua-react-toolkit-load-mask__background-layer'
