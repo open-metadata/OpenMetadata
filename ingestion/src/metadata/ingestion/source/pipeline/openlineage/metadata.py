@@ -47,14 +47,15 @@ from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.pipeline.openlineage.models import (
+    EntityDetails,
     EventType,
     LineageEdge,
     LineageNode,
     OpenLineageEvent,
-    EntityDetails,
     TableDetails,
     TableFQN,
-    TopicDetails
+    TopicDetails,
+    TopicFQN,
 )
 from metadata.ingestion.source.pipeline.openlineage.utils import (
     FQNNotFoundException,
@@ -108,12 +109,12 @@ class OpenlineageSource(PipelineServiceSource):
         if namespace.startswith("kafka://"):
             return EntityDetails(
                 entity_type="topic",
-                topic_details=OpenlineageSource._get_topic_details(data)
+                topic_details=OpenlineageSource._get_topic_details(data),
             )
         else:
             return EntityDetails(
-                entity_type="table", 
-                table_details=OpenlineageSource._get_table_details(data)
+                entity_type="table",
+                table_details=OpenlineageSource._get_table_details(data),
             )
 
     @classmethod
@@ -161,18 +162,18 @@ class OpenlineageSource(PipelineServiceSource):
         try:
             namespace = data["namespace"]
         except KeyError:
-            raise ValueError(
-                "Topic namespace is not present"
-            )
-        
+            raise ValueError("Topic namespace is not present")
+
         try:
             name = data["name"]
         except KeyError:
-            raise ValueError(
-                "Topic name is not present."
-            )
-        
-        return TopicDetails(name, namespace)
+            raise ValueError("Topic name is not present")
+
+        # Extract broker hostname from kafka: // namespace
+        # Example: kafka://broker1:9092 -> broker1
+        broker_hostname = namespace.replace("kafka://", "").split(":")[0]
+
+        return TopicDetails(name, broker_hostname)
 
     def _get_table_fqn(self, table_details: TableDetails) -> Optional[str]:
         try:
@@ -184,6 +185,67 @@ class OpenlineageSource(PipelineServiceSource):
                 return f"{schema_fqn}.{table_details.name}"
             except FQNNotFoundException:
                 return None
+
+    def _build_topic_cache(self) -> Dict[str, Topic]:
+        """
+        Build a cache mapping (namespace, name) to topic entity for efficient lookups.
+
+        :return: dictionary with key=(namespace, name) and value=Topic entity
+        """
+        if not hasattr(self, "_topic_cache"):
+            self._topic_cache = {}
+            try:
+                topics = self.metadata.list_entities(
+                    entity=Topic,
+                    fields=["id", "fullyQualifiedName", "namespace", "name"],
+                    limit=10000, # Todo: Temp change, fix it
+                )
+
+                for topic in topics.entities:
+                    if topic.namespace and topic.name:
+                        cache_key = f"{topic.namespace}:{topic.name.root}"
+                        self._topic_cache[cache_key] = topic
+
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error building topic cache: {exc}")
+
+        return self._topic_cache
+
+    def _get_topic_from_cache(self, topic_details: TopicDetails) -> Optional[Topic]:
+        """
+        Get a Topic entity by its namespace and name using cached lookup.
+
+        :param topic_details: TopicDetails object with name and namespace
+        :return: Topic entity from OpenMetadata, or None
+        """
+        try:
+            cache = self._build_topic_cache()
+            cache_key = f"{topic_details.namespace}:{topic_details.name}"
+
+            topic = cache.get(cache_key)
+
+            if not topic:
+                logger.warning(
+                    f"Topic not found: name={topic_details.name}, namespace={topic_details.namespace}"
+                )
+
+            return topic
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error finding topic for {topic_details.name}: {exc}")
+            return None
+
+    def _get_topic_fqn(self, topic_details: TopicDetails) -> Optional[str]:
+        """
+        Search for a Topic FQN by its namespace and name using cached lookup.
+
+        :param topic_details: TopicDetails object with name and namespace
+        :return: fully qualified name of a Topic in OpenMetadata, or None
+        """
+        topic = self._get_topic_from_cache(topic_details)
+        return topic.fullyQualifiedName.root if topic else None
 
     def _get_schema_fqn_from_om(self, schema: str) -> Optional[str]:
         """
@@ -226,8 +288,12 @@ class OpenlineageSource(PipelineServiceSource):
         """
         run_facet = pipeline_details.run_facet
 
-        namespace = run_facet["facets"]["parent"]["job"]["namespace"]
-        name = run_facet["facets"]["parent"]["job"]["name"]
+        if run_facet.get("facets", {}).get("parent"):
+            namespace = run_facet["facets"]["parent"]["job"]["namespace"]
+            name = run_facet["facets"]["parent"]["job"]["name"]
+        else:
+            namespace = pipeline_details.job["namespace"]
+            name = pipeline_details.job["name"]
 
         return f"{namespace}-{name}"
 
@@ -421,34 +487,58 @@ class OpenlineageSource(PipelineServiceSource):
 
         input_edges: List[LineageNode] = []
         output_edges: List[LineageNode] = []
+        column_lineage = {}
 
         for spec in [(inputs, input_edges), (outputs, output_edges)]:
-            tables, tables_list = spec
+            entities, entity_list = spec
+            for entity_data in entities:
+                entity_details = self._get_entity_details(entity_data)
+                if entity_details.entity_type == "table":
+                    create_table_request = self.get_create_table_request(entity_data)
 
-            for table in tables:
-                create_table_request = self.get_create_table_request(table)
+                    if create_table_request:
+                        yield create_table_request
 
-                if create_table_request:
-                    yield create_table_request
+                    table_fqn = self._get_table_fqn(entity_details.table_details)
 
-                table_fqn = self._get_table_fqn(
-                    OpenlineageSource._get_table_details(table)
-                )
-
-                if table_fqn:
-                    tables_list.append(
-                        LineageNode(
-                            fqn=TableFQN(value=table_fqn),
-                            uuid=self.metadata.get_by_name(Table, table_fqn).id,
+                    if table_fqn:
+                        entity_list.append(
+                            LineageNode(
+                                fqn=TableFQN(value=table_fqn),
+                                uuid=self.metadata.get_by_name(
+                                    Table, table_fqn
+                                ).id.__root__,
+                                node_type="table",
+                            )
                         )
+
+                    column_lineage = self._get_column_lineage(inputs, outputs)        
+                elif entity_details.entity_type == "topic":
+                    topic_entity = self._get_topic_from_cache(
+                        entity_details.topic_details
                     )
+
+                    if topic_entity:
+                        entity_list.append(
+                            LineageNode(
+                                fqn=TopicFQN(
+                                    value=topic_entity.fullyQualifiedName.root
+                                ),
+                                uuid=topic_entity.id.root,
+                                node_type="topic",
+                            )
+                        )
+                    else:
+                        logger.warning(
+                            f"Topic not found for topic: {entity_details.topic_details.name} "
+                            f"with namespace: {entity_details.topic_details.namespace}. "
+                            f"Ensure the topic exists in OpenMetadata with matching namespace."
+                        )
 
         edges = [
             LineageEdge(from_node=n[0], to_node=n[1])
             for n in product(input_edges, output_edges)
         ]
-
-        column_lineage = self._get_column_lineage(inputs, outputs)
 
         pipeline_fqn = fqn.build(
             metadata=self.metadata,
@@ -500,6 +590,14 @@ class OpenlineageSource(PipelineServiceSource):
                         > self.service_connection.sessionTimeout
                     ):
                         # There is no new messages, timeout is passed
+                        session_active = False
+                elif message.error():
+                    logger.warning(f"Kafka consumer error: {message.error()}")
+                    empty_msg_cnt += 1
+                    if (
+                        empty_msg_cnt * pool_timeout
+                        > self.service_connection.sessionTimeout
+                    ):
                         session_active = False
                 else:
                     logger.debug(f"new message {message.value()}")

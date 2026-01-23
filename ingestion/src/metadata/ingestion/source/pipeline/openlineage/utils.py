@@ -19,8 +19,9 @@ def message_to_open_lineage_event(incoming_event: Dict) -> OpenLineageEvent:
     :return: OpenLineageEvent
     """
     fields_to_verify = [
-        "run.facets.parent.job.name",
-        "run.facets.parent.job.namespace",
+        # Fix it: https://github.com/open-metadata/OpenMetadata/issues/24213
+        # "run.facets.parent.job.name",
+        # "run.facets.parent.job.namespace",
         "inputs",
         "outputs",
         "eventType",
