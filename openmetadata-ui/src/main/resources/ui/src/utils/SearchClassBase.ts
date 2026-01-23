@@ -249,6 +249,7 @@ class SearchClassBase {
           childEntities: [
             EntityType.DASHBOARD_DATA_MODEL,
             EntityType.DASHBOARD,
+            EntityType.CHART,
           ],
         },
         icon: DashboardIcon,
