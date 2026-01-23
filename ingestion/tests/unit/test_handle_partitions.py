@@ -14,7 +14,12 @@ from typing import Optional
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
-from google.cloud.bigquery import PartitionRange, RangePartitioning, TimePartitioning
+from google.cloud.bigquery import (
+    PartitionRange,
+    RangePartitioning,
+    SchemaField,
+    TimePartitioning,
+)
 from google.cloud.bigquery.table import Table
 from pydantic import BaseModel
 from sqlalchemy import Integer, String
@@ -74,12 +79,24 @@ MOCK_DATABASE = Database(
 )
 
 
+MOCK_SCHEMA = [
+    SchemaField("customer_id", "INTEGER", mode="NULLABLE"),
+    SchemaField("first_name", "STRING", mode="NULLABLE"),
+    SchemaField("last_name", "STRING", mode="NULLABLE"),
+    SchemaField("test_column", "STRING", mode="NULLABLE"),
+]
+
+
 class MockTable(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
+
     time_partitioning: Optional[TimePartitioning] = None
     range_partitioning: Optional[RangePartitioning] = None
+    schema_: list = MOCK_SCHEMA
 
-    class Config:
-        arbitrary_types_allowed = True
+    @property
+    def schema(self):
+        return self.schema_
 
 
 MOCK_TIME_UNIT_PARTITIONING = TimePartitioning(
@@ -181,6 +198,9 @@ class BigqueryUnitTest(TestCase):
         self.bigquery_source.context.get().__dict__[
             "database"
         ] = MOCK_DATABASE.fullyQualifiedName.root
+        self.bigquery_source.context.get().__dict__[
+            "database_schema"
+        ] = TEST_PARTITION.get("schema_name")
         self.bigquery_source.client = client
         self.bigquery_source.inspector.get_columns = (
             lambda table_name, schema, db_name: MOCK_COLUMN_DATA
