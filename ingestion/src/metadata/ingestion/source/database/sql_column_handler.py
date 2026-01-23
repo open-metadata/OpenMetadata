@@ -563,27 +563,29 @@ class SqlColumnHandlerMixin:
         parts = [p for p in (db_name, schema_name, table_name) if p]
         full_table_name = ".".join(quote(p) for p in parts)
 
-        # Attempt 1: SQLAlchemy Core reflection + select (option 1)
+        # Attempt 1: SQLAlchemy Core with explicit columns (no autoload)
+        # We explicitly define columns to avoid expensive DESCRIBE/introspection
+        # queries that autoload_with would trigger for every table.
         try:
+            from sqlalchemy import Column as SaColumn
             from sqlalchemy import MetaData, Table, select
 
             metadata = MetaData()
 
-            # Reflection schema handling varies by dialect; keep it simple:
-            # - If db_name is supplied and your dialect expects 3-level names,
-            #   some dialects may require schema="db.schema". If you hit that,
-            #   uncomment the schema_for_reflect line below.
-            schema_for_reflect = schema_name
-            # schema_for_reflect = f"{db_name}.{schema_name}" if db_name else schema_name
+            # For 3-level naming (e.g., Databricks Unity Catalog: catalog.schema.table),
+            # we need to include db_name in the schema parameter. SQLAlchemy's Table
+            # uses the schema parameter to construct the fully qualified table name.
+            schema_for_table = f"{db_name}.{schema_name}" if db_name else schema_name
 
+            # Define columns explicitly without autoload to avoid DESCRIBE queries
             table = Table(
                 table_name,
                 metadata,
-                schema=schema_for_reflect,
-                autoload_with=self.engine,
+                *[SaColumn(col_name) for col_name in column_names],
+                schema=schema_for_table,
             )
 
-            cols = [table.c[c] for c in column_names]
+            cols = [table.c[col_name] for col_name in column_names]
             stmt = select(*cols).limit(sample_size)
 
             with self.engine.connect() as connection:
