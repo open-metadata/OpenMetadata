@@ -228,14 +228,14 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       // because the CSV parser couldn't handle quoted FQN values
       await expect(page.locator('.rdg-header-row')).toBeVisible();
       await expect(page.getByTestId('add-row-btn')).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Preview' })).toBeVisible();
 
       // Verify the data rows are visible (database, schema, table, columns)
       const rowCount = await page.locator('.rdg-row').count();
       expect(rowCount).toBeGreaterThan(0);
 
-      // Click Next to validate
-      await page.getByRole('button', { name: 'Next' }).click();
+      // Click Preview to validate
+      await page.getByRole('button', { name: 'Preview' }).click();
 
       // Wait for validation to complete
       await page.waitForSelector('[data-testid="processed-row"]', {
@@ -332,7 +332,7 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       // Before the fix, this would fail with CSV parsing error
       await expect(page.locator('.rdg-header-row')).toBeVisible();
       await expect(page.getByTestId('add-row-btn')).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Preview' })).toBeVisible();
 
       // Verify rows are displayed
       const rowCount = await page.locator('.rdg-row').count();
@@ -407,10 +407,10 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       // Verify grid loaded
       await expect(page.locator('.rdg-header-row')).toBeVisible();
 
-      // Click Next to validate - this is where the CSV is reconstructed
+      // Click Preview to validate - this is where the CSV is reconstructed
       // from the grid data and sent to the backend. Before the fix,
       // this would fail because quotes in FQN weren't properly escaped.
-      await page.getByRole('button', { name: 'Next' }).click();
+      await page.getByRole('button', { name: 'Preview' }).click();
 
       // Wait for validation
       await page.waitForSelector('[data-testid="processed-row"]', {
@@ -502,7 +502,7 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       await expect(page.getByTestId('add-row-btn')).toBeVisible();
 
       // Validate
-      await page.getByRole('button', { name: 'Next' }).click();
+      await page.getByRole('button', { name: 'Preview' }).click();
 
       await page.waitForSelector('[data-testid="processed-row"]', {
         timeout: 120000,
@@ -593,7 +593,7 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       await expect(page.locator('.rdg-header-row')).toBeVisible();
 
       // Validate
-      await page.getByRole('button', { name: 'Next' }).click();
+      await page.getByRole('button', { name: 'Preview' }).click();
 
       await page.waitForSelector('[data-testid="processed-row"]', {
         timeout: 120000,
@@ -677,7 +677,7 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       await fillDescriptionDetails(page, 'Updated description via bulk edit');
 
       // Validate - this reconstructs CSV with edited data
-      await page.getByRole('button', { name: 'Next' }).click();
+      await page.getByRole('button', { name: 'Preview' }).click();
 
       await page.waitForSelector('[data-testid="processed-row"]', {
         timeout: 120000,
@@ -781,7 +781,7 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       await expect(page.locator('.rdg-header-row')).toBeVisible();
 
       // Validate
-      await page.getByRole('button', { name: 'Next' }).click();
+      await page.getByRole('button', { name: 'Preview' }).click();
 
       await page.waitForSelector('[data-testid="processed-row"]', {
         timeout: 120000,
@@ -887,7 +887,7 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       await expect(page.locator('.rdg-header-row')).toBeVisible();
 
       // Validate
-      await page.getByRole('button', { name: 'Next' }).click();
+      await page.getByRole('button', { name: 'Preview' }).click();
 
       await page.waitForSelector('[data-testid="processed-row"]', {
         timeout: 120000,

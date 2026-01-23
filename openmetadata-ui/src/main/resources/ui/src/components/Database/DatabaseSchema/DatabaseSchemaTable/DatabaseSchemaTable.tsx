@@ -366,7 +366,8 @@ export const DatabaseSchemaTable = ({
           </span>
           {getBulkEditButton(
             permissions.databaseSchema.EditAll && !isDatabaseDeleted,
-            handleEditTable
+            handleEditTable,
+            'edit-table-bulk-button'
           )}
         </>
       }
