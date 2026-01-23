@@ -1116,12 +1116,19 @@ public class TableRepository extends EntityRepository<Table> {
     table.setColumns(ColumnUtil.cloneWithoutTags(columnWithTags));
     table.getColumns().forEach(column -> column.setTags(null));
 
+    // Don't store table constraints with referredColumns (table-to-table relations) in JSON
+    // These are managed through relationship table
+    List<TableConstraint> allConstraints = table.getTableConstraints();
+    List<TableConstraint> constraintsWithoutRelations =
+        filterConstraintsWithoutReferredColumns(allConstraints);
+    table.setTableConstraints(constraintsWithoutRelations);
+
     store(table, update);
 
     // Restore the relationships
-    table.withColumns(columnWithTags).withService(service);
+    table.withColumns(columnWithTags).withService(service).withTableConstraints(allConstraints);
     // Store ER relationships based on table constraints
-    addConstraintRelationship(table, table.getTableConstraints());
+    addConstraintRelationship(table, allConstraints);
   }
 
   @Override
@@ -1861,6 +1868,20 @@ public class TableRepository extends EntityRepository<Table> {
         }
       }
     }
+  }
+
+  private List<TableConstraint> filterConstraintsWithoutReferredColumns(
+      List<TableConstraint> constraints) {
+    if (nullOrEmpty(constraints)) {
+      return constraints;
+    }
+    List<TableConstraint> filtered = new ArrayList<>();
+    for (TableConstraint constraint : constraints) {
+      if (nullOrEmpty(constraint.getReferredColumns())) {
+        filtered.add(constraint);
+      }
+    }
+    return filtered;
   }
 
   public static class TableCsv extends EntityCsv<Table> {
