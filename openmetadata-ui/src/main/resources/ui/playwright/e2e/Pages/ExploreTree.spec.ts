@@ -406,29 +406,46 @@ test.describe('Explore page', () => {
     await validateBucketsForIndex(page, 'all');
   });
 
-  test('Verify charts are visible in explore tree aggregation', async ({
-    page,
-  }) => {
-    const response = page.waitForResponse(
+  test('Verify charts are visible in explore tree', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    const dashboardNode = page.getByTestId('explore-tree-title-Dashboards');
+    await expect(dashboardNode).toBeVisible();
+
+    const expandResponse = page.waitForResponse(
       (resp) =>
         resp.url().includes('/api/v1/search/query') &&
-        resp.url().includes('index=dataAsset') &&
-        resp.url().includes('size=0')
+        resp.url().includes('index=dataAsset')
     );
 
-    await page.reload();
+    await page
+      .locator('div')
+      .filter({ hasText: /^Dashboards$/ })
+      .locator('svg')
+      .first()
+      .click();
+
+    await expandResponse;
     await page.waitForLoadState('networkidle');
 
-    const apiResponse = await response;
-    const jsonResponse = await apiResponse.json();
+    const chartTreeNode = page.getByTestId('explore-tree-title-Charts');
+    await expect(chartTreeNode).toBeVisible();
 
-    const buckets =
-      jsonResponse.aggregations?.['sterms#entityType']?.buckets ?? [];
+    const chartClickResponse = page.waitForResponse(
+      (resp) =>
+        resp.url().includes('/api/v1/search/query') &&
+        resp.url().includes('index=dataAsset')
+    );
 
-    const chartBucket = buckets.find((b: Bucket) => b.key === 'chart');
+    await chartTreeNode.click();
+    await chartClickResponse;
 
-    expect(chartBucket).toBeDefined();
-    expect(chartBucket?.doc_count).toBeGreaterThan(0);
+    await expect(
+      page.getByTestId('search-dropdown-Data Assets')
+    ).toContainText('Data Assets: chart');
   });
 
   DATA_ASSETS.forEach((asset) => {
