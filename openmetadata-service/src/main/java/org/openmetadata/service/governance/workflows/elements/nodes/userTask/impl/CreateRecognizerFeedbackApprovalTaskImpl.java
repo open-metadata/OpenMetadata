@@ -26,6 +26,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RecognizerFeedback;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TagLabelRecognizerMetadata;
 import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
@@ -35,6 +37,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
 import org.openmetadata.service.resources.feeds.FeedMapper;
@@ -174,12 +177,33 @@ public class CreateRecognizerFeedbackApprovalTaskImpl implements TaskListener {
       thread = null;
     }
 
+    TagLabelRecognizerMetadata recognizer = null;
+    if (feedback.getEntityLink() != null && feedback.getTagFQN() != null) {
+      try {
+        MessageParser.EntityLink entityLink =
+            MessageParser.EntityLink.parse(feedback.getEntityLink());
+        String targetFQN = entityLink.getFullyQualifiedFieldValue();
+        CollectionDAO.TagUsageDAO tagUsageDAO = Entity.getCollectionDAO().tagUsageDAO();
+        List<TagLabel> tags = tagUsageDAO.getTags(targetFQN);
+        recognizer =
+                tags.stream()
+                        .filter(tagLabel -> feedback.getTagFQN().equals(tagLabel.getTagFQN()))
+                        .findFirst().filter(tagLabel -> tagLabel.getMetadata() != null).map(tagLabel -> tagLabel.getMetadata().getRecognizer()).orElse(null);
+      } catch (Exception ex) {
+        LOG.warn(
+            "Failed to retrieve recognizer metadata for feedback {}: {}",
+            feedback.getId(),
+            ex.getMessage());
+      }
+    }
+
     TaskDetails taskDetails =
         new TaskDetails()
             .withAssignees(FeedMapper.formatAssignees(assignees))
             .withType(TaskType.RecognizerFeedbackApproval)
             .withStatus(TaskStatus.Open)
-            .withFeedback(feedback);
+            .withFeedback(feedback)
+            .withRecognizer(recognizer);
 
     thread =
         new Thread()
