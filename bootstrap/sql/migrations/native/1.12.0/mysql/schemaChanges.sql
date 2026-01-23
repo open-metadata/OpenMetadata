@@ -51,6 +51,16 @@ UPDATE test_definition
   SET json = JSON_SET(json, '$.enabled', true)
   WHERE json_extract(json, '$.enabled') IS NULL;
 
+-- Migrate termsOfUse from string to object with content and inherited fields
+-- This converts existing termsOfUse string values to the new object structure: { "content": "...", "inherited": false }
+UPDATE data_contract_entity
+  SET json = JSON_SET(
+    json,
+    '$.termsOfUse',
+    JSON_OBJECT('content', JSON_UNQUOTE(JSON_EXTRACT(json, '$.termsOfUse')), 'inherited', false)
+  )
+  WHERE JSON_TYPE(JSON_EXTRACT(json, '$.termsOfUse')) = 'STRING';
+
 -- Add updatedAt generated column to entity_extension table for efficient timestamp-based queries
 -- This supports the listEntityHistoryByTimestamp API endpoint for retrieving entity versions within a time range
 ALTER TABLE entity_extension
