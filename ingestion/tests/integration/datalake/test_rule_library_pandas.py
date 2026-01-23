@@ -17,7 +17,6 @@ from typing import List
 
 import pytest
 
-from metadata.data_quality.api.models import TestCaseDefinition
 from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
@@ -79,9 +78,7 @@ def rule_library_pandas_test_definition(metadata) -> TestDefinition:
                 ),
             ],
             # Pandas query expression syntax (not SQL)
-            sqlExpression=SqlQuery(
-                root="{{ column_name }} > {{ minValue }}"
-            ),
+            sqlExpression=SqlQuery(root="{{ column_name }} > {{ minValue }}"),
             validatorClass="ColumnRuleLibrarySqlExpressionValidator",
         )
     )
@@ -128,9 +125,7 @@ RULE_LIBRARY_DATA_QUALITY_CONFIG = {
     },
     "processor": {
         "type": "orm-test-runner",
-        "config": {
-            "testCases": []
-        },
+        "config": {"testCases": []},
     },
     "sink": {"type": "metadata-rest", "config": {}},
     "workflowConfig": {
