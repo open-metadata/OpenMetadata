@@ -2412,28 +2412,23 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       await sidebarClick(page, SidebarItem.DOMAIN);
       await addAssetsToDomain(page, domain, assets);
 
-      // Perform 3 consecutive renames
-      for (let i = 1; i <= 3; i++) {
-        // Navigate back to documentation tab for rename
+      const performRenameAndVerify = async (renameIndex: number) => {
         await page.getByTestId('documentation').click();
 
-        const newDomainName = `renamed-multi-${i}-${uuid()}`;
+        const newDomainName = `renamed-multi-${renameIndex}-${uuid()}`;
         await renameDomain(page, newDomainName);
 
         currentDomainName = newDomainName;
 
-        // Verify domain name changed
         await expect(page.getByTestId('entity-header-name')).toContainText(
           newDomainName
         );
 
-        // Verify assets are still associated after each rename
         await page.getByTestId('assets').click();
         await page.waitForLoadState('networkidle');
         await waitForAllLoadersToDisappear(page);
         await checkAssetsCountWithRetry(page, assets.length);
 
-        // Verify subdomain is still accessible after each rename
         const subdomainSearchResponse = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/search/query') &&
@@ -2449,7 +2444,12 @@ test.describe('Domain Rename Comprehensive Tests', () => {
           state: 'detached',
         });
         await expect(page.getByTestId(subDomain.data.name)).toBeVisible();
-      }
+      };
+
+      // Perform 3 consecutive renames sequentially
+      await performRenameAndVerify(1);
+      await performRenameAndVerify(2);
+      await performRenameAndVerify(3);
     } finally {
       try {
         await apiContext.delete(
