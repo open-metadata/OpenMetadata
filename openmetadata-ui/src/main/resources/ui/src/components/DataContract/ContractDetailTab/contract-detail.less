@@ -37,6 +37,10 @@
       font-size: 20px;
       font-weight: 600;
       color: @grey-900;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      max-width: 500px;
     }
 
     .contract-sub-header-title {
@@ -138,7 +142,7 @@
         width: 100%;
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 6px;
         font-size: 14px;
         font-weight: 500;
         color: @grey-700;
@@ -184,11 +188,17 @@
       overflow: hidden;
       margin-bottom: 16px;
 
+      > div:first-child {
+        flex-shrink: 0;
+        white-space: nowrap;
+      }
+
       .contract-card-header {
         min-width: fit-content;
         font-size: 14px;
         font-weight: 600;
         color: @grey-900;
+        white-space: nowrap;
       }
 
       .ant-divider-horizontal {
