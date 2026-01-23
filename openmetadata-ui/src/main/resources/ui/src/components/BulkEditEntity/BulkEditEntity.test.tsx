@@ -98,18 +98,6 @@ jest.mock('../common/TitleBreadcrumb/TitleBreadcrumb.component', () => {
   ));
 });
 
-jest.mock(
-  '../Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component',
-  () => {
-    return jest.fn(({ activeStep, steps }) => (
-      <div data-testid="stepper">
-        <span data-testid="active-step">{activeStep}</span>
-        <span data-testid="step-count">{steps?.length ?? 0}</span>
-      </div>
-    ));
-  }
-);
-
 jest.mock('../common/Banner/Banner', () => {
   return jest.fn(({ message, type, isLoading }) => (
     <div data-testid="banner">
@@ -120,14 +108,6 @@ jest.mock('../common/Banner/Banner', () => {
   ));
 });
 
-jest.mock('../common/EntityImport/ImportStatus/ImportStatus.component', () => ({
-  ImportStatus: jest.fn(({ csvImportResult }) => (
-    <div data-testid="import-status">
-      <span data-testid="import-status-value">{csvImportResult?.status}</span>
-    </div>
-  )),
-}));
-
 jest.mock('../common/Loader/Loader', () => {
   return jest.fn(() => <div data-testid="loader">Loading...</div>);
 });
@@ -137,6 +117,7 @@ jest.mock('../../utils/EntityBulkEdit/EntityBulkEditUtils', () => ({
   getBulkEntityNavigationPath: jest.fn(
     (entityType, fqn) => `/${entityType}/${fqn}`
   ),
+  getColumnsWithUpdatedFlag: jest.fn((columns) => columns),
 }));
 
 const { useEntityExportModalProvider } = jest.requireMock(
@@ -210,7 +191,6 @@ describe('BulkEditEntity', () => {
       renderComponent();
 
       expect(screen.getByTestId('title-breadcrumb')).toBeInTheDocument();
-      expect(screen.getByTestId('stepper')).toBeInTheDocument();
     });
 
     it('should render breadcrumb with correct links', () => {
@@ -221,12 +201,6 @@ describe('BulkEditEntity', () => {
       expect(breadcrumbItems).toHaveLength(2);
       expect(breadcrumbItems[0]).toHaveTextContent('Home');
       expect(breadcrumbItems[1]).toHaveTextContent('Entity');
-    });
-
-    it('should render stepper with correct active step', () => {
-      renderComponent({ activeStep: VALIDATION_STEP.EDIT_VALIDATE });
-
-      expect(screen.getByTestId('active-step')).toHaveTextContent('1');
     });
 
     it('should render Loader when csvExportData is empty', () => {
@@ -258,22 +232,22 @@ describe('BulkEditEntity', () => {
       ).toBeInTheDocument();
     });
 
-    it('should show previous button at step 2 (UPDATE)', () => {
+    it('should show back button at step 2 (UPDATE)', () => {
       renderComponent({
         activeStep: VALIDATION_STEP.UPDATE,
         validationData: mockValidationData,
       });
 
       expect(
-        screen.getByRole('button', { name: 'label.previous' })
+        screen.getByRole('button', { name: 'label.back' })
       ).toBeInTheDocument();
     });
 
-    it('should show next button at step 1', () => {
+    it('should show preview button at step 1', () => {
       renderComponent({ activeStep: VALIDATION_STEP.EDIT_VALIDATE });
 
       expect(
-        screen.getByRole('button', { name: 'label.next' })
+        screen.getByRole('button', { name: 'label.preview' })
       ).toBeInTheDocument();
     });
 
@@ -295,29 +269,31 @@ describe('BulkEditEntity', () => {
         screen.queryByRole('button', { name: 'label.cancel' })
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByRole('button', { name: 'label.next' })
+        screen.queryByRole('button', { name: 'label.preview' })
       ).not.toBeInTheDocument();
     });
   });
 
   describe('User Interactions', () => {
-    it('should call handleValidate when next button is clicked', async () => {
+    it('should call handleValidate when preview button is clicked', async () => {
       const handleValidate = jest.fn().mockResolvedValue(undefined);
       renderComponent({
         activeStep: VALIDATION_STEP.EDIT_VALIDATE,
         handleValidate,
       });
 
-      const nextButton = screen.getByRole('button', { name: 'label.next' });
+      const previewButton = screen.getByRole('button', {
+        name: 'label.preview',
+      });
 
       await act(async () => {
-        fireEvent.click(nextButton);
+        fireEvent.click(previewButton);
       });
 
       expect(handleValidate).toHaveBeenCalledTimes(1);
     });
 
-    it('should call handleBack when previous button is clicked', () => {
+    it('should call handleBack when back button is clicked', () => {
       const handleBack = jest.fn();
       renderComponent({
         activeStep: VALIDATION_STEP.UPDATE,
@@ -325,10 +301,10 @@ describe('BulkEditEntity', () => {
         handleBack,
       });
 
-      const previousButton = screen.getByRole('button', {
-        name: 'label.previous',
+      const backButton = screen.getByRole('button', {
+        name: 'label.back',
       });
-      fireEvent.click(previousButton);
+      fireEvent.click(backButton);
 
       expect(handleBack).toHaveBeenCalledTimes(1);
     });
@@ -350,10 +326,12 @@ describe('BulkEditEntity', () => {
       });
 
       const cancelButton = screen.getByRole('button', { name: 'label.cancel' });
-      const nextButton = screen.getByRole('button', { name: 'label.next' });
+      const previewButton = screen.getByRole('button', {
+        name: 'label.preview',
+      });
 
       expect(cancelButton).toBeDisabled();
-      expect(nextButton).toBeDisabled();
+      expect(previewButton).toBeDisabled();
     });
   });
 
@@ -412,18 +390,6 @@ describe('BulkEditEntity', () => {
   });
 
   describe('Validation Data Display', () => {
-    it('should render ImportStatus when at UPDATE step with validationData', () => {
-      renderComponent({
-        activeStep: VALIDATION_STEP.UPDATE,
-        validationData: mockValidationData,
-      });
-
-      expect(screen.getByTestId('import-status')).toBeInTheDocument();
-      expect(screen.getByTestId('import-status-value')).toHaveTextContent(
-        'success'
-      );
-    });
-
     it('should render validateCSVData grid at UPDATE step', () => {
       renderComponent({
         activeStep: VALIDATION_STEP.UPDATE,
@@ -436,13 +402,13 @@ describe('BulkEditEntity', () => {
       expect(dataGrids.length).toBeGreaterThanOrEqual(1);
     });
 
-    it('should not render ImportStatus at EDIT_VALIDATE step', () => {
+    it('should render edit grid at EDIT_VALIDATE step', () => {
       renderComponent({
         activeStep: VALIDATION_STEP.EDIT_VALIDATE,
         validationData: mockValidationData,
       });
 
-      expect(screen.queryByTestId('import-status')).not.toBeInTheDocument();
+      expect(screen.getByTestId('data-grid')).toBeInTheDocument();
     });
   });
 
@@ -503,7 +469,10 @@ describe('BulkEditEntity', () => {
         validationData: undefined,
       });
 
-      expect(screen.queryByTestId('import-status')).not.toBeInTheDocument();
+      // When validationData is undefined, the UPDATE step content is not rendered
+      expect(
+        screen.queryByRole('button', { name: 'label.update' })
+      ).not.toBeInTheDocument();
     });
 
     it('should handle undefined validateCSVData at UPDATE step', () => {
@@ -513,7 +482,10 @@ describe('BulkEditEntity', () => {
         validateCSVData: undefined,
       });
 
-      expect(screen.getByTestId('import-status')).toBeInTheDocument();
+      // UPDATE step renders but without the validateCSVData grid
+      expect(
+        screen.getByRole('button', { name: 'label.update' })
+      ).toBeInTheDocument();
     });
   });
 

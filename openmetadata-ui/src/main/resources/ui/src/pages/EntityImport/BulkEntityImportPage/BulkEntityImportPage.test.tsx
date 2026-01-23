@@ -194,14 +194,6 @@ jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => ({
   )),
 }));
 
-jest.mock(
-  '../../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component',
-  () => ({
-    __esModule: true,
-    default: jest.fn(() => <div data-testid="stepper">Stepper</div>),
-  })
-);
-
 jest.mock('../../../components/UploadFile/UploadFile', () => ({
   __esModule: true,
   default: jest.fn(({ onCSVUploaded, disabled }) => (
@@ -303,7 +295,6 @@ describe('BulkEntityImportPage', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('title-breadcrumb')).toBeInTheDocument();
-        expect(screen.getByTestId('stepper')).toBeInTheDocument();
         expect(screen.getByTestId('upload-file')).toBeInTheDocument();
       });
     });
@@ -920,7 +911,7 @@ describe('BulkEntityImportPage', () => {
       });
 
       // Should show regular import UI when not bulk edit
-      expect(screen.getByTestId('stepper')).toBeInTheDocument();
+      expect(screen.getByTestId('upload-file')).toBeInTheDocument();
     });
   });
 
@@ -1057,10 +1048,10 @@ describe('BulkEntityImportPage', () => {
         expect(screen.getByTestId('data-grid')).toBeInTheDocument();
       });
 
-      // Click next/validate button
-      const nextButton = screen.getByText('label.next');
+      // Click preview/validate button
+      const previewButton = screen.getByText('label.preview');
       await act(async () => {
-        fireEvent.click(nextButton);
+        fireEvent.click(previewButton);
       });
 
       await waitFor(() => {
@@ -1129,7 +1120,7 @@ describe('BulkEntityImportPage', () => {
 
       // Should have navigation buttons
       expect(screen.getByText('label.previous')).toBeInTheDocument();
-      expect(screen.getByText('label.next')).toBeInTheDocument();
+      expect(screen.getByText('label.preview')).toBeInTheDocument();
     });
   });
 });
