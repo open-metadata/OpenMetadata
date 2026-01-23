@@ -120,7 +120,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     this.resourceMetadataUrl =
         URI.create(baseUrl + mcpEndpoint + "/.well-known/oauth-protected-resource");
     ProtectedResourceMetadata protectedResourceMetadata = new ProtectedResourceMetadata();
-    protectedResourceMetadata.setResource(URI.create(baseUrl));
+    protectedResourceMetadata.setResource(URI.create(baseUrl + mcpEndpoint));
     protectedResourceMetadata.setAuthorizationServers(
         java.util.Arrays.asList(URI.create(baseUrl + mcpEndpoint)));
     protectedResourceMetadata.setScopesSupported(supportedScopes);

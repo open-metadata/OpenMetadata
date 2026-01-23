@@ -100,13 +100,61 @@ public class McpServer implements McpServerProvider {
       }
 
       org.openmetadata.service.security.AuthenticationCodeFlowHandler ssoHandler = null;
+      int maxRetries = 3;
+      int retryDelayMs = 2000;
+
+      // Increase default HTTP connection and read timeouts for SSO provider metadata fetching
+      // pac4j uses HttpURLConnection which respects these system properties
+      String originalConnectTimeout = System.getProperty("sun.net.client.defaultConnectTimeout");
+      String originalReadTimeout = System.getProperty("sun.net.client.defaultReadTimeout");
+      System.setProperty("sun.net.client.defaultConnectTimeout", "30000"); // 30 seconds
+      System.setProperty("sun.net.client.defaultReadTimeout", "30000"); // 30 seconds
+
       try {
-        ssoHandler = org.openmetadata.service.security.AuthenticationCodeFlowHandler.getInstance();
-        LOG.info("SSO AuthenticationCodeFlowHandler initialized for MCP OAuth");
-      } catch (IllegalStateException e) {
-        LOG.warn(
-            "SSO AuthenticationCodeFlowHandler not initialized, SSO OAuth flow will not be available. Basic Auth will still work.",
-            e);
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            ssoHandler =
+                org.openmetadata.service.security.AuthenticationCodeFlowHandler.getInstance();
+            LOG.info(
+                "SSO AuthenticationCodeFlowHandler initialized for MCP OAuth (attempt {})",
+                attempt);
+            break;
+          } catch (Exception e) {
+            if (attempt < maxRetries) {
+              LOG.warn(
+                  "SSO AuthenticationCodeFlowHandler initialization failed (attempt {}/{}), retrying in {}ms. Error: {}",
+                  attempt,
+                  maxRetries,
+                  retryDelayMs,
+                  e.getMessage());
+              try {
+                Thread.sleep(retryDelayMs);
+              } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                LOG.warn("Retry sleep interrupted, stopping SSO initialization attempts");
+                break;
+              }
+            } else {
+              LOG.warn(
+                  "SSO AuthenticationCodeFlowHandler not initialized after {} attempts. SSO OAuth flow will not be available. Basic Auth will still work. Last error: {}",
+                  maxRetries,
+                  e.getMessage(),
+                  e);
+            }
+          }
+        }
+      } finally {
+        // Restore original timeout values
+        if (originalConnectTimeout != null) {
+          System.setProperty("sun.net.client.defaultConnectTimeout", originalConnectTimeout);
+        } else {
+          System.clearProperty("sun.net.client.defaultConnectTimeout");
+        }
+        if (originalReadTimeout != null) {
+          System.setProperty("sun.net.client.defaultReadTimeout", originalReadTimeout);
+        } else {
+          System.clearProperty("sun.net.client.defaultReadTimeout");
+        }
       }
 
       org.openmetadata.service.security.jwt.JWTTokenGenerator jwtGenerator =
