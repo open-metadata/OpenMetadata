@@ -18,7 +18,10 @@ from metadata.data_quality.builders.validator_builder import (
     SourceType,
     ValidatorBuilder,
 )
-from metadata.data_quality.interface.test_suite_interface import TestDefinition, TestSuiteInterface
+from metadata.data_quality.interface.test_suite_interface import (
+    TestDefinition,
+    TestSuiteInterface,
+)
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,

@@ -16,7 +16,6 @@ supporting sqlalchemy abstraction layer
 
 from typing import Union
 
-from metadata.data_quality.processor.test_case_runner import TestDefinition
 from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.util import AliasedClass
 
@@ -25,6 +24,7 @@ from metadata.data_quality.builders.validator_builder import (
     ValidatorBuilder,
 )
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
+from metadata.data_quality.processor.test_case_runner import TestDefinition
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.tests.testCase import TestCase

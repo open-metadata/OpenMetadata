@@ -12,30 +12,25 @@
 """
 Validator for column value rule library SQL expression
 """
-from metadata.data_quality.validations.base_test_handler import (
-    BaseTestValidator,
-    abstractmethod,
-)
+from typing import Dict
+
+from jinja2 import Template
+
+from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.data_quality.validations.models import (
     RuleLibrarySqlExpressionRuntimeParameters,
 )
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
-from metadata.generated.schema.tests.basic import (
-    TestCaseResult,
-    TestCaseStatus,
-    TestResultValue,
-)
+from metadata.generated.schema.tests.basic import TestCaseResult, TestResultValue
 from metadata.utils.entity_link import get_column_name_or_none, get_table_fqn
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
-# Database types that don't have a true database concept.
-# For these, the FQN has a placeholder database name that doesn't exist
-# on the database side, so we skip it when building the SQL table reference.
-# FQN: serviceName.placeholderDb.schemaName.tableName -> returns schemaName.tableName
+RESERVED_PARAMS = {"column_name", "table_name"}
+
 DATABASES_WITHOUT_DATABASE_CONCEPT = {
     DatabaseServiceType.Mysql,
     DatabaseServiceType.MariaDB,
@@ -43,24 +38,58 @@ DATABASES_WITHOUT_DATABASE_CONCEPT = {
     DatabaseServiceType.Cockroach,
 }
 
+
 class RuleLibrarySqlExpressionValidator(BaseTestValidator):
     """Validator for SQL Expression based rules in the Rule Library."""
+
     runtime_params: RuleLibrarySqlExpressionRuntimeParameters
 
-    def compile_sql_expression(self, column_name, table_name) -> str:
-        """Compile the SQL expression for the rule.
-
-        This method should be implemented by subclasses to generate
-        the specific SQL expression based on the rule's logic.
+    def _get_user_params(self) -> Dict[str, str]:
+        """Extract user-defined parameters from test case parameterValues.
 
         Returns:
-            str: The compiled SQL expression.
+            Dict mapping parameter names to their values
         """
-        raise NotImplementedError(
-            "Subclasses must implement compile_sql_expression method."
-        )
+        params = {}
+        if self.test_case.parameterValues:
+            for param in self.test_case.parameterValues:
+                if param.name and param.value and param.name not in RESERVED_PARAMS:
+                    if not param.name.endswith("RuntimeParameters"):
+                        params[param.name] = param.value
+        return params
 
-    def _run_results(self, sql_expression: str):
+    def compile_sql_expression(self, column_name: str, table_name: str) -> str:
+        """Compile SQL expression template using Jinja2.
+
+        Replaces:
+        - {{ column_name }} with the actual column name
+        - {{ table_name }} with the actual table path
+        - {{ paramName }} with user-defined parameter values
+
+        Args:
+            column_name: Column name from entity link
+            table_name: Table path for SQL execution
+
+        Returns:
+            Compiled SQL expression with all parameters substituted
+
+        Raises:
+            ValueError: If sqlExpression is not defined
+        """
+        sql_template = self.runtime_params.test_definition.sqlExpression
+        if not sql_template:
+            raise ValueError("Test definition does not have sqlExpression defined")
+
+        params = {
+            "column_name": column_name,
+            "table_name": table_name,
+        }
+        params.update(self._get_user_params())
+
+        template = Template(sql_template.root)
+        return template.render(**params)
+
+    def _run_results(self, sql_expression: str) -> int:
         raise NotImplementedError
 
     def get_column_name(self) -> str:
@@ -132,18 +161,12 @@ class RuleLibrarySqlExpressionValidator(BaseTestValidator):
 
         result_message = (
             f"Column '{column_name}' in table '{table_name}' "
-            f"has {count}. Expected 0."
+            f"has {count} rows matching the condition. Expected 0."
         )
 
         return self.get_test_case_result_object(
             self.execution_date,
             self.get_test_case_status(count == 0),
             result_message,
-            [
-                TestResultValue(
-                    name="Row Count",
-                    value=str(count),
-                    predictedValue=None
-                )
-            ],
+            [TestResultValue(name="Row Count", value=str(count), predictedValue=None)],
         )
