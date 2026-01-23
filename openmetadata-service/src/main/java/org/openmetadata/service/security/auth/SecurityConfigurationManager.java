@@ -18,7 +18,6 @@ import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURA
 import static org.openmetadata.schema.settings.SettingsType.MCP_CONFIGURATION;
 
 import io.dropwizard.core.setup.Environment;
-import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -58,10 +57,11 @@ public class SecurityConfigurationManager {
     private static final SecurityConfigurationManager INSTANCE = new SecurityConfigurationManager();
   }
 
-  private AuthenticationConfiguration currentAuthConfig;
-  private AuthorizerConfiguration currentAuthzConfig;
-  private MCPConfiguration currentMcpConfig;
-  private final List<ConfigurationChangeListener> listeners = new ArrayList<>();
+  private volatile AuthenticationConfiguration currentAuthConfig;
+  private volatile AuthorizerConfiguration currentAuthzConfig;
+  private volatile MCPConfiguration currentMcpConfig;
+  private final List<ConfigurationChangeListener> listeners =
+      new java.util.concurrent.CopyOnWriteArrayList<>();
 
   public void setCurrentAuthConfig(AuthenticationConfiguration authConfig) {
     this.currentAuthConfig = authConfig;

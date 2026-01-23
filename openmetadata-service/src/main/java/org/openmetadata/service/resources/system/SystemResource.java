@@ -842,7 +842,9 @@ public class SystemResource {
       return Response.ok(mcpConfig).build();
     } catch (Exception e) {
       LOG.error("Failed to update MCP configuration", e);
-      throw new RuntimeException("Failed to update MCP configuration: " + e.getMessage());
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity("Failed to update MCP configuration. Please check server logs for details.")
+          .build();
     }
   }
 

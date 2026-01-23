@@ -130,6 +130,7 @@ public class SSOCallbackServlet extends HttpServlet {
       if (authzConfig != null && authzConfig.getPrincipalDomain() != null) {
         return authzConfig.getPrincipalDomain();
       }
+      LOG.debug("Principal domain not configured, using empty string");
     } catch (Exception e) {
       LOG.warn("Failed to get principal domain from config: {}", e.getMessage());
     }
@@ -138,6 +139,11 @@ public class SSOCallbackServlet extends HttpServlet {
 
   private IdTokenValidator createIdTokenValidator() {
     var authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
+    if (authConfig == null) {
+      throw new IllegalStateException(
+          "Authentication configuration not initialized. Cannot validate ID tokens.");
+    }
+
     String expectedIssuer;
     try {
       expectedIssuer =

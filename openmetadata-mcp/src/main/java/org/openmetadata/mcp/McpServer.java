@@ -227,8 +227,13 @@ public class McpServer implements McpServerProvider {
         return mcpConfig.getAllowedOrigins();
       }
     } catch (Exception e) {
-      LOG.warn("Failed to get allowed origins from MCP config: {}", e.getMessage());
+      LOG.error(
+          "Failed to get allowed origins from MCP config, using development defaults: {}",
+          e.getMessage());
     }
+    LOG.warn(
+        "MCP configuration not available, using development localhost origins. "
+            + "This should NOT happen in production. Please configure MCP settings via the API.");
     return Arrays.asList("http://localhost:3000", "http://localhost:8585", "http://localhost:9090");
   }
 

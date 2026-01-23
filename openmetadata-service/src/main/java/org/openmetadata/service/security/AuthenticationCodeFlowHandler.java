@@ -233,13 +233,12 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         Integer readTimeout = mcpConfig.getReadTimeout();
 
         if (connectTimeout != null) {
-          System.setProperty("http.connection.timeout", String.valueOf(connectTimeout));
-          System.setProperty("https.connection.timeout", String.valueOf(connectTimeout));
+          System.setProperty(
+              "sun.net.client.defaultConnectTimeout", String.valueOf(connectTimeout));
           LOG.info("Set HTTP connection timeout to {}ms from MCP configuration", connectTimeout);
         }
         if (readTimeout != null) {
-          System.setProperty("http.read.timeout", String.valueOf(readTimeout));
-          System.setProperty("https.read.timeout", String.valueOf(readTimeout));
+          System.setProperty("sun.net.client.defaultReadTimeout", String.valueOf(readTimeout));
           LOG.info("Set HTTP read timeout to {}ms from MCP configuration", readTimeout);
         }
       }
