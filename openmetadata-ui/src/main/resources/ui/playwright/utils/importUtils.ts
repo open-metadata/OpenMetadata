@@ -1136,9 +1136,9 @@ export const performBulkDownload = async (page: Page, fileName: string) => {
   await page.fill('#fileName', fileName);
   await page.click('#submit-button');
 
-  await page.waitForSelector('.message-banner-wrapper', {
-    state: 'detached',
-  });
+  const banner = page.locator('.message-banner-wrapper');
+  await banner.waitFor({ state: 'detached' });
+
   const download = await downloadPromise;
 
   // Wait for the download process to complete and save the downloaded file somewhere.
