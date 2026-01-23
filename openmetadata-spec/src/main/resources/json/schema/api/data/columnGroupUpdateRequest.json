@@ -1,0 +1,39 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/columnGroupUpdateRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ColumnGroupUpdateRequest",
+  "description": "Request to update metadata for a specific group of columns.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.ColumnGroupUpdateRequest",
+  "properties": {
+    "groupId": {
+      "description": "ID of the metadata group to update.",
+      "type": "string"
+    },
+    "columnFQNs": {
+      "description": "List of column FQNs to update (all must be from the same group).",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "displayName": {
+      "description": "New display name for the columns.",
+      "type": "string"
+    },
+    "description": {
+      "description": "New description for the columns.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "tags": {
+      "description": "New tags for the columns.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      }
+    }
+  },
+  "required": ["columnFQNs"],
+  "additionalProperties": false
+}

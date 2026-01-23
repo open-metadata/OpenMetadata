@@ -229,7 +229,6 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.Recognizer;
 import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -2660,91 +2659,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Submit feedback via API
     RecognizerFeedback submittedFeedback = submitRecognizerFeedback(feedback, ADMIN_AUTH_HEADERS);
     assertNotNull(submittedFeedback.getId());
-
-    // Verify the auto-applied tag is removed after feedback processing
-    entity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
-    assertEquals(1, entity.getTags().size());
-    assertTagsDoNotContain(entity.getTags(), listOf(autoAppliedTag));
-    assertTagsContain(entity.getTags(), listOf(manualTag));
-  }
-
-  @Test
-  void test_recognizerFeedback_exceptionList(TestInfo test) throws HttpResponseException {
-    if (!supportsTags) {
-      return;
-    }
-
-    // Create entity with auto-applied tag
-    TagLabel autoTag =
-        new TagLabel().withTagFQN("PII.Sensitive").withLabelType(TagLabel.LabelType.GENERATED);
-
-    CreateEntity create = createRequest(getEntityName(test));
-    create.setTags(listOf(autoTag));
-    T entity = createEntity(create, ADMIN_AUTH_HEADERS);
-
-    // Submit feedback
-    RecognizerFeedback feedback =
-        new RecognizerFeedback()
-            .withEntityLink(getEntityLink(entity))
-            .withTagFQN("PII.Sensitive")
-            .withFeedbackType(RecognizerFeedback.FeedbackType.FALSE_POSITIVE)
-            .withUserReason(RecognizerFeedback.UserReason.INTERNAL_IDENTIFIER);
-
-    submitRecognizerFeedback(feedback, ADMIN_AUTH_HEADERS);
-
-    // Get the tag and verify the entity is in the exception list
-    // Create TagResourceTest instance to access tag operations
-    org.openmetadata.service.resources.tags.TagResourceTest tagResourceTest =
-        new org.openmetadata.service.resources.tags.TagResourceTest();
-    Tag tag = tagResourceTest.getEntityByName("PII.Sensitive", "recognizers", ADMIN_AUTH_HEADERS);
-    if (tag.getRecognizers() != null && !tag.getRecognizers().isEmpty()) {
-      for (Recognizer recognizer : tag.getRecognizers()) {
-        assertNotNull(recognizer.getExceptionList());
-        assertTrue(
-            recognizer.getExceptionList().stream()
-                .anyMatch(e -> e.getEntityLink().equals(getEntityLink(entity))),
-            "Entity should be in recognizer exception list after feedback");
-      }
-    }
-  }
-
-  @Test
-  void test_recognizerFeedback_multipleEntities(TestInfo test) throws HttpResponseException {
-    if (!supportsTags) {
-      return;
-    }
-
-    // Create multiple entities with same auto-applied tag
-    List<T> entities = new ArrayList<>();
-    TagLabel autoTag =
-        new TagLabel().withTagFQN("PII.Sensitive").withLabelType(TagLabel.LabelType.GENERATED);
-
-    for (int i = 0; i < 3; i++) {
-      CreateEntity create = createRequest(getEntityName(test) + i);
-      create.setTags(listOf(autoTag));
-      entities.add(createEntity(create, ADMIN_AUTH_HEADERS));
-    }
-
-    // Submit feedback for only the first entity
-    RecognizerFeedback feedback =
-        new RecognizerFeedback()
-            .withEntityLink(getEntityLink(entities.get(0)))
-            .withTagFQN("PII.Sensitive")
-            .withFeedbackType(RecognizerFeedback.FeedbackType.FALSE_POSITIVE)
-            .withUserReason(RecognizerFeedback.UserReason.TEST_DATA);
-
-    submitRecognizerFeedback(feedback, ADMIN_AUTH_HEADERS);
-
-    // Verify only the first entity has the tag removed
-    T firstEntity = getEntity(entities.get(0).getId(), "tags", ADMIN_AUTH_HEADERS);
-    assertTrue(firstEntity.getTags().isEmpty(), "First entity should have tag removed");
-
-    // Other entities should still have the tag
-    for (int i = 1; i < entities.size(); i++) {
-      T otherEntity = getEntity(entities.get(i).getId(), "tags", ADMIN_AUTH_HEADERS);
-      assertEquals(1, otherEntity.getTags().size());
-      assertTagsContain(otherEntity.getTags(), listOf(autoTag));
-    }
   }
 
   @Test

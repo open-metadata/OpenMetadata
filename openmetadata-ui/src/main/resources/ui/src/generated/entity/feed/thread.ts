@@ -255,6 +255,8 @@ export interface ChatbotDetails {
  * Test definition that this result is for.
  *
  * User who reacted.
+ *
+ * User who provided the feedback
  */
 export interface EntityReference {
     /**
@@ -680,6 +682,11 @@ export interface TaskDetails {
      */
     closedBy?: string;
     /**
+     * The recognizer feedback that we're reviewing for the Tag that's supposed to be pointed by
+     * this task
+     */
+    feedback?: RecognizerFeedback;
+    /**
      * Unique identifier that identifies the task.
      */
     id: number;
@@ -704,6 +711,131 @@ export interface TaskDetails {
 }
 
 /**
+ * The recognizer feedback that we're reviewing for the Tag that's supposed to be pointed by
+ * this task
+ *
+ * User feedback on auto-applied tags from recognizers
+ */
+export interface RecognizerFeedback {
+    createdAt?: number;
+    /**
+     * User who provided the feedback
+     */
+    createdBy?: EntityReference;
+    /**
+     * Link to the specific field where the tag was incorrectly applied (e.g.,
+     * <#E::table::customers::columns::company_name>)
+     */
+    entityLink: string;
+    /**
+     * Type of feedback
+     */
+    feedbackType: FeedbackType;
+    /**
+     * Unique identifier of the feedback
+     */
+    id?: string;
+    /**
+     * Information about which recognizer triggered this
+     */
+    recognizerInfo?: RecognizerInfo;
+    /**
+     * How this feedback was resolved
+     */
+    resolution?: Resolution;
+    /**
+     * Example values from this field that triggered the false positive (anonymized)
+     */
+    sampleValues?: string[];
+    /**
+     * Processing status
+     */
+    status?: Status;
+    /**
+     * Tag the user thinks should be applied instead (optional)
+     */
+    suggestedTag?: string;
+    /**
+     * Fully qualified name of the incorrectly applied tag
+     */
+    tagFQN: string;
+    /**
+     * Additional context from the user
+     */
+    userComments?: string;
+    /**
+     * User-selected reason for reporting
+     */
+    userReason?: UserReason;
+}
+
+/**
+ * Type of feedback
+ */
+export enum FeedbackType {
+    ContextSpecific = "CONTEXT_SPECIFIC",
+    FalsePositive = "FALSE_POSITIVE",
+    IncorrectClassification = "INCORRECT_CLASSIFICATION",
+    OverlyBroad = "OVERLY_BROAD",
+}
+
+/**
+ * Information about which recognizer triggered this
+ */
+export interface RecognizerInfo {
+    confidenceScore?: number;
+    /**
+     * The pattern that matched (for debugging)
+     */
+    matchPattern?:   string;
+    recognizerId?:   string;
+    recognizerName?: string;
+    [property: string]: any;
+}
+
+/**
+ * How this feedback was resolved
+ */
+export interface Resolution {
+    action?:          Action;
+    resolutionNotes?: string;
+    resolvedAt?:      number;
+    resolvedBy?:      EntityReference;
+    [property: string]: any;
+}
+
+export enum Action {
+    AddedToExceptionList = "ADDED_TO_EXCEPTION_LIST",
+    NoActionNeeded = "NO_ACTION_NEEDED",
+    PatternAdjusted = "PATTERN_ADJUSTED",
+    RecognizerDisabledForEntity = "RECOGNIZER_DISABLED_FOR_ENTITY",
+    ThresholdIncreased = "THRESHOLD_INCREASED",
+}
+
+/**
+ * Processing status
+ */
+export enum Status {
+    Applied = "APPLIED",
+    Pending = "PENDING",
+    Rejected = "REJECTED",
+    Reviewed = "REVIEWED",
+}
+
+/**
+ * User-selected reason for reporting
+ */
+export enum UserReason {
+    EncryptedData = "ENCRYPTED_DATA",
+    InternalIdentifier = "INTERNAL_IDENTIFIER",
+    NotSensitiveData = "NOT_SENSITIVE_DATA",
+    Other = "OTHER",
+    PublicInformation = "PUBLIC_INFORMATION",
+    TestData = "TEST_DATA",
+    WrongDataType = "WRONG_DATA_TYPE",
+}
+
+/**
  * Status of a task.
  */
 export enum ThreadTaskStatus {
@@ -716,6 +848,7 @@ export enum ThreadTaskStatus {
  */
 export enum TaskType {
     Generic = "Generic",
+    RecognizerFeedbackApproval = "RecognizerFeedbackApproval",
     RequestApproval = "RequestApproval",
     RequestDescription = "RequestDescription",
     RequestTag = "RequestTag",

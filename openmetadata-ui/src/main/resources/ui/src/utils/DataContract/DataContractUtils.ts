@@ -397,6 +397,14 @@ export const getDataContractTabByEntity = (entityType: EntityType) => {
         EDataContractTab.SECURITY,
         EDataContractTab.SLA,
       ];
+    case EntityType.DATA_PRODUCT:
+      return [
+        EDataContractTab.CONTRACT_DETAIL,
+        EDataContractTab.TERMS_OF_SERVICE,
+        EDataContractTab.SEMANTICS,
+        EDataContractTab.SECURITY,
+        EDataContractTab.SLA,
+      ];
 
     default:
       return [

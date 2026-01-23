@@ -1,0 +1,774 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) '../../../styles/variables.less';
+
+.column-grid-container {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: @size-md;
+  padding: 0;
+  height: calc(100vh - 120px);
+  overflow: hidden;
+
+  // Stats cards row should not scroll
+  > .stats-row {
+    flex-shrink: 0;
+  }
+
+  // Table container takes remaining space and handles internal scrolling
+  > .MuiPaper-root.MuiTableContainer-root {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+
+    // Header section (filters, search) should not scroll - sticky at top
+    > .MuiBox-root:first-child {
+      flex-shrink: 0;
+      background-color: @white;
+      z-index: 11;
+    }
+
+    // Scrollable table area wrapper - this is where vertical scrolling happens
+    .table-scroll-container {
+      flex: 1;
+      overflow-y: auto;
+      min-height: 0;
+
+      // Table inside scroll container
+      .MuiTable-root {
+        // Table header stays fixed at top when scrolling within container
+        .MuiTableHead-root {
+          position: sticky;
+          top: 0;
+          z-index: 10;
+          background-color: @grey-50;
+
+          .MuiTableCell-root {
+            background-color: @grey-50;
+          }
+        }
+      }
+    }
+
+    // Pagination footer stays fixed at bottom - does not scroll
+    > .MuiBox-root[data-testid='pagination'] {
+      flex-shrink: 0;
+      background-color: @white;
+      z-index: 11;
+    }
+  }
+
+  // MUI Table column widths
+  .MuiTable-root {
+    table-layout: fixed;
+    width: 100%;
+
+    .MuiTableCell-root {
+      vertical-align: middle;
+      word-break: break-word;
+      overflow-wrap: break-word;
+    }
+
+    // Checkbox column
+    .MuiTableCell-paddingCheckbox {
+      width: 48px;
+      min-width: 48px;
+      max-width: 48px;
+    }
+
+    // Column Name cell (first data column after checkbox)
+    [data-testid='column-name-cell'] {
+      width: 200px;
+      min-width: 180px;
+    }
+
+    // Path cell
+    [data-testid='column-path-cell'] {
+      width: 250px;
+      min-width: 200px;
+      max-width: 300px;
+    }
+
+    // Description cell
+    [data-testid='column-description-cell'] {
+      width: 200px;
+      min-width: 150px;
+    }
+
+    // Data Type cell
+    [data-testid='column-datatype-cell'] {
+      width: 100px;
+      min-width: 80px;
+    }
+
+    // Tags cell
+    [data-testid='column-tags-cell'] {
+      width: 180px;
+      min-width: 120px;
+    }
+
+    // Glossary Terms cell
+    [data-testid='column-glossary-cell'] {
+      width: 180px;
+      min-width: 120px;
+    }
+  }
+}
+
+// Stats Row - 3 cards in a row matching Figma design
+.stats-row {
+  margin-bottom: @size-xs;
+}
+
+.stat-card-group {
+  display: flex;
+  gap: 0;
+  width: 100%;
+  padding: 0;
+  background: @white;
+  border: 1px solid @grey-200;
+  border-radius: @border-rad-xs;
+  overflow: hidden;
+  box-shadow: 0 1px 2px 0 rgba(10, 13, 18, 0.05);
+  padding: @size-lg;
+
+  .stat-card {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: @size-md;
+    margin-right: @size-lg;
+    background: @white;
+    border-right: 1px solid @grey-200;
+
+    &:last-child {
+      border-right: none;
+    }
+
+    .stat-icon {
+      flex-shrink: 0;
+    }
+
+    .stat-content {
+      .stat-value {
+        font-size: 24px;
+        font-weight: @font-semibold;
+        color: @grey-900;
+        line-height: 1.2;
+      }
+
+      .stat-label {
+        font-size: @font-size-base;
+        color: @de-active-color;
+        margin-top: @size-xxs;
+      }
+    }
+  }
+}
+
+// Filter Bar - MUI Components (no border, attached to table)
+.column-grid-quick-filters-container {
+  padding: @size-md @size-mlg;
+  background: @white;
+  border: 1px solid @grey-200;
+  border-bottom: none;
+  border-radius: @border-rad-xs @border-rad-xs 0 0;
+  margin-bottom: 0;
+  overflow-x: auto;
+
+  .MuiStack-root {
+    min-width: fit-content;
+  }
+
+  // MUI TextField for search
+  .search-input {
+    .MuiOutlinedInput-root {
+      border-radius: @border-rad-xs;
+      border: 1px solid @grey-200;
+      height: 40px;
+      font-size: @font-size-base;
+
+      &:hover {
+        border-color: @primary-color;
+      }
+
+      &.Mui-focused {
+        border-color: @primary-color;
+      }
+
+      .MuiOutlinedInput-notchedOutline {
+        border: none;
+      }
+    }
+  }
+
+  // MUI Select dropdowns - borderless, no hover effects
+  .filter-dropdown {
+    .MuiOutlinedInput-root {
+      border: none;
+      background: transparent;
+      padding: @size-xxs @size-xs;
+      min-height: auto;
+      height: auto;
+      box-shadow: none;
+
+      .MuiOutlinedInput-notchedOutline {
+        border: none;
+        display: none;
+      }
+
+      &:hover {
+        background: transparent;
+        border: none;
+
+        .MuiOutlinedInput-notchedOutline {
+          border: none;
+          display: none;
+        }
+      }
+
+      &.Mui-focused {
+        background: transparent;
+        border: none;
+
+        .MuiOutlinedInput-notchedOutline {
+          border: none;
+          display: none;
+        }
+      }
+    }
+
+    .MuiInputLabel-root {
+      display: none;
+    }
+
+    .MuiSelect-select {
+      color: @grey-600;
+      font-weight: @font-medium;
+      font-size: @font-size-base;
+      padding: @size-xxs @size-mlg @size-xxs 0;
+      line-height: 1.5;
+      display: flex;
+      align-items: center;
+      border: none;
+    }
+
+    .MuiSelect-icon {
+      color: @grey-600;
+      font-size: 12px;
+      right: @size-xxs;
+      width: 12px;
+      height: 12px;
+    }
+
+    fieldset {
+      border: none;
+      display: none;
+    }
+
+    // Active state when items are selected
+    &.Mui-focused,
+    &:has(.MuiSelect-select[value]:not([value=''])) {
+      .MuiSelect-select {
+        color: @grey-900;
+      }
+    }
+  }
+
+  .view-selected-label {
+    font-size: @font-size-base;
+    color: @grey-700;
+    font-weight: @font-medium;
+  }
+
+  .MuiSwitch-root {
+    .MuiSwitch-switchBase {
+      &.Mui-checked {
+        color: @primary-color;
+
+        + .MuiSwitch-track {
+          background-color: @primary-color;
+        }
+      }
+    }
+  }
+
+  .edit-button {
+    color: @de-active-color;
+    font-weight: @font-medium;
+    font-size: @font-size-base;
+    text-transform: none;
+
+    &:hover {
+      color: @grey-700;
+      background: @grey-36;
+    }
+  }
+
+  .edit-button-primary {
+    background: @primary-color;
+    border-color: @primary-color;
+    border-radius: 6px;
+    font-weight: @font-medium;
+    height: @btn-height-sm;
+    text-transform: none;
+
+    &:hover {
+      background: @primary-7;
+      border-color: @primary-7;
+    }
+  }
+
+  .cancel-button {
+    color: @red-21;
+    font-weight: @font-medium;
+    text-transform: none;
+
+    &:hover {
+      color: @red-14;
+      background: transparent;
+    }
+  }
+}
+
+// Grid Wrapper - full width, attached to filter bar
+.column-grid-wrapper {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  width: 100%;
+  border: 1px solid @grey-200;
+  border-top: none;
+  border-radius: 0 0 @border-rad-xs @border-rad-xs;
+  background: @white;
+
+  .rdg {
+    border: none;
+    overflow: auto !important;
+  }
+
+  .fill-grid {
+    block-size: 100%;
+    inline-size: 100%;
+  }
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 600px;
+}
+
+// Grid Styles
+.column-grid {
+  height: 100%;
+  border: none;
+  font-family: @font-family;
+  --rdg-selection-color: transparent;
+  --rdg-row-height: 72px;
+  --rdg-header-row-height: 48px;
+  --rdg-background-color: @white;
+  --rdg-header-background-color: @grey-50;
+
+  .rdg-cell {
+    padding: @size-md;
+    display: flex;
+    align-items: center;
+    border-right: none;
+    border-bottom: 1px solid @light-border-color;
+    background-color: inherit;
+  }
+
+  // Ensure frozen columns have proper background and z-index to stay fixed
+  .rdg-cell-frozen {
+    background-color: @white;
+    z-index: 3;
+    position: sticky;
+    left: 0;
+  }
+
+  // Header row - reduced height and proper z-index
+  .rdg-header-row {
+    font-weight: @font-medium;
+    background-color: @grey-50;
+    border-bottom: 1px solid @grey-200;
+    height: 40px;
+    min-height: 40px;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+
+    .rdg-cell {
+      background-color: @grey-50;
+      padding: @size-xs @size-sm;
+      align-items: center;
+      color: @de-active-color;
+      font-size: @font-size-base;
+      font-weight: @font-medium;
+      border-bottom: 1px solid @grey-200;
+      height: 40px;
+      line-height: 1.5;
+
+      // Frozen header cells need even higher z-index to stay above everything
+      &.rdg-cell-frozen {
+        background-color: @grey-50;
+        z-index: 4;
+        position: sticky;
+        left: 0;
+      }
+    }
+  }
+
+  .rdg-row {
+    background-color: @white;
+
+    &:hover {
+      background-color: @grey-50;
+
+      .rdg-cell-frozen {
+        background-color: @grey-50;
+        z-index: 3;
+      }
+    }
+
+    &.rdg-row-selected {
+      background-color: @blue-6;
+
+      .rdg-cell-frozen {
+        background-color: @blue-6;
+      }
+    }
+
+    .rdg-cell {
+      font-size: @font-size-base;
+      color: @grey-700;
+      line-height: 20px;
+    }
+  }
+}
+
+// Column Name Cell
+.column-name-cell {
+  display: flex;
+  align-items: center;
+  gap: @size-xxs;
+
+  .expand-button {
+    padding: 0;
+    width: @size-mlg;
+    height: @size-mlg;
+    min-width: @size-mlg;
+    color: @grey-400;
+    font-size: 10px;
+
+    &:hover {
+      color: @grey-700;
+      background: @grey-36;
+    }
+  }
+
+  .column-link {
+    color: @primary-color;
+    font-weight: @font-medium;
+    cursor: pointer;
+
+    &:hover {
+      color: @primary-7;
+      text-decoration: underline;
+    }
+  }
+
+  .child-row {
+    padding-left: 28px;
+  }
+
+  .struct-child-row {
+    display: flex;
+    align-items: center;
+    gap: @size-xxs;
+    color: @de-active-color;
+  }
+
+  .struct-expand {
+    margin-left: @size-xxs;
+    color: @grey-400;
+    font-size: 8px;
+
+    &:hover {
+      color: @primary-color;
+    }
+  }
+}
+
+// Path Cell
+.path-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 200px;
+  max-width: 300px;
+
+  .path-text {
+    font-size: @font-size-base;
+    color: @grey-700;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+    line-height: 1.4;
+  }
+
+  .path-more {
+    font-size: 12px;
+    color: @primary-color;
+  }
+}
+
+// Description Cell
+.description-cell {
+  &.has-edit {
+    background-color: @warning-100;
+    padding: @size-xxs @size-xs;
+    border-radius: @size-xxs;
+  }
+}
+
+// Coverage status in description column
+.coverage-full {
+  color: @green-600;
+  font-weight: @font-medium;
+}
+
+.coverage-partial {
+  color: @yellow-13;
+  font-weight: @font-medium;
+}
+
+.coverage-missing {
+  color: @grey-500;
+  font-weight: @font-medium;
+}
+
+.coverage-inconsistent {
+  color: @red-14;
+  font-weight: @font-medium;
+}
+
+// Tags Cell - matching Figma design
+.tags-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+
+  .grid-tag {
+    margin: 0;
+    padding: 2px @size-xs;
+    font-size: 12px;
+    border-radius: @size-xxs;
+    display: inline-flex;
+    align-items: center;
+    gap: @size-xxs;
+    line-height: 18px;
+
+    .tag-icon {
+      width: 12px;
+      height: 12px;
+    }
+
+    &.grid-tag-primary {
+      background: @grey-36;
+      border: 1px solid @grey-200;
+      color: @grey-700;
+    }
+
+    &.grid-tag-secondary {
+      background: @grey-700;
+      border: none;
+      color: @white;
+    }
+  }
+
+  .glossary-tag {
+    margin: 0;
+    padding: 2px 10px;
+    font-size: 12px;
+    border-radius: @size-xxs;
+    background: @white;
+    border: 1px solid @grey-300;
+    color: @grey-700;
+    line-height: 18px;
+  }
+
+  .grid-tag-count {
+    font-size: 12px;
+    color: @de-active-color;
+    font-weight: @font-medium;
+  }
+}
+
+// Checkbox styling - no indent for child rows, checkboxes stay aligned
+// (Styling handled inline or via parent classes)
+
+// Loading indicator
+.column-grid-loading {
+  position: absolute;
+  bottom: @size-mlg;
+  left: 50%;
+  transform: translateX(-50%);
+  background: @white;
+  padding: @size-sm @size-lg;
+  border-radius: @border-rad-xs;
+  box-shadow: @box-shadow-base;
+}
+
+// Error message
+.column-grid-error {
+  padding: @size-sm @size-md;
+  background: @red-9;
+  border: 1px solid @red-19;
+  border-radius: @border-rad-xs;
+}
+
+// Edit Drawer - matching Figma design
+.edit-column-drawer {
+  .ant-drawer-content-wrapper {
+    min-width: 380px;
+    max-width: 600px;
+  }
+
+  .ant-drawer-header {
+    border-bottom: 1px solid @grey-200;
+    padding: @size-md @size-lg;
+
+    .ant-drawer-title {
+      font-size: 16px;
+      font-weight: @font-semibold;
+      color: @grey-900;
+    }
+
+    .ant-drawer-extra {
+      .ant-btn {
+        padding: @size-xxs;
+        font-size: 18px;
+        color: @de-active-color;
+
+        &:hover {
+          color: @grey-700;
+        }
+      }
+    }
+  }
+
+  .ant-drawer-body {
+    padding: @size-mlg @size-lg;
+  }
+
+  .drawer-content {
+    display: flex;
+    flex-direction: column;
+    gap: @size-mlg;
+  }
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    .field-label {
+      font-size: @font-size-base;
+      font-weight: @font-medium;
+      color: @grey-700;
+    }
+
+    .readonly-input {
+      background: @grey-50;
+      color: @grey-700;
+      border: 1px solid @grey-200;
+      border-radius: 6px;
+      height: @btn-height-base;
+    }
+
+    .ant-input {
+      border-radius: 6px;
+      border: 1px solid @grey-300;
+      height: @btn-height-base;
+
+      &::placeholder {
+        color: @grey-400;
+      }
+
+      &:hover,
+      &:focus {
+        border-color: @primary-color;
+      }
+    }
+
+    .ant-select {
+      .ant-select-selector {
+        border-radius: 6px;
+        border: 1px solid @grey-300;
+        min-height: @btn-height-base;
+
+        &:hover {
+          border-color: @primary-color;
+        }
+      }
+    }
+  }
+
+  .ant-drawer-footer {
+    border-top: 1px solid @grey-200;
+    padding: @size-md @size-lg;
+  }
+
+  .drawer-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: @size-md;
+
+    .ant-btn {
+      min-width: 80px;
+      height: @btn-height-sm;
+      border-radius: 6px;
+      font-weight: @font-medium;
+    }
+
+    .ant-btn-default {
+      color: @primary-color;
+      border: none;
+      box-shadow: none;
+      background: transparent;
+
+      &:hover {
+        color: @primary-7;
+        background: transparent;
+      }
+    }
+
+    .ant-btn-primary {
+      background: @primary-color;
+      border-color: @primary-color;
+
+      &:hover {
+        background: @primary-7;
+        border-color: @primary-7;
+      }
+    }
+  }
+}
