@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import TYPE_CHECKING, Set, Type, Union
 
+from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
     RuntimeParameterSetter,
@@ -39,8 +40,9 @@ class TestCaseImporter:
         test_type: str,
         runner_type: str,
         test_definition: str,
+        validator_class: str,
     ) -> Type[BaseTestValidator]:
-        return import_test_case_class(test_type, runner_type, test_definition)
+        return import_test_case_class(test_type, runner_type, test_definition, validator_class)
 
 
 class SourceType(Enum):
@@ -55,6 +57,7 @@ class ValidatorBuilder(TestCaseImporter):
         self,
         runner: Union[QueryRunner, "PandasRunner"],
         test_case: TestCase,
+        test_definition: TestDefinition,
         source_type: SourceType,
         entity_type: str,
     ) -> None:
@@ -74,7 +77,8 @@ class ValidatorBuilder(TestCaseImporter):
         ] = super().import_test_case_validator(
             entity_type,
             source_type.value,
-            self.test_case.testDefinition.fullyQualifiedName,
+            test_definition.fullyQualifiedName.root, # type: ignore
+            test_definition.validatorClass,
         )
         self.reset()
 

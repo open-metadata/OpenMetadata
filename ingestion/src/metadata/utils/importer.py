@@ -242,6 +242,7 @@ def import_test_case_class(
     test_type: str,
     runner_type: str,
     test_definition: str,
+    validator_class: str,
 ) -> Type[BaseTestValidator]:
     """_summary_
 
@@ -249,20 +250,16 @@ def import_test_case_class(
         test_type (str): column or table
         runner_type (str): sqlalchemy or pandas
         test_definition (str): test definition name
-        test_definition_class (str): test definition class name (same as test_definition)
 
     Returns:
         Callable: test validator object
     """
-    test_definition_class = (
-        test_definition[0].upper() + test_definition[1:]
-    )  # change test names to camel case
     return import_from_module(
-        "metadata.data_quality.validations.{}.{}.{}.{}Validator".format(  # pylint: disable=consider-using-f-string
+        "metadata.data_quality.validations.{}.{}.{}.{}".format(  # pylint: disable=consider-using-f-string
             test_type.lower(),
             runner_type,
             test_definition,
-            test_definition_class,
+            validator_class,
         )
     )
 
