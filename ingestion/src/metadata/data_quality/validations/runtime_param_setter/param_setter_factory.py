@@ -16,8 +16,8 @@ based on the test case.
 import sys
 from typing import Dict, Set, Type
 
-from metadata.data_quality.validations.column.base.ruleLibrarySqlExpressionValidator import (
-    RuleLibrarySqlExpressionValidator,
+from metadata.data_quality.validations.column.base.columnRuleLibrarySqlExpressionValidator import (
+    ColumnRuleLibrarySqlExpressionValidator,
 )
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
     RuntimeParameterSetter,
@@ -30,6 +30,9 @@ from metadata.data_quality.validations.runtime_param_setter.table_custom_sql_que
 )
 from metadata.data_quality.validations.runtime_param_setter.table_diff_params_setter import (
     TableDiffParamsSetter,
+)
+from metadata.data_quality.validations.table.base.tableRuleLibrarySqlExpressionValidator import (
+    TableRuleLibrarySqlExpressionValidator,
 )
 from metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery import (
     TableCustomSQLQueryValidator,
@@ -83,7 +86,10 @@ class RuntimeParameterSetterFactory:
         }
         # Map validatorClass names to param setters (for rule library validators)
         self._validator_class_map: Dict[str, Set[Type[RuntimeParameterSetter]]] = {
-            RuleLibrarySqlExpressionValidator.__name__: {
+            ColumnRuleLibrarySqlExpressionValidator.__name__: {
+                RuleLibrarySqlExpressionParamsSetter
+            },
+            TableRuleLibrarySqlExpressionValidator.__name__: {
                 RuleLibrarySqlExpressionParamsSetter
             },
         }

@@ -238,6 +238,12 @@ def import_connection_fn(connection: BaseModel, function_name: str) -> Callable:
     return _connection_fn
 
 
+RULE_LIBRARY_VALIDATOR_MODULE_MAP = {
+    "ColumnRuleLibrarySqlExpressionValidator": "columnRuleLibrarySqlExpressionValidator",
+    "TableRuleLibrarySqlExpressionValidator": "tableRuleLibrarySqlExpressionValidator",
+}
+
+
 def import_test_case_class(
     test_type: str,
     runner_type: str,
@@ -254,11 +260,14 @@ def import_test_case_class(
     Returns:
         Callable: test validator object
     """
+    module_name = RULE_LIBRARY_VALIDATOR_MODULE_MAP.get(
+        validator_class, test_definition
+    )
     return import_from_module(
         "metadata.data_quality.validations.{}.{}.{}.{}".format(  # pylint: disable=consider-using-f-string
             test_type.lower(),
             runner_type,
-            "ruleLibrarySqlExpressionValidator" if validator_class == "RuleLibrarySqlExpressionValidator" else test_definition,
+            module_name,
             validator_class,
         )
     )

@@ -39,8 +39,8 @@ DATABASES_WITHOUT_DATABASE_CONCEPT = {
 }
 
 
-class RuleLibrarySqlExpressionValidator(BaseTestValidator):
-    """Validator for SQL Expression based rules in the Rule Library."""
+class ColumnRuleLibrarySqlExpressionValidator(BaseTestValidator):
+    """Validator for column-level SQL Expression based rules in the Rule Library."""
 
     runtime_params: RuleLibrarySqlExpressionRuntimeParameters
 

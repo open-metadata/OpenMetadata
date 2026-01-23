@@ -16,8 +16,8 @@ from typing import Dict, Tuple
 from jinja2 import Template
 from sqlalchemy import text
 
-from metadata.data_quality.validations.column.base.ruleLibrarySqlExpressionValidator import (
-    RuleLibrarySqlExpressionValidator as BaseValidator,
+from metadata.data_quality.validations.column.base.columnRuleLibrarySqlExpressionValidator import (
+    ColumnRuleLibrarySqlExpressionValidator as BaseValidator,
 )
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
@@ -28,8 +28,8 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 
-class RuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
-    """SQLAlchemy implementation of Rule Library SQL Expression validator."""
+class ColumnRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
+    """SQLAlchemy implementation of Column Rule Library SQL Expression validator."""
 
     def compile_sql_expression(
         self, column_name: str, table_name: str

@@ -11,8 +11,8 @@
 
 """Pandas validator for rule library SQL expression tests"""
 
-from metadata.data_quality.validations.column.base.ruleLibrarySqlExpressionValidator import (
-    RuleLibrarySqlExpressionValidator as BaseValidator,
+from metadata.data_quality.validations.column.base.columnRuleLibrarySqlExpressionValidator import (
+    ColumnRuleLibrarySqlExpressionValidator as BaseValidator,
 )
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
@@ -22,8 +22,8 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 
-class RuleLibrarySqlExpressionValidator(BaseValidator, PandasValidatorMixin):
-    """Pandas implementation of Rule Library SQL Expression validator.
+class ColumnRuleLibrarySqlExpressionValidator(BaseValidator, PandasValidatorMixin):
+    """Pandas implementation of Column Rule Library SQL Expression validator.
 
     For Pandas sources, the 'sqlExpression' field contains a pandas query()
     expression (e.g., 'column >= 100'), not actual SQL. Parameters are
