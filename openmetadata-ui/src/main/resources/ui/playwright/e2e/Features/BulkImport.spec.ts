@@ -750,8 +750,8 @@ test.describe('Bulk Import Export', () => {
       }
     );
 
-    // await dbSchemaEntity.delete(apiContext);
-    // await afterAction();
+    await dbSchemaEntity.delete(apiContext);
+    await afterAction();
   });
 
   test('Table', async ({ page }) => {
