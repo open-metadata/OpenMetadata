@@ -88,6 +88,7 @@ import {
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
+import { mergeEntityStateUpdate } from '../../utils/EntityUpdateUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
@@ -404,18 +405,7 @@ const TableDetailsPageV1: React.FC = () => {
           return;
         }
 
-        const updatedObj = {
-          ...previous,
-          ...res,
-          ...(key && { [key]: res[key] }),
-        };
-
-        // If operation was to remove let's remove the key itself
-        if (key && res[key] === undefined) {
-          delete updatedObj[key];
-        }
-
-        return updatedObj;
+        return mergeEntityStateUpdate<Table>(previous, res, updatedTable, key);
       });
     } catch (error) {
       showErrorToast(error as AxiosError);
