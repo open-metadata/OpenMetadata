@@ -326,3 +326,53 @@ export const getReindexFailures = async (
 
   return response.data;
 };
+
+export interface IndexStats {
+  name: string;
+  documents: number;
+  primaryShards: number;
+  replicaShards: number;
+  sizeInBytes: number;
+  sizeFormatted: string;
+  health: string;
+  aliases: string[];
+}
+
+export interface OrphanIndex {
+  name: string;
+  sizeInBytes: number;
+  sizeFormatted: string;
+}
+
+export interface SearchStatsResponse {
+  clusterHealth: string;
+  totalIndexes: number;
+  totalDocuments: number;
+  totalSizeInBytes: number;
+  totalSizeFormatted: string;
+  totalPrimaryShards: number;
+  totalReplicaShards: number;
+  indexes: IndexStats[];
+  orphanIndexes: OrphanIndex[];
+}
+
+export interface OrphanCleanupResponse {
+  deletedIndexes: string[];
+  deletedCount: number;
+}
+
+export const getSearchStats = async (): Promise<SearchStatsResponse> => {
+  const response: AxiosResponse<SearchStatsResponse> = await APIClient.get(
+    '/search/stats'
+  );
+
+  return response.data;
+};
+
+export const cleanOrphanIndexes = async (): Promise<OrphanCleanupResponse> => {
+  const response: AxiosResponse<OrphanCleanupResponse> = await APIClient.delete(
+    '/search/stats/orphan'
+  );
+
+  return response.data;
+};

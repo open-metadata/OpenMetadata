@@ -27,6 +27,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -46,8 +47,13 @@ import java.util.UUID;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.search.OrphanCleanupResponse;
+import org.openmetadata.schema.api.search.SearchStatsResponse;
+import org.openmetadata.schema.api.search.SearchStatsResponse$IndexStats;
+import org.openmetadata.schema.api.search.SearchStatsResponse$OrphanIndex;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.PreviewSearchRequest;
 import org.openmetadata.schema.search.SearchRequest;
@@ -56,7 +62,11 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.OrphanedIndexCleaner;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.search.IndexManagementClient.IndexStats;
+import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.indexes.SearchIndex;
@@ -855,5 +865,124 @@ public class SearchResource {
                 "Reindex process started for %d entities with %d minute timeout. Check logs for progress updates.",
                 entities.size(), timeoutMinutes))
         .build();
+  }
+
+  private String formatBytes(long bytes) {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return String.format("%.2f KB", bytes / 1024.0);
+    if (bytes < 1024 * 1024 * 1024) return String.format("%.2f MB", bytes / (1024.0 * 1024));
+    return String.format("%.2f GB", bytes / (1024.0 * 1024 * 1024));
+  }
+
+  @GET
+  @Path("/stats")
+  @Operation(
+      operationId = "getSearchStats",
+      summary = "Get search cluster statistics",
+      description =
+          "Get statistics about the search cluster including indexes, shards, and orphan indexes.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Search statistics",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchStatsResponse.class)))
+      })
+  public Response getSearchStats(@Context SecurityContext securityContext) throws IOException {
+    authorizer.authorizeAdminOrBot(securityContext);
+    SearchClient searchClient = searchRepository.getSearchClient();
+    List<IndexStats> allIndexStats = searchClient.getAllIndexStats();
+    SearchHealthStatus healthStatus = searchClient.getSearchHealthStatus();
+    String clusterHealth = "healthy".equals(healthStatus.getStatus()) ? "GREEN" : "RED";
+
+    long totalDocs = 0;
+    long totalSize = 0;
+    int totalPrimaryShards = 0;
+    int totalReplicaShards = 0;
+    List<SearchStatsResponse$IndexStats> indexStatsList = new java.util.ArrayList<>();
+
+    for (IndexStats stats : allIndexStats) {
+      totalDocs += stats.documents();
+      totalSize += stats.sizeInBytes();
+      totalPrimaryShards += stats.primaryShards();
+      totalReplicaShards += stats.replicaShards();
+
+      SearchStatsResponse$IndexStats indexStat = new SearchStatsResponse$IndexStats();
+      indexStat.setName(stats.name());
+      indexStat.setDocuments((int) stats.documents());
+      indexStat.setPrimaryShards(stats.primaryShards());
+      indexStat.setReplicaShards(stats.replicaShards());
+      indexStat.setSizeInBytes((int) stats.sizeInBytes());
+      indexStat.setSizeFormatted(formatBytes(stats.sizeInBytes()));
+      indexStat.setHealth(stats.health());
+      indexStat.setAliases(new java.util.ArrayList<>(stats.aliases()));
+      indexStatsList.add(indexStat);
+    }
+
+    OrphanedIndexCleaner cleaner = new OrphanedIndexCleaner();
+    List<OrphanedIndexCleaner.OrphanedIndex> orphanedIndexes =
+        cleaner.findOrphanedRebuildIndices(searchClient);
+
+    List<SearchStatsResponse$OrphanIndex> orphanList =
+        orphanedIndexes.stream()
+            .map(
+                oi -> {
+                  SearchStatsResponse$OrphanIndex orphan = new SearchStatsResponse$OrphanIndex();
+                  orphan.setName(oi.indexName());
+                  long size =
+                      allIndexStats.stream()
+                          .filter(s -> s.name().equals(oi.indexName()))
+                          .findFirst()
+                          .map(IndexStats::sizeInBytes)
+                          .orElse(0L);
+                  orphan.setSizeInBytes((int) size);
+                  orphan.setSizeFormatted(formatBytes(size));
+                  return orphan;
+                })
+            .collect(Collectors.toList());
+
+    SearchStatsResponse response = new SearchStatsResponse();
+    response.setClusterHealth(clusterHealth);
+    response.setTotalIndexes(allIndexStats.size());
+    response.setTotalDocuments((int) totalDocs);
+    response.setTotalSizeInBytes((int) totalSize);
+    response.setTotalSizeFormatted(formatBytes(totalSize));
+    response.setTotalPrimaryShards(totalPrimaryShards);
+    response.setTotalReplicaShards(totalReplicaShards);
+    response.setIndexes(indexStatsList);
+    response.setOrphanIndexes(orphanList);
+
+    return Response.ok(response).build();
+  }
+
+  @DELETE
+  @Path("/stats/orphan")
+  @Operation(
+      operationId = "cleanOrphanIndexes",
+      summary = "Clean orphan indexes",
+      description =
+          "Delete all orphan indexes (indexes with zero aliases) from the search cluster.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Cleanup result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = OrphanCleanupResponse.class)))
+      })
+  public Response cleanOrphanIndexes(@Context SecurityContext securityContext) throws IOException {
+    authorizer.authorizeAdminOrBot(securityContext);
+    SearchClient searchClient = searchRepository.getSearchClient();
+    OrphanedIndexCleaner cleaner = new OrphanedIndexCleaner();
+    OrphanedIndexCleaner.CleanupResult result = cleaner.cleanupOrphanedIndices(searchClient);
+
+    OrphanCleanupResponse response = new OrphanCleanupResponse();
+    response.setDeletedIndexes(result.deletedIndices());
+    response.setDeletedCount(result.deleted());
+
+    return Response.ok(response).build();
   }
 }

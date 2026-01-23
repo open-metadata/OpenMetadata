@@ -1,0 +1,80 @@
+{
+  "$id": "https://open-metadata.org/schema/api/search/searchStats.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SearchStatsResponse",
+  "description": "Response containing search cluster statistics and index details.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.search.SearchStatsResponse",
+  "properties": {
+    "clusterHealth": {
+      "description": "Health status of the search cluster (GREEN, YELLOW, RED).",
+      "type": "string"
+    },
+    "totalIndexes": {
+      "description": "Total number of indexes in the cluster.",
+      "type": "integer"
+    },
+    "totalDocuments": {
+      "description": "Total number of documents across all indexes.",
+      "type": "integer",
+      "format": "int64"
+    },
+    "totalSizeInBytes": {
+      "description": "Total storage size in bytes.",
+      "type": "integer",
+      "format": "int64"
+    },
+    "totalSizeFormatted": {
+      "description": "Human-readable total storage size.",
+      "type": "string"
+    },
+    "totalPrimaryShards": {
+      "description": "Total number of primary shards.",
+      "type": "integer"
+    },
+    "totalReplicaShards": {
+      "description": "Total number of replica shards.",
+      "type": "integer"
+    },
+    "indexes": {
+      "description": "List of index details.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/indexStats"
+      }
+    },
+    "orphanIndexes": {
+      "description": "List of orphan indexes (indexes with zero aliases).",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/orphanIndex"
+      }
+    }
+  },
+  "definitions": {
+    "indexStats": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.search.SearchStatsResponse$IndexStats",
+      "properties": {
+        "name": { "description": "Index name.", "type": "string" },
+        "documents": { "description": "Number of documents in the index.", "type": "integer", "format": "int64" },
+        "primaryShards": { "description": "Number of primary shards.", "type": "integer" },
+        "replicaShards": { "description": "Number of replica shards.", "type": "integer" },
+        "sizeInBytes": { "description": "Index size in bytes.", "type": "integer", "format": "int64" },
+        "sizeFormatted": { "description": "Human-readable index size.", "type": "string" },
+        "health": { "description": "Index health status.", "type": "string" },
+        "aliases": { "description": "List of aliases pointing to this index.", "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "orphanIndex": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.search.SearchStatsResponse$OrphanIndex",
+      "properties": {
+        "name": { "description": "Orphan index name.", "type": "string" },
+        "sizeInBytes": { "description": "Index size in bytes.", "type": "integer", "format": "int64" },
+        "sizeFormatted": { "description": "Human-readable index size.", "type": "string" }
+      }
+    }
+  },
+  "additionalProperties": false
+}
