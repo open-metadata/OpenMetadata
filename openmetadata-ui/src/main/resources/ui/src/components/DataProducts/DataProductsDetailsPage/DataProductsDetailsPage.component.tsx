@@ -31,6 +31,7 @@ import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { ROUTES } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
+import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -675,7 +676,7 @@ const DataProductsDetailsPage = ({
               isFollowing={isFollowing}
               isFollowingLoading={isFollowingLoading}
               serviceName=""
-              suffix={<LearningIcon pageId="dataProduct" />}
+              suffix={<LearningIcon pageId={LEARNING_PAGE_IDS.DATA_PRODUCT} />}
               titleColor={dataProduct.style?.color}
             />
           </Box>

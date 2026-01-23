@@ -170,6 +170,7 @@ const ProfilerConfigurationPage = () => {
               ),
             }}
             learningPageId={LEARNING_PAGE_IDS.PROFILER_CONFIGURATION}
+            title={t('label.profiler-configuration')}
           />
         </Col>
         <Col span={24}>

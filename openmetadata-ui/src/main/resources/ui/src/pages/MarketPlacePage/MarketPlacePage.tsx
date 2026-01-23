@@ -146,6 +146,7 @@ const MarketPlacePage = () => {
                     subHeader: t(PAGE_HEADERS.APPLICATION.subHeader),
                   }}
                   learningPageId={LEARNING_PAGE_IDS.AUTOMATIONS}
+                  title={t('label.market-place')}
                 />
                 <HeadingIcon />
               </div>

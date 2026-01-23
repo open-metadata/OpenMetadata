@@ -345,6 +345,7 @@ const PlatformLineage = () => {
                     subHeader: t(PAGE_HEADERS.PLATFORM_LINEAGE.subHeader),
                   }}
                   learningPageId={LEARNING_PAGE_IDS.LINEAGE}
+                  title={t('label.lineage')}
                 />
               </Card>
             </Grid>

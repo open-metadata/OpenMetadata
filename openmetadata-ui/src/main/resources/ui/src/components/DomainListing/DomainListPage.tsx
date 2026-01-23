@@ -19,6 +19,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
 import { DRAWER_HEADER_STYLING } from '../../constants/DomainsListPage.constants';
+import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
@@ -135,7 +136,7 @@ const DomainListPage = () => {
     addButtonLabelKey: 'label.add-domain',
     addButtonTestId: 'add-domain',
     onAddClick: openDrawer,
-    learningPageId: 'domain',
+    learningPageId: LEARNING_PAGE_IDS.DOMAIN,
   });
 
   const { titleAndCount } = useTitleAndCount({

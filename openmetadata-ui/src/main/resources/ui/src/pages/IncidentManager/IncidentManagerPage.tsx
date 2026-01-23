@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import IncidentManager from '../../components/IncidentManager/IncidentManager.component';
 import { LearningIcon } from '../../components/Learning/LearningIcon/LearningIcon.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import incidentManagerClassBase from './IncidentManagerClassBase';
 
@@ -37,7 +38,7 @@ const IncidentManagerPage = () => {
               level={5}>
               {t(PAGE_HEADERS.INCIDENT_MANAGER.header)}
             </Typography.Title>
-            <LearningIcon pageId="incidentManager" />
+            <LearningIcon pageId={LEARNING_PAGE_IDS.INCIDENT_MANAGER} />
           </Space>
           <Typography.Paragraph
             className="text-grey-muted"

@@ -299,6 +299,7 @@ const ObservabilityAlertsPage = () => {
             <PageHeader
               data={pageHeaderData}
               learningPageId={LEARNING_PAGE_IDS.DATA_OBSERVABILITY}
+              title={t('label.observability-alert')}
             />
             {(alertResourcePermission?.Create ||
               alertResourcePermission?.All) && (
