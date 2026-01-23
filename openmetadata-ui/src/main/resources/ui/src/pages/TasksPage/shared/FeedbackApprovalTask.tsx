@@ -14,6 +14,7 @@
 import { Box, Chip, Typography, useTheme } from '@mui/material';
 import {
   Clock,
+  CpuChip02,
   Database01,
   Flag04,
   MessageTextSquare01,
@@ -42,6 +43,7 @@ const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const feedback: RecognizerFeedback | undefined = task?.feedback;
+  const recognizerName = task?.recognizer?.recognizerName || '';
 
   const feedbackTypeLabel = useMemo(() => {
     if (!feedback?.feedbackType) {
@@ -96,6 +98,17 @@ const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
       className="feedback-approval-task"
       data-testid="feedback-approval-task"
       sx={{ display: 'flex', rowGap: 4, flexDirection: 'column', mt: -1.5 }}>
+      {recognizerName && (
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 3 }}>
+          <Typography sx={labelStyle} variant="body2">
+            <CpuChip02 className="text-grey-muted" size={16} />
+            {t('label.recognizer')}
+          </Typography>
+          <Typography color={theme.palette.grey[700]} variant="body2">
+            {recognizerName}
+          </Typography>
+        </Box>
+      )}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
         <Typography sx={labelStyle} variant="body2">
           <Flag04 className="text-grey-muted" size={16} />
