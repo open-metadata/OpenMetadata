@@ -77,21 +77,6 @@ ON audit_log_event (service_name, event_ts DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_log_created_at
 ON audit_log_event (created_at);
 
-
-
--- Create Learning Resource Entity Table
-CREATE TABLE IF NOT EXISTS learning_resource_entity (
-    id character varying(36) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,
-    name character varying(3072) GENERATED ALWAYS AS ((json ->> 'fullyQualifiedName'::text)) STORED,
-    fqnhash character varying(256) NOT NULL,
-    json jsonb NOT NULL,
-    updatedat bigint GENERATED ALWAYS AS (((json ->> 'updatedAt'::text))::bigint) STORED NOT NULL,
-    updatedby character varying(256) GENERATED ALWAYS AS ((json ->> 'updatedBy'::text)) STORED NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
-    PRIMARY KEY (id),
-    UNIQUE (fqnhash)
-);
-
 -- Add updatedAt generated column to entity_extension table for efficient timestamp-based queries
 -- This supports the listEntityHistoryByTimestamp API endpoint for retrieving entity versions within a time range
 ALTER TABLE entity_extension
@@ -138,9 +123,6 @@ CREATE INDEX IF NOT EXISTS idx_test_suite_updated_at_id ON test_suite(updatedAt 
 CREATE INDEX IF NOT EXISTS idx_test_case_updated_at_id ON test_case(updatedAt DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_api_collection_entity_updated_at_id ON api_collection_entity(updatedAt DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_api_endpoint_entity_updated_at_id ON api_endpoint_entity(updatedAt DESC, id DESC);
-<<<<<<< HEAD
->>>>>>> upstream/main
-=======
 
 -- Distributed Search Indexing Tables
 
@@ -261,4 +243,15 @@ CREATE TABLE IF NOT EXISTS search_index_server_stats (
 
 CREATE INDEX IF NOT EXISTS idx_search_index_server_stats_job_id ON search_index_server_stats(jobId);
 
->>>>>>> upstream/main
+-- Create Learning Resource Entity Table
+CREATE TABLE IF NOT EXISTS learning_resource_entity (
+    id character varying(36) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,
+    name character varying(3072) GENERATED ALWAYS AS ((json ->> 'fullyQualifiedName'::text)) STORED,
+    fqnhash character varying(256) NOT NULL,
+    json jsonb NOT NULL,
+    updatedat bigint GENERATED ALWAYS AS (((json ->> 'updatedAt'::text))::bigint) STORED NOT NULL,
+    updatedby character varying(256) GENERATED ALWAYS AS ((json ->> 'updatedBy'::text)) STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    PRIMARY KEY (id),
+    UNIQUE (fqnhash)
+);
