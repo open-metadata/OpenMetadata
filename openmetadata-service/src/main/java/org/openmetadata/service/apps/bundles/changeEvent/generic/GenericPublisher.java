@@ -36,7 +36,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.notifications.recipients.RecipientResolver;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
 
@@ -72,20 +71,17 @@ public class GenericPublisher implements Destination<ChangeEvent> {
   }
 
   @Override
-  public void sendMessage(ChangeEvent event) throws EventPublisherException {
+  public void sendMessage(ChangeEvent event, Set<Recipient> recipients)
+      throws EventPublisherException {
     try {
       String eventJson = JsonUtils.pojoToJson(event);
-
-      // Resolve recipients using new RecipientResolver framework
-      RecipientResolver recipientResolver = new RecipientResolver();
-      Set<Recipient> recipients =
-          recipientResolver.resolveRecipients(event, subscriptionDestination, webhook);
 
       // Convert type-agnostic Recipient objects to configured webhook requests
       List<Invocation.Builder> targets =
           recipients.stream()
-              .filter(r -> r instanceof WebhookRecipient)
-              .map(r -> ((WebhookRecipient) r).getConfiguredRequest(client, eventJson))
+              .filter(WebhookRecipient.class::isInstance)
+              .map(WebhookRecipient.class::cast)
+              .map(r -> r.getConfiguredRequest(client, eventJson))
               .filter(Objects::nonNull)
               .toList();
 

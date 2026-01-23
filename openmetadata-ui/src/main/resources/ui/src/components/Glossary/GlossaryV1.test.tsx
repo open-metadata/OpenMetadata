@@ -12,6 +12,7 @@
  */
 
 import { findByText, queryByText, render } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import {
   mockedGlossaries,
   mockedGlossaryTerms,
@@ -75,6 +76,7 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => params),
   Link: jest.fn().mockImplementation(({ children }) => <a>{children}</a>),
   useNavigate: jest.fn().mockReturnValue(jest.fn()),
+  useLocation: jest.fn().mockImplementation(() => ({ pathname: 'mockPath' })),
 }));
 
 jest.mock('./GlossaryDetails/GlossaryDetails.component', () => {
@@ -144,7 +146,9 @@ const mockProps: GlossaryV1Props = {
 
 describe('Test Glossary component', () => {
   it('Should render Glossary-details', async () => {
-    const { container } = render(<GlossaryV1 {...mockProps} />);
+    const { container } = render(<GlossaryV1 {...mockProps} />, {
+      wrapper: MemoryRouter,
+    });
 
     const glossaryDetails = await findByText(
       container,
@@ -166,7 +170,10 @@ describe('Test Glossary component', () => {
         {...mockProps}
         isGlossaryActive={false}
         selectedData={mockedGlossaryTerms[0]}
-      />
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
     );
 
     const glossaryTerm = await findByText(

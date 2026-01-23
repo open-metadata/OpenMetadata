@@ -20,17 +20,17 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.entityProfiles.EntityProfileMapper;
+import org.openmetadata.service.resources.entityProfiles.EntityProfileResource;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 
 public class EntityProfileRepository extends EntityTimeSeriesRepository<EntityProfile> {
-  public static final String COLLECTION_PATH = "v1/entity/profiles";
   public static final EntityProfileMapper entityProfileMapper = new EntityProfileMapper();
 
   public EntityProfileRepository() {
     super(
-        COLLECTION_PATH,
+        EntityProfileResource.COLLECTION_PATH,
         Entity.getCollectionDAO().profilerDataTimeSeriesDao(),
         EntityProfile.class,
         Entity.ENTITY_PROFILE);

@@ -39,6 +39,10 @@ import org.openmetadata.sdk.network.HttpMethod;
 @Execution(ExecutionMode.CONCURRENT)
 public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
 
+  {
+    supportsListHistoryByTimestamp = true;
+  }
+
   // ===================================================================
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
   // ===================================================================

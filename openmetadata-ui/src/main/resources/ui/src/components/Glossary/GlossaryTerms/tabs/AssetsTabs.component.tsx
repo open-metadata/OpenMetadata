@@ -58,6 +58,7 @@ import { QueryFilterInterface } from '../../../../pages/ExplorePage/ExplorePage.
 import {
   getDataProductByName,
   removeAssetsFromDataProduct,
+  removePortsFromDataProduct,
 } from '../../../../rest/dataProductAPI';
 import {
   getDomainByName,
@@ -124,6 +125,8 @@ const AssetsTabs = forwardRef(
       noDataPlaceholder,
       entityFqn,
       assetCount,
+      preloadedData,
+      skipSearch = false,
     }: AssetsTabsProps,
     ref
   ) => {
@@ -150,6 +153,8 @@ const AssetsTabs = forwardRef(
       () =>
         [
           AssetsOfEntity.DATA_PRODUCT,
+          AssetsOfEntity.DATA_PRODUCT_INPUT_PORT,
+          AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT,
           AssetsOfEntity.DOMAIN,
           AssetsOfEntity.GLOSSARY,
           AssetsOfEntity.TAG,
@@ -211,6 +216,17 @@ const AssetsTabs = forwardRef(
             'dataProducts.fullyQualifiedName': entityFqn ?? '',
           });
 
+        case AssetsOfEntity.DATA_PRODUCT_INPUT_PORT:
+        case AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT:
+          // Use the provided queryFilter (which filters by specific port FQNs)
+          // Fall back to default data product query if no filter provided
+          return (
+            queryFilter ??
+            getTermQuery({
+              'dataProducts.fullyQualifiedName': entityFqn ?? '',
+            })
+          );
+
         case AssetsOfEntity.TEAM:
         case AssetsOfEntity.MY_DATA:
         case AssetsOfEntity.FOLLOWING:
@@ -225,7 +241,7 @@ const AssetsTabs = forwardRef(
         default:
           return getTagAssetsQueryFilter(encodedFqn);
       }
-    }, [type, entityFqn]);
+    }, [type, entityFqn, queryFilter]);
 
     const fetchAssets = useCallback(
       async ({
@@ -237,6 +253,19 @@ const AssetsTabs = forwardRef(
         page?: number;
         queryFilter?: QueryFilterInterface;
       }) => {
+        if (skipSearch && preloadedData) {
+          setData(preloadedData);
+          handlePagingChange({ total: assetCount ?? preloadedData.length });
+          setIsLoading(false);
+          if (preloadedData[0]) {
+            setSelectedCard(preloadedData[0]._source);
+          } else {
+            setSelectedCard(undefined);
+          }
+
+          return;
+        }
+
         try {
           setIsLoading(true);
 
@@ -274,7 +303,15 @@ const AssetsTabs = forwardRef(
           setIsLoading(false);
         }
       },
-      [currentPage, pageSize, searchValue, queryParam, assetCount]
+      [
+        currentPage,
+        pageSize,
+        searchValue,
+        queryParam,
+        assetCount,
+        skipSearch,
+        preloadedData,
+      ]
     );
 
     const hideNotification = () => {
@@ -309,6 +346,8 @@ const AssetsTabs = forwardRef(
 
           break;
         case AssetsOfEntity.DATA_PRODUCT:
+        case AssetsOfEntity.DATA_PRODUCT_INPUT_PORT:
+        case AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT:
           data = await getDataProductByName(fqn, {
             fields: [TabSpecificField.DOMAINS, TabSpecificField.ASSETS],
           });
@@ -392,6 +431,16 @@ const AssetsTabs = forwardRef(
 
               break;
 
+            case AssetsOfEntity.DATA_PRODUCT_INPUT_PORT:
+            case AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT:
+              await removePortsFromDataProduct(
+                activeEntity.fullyQualifiedName ?? '',
+                entities,
+                type
+              );
+
+              break;
+
             case AssetsOfEntity.GLOSSARY:
               await removeAssetsFromGlossaryTerm(
                 activeEntity as GlossaryTerm,
@@ -413,7 +462,6 @@ const AssetsTabs = forwardRef(
 
               break;
             default:
-              // Handle other entity types here
               break;
           }
 

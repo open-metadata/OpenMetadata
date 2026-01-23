@@ -61,6 +61,13 @@ export const COLUMNS_WIDTH: Record<string, number> = {
   status: 70,
 };
 
+export const CSV_DISABLED_COLUMNS = [
+  'name*',
+  'testDefinition*',
+  'entityFQN*',
+  'testSuite',
+];
+
 const statusRenderer = (value: Status) => {
   return value === Status.Failure ? (
     <FailBadgeIcon
@@ -120,7 +127,9 @@ export const getColumnConfig = (
   isBulkEdit = false
 ): Column<any> => {
   const colType = column.split('.').pop() ?? '';
-  const disabledColumns = isBulkEdit ? ['name*'].includes(colType) : false;
+  const disabledColumns = isBulkEdit
+    ? CSV_DISABLED_COLUMNS.includes(colType)
+    : false;
 
   return {
     key: column,
@@ -215,10 +224,14 @@ export const getCSVStringFromColumnsAndDataSource = (
           colName.includes('tags') ||
           colName.includes('domains')
         ) {
-          return isEmpty(value) ? '' : `"${value}"`;
+          return `"${value}"`;
+        }
+        // Values with quotes: escape quotes (for name/displayName/FQN or any other column)
+        if (value.includes('"')) {
+          return `"${value.replaceAll(/"/g, '""')}"`;
         }
 
-        return get(row, col.key ?? '', '');
+        return value;
       })
       .join(',');
   });

@@ -70,8 +70,10 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.SCHEMA } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedApiEndpointFqn } = useFqn();
   const navigate = useNavigate();
+  const { entityFqn: decodedApiEndpointFqn } = useFqn({
+    type: EntityType.API_ENDPOINT,
+  });
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );

@@ -378,7 +378,9 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     // Delete the chart
     deleteEntity(chart.getId(), ADMIN_AUTH_HEADERS);
     // Check that dashboard4  does not contain the deleted chart in their charts field
-    dashboard4 = dashboardResourceTest.getEntity(dashboard4.getId(), "charts", ADMIN_AUTH_HEADERS);
+    dashboard4 =
+        dashboardResourceTest.getEntityWithIncludeRelations(
+            dashboard4.getId(), "charts", "charts:all", ADMIN_AUTH_HEADERS);
     assertTrue(
         dashboard4.getCharts().stream()
             .map(EntityReference::getId)

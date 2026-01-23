@@ -164,11 +164,11 @@ public class GuavaLineageGraphCache implements LineageGraphCache {
   public void logStats() {
     CacheStats stats = cache.stats();
     LOG.info(
-        "Cache Statistics: size={}, hits={}, misses={}, hitRatio={:.2f}, evictions={}, loadTime={}ms",
+        "Cache Statistics: size={}, hits={}, misses={}, hitRatio={}, evictions={}, loadTime={}ms",
         cache.size(),
         stats.hitCount(),
         stats.missCount(),
-        getHitRatio(),
+        String.format("%.2f", getHitRatio()),
         stats.evictionCount(),
         stats.totalLoadTime() / 1_000_000); // Convert nanos to millis
   }

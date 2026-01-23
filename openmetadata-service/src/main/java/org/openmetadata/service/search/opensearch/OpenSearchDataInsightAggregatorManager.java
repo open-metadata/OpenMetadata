@@ -3,6 +3,7 @@ package org.openmetadata.service.search.opensearch;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import io.micrometer.core.instrument.Timer;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -23,6 +24,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
+import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.search.DataInsightAggregatorClient;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchAggregatedUnusedAssetsCountAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchAggregatedUnusedAssetsSizeAggregator;
@@ -76,7 +78,15 @@ public class OpenSearchDataInsightAggregatorManager implements DataInsightAggreg
           new HashMap<>();
       SearchRequest searchRequest =
           aggregator.prepareSearchRequest(diChart, start, end, formulas, metricFormulaHolder, live);
-      SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+      SearchResponse<JsonData> searchResponse;
+      try {
+        searchResponse = client.search(searchRequest, JsonData.class);
+      } finally {
+        if (searchTimerSample != null) {
+          RequestLatencyContext.endSearchOperation(searchTimerSample);
+        }
+      }
       return aggregator.processSearchResponse(
           diChart, searchResponse, formulas, metricFormulaHolder);
     }
@@ -145,7 +155,15 @@ public class OpenSearchDataInsightAggregatorManager implements DataInsightAggreg
             from,
             queryFilter,
             dataReportIndex);
-    SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+    Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+    SearchResponse<JsonData> searchResponse;
+    try {
+      searchResponse = client.search(searchRequest, JsonData.class);
+    } finally {
+      if (searchTimerSample != null) {
+        RequestLatencyContext.endSearchOperation(searchTimerSample);
+      }
+    }
     return Response.status(OK)
         .entity(processDataInsightChartResultNew(searchResponse, dataInsightChartName))
         .build();
@@ -159,7 +177,15 @@ public class OpenSearchDataInsightAggregatorManager implements DataInsightAggreg
     }
 
     SearchRequest searchRequest = QueryCostRecordsAggregator.getQueryCostRecords(serviceName);
-    SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+    Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+    SearchResponse<JsonData> searchResponse;
+    try {
+      searchResponse = client.search(searchRequest, JsonData.class);
+    } finally {
+      if (searchTimerSample != null) {
+        RequestLatencyContext.endSearchOperation(searchTimerSample);
+      }
+    }
     return QueryCostRecordsAggregator.parseQueryCostResponse(searchResponse);
   }
 

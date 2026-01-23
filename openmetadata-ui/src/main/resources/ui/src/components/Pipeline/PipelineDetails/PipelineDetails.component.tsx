@@ -22,10 +22,7 @@ import { usePermissionProvider } from '../../../context/PermissionProvider/Permi
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
-import {
-  Pipeline,
-  TagLabel,
-} from '../../../generated/entity/data/pipeline';
+import { Pipeline, TagLabel } from '../../../generated/entity/data/pipeline';
 import { Operation as PermissionOperation } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../../generated/system/ui/uiCustomization';
 import LimitWrapper from '../../../hoc/LimitWrapper';
@@ -47,10 +44,7 @@ import {
 } from '../../../utils/PermissionsUtils';
 import pipelineClassBase from '../../../utils/PipelineClassBase';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import {
-  getTagsWithoutTier,
-  getTierTags,
-} from '../../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import {
   createTagObject,
   updateCertificationTag,

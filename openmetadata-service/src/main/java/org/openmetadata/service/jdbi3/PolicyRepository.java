@@ -49,6 +49,7 @@ import org.openmetadata.service.resources.policies.PolicyResource;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 public class PolicyRepository extends EntityRepository<Policy> {
@@ -65,7 +66,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   @Override
-  public void setFields(Policy policy, Fields fields) {
+  public void setFields(Policy policy, Fields fields, RelationIncludes relationIncludes) {
     policy.setTeams(fields.contains("teams") ? getTeams(policy) : policy.getTeams());
     policy.withRoles(fields.contains("roles") ? getRoles(policy) : policy.getRoles());
   }

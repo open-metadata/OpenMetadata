@@ -89,7 +89,7 @@ class ColumnValueLengthsToBeBetweenValidator(
         dimension_results = []
 
         try:
-            dfs = self.runner if isinstance(self.runner, list) else [self.runner]
+            dfs = self.runner
             min_impl = Metrics.MIN_LENGTH(column).get_pandas_computation()
             max_impl = Metrics.MAX_LENGTH(column).get_pandas_computation()
             row_count_impl = Metrics.ROW_COUNT().get_pandas_computation()

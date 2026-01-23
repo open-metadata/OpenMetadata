@@ -29,11 +29,11 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
 import org.openmetadata.service.resources.kpi.KpiResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 public class KpiRepository extends EntityRepository<Kpi> {
   private static final String KPI_RESULT_FIELD = "kpiResult";
-  public static final String COLLECTION_PATH = "/v1/kpi";
   private static final String UPDATE_FIELDS =
       "targetValue,dataInsightChart,startDate,endDate,metricType";
   private static final String PATCH_FIELDS =
@@ -50,7 +50,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
   }
 
   @Override
-  public void setFields(Kpi kpi, EntityUtil.Fields fields) {
+  public void setFields(Kpi kpi, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     kpi.setDataInsightChart(
         fields.contains("dataInsightChart") ? getDataInsightChart(kpi) : kpi.getDataInsightChart());
     kpi.withKpiResult(

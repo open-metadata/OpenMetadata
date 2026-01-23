@@ -43,7 +43,6 @@ import org.openmetadata.service.formatter.decorators.SlackMessageDecorator;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.notifications.HandlebarsNotificationMessageEngine;
 import org.openmetadata.service.notifications.channels.NotificationMessage;
-import org.openmetadata.service.notifications.recipients.RecipientResolver;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
 
@@ -73,31 +72,24 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
   }
 
   @Override
-  public void sendMessage(ChangeEvent event) throws EventPublisherException {
+  public void sendMessage(ChangeEvent event, Set<Recipient> recipients)
+      throws EventPublisherException {
     try {
-      // Generate message using new Handlebars pipeline
       NotificationMessage message =
           messageEngine.generateMessage(event, eventSubscription, subscriptionDestination);
       SlackMessage slackMessage = (SlackMessage) message;
 
-      // Convert to JSON and apply snake_case transformation
       String json = JsonUtils.pojoToJsonIgnoreNull(slackMessage);
       String transformedJson = convertCamelCaseToSnakeCase(json);
 
-      // Resolve recipients using new RecipientResolver framework
-      RecipientResolver recipientResolver = new RecipientResolver();
-      Set<Recipient> recipients =
-          recipientResolver.resolveRecipients(event, subscriptionDestination, webhook);
-
-      // Convert type-agnostic Recipient objects to configured webhook requests
       List<Invocation.Builder> targets =
           recipients.stream()
-              .filter(r -> r instanceof WebhookRecipient)
-              .map(r -> ((WebhookRecipient) r).getConfiguredRequest(client, transformedJson))
+              .filter(WebhookRecipient.class::isInstance)
+              .map(WebhookRecipient.class::cast)
+              .map(r -> r.getConfiguredRequest(client, transformedJson))
               .filter(Objects::nonNull)
               .toList();
 
-      // Send Slack message to each webhook target
       for (Invocation.Builder actionTarget : targets) {
         postWebhookMessage(this, actionTarget, transformedJson);
       }

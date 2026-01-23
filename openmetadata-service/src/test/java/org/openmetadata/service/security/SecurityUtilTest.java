@@ -3,8 +3,11 @@ package org.openmetadata.service.security;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -99,5 +102,54 @@ class SecurityUtilTest {
     assertEquals(
         "Invalid JWT Principal Claims Mapping. Both username and email should be present",
         exception.getMessage());
+  }
+
+  @Test
+  void testGetClaimAsList_WithListValue() {
+    List<String> inputList = Arrays.asList("Engineering", "DevOps", "Platform");
+    List<String> result = SecurityUtil.getClaimAsList(inputList);
+
+    assertEquals(3, result.size());
+    assertTrue(result.contains("Engineering"));
+    assertTrue(result.contains("DevOps"));
+    assertTrue(result.contains("Platform"));
+  }
+
+  @Test
+  void testGetClaimAsList_WithSingleString() {
+    String singleValue = "Engineering";
+    List<String> result = SecurityUtil.getClaimAsList(singleValue);
+
+    assertEquals(1, result.size());
+    assertEquals("Engineering", result.get(0));
+  }
+
+  @Test
+  void testGetClaimAsList_WithNullValue() {
+    List<String> result = SecurityUtil.getClaimAsList(null);
+
+    assertTrue(result.isEmpty());
+  }
+
+  @Test
+  void testFindTeamsFromClaims_WithArrayClaim() {
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("groups", Arrays.asList("Engineering", "DevOps"));
+
+    List<String> teams = SecurityUtil.findTeamsFromClaims("groups", claims);
+
+    assertEquals(2, teams.size());
+    assertTrue(teams.contains("Engineering"));
+    assertTrue(teams.contains("DevOps"));
+  }
+
+  @Test
+  void testFindTeamsFromClaims_WithMissingClaim() {
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("other", "value");
+
+    List<String> teams = SecurityUtil.findTeamsFromClaims("groups", claims);
+
+    assertTrue(teams.isEmpty());
   }
 }

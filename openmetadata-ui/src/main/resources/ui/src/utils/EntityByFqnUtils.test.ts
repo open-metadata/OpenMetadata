@@ -12,6 +12,7 @@
  */
 
 import { EntityType } from '../enums/entity.enum';
+import { ServiceCategoryPlural } from '../enums/service.enum';
 import * as alertsAPI from '../rest/alertsAPI';
 import * as apiCollectionsAPI from '../rest/apiCollectionsAPI';
 import * as apiEndpointsAPI from '../rest/apiEndpointsAPI';
@@ -141,7 +142,7 @@ describe('EntityByFqnUtils', () => {
       expect(result).toEqual(mockTestCaseData);
     });
 
-    it('should fetch DATABASE_SERVICE using getServiceByFQN', async () => {
+    it('should fetch DATABASE_SERVICE using plural service category', async () => {
       const mockServiceData = { id: '1', name: 'test-service' };
       (serviceAPI.getServiceByFQN as jest.Mock).mockResolvedValue(
         mockServiceData
@@ -153,13 +154,13 @@ describe('EntityByFqnUtils', () => {
       );
 
       expect(serviceAPI.getServiceByFQN).toHaveBeenCalledWith(
-        EntityType.DATABASE_SERVICE,
+        ServiceCategoryPlural[EntityType.DATABASE_SERVICE],
         mockFqn
       );
       expect(result).toEqual(mockServiceData);
     });
 
-    it('should fetch MESSAGING_SERVICE using getServiceByFQN', async () => {
+    it('should fetch MESSAGING_SERVICE using plural service category', async () => {
       const mockServiceData = { id: '1', name: 'test-messaging-service' };
       (serviceAPI.getServiceByFQN as jest.Mock).mockResolvedValue(
         mockServiceData
@@ -171,7 +172,7 @@ describe('EntityByFqnUtils', () => {
       );
 
       expect(serviceAPI.getServiceByFQN).toHaveBeenCalledWith(
-        EntityType.MESSAGING_SERVICE,
+        ServiceCategoryPlural[EntityType.MESSAGING_SERVICE],
         mockFqn
       );
       expect(result).toEqual(mockServiceData);
@@ -252,7 +253,6 @@ describe('EntityByFqnUtils', () => {
         EntityType.API_SERVICE,
         EntityType.SECURITY_SERVICE,
         EntityType.METADATA_SERVICE,
-        EntityType.SERVICE,
       ];
 
       const mockServiceData = { id: '1', name: 'test-service' };
@@ -264,7 +264,9 @@ describe('EntityByFqnUtils', () => {
         await getEntityByFqnUtil(serviceType, mockFqn);
 
         expect(serviceAPI.getServiceByFQN).toHaveBeenCalledWith(
-          serviceType,
+          ServiceCategoryPlural[
+            serviceType as keyof typeof ServiceCategoryPlural
+          ],
           mockFqn
         );
       }
@@ -272,6 +274,21 @@ describe('EntityByFqnUtils', () => {
       expect(serviceAPI.getServiceByFQN).toHaveBeenCalledTimes(
         serviceTypes.length
       );
+    });
+
+    it('should call getServiceByFQN with service entity type unchanged', async () => {
+      const mockServiceData = { id: '1', name: 'generic-service' };
+      (serviceAPI.getServiceByFQN as jest.Mock).mockResolvedValue(
+        mockServiceData
+      );
+
+      const result = await getEntityByFqnUtil(EntityType.SERVICE, mockFqn);
+
+      expect(serviceAPI.getServiceByFQN).toHaveBeenCalledWith(
+        EntityType.SERVICE,
+        mockFqn
+      );
+      expect(result).toEqual(mockServiceData);
     });
   });
 });

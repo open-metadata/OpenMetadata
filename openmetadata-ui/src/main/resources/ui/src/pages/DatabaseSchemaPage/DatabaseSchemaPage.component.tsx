@@ -102,7 +102,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const { setFilters, filters } = useTableFilters(INITIAL_TABLE_FILTERS);
   const { tab: activeTab = EntityTabs.TABLE } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedDatabaseSchemaFQN } = useFqn();
+  const { entityFqn: decodedDatabaseSchemaFQN } = useFqn({
+    type: EntityType.DATABASE_SCHEMA,
+  });
   const navigate = useNavigate();
 
   const [isPermissionsLoading, setIsPermissionsLoading] = useState(true);

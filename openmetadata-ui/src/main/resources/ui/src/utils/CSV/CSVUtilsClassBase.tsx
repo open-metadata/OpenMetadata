@@ -40,7 +40,7 @@ import { getCustomPropertyEntityType } from './CSV.utils';
 
 class CSVUtilsClassBase {
   public hideImportsColumnList() {
-    return ['glossaryStatus'];
+    return ['glossaryStatus', 'inspectionQuery'];
   }
 
   public columnsWithMultipleValuesEscapeNeeded() {
@@ -58,6 +58,7 @@ class CSVUtilsClassBase {
       'storedProcedure.code',
       'column.name*',
       'name*',
+      'parameterValues',
     ];
   }
 

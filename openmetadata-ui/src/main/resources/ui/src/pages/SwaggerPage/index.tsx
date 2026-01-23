@@ -35,13 +35,11 @@ const SwaggerPage = () => {
     fetchIdToken();
   }, []);
 
-
   const apiKeyValue = `Bearer ${idToken}`;
 
   if (!idToken) {
     return <Loader />;
   }
-
 
   return (
     <div

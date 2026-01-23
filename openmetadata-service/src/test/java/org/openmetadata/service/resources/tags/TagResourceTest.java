@@ -763,7 +763,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
         new PatternRecognizer()
             .withType("pattern")
             .withSupportedEntity(PIIEntity.EMAIL_ADDRESS)
-            .withSupportedLanguage("en")
+            .withSupportedLanguage(ClassificationLanguage.EN)
             .withPatterns(
                 List.of(
                     new Pattern()
@@ -813,7 +813,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
         new PatternRecognizer()
             .withType("pattern")
             .withSupportedEntity(PIIEntity.US_SSN)
-            .withSupportedLanguage("en")
+            .withSupportedLanguage(ClassificationLanguage.EN)
             .withPatterns(
                 List.of(
                     new Pattern()
@@ -917,7 +917,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
         new DenyListRecognizer()
             .withType("deny_list")
             .withSupportedEntity(PIIEntity.CREDIT_CARD)
-            .withSupportedLanguage("en")
+            .withSupportedLanguage(ClassificationLanguage.EN)
             .withDenyList(List.of("password", "secret", "token", "key"))
             .withRegexFlags(
                 new RegexFlags().withMultiline(true).withDotAll(true).withIgnoreCase(false));
@@ -935,7 +935,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
         new ContextRecognizer()
             .withType("context")
             .withSupportedEntity(PIIEntity.PERSON)
-            .withSupportedLanguage("en")
+            .withSupportedLanguage(ClassificationLanguage.EN)
             .withContextWords(List.of("name", "person", "user", "customer"))
             .withMinScore(0.4)
             .withMaxScore(0.8);
@@ -1027,7 +1027,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
         new PatternRecognizer()
             .withType("pattern")
             .withSupportedEntity(PIIEntity.ES_NIE)
-            .withSupportedLanguage("en")
+            .withSupportedLanguage(ClassificationLanguage.EN)
             .withPatterns(List.of());
 
     Recognizer invalidConfidence =

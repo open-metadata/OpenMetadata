@@ -28,7 +28,6 @@ import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.events.EventSubscriptionDiagnosticInfo;
@@ -36,6 +35,7 @@ import org.openmetadata.schema.api.events.EventsRecord;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FailedEventResponse;
+import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -148,7 +148,6 @@ public class EventSubscriptionScheduler {
     }
   }
 
-  @Transaction
   public void addSubscriptionPublisher(EventSubscription eventSubscription, boolean reinstall)
       throws SchedulerException,
           ClassNotFoundException,
@@ -235,7 +234,6 @@ public class EventSubscriptionScheduler {
     return new SubscriptionStatus().withStatus(status).withTimestamp(System.currentTimeMillis());
   }
 
-  @Transaction
   @SneakyThrows
   public void updateEventSubscription(EventSubscription eventSubscription) {
     deleteEventSubscriptionPublisher(eventSubscription);
@@ -244,7 +242,6 @@ public class EventSubscriptionScheduler {
     }
   }
 
-  @Transaction
   public void deleteEventSubscriptionPublisher(EventSubscription deletedEntity)
       throws SchedulerException {
     alertsScheduler.deleteJob(new JobKey(deletedEntity.getId().toString(), ALERT_JOB_GROUP));
@@ -253,7 +250,6 @@ public class EventSubscriptionScheduler {
     LOG.info("Alert publisher deleted for {}", deletedEntity.getName());
   }
 
-  @Transaction
   public void deleteSuccessfulAndFailedEventsRecordByAlert(UUID id) {
     Entity.getCollectionDAO()
         .eventSubscriptionDAO()
@@ -343,6 +339,10 @@ public class EventSubscriptionScheduler {
   }
 
   public long getRelevantUnprocessedEvents(UUID subscriptionId) {
+    // Fetch subscription ONCE before the loop to avoid N+1 query problem
+    // Previously, getEventSubscription was called for each event in the stream
+    FilteringRules filteringRules = getEventSubscription(subscriptionId).getFilteringRules();
+
     long offset =
         getEventSubscriptionOffset(subscriptionId)
             .map(EventSubscriptionOffset::getCurrentOffset)
@@ -352,12 +352,9 @@ public class EventSubscriptionScheduler {
         .map(
             eventJson -> {
               ChangeEvent event = JsonUtils.readValue(eventJson, ChangeEvent.class);
-              return AlertUtil.checkIfChangeEventIsAllowed(
-                      event, getEventSubscription(subscriptionId).getFilteringRules())
-                  ? event
-                  : null;
+              return AlertUtil.checkIfChangeEventIsAllowed(event, filteringRules) ? event : null;
             })
-        .filter(Objects::nonNull) // Remove null entries (events that did not pass filtering)
+        .filter(Objects::nonNull)
         .count();
   }
 
@@ -435,6 +432,9 @@ public class EventSubscriptionScheduler {
 
   public List<ChangeEvent> getRelevantUnprocessedEvents(
       UUID subscriptionId, int limit, int paginationOffset) {
+    // Fetch subscription ONCE before the loop to avoid N+1 query problem
+    FilteringRules filteringRules = getEventSubscription(subscriptionId).getFilteringRules();
+
     long offset =
         getEventSubscriptionOffset(subscriptionId)
             .map(EventSubscriptionOffset::getCurrentOffset)
@@ -447,12 +447,9 @@ public class EventSubscriptionScheduler {
         .map(
             eventJson -> {
               ChangeEvent event = JsonUtils.readValue(eventJson, ChangeEvent.class);
-              return AlertUtil.checkIfChangeEventIsAllowed(
-                      event, getEventSubscription(subscriptionId).getFilteringRules())
-                  ? event
-                  : null;
+              return AlertUtil.checkIfChangeEventIsAllowed(event, filteringRules) ? event : null;
             })
-        .filter(Objects::nonNull) // Remove null entries (events that did not pass filtering)
+        .filter(Objects::nonNull)
         .toList();
   }
 

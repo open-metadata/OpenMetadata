@@ -20,7 +20,7 @@
         <okhttp.version>4.12.0</okhttp.version>
         <awaitility.version>4.2.2</awaitility.version>
         <testcontainers.version>1.20.4</testcontainers.version>
-        <jetty.version>11.0.25</jetty.version>
+        <jetty.version>12.1.1</jetty.version>
     </properties>
     
     <dependencyManagement>
@@ -81,8 +81,8 @@
             <version>${dropwizard.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-servlet</artifactId>
+            <groupId>org.eclipse.jetty.ee10</groupId>
+            <artifactId>jetty-ee10-servlet</artifactId>
             <version>${jetty.version}</version>
         </dependency>
         <dependency>
@@ -136,10 +136,10 @@
             <version>${jetty.version}</version>
             <scope>test</scope>
         </dependency>
+        <!-- Use Apache HTTP client connector instead of Jetty connector for Jetty 12.1 compatibility -->
         <dependency>
             <groupId>org.glassfish.jersey.connectors</groupId>
-            <artifactId>jersey-jetty-connector</artifactId>
-            <version>3.1.3</version>
+            <artifactId>jersey-apache-connector</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

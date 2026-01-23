@@ -85,8 +85,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const { customizedPage, isLoading } = useCustomPages(PageType.MlModel);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
-  const { fqn: decodedMlModelFqn } = useFqn();
-
+  const { entityFqn: decodedMlModelFqn } = useFqn({ type: EntityType.MLMODEL });
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );

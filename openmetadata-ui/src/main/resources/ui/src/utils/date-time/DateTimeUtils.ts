@@ -27,6 +27,7 @@ import i18next from '../i18next/LocalUtil';
 export const DATE_TIME_12_HOUR_FORMAT = 'MMM dd, yyyy, hh:mm a'; // e.g. Jan 01, 12:00 AM
 export const DATE_TIME_WITH_OFFSET_FORMAT = "MMMM dd, yyyy, h:mm a '(UTC'ZZ')'"; // e.g. Jan 01, 12:00 AM (UTC+05:30)
 export const DATE_TIME_WEEKDAY_WITH_ORDINAL = "ccc d'th' MMMM, yyyy, hh:mm a"; // e.g. Mon 1st January, 2025, 12:00 AM
+export const DATE_TIME_WITH_OFFSET_SHORT = "MMM dd, yyyy, hh:mm a '(UTC'ZZ')'"; // e.g. Jan 01, 2025, 12:00 AM (UTC+05:30)
 /**
  * @param date EPOCH millis
  * @returns Formatted date for valid input. Format: MMM DD, YYYY, HH:MM AM/PM
@@ -38,7 +39,7 @@ export const formatDateTime = (date?: number) => {
 
   const dateTime = DateTime.fromMillis(date, { locale: i18next.language });
 
-  return dateTime.toLocaleString(DateTime.DATETIME_MED);
+  return dateTime.toFormat(DATE_TIME_WITH_OFFSET_SHORT);
 };
 
 /**

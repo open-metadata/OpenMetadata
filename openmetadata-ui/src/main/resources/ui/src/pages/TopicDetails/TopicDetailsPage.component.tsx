@@ -61,7 +61,8 @@ const TopicDetailsPage: FunctionComponent = () => {
   const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const { fqn: topicFQN } = useFqn();
+  const { entityFqn: topicFQN } = useFqn({ type: EntityType.TOPIC });
+
   const [topicDetails, setTopicDetails] = useState<Topic>({} as Topic);
   const [isLoading, setLoading] = useState<boolean>(true);
   const [isError, setIsError] = useState(false);
@@ -246,7 +247,9 @@ const TopicDetailsPage: FunctionComponent = () => {
   }, []);
 
   useEffect(() => {
-    fetchResourcePermission(topicFQN);
+    if (topicFQN) {
+      fetchResourcePermission(topicFQN);
+    }
   }, [topicFQN]);
 
   useEffect(() => {

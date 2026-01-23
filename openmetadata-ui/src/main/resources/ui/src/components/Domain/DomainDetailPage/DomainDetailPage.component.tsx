@@ -83,6 +83,8 @@ const DomainDetailPage = () => {
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
+
+        throw error as AxiosError;
       }
     }
   };

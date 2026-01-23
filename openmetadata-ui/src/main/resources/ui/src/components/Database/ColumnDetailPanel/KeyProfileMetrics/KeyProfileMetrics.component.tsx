@@ -18,8 +18,8 @@ import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { ColumnProfile } from '../../../../generated/entity/data/table';
 import { getTableColumnsByFQN } from '../../../../rest/tableAPI';
-import { showErrorToast } from '../../../../utils/ToastUtils';
 import { getKeyProfileMetrics } from '../../../../utils/TableProfilerUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
 import {
   KeyProfileMetricsProps,

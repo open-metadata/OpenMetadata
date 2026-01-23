@@ -67,6 +67,7 @@ class PythonDialects(Enum):
     Databricks = "databricks"
     Db2 = "db2"
     Doris = "pydoris"
+    StarRocks = "starrocks"
     Druid = "druid"
     DynamoDB = "dynamoDB"
     Glue = "glue"

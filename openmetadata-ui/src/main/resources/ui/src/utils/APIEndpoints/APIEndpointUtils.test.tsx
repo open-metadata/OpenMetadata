@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { DataTypeTopic, APIEndpoint, TagSource } from '../../generated/entity/data/apiEndpoint';
+import {
+  APIEndpoint,
+  DataTypeTopic,
+  TagSource,
+} from '../../generated/entity/data/apiEndpoint';
 import { EntityReference } from '../../generated/type/entityReference';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { extractApiEndpointFields } from './APIEndpointUtils';

@@ -134,6 +134,41 @@ public interface SearchClient
       }
       """;
 
+  /**
+   * Script to update domain FQNs in an entity's domains array during domain rename.
+   * Updates the fullyQualifiedName field in-place for matching domains.
+   *
+   * <p>Params: - oldDomainFqns: List of old domain FQNs (parallel to newDomains) - newDomains: List
+   * of new domain objects with updated FQNs
+   */
+  String UPDATE_ASSET_DOMAIN_FQN_SCRIPT =
+      """
+      if (ctx._source.containsKey('domains') && ctx._source.domains != null) {
+        for (int i = 0; i < ctx._source.domains.size(); i++) {
+          if (ctx._source.domains[i].containsKey('fullyQualifiedName')) {
+            String currentFqn = ctx._source.domains[i].fullyQualifiedName;
+            for (int j = 0; j < params.oldDomainFqns.size(); j++) {
+              if (currentFqn.equals(params.oldDomainFqns[j])) {
+                // Update all fields from the new domain object
+                def newDomain = params.newDomains[j];
+                if (newDomain.containsKey('id')) {
+                  ctx._source.domains[i].id = newDomain.id;
+                }
+                ctx._source.domains[i].fullyQualifiedName = newDomain.fullyQualifiedName;
+                if (newDomain.containsKey('name')) {
+                  ctx._source.domains[i].name = newDomain.name;
+                }
+                if (newDomain.containsKey('displayName')) {
+                  ctx._source.domains[i].displayName = newDomain.displayName;
+                }
+                break;
+              }
+            }
+          }
+        }
+      }
+      """;
+
   String UPDATE_CERTIFICATION_SCRIPT =
       """
       if (ctx._source.certification != null && ctx._source.certification.tagLabel != null) {
@@ -293,6 +328,52 @@ public interface SearchClient
       if (ctx._source.domains == null || ctx._source.domains.isEmpty() ||
           (ctx._source.domains.size() > 0 && ctx._source.domains[0] != null && ctx._source.domains[0].inherited == true)) {
         ctx._source.domains = params.updatedDomains;
+      }
+      """;
+
+  /**
+   * Script to update domain entity FQNs by prefix replacement.
+   * Updates the domain's fullyQualifiedName and parent.fullyQualifiedName if they start with oldFqn.
+   *
+   * <p>Params:
+   * - oldFqn: Old domain FQN prefix to replace
+   * - newFqn: New domain FQN prefix
+   */
+  String UPDATE_DOMAIN_FQN_BY_PREFIX_SCRIPT =
+      """
+      if (ctx._source.containsKey('fullyQualifiedName')) {
+        String fqn = ctx._source.fullyQualifiedName;
+        if (fqn.equals(params.oldFqn) || fqn.startsWith(params.oldFqn + '.')) {
+          ctx._source.fullyQualifiedName = params.newFqn + fqn.substring(params.oldFqn.length());
+        }
+      }
+      if (ctx._source.containsKey('parent') && ctx._source.parent != null && ctx._source.parent.containsKey('fullyQualifiedName')) {
+        String parentFqn = ctx._source.parent.fullyQualifiedName;
+        if (parentFqn.equals(params.oldFqn) || parentFqn.startsWith(params.oldFqn + '.')) {
+          ctx._source.parent.fullyQualifiedName = params.newFqn + parentFqn.substring(params.oldFqn.length());
+        }
+      }
+      """;
+
+  /**
+   * Script to update domain references in asset entities by prefix replacement.
+   * Updates any domain in the domains array where fullyQualifiedName starts with oldFqn.
+   *
+   * <p>Params:
+   * - oldFqn: Old domain FQN prefix to replace
+   * - newFqn: New domain FQN prefix
+   */
+  String UPDATE_ASSET_DOMAIN_FQN_BY_PREFIX_SCRIPT =
+      """
+      if (ctx._source.containsKey('domains') && ctx._source.domains != null) {
+        for (int i = 0; i < ctx._source.domains.size(); i++) {
+          if (ctx._source.domains[i].containsKey('fullyQualifiedName')) {
+            String fqn = ctx._source.domains[i].fullyQualifiedName;
+            if (fqn.equals(params.oldFqn) || fqn.startsWith(params.oldFqn + '.')) {
+              ctx._source.domains[i].fullyQualifiedName = params.newFqn + fqn.substring(params.oldFqn.length());
+            }
+          }
+        }
       }
       """;
 

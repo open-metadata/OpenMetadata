@@ -2,7 +2,7 @@
 
 # Governance
 
-> **6 Components** | **44 Files** | **688 Tests** | **1159 Scenarios** 🚀
+> **6 Components** | **51 Files** | **757 Tests** | **1233 Scenarios** 🚀
 
 ## Table of Contents
 - [Custom Properties](#custom-properties)
@@ -403,17 +403,12 @@
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Metric Entity Special Test Cases** - Verify Metric Type Update | Metric Type Update |
-| 2 | **Metric Entity Special Test Cases** - Verify Unit of Measurement Update | Unit of Measurement Update |
-| 3 | **Metric Entity Special Test Cases** - Verify Granularity Update | Granularity Update |
-| 4 | **Metric Entity Special Test Cases** - verify metric expression update | Metric expression update |
-| 5 | **Metric Entity Special Test Cases** - Verify Related Metrics Update | Related Metrics Update |
-
-### Listing page and add Metric flow should work
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Listing page and add Metric flow should work** - Metric listing page and add metric from the "Add button" | Metric listing page and add metric from the "Add button" |
+| 1 | **Metric Entity Special Test Cases** - Metric creation flow should work | Metric creation flow should work |
+| 2 | **Metric Entity Special Test Cases** - Verify Metric Type Update | Metric Type Update |
+| 3 | **Metric Entity Special Test Cases** - Verify Unit of Measurement Update | Unit of Measurement Update |
+| 4 | **Metric Entity Special Test Cases** - Verify Granularity Update | Granularity Update |
+| 5 | **Metric Entity Special Test Cases** - verify metric expression update | Metric expression update |
+| 6 | **Metric Entity Special Test Cases** - Verify Related Metrics Update | Related Metrics Update |
 
 </details>
 
@@ -462,7 +457,7 @@
 ## Domains & Data Products
 
 <details open>
-<summary>📄 <b>Domains.spec.ts</b> (27 tests, 46 scenarios)</summary>
+<summary>📄 <b>Domains.spec.ts</b> (28 tests, 51 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts)
 
@@ -498,20 +493,26 @@
 | | ↳ *Add assets to subdomain* | |
 | | ↳ *Verify domain asset count matches displayed cards* | |
 | | ↳ *Verify subdomain asset count matches displayed cards* | |
-| 11 | **Domains** - Verify domain tags and glossary terms | Domain tags and glossary terms |
-| 12 | **Domains** - Verify data product tags and glossary terms | Data product tags and glossary terms |
-| 13 | **Domains** - Verify clicking All Domains sets active domain to default value | Clicking All Domains sets active domain to default value |
-| 14 | **Domains** - Verify redirect path on data product delete | Redirect path on data product delete |
-| 15 | **Domains** - Verify duplicate domain creation | Duplicate domain creation |
-| 16 | **Domains** - Create domain custom property and verify value persistence | Create domain custom property and verify value persistence |
+| 11 | **Domains** - Verify domain data products count includes subdomain data products | Domain data products count includes subdomain data products |
+| | ↳ *Create domain, subdomain, and data products via API* | |
+| | ↳ *Verify domain data products tab shows both domain and subdomain data products* | |
+| | ↳ *Verify subdomain data products tab shows only its own data products* | |
+| | ↳ *Delete subdomain and verify its data products are not visible in domain* | |
+| | ↳ *Verify deeply nested subdomain data products are visible at each level* | |
+| 12 | **Domains** - Verify domain tags and glossary terms | Domain tags and glossary terms |
+| 13 | **Domains** - Verify data product tags and glossary terms | Data product tags and glossary terms |
+| 14 | **Domains** - Verify clicking All Domains sets active domain to default value | Clicking All Domains sets active domain to default value |
+| 15 | **Domains** - Verify redirect path on data product delete | Redirect path on data product delete |
+| 16 | **Domains** - Verify duplicate domain creation | Duplicate domain creation |
+| 17 | **Domains** - Create domain custom property and verify value persistence | Create domain custom property and verify value persistence |
 | | ↳ *Create custom property for domain entity* | |
 | | ↳ *Navigate to domain and assign custom property value* | |
 | | ↳ *Reload and verify custom property value persists* | |
 | | ↳ *Cleanup custom property* | |
-| 17 | **Domains** - Domain announcement create, edit & delete | Domain announcement create, edit & delete |
-| 18 | **Domains** - Data Product announcement create, edit & delete | Data Product announcement create, edit & delete |
-| 19 | **Domains** - should handle domain after description is deleted | Tests that verify UI handles entities with deleted descriptions gracefully. The issue occurs when: 1. An entity is created with a description 2. The description is later deleted/cleared via API patch 3. The API returns the entity without a description field (due to @JsonInclude(NON_NULL)) 4. UI should handle this gracefully instead of crashing |
-| 20 | **Domains** - should handle data product after description is deleted | Handle data product after description is deleted |
+| 18 | **Domains** - Domain announcement create, edit & delete | Domain announcement create, edit & delete |
+| 19 | **Domains** - Data Product announcement create, edit & delete | Data Product announcement create, edit & delete |
+| 20 | **Domains** - should handle domain after description is deleted | Tests that verify UI handles entities with deleted descriptions gracefully. The issue occurs when: 1. An entity is created with a description 2. The description is later deleted/cleared via API patch 3. The API returns the entity without a description field (due to @JsonInclude(NON_NULL)) 4. UI should handle this gracefully instead of crashing |
+| 21 | **Domains** - should handle data product after description is deleted | Handle data product after description is deleted |
 
 ### Domains Rbac
 
@@ -551,6 +552,201 @@
 | 1 | **Domain Tree View Functionality** - should render the domain tree view with correct details | Render the domain tree view with correct details |
 | 2 | **Domain Tree View Functionality** - Verify Domain entity API calls do not include invalid domains field in glossary term assets | Domain entity API calls do not include invalid domains field in glossary term assets |
 | 3 | **Domain Tree View Functionality** - Verify Domain entity API calls do not include invalid domains field in tag assets | Domain entity API calls do not include invalid domains field in tag assets |
+
+</details>
+
+<details open>
+<summary>📄 <b>DomainUIInteractions.spec.ts</b> (20 tests, 20 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/DomainUIInteractions.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/DomainUIInteractions.spec.ts)
+
+### Domain Owner Management
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Domain Owner Management** - Add owner to domain via UI | Add owner to domain via UI |
+| 2 | **Domain Owner Management** - Remove owner from domain via UI | Remove owner from domain via UI |
+
+### Domain Expert Management
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Domain Expert Management** - Add expert to domain via UI | Add expert to domain via UI |
+
+### Domain Style Editing
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Domain Style Editing** - Edit domain style - change icon URL | Edit domain style - change icon URL |
+
+### Data Product UI Operations
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Data Product UI Operations** - Rename data product via UI | Rename data product via UI |
+| 2 | **Data Product UI Operations** - Delete data product via UI | Delete data product via UI |
+| 3 | **Data Product UI Operations** - Add owner to data product via UI | Add owner to data product via UI |
+
+### Subdomain Management
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Subdomain Management** - Delete subdomain via UI | Delete subdomain via UI |
+| 2 | **Subdomain Management** - Rename subdomain via UI | Rename subdomain via UI |
+
+### Domain Form Validation
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Domain Form Validation** - Domain name validation - special characters | Domain name validation - special characters |
+| 2 | **Domain Form Validation** - Domain name validation - max length | Domain name validation - max length |
+| 3 | **Domain Form Validation** - Domain description required validation | Domain description required validation |
+
+### Domain Assets Tab Operations
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Domain Assets Tab Operations** - Search assets within domain | Search assets within domain |
+
+### Domain Global Dropdown
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Domain Global Dropdown** - Select domain from global dropdown filters explore | Select domain from global dropdown filters explore |
+| 2 | **Domain Global Dropdown** - Clear domain selection returns to All Domains | Clear domain selection returns to All Domains |
+
+### Domain Breadcrumb Navigation
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Domain Breadcrumb Navigation** - Navigate from subdomain to parent domain via breadcrumb | Navigate from subdomain to parent domain via breadcrumb |
+| 2 | **Domain Breadcrumb Navigation** - Navigate from data product to parent domain | Navigate from data product to parent domain |
+
+### Delete Domain with Dependencies
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Delete Domain with Dependencies** - Delete domain with subdomains shows warning | Delete domain with subdomains shows warning |
+| 2 | **Delete Domain with Dependencies** - Delete domain with assets removes domain from assets | Delete domain with assets removes domain from assets |
+
+### Copy FQN Functionality
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Copy FQN Functionality** - Copy domain FQN to clipboard | Copy domain FQN to clipboard |
+
+</details>
+
+<details open>
+<summary>📄 <b>DomainAdvanced.spec.ts</b> (19 tests, 19 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/DomainAdvanced.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/DomainAdvanced.spec.ts)
+
+### Domain Expert Permissions
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Domain Expert Permissions** - Domain expert can edit domain description and tags | Domain expert can edit domain description and tags |
+| 2 | **Domain Expert Permissions** - Domain expert can manage data products | Domain expert can manage data products |
+
+### Move Assets Between Domains
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Move Assets Between Domains** - Move table from one domain to another via API | Move table from one domain to another via API |
+| 2 | **Move Assets Between Domains** - Move asset from domain to subdomain via API | Move asset from domain to subdomain via API |
+
+### Subdomain Permissions
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Subdomain Permissions** - User with domain access can view subdomains | User with domain access can view subdomains |
+| 2 | **Subdomain Permissions** - User can access subdomain details page | User can access subdomain details page |
+
+### Domain Version History
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Domain Version History** - Domain version history shows changes | Domain version history shows changes |
+| 2 | **Domain Version History** - Data product version history shows changes | Data product version history shows changes |
+
+### Domain Description Editing
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Domain Description Editing** - Admin can edit domain description | Admin can edit domain description |
+| 2 | **Domain Description Editing** - Admin can edit data product description | Admin can edit data product description |
+
+### Bulk Domain Asset Operations
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Bulk Domain Asset Operations** - Add multiple assets to domain at once | Add multiple assets to domain at once |
+| 2 | **Bulk Domain Asset Operations** - Remove multiple assets from domain at once | Remove multiple assets from domain at once |
+
+### Cross-Domain Access Denial
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Cross-Domain Access Denial** - User can access assets in their domain | User can access assets in their domain |
+| 2 | **Cross-Domain Access Denial** - User with domain policy is restricted by policy rules | User with domain policy is restricted by policy rules |
+
+### Domain Type Behavior
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Domain Type Behavior** - Create domain with Source System type | Create domain with Source System type |
+| 2 | **Domain Type Behavior** - Create domain with Consumer-aligned type | Create domain with Consumer-aligned type |
+
+### Data Product Asset Management
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Data Product Asset Management** - Move assets between data products | Move assets between data products |
+
+### Domain Search and Filter
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Domain Search and Filter** - Search for domain by name | Search for domain by name |
+| 2 | **Domain Search and Filter** - Filter assets by domain from explore page | Filter assets by domain from explore page |
+
+</details>
+
+<details open>
+<summary>📄 <b>DataProductAndSubdomains.spec.ts</b> (15 tests, 15 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/DataProductAndSubdomains.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/DataProductAndSubdomains.spec.ts)
+
+### Data Product Comprehensive Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Data Product Comprehensive Tests** - Create data product via UI with description | Create data product via UI with description |
+| 2 | **Data Product Comprehensive Tests** - Edit data product description via UI | Edit data product description via UI |
+| 3 | **Data Product Comprehensive Tests** - Add expert to data product via UI | Add expert to data product via UI |
+| 4 | **Data Product Comprehensive Tests** - Add tags to data product via UI | Add tags to data product via UI |
+| 5 | **Data Product Comprehensive Tests** - Add assets to data product and verify count | Add assets to data product and verify count |
+| 6 | **Data Product Comprehensive Tests** - Data product linked to subdomain | Data product linked to subdomain |
+
+### Multiple Subdomains Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Multiple Subdomains Tests** - Create multiple sibling subdomains under a domain | Create multiple sibling subdomains under a domain |
+| 2 | **Multiple Subdomains Tests** - Create nested subdomain (subdomain of subdomain) | Create nested subdomain (subdomain of subdomain) |
+| 3 | **Multiple Subdomains Tests** - Navigate between sibling subdomains | Navigate between sibling subdomains |
+| 4 | **Multiple Subdomains Tests** - Assign assets to different subdomains | Assign assets to different subdomains |
+| 5 | **Multiple Subdomains Tests** - Data products under different subdomains | Data products under different subdomains |
+| 6 | **Multiple Subdomains Tests** - Subdomain assets count reflects in parent domain | Subdomain assets count reflects in parent domain |
+| 7 | **Multiple Subdomains Tests** - Delete subdomain with data products shows proper cleanup | Delete subdomain with data products shows proper cleanup |
+
+### Data Product Search and Filter
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Data Product Search and Filter** - Search data products by name | Search data products by name |
+| 2 | **Data Product Search and Filter** - Filter data products by domain in global selector | Filter data products by domain in global selector |
 
 </details>
 
@@ -651,6 +847,67 @@
 </details>
 
 <details open>
+<summary>📄 <b>DataProductRename.spec.ts</b> (4 tests, 4 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DataProductRename.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataProductRename.spec.ts)
+
+### Data Product Rename
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Data Product Rename** - should rename data product and verify assets are still associated | Rename data product and verify assets are still associated |
+| 2 | **Data Product Rename** - should update only display name without changing the actual name | Update only display name without changing the actual name |
+| 3 | **Data Product Rename** - should handle multiple consecutive renames and preserve assets | Handle multiple consecutive renames and preserve assets |
+| 4 | **Data Product Rename** - should show error when renaming to a name that already exists | Show error when renaming to a name that already exists |
+
+</details>
+
+<details open>
+<summary>📄 <b>DataProductRenameConsolidation.spec.ts</b> (4 tests, 4 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DataProductRenameConsolidation.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataProductRenameConsolidation.spec.ts)
+
+### Data Product Rename + Field Update Consolidation
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Data Product Rename + Field Update Consolidation** - Rename then update description - assets should be preserved | Rename then update description - assets should be preserved |
+| 2 | **Data Product Rename + Field Update Consolidation** - Rename then add tags - assets should be preserved | Rename then add tags - assets should be preserved |
+| 3 | **Data Product Rename + Field Update Consolidation** - Rename then change owner - assets should be preserved | Rename then change owner - assets should be preserved |
+| 4 | **Data Product Rename + Field Update Consolidation** - Multiple rename + update cycles - assets should be preserved | Multiple rename + update cycles - assets should be preserved |
+
+</details>
+
+<details open>
+<summary>📄 <b>DataProductPermissions.spec.ts</b> (3 tests, 3 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Permissions/DataProductPermissions.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Permissions/DataProductPermissions.spec.ts)
+
+### Data Product Permissions
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Data Product Permissions** - Data Product allow operations | Data Product allow operations |
+| 2 | **Data Product Permissions** - Data Product deny operations | Data Product deny operations |
+| 3 | **Data Product Permissions** - Data Product expert can edit data product details | Data Product expert can edit data product details |
+
+</details>
+
+<details open>
+<summary>📄 <b>DataProductDomainMigration.spec.ts</b> (2 tests, 2 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DataProductDomainMigration.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataProductDomainMigration.spec.ts)
+
+### Data Product Domain Migration
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Data Product Domain Migration** - Changing data product domain via API migrates assets to new domain | Changing data product domain via API migrates assets to new domain |
+| 2 | **Data Product Domain Migration** - Data product with no assets can change domain without confirmation | Data product with no assets can change domain without confirmation |
+
+</details>
+
+<details open>
 <summary>📄 <b>DataProductPersonaCustomization.spec.ts</b> (2 tests, 7 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/DataProductPersonaCustomization.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataProductPersonaCustomization.spec.ts)
@@ -710,7 +967,7 @@
 ## Glossary
 
 <details open>
-<summary>📄 <b>Glossary.spec.ts</b> (44 tests, 68 scenarios)</summary>
+<summary>📄 <b>Glossary.spec.ts</b> (45 tests, 70 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts)
 
@@ -775,33 +1032,36 @@
 | 28 | **Glossary tests** - Check for duplicate Glossary Term | For duplicate Glossary Term |
 | | ↳ *Create Glossary Term One* | |
 | | ↳ *Create Glossary Term Two* | |
-| 29 | **Glossary tests** - Verify Glossary Deny Permission | Glossary Deny Permission |
-| 30 | **Glossary tests** - Verify Glossary Term Deny Permission | Glossary Term Deny Permission |
-| 31 | **Glossary tests** - Term should stay approved when changes made by reviewer | Term should stay approved when changes made by reviewer |
+| 29 | **Glossary tests** - Check for duplicate Glossary Term with Glossary having dot in name | For duplicate Glossary Term with Glossary having dot in name |
+| | ↳ *Create Glossary Term One* | |
+| | ↳ *Create Glossary Term Two* | |
+| 30 | **Glossary tests** - Verify Glossary Deny Permission | Glossary Deny Permission |
+| 31 | **Glossary tests** - Verify Glossary Term Deny Permission | Glossary Term Deny Permission |
+| 32 | **Glossary tests** - Term should stay approved when changes made by reviewer | Term should stay approved when changes made by reviewer |
 | | ↳ *Navigate to glossary and verify workflow widget* | |
 | | ↳ *Perform Changes by reviewer* | |
-| 32 | **Glossary tests** - Glossary creation with domain selection | Glossary creation with domain selection |
+| 33 | **Glossary tests** - Glossary creation with domain selection | Glossary creation with domain selection |
 | | ↳ *Create domain* | |
 | | ↳ *Navigate to Glossary page* | |
 | | ↳ *Open Add Glossary form* | |
 | | ↳ *Save glossary and verify creation with domain* | |
-| 33 | **Glossary tests** - Create glossary, change language to Dutch, and delete glossary | Create glossary, change language to Dutch, and delete glossary |
+| 34 | **Glossary tests** - Create glossary, change language to Dutch, and delete glossary | Create glossary, change language to Dutch, and delete glossary |
 | | ↳ *Create Glossary via API* | |
 | | ↳ *Navigate to Glossary page* | |
 | | ↳ *Change application language to German* | |
 | | ↳ *Open delete modal and verify delete confirmation* | |
 | | ↳ *Change language back to English* | |
-| 34 | **Glossary tests** - should handle glossary after description is deleted | Tests that verify UI handles entities with deleted descriptions gracefully. The issue occurs when: 1. An entity is created with a description 2. The description is later deleted/cleared via API patch 3. The API returns the entity without a description field (due to @JsonInclude(NON_NULL)) 4. UI should handle this gracefully instead of crashing |
-| 35 | **Glossary tests** - should handle glossary term after description is deleted | Handle glossary term after description is deleted |
-| 36 | **Glossary tests** - Create glossary with all optional fields (tags, owners, reviewers, domain) | Create glossary with all optional fields (tags, owners, reviewers, domain) |
-| 37 | **Glossary tests** - Create glossary term via row action (+) button | Create glossary term via row action (+) button |
-| 38 | **Glossary tests** - Create term with synonyms during creation | Create term with synonyms during creation |
-| 39 | **Glossary tests** - Create term with references during creation | Create term with references during creation |
-| 40 | **Glossary tests** - Create term with related terms, tags and owners during creation | Create term with related terms, tags and owners during creation |
-| 41 | **Glossary tests** - Update glossary term display name via edit modal | Update glossary term display name via edit modal |
-| 42 | **Glossary tests** - Update glossary display name via rename modal | Update glossary display name via rename modal |
-| 43 | **Glossary tests** - Cancel glossary delete operation | Cancel glossary delete operation |
-| 44 | **Glossary tests** - Cancel glossary term delete operation | Cancel glossary term delete operation |
+| 35 | **Glossary tests** - should handle glossary after description is deleted | Tests that verify UI handles entities with deleted descriptions gracefully. The issue occurs when: 1. An entity is created with a description 2. The description is later deleted/cleared via API patch 3. The API returns the entity without a description field (due to @JsonInclude(NON_NULL)) 4. UI should handle this gracefully instead of crashing |
+| 36 | **Glossary tests** - should handle glossary term after description is deleted | Handle glossary term after description is deleted |
+| 37 | **Glossary tests** - Create glossary with all optional fields (tags, owners, reviewers, domain) | Create glossary with all optional fields (tags, owners, reviewers, domain) |
+| 38 | **Glossary tests** - Create glossary term via row action (+) button | Create glossary term via row action (+) button |
+| 39 | **Glossary tests** - Create term with synonyms during creation | Create term with synonyms during creation |
+| 40 | **Glossary tests** - Create term with references during creation | Create term with references during creation |
+| 41 | **Glossary tests** - Create term with related terms, tags and owners during creation | Create term with related terms, tags and owners during creation |
+| 42 | **Glossary tests** - Update glossary term display name via edit modal | Update glossary term display name via edit modal |
+| 43 | **Glossary tests** - Update glossary display name via rename modal | Update glossary display name via rename modal |
+| 44 | **Glossary tests** - Cancel glossary delete operation | Cancel glossary delete operation |
+| 45 | **Glossary tests** - Cancel glossary term delete operation | Cancel glossary term delete operation |
 
 </details>
 

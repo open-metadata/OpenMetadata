@@ -63,6 +63,9 @@ public class EventSubscriptionMapper
 
   private List<SubscriptionDestination> getSubscriptions(
       List<SubscriptionDestination> subscriptions) {
+    if (subscriptions == null) {
+      return new ArrayList<>();
+    }
     List<SubscriptionDestination> result = new ArrayList<>();
     subscriptions.forEach(
         subscription -> {

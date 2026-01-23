@@ -18,6 +18,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import {
   getAPIfromSource,
   getEntityAPIfromSource,
@@ -29,7 +30,6 @@ import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectio
 import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.component';
 import Loader from '../Loader/Loader';
 import './DomainsSection.less';
-import { useEntityRules } from '../../../hooks/useEntityRules';
 
 interface DomainsSectionProps {
   domains?: EntityReference[];

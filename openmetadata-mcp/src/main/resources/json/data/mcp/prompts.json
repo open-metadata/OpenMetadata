@@ -25,7 +25,7 @@
           "required": true
         },
         {
-          "name": "entity_type",
+          "name": "entityType",
           "description": "Entity Type to Filter Report."
         },
         {

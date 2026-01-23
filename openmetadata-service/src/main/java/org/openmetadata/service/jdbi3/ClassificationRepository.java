@@ -48,6 +48,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.tags.ClassificationResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -75,7 +76,8 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   @Override
-  public void setFields(Classification classification, Fields fields) {
+  public void setFields(
+      Classification classification, Fields fields, RelationIncludes relationIncludes) {
     classification.withTermCount(
         fields.contains("termCount") ? getTermCount(classification) : null);
     classification.withUsageCount(

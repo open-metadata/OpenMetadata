@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { DataType, Container, TagSource } from '../generated/entity/data/container';
+import {
+  Container,
+  DataType,
+  TagSource,
+} from '../generated/entity/data/container';
 import { EntityReference } from '../generated/type/entityReference';
 import { LabelType, State } from '../generated/type/tagLabel';
 import { extractContainerColumns } from './ContainerDetailUtils';

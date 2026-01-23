@@ -99,7 +99,9 @@ jest.mock('../../../utils/TableColumn.util', () => ({
       title: 'label.description',
       dataIndex: 'description',
       key: 'description',
-      render: (text: string) => <div data-testid="viewer-container">{text}</div>,
+      render: (text: string) => (
+        <div data-testid="viewer-container">{text}</div>
+      ),
     },
   ]),
 }));

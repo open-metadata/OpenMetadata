@@ -77,10 +77,6 @@ export interface DataProduct {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
-     * Input ports - data assets consumed by this data product
-     */
-    inputPorts?: EntityReference[];
-    /**
      * Current lifecycle stage of the data product
      */
     lifecycleStage?: LifecycleStage;
@@ -88,10 +84,6 @@ export interface DataProduct {
      * A unique name of the Data Product
      */
     name: string;
-    /**
-     * Output ports - data assets produced/exposed by this data product
-     */
-    outputPorts?: EntityReference[];
     /**
      * Owners of this Data Product.
      */

@@ -199,8 +199,7 @@ public class DataProductDomainMigrationIT {
         client, sourceDomain.getFullyQualifiedName(), List.of(inputTable, outputTable), true);
 
     // Change domain
-    DataProduct dpToUpdate =
-        client.dataProducts().get(dataProduct.getId().toString(), "domains,inputPorts,outputPorts");
+    DataProduct dpToUpdate = client.dataProducts().get(dataProduct.getId().toString(), "domains");
     dpToUpdate.setDomains(
         List.of(
             new EntityReference()

@@ -24,10 +24,10 @@ import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { Topic } from '../generated/entity/data/topic';
 import { PageType } from '../generated/system/ui/page';
 import { EntityReference } from '../generated/type/entityReference';
+import { Field } from '../generated/type/schema';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import i18n from './i18next/LocalUtil';
 import { TopicDetailPageTabProps } from './TopicClassBase';
-import { Field } from '../generated/type/schema';
 
 export const getTopicDetailsPageTabs = ({
   schemaCount,

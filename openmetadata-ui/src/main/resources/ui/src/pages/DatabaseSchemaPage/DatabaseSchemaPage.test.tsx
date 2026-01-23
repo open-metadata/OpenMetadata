@@ -193,6 +193,9 @@ jest.mock('../../rest/databaseAPI', () => ({
 jest.mock('../../utils/EntityUtilClassBase', () => {
   return {
     getManageExtraOptions: jest.fn().mockReturnValue([]),
+    getFqnParts: jest
+      .fn()
+      .mockImplementation((fqn) => ({ entityFqn: fqn, columnFqn: '' })),
   };
 });
 
@@ -247,6 +250,7 @@ jest.mock(
   '../../components/Customization/GenericProvider/GenericProvider',
   () => {
     const React = require('react');
+
     return {
       GenericProvider: jest
         .fn()

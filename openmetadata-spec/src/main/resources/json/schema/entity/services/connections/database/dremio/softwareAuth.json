@@ -1,0 +1,28 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/dremio/softwareAuth.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Dremio Software Authentication",
+  "description": "Authentication configuration for self-hosted Dremio Software using username and password. Dremio Software is deployed on-premises or in your own cloud infrastructure.",
+  "javaType": "org.openmetadata.schema.services.connections.database.dremio.SoftwareAuth",
+  "type": "object",
+  "properties": {
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "URL to your self-hosted Dremio Software instance, including protocol and port (e.g., http://localhost:9047 or https://dremio.example.com:9047).",
+      "type": "string"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username for authenticating with Dremio Software. This user should have appropriate permissions to access metadata.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password for the Dremio Software user account.",
+      "type": "string",
+      "format": "password"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort", "username", "password"]
+}

@@ -1,5 +1,7 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -13,6 +15,8 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.TestUtils;
 
 /**
  * Base class for Service entity integration tests.
@@ -32,6 +36,11 @@ public abstract class BaseServiceIT<T extends EntityInterface, K extends CreateE
     supportsSearchIndex = false;
     supportsDomains = false; // Services don't support domains field directly
     supportsTags = false; // Skip tag tests for services to avoid deadlocks in parallel execution
+  }
+
+  @Override
+  protected String getResourcePath() {
+    return "/v1/services/" + TestUtils.plurializeEntityType(getEntityType()) + "/";
   }
 
   @Test
@@ -89,5 +98,52 @@ public abstract class BaseServiceIT<T extends EntityInterface, K extends CreateE
     assertTrue(
         result.getData().stream().anyMatch(s -> s.getName().equals(s4.getName())),
         "Service s4 should be in domain2 results");
+  }
+
+  /**
+   * Test: Service name with dot should have properly quoted FQN.
+   *
+   * <p>When a service name contains a dot (e.g., "snowflake.prod"), the FQN should quote the
+   * service name to distinguish it from the FQN separator.
+   *
+   * <p>This test validates issue #24401: Service names with dots should be properly handled in FQN
+   * quoting.
+   *
+   * @see <a href="https://github.com/open-metadata/OpenMetadata/issues/24401">Issue #24401</a>
+   */
+  @Test
+  void test_serviceNameWithDot_fqnQuoting(TestNamespace ns) {
+    String typePrefix = getEntityType().replace("Service", "").toLowerCase();
+    String serviceNameWithDot = ns.prefix(typePrefix + ".svc.name");
+
+    K createRequest = createRequest(serviceNameWithDot, ns);
+    T service = createEntity(createRequest);
+
+    assertNotNull(service, "Service should be created");
+    assertEquals(serviceNameWithDot, service.getName(), "Service name should match");
+
+    String expectedFqn = FullyQualifiedName.quoteName(serviceNameWithDot);
+    assertEquals(
+        expectedFqn,
+        service.getFullyQualifiedName(),
+        "FQN should be quoted when service name contains dot");
+
+    assertTrue(
+        service.getFullyQualifiedName().startsWith("\""),
+        "FQN should start with quote when service name contains dot");
+    assertTrue(
+        service.getFullyQualifiedName().endsWith("\""),
+        "FQN should end with quote when service name contains dot");
+
+    T fetchedByFqn = getEntityByName(service.getFullyQualifiedName());
+    assertNotNull(fetchedByFqn, "Service should be retrievable by FQN");
+    assertEquals(service.getId(), fetchedByFqn.getId(), "Fetched service should match created");
+
+    T fetchedById = getEntity(service.getId().toString());
+    assertNotNull(fetchedById, "Service should be retrievable by ID");
+    assertEquals(
+        service.getFullyQualifiedName(),
+        fetchedById.getFullyQualifiedName(),
+        "FQN should be consistent");
   }
 }

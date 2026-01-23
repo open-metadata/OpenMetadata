@@ -129,11 +129,20 @@ export class GlossaryTerm extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
+    const fqn = this.responseData.fullyQualifiedName;
     const response = await apiContext.delete(
       `/api/v1/glossaryTerms/name/${encodeURIComponent(
-        this.responseData.fullyQualifiedName
+        fqn
       )}?recursive=true&hardDelete=true`
     );
+
+    if (!response.ok()) {
+      const errorText = await response.text();
+
+      throw new Error(
+        `Failed to delete glossary term "${fqn}": ${response.status()} ${response.statusText()} - ${errorText}`
+      );
+    }
 
     return await response.json();
   }

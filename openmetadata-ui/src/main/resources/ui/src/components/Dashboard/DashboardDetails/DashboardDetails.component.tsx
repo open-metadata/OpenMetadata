@@ -77,7 +77,10 @@ const DashboardDetails = ({
   const { tab: activeTab = EntityTabs.DETAILS } =
     useRequiredParams<{ tab: EntityTabs }>();
   const { customizedPage, isLoading } = useCustomPages(PageType.Dashboard);
-  const { fqn: decodedDashboardFQN } = useFqn();
+
+  const { entityFqn: decodedDashboardFQN } = useFqn({
+    type: EntityType.DASHBOARD,
+  });
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );

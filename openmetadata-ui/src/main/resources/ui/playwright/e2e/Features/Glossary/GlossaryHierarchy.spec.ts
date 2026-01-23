@@ -121,6 +121,7 @@ test.describe('Glossary Hierarchy', () => {
   test('should move term with children to different glossary', async ({
     page,
   }) => {
+    test.slow(true);
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary1 = new Glossary();
     const glossary2 = new Glossary();

@@ -91,6 +91,8 @@ openmetadata-ui/src/main/resources/ui/blob-report
 #UI - Dereferenced Schemas
 openmetadata-ui/src/main/resources/ui/src/jsons/*
 
+# UI - Contracts Downloads
+openmetadata-ui/src/main/resources/ui/downloads/*
 
 #vscode
 */.vscode/*
@@ -178,7 +180,6 @@ claude-flow
 claude-flow.bat
 claude-flow.ps1
 hive-mind-prompt-*.txt
-.claude/
 .claude-flow/
 memory
 

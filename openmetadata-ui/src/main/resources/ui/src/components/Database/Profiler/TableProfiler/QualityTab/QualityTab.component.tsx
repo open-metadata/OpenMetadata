@@ -12,6 +12,7 @@
  */
 import { Box, Grid, Stack, Tab, Tabs, useTheme } from '@mui/material';
 import { Form, Select, Space } from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
 import { useEffect, useMemo, useState } from 'react';
@@ -29,6 +30,8 @@ import {
 } from '../../../../../constants/profiler.constant';
 import { INITIAL_TEST_SUMMARY } from '../../../../../constants/TestSuite.constant';
 import { useLimitStore } from '../../../../../context/LimitsProvider/useLimitsStore';
+import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
 import { TestCaseType } from '../../../../../enums/TestSuite.enum';
@@ -42,14 +45,20 @@ import {
   getBreadcrumbForTable,
   getEntityName,
 } from '../../../../../utils/EntityUtils';
-import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
+import {
+  checkPermission,
+  getPrioritizedEditPermission,
+} from '../../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
+import { ExtraTestCaseDropdownOptions } from '../../../../../utils/TestCaseUtils';
+import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { NextPreviousProps } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
 import SummaryCardV1 from '../../../../common/SummaryCard/SummaryCardV1';
 import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
 import TestSuitePipelineTab from '../../../../DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
+import { useEntityExportModalProvider } from '../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import DataQualityTab from '../../DataQualityTab/DataQualityTab';
 import { ProfilerTabPath } from '../../ProfilerDashboard/profilerDashboard.interface';
 import { useTableProfiler } from '../TableProfilerProvider';
@@ -67,6 +76,7 @@ export const QualityTab = () => {
   } = useTableProfiler();
   const { getResourceLimit } = useLimitStore();
   const theme = useTheme();
+  const { permissions: globalPermissions } = usePermissionProvider();
 
   const {
     currentPage,
@@ -102,6 +112,8 @@ export const QualityTab = () => {
       qualityTab: string;
     };
   }, [location.search]);
+
+  const { showModal } = useEntityExportModalProvider();
 
   const { qualityTab = EntityTabs.TEST_CASES } = searchData;
 
@@ -230,6 +242,34 @@ export const QualityTab = () => {
       });
     }
   };
+
+  const extraDropdownContent: ItemType[] = useMemo(() => {
+    const bulkImportExportTestCasePermission = {
+      ViewAll:
+        checkPermission(
+          Operation.ViewAll,
+          ResourceEntity.TEST_CASE,
+          globalPermissions
+        ) ?? false,
+      EditAll:
+        checkPermission(
+          Operation.EditAll,
+          ResourceEntity.TEST_CASE,
+          globalPermissions
+        ) ?? false,
+    };
+
+    return table?.fullyQualifiedName
+      ? (ExtraTestCaseDropdownOptions(
+          table.fullyQualifiedName,
+          bulkImportExportTestCasePermission,
+          table?.deleted ?? false,
+          navigate,
+          showModal,
+          EntityType.TABLE
+        ) as ItemType[])
+      : [];
+  }, [globalPermissions, table, navigate, showModal]);
 
   const handleTestCaseTypeChange = (value: TestCaseType) => {
     if (value !== selectedTestType) {
@@ -419,6 +459,18 @@ export const QualityTab = () => {
                     onChange={handleTestCaseStatusChange}
                   />
                 </Form.Item>
+                <ManageButton
+                  canDelete={false}
+                  deleted={table?.deleted ?? false}
+                  displayName={t('label.manage-entity', {
+                    entity: t('label.test-case-plural'),
+                  })}
+                  entityId={table?.id}
+                  entityName={getEntityName(table)}
+                  entityType={EntityType.TEST_CASE}
+                  extraDropdownContent={extraDropdownContent}
+                  isRecursiveDelete={false}
+                />
               </Space>
             </Form>
           )}

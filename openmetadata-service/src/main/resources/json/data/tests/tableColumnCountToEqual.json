@@ -15,5 +15,6 @@
     }
   ],
   "provider": "system",
+  "enabled": true,
   "dataQualityDimension": "Integrity"
 }

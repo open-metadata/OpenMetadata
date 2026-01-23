@@ -22,6 +22,7 @@ import {
   useEffect,
   useImperativeHandle,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -93,6 +94,8 @@ const ClassificationDetails = forwardRef(
     const navigate = useNavigate();
     const [tags, setTags] = useState<Tag[]>([]);
     const [isTagsLoading, setIsTagsLoading] = useState(true);
+    const previousClassificationRef = useRef<string | undefined>();
+    const isClassificationChangingRef = useRef(false);
     const {
       currentPage,
       paging,
@@ -334,6 +337,28 @@ const ClassificationDetails = forwardRef(
 
     useEffect(() => {
       if (currentClassification?.fullyQualifiedName && !isAddingTag) {
+        const classificationChanged =
+          previousClassificationRef.current !== undefined &&
+          previousClassificationRef.current !==
+            currentClassification.fullyQualifiedName;
+
+        previousClassificationRef.current =
+          currentClassification.fullyQualifiedName;
+
+        if (classificationChanged) {
+          isClassificationChangingRef.current = true;
+          handlePageChange(1, { cursorType: null, cursorValue: undefined });
+          fetchClassificationChildren(currentClassification.fullyQualifiedName);
+
+          return;
+        }
+
+        if (isClassificationChangingRef.current) {
+          isClassificationChangingRef.current = false;
+
+          return;
+        }
+
         const { cursorType, cursorValue } = pagingCursor ?? {};
 
         if (cursorType && cursorValue) {
@@ -432,7 +457,7 @@ const ClassificationDetails = forwardRef(
                       editDisplayNamePermission={
                         editDisplayNamePermission && !isClassificationDisabled
                       }
-                      entityFQN={currentClassification.fullyQualifiedName}
+                      entityFQN={currentClassification?.fullyQualifiedName}
                       entityId={currentClassification.id}
                       entityName={currentClassification.name}
                       entityType={EntityType.CLASSIFICATION}

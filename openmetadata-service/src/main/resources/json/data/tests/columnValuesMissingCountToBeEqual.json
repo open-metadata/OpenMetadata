@@ -22,5 +22,6 @@
     }
   ],
   "provider": "system",
+  "enabled": true,
   "dataQualityDimension": "Completeness"
 }

@@ -45,6 +45,7 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
     supportsFollowers = false; // Classifications don't support followers
     supportsTags = false; // Classifications don't support tags field
     supportsDataProducts = false; // Classifications don't support dataProducts
+    supportsListHistoryByTimestamp = true;
   }
 
   // ===================================================================

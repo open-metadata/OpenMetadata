@@ -43,8 +43,8 @@ describe('DateTimeUtils tests', () => {
     Settings.defaultZone = systemZoneName;
   });
 
-  it(`formatDateTime should formate date and time both`, () => {
-    expect(formatDateTime(0)).toBe(`Jan 1, 1970, 12:00 AM`);
+  it(`formatDateTime should format date and time with UTC offset by default`, () => {
+    expect(formatDateTime(0)).toBe(`Jan 01, 1970, 12:00 AM (UTC+00:00)`);
   });
 
   it(`formatDate should formate date and time both`, () => {
