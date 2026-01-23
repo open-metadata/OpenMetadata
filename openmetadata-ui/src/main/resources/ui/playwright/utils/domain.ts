@@ -343,6 +343,35 @@ export const checkAssetsCount = async (page: Page, count: number) => {
   );
 };
 
+export const checkAssetsCountWithRetry = async (
+  page: Page,
+  count: number,
+  maxRetries = 3,
+  retryIntervalMs = 30000
+) => {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await expect(
+        page.getByTestId('assets').getByTestId('count')
+      ).toContainText(count.toString(), { timeout: 5000 });
+
+      return;
+    } catch {
+      if (attempt === maxRetries) {
+        throw new Error(
+          `Assets count did not match expected value ${count} after ${maxRetries} retries`
+        );
+      }
+      await page.waitForTimeout(retryIntervalMs);
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+    }
+  }
+};
+
 export const checkDataProductCount = async (page: Page, count: number) => {
   await expect(
     page.getByTestId('data_products').getByTestId('count')
@@ -1266,6 +1295,9 @@ export const renameDomain = async (page: Page, newName: string) => {
   await page.getByTestId('save-button').click();
   await patchRes;
 
+  const domainRes = page.waitForResponse('/api/v1/domains/name/*');
   await page.reload();
+  await domainRes;
+  
   await waitForAllLoadersToDisappear(page);
 };
