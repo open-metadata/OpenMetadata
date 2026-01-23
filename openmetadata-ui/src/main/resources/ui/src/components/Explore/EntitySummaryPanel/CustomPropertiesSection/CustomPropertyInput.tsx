@@ -35,16 +35,16 @@ import {
 } from '../../../../generated/entity/type';
 import { Config } from '../../../../generated/type/customProperty';
 import { getCustomPropertyLuxonFormat } from '../../../../utils/CustomProperty.utils';
-import DataAssetAsyncSelectList from '../../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
-import { DataAssetOption } from '../../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
-import { ModalWithMarkdownEditor } from '../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import DatePicker from '../../../common/DatePicker/DatePicker';
-import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 import { TimeIntervalType } from '../../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import { PropertyInput } from '../../../common/CustomPropertyTable/PropertyInput';
 import EditTableTypePropertyModal from '../../../common/CustomPropertyTable/TableTypeProperty/EditTableTypePropertyModal';
 import TableTypePropertyView from '../../../common/CustomPropertyTable/TableTypeProperty/TableTypePropertyView';
+import DatePicker from '../../../common/DatePicker/DatePicker';
+import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
+import DataAssetAsyncSelectList from '../../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
+import { DataAssetOption } from '../../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import SchemaEditor from '../../../Database/SchemaEditor/SchemaEditor';
+import { ModalWithMarkdownEditor } from '../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 
 const CustomPropertyInput: FC<{
   property: CustomProperty;

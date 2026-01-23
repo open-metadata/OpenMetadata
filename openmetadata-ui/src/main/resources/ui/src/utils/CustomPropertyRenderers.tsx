@@ -13,6 +13,7 @@
 
 import { Button, Tag, Typography } from 'antd';
 import { TFunction } from 'i18next';
+import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
@@ -22,7 +23,6 @@ import { formatTableCellValue } from './CustomProperty.utils';
 import entityUtilClassBase from './EntityUtilClassBase';
 import { getEntityName } from './EntityUtils';
 import searchClassBase from './SearchClassBase';
-import { isEmpty } from 'lodash';
 
 export const isEntityReference = (obj: Record<string, unknown>): boolean => {
   return !!(obj.type && obj.fullyQualifiedName && (obj.id || obj.name));

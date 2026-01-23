@@ -252,7 +252,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             {isVersionView ? (
               <RichTextEditorPreviewerV1 markdown={getEntityName(record)} />
             ) : (
-              <span className='text-link-color'>{getEntityName(record)}</span>
+              <span className="text-link-color">{getEntityName(record)}</span>
             )}
           </span>
         </Tooltip>

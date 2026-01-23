@@ -124,7 +124,7 @@ public class RuleEngine {
       rulesToEvaluate.addAll(getEnabledEntitySemantics());
     }
     if (enforceContract) {
-      DataContract entityContract = dataContractRepository.getEntityDataContractSafely(facts);
+      DataContract entityContract = dataContractRepository.getEffectiveDataContract(facts);
       if (entityContract != null
           && entityContract.getEntityStatus() == EntityStatus.APPROVED
           && !nullOrEmpty(entityContract.getSemantics())) {
@@ -187,7 +187,7 @@ public class RuleEngine {
 
   private DataContract getEntityDataContractSafely(EntityInterface entity) {
     try {
-      return dataContractRepository.loadEntityDataContract(entity.getEntityReference());
+      return dataContractRepository.getEffectiveDataContract(entity);
     } catch (Exception e) {
       LOG.debug("Failed to load data contracts for entity {}: {}", entity.getId(), e.getMessage());
       return null;

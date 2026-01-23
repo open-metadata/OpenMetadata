@@ -84,6 +84,10 @@ export interface DataContract {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * Indicates whether this data contract is inherited from a parent entity.
+     */
+    inherited?: boolean;
+    /**
      * Latest validation result for this data contract.
      */
     latestResult?: LatestResult;
@@ -130,7 +134,7 @@ export interface DataContract {
     /**
      * Terms of use for the data contract for both human and AI agents consumption.
      */
-    termsOfUse?: string;
+    termsOfUse?: TermsOfUse;
     /**
      * Reference to the test suite that contains tests related to this data contract.
      */
@@ -1058,6 +1062,10 @@ export interface ContractSecurity {
      */
     dataClassification?: string;
     /**
+     * If the property is inherited from the Data Product
+     */
+    inherited?: boolean;
+    /**
      * Intended consumers of the data (e.g. internal teams, external partners, etc.)
      */
     policies?: Policy[];
@@ -1119,6 +1127,10 @@ export interface SemanticsRule {
      */
     ignoredEntities?: string[];
     /**
+     * Whether this rule was inherited from a Data Product.
+     */
+    inherited?: boolean;
+    /**
      * JSON Tree to represents rule in UI.
      */
     jsonTree?: string;
@@ -1159,6 +1171,10 @@ export interface ContractSLA {
      * Column that represents the refresh time of the data (if applicable)
      */
     columnName?: string;
+    /**
+     * If the property is inherited from the Data Product
+     */
+    inherited?: boolean;
     /**
      * Maximum acceptable latency between data generation and availability (e.g. 4 hours)
      */
@@ -1266,4 +1282,16 @@ export enum Timezone {
     GMT1200PacificAuckland = "GMT+12:00 (Pacific/Auckland)",
     GMT1300PacificTongatapu = "GMT+13:00 (Pacific/Tongatapu)",
     GMT1400PacificKiritimati = "GMT+14:00 (Pacific/Kiritimati)",
+}
+
+/**
+ * Terms of use for the data contract for both human and AI agents consumption.
+ */
+export interface TermsOfUse {
+    content?: string;
+    /**
+     * If the property is inherited from the Data Product
+     */
+    inherited?: boolean;
+    [property: string]: any;
 }
