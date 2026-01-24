@@ -25,36 +25,28 @@ public class StatsReconciler {
 
     int readerTotal = safeGet(readerStats.getTotalRecords());
     int readerFailed = safeGet(readerStats.getFailedRecords());
-    int readerWarnings = safeGet(readerStats.getWarningRecords());
     int sinkSuccess = safeGet(sinkStats.getSuccessRecords());
     int sinkFailed = safeGet(sinkStats.getFailedRecords());
-    int sinkWarnings = safeGet(sinkStats.getWarningRecords());
 
     int jobSuccess = sinkSuccess;
     int jobFailed = readerFailed + sinkFailed;
     int jobTotal = readerTotal;
-    // Warnings are informational - use reader warnings as the primary source
-    // (entities with stale references that were still indexed)
-    int jobWarnings = readerWarnings;
 
     jobStats.setTotalRecords(jobTotal);
     jobStats.setSuccessRecords(jobSuccess);
     jobStats.setFailedRecords(jobFailed);
-    jobStats.setWarningRecords(jobWarnings);
 
     int computedTotal = jobSuccess + jobFailed;
     if (computedTotal != jobTotal && jobTotal > 0) {
       LOG.warn(
           "Stats discrepancy detected: total={}, success+failed={}. "
-              + "Reader: total={}, failed={}, warnings={}. Sink: success={}, failed={}, warnings={}",
+              + "Reader: total={}, failed={}. Sink: success={}, failed={}",
           jobTotal,
           computedTotal,
           readerTotal,
           readerFailed,
-          readerWarnings,
           sinkSuccess,
-          sinkFailed,
-          sinkWarnings);
+          sinkFailed);
     }
 
     return stats;
@@ -62,24 +54,18 @@ public class StatsReconciler {
 
   public static StepStats reconcileToJobStats(StepStats readerStats, StepStats sinkStats) {
     if (readerStats == null && sinkStats == null) {
-      return new StepStats()
-          .withTotalRecords(0)
-          .withSuccessRecords(0)
-          .withFailedRecords(0)
-          .withWarningRecords(0);
+      return new StepStats().withTotalRecords(0).withSuccessRecords(0).withFailedRecords(0);
     }
 
     int readerTotal = readerStats != null ? safeGet(readerStats.getTotalRecords()) : 0;
     int readerFailed = readerStats != null ? safeGet(readerStats.getFailedRecords()) : 0;
-    int readerWarnings = readerStats != null ? safeGet(readerStats.getWarningRecords()) : 0;
     int sinkSuccess = sinkStats != null ? safeGet(sinkStats.getSuccessRecords()) : 0;
     int sinkFailed = sinkStats != null ? safeGet(sinkStats.getFailedRecords()) : 0;
 
     return new StepStats()
         .withTotalRecords(readerTotal)
         .withSuccessRecords(sinkSuccess)
-        .withFailedRecords(readerFailed + sinkFailed)
-        .withWarningRecords(readerWarnings);
+        .withFailedRecords(readerFailed + sinkFailed);
   }
 
   public static boolean validateInvariants(Stats stats) {

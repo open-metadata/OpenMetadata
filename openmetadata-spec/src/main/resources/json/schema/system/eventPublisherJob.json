@@ -29,12 +29,6 @@
           "type": "integer",
           "default": 0,
           "minimum": 0
-        },
-        "warningRecords": {
-          "description": "Count of Records with Warnings (e.g., stale references that were skipped)",
-          "type": "integer",
-          "default": 0,
-          "minimum": 0
         }
       }
     },

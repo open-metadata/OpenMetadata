@@ -199,14 +199,14 @@ class SearchIndexStatsTest {
       Stats stats = executor.initializeTotalRecords(entities);
       executor.getStats().set(stats);
 
-      executor.updateReaderStats(10, 2, 0);
+      executor.updateReaderStats(10, 2);
 
       Stats updatedStats = executor.getStats().get();
       assertNotNull(updatedStats);
       assertEquals(10, updatedStats.getReaderStats().getSuccessRecords());
       assertEquals(2, updatedStats.getReaderStats().getFailedRecords());
 
-      executor.updateReaderStats(5, 1, 0);
+      executor.updateReaderStats(5, 1);
 
       updatedStats = executor.getStats().get();
       assertEquals(15, updatedStats.getReaderStats().getSuccessRecords());
@@ -373,7 +373,7 @@ class SearchIndexStatsTest {
     @DisplayName("Stats should handle null stats object gracefully")
     void testNullStatsHandling() {
       executor.updateStats("table", new StepStats().withSuccessRecords(10).withFailedRecords(2));
-      executor.updateReaderStats(5, 1, 0);
+      executor.updateReaderStats(5, 1);
       executor.updateSinkTotalSubmitted(10);
     }
   }

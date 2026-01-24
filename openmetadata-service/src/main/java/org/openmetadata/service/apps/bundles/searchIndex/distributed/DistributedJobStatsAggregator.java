@@ -292,11 +292,9 @@ public class DistributedJobStatsAggregator {
     if (serverStatsAggr != null) {
       readerStats.setSuccessRecords(safeToInt(serverStatsAggr.readerSuccess()));
       readerStats.setFailedRecords(safeToInt(serverStatsAggr.readerFailed()));
-      readerStats.setWarningRecords(safeToInt(serverStatsAggr.readerWarnings()));
     } else {
       readerStats.setSuccessRecords(safeToInt(job.getProcessedRecords()));
       readerStats.setFailedRecords(0);
-      readerStats.setWarningRecords(0);
     }
     stats.setReaderStats(readerStats);
 
@@ -308,11 +306,9 @@ public class DistributedJobStatsAggregator {
       // when Entity.buildSearchIndex() fails before sending to bulk processor
       sinkStats.setFailedRecords(
           safeToInt(serverStatsAggr.sinkFailed() + serverStatsAggr.entityBuildFailures()));
-      sinkStats.setWarningRecords(safeToInt(serverStatsAggr.sinkWarnings()));
     } else {
       sinkStats.setSuccessRecords(safeToInt(job.getSuccessRecords()));
       sinkStats.setFailedRecords(safeToInt(job.getFailedRecords()));
-      sinkStats.setWarningRecords(0);
     }
     stats.setSinkStats(sinkStats);
 
