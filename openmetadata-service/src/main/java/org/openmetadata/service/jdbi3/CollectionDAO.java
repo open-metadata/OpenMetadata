@@ -155,6 +155,7 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TagLabelMetadata;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.type.UsageStats;
 import org.openmetadata.schema.util.EntitiesCount;
@@ -4679,11 +4680,11 @@ public interface CollectionDAO {
   interface TagUsageDAO {
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT IGNORE INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy)",
+            "INSERT IGNORE INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy, metadata) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy, :metadata)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy) ON CONFLICT (source, tagFQNHash, targetFQNHash) DO NOTHING",
+            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy, metadata) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy, :metadata :: jsonb) ON CONFLICT (source, tagFQNHash, targetFQNHash) DO NOTHING",
         connectionType = POSTGRES)
     void applyTag(
         @Bind("source") int source,
@@ -4693,7 +4694,51 @@ public interface CollectionDAO {
         @Bind("labelType") int labelType,
         @Bind("state") int state,
         @Bind("reason") String reason,
-        @Bind("appliedBy") String appliedBy);
+        @Bind("appliedBy") String appliedBy,
+        @Bind("metadata") String metadata);
+
+    default void applyTag(
+        int source,
+        String tagFQN,
+        String tagFQNHash,
+        String targetFQNHash,
+        int labelType,
+        int state,
+        String reason,
+        String appliedBy,
+        TagLabelMetadata metadata) {
+      this.applyTag(
+          source,
+          tagFQN,
+          tagFQNHash,
+          targetFQNHash,
+          labelType,
+          state,
+          reason,
+          appliedBy,
+          JsonUtils.pojoToJson(metadata));
+    }
+
+    default void applyTag(
+        int source,
+        String tagFQN,
+        String tagFQNHash,
+        String targetFQNHash,
+        int labelType,
+        int state,
+        String reason,
+        String appliedBy) {
+      this.applyTag(
+          source,
+          tagFQN,
+          tagFQNHash,
+          targetFQNHash,
+          labelType,
+          state,
+          reason,
+          appliedBy,
+          (String) null);
+    }
 
     default List<TagLabel> getTags(String targetFQN) {
       List<TagLabel> tags = getTagsInternal(targetFQN);
@@ -4725,11 +4770,11 @@ public interface CollectionDAO {
     }
 
     @SqlQuery(
-        "SELECT source, tagFQN,  labelType, state, reason, appliedAt, appliedBy FROM tag_usage WHERE targetFQNHash = :targetFQNHash ORDER BY tagFQN")
+        "SELECT source, tagFQN,  labelType, state, reason, appliedAt, appliedBy, metadata FROM tag_usage WHERE targetFQNHash = :targetFQNHash ORDER BY tagFQN")
     List<TagLabel> getTagsInternal(@BindFQN("targetFQNHash") String targetFQNHash);
 
     @SqlQuery(
-        "SELECT targetFQNHash, source, tagFQN, labelType, state, reason, appliedAt, appliedBy "
+        "SELECT targetFQNHash, source, tagFQN, labelType, state, reason, appliedAt, appliedBy, metadata "
             + "FROM tag_usage "
             + "WHERE targetFQNHash IN (<targetFQNHashes>) "
             + "ORDER BY targetFQNHash, tagFQN")
@@ -4769,7 +4814,7 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, tu.reason, tu.appliedAt, tu.appliedBy, "
+            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, tu.reason, tu.appliedAt, tu.appliedBy, tu.metadata, "
                 + "CASE "
                 + "  WHEN tu.source = 1 THEN gterm.json "
                 + "  WHEN tu.source = 0 THEN ta.json "
@@ -4781,7 +4826,7 @@ public interface CollectionDAO {
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, tu.reason, tu.appliedAt, tu.appliedBy, "
+            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, tu.reason, tu.appliedAt, tu.appliedBy, tu.metadata, "
                 + "CASE "
                 + "  WHEN tu.source = 1 THEN gterm.json "
                 + "  WHEN tu.source = 0 THEN ta.json "
@@ -5016,7 +5061,8 @@ public interface CollectionDAO {
             .withTagFQN(r.getString("tagFQN"))
             .withReason(r.getString("reason"))
             .withAppliedAt(r.getTimestamp("appliedAt"))
-            .withAppliedBy(r.getString("appliedBy"));
+            .withAppliedBy(r.getString("appliedBy"))
+            .withMetadata(JsonUtils.readValue(r.getString("metadata"), TagLabelMetadata.class));
       }
     }
 
@@ -5040,7 +5086,8 @@ public interface CollectionDAO {
                 .withTagFQN(r.getString("tagFQN"))
                 .withReason(r.getString("reason"))
                 .withAppliedAt(r.getTimestamp("appliedAt"))
-                .withAppliedBy(r.getString("appliedBy"));
+                .withAppliedBy(r.getString("appliedBy"))
+                .withMetadata(JsonUtils.readValue(r.getString("metadata"), TagLabelMetadata.class));
         TagLabel.TagSource source = TagLabel.TagSource.values()[r.getInt("source")];
         if (source == TagLabel.TagSource.CLASSIFICATION) {
           Tag tag = JsonUtils.readValue(r.getString("json"), Tag.class);
@@ -5073,6 +5120,7 @@ public interface CollectionDAO {
         tag.setReason(rs.getString("reason"));
         tag.setAppliedAt(rs.getTimestamp("appliedAt"));
         tag.setAppliedBy(rs.getString("appliedBy"));
+        tag.setMetadata(JsonUtils.readValue(rs.getString("metadata"), TagLabelMetadata.class));
         return tag;
       }
     }
@@ -5088,8 +5136,7 @@ public interface CollectionDAO {
       private String reason;
       private Date appliedAt;
       private String appliedBy;
-
-      // Getters and Setters
+      private TagLabelMetadata metadata;
 
       public TagLabel toTagLabel() {
         TagLabel tagLabel = new TagLabel();
@@ -5100,6 +5147,7 @@ public interface CollectionDAO {
         tagLabel.setReason(this.reason);
         tagLabel.setAppliedAt(this.appliedAt);
         tagLabel.setAppliedBy(this.appliedBy);
+        tagLabel.setMetadata(this.metadata);
         return tagLabel;
       }
     }
@@ -5165,6 +5213,7 @@ public interface CollectionDAO {
       List<Integer> states = new ArrayList<>();
       List<String> reasons = new ArrayList<>();
       List<String> appliedBys = new ArrayList<>();
+      List<String> metadataList = new ArrayList<>();
 
       for (TagLabel tagLabel : tagLabels) {
         sources.add(tagLabel.getSource().ordinal());
@@ -5175,24 +5224,34 @@ public interface CollectionDAO {
         states.add(tagLabel.getState().ordinal());
         reasons.add(tagLabel.getReason());
         appliedBys.add(tagLabel.getAppliedBy());
+        metadataList.add(JsonUtils.pojoToJson(tagLabel.getMetadata()));
       }
 
       applyTagsBatchInternal(
-          sources, tagFQNs, tagFQNHashes, targetFQNHashes, labelTypes, states, reasons, appliedBys);
+          sources,
+          tagFQNs,
+          tagFQNHashes,
+          targetFQNHashes,
+          labelTypes,
+          states,
+          reasons,
+          appliedBys,
+          metadataList);
     }
 
     @Transaction
     @ConnectionAwareSqlBatch(
         value =
-            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy) "
-                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy) "
-                + "ON DUPLICATE KEY UPDATE labelType = VALUES(labelType), state = VALUES(state), reason = VALUES(reason)",
+            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy, metadata) "
+                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy, :metadata) "
+                + "ON DUPLICATE KEY UPDATE labelType = VALUES(labelType), state = VALUES(state), reason = VALUES(reason), metadata = VALUES(metadata)",
         connectionType = MYSQL)
     @ConnectionAwareSqlBatch(
         value =
-            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy) "
-                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy) "
-                + "ON CONFLICT (source, tagFQNHash, targetFQNHash) DO NOTHING",
+            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy, metadata) "
+                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy, :metadata :: jsonb) "
+                + "ON CONFLICT (source, tagFQNHash, targetFQNHash) DO UPDATE SET labelType = EXCLUDED.labelType, "
+                + "state = EXCLUDED.state, reason = EXCLUDED.reason, metadata = EXCLUDED.metadata",
         connectionType = POSTGRES)
     void applyTagsBatchInternal(
         @Bind("source") List<Integer> sources,
@@ -5202,7 +5261,8 @@ public interface CollectionDAO {
         @Bind("labelType") List<Integer> labelTypes,
         @Bind("state") List<Integer> states,
         @Bind("reason") List<String> reasons,
-        @Bind("appliedBy") List<String> appliedBys);
+        @Bind("appliedBy") List<String> appliedBys,
+        @Bind("metadata") List<String> metadataList);
 
     /**
      * Delete multiple tags in batch to improve performance
@@ -5244,7 +5304,7 @@ public interface CollectionDAO {
     long getTotalTagUsageCount();
 
     @SqlQuery(
-        "SELECT source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedAt, appliedBy FROM tag_usage ORDER BY source, tagFQNHash LIMIT :limit OFFSET :offset")
+        "SELECT source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedAt, appliedBy, metadata FROM tag_usage ORDER BY source, tagFQNHash LIMIT :limit OFFSET :offset")
     @RegisterRowMapper(TagUsageObjectMapper.class)
     List<TagUsageObject> getAllTagUsagesPaginated(
         @Bind("offset") long offset, @Bind("limit") int limit);
@@ -5269,6 +5329,7 @@ public interface CollectionDAO {
     private String reason;
     private Date appliedAt;
     private String appliedBy;
+    private TagLabelMetadata metadata;
   }
 
   class TagUsageObjectMapper implements RowMapper<TagUsageObject> {
@@ -5284,6 +5345,7 @@ public interface CollectionDAO {
           .reason(r.getString("reason"))
           .appliedAt(r.getTimestamp("appliedAt"))
           .appliedBy(r.getString("appliedBy"))
+          .metadata(JsonUtils.readValue(r.getString("metadata"), TagLabelMetadata.class))
           .build();
     }
   }

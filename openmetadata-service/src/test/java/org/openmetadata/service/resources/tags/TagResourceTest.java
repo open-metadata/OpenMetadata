@@ -773,6 +773,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
 
     Recognizer emailRecognizer =
         new Recognizer()
+            .withId(UUID.randomUUID())
             .withName("email_recognizer")
             .withDisplayName("Email Recognizer")
             .withDescription("Detects email addresses")
@@ -823,6 +824,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
 
     Recognizer ssnRecognizer =
         new Recognizer()
+            .withId(UUID.randomUUID())
             .withName("ssn_recognizer")
             .withDisplayName("SSN Recognizer")
             .withDescription("Detects US Social Security Numbers")
