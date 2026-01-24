@@ -29,7 +29,6 @@ import {
   MULTISELECT_FIELD_OPERATORS,
   NULL_CHECK_OPERATORS,
   NUMBER_FIELD_OPERATORS,
-  RANGE_FIELD_OPERATORS,
   SEARCH_INDICES_WITH_COLUMNS_FIELD,
   TAG_LABEL_TYPE_LIST_VALUES,
   TEXT_FIELD_OPERATORS,
@@ -1291,7 +1290,8 @@ class AdvancedSearchClassBase {
           },
         };
 
-      case 'date-cp': {
+      case 'date-cp':
+      case 'dateTime-cp': {
         const dateFormat = getCustomPropertyMomentFormat(
           field.type,
           field.customPropertyConfig?.config
@@ -1302,7 +1302,7 @@ class AdvancedSearchClassBase {
           dataObject: {
             type: 'date',
             label,
-            operators: RANGE_FIELD_OPERATORS,
+            operators: NUMBER_FIELD_OPERATORS,
             fieldSettings: {
               valueFormat: dateFormat,
               dateFormat,

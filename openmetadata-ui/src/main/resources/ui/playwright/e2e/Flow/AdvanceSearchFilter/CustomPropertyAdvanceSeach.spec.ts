@@ -357,56 +357,6 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
       await clearAdvancedSearchFilters(page);
     });
 
-    test('DateTime CP with all operators', async ({ page }) => {
-      const propertyName = propertyNames['dateTime-cp'];
-
-      await showAdvancedSearchDialog(page);
-      await applyCustomPropertyFilter(
-        page,
-        propertyName,
-        'equal',
-        CP_BASE_VALUES.dateTimeCp
-      );
-      await verifySearchResults(
-        page,
-        dashboard.entityResponseData.fullyQualifiedName,
-        true
-      );
-      await clearAdvancedSearchFilters(page);
-
-      await showAdvancedSearchDialog(page);
-      await applyCustomPropertyFilter(
-        page,
-        propertyName,
-        'like',
-        CP_PARTIAL_SEARCH_VALUES.dateTimeCp
-      );
-      await verifySearchResults(
-        page,
-        dashboard.entityResponseData.fullyQualifiedName,
-        true
-      );
-      await clearAdvancedSearchFilters(page);
-
-      await showAdvancedSearchDialog(page);
-      await applyCustomPropertyFilter(page, propertyName, 'is_null', '');
-      await verifySearchResults(
-        page,
-        dashboard.entityResponseData.fullyQualifiedName,
-        false
-      );
-      await clearAdvancedSearchFilters(page);
-
-      await showAdvancedSearchDialog(page);
-      await applyCustomPropertyFilter(page, propertyName, 'is_not_null', '');
-      await verifySearchResults(
-        page,
-        dashboard.entityResponseData.fullyQualifiedName,
-        true
-      );
-      await clearAdvancedSearchFilters(page);
-    });
-
     test('Time CP with all operators', async ({ page }) => {
       const propertyName = propertyNames['time-cp'];
 
@@ -870,8 +820,114 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
   });
 
   test.describe('Date Custom Properties', () => {
+    test('DateTime CP with all operators', async ({ page }) => {
+      const propertyName = propertyNames['dateTime-cp'];
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'equal',
+        CP_BASE_VALUES.dateTimeCp
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'not_equal',
+        CP_BASE_VALUES.dateTimeCp
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        false
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'between',
+        CP_RANGE_VALUES.dateTimeCp
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'not_between',
+        CP_RANGE_VALUES.dateTimeCp
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        false
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(page, propertyName, 'is_null', '');
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        false
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(page, propertyName, 'is_not_null', '');
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+    });
+
     test('Date CP with all operators', async ({ page }) => {
       const propertyName = propertyNames['date-cp'];
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'equal',
+        CP_BASE_VALUES.dateCp
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        propertyName,
+        'not_equal',
+        CP_BASE_VALUES.dateCp
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        false
+      );
+      await clearAdvancedSearchFilters(page);
 
       await showAdvancedSearchDialog(page);
       await applyCustomPropertyFilter(
@@ -898,6 +954,24 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
         page,
         dashboard.entityResponseData.fullyQualifiedName,
         false
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(page, propertyName, 'is_null', '');
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        false
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(page, propertyName, 'is_not_null', '');
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
       );
       await clearAdvancedSearchFilters(page);
     });
