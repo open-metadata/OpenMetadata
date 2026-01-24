@@ -44,9 +44,6 @@ public class ResultList<T> {
   @JsonProperty("errors")
   private List<EntityError> errors;
 
-  @JsonProperty("warningsCount")
-  private Integer warningsCount;
-
   public ResultList() {}
 
   public ResultList(List<T> data) {
@@ -191,15 +188,5 @@ public class ResultList<T> {
   public ResultList<T> setPaging(Paging paging) {
     this.paging = paging;
     return this;
-  }
-
-  @JsonProperty("warningsCount")
-  public Integer getWarningsCount() {
-    return warningsCount;
-  }
-
-  @JsonProperty("warningsCount")
-  public void setWarningsCount(Integer warningsCount) {
-    this.warningsCount = warningsCount;
   }
 }
