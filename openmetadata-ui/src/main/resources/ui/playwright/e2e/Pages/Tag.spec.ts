@@ -238,7 +238,7 @@ test.describe('Tag Page with Admin Roles', () => {
     });
 
     await test.step('Verify EntityType Filter', async () => {
-      await verifyEntityTypeFilterInTagAssets(adminPage);
+      await verifyEntityTypeFilterInTagAssets(adminPage, assets);
     });
 
     await test.step('Delete Asset', async () => {
@@ -444,7 +444,7 @@ test.describe('Tag Page with Data Consumer Roles', () => {
     });
 
     await test.step('Verify EntityType Filter', async () => {
-      await verifyEntityTypeFilterInTagAssets(dataConsumerPage);
+      await verifyEntityTypeFilterInTagAssets(dataConsumerPage, assets);
     });
 
     await test.step('Delete Asset', async () => {
@@ -512,7 +512,7 @@ test.describe('Tag Page with Data Steward Roles', () => {
     });
 
     await test.step('Verify EntityType Filter', async () => {
-      await verifyEntityTypeFilterInTagAssets(dataStewardPage);
+      await verifyEntityTypeFilterInTagAssets(dataStewardPage, assets);
     });
 
     await test.step('Delete Asset', async () => {

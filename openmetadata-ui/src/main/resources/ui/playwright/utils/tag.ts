@@ -570,19 +570,26 @@ export const setTagDisabledByFqn = async (
   await setTagDisabled(apiContext, tag.id, disabled);
 };
 
-export const verifyEntityTypeFilterInTagAssets = async (page: Page) => {
+export const verifyEntityTypeFilterInTagAssets = async (
+  page: Page,
+  assets: EntityClass[]
+) => {
   await page.getByTestId('asset-filter-button').click();
   await page.getByRole('menuitem', { name: 'Entity Type' }).click();
   await expect(page.getByRole('button', { name: 'Entity Type' })).toBeVisible();
   await page.getByRole('button', { name: 'Entity Type' }).click();
   await page.getByTestId('table-checkbox').check();
+  await page.getByTestId('topic-checkbox').check();
+  await page.getByTestId('dashboard-checkbox').check();
   const filterResponse = page.waitForResponse('/api/v1/search/query?q=*');
   await page.getByTestId('update-btn').click();
   await filterResponse;
 
-  await expect(
-    page.getByRole('button', { name: 'Entity Type : table' })
-  ).toBeVisible();
+  // Check that items are visible after applying filter
+  for (const asset of assets) {
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+  }
 
   const clearResponse = page.waitForResponse('/api/v1/search/query?q=*');
   await page.getByText('Clear').click();
