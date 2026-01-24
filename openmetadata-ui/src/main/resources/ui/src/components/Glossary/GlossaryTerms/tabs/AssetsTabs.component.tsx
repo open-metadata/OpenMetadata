@@ -843,6 +843,7 @@ const AssetsTabs = forwardRef(
                     trigger={['click']}>
                     <Button
                       className={classNames('feed-filter-icon')}
+                      data-testid="asset-filter-button"
                       icon={<FilterIcon height={16} />}
                     />
                   </Dropdown>
