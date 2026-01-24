@@ -345,6 +345,7 @@ export enum Type {
 }
 
 export enum EventType {
+    EntityHistory = "ENTITY_HISTORY",
     Profile = "PROFILE",
     TestCaseResults = "TEST_CASE_RESULTS",
 }

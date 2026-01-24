@@ -19,10 +19,11 @@ import {
 } from '@untitledui/icons';
 import { Button, Card, Drawer, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { isString } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-new.svg';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-new.svg';
 import { ReactComponent as KeyIcon } from '../../../assets/svg/icon-key.svg';
 import {
   DE_ACTIVE_COLOR,
@@ -66,6 +67,8 @@ import CustomPropertiesSection from '../../Explore/EntitySummaryPanel/CustomProp
 import DataQualityTab from '../../Explore/EntitySummaryPanel/DataQualityTab/DataQualityTab';
 import { LineageTabContent } from '../../Explore/EntitySummaryPanel/LineageTab';
 import { LineageData } from '../../Lineage/Lineage.interface';
+import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
+import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import {
   ColumnDetailPanelProps,
   ColumnFieldUpdate,
@@ -75,9 +78,6 @@ import {
 import './ColumnDetailPanel.less';
 import { KeyProfileMetrics } from './KeyProfileMetrics';
 import { NestedColumnsSection } from './NestedColumnsSection';
-import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
-import { isString } from 'lodash';
-import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 
 const isColumn = (item: ColumnOrTask | null): item is Column => {
   return item !== null && 'dataType' in item;

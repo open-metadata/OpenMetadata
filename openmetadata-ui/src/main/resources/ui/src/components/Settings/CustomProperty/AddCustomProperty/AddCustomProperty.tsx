@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Form, FormInstance, Row } from 'antd';
 import { Chip, Typography, useTheme } from '@mui/material';
+import { Button, Col, Form, FormInstance, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { ReactComponent as TableIcon } from '../../../../assets/svg/table-icon.svg';
 import MuiDrawer from '../../../common/MuiDrawer/MuiDrawer';
@@ -141,7 +141,6 @@ const AddCustomProperty = ({
       };
     });
   }, [propertyTypes]);
-
 
   const {
     hasEnumConfig,
