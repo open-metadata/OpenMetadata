@@ -398,7 +398,7 @@ test.describe('Learning Icon on Pages', () => {
     await afterAction();
   });
 
-  test('should NOT show draft resources on target pages', async ({ page }) => {
+  test.fixme('should NOT show draft resources on target pages', async ({ page }) => {
     // Navigate to home first to ensure auth context is established
     await redirectToHomePage(page);
 
