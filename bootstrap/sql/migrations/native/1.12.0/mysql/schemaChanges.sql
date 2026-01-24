@@ -108,6 +108,9 @@ CREATE INDEX idx_test_case_updated_at_id ON test_case(updatedAt DESC, id DESC);
 CREATE INDEX idx_api_collection_entity_updated_at_id ON api_collection_entity(updatedAt DESC, id DESC);
 CREATE INDEX idx_api_endpoint_entity_updated_at_id ON api_endpoint_entity(updatedAt DESC, id DESC);
 
+-- Add metadata column to tag_usage table
+ALTER TABLE tag_usage ADD metadata JSON NULL;
+
 -- Distributed Search Indexing Tables
 
 -- Table to track reindex jobs across distributed servers
@@ -224,4 +227,3 @@ CREATE TABLE IF NOT EXISTS search_index_server_stats (
     UNIQUE INDEX idx_search_index_server_stats_job_server (jobId, serverId),
     INDEX idx_search_index_server_stats_job_id (jobId)
 );
-
