@@ -250,15 +250,16 @@ def import_test_case_class(
     test_definition: str,
     validator_class: str,
 ) -> Type[BaseTestValidator]:
-    """_summary_
+    """Import and return the test case validator class.
 
     Args:
         test_type (str): column or table
         runner_type (str): sqlalchemy or pandas
         test_definition (str): test definition name
+        validator_class (str): validator class name
 
     Returns:
-        Callable: test validator object
+        Type[BaseTestValidator]: test validator class
     """
     module_name = RULE_LIBRARY_VALIDATOR_MODULE_MAP.get(
         validator_class, test_definition
