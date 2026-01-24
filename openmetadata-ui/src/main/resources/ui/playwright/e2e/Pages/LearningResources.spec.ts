@@ -12,13 +12,14 @@
  */
 import { expect, Page, test } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { SidebarItem } from '../../constant/sidebar';
 import { LearningResourceClass } from '../../support/learning/LearningResourceClass';
 import {
   getApiContext,
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
-import { settingClick } from '../../utils/sidebar';
+import { settingClick, sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -353,7 +354,7 @@ test.describe('Learning Icon on Pages', () => {
 
     await resource.create(apiContext);
 
-    await page.goto('/glossary');
+    await sidebarClick(page, SidebarItem.GLOSSARY);
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     const learningIcon = page.locator('[data-testid="learning-icon"]');
@@ -377,7 +378,7 @@ test.describe('Learning Icon on Pages', () => {
 
     await resource.create(apiContext);
 
-    await page.goto('/glossary');
+    await sidebarClick(page, SidebarItem.GLOSSARY);
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     await test.step('Click learning icon', async () => {
@@ -413,7 +414,7 @@ test.describe('Learning Icon on Pages', () => {
 
     await draftResource.create(apiContext);
 
-    await page.goto('/glossary');
+    await sidebarClick(page, SidebarItem.GLOSSARY);
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     // Check if learning icon exists
@@ -434,6 +435,7 @@ test.describe('Learning Icon on Pages', () => {
   });
 
   test('should show learning icon on lineage page when resources exist', async ({ page }) => {
+    test.slow();
     // Navigate to home first to ensure auth context is established
     await redirectToHomePage(page);
 
@@ -447,14 +449,17 @@ test.describe('Learning Icon on Pages', () => {
 
     await resource.create(apiContext);
 
-    await page.goto('/lineage');
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    const lineageRes = page.waitForResponse(
+      '/api/v1/lineage/getPlatformLineage?view=service*'
+    );
+    await sidebarClick(page, SidebarItem.LINEAGE);
+    await lineageRes;
 
     const learningIcon = page.locator('[data-testid="learning-icon"]');
     await expect(learningIcon).toBeVisible();
 
-    // Click and verify resource is shown
-    await learningIcon.click();
+    // Click and verify resource is shown - use force click as ReactFlow canvas may intercept events
+    await learningIcon.click({ force: true });
     await expect(page.locator('.learning-drawer')).toBeVisible();
     await expect(page.getByText('PW Lineage Resource')).toBeVisible();
     await page.keyboard.press('Escape');
@@ -482,7 +487,7 @@ test.describe('Learning Icon on Pages', () => {
 
     await resource.create(apiContext);
 
-    await page.goto('/glossary');
+    await sidebarClick(page, SidebarItem.GLOSSARY);
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     await test.step('Open learning drawer', async () => {
@@ -559,7 +564,7 @@ test.describe.serial('Learning Resources E2E Flow', () => {
     });
 
     await test.step('Navigate to Glossary page and verify learning icon appears', async () => {
-      await page.goto('/glossary');
+      await sidebarClick(page, SidebarItem.GLOSSARY);
       await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
       const learningIcon = page.locator('[data-testid="learning-icon"]');
@@ -575,7 +580,7 @@ test.describe.serial('Learning Resources E2E Flow', () => {
 
     await test.step('Cleanup - delete the created resource', async () => {
       // Navigate back to Learning Resources admin page
-      await page.goto('/settings/preferences/learning-resources');
+      await settingClick(page, GlobalSettingOptions.LEARNING_RESOURCES);
       await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
       await page.waitForSelector('.ant-table-tbody');
 
@@ -590,6 +595,7 @@ test.describe.serial('Learning Resources E2E Flow', () => {
   });
 
   test('should update resource context and verify learning icon moves to new page', async ({ page }) => {
+   test.slow()
     // Navigate to home first to ensure auth context is established
     await redirectToHomePage(page);
 
@@ -608,8 +614,7 @@ test.describe.serial('Learning Resources E2E Flow', () => {
     expect(createdResource.displayName).toBe(`Update Context Resource ${uniqueId}`);
 
     await test.step('Verify resource appears on Glossary page initially', async () => {
-      await page.goto('/glossary');
-      await page.waitForLoadState('networkidle');
+      await sidebarClick(page, SidebarItem.GLOSSARY);
       await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
       const learningIcon = page.locator('[data-testid="learning-icon"]');
@@ -623,7 +628,7 @@ test.describe.serial('Learning Resources E2E Flow', () => {
     });
 
     await test.step('Navigate to admin page and update resource context to Lineage', async () => {
-      await page.goto('/settings/preferences/learning-resources');
+      await settingClick(page, GlobalSettingOptions.LEARNING_RESOURCES);
       await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
       await page.waitForSelector('.ant-table-tbody');
 
@@ -646,7 +651,7 @@ test.describe.serial('Learning Resources E2E Flow', () => {
     });
 
     await test.step('Verify learning icon no longer appears on Glossary page', async () => {
-      await page.goto('/glossary');
+      await sidebarClick(page, SidebarItem.GLOSSARY);
       await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
       // The learning icon should not be visible or should not show our resource
@@ -663,14 +668,18 @@ test.describe.serial('Learning Resources E2E Flow', () => {
     });
 
     await test.step('Verify learning icon now appears on Lineage page', async () => {
-      await page.goto('/lineage');
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+      // Wait for lineage API response to ensure page is fully loaded
+      const lineageRes = page.waitForResponse(
+        '/api/v1/lineage/getPlatformLineage?view=service*'
+      );
+      await sidebarClick(page, SidebarItem.LINEAGE);
+      await lineageRes;
 
       const learningIcon = page.locator('[data-testid="learning-icon"]');
       await expect(learningIcon).toBeVisible();
 
-      // Verify our resource is in the drawer
-      await learningIcon.click();
+      // Verify our resource is in the drawer - use force click as ReactFlow canvas may intercept events
+      await learningIcon.click({ force: true });
       await expect(page.locator('.learning-drawer')).toBeVisible();
       await expect(page.getByText(`Update Context Resource ${uniqueId}`)).toBeVisible();
       await page.keyboard.press('Escape');
@@ -698,9 +707,8 @@ test.describe.serial('Learning Resources E2E Flow', () => {
     expect(createdResource.displayName).toBe(`Delete E2E Resource ${uniqueId}`);
 
     await test.step('Verify resource appears on Glossary page initially', async () => {
-      await page.goto('/glossary');
-      await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached'});
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
       const learningIcon = page.locator('[data-testid="learning-icon"]');
       await expect(learningIcon).toBeVisible();
@@ -713,8 +721,8 @@ test.describe.serial('Learning Resources E2E Flow', () => {
     });
 
     await test.step('Navigate to admin page and delete the resource', async () => {
-      await page.goto('/settings/preferences/learning-resources');
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached'});
+      await settingClick(page, GlobalSettingOptions.LEARNING_RESOURCES);
+      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
       await page.waitForSelector('.ant-table-tbody');
 
       await searchResource(page, uniqueId);
@@ -727,7 +735,7 @@ test.describe.serial('Learning Resources E2E Flow', () => {
     });
 
     await test.step('Verify learning icon no longer shows deleted resource on Glossary page', async () => {
-      await page.goto('/glossary');
+      await sidebarClick(page, SidebarItem.GLOSSARY);
       await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
       const learningIcon = page.locator('[data-testid="learning-icon"]');
