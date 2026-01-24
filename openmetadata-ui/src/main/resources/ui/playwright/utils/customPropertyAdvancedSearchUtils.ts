@@ -351,7 +351,8 @@ export const applyCustomPropertyFilter = async (
   propertyName: string,
   operator: string,
   value: string | number | { start: string | number; end: string | number },
-  entityType: string = 'Dashboard'
+  entityType: string = 'Dashboard',
+  propertyType?: string
 ) => {
   const ruleLocator = page.locator('.rule').nth(0);
 
@@ -408,7 +409,12 @@ export const applyCustomPropertyFilter = async (
         await inputElement.click();
         await inputElement.fill(stringValue);
 
-        if (MULTISELECT_OPERATORS.includes(operator)) {
+        if (
+          MULTISELECT_OPERATORS.includes(operator) ||
+          ((operator === 'equal' || operator === 'not_equal') &&
+            propertyType === 'dateTime-cp') ||
+          propertyType === 'date-cp'
+        ) {
           await page.keyboard.press('Enter');
         }
       }

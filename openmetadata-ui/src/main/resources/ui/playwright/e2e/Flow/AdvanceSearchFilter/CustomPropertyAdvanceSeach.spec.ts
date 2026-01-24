@@ -48,6 +48,7 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
   const propertyNames: Record<string, string> = {};
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    test.slow();
     const { page, apiContext, afterAction } = await createNewPage(browser);
 
     await dashboard.create(apiContext);
@@ -75,6 +76,7 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
 
   test.describe('Text Field Custom Properties', () => {
     test('String CP with all operators', async ({ page }) => {
+      test.slow();
       const propertyName = propertyNames['string'];
 
       await showAdvancedSearchDialog(page);
@@ -821,6 +823,7 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
 
   test.describe('Date Custom Properties', () => {
     test('DateTime CP with all operators', async ({ page }) => {
+      test.slow();
       const propertyName = propertyNames['dateTime-cp'];
 
       await showAdvancedSearchDialog(page);
@@ -828,7 +831,9 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
         page,
         propertyName,
         'equal',
-        CP_BASE_VALUES.dateTimeCp
+        CP_BASE_VALUES.dateTimeCp,
+        undefined,
+        'dateTime-cp'
       );
       await verifySearchResults(
         page,
@@ -842,7 +847,9 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
         page,
         propertyName,
         'not_equal',
-        CP_BASE_VALUES.dateTimeCp
+        CP_BASE_VALUES.dateTimeCp,
+        undefined,
+        'dateTime-cp'
       );
       await verifySearchResults(
         page,
@@ -899,6 +906,7 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
     });
 
     test('Date CP with all operators', async ({ page }) => {
+      test.slow();
       const propertyName = propertyNames['date-cp'];
 
       await showAdvancedSearchDialog(page);
@@ -906,7 +914,9 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
         page,
         propertyName,
         'equal',
-        CP_BASE_VALUES.dateCp
+        CP_BASE_VALUES.dateCp,
+        undefined,
+        'date-cp'
       );
       await verifySearchResults(
         page,
@@ -920,7 +930,9 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
         page,
         propertyName,
         'not_equal',
-        CP_BASE_VALUES.dateCp
+        CP_BASE_VALUES.dateCp,
+        undefined,
+        'date-cp'
       );
       await verifySearchResults(
         page,
