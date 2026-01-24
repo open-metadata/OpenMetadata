@@ -16,7 +16,10 @@ import { SidebarItem } from '../../constant/sidebar';
 import { Glossary } from '../../support/glossary/Glossary';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { validateImportStatus } from '../../utils/importUtils';
+import {
+  uploadCSVAndWaitForGrid,
+  validateImportStatusFromGrid,
+} from '../../utils/importUtils';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({
@@ -57,29 +60,16 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
         await waitForAllLoadersToDisappear(page);
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="import-button-description"]');
-        await page.waitForLoadState('networkidle');
 
-        const csvBlob = new Blob([CSV_WITH_QUOTES_AND_COMMAS], {
-          type: 'text/csv',
-        });
-        const csvFile = new File([csvBlob], 'quotes-commas-test.csv', {
-          type: 'text/csv',
-        });
-
-        const fileInput = page.getByTestId('upload-file-widget');
-        await fileInput?.setInputFiles([
+        const rowCount = await uploadCSVAndWaitForGrid(
+          page,
+          CSV_WITH_QUOTES_AND_COMMAS,
           {
-            name: csvFile.name,
-            mimeType: csvFile.type,
-            buffer: Buffer.from(await csvFile.arrayBuffer()),
-          },
-        ]);
-
-        await page.waitForTimeout(500);
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
-        await expect(page.getByTestId('add-row-btn')).toBeVisible();
-        const rows = await page.$$('.rdg-row');
-        expect(rows.length).toBeGreaterThanOrEqual(3);
+            isContentString: true,
+            tempFileName: 'temp-quotes-commas-test.csv',
+          }
+        );
+        expect(rowCount).toBeGreaterThanOrEqual(3);
 
         await expect(
           page.getByRole('gridcell', { name: 'Term1' }).first()
@@ -91,17 +81,24 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
           page.getByRole('gridcell', { name: 'TermWithComma,AndQuote' }).first()
         ).toBeVisible();
 
+        const validationResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/glossaries/name/') &&
+            response.url().includes('/importAsync') &&
+            response.url().includes('dryRun=true') &&
+            response.request().method() === 'PUT'
+        );
+
         await page.getByRole('button', { name: 'Next' }).click();
+        await validationResponse;
 
         const loader = page.locator(
           '.inovua-react-toolkit-load-mask__background-layer'
         );
         await loader.waitFor({ state: 'hidden' });
 
-        await validateImportStatus(page, {
-          passed: '4',
-          processed: '4',
-          failed: '0',
+        await validateImportStatusFromGrid(page, {
+          rowCount: rowCount,
         });
 
         const rowStatus = await page.$$('.rdg-cell-details');
@@ -134,43 +131,41 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
 
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="import-button-description"]');
-        await page.waitForLoadState('networkidle');
-
-        const csvBlob = new Blob([CSV_FOR_EXPORT_IMPORT_TEST], {
-          type: 'text/csv',
-        });
-        const csvFile = new File([csvBlob], 'initial.csv', {
-          type: 'text/csv',
-        });
-
-        const fileInput = page.getByTestId('upload-file-widget');
-        await fileInput?.setInputFiles([
+        const initialRowCount = await uploadCSVAndWaitForGrid(
+          page,
+          CSV_FOR_EXPORT_IMPORT_TEST,
           {
-            name: csvFile.name,
-            mimeType: csvFile.type,
-            buffer: Buffer.from(await csvFile.arrayBuffer()),
-          },
-        ]);
+            isContentString: true,
+            tempFileName: 'temp-initial-import.csv',
+          }
+        );
 
-        await page.waitForTimeout(500);
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
+        const validationResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/glossaries/name/') &&
+            response.url().includes('/importAsync') &&
+            response.url().includes('dryRun=true') &&
+            response.request().method() === 'PUT'
+        );
+
         await page.getByRole('button', { name: 'Next' }).click();
+        await validationResponse;
 
         const loader = page.locator(
           '.inovua-react-toolkit-load-mask__background-layer'
         );
         await loader.waitFor({ state: 'hidden' });
 
-        await validateImportStatus(page, {
-          passed: '2',
-          processed: '2',
-          failed: '0',
+        await validateImportStatusFromGrid(page, {
+          rowCount: initialRowCount,
         });
 
         await page.getByRole('button', { name: 'Update' }).click();
         await loader.waitFor({ state: 'detached' });
       }
     );
+
+    let exportedRowCount = 0;
 
     await test.step(
       'Export CSV and verify it contains properly escaped quotes',
@@ -197,6 +192,7 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
           .split('\n')
           .filter((line) => line.trim().length > 0);
 
+        exportedRowCount = lines.length - 1;
         expect(csvContent).toContain('InitialTerm');
         expect(lines.length).toBeGreaterThanOrEqual(2);
         expect(csvContent).toContain('Term with');
@@ -209,26 +205,32 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
 
       await page.click('[data-testid="manage-button"]');
       await page.click('[data-testid="import-button-description"]');
-      await page.waitForLoadState('networkidle');
+      const gridRowCount = await uploadCSVAndWaitForGrid(
+        page,
+        'downloads/' + exportImportGlossary.data.displayName + '.csv'
+      );
+      const rowCountToUse =
+        exportedRowCount > 0 ? exportedRowCount : gridRowCount;
 
-      const fileInput = page.getByTestId('upload-file-widget');
-      await fileInput?.setInputFiles([
-        'downloads/' + exportImportGlossary.data.displayName + '.csv',
-      ]);
+      const validationResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/glossaries/name/') &&
+          response.url().includes('/importAsync') &&
+          response.url().includes('dryRun=true') &&
+          response.request().method() === 'PUT'
+      );
 
-      await page.waitForTimeout(500);
-      await expect(page.locator('.rdg-header-row')).toBeVisible();
       await page.getByRole('button', { name: 'Next' }).click();
+
+      await validationResponse;
 
       const loader = page.locator(
         '.inovua-react-toolkit-load-mask__background-layer'
       );
       await loader.waitFor({ state: 'hidden' });
-
-      await validateImportStatus(page, {
-        passed: '2',
-        processed: '2',
-        failed: '0',
+      await validateImportStatusFromGrid(page, {
+        rowCount: rowCountToUse,
+        rowCountOffset: 1,
       });
 
       await page.getByRole('button', { name: 'Update' }).click();

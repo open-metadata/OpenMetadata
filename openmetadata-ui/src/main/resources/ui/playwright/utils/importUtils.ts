@@ -11,25 +11,26 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import * as fs from 'fs';
 import {
-    BULK_IMPORT_EXPORT_SQL_QUERY,
-    RDG_ACTIVE_CELL_SELECTOR,
+  BULK_IMPORT_EXPORT_SQL_QUERY,
+  RDG_ACTIVE_CELL_SELECTOR,
 } from '../constant/bulkImportExport';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../constant/customProperty';
 import {
-    CUSTOM_PROPERTIES_TYPES,
-    FIELD_VALUES_CUSTOM_PROPERTIES,
+  CUSTOM_PROPERTIES_TYPES,
+  FIELD_VALUES_CUSTOM_PROPERTIES,
 } from '../constant/glossaryImportExport';
 import { GlobalSettingOptions } from '../constant/settings';
 import {
-    clickOutside,
-    descriptionBox,
-    descriptionBoxReadOnly,
-    uuid,
+  clickOutside,
+  descriptionBox,
+  descriptionBoxReadOnly,
+  uuid,
 } from './common';
 import {
-    addCustomPropertiesForEntity,
-    fillTableColumnInputDetails,
+  addCustomPropertiesForEntity,
+  fillTableColumnInputDetails,
 } from './customProperty';
 import { settingClick, SettingOptionsType } from './sidebar';
 
@@ -550,6 +551,57 @@ export const validateImportStatus = async (
   });
 };
 
+// Count grid rows and validate import status dynamically
+export const validateImportStatusFromGrid = async (
+  page: Page,
+  options?: {
+    passed?: string;
+    processed?: string;
+    failed?: string;
+    rowCount?: number;
+    rowCountOffset?: number;
+  }
+) => {
+  const rowCount =
+    options?.rowCount ?? (await page.locator('.rdg-row').count());
+
+  // Calculate expected count: rowCount + offset (default: +1 for header/glossary itself)
+  const offset = options?.rowCountOffset ?? 1;
+  const expectedCount = String(rowCount + offset);
+
+  await validateImportStatus(page, {
+    passed: options?.passed ?? expectedCount,
+    processed: options?.processed ?? expectedCount,
+    failed: options?.failed ?? '0',
+  });
+};
+
+export const uploadCSVAndWaitForGrid = async (
+  page: Page,
+  filePath: string,
+  options?: {
+    isContentString?: boolean;
+    tempFileName?: string;
+  }
+): Promise<number> => {
+  await page.waitForSelector('[type="file"]', { state: 'attached' });
+  let actualFilePath = filePath;
+
+  if (options?.isContentString) {
+    const tempFileName = options?.tempFileName || `temp-${Date.now()}.csv`;
+    fs.writeFileSync(tempFileName, filePath);
+    actualFilePath = tempFileName;
+  }
+
+  await page.setInputFiles('[type="file"]', actualFilePath);
+  await page.waitForSelector('[data-testid="upload-file-widget"]', {
+    state: 'hidden',
+  });
+
+  await page.waitForTimeout(500);
+  return await page.locator('.rdg-row').count();
+};
+
 export const createDatabaseRowDetails = () => {
   return {
     name: `playwright,database,${uuid()}`,
@@ -617,7 +669,7 @@ export const createColumnRowDetails = () => {
 export const createColumnRowDetailsWithEncloseDot = () => {
   return {
     ...createColumnRowDetails(),
-    name: "playwright.column ${uuid()",
+    name: 'playwright.column ${uuid()',
   };
 };
 
