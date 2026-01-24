@@ -257,4 +257,8 @@ export interface StepStats {
      * Count of Total Failed Records
      */
     totalRecords?: number;
+    /**
+     * Count of Records with Warnings (e.g., stale references that were skipped)
+     */
+    warningRecords?: number;
 }

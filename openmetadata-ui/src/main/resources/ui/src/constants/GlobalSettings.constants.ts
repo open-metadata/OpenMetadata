@@ -84,6 +84,7 @@ export enum GlobalSettingOptions {
   LINEAGE_CONFIG = 'lineageConfig',
   OM_URL_CONFIG = 'om-url-config',
   SEARCH_SETTINGS = 'search-settings',
+  SEARCH_INSIGHTS = 'search-insights',
   DATA_ASSETS = 'dataAssets',
   QUERY = 'query',
   TEST_CASES = 'testCases',

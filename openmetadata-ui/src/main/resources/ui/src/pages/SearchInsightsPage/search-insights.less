@@ -1,0 +1,56 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+.search-insights-page {
+  .stats-card {
+    border-radius: 8px;
+    text-align: center;
+    min-height: 120px;
+
+    .stats-card-value {
+      font-size: 28px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .stats-card-label {
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    &.health-green {
+      border-left: 4px solid #10b981;
+    }
+
+    &.health-yellow {
+      border-left: 4px solid #f59e0b;
+    }
+
+    &.health-red {
+      border-left: 4px solid #ef4444;
+    }
+  }
+
+  .orphan-section {
+    margin-top: 24px;
+    padding: 16px;
+    background: #fef3c7;
+    border-radius: 8px;
+    border: 1px solid #f59e0b;
+  }
+
+  .orphan-section-empty {
+    background: #f0fdf4;
+    border-color: #10b981;
+  }
+}
