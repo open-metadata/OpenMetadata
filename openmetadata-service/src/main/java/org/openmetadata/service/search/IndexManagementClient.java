@@ -1,7 +1,5 @@
 package org.openmetadata.service.search;
 
-import java.io.IOException;
-import java.util.List;
 import java.util.Set;
 import org.openmetadata.search.IndexMapping;
 
@@ -120,15 +118,4 @@ public interface IndexManagementClient {
    * @return set of indices that start with the prefix
    */
   Set<String> listIndicesByPrefix(String prefix);
-
-  record IndexStats(
-      String name,
-      long documents,
-      int primaryShards,
-      int replicaShards,
-      long sizeInBytes,
-      String health,
-      Set<String> aliases) {}
-
-  List<IndexStats> getAllIndexStats() throws IOException;
 }
