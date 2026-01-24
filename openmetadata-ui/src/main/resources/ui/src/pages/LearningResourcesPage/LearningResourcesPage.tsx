@@ -161,7 +161,7 @@ export const LearningResourcesPage: React.FC = () => {
           try {
             await deleteLearningResource(resource.id);
             showSuccessToast(
-              t('message.entity-deleted-successfully', {
+              t('server.entity-deleted-successfully', {
                 entity: t('label.learning-resource'),
               })
             );
