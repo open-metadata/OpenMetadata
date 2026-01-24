@@ -28,6 +28,7 @@ import AppearanceConfigSettingsPage from '../../pages/AppearanceConfigSettingsPa
 import ApplicationPage from '../../pages/Application/ApplicationPage';
 import AuditLogsPage from '../../pages/AuditLogsPage/AuditLogsPage';
 import BotsPageV1 from '../../pages/BotsPageV1/BotsPageV1.component';
+import ColumnBulkOperations from '../../pages/ColumnBulkOperations/ColumnBulkOperations.component';
 import DataAssetRulesPage from '../../pages/Configuration/DataAssetRules/DataAssetRulesPage';
 import EditLoginConfiguration from '../../pages/Configuration/EditLoginConfiguration/EditLoginConfigurationPage';
 import EditUrlConfigurationPage from '../../pages/Configuration/EditUrlConfiguration/EditUrlConfigurationPage';
@@ -54,6 +55,7 @@ import ProfilerConfigurationPage from '../../pages/ProfilerConfigurationPage/Pro
 import AddRolePage from '../../pages/RolesPage/AddRolePage/AddRolePage';
 import RolesDetailPage from '../../pages/RolesPage/RolesDetailPage/RolesDetailPage';
 import RolesListPage from '../../pages/RolesPage/RolesListPage/RolesListPage';
+import SearchInsightsPage from '../../pages/SearchInsightsPage/SearchInsightsPage';
 import SearchSettingsPage from '../../pages/SearchSettingsPage/SearchSettingsPage';
 import ServicesPage from '../../pages/ServicesPage/ServicesPage';
 import ImportTeamsPage from '../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage';
@@ -444,6 +446,18 @@ const SettingsRouter = () => {
       <Route
         element={
           <AdminProtectedRoute>
+            <SearchInsightsPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.SEARCH_INSIGHTS
+        )}
+      />
+
+      <Route
+        element={
+          <AdminProtectedRoute>
             <LineageConfigPage pageTitle={t('label.lineage-config')} />
           </AdminProtectedRoute>
         }
@@ -634,6 +648,14 @@ const SettingsRouter = () => {
         path={getSettingCategoryPath(
           GlobalSettingsMenuCategory.CUSTOM_PROPERTIES
         )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute hasPermission={false}>
+            <ColumnBulkOperations />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.COLUMN_BULK_OPERATIONS.replace(ROUTES.SETTINGS, '')}
       />
       <Route
         element={

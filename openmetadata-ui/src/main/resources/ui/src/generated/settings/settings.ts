@@ -287,9 +287,8 @@ export interface PipelineServiceClientConfiguration {
      */
     useRolesFromProvider?: boolean;
     /**
-     * AWS IAM authentication configuration for OpenSearch. IAM auth is automatically enabled
-     * when region is configured. Uses standard AWS environment variables (AWS_DEFAULT_REGION,
-     * AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN).
+     * AWS IAM authentication configuration for OpenSearch. IAM auth must be explicitly enabled.
+     * When enabled, uses standard AWS environment variables or configured credentials.
      */
     aws?: Aws;
     /**
@@ -1552,11 +1551,15 @@ export interface AuthorizerConfiguration {
 }
 
 /**
- * AWS IAM authentication configuration for OpenSearch. IAM auth is automatically enabled
- * when region is configured. Uses standard AWS environment variables (AWS_DEFAULT_REGION,
- * AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN).
+ * AWS IAM authentication configuration for OpenSearch. IAM auth must be explicitly enabled.
+ * When enabled, uses standard AWS environment variables or configured credentials.
  */
 export interface Aws {
+    /**
+     * Enable AWS IAM authentication for OpenSearch. When enabled, requires region to be
+     * configured. Defaults to false for backward compatibility.
+     */
+    enabled?: boolean;
     /**
      * AWS service name for signing (es for Elasticsearch/OpenSearch, aoss for OpenSearch
      * Serverless)
@@ -1585,6 +1588,10 @@ export interface SemanticsRule {
      * List of entities to ignore for this semantics rule.
      */
     ignoredEntities?: string[];
+    /**
+     * Whether this rule was inherited from a Data Product.
+     */
+    inherited?: boolean;
     /**
      * JSON Tree to represents rule in UI.
      */
@@ -1880,6 +1887,12 @@ export interface AWSCredentials {
      */
     awsSessionToken?: string;
     /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
+    /**
      * EndPoint URL for the AWS
      */
     endPointURL?: string;
@@ -2134,11 +2147,17 @@ export interface AWSBaseConfig {
      */
     assumeRoleSessionName?: string;
     /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
+    /**
      * Custom endpoint URL for AWS-compatible services (MinIO, LocalStack).
      */
     endpointUrl?: string;
     /**
-     * AWS Region (e.g., us-east-1). When set, enables AWS authentication.
+     * AWS Region (e.g., us-east-1). Required when AWS authentication is enabled.
      */
     region?: string;
     /**

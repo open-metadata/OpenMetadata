@@ -28,7 +28,10 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-settings-primery.svg';
-import { DEFAULT_RANGE_DATA } from '../../../../../constants/profiler.constant';
+import {
+  DEFAULT_RANGE_DATA,
+  DEFAULT_SELECTED_RANGE,
+} from '../../../../../constants/profiler.constant';
 import { useTourProvider } from '../../../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
@@ -78,8 +81,8 @@ const TabFilters = () => {
       dateRangeObject: {
         startTs,
         endTs,
-        key: searchData.key as string,
-        title: searchData.title as string,
+        key: (searchData.key as string) ?? DEFAULT_SELECTED_RANGE.key,
+        title: (searchData.title as string) ?? DEFAULT_SELECTED_RANGE.title,
       } as DateRangeObject,
     } as {
       activeColumnFqn: string;
@@ -204,6 +207,7 @@ const TabFilters = () => {
         ProfilerTabPath.COLUMN_PROFILE,
         ProfilerTabPath.DATA_QUALITY,
         ProfilerTabPath.OVERVIEW,
+        ProfilerTabPath.INCIDENTS,
       ].includes(activeTab) && isEmpty(activeColumnFqn) ? null : (
         <Box alignItems="center" display="flex" gap={2}>
           <Typography
