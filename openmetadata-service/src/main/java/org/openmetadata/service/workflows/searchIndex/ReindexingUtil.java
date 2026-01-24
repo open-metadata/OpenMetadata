@@ -57,14 +57,6 @@ public class ReindexingUtil {
     stats.setFailedRecords(stats.getFailedRecords() + currentFailed);
   }
 
-  public static void getUpdatedStats(
-      StepStats stats, int currentSuccess, int currentFailed, int currentWarnings) {
-    stats.setSuccessRecords(stats.getSuccessRecords() + currentSuccess);
-    stats.setFailedRecords(stats.getFailedRecords() + currentFailed);
-    stats.setWarningRecords(
-        (stats.getWarningRecords() != null ? stats.getWarningRecords() : 0) + currentWarnings);
-  }
-
   public static boolean isDataInsightIndex(String entityType) {
     return Entity.getSearchRepository().getDataInsightReports().contains(entityType);
   }

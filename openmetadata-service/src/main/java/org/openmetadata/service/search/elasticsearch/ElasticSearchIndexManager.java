@@ -12,14 +12,11 @@ import es.co.elastic.clients.elasticsearch.indices.GetAliasResponse;
 import es.co.elastic.clients.elasticsearch.indices.PutMappingRequest;
 import es.co.elastic.clients.elasticsearch.indices.UpdateAliasesRequest;
 import es.co.elastic.clients.elasticsearch.indices.UpdateAliasesResponse;
-import es.co.elastic.clients.elasticsearch.indices.stats.IndicesStats;
 import es.co.elastic.clients.transport.endpoints.BooleanResponse;
 import java.io.IOException;
 import java.io.StringReader;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.search.IndexMapping;
@@ -408,48 +405,5 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       LOG.error("Failed to list indices by prefix {} due to", prefix, e);
     }
     return indices;
-  }
-
-  @Override
-  public List<IndexStats> getAllIndexStats() throws IOException {
-    List<IndexStats> result = new ArrayList<>();
-    var statsResponse = client.indices().stats(s -> s.index("*"));
-    var indices = statsResponse.indices();
-    for (var entry : indices.entrySet()) {
-      String indexName = entry.getKey();
-      if (indexName.startsWith(".")) {
-        continue;
-      }
-      IndicesStats stats = entry.getValue();
-      long docs = 0;
-      long sizeBytes = 0;
-      int primaryShards = 0;
-      int replicaShards = 0;
-      if (stats.primaries() != null) {
-        if (stats.primaries().docs() != null) {
-          docs = stats.primaries().docs().count();
-        }
-        if (stats.primaries().store() != null) {
-          sizeBytes = stats.primaries().store().sizeInBytes();
-        }
-      }
-      if (stats.shards() != null) {
-        for (var shardEntry : stats.shards().entrySet()) {
-          for (var shardStats : shardEntry.getValue()) {
-            if (shardStats.routing() != null && shardStats.routing().primary()) {
-              primaryShards++;
-            } else {
-              replicaShards++;
-            }
-          }
-        }
-      }
-      String health = stats.health() != null ? stats.health().name().toUpperCase() : "UNKNOWN";
-      Set<String> aliases = getAliases(indexName);
-      result.add(
-          new IndexStats(
-              indexName, docs, primaryShards, replicaShards, sizeBytes, health, aliases));
-    }
-    return result;
   }
 }
