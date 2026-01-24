@@ -457,51 +457,62 @@ export const fillGlossaryRowDetails = async (
     await fillTextInputDetails(page, row.name);
   }
 
-  await page.keyboard.press('ArrowRight');
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillTextInputDetails(page, row.displayName);
 
   // Navigate to next cell and make cell editable
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillDescriptionDetails(page, row.description);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillTextInputDetails(page, row.synonyms);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillGlossaryTermDetails(page, row.relatedTerm);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillTextInputDetails(page, row.references);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillTagDetails(page, row.tag);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillOwnerDetails(page, row.reviewers);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillOwnerDetails(page, row.owners);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillTextInputDetails(page, '#ccc');
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   const base64Src =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
 
   await fillTextInputDetails(page, base64Src);
 
-  await page.keyboard.press('ArrowRight', { delay: 100 });
+  await moveToNextColumnWithVerification(page);
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   if (propertyListName) {
     await fillExtensionDetails(page, propertyListName);
