@@ -196,10 +196,7 @@ export const getCSVStringFromColumnsAndDataSource = (
   const data = dataSource.map((row) =>
     Object.fromEntries(
       fieldNames.map((key) => {
-        let value = String(row[key] ?? '');
-        if (key === 'column.name*' && value.includes('.')) {
-          value = `"${value.replace(/"/g, '""')}"`;
-        }
+        const value = String(row[key] ?? '');
 
         return [key, value];
       })
@@ -210,7 +207,6 @@ export const getCSVStringFromColumnsAndDataSource = (
     columns: fieldNames,
     header: true,
     newline: '\n',
-    quotes: fieldNames.map((k) => k === 'column.name*'),
   });
 };
 
