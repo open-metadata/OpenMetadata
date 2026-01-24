@@ -431,7 +431,11 @@ test.describe('Explore page', () => {
     await expandResponse;
     await page.waitForLoadState('networkidle');
 
-    const chartTreeNode = page.getByTestId('explore-tree-title-Charts');
+    await page.waitForTimeout(500);
+
+    const chartTreeNode = page.locator('[data-testid*="explore-tree-title"]', {
+      hasText: 'Charts',
+    });
     await expect(chartTreeNode).toBeVisible();
 
     const chartClickResponse = page.waitForResponse(
