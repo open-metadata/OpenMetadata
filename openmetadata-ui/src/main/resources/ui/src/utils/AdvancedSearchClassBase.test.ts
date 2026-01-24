@@ -444,6 +444,7 @@ describe('getCustomPropertiesSubFields', () => {
         operators: expect.any(Array),
         fieldSettings: {
           valueFormat: expect.any(String),
+          dateFormat: expect.any(String),
         },
       },
     });
@@ -473,6 +474,7 @@ describe('getCustomPropertiesSubFields', () => {
         operators: expect.any(Array),
         fieldSettings: {
           valueFormat: 'DD/MM/YYYY',
+          dateFormat: 'DD/MM/YYYY',
         },
       },
     });
