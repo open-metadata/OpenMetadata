@@ -437,7 +437,7 @@ describe('getCustomPropertiesSubFields', () => {
     );
 
     expect(result).toEqual({
-      subfieldsKey: 'dateField',
+      subfieldsKey: 'dateField.keyword',
       dataObject: {
         type: 'date',
         label: mockLabel,
@@ -467,7 +467,7 @@ describe('getCustomPropertiesSubFields', () => {
     );
 
     expect(result).toEqual({
-      subfieldsKey: 'dateField',
+      subfieldsKey: 'dateField.keyword',
       dataObject: {
         type: 'date',
         label: mockLabel,
