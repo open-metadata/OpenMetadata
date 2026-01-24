@@ -407,6 +407,7 @@ test.describe('Explore page', () => {
   });
 
   test('Verify charts are visible in explore tree', async ({ page }) => {
+    await page.reload();
     await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
