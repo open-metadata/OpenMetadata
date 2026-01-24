@@ -197,8 +197,7 @@ export const getCSVStringFromColumnsAndDataSource = (
     Object.fromEntries(
       fieldNames.map((key) => {
         let value = String(row[key] ?? '');
-        const isQuoted = value.startsWith('"') && value.endsWith('"');
-        if (key === 'column.name*' && value.includes('.') && !isQuoted) {
+        if (key === 'column.name*' && value.includes('.')) {
           value = `"${value.replace(/"/g, '""')}"`;
         }
 
