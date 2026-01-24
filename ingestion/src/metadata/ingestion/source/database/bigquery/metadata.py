@@ -12,7 +12,6 @@
 """
 Bigquery source module
 """
-import ast
 import os
 import traceback
 from typing import Dict, Iterable, List, Optional, Tuple
@@ -71,6 +70,8 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_test_connection_fn
 from metadata.ingestion.source.database.bigquery.helper import (
+    clear_constraint_cache,
+    clear_constraint_cache_for_schema,
     get_foreign_keys,
     get_inspector_details,
     get_pk_constraint,
@@ -83,11 +84,9 @@ from metadata.ingestion.source.database.bigquery.models import (
     BigQueryStoredProcedure,
 )
 from metadata.ingestion.source.database.bigquery.queries import (
-    BIGQUERY_GET_SCHEMA_NAMES,
     BIGQUERY_GET_STORED_PROCEDURES,
+    BIGQUERY_GET_TABLE_DDLS,
     BIGQUERY_LIFE_CYCLE_QUERY,
-    BIGQUERY_SCHEMA_DESCRIPTION,
-    BIGQUERY_TABLE_AND_TYPE,
 )
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
@@ -107,18 +106,14 @@ from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.filters import filter_by_database, filter_by_schema
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sqlalchemy_utils import (
-    get_all_table_ddls,
-    get_table_ddl,
-    is_complex_type,
-)
+from metadata.utils.sqlalchemy_utils import is_complex_type
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_label
 from metadata.utils.tag_utils import get_tag_labels as fetch_tag_labels_om
 
 _bigquery_table_types = {
     "BASE TABLE": TableType.Regular,
     "EXTERNAL": TableType.External,
-    "MATERIALIZED VIEW": TableType.MaterializedView,
+    "MATERIALIZED_VIEW": TableType.MaterializedView,
     "VIEW": TableType.View,
 }
 
@@ -215,9 +210,6 @@ BigQueryDialect._build_formatted_table_id = (  # pylint: disable=protected-acces
 BigQueryDialect.get_pk_constraint = get_pk_constraint
 BigQueryDialect.get_foreign_keys = get_foreign_keys
 
-Inspector.get_all_table_ddls = get_all_table_ddls
-Inspector.get_table_ddl = get_table_ddl
-
 
 # pylint: disable=too-many-public-methods
 class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
@@ -249,6 +241,20 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         self.incremental_table_processor: Optional[
             BigQueryIncrementalTableProcessor
         ] = None
+
+        self._current_schema_tables = {}
+        self._current_dataset_obj = None
+        self._policy_tag_cache = {}
+        self._taxonomy_cache = {}
+        self._taxonomy_to_tags = {}
+        self._table_ddl_cache = {}
+        self._policy_tag_client = None
+
+        if self.service_connection.includePolicyTags:
+            try:
+                self._policy_tag_client = PolicyTagManagerClient()
+            except Exception as exc:
+                logger.warning(f"Failed to initialize PolicyTagManagerClient: {exc}")
 
         if self.incremental.enabled:
             logger.info(
@@ -346,15 +352,10 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         table_type: TableType = None,
     ):
         """
-        Get columns list
+        Get columns list from cached table object instead of making additional API call
         """
-
-        return inspector.get_columns(
-            table_name,
-            f"{db_name}.{schema_name}",
-            table_type=table_type,
-            db_name=db_name,
-        )
+        table_obj = self.get_table_obj(table_name)
+        return get_columns(table_obj.schema)
 
     def _test_connection(self) -> None:
         for project_id in self.project_ids:
@@ -374,45 +375,45 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         self, schema_name: str
     ) -> Iterable[TableNameAndType]:
         """
-        Connect to the source database to get the table
-        name and type. By default, use the inspector method
-        to get the names and pass the Regular type.
-
-        This is useful for sources where we need fine-grained
-        logic on how to handle table types, e.g., external, foreign,...
+        Use client.list_tables() API to get the table names and types and also fetching table DDLs if includeDDL is set to true.
         """
-        view_filter = (
-            "AND table_type NOT IN  ('VIEW', 'MATERIALIZED VIEW')"
-            if not self.source_config.includeViews
-            else ""
-        )
+        database = self.context.get().database
+        dataset_ref = f"{database}.{schema_name}"
 
-        table_names_and_types = (
-            self.engine.execute(
-                BIGQUERY_TABLE_AND_TYPE.format(
-                    project_id=self.context.get().database,
-                    schema_name=schema_name,
-                    view_filter=view_filter,
+        self._current_schema_tables.clear()
+        self._current_dataset_obj = None
+        self._prefetch_table_ddls(schema_name)
+        clear_constraint_cache_for_schema(database, schema_name)
+
+        try:
+            tables = self.client.list_tables(dataset_ref)
+
+            for table in tables:
+                if not self.source_config.includeViews and table.table_type in (
+                    "VIEW",
+                    "MATERIALIZED_VIEW",
+                ):
+                    continue
+
+                if self.incremental.enabled:
+                    if (
+                        table.table_id
+                        not in self.incremental_table_processor.get_not_deleted(
+                            schema_name
+                        )
+                    ):
+                        continue
+
+                yield TableNameAndType(
+                    name=table.table_id,
+                    type_=_bigquery_table_types.get(
+                        table.table_type, TableType.Regular
+                    ),
                 )
-            )
-            or []
-        )
 
-        if self.incremental.enabled:
-            table_names_and_types = [
-                (table_name, table_type)
-                for table_name, table_type in table_names_and_types
-                if table_name
-                in self.incremental_table_processor.get_not_deleted(schema_name)
-            ]
-
-        return [
-            TableNameAndType(
-                name=table_name,
-                type_=_bigquery_table_types.get(table_type, TableType.Regular),
-            )
-            for table_name, table_type in table_names_and_types
-        ]
+        except Exception as exc:
+            logger.error(f"Error listing tables for {dataset_ref}: {exc}")
+            raise
 
     def query_view_names_and_types(
         self, schema_name: str
@@ -437,15 +438,90 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             schema_name=schema_name, table_name=table_name, inspector=inspector
         )
 
+    def get_dataset_obj(self, schema_name: str):
+        """Get dataset object with per-schema caching"""
+        if self._current_dataset_obj is None:
+            database = self.context.get().database
+            self._current_dataset_obj = self.client.get_dataset(
+                f"{database}.{schema_name}"
+            )
+        return self._current_dataset_obj
+
+    def _prefetch_policy_tags(self):
+        """Pre-fetch all policy tags at schema level to avoid per-column API calls"""
+        if not self.service_connection.includePolicyTags:
+            return
+
+        self._policy_tag_cache.clear()
+        self._taxonomy_cache.clear()
+        self._taxonomy_to_tags.clear()
+
+        if not self._policy_tag_client:
+            logger.warning(
+                "PolicyTagManagerClient not initialized, skipping policy tag fetch"
+            )
+            return
+
+        list_project_ids = [self.context.get().database]
+        if self.service_connection.taxonomyProjectID:
+            list_project_ids.extend(self.service_connection.taxonomyProjectID)
+
+        for project_id in list_project_ids:
+            try:
+                parent = f"projects/{project_id}/locations/{self.service_connection.taxonomyLocation}"
+                taxonomies = list(
+                    self._policy_tag_client.list_taxonomies(parent=parent)
+                )
+
+                for taxonomy in taxonomies:
+                    self._taxonomy_cache[taxonomy.name] = taxonomy.display_name
+
+                    if taxonomy.display_name not in self._taxonomy_to_tags:
+                        self._taxonomy_to_tags[taxonomy.display_name] = []
+
+                    policy_tags = list(
+                        self._policy_tag_client.list_policy_tags(parent=taxonomy.name)
+                    )
+
+                    for tag in policy_tags:
+                        self._policy_tag_cache[tag.name] = {
+                            "display_name": tag.display_name,
+                            "taxonomy": taxonomy.display_name,
+                        }
+                        self._taxonomy_to_tags[taxonomy.display_name].append(
+                            tag.display_name
+                        )
+            except Exception as exc:
+                logger.warning(
+                    f"Error pre-fetching policy tags for {project_id}: {exc}"
+                )
+
+    def _prefetch_table_ddls(self, schema_name: str):
+        """Pre-fetch all table DDLs at schema level using INFORMATION_SCHEMA"""
+        if not self.source_config.includeDDL:
+            return
+
+        self._table_ddl_cache.clear()
+
+        try:
+            database = self.context.get().database
+            query = BIGQUERY_GET_TABLE_DDLS.format(
+                database_name=database,
+                schema_name=schema_name,
+            )
+            results = self.engine.execute(query).all()
+            for row in results:
+                self._table_ddl_cache[row.table_name] = row.ddl
+        except Exception as exc:
+            logger.warning(f"Error pre-fetching table DDLs for {schema_name}: {exc}")
+            logger.debug(traceback.format_exc())
+
     def yield_tag(
         self, schema_name: str
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """Build tag context"""
         try:
-            # Fetching labels on the databaseSchema ( dataset ) level
-            dataset_obj = self.client.get_dataset(
-                f"{self.context.get().database}.{schema_name}"
-            )
+            dataset_obj = self.get_dataset_obj(schema_name)
             if dataset_obj.labels:
                 for key, value in dataset_obj.labels.items():
                     yield from get_ometa_tag_and_classification(
@@ -464,22 +540,14 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 )
                 return
 
-            # Fetching policy tags on the column level
-            list_project_ids = [self.context.get().database]
-            if not self.service_connection.taxonomyProjectID:
-                self.service_connection.taxonomyProjectID = []
-            list_project_ids.extend(self.service_connection.taxonomyProjectID)
-            for project_ids in list_project_ids:
-                taxonomies = PolicyTagManagerClient().list_taxonomies(
-                    parent=f"projects/{project_ids}/locations/{self.service_connection.taxonomyLocation}"
-                )
-                for taxonomy in taxonomies:
-                    policy_tags = PolicyTagManagerClient().list_policy_tags(
-                        parent=taxonomy.name
-                    )
+            self._prefetch_policy_tags()
+
+            for taxonomy_name, classification_name in self._taxonomy_cache.items():
+                tags = self._taxonomy_to_tags.get(classification_name, [])
+                if tags:
                     yield from get_ometa_tag_and_classification(
-                        tags=[tag.display_name for tag in policy_tags],
-                        classification_name=taxonomy.display_name,
+                        tags=tags,
+                        classification_name=classification_name,
                         tag_description="Bigquery Policy Tag",
                         classification_description="BigQuery Policy Classification",
                         include_tags=self.source_config.includeTags,
@@ -496,22 +564,10 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             )
 
     def get_schema_description(self, schema_name: str) -> Optional[str]:
+        """Use cached dataset object instead of SQL query"""
         try:
-            query_resp = self.client.query(
-                BIGQUERY_SCHEMA_DESCRIPTION.format(
-                    project_id=self.context.get().database,
-                    region=self.service_connection.usageLocation,
-                    schema_name=schema_name,
-                )
-            )
-
-            query_result = [result.schema_description for result in query_resp.result()]
-
-            return str(
-                ast.literal_eval(query_result[0])
-            )  # To safely evaluate the string, unquote and interpret escaped characters
-        except IndexError:
-            logger.debug(f"No dataset description found for {schema_name}")
+            dataset_obj = self.get_dataset_obj(schema_name)
+            return dataset_obj.description or ""
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.debug(
@@ -552,13 +608,10 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         if self.service_connection.__dict__.get("databaseSchema"):
             yield self.service_connection.databaseSchema
         else:
-            for schema in self.engine.execute(
-                BIGQUERY_GET_SCHEMA_NAMES.format(
-                    project=self.context.get().database,
-                    region=self.service_connection.usageLocation,
-                )
-            ):
-                yield schema[0]
+            project = self.context.get().database
+            datasets = self.client.list_datasets(project)
+            for dataset in datasets:
+                yield dataset.dataset_id
 
     def _get_filtered_schema_names(
         self, return_fqn: bool = False, add_to_status: bool = True
@@ -609,9 +662,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             ),
         )
         if self.source_config.includeTags:
-            dataset_obj = self.client.get_dataset(
-                f"{self.context.get().database}.{schema_name}"
-            )
+            dataset_obj = self.get_dataset_obj(schema_name)
             if dataset_obj.labels:
                 database_schema_request_obj.tags = []
                 for label_classification, label_tag_name in dataset_obj.labels.items():
@@ -625,10 +676,19 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         yield Either(right=database_schema_request_obj)
 
     def get_table_obj(self, table_name: str):
+        if table_name in self._current_schema_tables:
+            return self._current_schema_tables[table_name]
+
         schema_name = self.context.get().database_schema
         database = self.context.get().database
+        logger.debug(
+            f"Fetching table object for {database}.{schema_name}.{table_name} using BigQuery API"
+        )
         bq_table_fqn = fqn._build(database, schema_name, table_name)
-        return self.client.get_table(bq_table_fqn)
+        table_obj = self.client.get_table(bq_table_fqn)
+
+        self._current_schema_tables[table_name] = table_obj
+        return table_obj
 
     def yield_table_tags(self, table_name_and_type: Tuple[str, str]):
         table_name, _ = table_name_and_type
@@ -667,6 +727,23 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         try:
             if column.get("policy_tags"):
                 policy_tag_name = column["policy_tags"].names[0]
+
+                if policy_tag_name in self._policy_tag_cache:
+                    cached = self._policy_tag_cache[policy_tag_name]
+                    column["taxonomy"] = cached["taxonomy"]
+                    column["policy_tags"] = cached["display_name"]
+                    return column
+
+                logger.debug(
+                    f"Policy tag {policy_tag_name} not in cache, fetching from API"
+                )
+
+                if not self._policy_tag_client:
+                    logger.warning(
+                        "PolicyTagManagerClient not available for fallback fetch"
+                    )
+                    return column
+
                 taxonomy_name = (
                     policy_tag_name.split("/policyTags/")[0] if policy_tag_name else ""
                 )
@@ -674,16 +751,12 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     raise NotImplementedError(
                         f"Taxonomy Name not present for {column['name']}"
                     )
-                column["taxonomy"] = (
-                    PolicyTagManagerClient()
-                    .get_taxonomy(name=taxonomy_name)
-                    .display_name
-                )
-                column["policy_tags"] = (
-                    PolicyTagManagerClient()
-                    .get_policy_tag(name=policy_tag_name)
-                    .display_name
-                )
+                column["taxonomy"] = self._policy_tag_client.get_taxonomy(
+                    name=taxonomy_name
+                ).display_name
+                column["policy_tags"] = self._policy_tag_client.get_policy_tag(
+                    name=policy_tag_name
+                ).display_name
                 return column
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -758,7 +831,17 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         Get the DDL statement or View Definition for a table
         """
         try:
-            if table_type == TableType.View:
+            if table_type in (TableType.View, TableType.MaterializedView):
+                table_obj = self.get_table_obj(table_name)
+
+                if getattr(table_obj, "view_query", None):
+                    return f"CREATE VIEW {schema_name}.{table_name} AS {table_obj.view_query}"
+                elif getattr(table_obj, "mview_query", None):
+                    return f"CREATE MATERIALIZED VIEW {schema_name}.{table_name} AS {table_obj.mview_query}"
+
+                logger.debug(
+                    f"Falling back to inspector for view definition as view_query not found for {table_obj.table_id}"
+                )
                 view_definition = inspector.get_view_definition(
                     fqn._build(self.context.get().database, schema_name, table_name)
                 )
@@ -770,19 +853,16 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 return view_definition
 
             if self.source_config.includeDDL:
-                schema_definition = inspector.get_table_ddl(
-                    self.connection,
-                    table_name,
-                    f"{self.context.get().database}.{schema_name}",
-                )
-                schema_definition = (
-                    str(schema_definition).strip()
-                    if schema_definition is not None
-                    else None
-                )
-                return schema_definition
+                return self._table_ddl_cache.get(table_name)
         except NotImplementedError:
-            logger.warning("Schema definition not implemented")
+            logger.warning(
+                f"Schema definition not implemented for {schema_name}.{table_name}"
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error getting schema definition for {schema_name}.{table_name}: {exc}"
+            )
         return None
 
     def _get_partition_column_name(
@@ -828,7 +908,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             columns,
         )
         try:
-            table = self.client.get_table(fqn._build(db_name, schema_name, table_name))
+            table = self.get_table_obj(table_name)
             if hasattr(table, "clustering_fields") and table.clustering_fields:
                 table_constraints.append(
                     TableConstraint(
@@ -848,11 +928,8 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         check if the table is partitioned table and return the partition details
         """
         try:
-            database = self.context.get().database
-            table = self.client.get_table(fqn._build(database, schema_name, table_name))
-            columns = inspector.get_columns(
-                table_name, f"{database}.{schema_name}", db_name=database
-            )
+            table = self.get_table_obj(table_name)
+            columns = get_columns(table.schema)
             if (
                 hasattr(table, "external_data_configuration")
                 and hasattr(table.external_data_configuration, "hive_partitioning")
@@ -959,6 +1036,15 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
 
     def close(self):
         super().close()
+
+        if self._policy_tag_client:
+            try:
+                self._policy_tag_client.transport.close()
+            except Exception as exc:
+                logger.debug(f"Error closing PolicyTagManagerClient: {exc}")
+
+        clear_constraint_cache()
+
         os.environ.pop("GOOGLE_CLOUD_PROJECT", "")
         if isinstance(
             self.service_connection.credentials.gcpConfig, GcpCredentialsValues
