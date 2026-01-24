@@ -2927,7 +2927,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 tagLabel.getLabelType().ordinal(),
                 tagLabel.getState().ordinal(),
                 tagLabel.getReason(),
-                tagLabel.getAppliedBy());
+                tagLabel.getAppliedBy(),
+                tagLabel.getMetadata());
 
         // Update RDF store
         org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
