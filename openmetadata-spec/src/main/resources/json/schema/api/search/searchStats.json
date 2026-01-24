@@ -49,6 +49,11 @@
       "items": {
         "$ref": "#/definitions/orphanIndex"
       }
+    },
+    "isSearchIndexingRunning": {
+      "description": "Indicates if search indexing job is currently running. Orphan cleanup is not allowed while indexing is in progress.",
+      "type": "boolean",
+      "default": false
     }
   },
   "definitions": {

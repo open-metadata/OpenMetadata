@@ -63,6 +63,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.OrphanedIndexCleaner;
+import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.IndexManagementClient.IndexStats;
 import org.openmetadata.service.search.SearchClient;
@@ -73,6 +76,9 @@ import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
+import org.quartz.JobExecutionContext;
+import org.quartz.JobKey;
+import org.quartz.SchedulerException;
 import os.org.opensearch.client.opensearch.core.search.Suggest;
 
 @Slf4j
@@ -953,6 +959,7 @@ public class SearchResource {
     response.setTotalReplicaShards(totalReplicaShards);
     response.setIndexes(indexStatsList);
     response.setOrphanIndexes(orphanList);
+    response.setIsSearchIndexingRunning(isSearchIndexingRunning());
 
     return Response.ok(response).build();
   }
@@ -971,10 +978,22 @@ public class SearchResource {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = OrphanCleanupResponse.class)))
+                    schema = @Schema(implementation = OrphanCleanupResponse.class))),
+        @ApiResponse(
+            responseCode = "409",
+            description = "Conflict - Search indexing is currently running")
       })
   public Response cleanOrphanIndexes(@Context SecurityContext securityContext) throws IOException {
     authorizer.authorizeAdminOrBot(securityContext);
+
+    if (isSearchIndexingRunning()) {
+      return Response.status(Response.Status.CONFLICT)
+          .entity(
+              "Cannot clean orphan indexes while search indexing is running. "
+                  + "Please wait for the indexing job to complete.")
+          .build();
+    }
+
     SearchClient searchClient = searchRepository.getSearchClient();
     OrphanedIndexCleaner cleaner = new OrphanedIndexCleaner();
     OrphanedIndexCleaner.CleanupResult result = cleaner.cleanupOrphanedIndices(searchClient);
@@ -984,5 +1003,62 @@ public class SearchResource {
     response.setDeletedCount(result.deleted());
 
     return Response.ok(response).build();
+  }
+
+  private static final String SEARCH_INDEXING_APP_NAME = "SearchIndexingApplication";
+
+  private boolean isSearchIndexingRunning() {
+    return isQuartzJobRunning() || isDistributedJobRunning();
+  }
+
+  private boolean isQuartzJobRunning() {
+    try {
+      AppScheduler appScheduler = AppScheduler.getInstance();
+      List<JobExecutionContext> currentJobs =
+          appScheduler.getScheduler().getCurrentlyExecutingJobs();
+
+      JobKey scheduledJobKey = new JobKey(SEARCH_INDEXING_APP_NAME, AppScheduler.APPS_JOB_GROUP);
+      JobKey onDemandJobKey =
+          new JobKey(
+              String.format("%s-%s", SEARCH_INDEXING_APP_NAME, AppScheduler.ON_DEMAND_JOB),
+              AppScheduler.APPS_JOB_GROUP);
+
+      for (JobExecutionContext context : currentJobs) {
+        JobKey runningJobKey = context.getJobDetail().getKey();
+        if (runningJobKey.equals(scheduledJobKey) || runningJobKey.equals(onDemandJobKey)) {
+          LOG.info("Search indexing Quartz job is currently running: {}", runningJobKey);
+          return true;
+        }
+      }
+      return false;
+    } catch (UnhandledServerException e) {
+      LOG.warn("AppScheduler not initialized, assuming no Quartz indexing job is running");
+      return false;
+    } catch (SchedulerException e) {
+      LOG.error("Failed to check if Quartz search indexing is running", e);
+      return false;
+    }
+  }
+
+  private boolean isDistributedJobRunning() {
+    try {
+      List<String> activeStatuses = List.of("INITIALIZING", "READY", "RUNNING");
+      List<CollectionDAO.SearchIndexJobDAO.SearchIndexJobRecord> activeJobs =
+          Entity.getCollectionDAO().searchIndexJobDAO().findByStatuses(activeStatuses);
+
+      if (activeJobs != null && !activeJobs.isEmpty()) {
+        LOG.info(
+            "Distributed search indexing job is currently active: {} jobs with statuses: {}",
+            activeJobs.size(),
+            activeJobs.stream()
+                .map(CollectionDAO.SearchIndexJobDAO.SearchIndexJobRecord::status)
+                .toList());
+        return true;
+      }
+      return false;
+    } catch (Exception e) {
+      LOG.warn("Failed to check distributed search indexing status: {}", e.getMessage());
+      return false;
+    }
   }
 }
