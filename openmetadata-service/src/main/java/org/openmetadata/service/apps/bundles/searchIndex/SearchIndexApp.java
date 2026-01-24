@@ -107,13 +107,13 @@ public class SearchIndexApp extends AbstractNativeApplication {
           cleaner.cleanupOrphanedIndices(searchRepository.getSearchClient());
       if (result.deleted() > 0) {
         LOG.info(
-            "Cleaned up {} orphaned rebuild indices on startup (found={}, failed={})",
+            "Cleaned up {} orphaned rebuild indices on Job End (found={}, failed={})",
             result.deleted(),
             result.found(),
             result.failed());
       }
     } catch (Exception e) {
-      LOG.warn("Failed to cleanup orphaned indices on startup: {}", e.getMessage());
+      LOG.warn("Failed to cleanup orphaned indices on Job End: {}", e.getMessage());
     }
   }
 
@@ -168,10 +168,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private void cleanupOldFailures() {
     try {
-      long cutoffTime = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(30);
-      int deleted = collectionDAO.searchIndexFailureDAO().deleteOlderThan(cutoffTime);
+      // Delete all previous failure records - we only keep failures for the current run
+      int deleted = collectionDAO.searchIndexFailureDAO().deleteAll();
       if (deleted > 0) {
-        LOG.info("Cleaned up {} old failure records", deleted);
+        LOG.info("Cleaned up {} failure records from previous runs", deleted);
       }
     } catch (Exception e) {
       LOG.warn("Failed to cleanup old failure records", e);
@@ -182,9 +182,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     boolean success = false;
     try {
       setupEntities();
-
       cleanupOldFailures();
-
       LOG.info(
           "Search Index Job Started for Entities: {}, RecreateIndex: {}, DistributedIndexing: {}",
           jobData.getEntities(),
@@ -466,10 +464,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
     if (readerStats != null) {
       readerStats.setTotalRecords((int) distributedJob.getTotalRecords());
       long readerFailed = serverStatsAggr != null ? serverStatsAggr.readerFailed() : 0;
+      long readerWarnings = serverStatsAggr != null ? serverStatsAggr.readerWarnings() : 0;
       // readerSuccess = total - readerFailed (entities that were successfully read)
       long readerSuccess = distributedJob.getTotalRecords() - readerFailed;
       readerStats.setSuccessRecords((int) readerSuccess);
       readerStats.setFailedRecords((int) readerFailed);
+      readerStats.setWarningRecords((int) readerWarnings);
     }
 
     StepStats sinkStats = stats.getSinkStats();
@@ -481,6 +481,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
         long actualSinkTotal = serverStatsAggr.sinkTotal();
         long sinkSuccess = serverStatsAggr.sinkSuccess();
         long sinkFailed = serverStatsAggr.sinkFailed();
+        long sinkWarnings = serverStatsAggr.sinkWarnings();
         long entityBuildFailures = serverStatsAggr.entityBuildFailures();
 
         // Log for debugging - entity build failures explain the gap between reader and sink
@@ -499,6 +500,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
         // Include entityBuildFailures in sinkFailed - they occur during sink processing
         // when Entity.buildSearchIndex() fails before sending to bulk processor
         sinkStats.setFailedRecords((int) (sinkFailed + entityBuildFailures));
+        sinkStats.setWarningRecords((int) sinkWarnings);
       } else {
         // Fallback: derive from reader stats (less accurate)
         long readerFailed = 0;

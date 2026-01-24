@@ -55,6 +55,7 @@ import ProfilerConfigurationPage from '../../pages/ProfilerConfigurationPage/Pro
 import AddRolePage from '../../pages/RolesPage/AddRolePage/AddRolePage';
 import RolesDetailPage from '../../pages/RolesPage/RolesDetailPage/RolesDetailPage';
 import RolesListPage from '../../pages/RolesPage/RolesListPage/RolesListPage';
+import SearchInsightsPage from '../../pages/SearchInsightsPage/SearchInsightsPage';
 import SearchSettingsPage from '../../pages/SearchSettingsPage/SearchSettingsPage';
 import ServicesPage from '../../pages/ServicesPage/ServicesPage';
 import ImportTeamsPage from '../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage';
@@ -439,6 +440,18 @@ const SettingsRouter = () => {
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.SEARCH_SETTINGS,
           true
+        )}
+      />
+
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <SearchInsightsPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.SEARCH_INSIGHTS
         )}
       />
 

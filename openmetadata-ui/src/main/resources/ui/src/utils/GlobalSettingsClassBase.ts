@@ -629,6 +629,13 @@ class GlobalSettingsClassBase {
             ].sort((a, b) => a.label.localeCompare(b.label)),
           },
           {
+            label: t('label.search-insights'),
+            description: t('message.search-insights-description'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_INSIGHTS}`,
+            icon: PreferencesSearchIcon,
+          },
+          {
             label: t('label.lineage'),
             description: t(
               'message.page-sub-header-for-lineage-config-setting'
