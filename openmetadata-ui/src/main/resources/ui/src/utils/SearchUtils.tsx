@@ -41,6 +41,7 @@ import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { getPartialNameFromTableFQN } from './CommonUtils';
+import { ElasticsearchQuery } from './QueryBuilderUtils';
 import searchClassBase from './SearchClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { escapeESReservedCharacters, getEncodedFqn } from './StringsUtils';
@@ -445,15 +446,7 @@ export const getTermQuery = (
       }))
     : [];
 
-  // Define proper types for Elasticsearch query clauses
-  type ESQueryClause = {
-    term?: Record<string, string | number | boolean>;
-    wildcard?: Record<string, string>;
-    match?: Record<string, string | number | boolean>;
-    bool?: Record<string, unknown>;
-  };
-
-  const allQueries: ESQueryClause[] = [
+  const allQueries: ElasticsearchQuery[] = [
     ...termQueries,
     ...wildcardQueries,
     ...matchQueries,
@@ -479,8 +472,8 @@ export const getTermQuery = (
   }
 
   // Define type for Elasticsearch bool query structure
-  type ESBoolQuery = Record<string, ESQueryClause[] | number> & {
-    must_not?: ESQueryClause[];
+  type ESBoolQuery = Record<string, ElasticsearchQuery[] | number> & {
+    must_not?: ElasticsearchQuery[];
     minimum_should_match?: number;
   };
 
@@ -517,4 +510,3 @@ export const getTermQuery = (
     },
   };
 };
-
