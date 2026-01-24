@@ -883,3 +883,66 @@ test.describe('Large Table Column Search & Copy Link', () => {
     );
   });
 });
+
+test.describe('dbt Tab Visibility for Seed Files', () => {
+  const tableWithDbtData = new TableClass();
+
+  test.beforeAll('Setup table with dbt dataModel', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    // Create a table
+    await tableWithDbtData.create(apiContext);
+
+    // Patch the table to add dataModel with path and dbtSourceProject (no SQL - like a seed file)
+    await tableWithDbtData.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/dataModel',
+          value: {
+            modelType: 'DBT',
+            resourceType: 'seed',
+            path: 'seeds/sample_seed.csv',
+            dbtSourceProject: 'test_dbt_project',
+          },
+        },
+      ],
+    });
+
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup table', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await tableWithDbtData.delete(apiContext);
+    await afterAction();
+  });
+
+  test('should show dbt tab for seed files without SQL', async ({ page }) => {
+    await redirectToHomePage(page);
+
+    // Visit the table page
+    await tableWithDbtData.visitEntityPage(page);
+    await waitForAllLoadersToDisappear(page);
+
+    // Verify dbt tab is visible
+    const dbtTab = page.getByTestId('dbt');
+    await expect(dbtTab).toBeVisible();
+
+    // Click on dbt tab
+    await dbtTab.click();
+    await waitForAllLoadersToDisappear(page);
+
+    // Verify dbt Source Project info is displayed
+    await expect(page.getByTestId('dbt-source-project-id')).toContainText(
+      'test_dbt_project'
+    );
+
+    // Verify path is displayed
+    await expect(page.getByText('seeds/sample_seed.csv')).toBeVisible();
+
+    // Verify SQL editor (CodeMirror) is NOT visible since this is a seed file
+    await expect(page.locator('.CodeMirror')).not.toBeVisible();
+  });
+});
