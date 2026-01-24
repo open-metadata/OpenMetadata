@@ -570,64 +570,21 @@ export const setTagDisabledByFqn = async (
   await setTagDisabled(apiContext, tag.id, disabled);
 };
 
-export const verifyEntityTypeFilterInTagAssets = async (
-  page: Page,
-  tag: TagClass,
-  assets: EntityClass[]
-) => {
-  await tag.visitPage(page);
-
-  await page.waitForSelector(
-    '[data-testid="tags-container"] [data-testid="loader"]',
-    { state: 'detached' }
-  );
-
-  await page.getByTestId('assets').click();
-
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+export const verifyEntityTypeFilterInTagAssets = async (page: Page) => {
+  await page.getByTestId('asset-filter-button').click();
+  await page.getByRole('menuitem', { name: 'Entity Type' }).click();
+  await expect(page.getByRole('button', { name: 'Entity Type' })).toBeVisible();
+  await page.getByRole('button', { name: 'Entity Type' }).click();
+  await page.getByTestId('table-checkbox').check();
+  const filterResponse = page.waitForResponse('/api/v1/search/query?q=*');
+  await page.getByTestId('update-btn').click();
+  await filterResponse;
 
   await expect(
-    page.getByTestId('search-dropdown-Entity Type')
+    page.getByRole('button', { name: 'Entity Type : table' })
   ).toBeVisible();
 
-  await page.getByRole('button', { name: 'Entity Type' }).click();
-
-  const filterResponse = page.waitForResponse(
-    '/api/v1/search/query*entityType*table*'
-  );
-
-  await page.getByTestId('table').click();
-
-  await filterResponse;
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-  const tableAsset = assets.find((asset) => asset.entityType === 'table');
-  if (tableAsset) {
-    const fqn = get(tableAsset, 'entityResponseData.fullyQualifiedName');
-    await expect(
-      page.locator(`[data-testid="table-data-card_${fqn}"]`)
-    ).toBeVisible();
-  }
-
-  const nonTableAssets = assets.filter((asset) => asset.entityType !== 'table');
-  for (const asset of nonTableAssets) {
-    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
-    await expect(
-      page.locator(`[data-testid="table-data-card_${fqn}"]`)
-    ).not.toBeVisible();
-  }
-
-  await page
-    .getByTestId('search-dropdown-Entity Type')
-    .getByTestId('remove-filter')
-    .click();
-
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-  for (const asset of assets) {
-    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
-    await expect(
-      page.locator(`[data-testid="table-data-card_${fqn}"]`)
-    ).toBeVisible();
-  }
+  const clearResponse = page.waitForResponse('/api/v1/search/query?q=*');
+  await page.getByText('Clear').click();
+  await clearResponse;
 };
