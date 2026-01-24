@@ -521,6 +521,9 @@ class SqlColumnHandlerMixin:
                             column.jsonSchema = json_schema_str
                         if children:
                             column.children = children
+                            if self._is_string_column(column):
+                                column.dataType = DataType.JSON
+                                column.dataTypeDisplay = "json"
                         logger.debug(
                             f"Extracted JSON schema for column [{col_name}] "
                             f"in table [{schema_name}.{table_name}]"
