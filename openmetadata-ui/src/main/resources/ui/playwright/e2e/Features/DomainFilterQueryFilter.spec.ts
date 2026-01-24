@@ -1569,7 +1569,6 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await waitForAllLoadersToDisappear(page);
     };
 
-    try {
       // === SETUP: Create domain hierarchy ===
       await rootDomain.create(apiContext);
 
@@ -1883,25 +1882,5 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await expectNotVisible(subSubDomainTable2.entityResponseData?.fullyQualifiedName);
       await clearFilters();
 
-    } finally {
-      // Cleanup in reverse order of dependencies
-      await rootTable.delete(apiContext);
-      await subDomain1Table1.delete(apiContext);
-      await subDomain1Table2.delete(apiContext);
-      await subSubDomainTable1.delete(apiContext);
-      await subSubDomainTable2.delete(apiContext);
-      await subDomain2Table.delete(apiContext);
-      if (subSubDomain) {
-        await subSubDomain.delete(apiContext);
-      }
-      if (subDomain1) {
-        await subDomain1.delete(apiContext);
-      }
-      if (subDomain2) {
-        await subDomain2.delete(apiContext);
-      }
-      await rootDomain.delete(apiContext);
-      await afterAction();
-    }
   });
 });
