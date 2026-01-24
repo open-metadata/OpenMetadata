@@ -12,7 +12,6 @@ public class IndexingFailureRecorder implements AutoCloseable {
 
   public enum FailureStage {
     READER,
-    READER_EXCEPTION,
     SINK
   }
 
@@ -44,13 +43,7 @@ public class IndexingFailureRecorder implements AutoCloseable {
   }
 
   public void recordReaderFailure(String entityType, String errorMessage, String stackTrace) {
-    recordFailure(
-        entityType,
-        UUID.randomUUID().toString(),
-        "BATCH_FAILED",
-        FailureStage.READER_EXCEPTION,
-        errorMessage,
-        stackTrace);
+    recordFailure(entityType, null, null, FailureStage.READER, errorMessage, stackTrace);
   }
 
   public void recordSinkFailure(

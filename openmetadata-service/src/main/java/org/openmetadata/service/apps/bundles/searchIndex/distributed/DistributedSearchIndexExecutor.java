@@ -116,7 +116,6 @@ public class DistributedSearchIndexExecutor {
   // Reader stats tracking (accumulated across all worker threads)
   private final AtomicLong coordinatorReaderSuccess = new AtomicLong(0);
   private final AtomicLong coordinatorReaderFailed = new AtomicLong(0);
-  private final AtomicLong coordinatorReaderWarnings = new AtomicLong(0);
   private final AtomicInteger coordinatorPartitionsCompleted = new AtomicInteger(0);
   private final AtomicInteger coordinatorPartitionsFailed = new AtomicInteger(0);
 
@@ -612,20 +611,17 @@ public class DistributedSearchIndexExecutor {
         // Accumulate into coordinator stats for persistence
         // readerSuccess = entities successfully processed through reader
         // readerFailed = specifically reader failures (not sink failures)
-        // readerWarnings = warnings from reader (e.g., stale references)
         coordinatorReaderSuccess.addAndGet(result.successCount());
         coordinatorReaderFailed.addAndGet(result.readerFailed());
-        coordinatorReaderWarnings.addAndGet(result.readerWarnings());
         coordinatorPartitionsCompleted.incrementAndGet();
 
         LOG.info(
-            "Worker {} completed partition {} (success: {}, failed: {}, readerFailed: {}, readerWarnings: {})",
+            "Worker {} completed partition {} (success: {}, failed: {}, readerFailed: {})",
             workerId,
             partition.getId(),
             result.successCount(),
             result.failedCount(),
-            result.readerFailed(),
-            result.readerWarnings());
+            result.readerFailed());
 
         // Persist stats after each partition completion
         persistServerStats(currentJob.getId());
@@ -776,13 +772,6 @@ public class DistributedSearchIndexExecutor {
       StepStats sinkStats = searchIndexSink.getStats();
       long entityBuildFailures = searchIndexSink.getEntityBuildFailures();
 
-      long totalFailed = sinkStats != null ? sinkStats.getFailedRecords() : 0;
-      long actualSinkFailed = totalFailed - entityBuildFailures;
-      long sinkWarnings =
-          sinkStats != null && sinkStats.getWarningRecords() != null
-              ? sinkStats.getWarningRecords()
-              : 0;
-
       // Use local counters instead of querying DB (more accurate, no timing issues)
       int partitionsCompleted = coordinatorPartitionsCompleted.get();
       int partitionsFailed = coordinatorPartitionsFailed.get();
@@ -797,11 +786,9 @@ public class DistributedSearchIndexExecutor {
               serverId,
               coordinatorReaderSuccess.get(),
               coordinatorReaderFailed.get(),
-              coordinatorReaderWarnings.get(),
               sinkStats != null ? sinkStats.getTotalRecords() : 0,
               sinkStats != null ? sinkStats.getSuccessRecords() : 0,
-              actualSinkFailed,
-              sinkWarnings,
+              sinkStats != null ? sinkStats.getFailedRecords() : 0,
               entityBuildFailures,
               partitionsCompleted,
               partitionsFailed,
@@ -809,15 +796,11 @@ public class DistributedSearchIndexExecutor {
 
       LOG.debug(
           "Persisted server stats for job {} server {}: readerSuccess={}, readerFailed={}, "
-              + "readerWarnings={}, sinkFailed={}, sinkWarnings={}, entityBuildFailures={}, partitionsCompleted={}",
+              + "partitionsCompleted={}",
           jobId,
           serverId,
           coordinatorReaderSuccess.get(),
           coordinatorReaderFailed.get(),
-          coordinatorReaderWarnings.get(),
-          actualSinkFailed,
-          sinkWarnings,
-          entityBuildFailures,
           partitionsCompleted);
     } catch (Exception e) {
       LOG.error("Error persisting server stats for job {} server {}", jobId, serverId, e);
