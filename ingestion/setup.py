@@ -172,7 +172,7 @@ base_requirements = {
     "packaging",  # For version parsing
     "setuptools~=78.1.1",
     "shapely",
-    "collate-data-diff>=0.11.6",
+    "collate-data-diff>=0.11.9",
     "jaraco.functools<4.2.0",  # above 4.2 breaks the build
     "jaraco.context==6.0.1",
     # TODO: Remove one once we have updated datadiff version
@@ -413,6 +413,7 @@ test_unit = {
     "pytest==7.0.1",
     "pytest-cov",
     "pytest-order",
+    "pytest-rerunfailures",
     "dirty-equals",
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
     # TODO: Remove once no unit test requires testcontainers
