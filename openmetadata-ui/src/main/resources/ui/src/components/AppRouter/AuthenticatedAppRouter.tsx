@@ -289,6 +289,13 @@ const AddMetricPage = withSuspenseFallback(
   )
 );
 
+const ColumnBulkOperationsPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../../pages/ColumnBulkOperations/ColumnBulkOperations.component')
+  )
+);
+
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
   const { t } = useTranslation();
@@ -757,6 +764,10 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           />
         }
         path={ROUTES.ADD_METRIC}
+      />
+      <Route
+        element={<ColumnBulkOperationsPage />}
+        path={ROUTES.COLUMN_BULK_OPERATIONS}
       />
 
       <Route
