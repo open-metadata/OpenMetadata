@@ -318,6 +318,129 @@ const getCommonOverview = (
   ];
 };
 
+interface ColumnSearchResult {
+  dataType?: string;
+  dataTypeDisplay?: string;
+  constraint?: string;
+  table?: {
+    name?: string;
+    displayName?: string;
+    fullyQualifiedName?: string;
+  };
+  service?: {
+    name?: string;
+    displayName?: string;
+    fullyQualifiedName?: string;
+    type?: string;
+  };
+  database?: {
+    name?: string;
+    displayName?: string;
+    fullyQualifiedName?: string;
+  };
+  databaseSchema?: {
+    name?: string;
+    displayName?: string;
+    fullyQualifiedName?: string;
+  };
+  owners?: EntityReference[];
+  domains?: EntityReference[];
+}
+
+const getColumnOverview = (
+  columnDetails: ColumnSearchResult
+): BasicEntityOverviewInfo[] => {
+  const {
+    dataType,
+    dataTypeDisplay,
+    constraint,
+    table,
+    service,
+    database,
+    databaseSchema,
+    owners,
+    domains,
+  } = columnDetails;
+
+  const overview: BasicEntityOverviewInfo[] = [
+    ...getCommonOverview({ owners, domains }),
+    {
+      name: i18next.t('label.data-type'),
+      value: dataTypeDisplay || dataType || '--',
+      isLink: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+    {
+      name: i18next.t('label.table'),
+      value: table?.displayName || table?.name || '--',
+      url: table?.fullyQualifiedName
+        ? getEntityDetailsPath(EntityType.TABLE, table.fullyQualifiedName)
+        : undefined,
+      isLink: !!table?.fullyQualifiedName,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+    {
+      name: i18next.t('label.service'),
+      value: service?.displayName || service?.name || '--',
+      url: service?.fullyQualifiedName
+        ? getServiceDetailsPath(service.fullyQualifiedName, service.type || '')
+        : undefined,
+      isLink: !!service?.fullyQualifiedName,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+    {
+      name: i18next.t('label.database'),
+      value: database?.displayName || database?.name || '--',
+      url: database?.fullyQualifiedName
+        ? getEntityDetailsPath(EntityType.DATABASE, database.fullyQualifiedName)
+        : undefined,
+      isLink: !!database?.fullyQualifiedName,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+    {
+      name: i18next.t('label.schema'),
+      value: databaseSchema?.displayName || databaseSchema?.name || '--',
+      url: databaseSchema?.fullyQualifiedName
+        ? getEntityDetailsPath(
+            EntityType.DATABASE_SCHEMA,
+            databaseSchema.fullyQualifiedName
+          )
+        : undefined,
+      isLink: !!databaseSchema?.fullyQualifiedName,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+  ];
+
+  if (constraint) {
+    overview.push({
+      name: i18next.t('label.constraint'),
+      value: constraint,
+      isLink: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    });
+  }
+
+  return overview;
+};
+
 const getTableOverview = (
   tableDetails: Table,
   additionalInfo?: Record<string, number | string>
@@ -1345,6 +1468,11 @@ export const getEntityOverview = (
     case ExplorePageTabs.TABLES:
     case EntityType.TABLE: {
       return getTableOverview(entityDetail as Table, additionalInfo);
+    }
+
+    case ExplorePageTabs.COLUMNS:
+    case EntityType.TABLE_COLUMN: {
+      return getColumnOverview(entityDetail as unknown as ColumnSearchResult);
     }
 
     case ExplorePageTabs.TOPICS:
@@ -2715,6 +2843,7 @@ export const getEntityNameLabel = (entityName?: string) => {
 export const getPluralizeEntityName = (entityType?: string) => {
   const entityNameLabels = {
     [EntityType.TABLE]: t('label.table-plural'),
+    [EntityType.TABLE_COLUMN]: t('label.column-plural'),
     [EntityType.TOPIC]: t('label.topic-plural'),
     [EntityType.PIPELINE]: t('label.pipeline-plural'),
     [EntityType.CONTAINER]: t('label.container-plural'),
@@ -2920,6 +3049,7 @@ export const EntityTypeName: Record<EntityType, string> = {
   [EntityType.SPREADSHEET]: t('label.spreadsheet'),
   [EntityType.WORKSHEET]: t('label.worksheet'),
   [EntityType.NOTIFICATION_TEMPLATE]: t('label.notification-template'),
+  [EntityType.TABLE_COLUMN]: t('label.column'),
 };
 
 export const hasSchemaTab = (entityType: EntityType): boolean =>

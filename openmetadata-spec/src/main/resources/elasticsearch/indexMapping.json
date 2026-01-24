@@ -14,8 +14,23 @@
       "testSuite",
       "testCase",
       "testCaseResolutionStatus",
-      "testCaseResult"
+      "testCaseResult",
+      "tableColumn"
     ]
+  },
+  "tableColumn": {
+    "indexName": "column_search_index",
+    "indexMappingFile": "/elasticsearch/%s/column_index_mapping.json",
+    "alias": "column",
+    "parentAliases": [
+      "table",
+      "database",
+      "databaseSchema",
+      "databaseService",
+      "all",
+      "dataAsset"
+    ],
+    "childAliases": []
   },
   "storedProcedure": {
     "indexName": "stored_procedure_search_index",

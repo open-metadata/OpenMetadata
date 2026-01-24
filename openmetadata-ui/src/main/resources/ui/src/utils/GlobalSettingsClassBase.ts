@@ -626,6 +626,15 @@ class GlobalSettingsClassBase {
                 key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.WORKSHEETS}`,
                 icon: WorksheetIcon,
               },
+              {
+                label: t('label.column-plural'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.column-plural'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.COLUMN}`,
+                icon: ColumnIcon,
+              },
             ].sort((a, b) => a.label.localeCompare(b.label)),
           },
           {
