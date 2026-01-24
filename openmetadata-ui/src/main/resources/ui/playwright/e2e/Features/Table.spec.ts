@@ -932,7 +932,10 @@ test.describe('dbt Tab Visibility for Seed Files', () => {
     // Verify path is displayed
     await expect(page.getByText('seeds/sample_seed.csv')).toBeVisible();
 
-    // Verify SQL editor (CodeMirror) is NOT visible since this is a seed file
-    await expect(page.locator('.CodeMirror')).not.toBeVisible();
+    // Verify SQL-related elements are NOT visible since this is a seed file (no SQL query)
+    await expect(page.getByTestId('query-line')).not.toBeVisible();
+    await expect(
+      page.getByTestId('query-entity-copy-button')
+    ).not.toBeVisible();
   });
 });
