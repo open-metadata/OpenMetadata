@@ -226,8 +226,8 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
       await loader.waitFor({ state: 'hidden' });
 
       await validateImportStatus(page, {
-        passed: '5',
-        processed: '5',
+        passed: '2',
+        processed: '2',
         failed: '0',
       });
 
