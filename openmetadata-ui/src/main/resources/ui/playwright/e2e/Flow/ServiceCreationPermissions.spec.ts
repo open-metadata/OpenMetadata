@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import {
   SERVICE_CREATOR_RULES,
   SERVICE_VIEWER_RULES,
@@ -156,9 +156,11 @@ test.describe('Service Creation with isOwner() Permissions', () => {
     await page.getByTestId('service-name').fill(serviceName);
     await page.getByTestId('next-button').click();
 
-    await page.locator('#root\\/username').fill('test_user');
-    await page.locator('#root\\/authType\\/password').fill('test_password');
-    await page.locator('#root\\/hostPort').fill('localhost:3306');
+    await page.locator(String.raw`#root\/username`).fill('test_user');
+    await page
+      .locator(String.raw`#root\/authType\/password`)
+      .fill('test_password');
+    await page.locator(String.raw`#root\/hostPort`).fill('localhost:3306');
 
     await page.getByTestId('submit-btn').click();
     await page.getByTestId('submit-btn').click();
@@ -184,7 +186,6 @@ test.describe('Service Creation with isOwner() Permissions', () => {
     await redirectToHomePage(page);
 
     await adminOwnedService.visitEntityPage(page);
-
 
     await expect(page.getByTestId('entity-header-name')).toBeVisible();
 
@@ -237,8 +238,8 @@ test.describe('Service Creation with isOwner() Permissions', () => {
     await page.getByRole('tab', { name: 'Connection' }).click();
     await page.getByTestId('edit-connection-button').click();
 
-    await page.locator('#root\\/username').clear();
-    await page.locator('#root\\/username').fill('updated_user');
+    await page.locator(String.raw`#root\/username`).clear();
+    await page.locator(String.raw`#root\/username`).fill('updated_user');
 
     const saveResponse = page.waitForResponse((response) =>
       response.url().includes('/api/v1/services/databaseServices')
@@ -291,14 +292,11 @@ test.describe('Service Creation with isOwner() Permissions', () => {
       false
     );
 
-    await expect(
-      ownerPage.getByTestId('entity-header-name')
-    ).toBeVisible();
+    await expect(ownerPage.getByTestId('entity-header-name')).toBeVisible();
     await expect(ownerPage.getByTestId('manage-button')).toBeVisible();
 
     await redirectToHomePage(otherPage);
-    userOwnedService.visitEntityPage(otherPage)
-
+    await userOwnedService.visitEntityPage(otherPage);
 
     await expect(otherPage.getByTestId('entity-header-name')).toBeVisible();
 

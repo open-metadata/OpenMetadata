@@ -387,9 +387,7 @@ export const editPipelineEdgeDescription = async (
   );
   await page.locator('.edge-info-drawer').isVisible();
   await expect(
-    page
-      .locator('.edge-info-drawer [data-testid="Edge"] a')
-      .filter({ hasText: pipelineData.name })
+    page.getByTestId('Edge-value').filter({ hasText: pipelineData.name })
   ).toBeAttached();
 
   await page.click('.edge-info-drawer [data-testid="edit-description"]');
@@ -422,9 +420,7 @@ const verifyPipelineDataInDrawer = async (
 
   await page.locator('.edge-info-drawer').isVisible();
   await expect(
-    page
-      .locator('.edge-info-drawer [data-testid="Edge"] a')
-      .filter({ hasText: pipelineName })
+    page.getByTestId('Edge-value').filter({ hasText: pipelineName })
   ).toBeAttached();
 
   if (bVisitPipelinePageFromDrawer) {
