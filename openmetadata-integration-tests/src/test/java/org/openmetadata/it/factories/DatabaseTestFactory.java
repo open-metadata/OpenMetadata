@@ -26,7 +26,7 @@ public class DatabaseTestFactory {
   /**
    * Create database with custom name using fluent API.
    */
-  public static Database createWithName(TestNamespace ns, String serviceFqn, String baseName) {
-    return Databases.create().name(ns.prefix(baseName)).in(serviceFqn).execute();
+  public static Database createWithName(String serviceFqn, String name) {
+    return Databases.create().name(name).in(serviceFqn).execute();
   }
 }
