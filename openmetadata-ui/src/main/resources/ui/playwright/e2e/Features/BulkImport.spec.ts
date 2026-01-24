@@ -105,7 +105,7 @@ const columnDetails1 = {
 };
 
 const columnDetails2 = {
-  ...createColumnRowDetailsWithEncloseDot(),
+  ...createColumnRowDetails(),
   glossary: glossaryDetails,
 };
 

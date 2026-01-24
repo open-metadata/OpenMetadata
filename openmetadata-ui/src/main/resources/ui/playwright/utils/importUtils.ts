@@ -12,24 +12,24 @@
  */
 import { expect, Page } from '@playwright/test';
 import {
-  BULK_IMPORT_EXPORT_SQL_QUERY,
-  RDG_ACTIVE_CELL_SELECTOR,
+    BULK_IMPORT_EXPORT_SQL_QUERY,
+    RDG_ACTIVE_CELL_SELECTOR,
 } from '../constant/bulkImportExport';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../constant/customProperty';
 import {
-  CUSTOM_PROPERTIES_TYPES,
-  FIELD_VALUES_CUSTOM_PROPERTIES,
+    CUSTOM_PROPERTIES_TYPES,
+    FIELD_VALUES_CUSTOM_PROPERTIES,
 } from '../constant/glossaryImportExport';
 import { GlobalSettingOptions } from '../constant/settings';
 import {
-  clickOutside,
-  descriptionBox,
-  descriptionBoxReadOnly,
-  uuid,
+    clickOutside,
+    descriptionBox,
+    descriptionBoxReadOnly,
+    uuid,
 } from './common';
 import {
-  addCustomPropertiesForEntity,
-  fillTableColumnInputDetails,
+    addCustomPropertiesForEntity,
+    fillTableColumnInputDetails,
 } from './customProperty';
 import { settingClick, SettingOptionsType } from './sidebar';
 
@@ -617,7 +617,7 @@ export const createColumnRowDetails = () => {
 export const createColumnRowDetailsWithEncloseDot = () => {
   return {
     ...createColumnRowDetails(),
-    name: `playwright.column ${uuid()}`,
+    name: "playwright.column ${uuid()",
   };
 };
 
