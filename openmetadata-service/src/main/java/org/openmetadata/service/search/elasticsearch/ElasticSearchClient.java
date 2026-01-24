@@ -251,11 +251,6 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public List<IndexStats> getAllIndexStats() throws IOException {
-    return indexManager.getAllIndexStats();
-  }
-
-  @Override
   public void updateIndex(IndexMapping indexMapping, String indexMappingContent) {
     indexManager.updateIndex(indexMapping, indexMappingContent);
   }
