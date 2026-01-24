@@ -999,7 +999,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
     }
   });
 
-  test.skip('Quick filters should persist when domain filter is applied and cleared', async ({
+  test('Quick filters should persist when domain filter is applied and cleared', async ({
     page,
   }) => {
     const { afterAction, apiContext } = await getApiContext(page);
