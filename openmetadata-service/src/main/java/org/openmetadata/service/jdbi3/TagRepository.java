@@ -180,8 +180,15 @@ public class TagRepository extends EntityRepository<Tag> {
     // Validate recognizers
     if (entity.getRecognizers() != null) {
       for (org.openmetadata.schema.type.Recognizer recognizer : entity.getRecognizers()) {
+        prepareRecognizer(recognizer);
         validateRecognizer(recognizer);
       }
+    }
+  }
+
+  private void prepareRecognizer(org.openmetadata.schema.type.Recognizer recognizer) {
+    if (recognizer.getId() == null) {
+      recognizer.setId(UUID.randomUUID());
     }
   }
 
@@ -195,6 +202,10 @@ public class TagRepository extends EntityRepository<Tag> {
       if (threshold < 0.0 || threshold > 1.0) {
         throw new IllegalArgumentException("confidenceThreshold must be between 0.0 and 1.0");
       }
+    }
+
+    if (recognizer.getId() == null) {
+      throw new IllegalArgumentException("Can't create recognizer without an ID");
     }
   }
 
