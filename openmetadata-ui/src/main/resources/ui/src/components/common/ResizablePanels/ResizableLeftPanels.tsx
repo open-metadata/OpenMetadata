@@ -29,6 +29,7 @@ const ResizableLeftPanels: React.FC<ResizablePanelsLeftProps> = ({
   secondPanel,
   pageTitle,
   hideFirstPanel = false,
+  showLearningIcon = false,
 }) => {
   const { t } = useTranslation();
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
@@ -63,10 +64,12 @@ const ResizableLeftPanels: React.FC<ResizablePanelsLeftProps> = ({
                     <Typography.Text strong className="m-b-0 text-sm">
                       {firstPanel.title}
                     </Typography.Text>
-                    <LearningIcon
-                      pageId={LEARNING_PAGE_IDS.EXPLORE}
-                      title={t('label.explore')}
-                    />
+                    {showLearningIcon && (
+                      <LearningIcon
+                        pageId={LEARNING_PAGE_IDS.EXPLORE}
+                        title={t('label.explore')}
+                      />
+                    )}
                   </>
                 )
               }>

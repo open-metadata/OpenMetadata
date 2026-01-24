@@ -17,6 +17,7 @@ import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LearningResource } from '../../../rest/learningResourceAPI';
+import { getSanitizeContent } from '../../../utils/sanitize.utils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
 import './article-viewer.less';
@@ -38,16 +39,18 @@ export const ArticleViewer: React.FC<ArticleViewerProps> = ({ resource }) => {
 
       // Check for embedded content in embedConfig first
       if (resource.source.embedConfig?.content) {
-        setContent(resource.source.embedConfig.content as string);
+        setContent(
+          getSanitizeContent(resource.source.embedConfig.content as string)
+        );
       } else if (resource.source.url.startsWith('http')) {
         const response = await fetch(resource.source.url);
         if (!response.ok) {
           throw new Error(`Failed to fetch article: ${response.statusText}`);
         }
         const text = await response.text();
-        setContent(text);
+        setContent(getSanitizeContent(text));
       } else {
-        setContent(resource.source.url);
+        setContent(getSanitizeContent(resource.source.url));
       }
     } catch (err) {
       const errorMessage =
