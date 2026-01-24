@@ -286,6 +286,40 @@ export const GLOSSARY_ASSETS_DROPDOWN_ITEMS = [
   },
 ];
 
+export const TAG_ASSETS_DROPDOWN_ITEMS = [
+  {
+    label: 'label.entity-type-plural',
+    labelKeyOptions: {
+      entity: 'label.entity',
+    },
+    key: EntityFields.ENTITY_TYPE,
+  },
+  {
+    label: 'label.domain-plural',
+    key: EntityFields.DOMAINS,
+  },
+  {
+    label: 'label.owner-plural',
+    key: EntityFields.OWNERS,
+  },
+  {
+    label: 'label.tag',
+    key: EntityFields.TAG,
+  },
+  {
+    label: 'label.tier',
+    key: EntityFields.TIER,
+  },
+  {
+    label: 'label.service',
+    key: EntityFields.SERVICE,
+  },
+  {
+    label: 'label.service-type',
+    key: EntityFields.SERVICE_TYPE,
+  },
+];
+
 export const LINEAGE_DROPDOWN_ITEMS = [
   ...COMMON_DROPDOWN_ITEMS,
   {
