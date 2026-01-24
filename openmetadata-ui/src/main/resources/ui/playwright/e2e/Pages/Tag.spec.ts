@@ -38,6 +38,7 @@ import {
   submitForm,
   validateForm,
   verifyCertificationTagPageUI,
+  verifyEntityTypeFilterInTagAssets,
   verifyTagPageUI,
 } from '../../utils/tag';
 import { visitUserProfilePage } from '../../utils/user';
@@ -234,6 +235,10 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await test.step('Add Asset ', async () => {
       await addAssetsToTag(adminPage, assets, tag1);
+    });
+
+    await test.step('Verify EntityType Filter', async () => {
+      await verifyEntityTypeFilterInTagAssets(adminPage, tag1, assets);
     });
 
     await test.step('Delete Asset', async () => {
@@ -438,6 +443,10 @@ test.describe('Tag Page with Data Consumer Roles', () => {
       await addAssetsToTag(dataConsumerPage, assets, tag);
     });
 
+    await test.step('Verify EntityType Filter', async () => {
+      await verifyEntityTypeFilterInTagAssets(dataConsumerPage, tag, assets);
+    });
+
     await test.step('Delete Asset', async () => {
       await removeAssetsFromTag(dataConsumerPage, assets, tag);
       await assetCleanup();
@@ -500,6 +509,10 @@ test.describe('Tag Page with Data Steward Roles', () => {
 
     await test.step('Add Asset ', async () => {
       await addAssetsToTag(dataStewardPage, assets, tag);
+    });
+
+    await test.step('Verify EntityType Filter', async () => {
+      await verifyEntityTypeFilterInTagAssets(dataStewardPage, tag, assets);
     });
 
     await test.step('Delete Asset', async () => {
