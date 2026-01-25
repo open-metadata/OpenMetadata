@@ -54,16 +54,20 @@ const MUIAutocomplete: FC<MUIAutocompleteProps> = ({
           }}
         />
       )}
-      renderOption={(props, option) => (
+      renderOption={({ key, ...props }, option) => (
         <Typography
-          component="li"
-          variant="body2"
           {...props}
+          component="li"
+          key={key}
           sx={{
+            mx: 1.5,
+            borderRadius: '6px',
+            p: `8px 10px !important`,
             color: (theme) => theme.palette.grey[700],
             fontWeight: (theme) => theme.typography.h6.fontWeight,
-          }}>
-          {option.label}
+          }}
+          variant="body2">
+          {option?.label ?? option}
         </Typography>
       )}
       value={value}
