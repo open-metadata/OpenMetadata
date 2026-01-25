@@ -34,6 +34,7 @@ import { Tag } from '../../generated/entity/classification/tag';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import TagSuggestion from '../../pages/TasksPage/shared/TagSuggestion';
+import { removeOuterEscapes } from '../CommonUtils';
 import Fqn from '../Fqn';
 import { t } from '../i18next/LocalUtil';
 import { getCustomPropertyEntityType } from './CSV.utils';
@@ -312,12 +313,16 @@ class CSVUtilsClassBase {
         }: RenderEditCellProps<any, any>) => {
           const value = row[column.key];
           const domains = value
-            ? (value?.split(';') ?? []).map((domain: string) => ({
-                type: EntityType.DOMAIN,
-                name: domain,
-                id: '',
-                fullyQualifiedName: domain,
-              }))
+            ? (value?.split(';') ?? []).map((domain: string) => {
+                const fqn = removeOuterEscapes(domain.trim());
+
+                return {
+                  type: EntityType.DOMAIN,
+                  name: fqn,
+                  id: '',
+                  fullyQualifiedName: fqn,
+                };
+              })
             : [];
 
           const handleChange = async (domain?: EntityReference[]) => {
@@ -337,9 +342,14 @@ class CSVUtilsClassBase {
                 ...row,
                 [column.key]:
                   domain
-                    .map((d) =>
-                      d.fullyQualifiedName?.replace(new RegExp('"', 'g'), '""')
-                    )
+                    .map((d) => {
+                      const fqn = removeOuterEscapes(
+                        d.fullyQualifiedName ?? ''
+                      );
+
+                      // Wrap in quotes to match CSV import format; escape any internal " for CSV safety
+                      return `"${fqn.replace(/"/g, '""')}"`;
+                    })
                     .join(';') ?? '',
               },
               true
@@ -350,6 +360,7 @@ class CSVUtilsClassBase {
             <DomainSelectableList
               hasPermission
               multiple
+              getPopupContainer={() => document.body}
               popoverProps={{ open: true }}
               selectedDomain={domains}
               wrapInButton={false}
