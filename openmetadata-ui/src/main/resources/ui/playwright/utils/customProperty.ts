@@ -715,14 +715,12 @@ export const addCustomPropertiesForEntity = async ({
   if (customType === 'Table' && tableConfig) {
     for (const val of tableConfig.columns) {
       const columnInput = page.locator('#root\\/columns');
+      await expect(columnInput).toBeVisible();
       await columnInput.click();
-      await page.waitForTimeout(200); // Allow focus to settle
       await columnInput.clear();
-      await page.waitForTimeout(200); // Allow clear to settle
       await columnInput.type(val, { delay: 100 }); // Slow typing to prevent merge
       await columnInput.press('Enter');
       await expect(columnInput).toHaveValue(''); // Verify input is consumed
-      await page.waitForTimeout(200); // Safety wait between items
     }
   }
 
@@ -734,20 +732,25 @@ export const addCustomPropertiesForEntity = async ({
     for (const val of entityReferenceConfig) {
       await page.click('#root\\/entityReferenceConfig');
       await page.keyboard.type(val);
-      await page.click(`[title="${val}"]`);
-      // Wait for dropdown to close completely
-      await page
-        .locator('[data-testid="form-item-label"]')
-        .filter({ hasText: 'Entity Reference Types' })
-        .click({ force: true });
+
+      // CRITICAL: Use :visible selector chain pattern (Rule 4 from deflake guide)
+      const option = page
+        .locator('.ant-select-dropdown:visible')
+        .locator(`[title="${val}"]`);
+      await expect(option).toBeVisible();
+      await option.click();
+
+      // Close the dropdown by pressing Escape
+      await page.keyboard.press('Escape');
+
+      // Wait for dropdown to close
+      await expect(page.locator('.ant-select-dropdown')).toBeHidden();
+
+      // Verify the selection was applied
       await expect(
         page.locator('#root\\/entityReferenceConfig_list')
       ).not.toBeVisible();
-      // Additional wait for DOM to settle on slower environments
-      await page.waitForTimeout(300);
     }
-    // Extra wait after all selections to ensure dropdown is fully closed
-    await page.waitForTimeout(200);
   }
 
   // Format configuration
@@ -760,25 +763,37 @@ export const addCustomPropertiesForEntity = async ({
   await expect(
     page.locator('#root\\/entityReferenceConfig_list')
   ).not.toBeVisible();
-  await page.locator(`${descriptionBox} p`).click();
-  await page.waitForTimeout(200);
+
+  const descriptionEditor = page.locator(`${descriptionBox} p`);
+  await expect(descriptionEditor).toBeVisible();
+  await descriptionEditor.click();
   await page.keyboard.type(customPropertyData.description, { delay: 50 });
-  await page.waitForTimeout(200);
+
   // Click on name field to blur description and trigger validation without closing modal
   await page.click('[data-testid="name"] input');
 
   await expect(page.locator('#propertyType_help')).not.toBeVisible();
   await expect(page.locator('#description_help')).not.toBeVisible();
+
   const createPropertyPromise = page.waitForResponse(
     '/api/v1/metadata/types/*'
   );
 
-  await page.click('[data-testid="create-button"]');
+  const createButton = page.locator('[data-testid="create-button"]');
+  await expect(createButton).toBeVisible();
+  await expect(createButton).toBeEnabled();
+  await createButton.click();
+
   await page.waitForSelector('[data-testid="custom-property-form"]', {
     state: 'detached',
   });
-  await page.waitForLoadState('networkidle');
+
   const response = await createPropertyPromise;
+
+  // CRITICAL: Wait for UI to update after API response
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 
   expect(response.status()).toBe(200);
   await expect(
@@ -906,7 +921,11 @@ export const verifyCustomPropertyInAdvancedSearch = async (
   propertyConfig?: string[]
 ) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
-  await page.waitForLoadState('networkidle');
+
+  // Wait for loader to disappear instead of networkidle
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 
   // Open advanced search dialog
   await showAdvancedSearchDialog(page);
@@ -1209,10 +1228,13 @@ export const verifyTableColumnCustomPropertyPersistence = async ({
   // Edit logic
   await editColumnCustomProperty(page, propertyType, testValue);
 
-  // Wait for response (Table type handles its own response wait? No, we should wait here.)
-  // Wait, Table interaction might trigger multiple PUTs (one per cell).
-  // The util assumes one main update or at least waiting for *an* update.
+  // Wait for response
   await updateColumnResponse;
+
+  // CRITICAL: Wait for UI to update after API response
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 
   // Validation
   await validateColumnCustomProperty(
