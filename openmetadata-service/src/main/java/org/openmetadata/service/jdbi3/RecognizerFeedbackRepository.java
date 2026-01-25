@@ -112,8 +112,29 @@ public class RecognizerFeedbackRepository {
     if (tag.getRecognizers() != null) {
       Tag originalTag = JsonUtils.readValue(JsonUtils.pojoToJson(tag), Tag.class);
 
-      for (Recognizer recognizer : tag.getRecognizers()) {
-        addExceptionToRecognizer(recognizer, feedback);
+      UUID recognizerId =
+          getRecognizerIdFromTagLabel(feedback.getEntityLink(), feedback.getTagFQN());
+
+      if (recognizerId != null) {
+        Recognizer targetRecognizer = findRecognizerById(tag, recognizerId);
+        if (targetRecognizer != null) {
+          LOG.info(
+              "Applying feedback to specific recognizer {} for tag {}",
+              targetRecognizer.getName(),
+              feedback.getTagFQN());
+          addExceptionToRecognizer(targetRecognizer, feedback);
+        } else {
+          LOG.warn(
+              "Recognizer {} from TagLabel not found in tag {}, falling back to all recognizers",
+              recognizerId,
+              feedback.getTagFQN());
+          applyToAllRecognizers(tag, feedback);
+        }
+      } else {
+        LOG.info(
+            "No recognizer metadata in TagLabel for {}, falling back to all recognizers",
+            feedback.getEntityLink());
+        applyToAllRecognizers(tag, feedback);
       }
 
       tagRepository.patch(
@@ -188,6 +209,101 @@ public class RecognizerFeedbackRepository {
           "Added exception for entity {} to recognizer {}",
           feedback.getEntityLink(),
           recognizer.getName());
+    }
+  }
+
+  private void applyToAllRecognizers(Tag tag, RecognizerFeedback feedback) {
+    for (Recognizer recognizer : tag.getRecognizers()) {
+      addExceptionToRecognizer(recognizer, feedback);
+    }
+  }
+
+  public Recognizer findRecognizerById(Tag tag, UUID recognizerId) {
+    if (tag.getRecognizers() == null) {
+      return null;
+    }
+    return tag.getRecognizers().stream()
+        .filter(r -> r.getId() != null && r.getId().equals(recognizerId))
+        .findFirst()
+        .orElse(null);
+  }
+
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  public UUID getRecognizerIdFromTagLabel(String entityLink, String tagFQN) {
+    try {
+      MessageParser.EntityLink parsedLink = MessageParser.EntityLink.parse(entityLink);
+
+      String entityType = parsedLink.getEntityType();
+      String entityFQN = parsedLink.getEntityFQN();
+      String fieldName = parsedLink.getFieldName();
+      String arrayFieldName = parsedLink.getArrayFieldName();
+
+      EntityRepository repository = (EntityRepository) Entity.getEntityRepository(entityType);
+      if (repository == null) {
+        return null;
+      }
+
+      org.openmetadata.schema.EntityInterface entity =
+          (org.openmetadata.schema.EntityInterface)
+              repository.getByName(null, entityFQN, repository.getFields("tags"));
+
+      List<TagLabel> tagsToCheck = null;
+
+      if (Entity.TABLE.equals(entityType) && Entity.FIELD_COLUMNS.equals(fieldName)) {
+        TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
+        List<Column> results =
+            tableRepository
+                .getTableColumnsByFQN(
+                    entity.getFullyQualifiedName(), Integer.MAX_VALUE, 0, "tags", null, null, null)
+                .getData();
+
+        for (Column column : results) {
+          if (column.getName().equals(arrayFieldName)) {
+            tagsToCheck = column.getTags();
+            break;
+          }
+        }
+      } else if (arrayFieldName != null && fieldName != null) {
+        String entityJson = JsonUtils.pojoToJson(entity);
+        com.fasterxml.jackson.databind.JsonNode rootNode = JsonUtils.readTree(entityJson);
+
+        if (rootNode.has(fieldName) && rootNode.get(fieldName).isArray()) {
+          com.fasterxml.jackson.databind.node.ArrayNode arrayNode =
+              (com.fasterxml.jackson.databind.node.ArrayNode) rootNode.get(fieldName);
+
+          for (int i = 0; i < arrayNode.size(); i++) {
+            com.fasterxml.jackson.databind.JsonNode fieldNode = arrayNode.get(i);
+            if (fieldNode.has("name") && fieldNode.get("name").asText().equals(arrayFieldName)) {
+              if (fieldNode.has("tags") && fieldNode.get("tags").isArray()) {
+                tagsToCheck =
+                    JsonUtils.readValue(
+                        fieldNode.get("tags").toString(),
+                        new com.fasterxml.jackson.core.type.TypeReference<List<TagLabel>>() {});
+              }
+              break;
+            }
+          }
+        }
+      } else {
+        tagsToCheck = entity.getTags();
+      }
+
+      if (tagsToCheck != null) {
+        for (TagLabel tag : tagsToCheck) {
+          if (tag.getTagFQN().equals(tagFQN)
+              && tag.getMetadata() != null
+              && tag.getMetadata().getRecognizer() != null
+              && tag.getMetadata().getRecognizer().getRecognizerId() != null) {
+            return tag.getMetadata().getRecognizer().getRecognizerId();
+          }
+        }
+      }
+
+      return null;
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to extract recognizer ID from TagLabel for {}: {}", entityLink, e.getMessage());
+      return null;
     }
   }
 

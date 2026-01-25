@@ -12,8 +12,8 @@
  */
 
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 import { EntityDetailsObjectInterface } from '../../../Explore/ExplorePage.interface';
+import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 
 export enum AssetsOfEntity {
   GLOSSARY = 'GLOSSARY',

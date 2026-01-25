@@ -58,9 +58,7 @@ import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { getContractByEntityId } from '../../../rest/contractAPI';
-import {
-  getDataProductPortsView,
-} from '../../../rest/dataProductAPI';
+import { getDataProductPortsView } from '../../../rest/dataProductAPI';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import {
