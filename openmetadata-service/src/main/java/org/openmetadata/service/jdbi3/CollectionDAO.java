@@ -3869,7 +3869,7 @@ public interface CollectionDAO {
 
     // Search glossary terms by both name and displayName using LIKE queries
     // The displayName column is a generated column added in migration 1.9.3
-    // entityStatus filtering uses generated column added in migration 1.1.7
+    // entityStatus filtering uses generated column added in migration 1.11.7
     @SqlQuery(
         "SELECT json FROM glossary_term_entity WHERE deleted = FALSE "
             + "AND fqnHash LIKE :parentHash "
