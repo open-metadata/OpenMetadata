@@ -22,6 +22,7 @@ import {
   useTheme,
 } from '@mui/material';
 import { ChevronDown, ChevronUp } from '@untitledui/icons';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import React, {
   forwardRef,
@@ -48,7 +49,6 @@ import {
 } from './InputOutputPortsTab.types';
 import { PortsLineageView } from './PortsLineageView';
 import { PortsListView, PortsListViewRef } from './PortsListView';
-import { Button } from 'antd';
 
 export const InputOutputPortsTab = forwardRef<
   InputOutputPortsTabRef,
@@ -334,7 +334,7 @@ export const InputOutputPortsTab = forwardRef<
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   {permissions.EditAll && !isInputPortsCollapsed && (
                     <Button
-                    className='h-8 flex items-center'
+                      className="h-8 flex items-center"
                       data-testid="add-input-port-button"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -433,7 +433,7 @@ export const InputOutputPortsTab = forwardRef<
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   {permissions.EditAll && !isOutputPortsCollapsed && (
                     <Button
-                      className='h-8 flex items-center'
+                      className="h-8 flex items-center"
                       data-testid="add-output-port-button"
                       onClick={(e) => {
                         e.stopPropagation();
