@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Autocomplete } from '@mui/material';
+import { Autocomplete, Typography } from '@mui/material';
 import { FC, memo, useCallback } from 'react';
 import MUITextField from '../../common/MUITextField/MUITextField';
 import { MUIAutocompleteProps } from './MUIAutocomplete.interface';
@@ -53,6 +53,18 @@ const MUIAutocomplete: FC<MUIAutocompleteProps> = ({
             },
           }}
         />
+      )}
+      renderOption={(props, option) => (
+        <Typography
+          component="li"
+          variant="body2"
+          {...props}
+          sx={{
+            color: (theme) => theme.palette.grey[700],
+            fontWeight: (theme) => theme.typography.h6.fontWeight,
+          }}>
+          {option.label}
+        </Typography>
       )}
       value={value}
       onChange={handleChange}

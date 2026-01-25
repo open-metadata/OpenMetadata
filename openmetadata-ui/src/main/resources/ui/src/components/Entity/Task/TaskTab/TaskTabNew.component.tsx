@@ -910,16 +910,11 @@ export const TaskTabNew = ({
             <Link
               className="no-underline flex items-center gap-2"
               to={getUserPath(taskThread.createdBy ?? '')}>
-              <UserPopOverCard userName={taskThread.createdBy ?? ''}>
-                <div className="d-flex items-center">
-                  <ProfilePicture
-                    name={taskThread.createdBy ?? ''}
-                    width="24"
-                  />
-                </div>
-              </UserPopOverCard>
-
-              <Typography.Text>{taskThread.createdBy}</Typography.Text>
+              <UserPopOverCard
+                showUserName
+                profileWidth={22}
+                userName={taskThread.createdBy ?? ''}
+              />
             </Link>
           </Col>
 
@@ -980,17 +975,10 @@ export const TaskTabNew = ({
                 {taskThread?.task?.assignees?.length === 1 ? (
                   <div className="d-flex items-center gap-2">
                     <UserPopOverCard
-                      userName={taskThread?.task?.assignees[0].name ?? ''}>
-                      <div className="d-flex items-center">
-                        <ProfilePicture
-                          name={taskThread?.task?.assignees[0].name ?? ''}
-                          width="24"
-                        />
-                      </div>
-                    </UserPopOverCard>
-                    <Typography.Text className="text-grey-body">
-                      {getEntityName(taskThread?.task?.assignees[0])}
-                    </Typography.Text>
+                      showUserName
+                      profileWidth={22}
+                      userName={getEntityName(taskThread?.task?.assignees[0])}
+                    />
                   </div>
                 ) : (
                   <OwnerLabel
