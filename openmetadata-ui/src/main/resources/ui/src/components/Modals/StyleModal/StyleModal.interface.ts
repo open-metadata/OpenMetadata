@@ -17,6 +17,7 @@ export interface StyleModalProps {
   style?: Style;
   onSubmit: (value: Style) => Promise<void>;
   onCancel: () => void;
+  includeCoverImage?: boolean;
 }
 
 export type StyleWithInput = Style & {

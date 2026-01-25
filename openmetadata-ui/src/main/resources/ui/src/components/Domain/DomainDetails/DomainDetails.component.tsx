@@ -62,7 +62,10 @@ import { addDomains, patchDomains } from '../../../rest/domainAPI';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getFeedCounts, getIsErrorMatch } from '../../../utils/CommonUtils';
-import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
+import {
+  createEntityWithCoverImage,
+  updateEntityWithCoverImage,
+} from '../../../utils/CoverImageUploadUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -111,7 +114,7 @@ import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
-import StyleModal from '../../Modals/StyleModal/StyleModal.component';
+import IconColorModal from '../../Modals/IconColorModal';
 import AddDomainForm from '../AddDomainForm/AddDomainForm.component';
 import '../domain.less';
 import { DomainFormType } from '../DomainPage.interface';
@@ -659,19 +662,21 @@ const DomainDetails = ({
     }
   };
 
-  const onStyleSave = async (data: Style) => {
-    const style: Style = {
-      // if color/iconURL is empty or undefined send undefined
-      color: data.color ?? undefined,
-      iconURL: data.iconURL ?? undefined,
-    };
-    const updatedDetails = {
-      ...domain,
-      style,
-    };
-
-    await onUpdate(updatedDetails);
-    setIsStyleEditing(false);
+  const onStyleSave = async (data: Style & { coverImage?: unknown }) => {
+    await updateEntityWithCoverImage({
+      styleData: data,
+      entity: domain,
+      entityType: EntityType.DOMAIN,
+      entityLabel: t('label.domain'),
+      patchEntity: patchDomains,
+      onSuccess: (updatedDomain) => {
+        onUpdate(updatedDomain);
+        setIsStyleEditing(false);
+      },
+      enqueueSnackbar,
+      closeSnackbar,
+      t,
+    });
   };
 
   const handleAssetClick = useCallback(
@@ -1078,7 +1083,8 @@ const DomainDetails = ({
         onCancel={() => setIsNameEditing(false)}
         onSave={onNameSave}
       />
-      <StyleModal
+      <IconColorModal
+        includeCoverImage
         open={isStyleEditing}
         style={domain.style}
         onCancel={() => setIsStyleEditing(false)}

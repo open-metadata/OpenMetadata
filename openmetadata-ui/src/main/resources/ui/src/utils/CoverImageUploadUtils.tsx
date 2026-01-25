@@ -18,6 +18,7 @@ import imageClassBase from '../components/BlockEditor/Extensions/image/ImageClas
 import { CoverImageFileValue } from '../components/common/CoverImageUpload/CoverImageUpload.interface';
 import { ERROR_MESSAGE } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
+import { Style } from '../generated/type/schema';
 import { getIsErrorMatch } from './CommonUtils';
 import {
   showNotistackError,
@@ -205,21 +206,21 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
           coverImageUrl,
           position?
         ): Promise<Awaited<TEntity>> => {
-          // Build updated entity with cover image as nested object (matches backend CoverImage interface)
+          // Build updated style with cover image
           const entityRecord = entity as Record<string, unknown>;
-          const updatedEntity = {
-            ...entity,
+          const currentData = { style: entityRecord.style };
+          const updatedData = {
             style: {
               ...(entityRecord.style as Record<string, unknown>),
               coverImage: {
                 url: coverImageUrl,
                 ...(position !== undefined && {
-                  position: position, // Store percentage string directly (e.g., "-16%")
+                  position: position,
                 }),
               },
             },
           };
-          const jsonPatch = compare(entityRecord, updatedEntity);
+          const jsonPatch = compare(currentData, updatedData);
 
           const patchResult = await patchEntity(
             entityRecord.id as string,
@@ -277,7 +278,174 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
         (error as AxiosError)
       ),
       t('server.add-entity-error', {
-        entity: entityLabel.toLowerCase(),
+        entity: entityLabel,
+      }),
+      { vertical: 'top', horizontal: 'center' },
+      closeSnackbar
+    );
+
+    throw error;
+  }
+}
+
+/**
+ * Options for updating an entity with cover image upload
+ */
+export interface UpdateEntityWithCoverImageOptions<TEntity> {
+  styleData: Style & { coverImage?: unknown };
+  entity: TEntity;
+  entityType: EntityType;
+  entityLabel: string;
+  patchEntity: (entityId: string, patch: Operation[]) => Promise<TEntity>;
+  onSuccess: (entity: TEntity) => void | Promise<void>;
+  enqueueSnackbar: (
+    message: React.ReactNode,
+    options?: Record<string, unknown>
+  ) => void;
+  closeSnackbar: () => void;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}
+
+/**
+ * Generic function to update an entity with cover image upload
+ *
+ * This function handles the complete flow for updating style with cover image:
+ * 1. Extract cover image from style data
+ * 2. Upload cover image with entity FQN if there's a new file
+ * 3. Build style object with uploaded URL or existing URL
+ * 4. Update entity with new style
+ * 5. Show success/error messages
+ * 6. Call success callback
+ *
+ * @param options - Configuration for entity update
+ * @returns The updated entity
+ *
+ * @example
+ * ```typescript
+ * await updateEntityWithCoverImage({
+ *   styleData: values,
+ *   entity: domain,
+ *   entityType: EntityType.DOMAIN,
+ *   entityLabel: t('label.domain'),
+ *   patchEntity: patchDomains,
+ *   onSuccess: () => {
+ *     setIsStyleEditing(false);
+ *   },
+ *   enqueueSnackbar,
+ *   closeSnackbar,
+ *   t,
+ * });
+ * ```
+ */
+export async function updateEntityWithCoverImage<TEntity>(
+  options: UpdateEntityWithCoverImageOptions<TEntity>
+): Promise<TEntity> {
+  const {
+    styleData,
+    entity,
+    entityType,
+    entityLabel,
+    patchEntity,
+    onSuccess,
+    enqueueSnackbar,
+    closeSnackbar,
+    t,
+  } = options;
+
+  try {
+    const coverImageData = styleData.coverImage as
+      | { url?: string; position?: { y?: string }; file?: File }
+      | undefined;
+
+    let coverImageUrl: string | undefined;
+    let coverImagePosition: string | undefined;
+
+    // Handle file upload if there's a new file
+    if (coverImageData?.file) {
+      const { onImageUpload } =
+        imageClassBase.getBlockEditorAttachmentProps() ?? {};
+      if (onImageUpload) {
+        try {
+          coverImageUrl = await onImageUpload(
+            coverImageData.file,
+            entityType,
+            (entity as { fullyQualifiedName: string }).fullyQualifiedName
+          );
+          coverImagePosition = coverImageData.position?.y;
+        } catch (uploadError) {
+          showNotistackError(
+            enqueueSnackbar,
+            uploadError as AxiosError,
+            t('server.entity-updating-error', {
+              entity: t('label.cover-image'),
+            }),
+            { vertical: 'top', horizontal: 'center' },
+            closeSnackbar
+          );
+
+          throw uploadError;
+        }
+      }
+    } else if (coverImageData) {
+      // No new file - use existing URL and position from form data or preserve from entity
+      coverImageUrl = coverImageData.url;
+      coverImagePosition = coverImageData.position?.y;
+
+      // If URL is not in form data, try to preserve from existing entity
+      if (!coverImageUrl) {
+        const entityStyle = (entity as Record<string, unknown>).style as Style | undefined;
+        coverImageUrl = entityStyle?.coverImage?.url;
+      }
+    }
+
+    // Build style object
+    const style: Style = {
+      color: styleData.color ?? undefined,
+      iconURL: styleData.iconURL ?? undefined,
+      coverImage:
+        coverImageUrl
+          ? {
+              url: coverImageUrl,
+              ...(coverImagePosition !== undefined &&
+                coverImagePosition !== null && {
+                  position: coverImagePosition,
+                }),
+            }
+          : undefined,
+    };
+
+    // Create JSON patch with only the style field to avoid metadata field conflicts
+    const entityRecord = entity as Record<string, unknown>;
+    const currentData = { style: entityRecord.style };
+    const updatedData = { style };
+    const jsonPatch = compare(currentData, updatedData);
+
+    // Update entity
+    const finalEntity = await patchEntity(
+      entityRecord.id as string,
+      jsonPatch
+    );
+
+    // Show success notification
+    showNotistackSuccess(
+      enqueueSnackbar,
+      <Typography sx={{ fontWeight: 600 }} variant="body2">
+        {t('server.update-entity-success', { entity: entityLabel })}
+      </Typography>,
+      closeSnackbar
+    );
+
+    // Call success callback
+    await onSuccess(finalEntity);
+
+    return finalEntity;
+  } catch (error) {
+    // Error handling
+    showNotistackError(
+      enqueueSnackbar,
+      error as AxiosError,
+      t('server.entity-updating-error', {
+        entity: entityLabel,
       }),
       { vertical: 'top', horizontal: 'center' },
       closeSnackbar

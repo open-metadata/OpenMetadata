@@ -24,26 +24,59 @@ import { Form } from 'antd';
 import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Style } from '../../../generated/type/schema';
+import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { iconTooltipDataRender } from '../../../utils/DomainUtils';
+import { getField } from '../../../utils/formUtils';
+import imageClassBase from '../../BlockEditor/Extensions/image/ImageClassBase';
 import { MUIColorPicker } from '../../common/ColorPicker';
 import { DEFAULT_TAG_ICON, MUIIconPicker } from '../../common/IconPicker';
 import { StyleModalProps } from '../StyleModal/StyleModal.interface';
+
 
 const IconColorModal: FC<StyleModalProps> = ({
   open,
   onCancel,
   onSubmit,
   style,
+  includeCoverImage = false,
 }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [saving, setSaving] = useState<boolean>(false);
 
+
   const selectedColor = Form.useWatch('color', form);
 
-  const handleSubmit = async (values: Style) => {
+  const { onImageUpload } =
+    imageClassBase.getBlockEditorAttachmentProps() ?? {};
+  const isCoverImageUploadAvailable = !!onImageUpload;
+
+  const coverImageField: FieldProp | null = isCoverImageUploadAvailable && includeCoverImage
+    ? {
+        name: 'coverImage',
+        id: 'root/coverImage',
+        label: t('label.cover-image'),
+        muiLabel: t('label.cover-image'),
+        required: false,
+        type: FieldTypes.COVER_IMAGE_UPLOAD_MUI,
+        props: {
+          'data-testid': 'cover-image',
+          maxSizeMB: 5,
+          maxDimensions: { width: 800, height: 400 },
+          // NO onUpload prop - this makes MUICoverImageUpload store file locally
+          // Parent component will handle upload after domain is created
+        },
+        formItemProps: {
+          valuePropName: 'value',
+          trigger: 'onChange',
+        },
+      }
+    : null;
+
+  const handleSubmit = async (values: Style & { coverImage?: unknown }) => {
     try {
       setSaving(true);
+      // Keep 'coverImage' in values - parent will extract and handle upload
       await onSubmit(values);
     } finally {
       setSaving(false);
@@ -85,9 +118,18 @@ const IconColorModal: FC<StyleModalProps> = ({
             initialValues={{
               iconURL: style?.iconURL,
               color: style?.color,
+              coverImage: style?.coverImage?.url
+                ? {
+                  url: style.coverImage.url,
+                  position: style.coverImage.position
+                    ? { y: style.coverImage.position }
+                    : undefined,
+                }
+                : undefined,
             }}
             layout="vertical"
             onFinish={handleSubmit}>
+            {coverImageField && <Box sx={{ mb: 3 }}>{getField(coverImageField)}</Box>}
             <Box sx={{ mb: 3 }}>
               <Form.Item
                 name="iconURL"
