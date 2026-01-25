@@ -51,6 +51,7 @@ export interface CreateTestDefinition {
      */
     supportedServices?: string[];
     testPlatforms:      TestPlatform[];
+    validatorClass?:  string;
 }
 
 /**
