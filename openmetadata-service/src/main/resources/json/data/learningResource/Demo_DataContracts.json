@@ -1,0 +1,19 @@
+{
+  "name": "Demo_DataContracts",
+  "displayName": "Data Contracts",
+  "description": "Learn how Data Contracts help align consumers and producers of data. This demo covers creating contracts, understanding contract segments, and reviewing completion records with run history.",
+  "resourceType": "Storylane",
+  "categories": ["DataGovernance", "DataQuality"],
+  "difficulty": "Intermediate",
+  "source": {
+    "url": "https://collate.storylane.io/demo/mhr2lbg0jse6",
+    "provider": "Collate"
+  },
+  "estimatedDuration": 300,
+  "contexts": [
+    {"pageId": "table"},
+    {"pageId": "dataQuality"},
+    {"pageId": "glossary"}
+  ],
+  "status": "Active"
+}

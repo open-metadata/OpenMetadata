@@ -1,0 +1,16 @@
+{
+  "name": "CollateClues_ReverseMetadata",
+  "displayName": "Collate Clues: Reverse Metadata",
+  "description": "Discover how Reverse Metadata pushes enriched metadata back to your data sources, keeping everything in sync.",
+  "resourceType": "Video",
+  "categories": ["Administration", "Discovery"],
+  "source": {
+    "url": "https://www.youtube.com/watch?v=uXnI-rKu12A",
+    "provider": "YouTube"
+  },
+  "contexts": [
+    {"pageId": "table"},
+    {"pageId": "explore"}
+  ],
+  "status": "Active"
+}
