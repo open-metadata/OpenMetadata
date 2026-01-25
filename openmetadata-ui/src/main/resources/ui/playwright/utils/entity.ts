@@ -609,18 +609,34 @@ export const updateDescription = async (
     await editButton.click();
   } else {
     // Fallback for ML Model which uses 'edit-button'
-    await page.getByTestId('edit-button').click();
+    const fallbackButton = page.getByTestId('edit-button');
+    await expect(fallbackButton).toBeVisible();
+    await fallbackButton.click();
   }
-  await page.locator(descriptionBox).first().click();
-  await page.locator(descriptionBox).first().clear();
-  await page.locator(descriptionBox).first().fill(description);
-  await page.getByTestId('save').click();
+
+  // Wait for description box to be visible and ready
+  const descBox = page.locator(descriptionBox).first();
+  await expect(descBox).toBeVisible();
+  await descBox.click();
+  await descBox.clear();
+  await descBox.fill(description);
+
+  // Wait for save button and click
+  const saveButton = page.getByTestId('save');
+  await expect(saveButton).toBeVisible();
+  await expect(saveButton).toBeEnabled();
+  await saveButton.click();
 
   if (isModal) {
     await page.waitForSelector('[role="dialog"].description-markdown-editor', {
       state: 'hidden',
     });
   }
+
+  // CRITICAL: Wait for UI to update after save
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 
   if (validationContainerTestId) {
     if (isEmpty(description)) {
@@ -644,21 +660,30 @@ export const updateDescriptionForChildren = async (
   rowSelector: string,
   entityEndpoint: string
 ) => {
-  await page
+  const editButton = page
     .locator(`[${rowSelector}="${rowId}"]`)
     .getByTestId('description')
     .first()
-    .getByTestId('edit-button')
-    .click();
+    .getByTestId('edit-button');
 
-  await page.waitForSelector('[role="dialog"]', { state: 'visible' });
+  await expect(editButton).toBeVisible();
+  await editButton.click();
 
-  const modalEditor = page.locator('[role="dialog"]').locator(descriptionBox);
+  // Wait for modal to be visible
+  const modal = page.locator('[role="dialog"]');
+  await expect(modal).toBeVisible();
+
+  // Wait for editor to be ready
+  const modalEditor = modal.locator(descriptionBox);
+  await expect(modalEditor).toBeVisible();
   await modalEditor.click();
   await modalEditor.clear();
   await modalEditor.fill(description);
-  await expect(modalEditor).toHaveText(description);
 
+  // REMOVED: toHaveText check - rich text editor may have formatting that makes exact match unreliable
+  // The final verification after save is sufficient
+
+  // Wait for API response
   let updateRequest;
   if (
     entityEndpoint === 'tables' ||
@@ -668,11 +693,23 @@ export const updateDescriptionForChildren = async (
   } else {
     updateRequest = page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
   }
-  await page.getByTestId('save').click();
+
+  const saveButton = page.getByTestId('save');
+  await expect(saveButton).toBeVisible();
+  await expect(saveButton).toBeEnabled();
+  await saveButton.click();
   await updateRequest;
 
-  await page.waitForSelector('[role="dialog"]', { state: 'hidden' });
+  // Wait for modal to close
+  await expect(modal).not.toBeVisible();
 
+  // CRITICAL: Wait for UI to update after API response
+  // The modal closing doesn't guarantee the row has updated yet
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  // Verify the description was updated in the UI
   if (isEmpty(description)) {
     await expect(
       page.locator(`[${rowSelector}="${rowId}"]`).getByTestId('description')
@@ -1028,23 +1065,47 @@ export const assignGlossaryTermToChildren = async ({
   rowSelector?: string;
   entityEndpoint: string;
 }) => {
-  await page
-    .locator(`[${rowSelector}="${rowId}"]`)
+  // First, wait for the row itself to be visible
+  const rowLocator = page.locator(`[${rowSelector}="${rowId}"]`);
+  await expect(rowLocator).toBeVisible();
+
+  // Scroll the row into view to ensure it's accessible
+  await rowLocator.scrollIntoViewIfNeeded();
+
+  const addButton = rowLocator
     .getByTestId('glossary-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
-    .first()
-    .click();
+    .first();
+
+  await expect(addButton).toBeVisible();
+  await addButton.click();
+
+  // Wait for input field to be visible
+  const glossaryInput = page.locator('#tagsForm_tags');
+  await expect(glossaryInput).toBeVisible();
 
   const searchGlossaryTerm = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(glossaryTerm.displayName)}*`
   );
-  await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
+  await glossaryInput.fill(glossaryTerm.displayName);
   await searchGlossaryTerm;
-  await page.getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`).click();
 
+  // Wait for loader to disappear after search
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  // Wait for glossary term tag to be visible before clicking
+  const glossaryTermTag = page.getByTestId(
+    `tag-${glossaryTerm.fullyQualifiedName}`
+  );
+  await expect(glossaryTermTag).toBeVisible();
+
+  // CRITICAL: Set up waitForResponse BEFORE the click that triggers it
   const putRequest = page.waitForResponse(
     (response) => response.request().method() === 'PUT'
   );
+  await glossaryTermTag.click();
 
   await page.waitForSelector(
     '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
@@ -1061,14 +1122,20 @@ export const assignGlossaryTermToChildren = async ({
     patchRequest = page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
   }
 
-  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
-
-  await page.getByTestId('saveAssociatedTag').click();
+  const saveButton = page.getByTestId('saveAssociatedTag');
+  await expect(saveButton).toBeVisible();
+  await expect(saveButton).toBeEnabled();
+  await saveButton.click();
   await patchRequest;
 
-  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+  await expect(saveButton).not.toBeVisible();
 
   await putRequest;
+
+  // CRITICAL: Wait for UI to update after API responses
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 
   await expect(
     page

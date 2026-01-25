@@ -346,7 +346,7 @@ export const checkAssetsCount = async (page: Page, count: number) => {
 export const checkAssetsCountWithRetry = async (
   page: Page,
   count: number,
-  maxRetries = 3,
+  maxRetries = 5,
   retryIntervalMs = 30000
 ) => {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {

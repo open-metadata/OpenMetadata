@@ -1042,6 +1042,8 @@ def test_suite_validation_database(
             )
         )
 
+    validator_class = f"{test_case_type[0].upper()}{test_case_type[1:]}Validator"
+
     if test_case_name == "test_case_column_values_to_be_between_date":
         with patch(
             "metadata.data_quality.validations.column.sqlalchemy.columnValuesToBeBetween.ColumnValuesToBeBetweenValidator._run_results",
@@ -1051,6 +1053,7 @@ def test_suite_validation_database(
                 test_type,
                 "sqlalchemy",
                 test_case_type,
+                validator_class,
             )
 
             test_handler = test_handler_obj(
@@ -1069,6 +1072,7 @@ def test_suite_validation_database(
                 test_type,
                 "sqlalchemy",
                 test_case_type,
+                validator_class,
             )
 
             test_handler = test_handler_obj(
@@ -1083,6 +1087,7 @@ def test_suite_validation_database(
             test_type,
             "sqlalchemy",
             test_case_type,
+            validator_class,
         )
 
         test_handler = test_handler_obj(

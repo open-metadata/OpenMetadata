@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { Domain } from '../../support/domain/Domain';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -101,8 +101,6 @@ const data = {
 };
 
 test.beforeAll(async ({ browser }) => {
-  test.slow();
-
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await commonPrerequisites({
     apiContext,
@@ -117,8 +115,6 @@ test.beforeAll(async ({ browser }) => {
 });
 
 test.afterAll('Cleanup', async ({ browser }) => {
-  test.slow();
-
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await commonCleanup({
     apiContext,
@@ -160,7 +156,6 @@ test.afterAll('Cleanup', async ({ browser }) => {
  */
 test('Single Filter Alert', async ({ page }) => {
   test.slow();
-
   const ALERT_NAME = generateAlertName();
   await visitNotificationAlertPage(page);
 
@@ -220,10 +215,16 @@ test('Single Filter Alert', async ({ page }) => {
         data.alertDetails = await response.json();
 
         test.expect(response.status()).toEqual(200);
-
-        // Verify the edited alert changes
-        await verifyAlertDetails({ page, alertDetails: data.alertDetails });
       });
+
+      // Wait for UI to update after API response
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+      await expect(page.getByTestId('alert-details-container')).toBeVisible();
+
+      // Verify the edited alert changes
+      await verifyAlertDetails({ page, alertDetails: data.alertDetails });
     }
   );
 
@@ -242,8 +243,6 @@ test('Single Filter Alert', async ({ page }) => {
  * verifies changes, then deletes the alert.
  */
 test('Multiple Filters Alert', async ({ page }) => {
-  test.slow();
-
   const ALERT_NAME = generateAlertName();
   await visitNotificationAlertPage(page);
 
@@ -272,14 +271,22 @@ test('Multiple Filters Alert', async ({ page }) => {
       // Remove description
       await page.locator(descriptionBox).clear();
 
-      // Remove all filters
-      for (let i = 0; i < 6; i++) {
-        await page.click('[data-testid="remove-filter-0"]');
+      // Remove all filters with state verification
+      for (let i = 5; i >= 0; i--) {
+        await page.click(`[data-testid="remove-filter-${i}"]`);
+        // Wait for filter to be removed from DOM
+        await page.waitForSelector(`[data-testid="filter-${i}"]`, {
+          state: 'detached',
+        });
       }
 
-      // Remove all destinations except one
-      for (let i = 0; i < 5; i++) {
-        await page.click('[data-testid="remove-destination-0"]');
+      // Remove all destinations except one with state verification
+      for (let i = 5; i > 0; i--) {
+        await page.click(`[data-testid="remove-destination-${i}"]`);
+        // Wait for destination to be removed from DOM
+        await page.waitForSelector(`[data-testid="destination-${i}"]`, {
+          state: 'detached',
+        });
       }
 
       // Click save
@@ -294,10 +301,16 @@ test('Multiple Filters Alert', async ({ page }) => {
         data.alertDetails = await response.json();
 
         test.expect(response.status()).toEqual(200);
-
-        // Verify the edited alert changes
-        await verifyAlertDetails({ page, alertDetails: data.alertDetails });
       });
+
+      // Wait for UI to update after API response
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+      await expect(page.getByTestId('alert-details-container')).toBeVisible();
+
+      // Verify the edited alert changes
+      await verifyAlertDetails({ page, alertDetails: data.alertDetails });
     }
   );
 
@@ -400,10 +413,14 @@ test('Conversation source alert', async ({ page }) => {
       data.alertDetails = await response.json();
 
       test.expect(response.status()).toEqual(200);
-
-      // Verify the edited alert changes
-      await verifyAlertDetails({ page, alertDetails: data.alertDetails });
     });
+
+    // Wait for UI to update after API response
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await expect(page.getByTestId('alert-details-container')).toBeVisible();
+
+    // Verify the edited alert changes
+    await verifyAlertDetails({ page, alertDetails: data.alertDetails });
   });
 
   /**
@@ -426,7 +443,6 @@ test('Alert operations for a user with and without permissions', async ({
   userWithoutPermissionsPage,
 }) => {
   test.slow();
-
   const ALERT_NAME = generateAlertName();
   const { apiContext } = await getApiContext(page);
   await visitNotificationAlertPage(userWithPermissionsPage);
@@ -534,6 +550,11 @@ test('destination should work properly', async ({ page }) => {
   // Click add destination, to validate value with empty config should not be sent in test destination API call
   await page.click('[data-testid="add-destination-button"]');
 
+  // Ensure test button is enabled before clicking
+  const testButton = page.getByTestId('test-destination-button');
+  await expect(testButton).toBeVisible();
+  await expect(testButton).toBeEnabled();
+
   const testDestinations = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/events/subscriptions/testDestination') &&
@@ -541,7 +562,7 @@ test('destination should work properly', async ({ page }) => {
       response.status() === 200
   );
 
-  await page.click('[data-testid="test-destination-button"]');
+  await testButton.click();
 
   await testDestinations.then(async (response) => {
     const testResults = await response.json();
