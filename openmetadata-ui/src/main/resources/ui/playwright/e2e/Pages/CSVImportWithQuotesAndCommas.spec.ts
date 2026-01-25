@@ -18,9 +18,19 @@ import { getApiContext, redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   uploadCSVAndWaitForGrid,
-  validateImportStatusFromGrid,
+  validateImportStatus,
 } from '../../utils/importUtils';
 import { sidebarClick } from '../../utils/sidebar';
+
+const cleanupTempFile = (filePath: string | undefined): void => {
+  if (filePath && fs.existsSync(filePath)) {
+    try {
+      fs.unlinkSync(filePath);
+    } catch (error) {
+      console.error(`Failed to cleanup temp file ${filePath}:`, error);
+    }
+  }
+};
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -61,54 +71,62 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="import-button-description"]');
 
-        const rowCount = await uploadCSVAndWaitForGrid(
-          page,
-          CSV_WITH_QUOTES_AND_COMMAS,
-          {
-            isContentString: true,
-            tempFileName: 'temp-quotes-commas-test.csv',
+        let tempFilePath: string | undefined;
+        try {
+          const { rowCount, tempFilePath: tempFile } =
+            await uploadCSVAndWaitForGrid(page, CSV_WITH_QUOTES_AND_COMMAS, {
+              isContentString: true,
+              tempFileName: 'temp-quotes-commas-test.csv',
+            });
+          tempFilePath = tempFile;
+          expect(rowCount).toBeGreaterThanOrEqual(3);
+
+          await expect(
+            page.getByRole('gridcell', { name: 'Term1' }).first()
+          ).toBeVisible();
+          await expect(
+            page.getByRole('gridcell', { name: 'Test1234' }).first()
+          ).toBeVisible();
+          await expect(
+            page
+              .getByRole('gridcell', { name: 'TermWithComma,AndQuote' })
+              .first()
+          ).toBeVisible();
+
+          const validationResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/glossaries/name/') &&
+              response.url().includes('/importAsync') &&
+              response.url().includes('dryRun=true') &&
+              response.request().method() === 'PUT'
+          );
+
+          await page.getByRole('button', { name: 'Next' }).click();
+          await validationResponse;
+
+          const loader = page.locator(
+            '.inovua-react-toolkit-load-mask__background-layer'
+          );
+          await loader.waitFor({ state: 'hidden' });
+
+          const expectedCount = String(rowCount + 1);
+          await validateImportStatus(page, {
+            passed: expectedCount,
+            processed: expectedCount,
+            failed: '0',
+          });
+
+          const rowStatus = await page.$$('.rdg-cell-details');
+          expect(rowStatus.length).toBeGreaterThan(0);
+
+          for (const statusCell of rowStatus) {
+            const statusText = await statusCell.textContent();
+            expect(statusText).toMatch(/success|Entity created|Entity updated/i);
+            expect(statusText).not.toContain('failure');
+            expect(statusText).not.toContain('error');
           }
-        );
-        expect(rowCount).toBeGreaterThanOrEqual(3);
-
-        await expect(
-          page.getByRole('gridcell', { name: 'Term1' }).first()
-        ).toBeVisible();
-        await expect(
-          page.getByRole('gridcell', { name: 'Test1234' }).first()
-        ).toBeVisible();
-        await expect(
-          page.getByRole('gridcell', { name: 'TermWithComma,AndQuote' }).first()
-        ).toBeVisible();
-
-        const validationResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/glossaries/name/') &&
-            response.url().includes('/importAsync') &&
-            response.url().includes('dryRun=true') &&
-            response.request().method() === 'PUT'
-        );
-
-        await page.getByRole('button', { name: 'Next' }).click();
-        await validationResponse;
-
-        const loader = page.locator(
-          '.inovua-react-toolkit-load-mask__background-layer'
-        );
-        await loader.waitFor({ state: 'hidden' });
-
-        await validateImportStatusFromGrid(page, {
-          rowCount: rowCount,
-        });
-
-        const rowStatus = await page.$$('.rdg-cell-details');
-        expect(rowStatus.length).toBeGreaterThan(0);
-
-        for (const statusCell of rowStatus) {
-          const statusText = await statusCell.textContent();
-          expect(statusText).toMatch(/success|Entity created|Entity updated/i);
-          expect(statusText).not.toContain('failure');
-          expect(statusText).not.toContain('error');
+        } finally {
+          cleanupTempFile(tempFilePath);
         }
       }
     );
@@ -131,37 +149,43 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
 
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="import-button-description"]');
-        const initialRowCount = await uploadCSVAndWaitForGrid(
-          page,
-          CSV_FOR_EXPORT_IMPORT_TEST,
-          {
-            isContentString: true,
-            tempFileName: 'temp-initial-import.csv',
-          }
-        );
+        let tempFilePath: string | undefined;
+        try {
+          const { rowCount: initialRowCount, tempFilePath: tempFile } =
+            await uploadCSVAndWaitForGrid(page, CSV_FOR_EXPORT_IMPORT_TEST, {
+              isContentString: true,
+              tempFileName: 'temp-initial-import.csv',
+            });
+          tempFilePath = tempFile;
 
-        const validationResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/glossaries/name/') &&
-            response.url().includes('/importAsync') &&
-            response.url().includes('dryRun=true') &&
-            response.request().method() === 'PUT'
-        );
+          const validationResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/glossaries/name/') &&
+              response.url().includes('/importAsync') &&
+              response.url().includes('dryRun=true') &&
+              response.request().method() === 'PUT'
+          );
 
-        await page.getByRole('button', { name: 'Next' }).click();
-        await validationResponse;
+          await page.getByRole('button', { name: 'Next' }).click();
+          await validationResponse;
 
-        const loader = page.locator(
-          '.inovua-react-toolkit-load-mask__background-layer'
-        );
-        await loader.waitFor({ state: 'hidden' });
+          const loader = page.locator(
+            '.inovua-react-toolkit-load-mask__background-layer'
+          );
+          await loader.waitFor({ state: 'hidden' });
 
-        await validateImportStatusFromGrid(page, {
-          rowCount: initialRowCount,
-        });
+          const expectedCount = String(initialRowCount + 1);
+          await validateImportStatus(page, {
+            passed: expectedCount,
+            processed: expectedCount,
+            failed: '0',
+          });
 
-        await page.getByRole('button', { name: 'Update' }).click();
-        await loader.waitFor({ state: 'detached' });
+          await page.getByRole('button', { name: 'Update' }).click();
+          await loader.waitFor({ state: 'detached' });
+        } finally {
+          cleanupTempFile(tempFilePath);
+        }
       }
     );
 
@@ -205,7 +229,7 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
 
       await page.click('[data-testid="manage-button"]');
       await page.click('[data-testid="import-button-description"]');
-      const gridRowCount = await uploadCSVAndWaitForGrid(
+      const { rowCount: gridRowCount } = await uploadCSVAndWaitForGrid(
         page,
         'downloads/' + exportImportGlossary.data.displayName + '.csv'
       );
@@ -228,9 +252,11 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
         '.inovua-react-toolkit-load-mask__background-layer'
       );
       await loader.waitFor({ state: 'hidden' });
-      await validateImportStatusFromGrid(page, {
-        rowCount: rowCountToUse,
-        rowCountOffset: 1,
+      const expectedCount = String(rowCountToUse + 1);
+      await validateImportStatus(page, {
+        passed: expectedCount,
+        processed: expectedCount,
+        failed: '0',
       });
 
       await page.getByRole('button', { name: 'Update' }).click();

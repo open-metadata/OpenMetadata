@@ -12,6 +12,8 @@
  */
 import { expect, Page } from '@playwright/test';
 import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import {
   BULK_IMPORT_EXPORT_SQL_QUERY,
   RDG_ACTIVE_CELL_SELECTOR,
@@ -551,31 +553,6 @@ export const validateImportStatus = async (
   });
 };
 
-// Count grid rows and validate import status dynamically
-export const validateImportStatusFromGrid = async (
-  page: Page,
-  options?: {
-    passed?: string;
-    processed?: string;
-    failed?: string;
-    rowCount?: number;
-    rowCountOffset?: number;
-  }
-) => {
-  const rowCount =
-    options?.rowCount ?? (await page.locator('.rdg-row').count());
-
-  // Calculate expected count: rowCount + offset (default: +1 for header/glossary itself)
-  const offset = options?.rowCountOffset ?? 1;
-  const expectedCount = String(rowCount + offset);
-
-  await validateImportStatus(page, {
-    passed: options?.passed ?? expectedCount,
-    processed: options?.processed ?? expectedCount,
-    failed: options?.failed ?? '0',
-  });
-};
-
 export const uploadCSVAndWaitForGrid = async (
   page: Page,
   filePath: string,
@@ -583,14 +560,17 @@ export const uploadCSVAndWaitForGrid = async (
     isContentString?: boolean;
     tempFileName?: string;
   }
-): Promise<number> => {
+): Promise<{ rowCount: number; tempFilePath?: string }> => {
   await page.waitForSelector('[type="file"]', { state: 'attached' });
   let actualFilePath = filePath;
+  let tempFilePath: string | undefined;
 
   if (options?.isContentString) {
+    const tempDir = os.tmpdir();
     const tempFileName = options?.tempFileName || `temp-${Date.now()}.csv`;
-    fs.writeFileSync(tempFileName, filePath);
-    actualFilePath = tempFileName;
+    tempFilePath = path.join(tempDir, tempFileName);
+    fs.writeFileSync(tempFilePath, filePath);
+    actualFilePath = tempFilePath;
   }
 
   await page.setInputFiles('[type="file"]', actualFilePath);
@@ -599,7 +579,8 @@ export const uploadCSVAndWaitForGrid = async (
   });
 
   await page.waitForTimeout(500);
-  return await page.locator('.rdg-row').count();
+  const rowCount = await page.locator('.rdg-row').count();
+  return { rowCount, tempFilePath };
 };
 
 export const createDatabaseRowDetails = () => {
