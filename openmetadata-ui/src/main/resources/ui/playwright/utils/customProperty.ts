@@ -881,13 +881,6 @@ export const verifyCustomPropertyInAdvancedSearch = async (
     true
   );
 
-  await selectOption(
-    page,
-    ruleLocator.locator('.rule--field .ant-select'),
-    propertyName,
-    true
-  );
-
   if (propertyType === 'Time Interval') {
     await selectOption(
       page,
