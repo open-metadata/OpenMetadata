@@ -527,26 +527,9 @@ export const validateImportStatus = async (
   status: { passed: string; failed: string; processed: string }
 ) => {
   await page.waitForSelector('[data-testid="processed-row"]');
-  const processedRow = await page.$eval(
-    '[data-testid="processed-row"]',
-    (el) => el.textContent
-  );
-
-  expect(processedRow).toBe(status.processed);
-
-  const passedRow = await page.$eval(
-    '[data-testid="passed-row"]',
-    (el) => el.textContent
-  );
-
-  expect(passedRow).toBe(status.passed);
-
-  const failedRow = await page.$eval(
-    '[data-testid="failed-row"]',
-    (el) => el.textContent
-  );
-
-  expect(failedRow).toBe(status.failed);
+  await expect(page.getByTestId('processed-row')).toHaveText(status.processed);
+  await expect(page.getByTestId('passed-row')).toHaveText(status.passed);
+  await expect(page.getByTestId('failed-row')).toHaveText(status.failed);
 
   await page.waitForSelector('.rdg-header-row', {
     state: 'visible',
