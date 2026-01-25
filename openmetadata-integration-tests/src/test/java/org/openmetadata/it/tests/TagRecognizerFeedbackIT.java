@@ -33,6 +33,8 @@ import org.openmetadata.schema.type.PredefinedRecognizer;
 import org.openmetadata.schema.type.Recognizer;
 import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TagLabelMetadata;
+import org.openmetadata.schema.type.TagLabelRecognizerMetadata;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.DatabaseServices;
@@ -110,6 +112,11 @@ public class TagRecognizerFeedbackIT {
 
   private org.openmetadata.schema.entity.data.Table createTableWithGeneratedTag(
       TestNamespace ns, String tagFQN) {
+    return createTableWithGeneratedTag(ns, tagFQN, null);
+  }
+
+  private org.openmetadata.schema.entity.data.Table createTableWithGeneratedTag(
+      TestNamespace ns, String tagFQN, TagLabelRecognizerMetadata recognizerMetadata) {
     PostgresConnection conn =
         DatabaseServices.postgresConnection().hostPort("localhost:5432").username("test").build();
     org.openmetadata.schema.entity.services.DatabaseService service =
@@ -134,9 +141,16 @@ public class TagRecognizerFeedbackIT {
         org.openmetadata.sdk.fluent.builders.ColumnBuilder.of("test_column", "VARCHAR")
             .dataLength(255)
             .build();
-    column.setTags(
-        java.util.List.of(
-            new TagLabel().withTagFQN(tagFQN).withLabelType(TagLabel.LabelType.GENERATED)));
+
+    TagLabel tagLabel =
+        new TagLabel().withTagFQN(tagFQN).withLabelType(TagLabel.LabelType.GENERATED);
+
+    if (recognizerMetadata != null) {
+      TagLabelMetadata metadata = new TagLabelMetadata().withRecognizer(recognizerMetadata);
+      tagLabel.setMetadata(metadata);
+    }
+
+    column.setTags(java.util.List.of(tagLabel));
 
     org.openmetadata.schema.api.data.CreateTable createTable =
         new org.openmetadata.schema.api.data.CreateTable()
@@ -490,5 +504,52 @@ public class TagRecognizerFeedbackIT {
         updatedTable.getColumns().getFirst().getTags().stream()
             .anyMatch(t -> t.getTagFQN().equals(tag.getFullyQualifiedName()));
     assertTrue(tagStillPresent, "Tag should remain on column after rejection");
+  }
+
+  @Test
+  void test_recognizerFeedback_taskIncludesRecognizerMetadata(TestNamespace ns) throws Exception {
+    Classification classification = createClassification(ns);
+
+    CreateTag tagRequest = new CreateTag();
+    tagRequest.setName("tag_with_recognizer_metadata_" + ns.uniqueShortId());
+    tagRequest.setClassification(classification.getFullyQualifiedName());
+    tagRequest.setDescription("Tag with recognizer metadata");
+    tagRequest.setReviewers(java.util.List.of(testUser2().getEntityReference()));
+    tagRequest.setRecognizers(java.util.List.of(getNameRecognizer()));
+    Tag tag = createEntity(tagRequest);
+
+    TagLabelRecognizerMetadata recognizerMetadata =
+        new TagLabelRecognizerMetadata()
+            .withRecognizerId(java.util.UUID.randomUUID())
+            .withRecognizerName("test_email_recognizer")
+            .withScore(0.95);
+
+    org.openmetadata.schema.entity.data.Table table =
+        createTableWithGeneratedTag(ns, tag.getFullyQualifiedName(), recognizerMetadata);
+
+    String entityLink = "<#E::table::" + table.getFullyQualifiedName() + "::columns::test_column>";
+
+    submitRecognizerFeedback(entityLink, tag.getFullyQualifiedName());
+
+    Thread task = waitForRecognizerFeedbackTask(tag.getFullyQualifiedName());
+
+    assertNotNull(task, "Task should be created");
+    assertNotNull(task.getTask(), "Task details should be present");
+    assertNotNull(task.getTask().getRecognizer(), "Task should include recognizer metadata");
+
+    TagLabelRecognizerMetadata taskRecognizer = task.getTask().getRecognizer();
+    assertEquals(
+        recognizerMetadata.getRecognizerId(),
+        taskRecognizer.getRecognizerId(),
+        "Recognizer ID should match");
+    assertEquals(
+        recognizerMetadata.getRecognizerName(),
+        taskRecognizer.getRecognizerName(),
+        "Recognizer name should match");
+    assertEquals(
+        recognizerMetadata.getScore(),
+        taskRecognizer.getScore(),
+        0.001,
+        "Recognizer score should match");
   }
 }
