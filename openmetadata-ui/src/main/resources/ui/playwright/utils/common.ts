@@ -95,6 +95,7 @@ export const removeLandingBanner = async (page: Page) => {
   }
 };
 
+
 export const createNewPage = async (browser: Browser) => {
   // create a new page
   const page = await browser.newPage();
