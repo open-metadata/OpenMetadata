@@ -64,6 +64,32 @@ export const visitEntityPage = async (data: {
   // Unified loader handling
   await waitForAllLoadersToDisappear(page);
 
+  // Dismiss "What's New" alert if visible
+  try {
+    const whatsNewCloseButton = page
+      .getByTestId('whats-new-alert-card')
+      .locator('.whats-new-alert-close');
+    await whatsNewCloseButton.waitFor({ state: 'visible', timeout: 2000 });
+    await whatsNewCloseButton.click();
+    await page.waitForTimeout(300);
+  } catch {
+    // Popup not present, continue
+  }
+
+  // Dismiss GitHub star popup if visible
+  try {
+    const githubStarPopup = page.getByTestId('github-star-popup-card');
+    await githubStarPopup.waitFor({ state: 'visible', timeout: 2000 });
+    const closeButton = page.locator(
+      '[data-testid="close-github-star-popup-card"]'
+    );
+    await closeButton.click({ force: true });
+    await page.waitForTimeout(300);
+  } catch {
+    // Popup not present, continue
+  }
+
+  // Dismiss welcome screen if visible
   const isWelcomeScreenVisible = await page
     .getByTestId('welcome-screen')
     .isVisible();
