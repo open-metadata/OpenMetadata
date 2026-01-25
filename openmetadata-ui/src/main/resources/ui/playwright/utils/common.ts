@@ -60,7 +60,11 @@ export const redirectToHomePage = async (
   page: Page,
   waitForNetworkIdle = true
 ) => {
-  await page.goto('/');
+  // Use 'domcontentloaded' instead of 'load' to avoid waiting for all resources
+  // This will prevent timeout when loading resource (images, stylesheets, scripts, etc.) to fully load.
+  // If any resource is slow to load or hanging, this can cause timeouts
+  // even when the page content is already visible and functional
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.waitForURL('**/my-data');
   if (waitForNetworkIdle) {
     await page.waitForLoadState('domcontentloaded');
@@ -827,7 +831,6 @@ export const testCompletePaginationWithSearch = async (
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
-
 
   const nextButton = page.locator('[data-testid="next"]');
   const isNextEnabled = await nextButton.isEnabled();

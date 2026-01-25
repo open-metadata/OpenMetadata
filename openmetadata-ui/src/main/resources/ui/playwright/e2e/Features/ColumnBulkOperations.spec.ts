@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page, test } from '@playwright/test';
+import { isUndefined } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { Glossary } from '../../support/glossary/Glossary';
@@ -18,7 +19,11 @@ import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  escapeESReservedCharacters,
+  getEncodedFqn,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
 // Use the admin user to login
@@ -412,7 +417,7 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
         description?: string;
         tags?: { tagFQN?: string }[];
       }[];
-    } | null = null;
+    } = {};
 
     const requestPromise = page.waitForRequest(
       (request) => {
@@ -498,7 +503,7 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
         columnFQN?: string;
         displayName?: string;
       }[];
-    } | null = null;
+    } = {};
 
     const requestPromise = page.waitForRequest(
       (request) => {
@@ -733,7 +738,7 @@ test.describe('Column Bulk Operations - Coverage Status Display', () => {
         columnName: string;
         metadataStatus?: string;
       }>;
-    } | null = null;
+    } = {};
 
     page.on('response', async (response) => {
       if (
@@ -751,7 +756,10 @@ test.describe('Column Bulk Operations - Coverage Status Display', () => {
     await visitColumnBulkOperationsPage(page);
 
     // Verify the API response contains metadataStatus field
-    if (apiResponse && apiResponse.columns && apiResponse.columns.length > 0) {
+    if (
+      !isUndefined(apiResponse?.columns?.length) &&
+      apiResponse?.columns?.length > 0
+    ) {
       // At least some columns should have metadataStatus
       const columnsWithStatus = apiResponse.columns.filter(
         (col) => col.metadataStatus !== undefined
@@ -917,35 +925,80 @@ test.describe('Column Bulk Operations - Pagination', () => {
 });
 
 test.describe('Column Bulk Operations - Multi-select', () => {
+  const table = new TableClass();
+
+  test.beforeAll('Setup table with STRUCT columns', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await table.create(apiContext);
+    await afterAction();
+  });
+
   test('should select multiple columns and bulk edit', async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
 
-    // Wait for grid data to load
+    // Apply service filter
+    const getInitialOptions = page.waitForResponse(
+      '/api/v1/search/aggregate?*field=service.displayName.keyword*'
+    );
+    await page.getByTestId('search-dropdown-Service').click();
+    await getInitialOptions;
+
+    const getOptions = page.waitForResponse(
+      `http://localhost:8585/api/v1/search/aggregate?*field=service.displayName.keyword*${getEncodedFqn(
+        escapeESReservedCharacters(table.serviceResponseData.name)
+      )}*`
+    );
+    await page
+      .locator('.ant-dropdown:visible [data-testid="search-input"]')
+      .fill(table.serviceResponseData.name);
+
+    await getOptions;
+
+    await page.getByTestId(table.schemaResponseData.name).click();
+
+    await page.waitForSelector(
+      `[data-testid="${table.schemaResponseData.name}"] .ant-checkbox-checked`,
+      {
+        state: 'visible',
+      }
+    );
+
+    const getFilteredData = page.waitForResponse(
+      `/api/v1/columns/grid?*serviceName=${table.serviceResponseData.name}*`
+    );
+
+    await page.getByTestId('update-btn').click();
+
+    await getFilteredData;
 
     // Get row checkboxes
-    const checkboxes = page.locator('tbody tr input[type="checkbox"]');
-    const checkboxCount = await checkboxes.count();
 
-    if (checkboxCount >= 2) {
-      // Select first two columns
-      await checkboxes.nth(0).click();
-      await checkboxes.nth(1).click();
+    // Select first two columns
+    await page
+      .getByTestId(
+        `column-checkbox-${table.entityResponseData.columns[0].name}`
+      )
+      .click();
+    await page
+      .getByTestId(
+        `column-checkbox-${table.entityResponseData.columns[1].name}`
+      )
+      .click();
 
-      // Verify "View Selected" shows correct count
-      const viewSelectedText = page.getByText(/View Selected \(2\)/);
-      await expect(viewSelectedText).toBeVisible();
+    // Verify "View Selected" shows correct count
+    const viewSelectedText = page.getByText(/View Selected \(2\)/);
+    await expect(viewSelectedText).toBeVisible();
 
-      // Open edit drawer
-      const editButton = page.getByRole('button', { name: /edit/i }).first();
-      await editButton.click();
+    // Open edit drawer
+    const editButton = page.getByRole('button', { name: /edit/i }).first();
+    await editButton.click();
 
-      // Verify drawer opens
-      const drawer = page.getByTestId('column-bulk-operations-form-drawer');
-      await expect(drawer).toBeVisible();
+    // Verify drawer opens
+    const drawer = page.getByTestId('column-bulk-operations-form-drawer');
+    await expect(drawer).toBeVisible();
 
-      // Verify drawer has content
-      await expect(drawer.getByText('Description')).toBeVisible();
-    }
+    // Verify drawer has content
+    await expect(drawer.getByText('Description')).toBeVisible();
   });
 
   test('should select all columns using header checkbox', async ({ page }) => {
@@ -1025,7 +1078,7 @@ test.describe('Column Bulk Operations - Aggregate Row Click Behavior', () => {
     await visitColumnBulkOperationsPage(page);
 
     // Find a row with expand button (aggregate row with multiple occurrences)
-    const expandButton = page.locator('tbody tr button').first();
+    const expandButton = page.locator('tbody tr button.expand-button');
 
     if ((await expandButton.count()) > 0) {
       // Get the parent row
@@ -1033,14 +1086,14 @@ test.describe('Column Bulk Operations - Aggregate Row Click Behavior', () => {
 
       // Click on the row (not the expand button or checkbox)
       // Click on the column name cell area
-      const columnNameCell = aggregateRow.locator('td').nth(1);
-      await columnNameCell.click();
+      await aggregateRow.locator('td .column-link').click();
 
       // Verify edit drawer opens
       const drawer = page.getByTestId('column-bulk-operations-form-drawer');
 
       // Drawer should be visible (if it's an aggregate row)
       // Note: This may not open drawer for single-occurrence rows
+      await expect(drawer).toBeVisible();
     }
   });
 
@@ -1070,16 +1123,16 @@ test.describe('Column Bulk Operations - Aggregate Row Click Behavior', () => {
 });
 
 test.describe('Column Bulk Operations - Combined Filters', () => {
+  const table = new TableClass();
+
+  test.beforeAll('Setup table with STRUCT columns', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await table.create(apiContext);
+    await afterAction();
+  });
+
   test('should apply multiple filters together', async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
-
-    // Set up request interception for the final request with both filters
-    let lastApiUrl = '';
-    page.on('request', (request) => {
-      if (request.url().includes('/api/v1/columns/grid')) {
-        lastApiUrl = request.url();
-      }
-    });
 
     // Apply Metadata Status filter
     const metadataStatusButton = page.getByRole('button', {
@@ -1092,6 +1145,49 @@ test.describe('Column Bulk Operations - Combined Filters', () => {
 
     // Verify filter is in URL
     await expect(page).toHaveURL(/metadataStatus=MISSING/);
+
+    // Apply another filter - Service
+    const getInitialOptions = page.waitForResponse(
+      '/api/v1/search/aggregate?*field=service.displayName.keyword*'
+    );
+    await page.getByTestId('search-dropdown-Service').click();
+    await getInitialOptions;
+
+    const getOptions = page.waitForResponse(
+      `http://localhost:8585/api/v1/search/aggregate?*field=service.displayName.keyword*${table.serviceResponseData.name}*`
+    );
+    await page
+      .locator('.ant-dropdown:visible [data-testid="search-input"]')
+      .fill(table.serviceResponseData.name);
+
+    await getOptions;
+
+    await page.getByTestId(table.schemaResponseData.name).click();
+
+    await page.waitForSelector(
+      `[data-testid="${table.schemaResponseData.name}"] .ant-checkbox-checked`,
+      {
+        state: 'visible',
+      }
+    );
+
+    const getFilteredData = page.waitForResponse(
+      `/api/v1/columns/grid?*serviceName=${table.serviceResponseData.name}*metadataStatus=MISSING*`
+    );
+
+    await page.getByTestId('update-btn').click();
+
+    await getFilteredData;
+
+    // Verify both filters are in URL
+    const url = page.url();
+    expect(url).toContain('metadataStatus=MISSING');
+    expect(url).toContain(
+      `service.displayName.keyword=${getEncodedFqn(
+        table.serviceResponseData.name,
+        true
+      )}`
+    );
   });
 
   test('should clear individual filters', async ({ page }) => {
@@ -1405,7 +1501,7 @@ test.describe('Column Bulk Operations - Cross Entity Type Support', () => {
 
     // Look for occurrence count indicators in the table
     // Columns that appear in multiple tables/entities will show count > 1
-    const occurrenceTexts = page.locator('text=/\\d+ occurrences?/i');
+    const occurrenceTexts = page.locator(String.raw`text=/\d+ occurrences?/i`);
     const count = await occurrenceTexts.count();
 
     // Test passes if page loads - occurrence counts depend on existing data
@@ -1453,12 +1549,6 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await table.create(apiContext);
     structColumnName = table.columnsName[2];
-    await afterAction();
-  });
-
-  test.afterAll('Cleanup STRUCT test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await table.delete(apiContext);
     await afterAction();
   });
 
