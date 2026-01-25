@@ -69,7 +69,8 @@ test.describe('Custom properties without custom property config', () => {
           await verifyCustomPropertyInAdvancedSearch(
             page,
             propertyName.toUpperCase(), // displayName is in uppercase
-            entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
+            entity.name.charAt(0).toUpperCase() + entity.name.slice(1),
+            property
           );
 
           await settingClick(
@@ -84,4 +85,3 @@ test.describe('Custom properties without custom property config', () => {
     });
   });
 });
-

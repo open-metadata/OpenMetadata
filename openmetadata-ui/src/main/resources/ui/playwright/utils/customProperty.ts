@@ -18,8 +18,8 @@ import {
 } from '../constant/customProperty';
 import { SidebarItem } from '../constant/sidebar';
 import {
-  ENTITY_PATH,
   EntityTypeEndpoint,
+  ENTITY_PATH,
 } from '../support/entity/Entity.interface';
 import { UserClass } from '../support/user/UserClass';
 import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
@@ -854,7 +854,9 @@ export const deleteCreatedProperty = async (
 export const verifyCustomPropertyInAdvancedSearch = async (
   page: Page,
   propertyName: string,
-  entityType: string
+  entityType: string,
+  propertyType?: string,
+  propertyConfig?: string[]
 ) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
   await page.waitForLoadState('networkidle');
@@ -885,6 +887,37 @@ export const verifyCustomPropertyInAdvancedSearch = async (
     propertyName,
     true
   );
+
+  if (propertyType === 'Time Interval') {
+    await selectOption(
+      page,
+      ruleLocator.locator('.rule--field .ant-select'),
+      `${propertyName} (Start)`,
+      true
+    );
+    await selectOption(
+      page,
+      ruleLocator.locator('.rule--field .ant-select'),
+      `${propertyName} (End)`,
+      true
+    );
+  } else if (propertyType === 'Table') {
+    for (const column of propertyConfig ?? []) {
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--field .ant-select'),
+        `${propertyName} - ${column}`,
+        true
+      );
+    }
+  } else {
+    await selectOption(
+      page,
+      ruleLocator.locator('.rule--field .ant-select'),
+      propertyName,
+      true
+    );
+  }
 
   await page.getByTestId('cancel-btn').click();
 };
