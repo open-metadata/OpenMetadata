@@ -144,6 +144,7 @@ class JSONLogicSearchClassBase {
       labelForFormat: t('label.regular-expression'),
       elasticSearchQueryType: 'regexp',
       valueSources: ['value'],
+      sqlOp: 'REGEXP',
     },
     equal: {
       ...this.baseConfig.operators.equal,

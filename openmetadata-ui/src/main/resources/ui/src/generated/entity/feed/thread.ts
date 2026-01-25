@@ -698,7 +698,11 @@ export interface TaskDetails {
      * The value of old object for which the task is created.
      */
     oldValue?: string;
-    status?:   ThreadTaskStatus;
+    /**
+     * Metadata about the recognizer that applied the tag being reviewed
+     */
+    recognizer?: TagLabelRecognizerMetadata;
+    status?:     ThreadTaskStatus;
     /**
      * The suggestion object to replace the old value for which the task is created.
      */
@@ -833,6 +837,61 @@ export enum UserReason {
     PublicInformation = "PUBLIC_INFORMATION",
     TestData = "TEST_DATA",
     WrongDataType = "WRONG_DATA_TYPE",
+}
+
+/**
+ * Metadata about the recognizer that applied the tag being reviewed
+ *
+ * Metadata about the recognizer that applied a tag, including scoring and pattern
+ * information.
+ */
+export interface TagLabelRecognizerMetadata {
+    /**
+     * Details of patterns that matched during recognition
+     */
+    patterns?: PatternMatch[];
+    /**
+     * Unique identifier of the recognizer that applied this tag
+     */
+    recognizerId: string;
+    /**
+     * Human-readable name of the recognizer
+     */
+    recognizerName: string;
+    /**
+     * Confidence score assigned by the recognizer (0.0 to 1.0)
+     */
+    score: number;
+    /**
+     * What the recognizer analyzed to apply this tag
+     */
+    target?: Target;
+}
+
+/**
+ * Information about a pattern that matched during recognition
+ */
+export interface PatternMatch {
+    /**
+     * Name of the pattern that matched
+     */
+    name: string;
+    /**
+     * Regular expression or pattern definition
+     */
+    regex?: string;
+    /**
+     * Confidence score for this specific pattern match
+     */
+    score: number;
+}
+
+/**
+ * What the recognizer analyzed to apply this tag
+ */
+export enum Target {
+    ColumnName = "column_name",
+    Content = "content",
 }
 
 /**
