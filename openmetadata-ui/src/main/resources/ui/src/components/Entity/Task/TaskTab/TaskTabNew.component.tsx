@@ -900,13 +900,13 @@ export const TaskTabNew = ({
       })}>
       <div className="d-flex gap-2" data-testid="task-assignees">
         <Row className="m-l-0" gutter={[16, 16]}>
-          <Col className="flex items-center gap-2 text-grey-muted" span={8}>
+          <Col className="flex items-center gap-2 text-grey-muted" span={11}>
             <UserIcon height={16} />
             <Typography.Text className="incident-manager-details-label">
               {t('label.created-by')}
             </Typography.Text>
           </Col>
-          <Col span={16}>
+          <Col span={13}>
             <Link
               className="no-underline flex items-center gap-2"
               to={getUserPath(taskThread.createdBy ?? '')}>
@@ -965,19 +965,22 @@ export const TaskTabNew = ({
             </Form>
           ) : (
             <>
-              <Col className="flex gap-2 text-grey-muted" span={8}>
+              <Col className="flex gap-2 text-grey-muted" span={11}>
                 <AssigneesIcon height={16} />
                 <Typography.Text className="incident-manager-details-label @grey-8">
                   {t('label.assignee-plural')}
                 </Typography.Text>
               </Col>
-              <Col className="flex gap-2" span={16}>
+              <Col className="flex gap-2" span={13}>
                 {taskThread?.task?.assignees?.length === 1 ? (
                   <div className="d-flex items-center gap-2">
                     <UserPopOverCard
                       showUserName
+                      displayName={getEntityName(
+                        taskThread?.task?.assignees[0]
+                      )}
                       profileWidth={22}
-                      userName={getEntityName(taskThread?.task?.assignees[0])}
+                      userName={taskThread?.task?.assignees[0]?.name ?? ''}
                     />
                   </div>
                 ) : (
