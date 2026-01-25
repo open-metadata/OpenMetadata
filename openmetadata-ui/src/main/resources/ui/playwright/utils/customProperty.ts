@@ -705,10 +705,11 @@ export const addCustomPropertiesForEntity = async ({
       await expect(option).toBeVisible();
       await option.click();
 
-      // Wait for dropdown to close completely
-      await expect(
-        page.locator('.ant-select-dropdown:visible')
-      ).not.toBeVisible();
+      // Close the dropdown by pressing Escape
+      await page.keyboard.press('Escape');
+
+      // Wait for dropdown to close
+      await expect(page.locator('.ant-select-dropdown')).toBeHidden();
 
       // Verify the selection was applied
       await expect(
