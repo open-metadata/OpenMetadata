@@ -636,18 +636,20 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               state: 'detached',
             });
 
+            // Wait for the tags container to be visible first (ensures panel is fully loaded)
+            const tagsContainer = panelContainer.locator('.tags-list');
+            await expect(tagsContainer).toBeVisible();
+
             // Verify both tag and glossary term are still present in the panel
             // Use panelContainer scope to avoid ambiguity with multiple .tags-list elements
             await expect(
-              panelContainer
-                .locator('.tags-list')
-                .getByTestId('tag-PersonalData.SpecialCategory')
-            ).toBeVisible({ timeout: 10000 });
+              tagsContainer.getByTestId('tag-PersonalData.SpecialCategory')
+            ).toBeVisible();
             await expect(
               panelContainer.getByTestId(
                 `tag-${EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName}`
               )
-            ).toBeVisible({ timeout: 10000 });
+            ).toBeVisible();
 
             await closeColumnDetailPanel(page);
 

@@ -1065,8 +1065,14 @@ export const assignGlossaryTermToChildren = async ({
   rowSelector?: string;
   entityEndpoint: string;
 }) => {
-  const addButton = page
-    .locator(`[${rowSelector}="${rowId}"]`)
+  // First, wait for the row itself to be visible
+  const rowLocator = page.locator(`[${rowSelector}="${rowId}"]`);
+  await expect(rowLocator).toBeVisible();
+
+  // Scroll the row into view to ensure it's accessible
+  await rowLocator.scrollIntoViewIfNeeded();
+
+  const addButton = rowLocator
     .getByTestId('glossary-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .first();
