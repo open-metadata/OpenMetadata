@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Locator, Page } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 import { isObject, isUndefined } from 'lodash';
 import {
   CP_BASE_VALUES,
@@ -20,11 +20,7 @@ import { DashboardClass } from '../support/entity/DashboardClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import { selectOption } from './advancedSearch';
 import { getApiContext, uuid } from './common';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-  waitForAllLoadersToDisappear,
-} from './entity';
+import { waitForAllLoadersToDisappear } from './entity';
 
 export interface CustomPropertyDetails {
   name: string;
@@ -346,6 +342,45 @@ export const getOperatorLabel = (operator: string): string => {
   return operatorMap[operator] || operator;
 };
 
+const handlePropertyValueInput = async (
+  page: Page,
+  ruleLocator: ReturnType<Page['locator']>,
+  operator: string,
+  value: string | number | { start: string | number; end: string | number },
+  propertyType?: string
+) => {
+  const inputElement = ruleLocator.locator('.rule--widget input');
+
+  // Fill the input only if it's visible
+  if (await inputElement.isVisible()) {
+    // Convert object values to JSON strings
+    const stringValue = isObject(value) ? JSON.stringify(value) : String(value);
+    await inputElement.click();
+    await inputElement.fill(stringValue);
+
+    // Press Enter for multiselect operators and date types
+    if (
+      MULTISELECT_OPERATORS.includes(operator) ||
+      ((operator === 'equal' || operator === 'not_equal') &&
+        propertyType === 'dateTime-cp') ||
+      propertyType === 'date-cp'
+    ) {
+      await page.keyboard.press('Enter');
+    }
+
+    // Handle entity reference selection
+    if (
+      propertyType === 'entityReference' ||
+      propertyType === 'entityReferenceList'
+    ) {
+      await page
+        .locator(`.ant-select-dropdown:visible [title*="${value as string}"]`)
+        .first()
+        .click();
+    }
+  }
+};
+
 export const applyCustomPropertyFilter = async (
   page: Page,
   propertyName: string,
@@ -400,53 +435,15 @@ export const applyCustomPropertyFilter = async (
 
       await page.keyboard.press('Enter');
     } else {
-      const inputElement = ruleLocator.locator('.rule--widget input');
-
-      if (await inputElement.isVisible()) {
-        const stringValue = isObject(value)
-          ? JSON.stringify(value)
-          : String(value);
-        await inputElement.click();
-        await inputElement.fill(stringValue);
-
-        if (
-          MULTISELECT_OPERATORS.includes(operator) ||
-          ((operator === 'equal' || operator === 'not_equal') &&
-            propertyType === 'dateTime-cp') ||
-          propertyType === 'date-cp'
-        ) {
-          await page.keyboard.press('Enter');
-        }
-      }
+      handlePropertyValueInput(
+        page,
+        ruleLocator,
+        operator,
+        value,
+        propertyType
+      );
     }
   }
-};
-
-export const selectEntityReferenceValue = async (
-  page: Page,
-  ruleLocator: Locator,
-  entityName: string
-) => {
-  const dropdownInput = ruleLocator.locator(
-    '.widget--widget > .ant-select > .ant-select-selector input'
-  );
-
-  const aggregateRes1 = page.waitForResponse('/api/v1/search/aggregate?*');
-  await dropdownInput.click();
-  await aggregateRes1;
-
-  const aggregateRes2 = page.waitForResponse(
-    `/api/v1/search/aggregate?*${getEncodedFqn(
-      escapeESReservedCharacters(entityName)
-    )}*`
-  );
-  await dropdownInput.fill(entityName);
-  await aggregateRes2;
-
-  await page
-    .locator(`.ant-select-dropdown:visible [title*="${entityName}"]`)
-    .first()
-    .click();
 };
 
 export const verifySearchResults = async (
