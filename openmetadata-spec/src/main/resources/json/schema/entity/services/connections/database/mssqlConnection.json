@@ -9,13 +9,19 @@
     "mssqlType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Mssql"],
+      "enum": [
+        "Mssql"
+      ],
       "default": "Mssql"
     },
     "mssqlScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["mssql+pyodbc", "mssql+pytds", "mssql+pymssql"],
+      "enum": [
+        "mssql+pyodbc",
+        "mssql+pytds",
+        "mssql+pymssql"
+      ],
       "default": "mssql+pytds"
     }
   },
@@ -88,7 +94,12 @@
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
       "default": {
         "includes": [],
-        "excludes": ["^db_.*", "^guest$", "^information_schema$", "^sys$"]
+        "excludes": [
+          "^db_.*",
+          "^guest$",
+          "^information_schema$",
+          "^sys$"
+        ]
       }
     },
     "tableFilterPattern": {
@@ -103,6 +114,15 @@
       "default": {
         "includes": [],
         "excludes": ["^msdb$", "^model$", "^tempdb$"]
+      }
+    },
+    "storedProcedureFilterPattern": {
+      "title": "Default Stored Procedure Filter Pattern",
+      "description": "Regex to only include/exclude stored procedures that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "default": {
+        "includes": [],
+        "excludes": ["^sp_", "^xp_", "^ms_"]
       }
     },
     "connectionOptions": {
@@ -148,5 +168,7 @@
     }
   },
   "additionalProperties": false,
-  "required": ["database"]
+  "required": [
+    "database"
+  ]
 }

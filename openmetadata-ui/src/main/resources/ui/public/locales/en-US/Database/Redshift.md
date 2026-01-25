@@ -207,3 +207,9 @@ $$section
 
 Regex to only include/exclude tables that matches the pattern.
 $$
+
+
+$$section
+### Default Stored Procedure Filter Pattern $(id="storedProcedureFilterPattern")
+Regex to only include/exclude stored procedures that matches the pattern.
+$$

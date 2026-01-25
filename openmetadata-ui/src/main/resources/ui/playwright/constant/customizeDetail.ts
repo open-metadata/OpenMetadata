@@ -71,6 +71,7 @@ export enum EntityTabs {
   TERMS = 'terms',
   GLOSSARY_TERMS = 'glossary_terms',
   ASSETS = 'assets',
+  INPUT_OUTPUT_PORTS = 'input_output_ports',
   EXPRESSION = 'expression',
   INSIGHTS = 'insights',
   DASHBOARD = 'dashboard',
@@ -227,8 +228,10 @@ export const DOMAIN_DEFAULT_TABS = [
 export const DATA_PRODUCT_DEFAULT_TABS = [
   EntityTabs.DOCUMENTATION,
   EntityTabs.ASSETS,
+  EntityTabs.CONTRACT,
   EntityTabs.ACTIVITY_FEED,
   EntityTabs.CUSTOM_PROPERTIES,
+  EntityTabs.INPUT_OUTPUT_PORTS,
 ];
 
 export const GLOSSARY_DEFAULT_TABS = [

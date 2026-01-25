@@ -2,7 +2,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_SERVICE;
 import static org.openmetadata.service.Entity.STORED_PROCEDURE;
 
@@ -22,6 +21,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.StoredProcedureResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class StoredProcedureRepository extends EntityRepository<StoredProcedure> {
@@ -97,10 +97,11 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
   }
 
   @Override
-  public void setFields(StoredProcedure storedProcedure, EntityUtil.Fields fields) {
+  public void setFields(
+      StoredProcedure storedProcedure,
+      EntityUtil.Fields fields,
+      RelationIncludes relationIncludes) {
     setDefaultFields(storedProcedure);
-    storedProcedure.setFollowers(
-        fields.contains(FIELD_FOLLOWERS) ? getFollowers(storedProcedure) : null);
   }
 
   @Override

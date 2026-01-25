@@ -38,6 +38,7 @@ export type TableListParams = {
   before?: string;
   after?: string;
   include?: Include;
+  includeRelations?: string;
   limit?: number;
   includeEmptyTestSuite?: boolean;
 };
@@ -67,7 +68,12 @@ export const getTableDetailsByFQN = async (
   const response = await APIClient.get<Table>(
     `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
     {
-      params: { ...params, include: params?.include ?? Include.All },
+      params: {
+        ...params,
+        include: params?.include ?? Include.All,
+        includeRelations:
+          params?.includeRelations ?? 'owners:non-deleted,experts:non-deleted',
+      },
     }
   );
 
@@ -274,6 +280,8 @@ export type GetTableColumnsParams = {
   offset?: number;
   fields?: string;
   include?: Include;
+  sortBy?: 'name' | 'ordinalPosition';
+  sortOrder?: 'asc' | 'desc';
 };
 
 export const getTableColumnsById = async (

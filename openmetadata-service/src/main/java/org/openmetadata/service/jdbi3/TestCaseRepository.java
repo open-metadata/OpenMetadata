@@ -103,6 +103,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
@@ -134,7 +135,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
-  public void setFields(TestCase test, Fields fields) {
+  public void setFields(TestCase test, Fields fields, RelationIncludes relationIncludes) {
     test.setTestSuites(
         fields.contains(Entity.FIELD_TEST_SUITES) ? getTestSuites(test) : test.getTestSuites());
     test.setTestSuite(
@@ -1434,13 +1435,31 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
     List<TestCase> testCases = getTestCasesForExport(name, recursive);
-    return new TestCaseCsv(user).exportCsv(testCases);
+    return new TestCaseCsv(user, null).exportCsv(testCases);
   }
 
   @Override
   public CsvImportResult importFromCsv(
       String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
-    return new TestCaseCsv(user).importCsv(csv, dryRun);
+    throw new IllegalArgumentException(
+        "TestCase CSV import requires 'targetEntityType' parameter. "
+            + "Specify 'table' when importing from a table context, or 'testSuite' when importing from a Bundle Suite Context.");
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      String targetEntityType)
+      throws IOException {
+    TestSuite targetBundleSuite =
+        TEST_SUITE.equals(targetEntityType)
+            ? Entity.getEntityByName(TEST_SUITE, name, "", Include.ALL)
+            : null;
+    return new TestCaseCsv(user, targetBundleSuite).importCsv(csv, dryRun);
   }
 
   private List<TestCase> getTestCasesForExport(String name, boolean recursive) {
@@ -1493,9 +1512,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   public static class TestCaseCsv extends EntityCsv<TestCase> {
     public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(TEST_CASE, false);
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
+    private final TestSuite targetBundleSuite;
+    private final List<UUID> importedTestCaseIds = new ArrayList<>();
 
-    TestCaseCsv(String user) {
+    TestCaseCsv(String user, TestSuite targetBundleSuite) {
       super(TEST_CASE, HEADERS, user);
+      this.targetBundleSuite = targetBundleSuite;
     }
 
     @Override
@@ -1607,6 +1629,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             // Use createOrUpdateForImport which handles both create and update
             RestUtil.PutResponse<TestCase> response =
                 repository.createOrUpdateForImport(null, testCase, importedBy);
+            if (targetBundleSuite != null) {
+              importedTestCaseIds.add(response.getEntity().getId());
+            }
             if (response.getStatus() == Response.Status.CREATED) {
               importSuccess(printer, csvRecord, ENTITY_CREATED);
             } else {
@@ -1621,6 +1646,31 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         } catch (Exception ex) {
           importFailure(printer, ex.getMessage(), csvRecord);
           importResult.withStatus(ApiStatus.FAILURE);
+        }
+      }
+
+      if (targetBundleSuite != null
+          && !importedTestCaseIds.isEmpty()
+          && !importResult.getDryRun()) {
+        try {
+          TestCaseRepository repository =
+              (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
+          repository.addTestCasesToLogicalTestSuite(targetBundleSuite, importedTestCaseIds);
+          LOG.info(
+              "Attached {} test cases to Bundle Suite '{}'",
+              importedTestCaseIds.size(),
+              targetBundleSuite.getFullyQualifiedName());
+        } catch (Exception e) {
+          LOG.error(
+              "Failed to attach test cases to Bundle Suite '{}': {}",
+              targetBundleSuite.getFullyQualifiedName(),
+              e.getMessage());
+          throw new IllegalStateException(
+              String.format(
+                  "%d test cases were imported successfully, but failed to attach them to Bundle suite '%s': %s. "
+                      + "The test cases exist and can be manually added to the Bundle Suite.",
+                  importedTestCaseIds.size(), targetBundleSuite.getName(), e.getMessage()),
+              e);
         }
       }
     }

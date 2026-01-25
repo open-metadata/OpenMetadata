@@ -135,21 +135,28 @@ public class DataProductService
     }
 
     @SuppressWarnings("unchecked")
-    public ResultList<?> list(int limit, int offset) throws OpenMetadataException {
+    public ResultList<?> list(String fields, int limit, int offset) throws OpenMetadataException {
       String path =
           byName
               ? String.format("%s/name/%s/inputPorts", basePath, identifier)
               : String.format("%s/%s/inputPorts", basePath, identifier);
-      RequestOptions options =
+      RequestOptions.Builder builder =
           RequestOptions.builder()
               .queryParam("limit", String.valueOf(limit))
-              .queryParam("offset", String.valueOf(offset))
-              .build();
-      return httpClient.execute(HttpMethod.GET, path, null, ResultList.class, options);
+              .queryParam("offset", String.valueOf(offset));
+      if (fields != null && !fields.isEmpty()) {
+        builder.queryParam("fields", fields);
+      }
+      return httpClient.execute(HttpMethod.GET, path, null, ResultList.class, builder.build());
+    }
+
+    @SuppressWarnings("unchecked")
+    public ResultList<?> list(int limit, int offset) throws OpenMetadataException {
+      return list(null, limit, offset);
     }
 
     public ResultList<?> list() throws OpenMetadataException {
-      return list(50, 0);
+      return list(null, 50, 0);
     }
   }
 
@@ -186,21 +193,28 @@ public class DataProductService
     }
 
     @SuppressWarnings("unchecked")
-    public ResultList<?> list(int limit, int offset) throws OpenMetadataException {
+    public ResultList<?> list(String fields, int limit, int offset) throws OpenMetadataException {
       String path =
           byName
               ? String.format("%s/name/%s/outputPorts", basePath, identifier)
               : String.format("%s/%s/outputPorts", basePath, identifier);
-      RequestOptions options =
+      RequestOptions.Builder builder =
           RequestOptions.builder()
               .queryParam("limit", String.valueOf(limit))
-              .queryParam("offset", String.valueOf(offset))
-              .build();
-      return httpClient.execute(HttpMethod.GET, path, null, ResultList.class, options);
+              .queryParam("offset", String.valueOf(offset));
+      if (fields != null && !fields.isEmpty()) {
+        builder.queryParam("fields", fields);
+      }
+      return httpClient.execute(HttpMethod.GET, path, null, ResultList.class, builder.build());
+    }
+
+    @SuppressWarnings("unchecked")
+    public ResultList<?> list(int limit, int offset) throws OpenMetadataException {
+      return list(null, limit, offset);
     }
 
     public ResultList<?> list() throws OpenMetadataException {
-      return list(50, 0);
+      return list(null, 50, 0);
     }
   }
 
@@ -221,24 +235,33 @@ public class DataProductService
     }
 
     public DataProductPortsView get(
-        int inputLimit, int inputOffset, int outputLimit, int outputOffset)
+        String fields, int inputLimit, int inputOffset, int outputLimit, int outputOffset)
         throws OpenMetadataException {
       String path =
           byName
               ? String.format("%s/name/%s/portsView", basePath, identifier)
               : String.format("%s/%s/portsView", basePath, identifier);
-      RequestOptions options =
+      RequestOptions.Builder builder =
           RequestOptions.builder()
               .queryParam("inputLimit", String.valueOf(inputLimit))
               .queryParam("inputOffset", String.valueOf(inputOffset))
               .queryParam("outputLimit", String.valueOf(outputLimit))
-              .queryParam("outputOffset", String.valueOf(outputOffset))
-              .build();
-      return httpClient.execute(HttpMethod.GET, path, null, DataProductPortsView.class, options);
+              .queryParam("outputOffset", String.valueOf(outputOffset));
+      if (fields != null && !fields.isEmpty()) {
+        builder.queryParam("fields", fields);
+      }
+      return httpClient.execute(
+          HttpMethod.GET, path, null, DataProductPortsView.class, builder.build());
+    }
+
+    public DataProductPortsView get(
+        int inputLimit, int inputOffset, int outputLimit, int outputOffset)
+        throws OpenMetadataException {
+      return get(null, inputLimit, inputOffset, outputLimit, outputOffset);
     }
 
     public DataProductPortsView get() throws OpenMetadataException {
-      return get(50, 0, 50, 0);
+      return get(null, 50, 0, 50, 0);
     }
   }
 

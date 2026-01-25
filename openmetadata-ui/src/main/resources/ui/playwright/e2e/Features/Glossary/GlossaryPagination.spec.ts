@@ -67,25 +67,6 @@ test.describe('Glossary tests', () => {
     await afterAction();
   });
 
-  test.afterAll(async ({ browser }) => {
-    test.setTimeout(8 * 60 * 1000);
-
-    const { apiContext, afterAction } = await createNewPage(browser);
-    for (const term of childTerms.reverse()) {
-      await term.delete(apiContext);
-    }
-    for (const term of siblingTerms.reverse()) {
-      await term.delete(apiContext);
-    }
-    // Clean up all terms and glossary
-    for (const term of glossaryTerms.reverse()) {
-      await term.delete(apiContext);
-    }
-    await glossary.delete(apiContext);
-
-    await afterAction();
-  });
-
   test('should check for glossary term search', async ({ page }) => {
     test.slow(true);
 

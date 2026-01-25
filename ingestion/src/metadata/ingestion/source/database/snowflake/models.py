@@ -89,9 +89,22 @@ class SnowflakeStoredProcedure(BaseModel):
         return urllib.parse.unquote(self.signature) if self.signature else "()"
 
 
+class SnowflakeStage(BaseModel):
+    """Snowflake stage metadata from SHOW STAGES"""
+
+    name: str
+    database_name: str
+    schema_name: str
+    url: Optional[str] = None
+    type_: str
+    cloud: Optional[str] = None
+    comment: Optional[str] = None
+    owner: Optional[str] = None
+
+
 class SnowflakeTable(BaseModel):
-    """Models the items returned from the Table, View and Stream Queries used to get the entities to process.
-    :name: Holds the table/view/stream name.
+    """Models the items returned from the Table, View, Stream and Stage Queries used to get the entities to process.
+    :name: Holds the table/view/stream/stage name.
     :deleted: Holds either a datetime if the table was deleted or None.
     """
 

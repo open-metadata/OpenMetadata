@@ -88,6 +88,7 @@ public class OpenMetadataConnectionBuilder {
     String botName;
     switch (ingestionPipeline.getPipelineType()) {
       case METADATA, DBT -> botName = Entity.INGESTION_BOT_NAME;
+      case AUTO_CLASSIFICATION -> botName = "autoClassification-bot";
       case APPLICATION -> {
         String type = IngestionPipelineRepository.getPipelineWorkflowType(ingestionPipeline);
         botName = String.format("%sApplicationBot", type);

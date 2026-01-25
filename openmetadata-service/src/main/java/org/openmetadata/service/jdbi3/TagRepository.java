@@ -83,6 +83,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
@@ -179,8 +180,15 @@ public class TagRepository extends EntityRepository<Tag> {
     // Validate recognizers
     if (entity.getRecognizers() != null) {
       for (org.openmetadata.schema.type.Recognizer recognizer : entity.getRecognizers()) {
+        prepareRecognizer(recognizer);
         validateRecognizer(recognizer);
       }
+    }
+  }
+
+  private void prepareRecognizer(org.openmetadata.schema.type.Recognizer recognizer) {
+    if (recognizer.getId() == null) {
+      recognizer.setId(UUID.randomUUID());
     }
   }
 
@@ -194,6 +202,10 @@ public class TagRepository extends EntityRepository<Tag> {
       if (threshold < 0.0 || threshold > 1.0) {
         throw new IllegalArgumentException("confidenceThreshold must be between 0.0 and 1.0");
       }
+    }
+
+    if (recognizer.getId() == null) {
+      throw new IllegalArgumentException("Can't create recognizer without an ID");
     }
   }
 
@@ -442,7 +454,7 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
-  public void setFields(Tag tag, Fields fields) {
+  public void setFields(Tag tag, Fields fields, RelationIncludes relationIncludes) {
     tag.withClassification(getClassification(tag)).withParent(getParent(tag));
     if (fields.contains("usageCount")) {
       tag.withUsageCount(getUsageCount(tag));
@@ -655,10 +667,23 @@ public class TagRepository extends EntityRepository<Tag> {
       return new DescriptionTaskWorkflow(threadContext);
     } else if (EntityUtil.isTagTask(taskType)) {
       return new TagTaskWorkflow(threadContext);
+    } else if (isRecognizerFeedbackTask(threadContext.getThread().getId())) {
+      return new RecognizerFeedbackTaskWorkflow(threadContext);
     } else if (!EntityUtil.isTestCaseFailureResolutionTask(taskType)) {
       return new ApprovalTaskWorkflow(threadContext);
     }
     return super.getTaskWorkflow(threadContext);
+  }
+
+  private boolean isRecognizerFeedbackTask(UUID taskId) {
+    try {
+      FeedRepository feedRepository = Entity.getFeedRepository();
+      Thread thread = feedRepository.get(taskId);
+      return thread.getTask() != null && thread.getTask().getFeedback() != null;
+    } catch (Exception e) {
+      LOG.debug("Failed to check if task is recognizer feedback task", e);
+    }
+    return false;
   }
 
   public static class ApprovalTaskWorkflow extends TaskWorkflow {
@@ -680,7 +705,6 @@ public class TagRepository extends EntityRepository<Tag> {
           workflowHandler.resolveTask(
               taskId, workflowHandler.transformToNodeVariables(taskId, variables));
 
-      // If workflow failed (corrupted Flowable task), apply the status directly
       if (!workflowSuccess) {
         LOG.warn(
             "[GlossaryTerm] Workflow failed for taskId='{}', applying status directly", taskId);
@@ -688,6 +712,55 @@ public class TagRepository extends EntityRepository<Tag> {
         String entityStatus = (approved != null && approved) ? "Approved" : "Rejected";
         EntityFieldUtils.setEntityField(tag, TAG, user, FIELD_ENTITY_STATUS, entityStatus, true);
       }
+      return tag;
+    }
+  }
+
+  public static class RecognizerFeedbackTaskWorkflow extends TaskWorkflow {
+    RecognizerFeedbackTaskWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      Tag tag = (Tag) threadContext.getAboutEntity();
+      TagRepository.checkUpdatedByReviewer(tag, user);
+
+      UUID taskId = threadContext.getThread().getId();
+      Map<String, Object> variables = new HashMap<>();
+      variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
+      variables.put(UPDATED_BY_VARIABLE, user);
+
+      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
+      boolean workflowSuccess =
+          workflowHandler.resolveTask(
+              taskId, workflowHandler.transformToNodeVariables(taskId, variables));
+
+      if (!workflowSuccess) {
+        LOG.warn(
+            "[RecognizerFeedback] Workflow failed for taskId='{}', attempting direct resolution",
+            taskId);
+        try {
+          org.openmetadata.schema.type.RecognizerFeedback feedback =
+              threadContext.getThread().getTask().getFeedback();
+          if (feedback != null) {
+            RecognizerFeedbackRepository repo =
+                new RecognizerFeedbackRepository(Entity.getCollectionDAO());
+
+            boolean approved =
+                resolveTask.getNewValue() != null
+                    && resolveTask.getNewValue().equalsIgnoreCase("approved");
+            if (approved) {
+              repo.applyFeedback(feedback, user);
+            } else {
+              repo.rejectFeedback(feedback, user, null);
+            }
+          }
+        } catch (Exception e) {
+          LOG.error("[RecognizerFeedback] Failed to resolve feedback directly", e);
+        }
+      }
+
       return tag;
     }
   }

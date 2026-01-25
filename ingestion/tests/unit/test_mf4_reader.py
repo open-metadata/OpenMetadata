@@ -41,53 +41,163 @@ class TestMF4DataFrameReader(TestCase):
         self.mock_reader = mock_reader
 
     def test_extract_schema_from_header_with_common_properties(self):
-        """
-        Test extracting schema from MF4 header with _common_properties
-        """
-        # Mock MF4 bytes
-        mock_mf4_bytes = b"mock_mf4_content"
-
-        # Expected common properties
+        mock_mdf = MagicMock()
+        mock_header = MagicMock()
         expected_common_props = {
             "measurement_id": "TEST_001",
             "vehicle_id": "VEH_123",
-            "test_date": "2025-01-01",
-            "sample_rate": 1000.0,
-            "channels_count": 10,
-            "duration": 3600.0,
         }
+        mock_header._common_properties = expected_common_props
+        mock_mdf.header = mock_header
 
-        # Create mock MDF object with header
-        with patch("asammdf.MDF") as mock_mdf_class:
-            mock_mdf = MagicMock()
-            mock_header = MagicMock()
-            mock_header._common_properties = expected_common_props
-            mock_mdf.header = mock_header
-            mock_mdf_class.return_value = mock_mdf
-
-            # Call the method
-            result = MF4DataFrameReader.extract_schema_from_header(mock_mf4_bytes)
-            # Validate result
-            self.assertIsInstance(result, DatalakeColumnWrapper)
-            self.assertIsNotNone(result.dataframes)
-            self.assertEqual(result.raw_data, expected_common_props)
+        result = MF4DataFrameReader._extract_header_from_mdf(mock_mdf)
+        self.assertIsInstance(result, DatalakeColumnWrapper)
+        self.assertIsNotNone(result.dataframes)
+        self.assertIsNotNone(result.dataframes())
+        self.assertEqual(result.raw_data, expected_common_props)
 
     def test_extract_schema_from_header_without_common_properties(self):
-        """
-        Test extracting schema when no _common_properties exist
-        """
-        mock_mf4_bytes = b"mock_mf4_content"
+        mock_mdf = MagicMock()
+        mock_header = MagicMock()
+        del mock_header._common_properties
+        mock_mdf.header = mock_header
 
-        with patch("asammdf.MDF") as mock_mdf_class:
-            mock_mdf = MagicMock()
-            mock_header = MagicMock()
-            # No _common_properties attribute
-            del mock_header._common_properties
-            mock_mdf.header = mock_header
-            mock_mdf_class.return_value = mock_mdf
+        result = MF4DataFrameReader._extract_header_from_mdf(mock_mdf)
 
-            # Call the method
-            result = MF4DataFrameReader.extract_schema_from_header(mock_mf4_bytes)
+        self.assertIsNotNone(result)
+        self.assertIsNotNone(result.dataframes)
+        chunks = list(result.dataframes())
+        self.assertEqual(len(chunks), 0)
 
-            # Should return None when no properties found
-            self.assertIsNone(result)
+    @patch("asammdf.MDF")
+    def test_local_mf4_reading(self, mock_mdf_class):
+        mock_mdf = MagicMock()
+        mock_header = MagicMock()
+        mock_header._common_properties = {"test_key": "test_value"}
+        mock_mdf.header = mock_header
+        mock_mdf_class.return_value = mock_mdf
+
+        from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+            LocalConfig,
+        )
+
+        config = LocalConfig()
+        reader = MF4DataFrameReader(config, None)
+
+        result = reader._read(key="test.mf4", bucket_name="")
+
+        self.assertIsNotNone(result)
+        self.assertIsNotNone(result.dataframes)
+        self.assertIsNotNone(result.dataframes())
+
+    @patch("asammdf.MDF")
+    @patch("tempfile.NamedTemporaryFile")
+    def test_s3_mf4_reading(self, mock_temp, mock_mdf_class):
+        from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
+            S3Config,
+        )
+        from metadata.generated.schema.security.credentials.awsCredentials import (
+            AWSCredentials,
+        )
+
+        mock_tmp = MagicMock()
+        mock_tmp.name = "/tmp/test.mf4"
+        mock_temp.return_value.__enter__.return_value = mock_tmp
+
+        mock_mdf = MagicMock()
+        mock_header = MagicMock()
+        mock_header._common_properties = {"measurement_id": "TEST"}
+        mock_mdf.header = mock_header
+        mock_mdf_class.return_value = mock_mdf
+
+        mock_client = MagicMock()
+        mock_body = MagicMock()
+        mock_body.iter_chunks.return_value = [b"chunk1", b"chunk2"]
+        mock_client.get_object.return_value = {"Body": mock_body}
+
+        config = S3Config(
+            securityConfig=AWSCredentials(
+                awsAccessKeyId="test", awsSecretAccessKey="test", awsRegion="us-east-1"
+            )
+        )
+        reader = MF4DataFrameReader(config, mock_client)
+
+        result = reader._read(key="test.mf4", bucket_name="test-bucket")
+
+        self.assertIsNotNone(result)
+        self.assertIsNotNone(result.dataframes)
+        dataframes = result.dataframes()
+        self.assertIsNotNone(dataframes)
+
+    @patch("asammdf.MDF")
+    @patch("gcsfs.GCSFileSystem")
+    @patch("tempfile.NamedTemporaryFile")
+    def test_gcs_mf4_reading(self, mock_temp, mock_gcsfs, mock_mdf_class):
+        from metadata.generated.schema.entity.services.connections.database.datalake.gcsConfig import (
+            GCSConfig,
+        )
+
+        mock_tmp = MagicMock()
+        mock_tmp.name = "/tmp/test.mf4"
+        mock_temp.return_value.__enter__.return_value = mock_tmp
+
+        mock_gcs = MagicMock()
+        mock_gcsfs.return_value = mock_gcs
+
+        mock_mdf = MagicMock()
+        mock_header = MagicMock()
+        mock_header._common_properties = {"vehicle_id": "VEH_123"}
+        mock_mdf.header = mock_header
+        mock_mdf_class.return_value = mock_mdf
+
+        config = GCSConfig()
+        reader = MF4DataFrameReader(config, None)
+
+        result = reader._read(key="test.mf4", bucket_name="test-bucket")
+
+        self.assertIsNotNone(result)
+        self.assertIsNotNone(result.dataframes)
+        dataframes = result.dataframes()
+        self.assertIsNotNone(dataframes)
+
+    @patch("asammdf.MDF")
+    @patch("adlfs.AzureBlobFileSystem")
+    @patch("metadata.readers.dataframe.mf4.return_azure_storage_options")
+    @patch("tempfile.NamedTemporaryFile")
+    def test_azure_mf4_reading(
+        self, mock_temp, mock_storage_opts, mock_adlfs, mock_mdf_class
+    ):
+        from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
+            AzureConfig,
+        )
+        from metadata.generated.schema.security.credentials.azureCredentials import (
+            AzureCredentials,
+        )
+
+        mock_tmp = MagicMock()
+        mock_tmp.name = "/tmp/test.mf4"
+        mock_temp.return_value.__enter__.return_value = mock_tmp
+
+        mock_storage_opts.return_value = {"connection_string": "test"}
+        mock_fs = MagicMock()
+        mock_adlfs.return_value = mock_fs
+
+        mock_mdf = MagicMock()
+        mock_header = MagicMock()
+        mock_header._common_properties = {"test_date": "2025-01-01"}
+        mock_mdf.header = mock_header
+        mock_mdf_class.return_value = mock_mdf
+
+        config = AzureConfig(
+            securityConfig=AzureCredentials(
+                accountName="test", clientId="test", tenantId="test"
+            )
+        )
+        reader = MF4DataFrameReader(config, None)
+
+        result = reader._read(key="test.mf4", bucket_name="test-container")
+
+        self.assertIsNotNone(result)
+        self.assertIsNotNone(result.dataframes)
+        dataframes = result.dataframes()
+        self.assertIsNotNone(dataframes)

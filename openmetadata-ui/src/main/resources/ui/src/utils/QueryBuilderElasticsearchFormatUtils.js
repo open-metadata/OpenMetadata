@@ -414,9 +414,14 @@ export function elasticSearchFormat(tree, config, syntax = ES_6_SYNTAX) {
       }
 
       if (value && Array.isArray(value[0])) {
+        // Check if this is a multiselect equals operator that should use AND logic
+        const useAndLogic =
+          operator === 'multiselect_equals' ||
+          operator === 'multiselect_not_equals';
+
         return {
           bool: {
-            should: value[0].map((val) =>
+            [useAndLogic ? 'must' : 'should']: value[0].map((val) =>
               buildEsRule(
                 field,
                 [val],
@@ -488,9 +493,14 @@ export function elasticSearchFormatForJSONLogic(
         Array.isArray(value[0]) &&
         operator !== 'select_not_any_in'
       ) {
+        // Check if this is a multiselect equals operator that should use AND logic
+        const useAndLogic =
+          operator === 'multiselect_equals' ||
+          operator === 'multiselect_not_equals';
+
         return {
           bool: {
-            should: value[0].map((val) =>
+            [useAndLogic ? 'must' : 'should']: value[0].map((val) =>
               buildEsRule(field, [val], operator, config, valueSrc)
             ),
           },

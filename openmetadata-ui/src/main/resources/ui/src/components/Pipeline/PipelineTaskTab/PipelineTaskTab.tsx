@@ -221,7 +221,7 @@ export const PipelineTaskTab = () => {
         }),
         render: (_, record) =>
           isEmpty(record.sourceUrl) ? (
-            <span>{getEntityName(record)}</span>
+            <span className="text-link-color">{getEntityName(record)}</span>
           ) : (
             <Link
               className="flex items-center gap-2"
