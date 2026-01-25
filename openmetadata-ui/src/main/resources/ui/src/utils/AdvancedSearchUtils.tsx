@@ -37,6 +37,7 @@ import {
   DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS,
   GLOSSARY_ASSETS_DROPDOWN_ITEMS,
   LINEAGE_DROPDOWN_ITEMS,
+  TAG_ASSETS_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
 import { NOT_INCLUDE_AGGREGATION_QUICK_FILTER } from '../constants/explore.constants';
 import {
@@ -76,8 +77,13 @@ export const getAssetsPageQuickFilters = (type?: AssetsOfEntity) => {
 
     case AssetsOfEntity.GLOSSARY:
       return [...GLOSSARY_ASSETS_DROPDOWN_ITEMS];
+
+    case AssetsOfEntity.TAG:
+      return [...TAG_ASSETS_DROPDOWN_ITEMS];
+
     case AssetsOfEntity.LINEAGE:
       return [...LINEAGE_DROPDOWN_ITEMS];
+
     default:
       return [...COMMON_DROPDOWN_ITEMS];
   }
