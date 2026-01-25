@@ -968,6 +968,96 @@ class PowerbiSource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
         return None
 
+    def _parse_bigquery_source(
+        self, source_expression: str, datamodel_entity: DashboardDataModel
+    ) -> Optional[List[dict]]:
+        """
+        Parse BigQuery source from Power Query M expressions.
+        Handles both direct BigQuery connections and references to dataset expressions.
+        
+        Examples:
+        1. Direct: GoogleBigQuery.Database()[Name="project"][Data][Name="dataset",Kind="Schema"][Data][Name="table",Kind="Table"][Data]
+        2. Via expression reference: Source = S_PJ_CODE (where S_PJ_CODE is a dataset expression)
+        """
+        try:
+            # Check if source expression references a dataset expression
+            # Pattern: Source = <expression_name>
+            source_ref_match = re.search(
+                r'Source\s*=\s*([A-Za-z0-9_#"&\s]+?)\s*,',
+                source_expression,
+                re.MULTILINE,
+            )
+            
+            if source_ref_match:
+                ref_name = source_ref_match.group(1).strip().strip('"').strip('#').strip('"')
+                logger.debug(
+                    f"Table source references expression: {ref_name}, resolving..."
+                )
+                
+                # Fetch the dataset to get its expressions
+                dataset = self._fetch_dataset_from_workspace(datamodel_entity.name.root)
+                if dataset and dataset.expressions:
+                    for dexpression in dataset.expressions:
+                        if dexpression.name == ref_name and dexpression.expression:
+                            logger.debug(
+                                f"Found referenced expression '{ref_name}', checking for BigQuery"
+                            )
+                            # Recursively parse the referenced expression
+                            return self._parse_bigquery_source(
+                                dexpression.expression, datamodel_entity
+                            )
+            
+            # Check if this is a direct BigQuery connection
+            if "GoogleBigQuery.Database" not in source_expression:
+                return None
+                
+            logger.debug(f"Found GoogleBigQuery.Database in expression")
+            
+            # Extract project, dataset (schema), and table from BigQuery M expression
+            # Pattern: [Name="project"][Data][Name="dataset",Kind="Schema"][Data][Name="table",Kind="Table"]
+            
+            # Extract all Name= patterns
+            name_matches = re.findall(
+                r'\[Name="([^"]+)"(?:,Kind="([^"]+)")?\]', 
+                source_expression
+            )
+            
+            if not name_matches:
+                logger.debug("No Name patterns found in BigQuery expression")
+                return None
+            
+            # BigQuery structure: project -> dataset (Schema) -> table (Table/View)
+            project = None
+            dataset = None
+            table_name = None
+            
+            for name, kind in name_matches:
+                if kind == "Schema":
+                    dataset = name
+                elif kind == "Table" or kind == "View":
+                    table_name = name
+                elif not kind and not project:
+                    # First Name without Kind is likely the project
+                    project = name
+            
+            logger.debug(
+                f"Extracted BigQuery info: project={project}, dataset={dataset}, table={table_name}"
+            )
+            
+            if table_name:
+                return [{
+                    "database": project,
+                    "schema": dataset,
+                    "table": table_name
+                }]
+            
+            return None
+            
+        except Exception as exc:
+            logger.debug(f"Error to parse BigQuery table source: {exc}")
+            logger.debug(traceback.format_exc())
+        return None
+
     def _parse_snowflake_query_source(
         self, source_expression: str
     ) -> Optional[List[dict]]:
@@ -1210,6 +1300,13 @@ class PowerbiSource(DashboardServiceSource):
                 return table_info_list
             # parse redshift source
             table_info_list = self._parse_redshift_source(source_expression)
+            if isinstance(table_info_list, List):
+                return table_info_list
+
+            # parse bigquery source
+            table_info_list = self._parse_bigquery_source(
+                source_expression, datamodel_entity
+            )
             if isinstance(table_info_list, List):
                 return table_info_list
 
