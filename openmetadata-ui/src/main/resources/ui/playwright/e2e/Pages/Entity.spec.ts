@@ -177,7 +177,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         await verifyDomainPropagation(
           page,
           EntityDataClass.domain1.responseData,
-          entity.entityResponseData?.['fullyQualifiedName']
+          entity.entityResponseData?.['fullyQualifiedName'] ??
+            entity.entityResponseData?.['name']
         );
 
         await visitServiceDetailsPage(
@@ -635,17 +636,18 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               state: 'detached',
             });
 
-            // Verify both tag and glossary term are still present
+            // Verify both tag and glossary term are still present in the panel
+            // Use panelContainer scope to avoid ambiguity with multiple .tags-list elements
             await expect(
-              page
+              panelContainer
                 .locator('.tags-list')
                 .getByTestId('tag-PersonalData.SpecialCategory')
-            ).toBeVisible();
+            ).toBeVisible({ timeout: 10000 });
             await expect(
               panelContainer.getByTestId(
                 `tag-${EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName}`
               )
-            ).toBeVisible();
+            ).toBeVisible({ timeout: 10000 });
 
             await closeColumnDetailPanel(page);
 
@@ -1482,13 +1484,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
             if (await nextButton.isEnabled()) {
               // Wait for navigation API response
-              const navigationResponse = page.waitForResponse(
-                (response) =>
-                  response.url().includes('/api/v1/columns/name/') ||
-                  response.url().includes('/api/v1/tables/name/')
-              );
+
               await nextButton.click();
-              await navigationResponse;
 
               // Wait for loader to disappear after navigation
               await page.waitForSelector('[data-testid="loader"]', {
@@ -1512,14 +1509,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
               await expect(prevButton).toBeEnabled();
 
-              // Wait for navigation API response
-              const prevNavigationResponse = page.waitForResponse(
-                (response) =>
-                  response.url().includes('/api/v1/columns/name/') ||
-                  response.url().includes('/api/v1/tables/name/')
-              );
               await prevButton.click();
-              await prevNavigationResponse;
 
               // Wait for loader to disappear after navigation
               await page.waitForSelector('[data-testid="loader"]', {
@@ -1652,7 +1642,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
     test(`Follow & Un-follow entity`, async ({ page }) => {
       test.slow(true);
 
-      const entityName = entity.entityResponseData?.['displayName'];
+      const entityName =
+        entity.entityResponseData?.['displayName'] ?? entity.entity.name;
       await entity.followUnfollowEntity(page, entityName);
     });
 

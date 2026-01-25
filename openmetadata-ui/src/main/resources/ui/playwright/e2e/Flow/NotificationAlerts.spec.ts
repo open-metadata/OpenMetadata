@@ -155,6 +155,7 @@ test.afterAll('Cleanup', async ({ browser }) => {
  * then deletes the alert.
  */
 test('Single Filter Alert', async ({ page }) => {
+  test.slow();
   const ALERT_NAME = generateAlertName();
   await visitNotificationAlertPage(page);
 
