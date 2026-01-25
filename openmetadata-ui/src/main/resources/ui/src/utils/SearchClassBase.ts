@@ -685,7 +685,7 @@ class SearchClassBase {
   }
 
   public notIncludeAggregationExploreTree() {
-    return [EntityType.CHART, EntityType.INGESTION_PIPELINE];
+    return [EntityType.INGESTION_PIPELINE];
   }
 
   public staticKeysHavingCounts(): string[] {

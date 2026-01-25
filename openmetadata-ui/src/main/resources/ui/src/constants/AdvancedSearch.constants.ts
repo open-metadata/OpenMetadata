@@ -323,9 +323,19 @@ export const MULTISELECT_FIELD_OPERATORS = [
   'multiselect_not_contains',
   'multiselect_equals',
   'multiselect_not_equals',
+  'is_null',
+  'is_not_null',
 ];
 
 export const RANGE_FIELD_OPERATORS = ['between', 'not_between'];
+
+export const NUMBER_FIELD_OPERATORS = [
+  'equal',
+  'not_equal',
+  ...RANGE_FIELD_OPERATORS,
+  'is_null',
+  'is_not_null',
+];
 
 export const LIST_VALUE_OPERATORS = ['select_equals', 'select_not_equals'];
 
@@ -373,3 +383,5 @@ export const CURATED_ASSETS_LIST = [
   EntityType.TABLE,
   EntityType.TOPIC,
 ];
+
+export const CP_TYPE_WITHOUT_KEYWORD_FIELD = ['number', 'integer', 'timestamp'];

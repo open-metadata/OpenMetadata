@@ -45,6 +45,8 @@ export enum JSONLOGIC_OPERATORS {
   NOT = 'not',
 }
 
+type FieldWithSubFields = FieldOrGroup & { subfields: Fields };
+
 export const resolveFieldType = (
   fields: Fields | undefined,
   field: string
@@ -64,20 +66,22 @@ export const resolveFieldType = (
 
   // Traverse nested subfields if there are more parts
   for (let i = 1; i < fieldParts.length; i++) {
-    if (i === 1 && (currentField as any)?.subfields) {
+    if (i === 1 && (currentField as FieldWithSubFields)?.subfields) {
       // Join the remaining parts and check if it exists as a single subfield
       const remainingPath = fieldParts.slice(1).join('.');
-      const remainingField = (currentField as any).subfields[remainingPath];
+      const remainingField = (currentField as FieldWithSubFields).subfields[
+        remainingPath
+      ];
       if (remainingField?.type) {
         return remainingField.type;
       }
     }
 
     // If no specific path found, continue with normal traversal
-    if (!(currentField as any)?.subfields?.[fieldParts[i]]) {
+    if (!(currentField as FieldWithSubFields)?.subfields?.[fieldParts[i]]) {
       return undefined; // Subfield not found
     }
-    currentField = (currentField as any).subfields[
+    currentField = (currentField as FieldWithSubFields).subfields[
       fieldParts[i]
     ] as FieldOrGroup;
   }
@@ -497,21 +501,25 @@ export const renderJSONLogicQueryBuilderButtons: RenderSettings['renderButton'] 
     return <></>;
   };
 
-interface ElasticsearchQuery {
+export interface ElasticsearchQuery {
   bool?: {
     must?: ElasticsearchQuery[];
     should?: ElasticsearchQuery[];
     filter?: ElasticsearchQuery[];
     must_not?: ElasticsearchQuery | ElasticsearchQuery[];
+    minimum_should_match?: number;
   };
   term?: {
-    [key: string]: string;
+    [key: string]: string | number | boolean;
   };
   exists?: {
     field: string;
   };
   wildcard?: {
-    [key: string]: Record<string, string>;
+    [key: string]: Record<string, string> | string;
+  };
+  match?: {
+    [key: string]: string | number | boolean;
   };
 }
 
@@ -623,7 +631,7 @@ export const elasticsearchToJsonLogic = (
   if (query.wildcard) {
     const wildcardQuery = query.wildcard;
     const field = Object.keys(wildcardQuery)[0];
-    const value = wildcardQuery[field].value;
+    const value = (wildcardQuery[field] as Record<string, string>).value;
 
     if (field.includes('.')) {
       // use in operator for wildcards
