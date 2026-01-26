@@ -13,7 +13,7 @@
 import { AxiosError } from 'axios';
 import { TFunction } from 'i18next';
 import { EntityType } from '../enums/entity.enum';
-import { updateEntityField } from './EntityUpdateUtils';
+import { mergeEntityStateUpdate, updateEntityField } from './EntityUpdateUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
 import * as EntityValidationUtils from './EntityValidationUtils';
 import * as ToastUtils from './ToastUtils';
@@ -255,6 +255,211 @@ describe('EntityUpdateUtils', () => {
           }),
         ])
       );
+    });
+  });
+
+  describe('mergeEntityStateUpdate', () => {
+    interface TestEntity {
+      id: string;
+      name: string;
+      extension?: Record<string, unknown>;
+      tags?: string[];
+    }
+
+    it('should merge previous and response when no key provided', () => {
+      const previous: TestEntity = {
+        id: '1',
+        name: 'Previous',
+        tags: ['tag1'],
+      };
+      const response: Partial<TestEntity> = {
+        name: 'Updated',
+        tags: ['tag2'],
+      };
+      const updatedEntity: TestEntity = {
+        id: '1',
+        name: 'Updated',
+        tags: ['tag2'],
+      };
+
+      const result = mergeEntityStateUpdate(previous, response, updatedEntity);
+
+      expect(result).toEqual({
+        id: '1',
+        name: 'Updated',
+        tags: ['tag2'],
+      });
+    });
+
+    it('should remove field when key is provided and value is undefined', () => {
+      const previous: TestEntity = {
+        id: '1',
+        name: 'Test',
+        extension: { prop1: 'value1', prop2: 'value2' },
+      };
+      const response: Partial<TestEntity> = {
+        id: '1',
+        name: 'Test',
+        extension: { prop1: 'value1' }, // API might still return partial extension
+      };
+      const updatedEntity: TestEntity = {
+        id: '1',
+        name: 'Test',
+        extension: undefined, // Removing extension
+      };
+
+      const result = mergeEntityStateUpdate(
+        previous,
+        response,
+        updatedEntity,
+        'extension'
+      );
+
+      expect(result).toEqual({
+        id: '1',
+        name: 'Test',
+      });
+      expect(result.extension).toBeUndefined();
+      expect('extension' in result).toBe(false);
+    });
+
+    it('should update field when key is provided and value is not undefined', () => {
+      const previous: TestEntity = {
+        id: '1',
+        name: 'Previous',
+        tags: ['tag1'],
+      };
+      const response: Partial<TestEntity> = {
+        id: '1',
+        name: 'Updated',
+        tags: ['tag1', 'tag2'],
+      };
+      const updatedEntity: TestEntity = {
+        id: '1',
+        name: 'Updated',
+        tags: ['tag1', 'tag2'],
+      };
+
+      const result = mergeEntityStateUpdate(
+        previous,
+        response,
+        updatedEntity,
+        'tags'
+      );
+
+      expect(result.tags).toEqual(['tag1', 'tag2']);
+    });
+
+    it('should exclude removed field from both previous and response', () => {
+      const previous: TestEntity = {
+        id: '1',
+        name: 'Test',
+        extension: { prop1: 'value1' },
+        tags: ['tag1'],
+      };
+      const response: Partial<TestEntity> = {
+        id: '1',
+        name: 'Test',
+        extension: { prop1: 'value1' }, // API response might still have it
+        tags: ['tag1'],
+      };
+      const updatedEntity: TestEntity = {
+        id: '1',
+        name: 'Test',
+        extension: undefined,
+        tags: ['tag1'],
+      };
+
+      const result = mergeEntityStateUpdate(
+        previous,
+        response,
+        updatedEntity,
+        'extension'
+      );
+
+      expect(result.extension).toBeUndefined();
+      expect(result.tags).toEqual(['tag1']);
+    });
+
+    it('should handle removal of non-extension fields', () => {
+      const previous: TestEntity = {
+        id: '1',
+        name: 'Test',
+        tags: ['tag1', 'tag2'],
+      };
+      const response: Partial<TestEntity> = {
+        id: '1',
+        name: 'Test',
+        tags: ['tag1'],
+      };
+      const updatedEntity: TestEntity = {
+        id: '1',
+        name: 'Test',
+        tags: undefined,
+      };
+
+      const result = mergeEntityStateUpdate(
+        previous,
+        response,
+        updatedEntity,
+        'tags'
+      );
+
+      expect(result.tags).toBeUndefined();
+      expect('tags' in result).toBe(false);
+    });
+
+    it('should use response value when available for normal updates', () => {
+      const previous: TestEntity = {
+        id: '1',
+        name: 'Previous',
+        tags: ['tag1'],
+      };
+      const response: Partial<TestEntity> = {
+        id: '1',
+        name: 'Response Name',
+        tags: ['tag2'],
+      };
+      const updatedEntity: TestEntity = {
+        id: '1',
+        name: 'Updated Name',
+        tags: ['tag3'],
+      };
+
+      const result = mergeEntityStateUpdate(
+        previous,
+        response,
+        updatedEntity,
+        'name'
+      );
+
+      expect(result.name).toBe('Response Name');
+    });
+
+    it('should use updatedEntity value when not in response', () => {
+      const previous: TestEntity = {
+        id: '1',
+        name: 'Previous',
+        tags: ['tag1'],
+      };
+      const response: Partial<TestEntity> = {
+        id: '1',
+        // name not in response
+      };
+      const updatedEntity: TestEntity = {
+        id: '1',
+        name: 'Updated Name',
+        tags: ['tag1'],
+      };
+
+      const result = mergeEntityStateUpdate(
+        previous,
+        response,
+        updatedEntity,
+        'name'
+      );
+
+      expect(result.name).toBe('Updated Name');
     });
   });
 });
