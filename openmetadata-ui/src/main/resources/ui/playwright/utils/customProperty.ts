@@ -665,7 +665,7 @@ export const addCustomPropertiesForEntity = async ({
   // Enum configuration
   if (customType === 'Enum' && enumConfig) {
     for (const val of enumConfig.values) {
-      const enumInput = page.locator('#root\\/enumConfig');
+      const enumInput = page.locator(String.raw`#root\/enumConfig`);
       await enumInput.clear();
       await enumInput.type(val, { delay: 50 });
       await enumInput.press('Enter');
@@ -679,7 +679,7 @@ export const addCustomPropertiesForEntity = async ({
   // Table configuration
   if (customType === 'Table' && tableConfig) {
     for (const val of tableConfig.columns) {
-      const columnInput = page.locator('#root\\/columns');
+      const columnInput = page.locator(String.raw`#root\/columns`);
       await expect(columnInput).toBeVisible();
       await columnInput.click();
       await columnInput.clear();
@@ -695,7 +695,7 @@ export const addCustomPropertiesForEntity = async ({
     entityReferenceConfig
   ) {
     for (const val of entityReferenceConfig) {
-      await page.click('#root\\/entityReferenceConfig');
+      await page.click(String.raw`#root\/entityReferenceConfig`);
       await page.keyboard.type(val);
 
       // CRITICAL: Use :visible selector chain pattern (Rule 4 from deflake guide)
@@ -713,7 +713,7 @@ export const addCustomPropertiesForEntity = async ({
 
       // Verify the selection was applied
       await expect(
-        page.locator('#root\\/entityReferenceConfig_list')
+        page.locator(String.raw`#root\/entityReferenceConfig_list`)
       ).not.toBeVisible();
     }
   }
@@ -726,12 +726,11 @@ export const addCustomPropertiesForEntity = async ({
 
   // Description
   await expect(
-    page.locator('#root\\/entityReferenceConfig_list')
+    page.locator(String.raw`#root\/entityReferenceConfig_list`)
   ).not.toBeVisible();
 
-  const descriptionEditor = page.locator(`${descriptionBox} p`);
-  await expect(descriptionEditor).toBeVisible();
-  await descriptionEditor.click();
+  await page.waitForSelector(descriptionBox, { state: 'visible' });
+  await page.locator(descriptionBox).click();
   await page.keyboard.type(customPropertyData.description, { delay: 50 });
 
   // Click on name field to blur description and trigger validation without closing modal
@@ -740,20 +739,18 @@ export const addCustomPropertiesForEntity = async ({
   await expect(page.locator('#propertyType_help')).not.toBeVisible();
   await expect(page.locator('#description_help')).not.toBeVisible();
 
+  const createButton = page.locator('[data-testid="create-button"]');
+  await expect(createButton).toBeVisible();
   const createPropertyPromise = page.waitForResponse(
     '/api/v1/metadata/types/*'
   );
-
-  const createButton = page.locator('[data-testid="create-button"]');
-  await expect(createButton).toBeVisible();
   await expect(createButton).toBeEnabled();
   await createButton.click();
 
+  const response = await createPropertyPromise;
   await page.waitForSelector('[data-testid="custom-property-form"]', {
     state: 'detached',
   });
-
-  const response = await createPropertyPromise;
 
   // CRITICAL: Wait for UI to update after API response
   await page.waitForSelector('[data-testid="loader"]', {
@@ -808,16 +805,16 @@ export const editCreatedProperty = async (
   await page.locator(descriptionBox).fill('This is new description');
 
   if (type === 'Enum') {
-    await page.click('#root\\/customPropertyConfig');
-    await page.fill('#root\\/customPropertyConfig', 'updatedValue');
-    await page.press('#root\\/customPropertyConfig', 'Enter');
+    await page.click(String.raw`#root\/customPropertyConfig`);
+    await page.fill(String.raw`#root\/customPropertyConfig`, 'updatedValue');
+    await page.press(String.raw`#root\/customPropertyConfig`, 'Enter');
     await clickOutside(page);
   }
 
   if (ENTITY_REFERENCE_PROPERTIES.includes(type ?? '')) {
-    await page.click('#root\\/customPropertyConfig');
-    await page.fill('#root\\/customPropertyConfig', 'Table');
-    await page.press('#root\\/customPropertyConfig', 'Enter');
+    await page.click(String.raw`#root\/customPropertyConfig`);
+    await page.fill(String.raw`#root\/customPropertyConfig`, 'Table');
+    await page.press(String.raw`#root\/customPropertyConfig`, 'Enter');
     await clickOutside(page);
   }
 
