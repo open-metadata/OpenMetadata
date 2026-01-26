@@ -1,4 +1,4 @@
-package org.openmetadata.service.migration.utils.v1121;
+package org.openmetadata.service.migration.utils.v200;
 
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -6,7 +6,7 @@ import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 
 /**
- * Migration utility for v1.12.1 that adds tableColumn (column) search settings configuration.
+ * Migration utility for v2.0.0 that adds tableColumn (column) search settings configuration.
  *
  * <p>This migration adds the tableColumn asset type configuration to existing search settings,
  * enabling columns to be searchable as first-class entities in the Explore page and global search.
@@ -20,11 +20,12 @@ public class MigrationUtil {
    * Adds tableColumn (column) search settings configuration if it doesn't already exist.
    *
    * <p>This enables columns to appear in:
+   *
    * <ul>
-   *   <li>Data Assets dropdown aggregations in Explore page</li>
-   *   <li>Global search results</li>
-   *   <li>Tag/Glossary Term Assets tabs</li>
-   *   <li>Search Settings UI for configuration</li>
+   *   <li>Data Assets dropdown aggregations in Explore page
+   *   <li>Global search results
+   *   <li>Tag/Glossary Term Assets tabs
+   *   <li>Search Settings UI for configuration
    * </ul>
    */
   public static void addTableColumnSearchSettings() {
