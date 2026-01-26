@@ -5,6 +5,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -48,7 +49,7 @@ public class AsyncService {
    * @return CompletableFuture with the result
    */
   public static <T> CompletableFuture<T> executeAsync(
-      java.util.function.Supplier<T> task, String operationName, String context) {
+      Supplier<T> task, String operationName, String context) {
     return executeAsync(
         task,
         operationName,
@@ -71,12 +72,31 @@ public class AsyncService {
    * @return CompletableFuture with the result
    */
   public static <T> CompletableFuture<T> executeAsync(
-      java.util.function.Supplier<T> task,
+      Supplier<T> task,
       String operationName,
       String context,
       int maxRetries,
       long initialRetryDelayMs,
       long timeoutSeconds) {
+    if (task == null) {
+      throw new IllegalArgumentException("task cannot be null");
+    }
+    if (operationName == null || operationName.isBlank()) {
+      throw new IllegalArgumentException("operationName cannot be null or blank");
+    }
+    if (context == null) {
+      throw new IllegalArgumentException("context cannot be null");
+    }
+    if (maxRetries < 0) {
+      throw new IllegalArgumentException("maxRetries must be non-negative");
+    }
+    if (initialRetryDelayMs <= 0) {
+      throw new IllegalArgumentException("initialRetryDelayMs must be positive");
+    }
+    if (timeoutSeconds <= 0) {
+      throw new IllegalArgumentException("timeoutSeconds must be positive");
+    }
+
     ExecutorService executor = getInstance().getExecutorService();
     return CompletableFuture.supplyAsync(
             () -> executeWithRetry(task, operationName, context, maxRetries, initialRetryDelayMs),
@@ -109,26 +129,25 @@ public class AsyncService {
    * @return Result of the operation
    */
   private static <T> T executeWithRetry(
-      java.util.function.Supplier<T> task,
+      Supplier<T> task,
       String operationName,
       String context,
       int maxRetries,
       long initialRetryDelayMs) {
-    int attempt = 0;
-    Throwable lastException = null;
+    Exception lastException = null;
 
-    while (attempt <= maxRetries) {
+    for (int attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         return task.get();
       } catch (Exception e) {
         lastException = e;
-        attempt++;
 
-        if (attempt > maxRetries) {
-          throw e;
+        if (attempt == maxRetries) {
+          break;
         }
 
-        long delayMs = initialRetryDelayMs * (1L << (attempt - 1));
+        long delayMs = initialRetryDelayMs * (1L << attempt);
+
         try {
           Thread.sleep(delayMs);
         } catch (InterruptedException ie) {
