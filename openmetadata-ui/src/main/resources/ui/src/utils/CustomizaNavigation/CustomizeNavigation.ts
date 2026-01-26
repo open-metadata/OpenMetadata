@@ -79,9 +79,22 @@ export const mergePluginSidebarItems = (
 };
 
 const extractPluginSidebarItems = (
-  plugins: AppPlugin[]
-): Array<LeftSidebarItemExample> =>
-  plugins.flatMap((plugin) => plugin.getSidebarActions?.() ?? []);
+  plugins: AppPlugin[],
+  navigationItems?: NavigationItem[]
+): Array<LeftSidebarItemExample> => {
+  const pluginItems = plugins.flatMap(
+    (plugin) => plugin.getSidebarActions?.() ?? []
+  );
+
+  if (navigationItems) {
+    return pluginItems.filter(
+      (item) =>
+        !navigationItems.find((navItem) => navItem.id === item.key)?.isHidden
+    );
+  }
+
+  return pluginItems;
+};
 
 export const getSidebarItemsWithPlugins = (
   plugins?: AppPlugin[]
@@ -247,7 +260,7 @@ export const filterHiddenNavigationItems = (
     .filter((item): item is LeftSidebarItem => item !== null);
 
   if (plugins?.length) {
-    const pluginItems = extractPluginSidebarItems(plugins);
+    const pluginItems = extractPluginSidebarItems(plugins, navigationItems);
 
     return mergePluginSidebarItems(filteredItems, pluginItems);
   }

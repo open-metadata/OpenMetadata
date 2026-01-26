@@ -396,7 +396,7 @@ describe('CustomizeNavigation Utils', () => {
       expect(result[2].key).toBe('explore');
     });
 
-    it('should merge plugin items with filtered navigation items', () => {
+    it('should merge plugin items that are not marked as hidden in navigationItems', () => {
       const mockPlugins = [
         {
           name: 'test-plugin',
@@ -412,8 +412,37 @@ describe('CustomizeNavigation Utils', () => {
         },
       ];
 
+      const navItemsWithVisiblePlugin: NavigationItem[] = [
+        {
+          id: 'home',
+          title: 'Home',
+          isHidden: false,
+          pageId: 'home',
+          children: [
+            {
+              id: 'dashboard',
+              title: 'Dashboard',
+              isHidden: true,
+              pageId: 'dashboard',
+            },
+          ],
+        },
+        {
+          id: 'explore',
+          title: 'Explore',
+          isHidden: false,
+          pageId: 'explore',
+        },
+        {
+          id: 'plugin-item',
+          title: 'Plugin Item',
+          isHidden: false,
+          pageId: 'plugin-item',
+        },
+      ];
+
       const result = filterHiddenNavigationItems(
-        mockNavigationItems,
+        navItemsWithVisiblePlugin,
         mockPlugins
       );
 
@@ -549,6 +578,410 @@ describe('CustomizeNavigation Utils', () => {
 
       expect(result).toHaveLength(3);
       expect(result[2].key).toBe('plugin1');
+    });
+  });
+
+  describe('extractPluginSidebarItems', () => {
+    it('should return all plugin items when navigationItems is not provided', () => {
+      const mockPlugins = [
+        {
+          name: 'plugin-1',
+          isInstalled: true,
+          getSidebarActions: jest.fn().mockReturnValue([
+            {
+              key: 'plugin-1-item',
+              title: 'Plugin 1 Item',
+              icon: 'plugin-1-icon',
+              dataTestId: 'plugin-1-item',
+            },
+          ]),
+        },
+        {
+          name: 'plugin-2',
+          isInstalled: true,
+          getSidebarActions: jest.fn().mockReturnValue([
+            {
+              key: 'plugin-2-item',
+              title: 'Plugin 2 Item',
+              icon: 'plugin-2-icon',
+              dataTestId: 'plugin-2-item',
+            },
+          ]),
+        },
+      ];
+
+      const result = getSidebarItemsWithPlugins(mockPlugins);
+
+      expect(result).toHaveLength(4);
+      expect(result[2].key).toBe('plugin-1-item');
+      expect(result[3].key).toBe('plugin-2-item');
+    });
+
+    it('should return empty array when plugins have no getSidebarActions method', () => {
+      const mockPlugins = [
+        {
+          name: 'plugin-without-sidebar',
+          isInstalled: true,
+        },
+      ];
+
+      const result = getSidebarItemsWithPlugins(mockPlugins);
+
+      expect(result).toEqual(leftSidebarClassBase.getSidebarItems());
+    });
+
+    it('should handle plugins where getSidebarActions returns empty array', () => {
+      const mockPlugins = [
+        {
+          name: 'plugin-empty-sidebar',
+          isInstalled: true,
+          getSidebarActions: jest.fn().mockReturnValue([]),
+        },
+      ];
+
+      const result = getSidebarItemsWithPlugins(mockPlugins);
+
+      expect(result).toEqual(leftSidebarClassBase.getSidebarItems());
+    });
+
+    it('should return plugin items not marked as hidden when using filterHiddenNavigationItems', () => {
+      const mockPlugins = [
+        {
+          name: 'plugin-1',
+          isInstalled: true,
+          getSidebarActions: jest.fn().mockReturnValue([
+            {
+              key: 'plugin-1-item',
+              title: 'Plugin 1 Item',
+              icon: 'plugin-1-icon',
+              dataTestId: 'plugin-1-item',
+            },
+            {
+              key: 'plugin-2-item',
+              title: 'Plugin 2 Item',
+              icon: 'plugin-2-icon',
+              dataTestId: 'plugin-2-item',
+            },
+          ]),
+        },
+      ];
+
+      const navItems: NavigationItem[] = [
+        {
+          id: 'home',
+          title: 'Home',
+          isHidden: false,
+          pageId: 'home',
+        },
+        {
+          id: 'plugin-1-item',
+          title: 'Plugin 1 Item',
+          isHidden: true,
+          pageId: 'plugin-1-item',
+        },
+        {
+          id: 'plugin-2-item',
+          title: 'Plugin 2 Item',
+          isHidden: false,
+          pageId: 'plugin-2-item',
+        },
+      ];
+
+      const result = filterHiddenNavigationItems(navItems, mockPlugins);
+
+      expect(result.some((item) => item.key === 'plugin-1-item')).toBe(false);
+      expect(result.some((item) => item.key === 'plugin-2-item')).toBe(true);
+    });
+
+    it('should flatten items from multiple plugins with getSidebarActions', () => {
+      const mockPlugins = [
+        {
+          name: 'plugin-1',
+          isInstalled: true,
+          getSidebarActions: jest.fn().mockReturnValue([
+            {
+              key: 'plugin-1-item-a',
+              title: 'Plugin 1 Item A',
+              icon: 'plugin-1-icon-a',
+              dataTestId: 'plugin-1-item-a',
+            },
+            {
+              key: 'plugin-1-item-b',
+              title: 'Plugin 1 Item B',
+              icon: 'plugin-1-icon-b',
+              dataTestId: 'plugin-1-item-b',
+            },
+          ]),
+        },
+        {
+          name: 'plugin-2',
+          isInstalled: true,
+          getSidebarActions: jest.fn().mockReturnValue([
+            {
+              key: 'plugin-2-item',
+              title: 'Plugin 2 Item',
+              icon: 'plugin-2-icon',
+              dataTestId: 'plugin-2-item',
+            },
+          ]),
+        },
+      ];
+
+      const result = getSidebarItemsWithPlugins(mockPlugins);
+
+      expect(result).toHaveLength(5);
+      expect(result[2].key).toBe('plugin-1-item-a');
+      expect(result[3].key).toBe('plugin-1-item-b');
+      expect(result[4].key).toBe('plugin-2-item');
+    });
+
+    it('should preserve plugin item order when no index is specified', () => {
+      const mockPlugins = [
+        {
+          name: 'plugin-1',
+          isInstalled: true,
+          getSidebarActions: jest.fn().mockReturnValue([
+            {
+              key: 'first',
+              title: 'First',
+              icon: 'icon-1',
+              dataTestId: 'first',
+            },
+            {
+              key: 'second',
+              title: 'Second',
+              icon: 'icon-2',
+              dataTestId: 'second',
+            },
+            {
+              key: 'third',
+              title: 'Third',
+              icon: 'icon-3',
+              dataTestId: 'third',
+            },
+          ]),
+        },
+      ];
+
+      const result = getSidebarItemsWithPlugins(mockPlugins);
+
+      expect(result[2].key).toBe('first');
+      expect(result[3].key).toBe('second');
+      expect(result[4].key).toBe('third');
+    });
+
+    it('should handle mixed plugins with and without getSidebarActions', () => {
+      const mockPlugins = [
+        {
+          name: 'plugin-with-sidebar',
+          isInstalled: true,
+          getSidebarActions: jest.fn().mockReturnValue([
+            {
+              key: 'plugin-item',
+              title: 'Plugin Item',
+              icon: 'plugin-icon',
+              dataTestId: 'plugin-item',
+            },
+          ]),
+        },
+        {
+          name: 'plugin-without-sidebar',
+          isInstalled: true,
+        },
+        {
+          name: 'plugin-with-empty-sidebar',
+          isInstalled: true,
+          getSidebarActions: jest.fn().mockReturnValue([]),
+        },
+      ];
+
+      const result = getSidebarItemsWithPlugins(mockPlugins);
+
+      expect(result).toHaveLength(3);
+      expect(result[2].key).toBe('plugin-item');
+    });
+
+    it('should handle plugin items with undefined navigationItems', () => {
+      const mockPlugins = [
+        {
+          name: 'plugin-1',
+          isInstalled: true,
+          getSidebarActions: jest.fn().mockReturnValue([
+            {
+              key: 'plugin-item',
+              title: 'Plugin Item',
+              icon: 'plugin-icon',
+              dataTestId: 'plugin-item',
+            },
+          ]),
+        },
+      ];
+
+      const result = getSidebarItemsWithPlugins(mockPlugins);
+
+      expect(result.some((item) => item.key === 'plugin-item')).toBe(true);
+    });
+
+    it('should handle all plugins returning undefined from getSidebarActions', () => {
+      const mockPlugins = [
+        {
+          name: 'plugin-1',
+          isInstalled: true,
+          getSidebarActions: jest.fn().mockReturnValue(undefined),
+        },
+        {
+          name: 'plugin-2',
+          isInstalled: true,
+          getSidebarActions: jest.fn().mockReturnValue(null),
+        },
+      ];
+
+      const result = getSidebarItemsWithPlugins(mockPlugins);
+
+      expect(result).toEqual(leftSidebarClassBase.getSidebarItems());
+    });
+
+    it('should include plugin items when all are set to isHidden false', () => {
+      const mockPlugins = [
+        {
+          name: 'plugin-1',
+          isInstalled: true,
+          getSidebarActions: jest.fn().mockReturnValue([
+            {
+              key: 'plugin-1-item',
+              title: 'Plugin 1 Item',
+              icon: 'plugin-1-icon',
+              dataTestId: 'plugin-1-item',
+            },
+            {
+              key: 'plugin-2-item',
+              title: 'Plugin 2 Item',
+              icon: 'plugin-2-icon',
+              dataTestId: 'plugin-2-item',
+            },
+          ]),
+        },
+      ];
+
+      const navItems: NavigationItem[] = [
+        {
+          id: 'home',
+          title: 'Home',
+          isHidden: false,
+          pageId: 'home',
+        },
+        {
+          id: 'plugin-1-item',
+          title: 'Plugin 1 Item',
+          isHidden: false,
+          pageId: 'plugin-1-item',
+        },
+        {
+          id: 'plugin-2-item',
+          title: 'Plugin 2 Item',
+          isHidden: false,
+          pageId: 'plugin-2-item',
+        },
+      ];
+
+      const result = filterHiddenNavigationItems(navItems, mockPlugins);
+
+      expect(result.some((item) => item.key === 'plugin-1-item')).toBe(true);
+      expect(result.some((item) => item.key === 'plugin-2-item')).toBe(true);
+    });
+
+    it('should correctly filter plugin items with mixed visibility states', () => {
+      const mockPlugins = [
+        {
+          name: 'multi-item-plugin',
+          isInstalled: true,
+          getSidebarActions: jest.fn().mockReturnValue([
+            {
+              key: 'visible-item',
+              title: 'Visible Item',
+              icon: 'visible-icon',
+              dataTestId: 'visible-item',
+            },
+            {
+              key: 'hidden-item',
+              title: 'Hidden Item',
+              icon: 'hidden-icon',
+              dataTestId: 'hidden-item',
+            },
+            {
+              key: 'another-visible-item',
+              title: 'Another Visible',
+              icon: 'another-icon',
+              dataTestId: 'another-visible-item',
+            },
+          ]),
+        },
+      ];
+
+      const navItems: NavigationItem[] = [
+        {
+          id: 'home',
+          title: 'Home',
+          isHidden: false,
+          pageId: 'home',
+        },
+        {
+          id: 'hidden-item',
+          title: 'Hidden Item',
+          isHidden: true,
+          pageId: 'hidden-item',
+        },
+        {
+          id: 'visible-item',
+          title: 'Visible Item',
+          isHidden: false,
+          pageId: 'visible-item',
+        },
+      ];
+
+      const result = filterHiddenNavigationItems(navItems, mockPlugins);
+
+      expect(result.some((item) => item.key === 'hidden-item')).toBe(false);
+      expect(result.some((item) => item.key === 'visible-item')).toBe(true);
+      expect(result.some((item) => item.key === 'another-visible-item')).toBe(
+        true
+      );
+    });
+
+    it('should include plugin items when they do not exist in navigationItems', () => {
+      const mockPlugins = [
+        {
+          name: 'plugin-1',
+          isInstalled: true,
+          getSidebarActions: jest.fn().mockReturnValue([
+            {
+              key: 'plugin-item',
+              title: 'Plugin Item',
+              icon: 'plugin-icon',
+              dataTestId: 'plugin-item',
+            },
+          ]),
+        },
+      ];
+
+      const navItems: NavigationItem[] = [
+        {
+          id: 'home',
+          title: 'Home',
+          isHidden: false,
+          pageId: 'home',
+        },
+        {
+          id: 'explore',
+          title: 'Explore',
+          isHidden: false,
+          pageId: 'explore',
+        },
+      ];
+
+      const result = filterHiddenNavigationItems(navItems, mockPlugins);
+
+      expect(result.some((item) => item.key === 'plugin-item')).toBe(true);
     });
   });
 
