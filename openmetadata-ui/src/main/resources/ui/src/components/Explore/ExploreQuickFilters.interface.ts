@@ -17,7 +17,7 @@ import { Aggregations } from '../../interface/search.interface';
 import { ExploreQuickFilterField } from './ExplorePage.interface';
 
 export interface ExploreQuickFiltersProps {
-  index: SearchIndex;
+  index: SearchIndex | SearchIndex[];
   fields: Array<ExploreQuickFilterField>;
   aggregations?: Aggregations;
   onFieldValueSelect: (field: ExploreQuickFilterField) => void;

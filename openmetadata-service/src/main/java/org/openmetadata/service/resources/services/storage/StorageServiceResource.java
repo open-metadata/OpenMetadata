@@ -174,8 +174,18 @@ public class StorageServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    StorageService storageService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    StorageService storageService =
+        getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
     return decryptOrNullify(securityContext, storageService);
   }
 
@@ -211,9 +221,18 @@ public class StorageServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
     StorageService storageService =
-        getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+        getByNameInternal(uriInfo, securityContext, name, fieldsParam, include, includeRelations);
     return decryptOrNullify(securityContext, storageService);
   }
 

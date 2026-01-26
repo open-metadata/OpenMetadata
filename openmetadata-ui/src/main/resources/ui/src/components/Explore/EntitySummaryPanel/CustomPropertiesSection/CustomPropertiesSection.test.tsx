@@ -130,6 +130,15 @@ jest.mock('../../../../utils/SearchClassBase', () => ({
   },
 }));
 
+// Mock PropertyValue component
+jest.mock('../../../common/CustomPropertyTable/PropertyValue', () => ({
+  PropertyValue: jest.fn().mockImplementation(({ property, value }) => (
+    <div data-testid="property-value">
+      {property.displayName || property.name}: {JSON.stringify(value)}
+    </div>
+  )),
+}));
+
 const mockEntityData = {
   extension: {
     property1: 'value1',
@@ -228,6 +237,8 @@ const defaultProps = {
   isEntityDataLoading: false,
   viewCustomPropertiesPermission: true,
   entityDetails: mockEntityDetails,
+  hasEditPermissions: true,
+  onExtensionUpdate: jest.fn(),
 };
 
 describe('CustomPropertiesSection', () => {
@@ -255,11 +266,8 @@ describe('CustomPropertiesSection', () => {
         />
       );
 
-      expect(
-        container.querySelector('.entity-summary-panel-tab-content')
-      ).toBeInTheDocument();
-      expect(container.querySelector('.p-x-md')).toBeInTheDocument();
-      expect(container.querySelector('.p-t-md')).toBeInTheDocument();
+      expect(container.querySelector('.p-x-md')).not.toBeInTheDocument();
+      expect(container.querySelector('.p-t-md')).not.toBeInTheDocument();
     });
   });
 
@@ -275,7 +283,7 @@ describe('CustomPropertiesSection', () => {
       expect(screen.getByTestId('trans-component')).toBeInTheDocument();
       expect(
         screen.getByText(
-          'message.no-custom-properties-entity - Table - label.doc-plural-lowercase'
+          'message.no-custom-properties-entity - label.custom-property-plural - label.doc-plural-lowercase'
         )
       ).toBeInTheDocument();
     });
@@ -309,7 +317,7 @@ describe('CustomPropertiesSection', () => {
 
       expect(
         container.querySelector('.entity-summary-panel-tab-content')
-      ).toBeInTheDocument();
+      ).not.toBeInTheDocument();
       expect(container.querySelector('.text-justify')).toBeInTheDocument();
       expect(
         container.querySelector('.no-data-placeholder')
@@ -649,7 +657,7 @@ describe('CustomPropertiesSection', () => {
         />
       );
 
-      expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
+      expect(screen.getByTestId('trans-component')).toBeInTheDocument();
     });
 
     it('should handle empty extension data', () => {
@@ -1301,14 +1309,9 @@ describe('CustomPropertiesSection', () => {
         },
       };
 
-      const { container } = render(
-        <CustomPropertiesSection {...emptyEnumProps} />
-      );
+      render(<CustomPropertiesSection {...emptyEnumProps} />);
 
-      const tagsWrapper = container.querySelector('.d-flex.flex-wrap.gap-2');
-
-      expect(tagsWrapper).toBeInTheDocument();
-      expect(tagsWrapper?.children.length).toBe(0);
+      expect(screen.getByText('label.not-set')).toBeInTheDocument();
     });
 
     it('should handle mixed entityReferenceList with users and other entities', () => {
@@ -1401,7 +1404,7 @@ describe('CustomPropertiesSection', () => {
       });
     });
 
-    it('should handle zero values (currently treated as falsy)', () => {
+    it('should handle zero values', () => {
       const zeroData = {
         extension: {
           zeroProp: 0,
@@ -1432,13 +1435,11 @@ describe('CustomPropertiesSection', () => {
 
       render(<CustomPropertiesSection {...zeroProps} />);
 
-      // Note: Currently zero is treated as falsy in formatValue (if (!val))
-      // This test documents the current behavior
-      expect(screen.getByText('label.not-set')).toBeInTheDocument();
+      expect(screen.getByText('0')).toBeInTheDocument();
       expect(screen.getByText(/label\.start-entity.*0/)).toBeInTheDocument();
     });
 
-    it('should handle false boolean value (currently treated as falsy)', () => {
+    it('should handle false boolean value', () => {
       const falseData = {
         extension: {
           falseProp: false,
@@ -1462,9 +1463,7 @@ describe('CustomPropertiesSection', () => {
 
       render(<CustomPropertiesSection {...falseProps} />);
 
-      // Note: Currently false is treated as falsy in formatValue (if (!val))
-      // This test documents the current behavior
-      expect(screen.getByText('label.not-set')).toBeInTheDocument();
+      expect(screen.getByText('false')).toBeInTheDocument();
     });
   });
 });

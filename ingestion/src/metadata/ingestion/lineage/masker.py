@@ -42,6 +42,7 @@ MASK_TOKEN = "?"
 masked_query_cache = LRUCache(maxsize=128)
 
 
+@calculate_execution_time(context="MaskLiteralsSqlParse")
 def mask_literals_with_sqlparse(
     query: str, parser: LineageRunner, query_hash: Optional[str] = None
 ):
@@ -85,6 +86,7 @@ def mask_literals_with_sqlparse(
     return query
 
 
+@calculate_execution_time(context="MaskLiteralsSqlFluff")
 def mask_literals_with_sqlfluff(
     query: str, parser: LineageRunner, query_hash: Optional[str] = None
 ) -> str:

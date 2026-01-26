@@ -18,12 +18,23 @@ public class AutoApproveServiceTaskImpl implements JavaDelegate {
   public void execute(DelegateExecution execution) {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
 
-    LOG.info(
-        "Auto-approving task in process instance {} due to no assignees/reviewers configured.",
-        execution.getProcessInstanceId());
+    Boolean submitterIsReviewer = (Boolean) execution.getVariable("submitterIsReviewer");
+    String autoApprovalReason;
+
+    if (Boolean.TRUE.equals(submitterIsReviewer)) {
+      autoApprovalReason = "Submitter is a reviewer";
+      LOG.info(
+          "Auto-approving task in process instance {} because submitter is a reviewer.",
+          execution.getProcessInstanceId());
+    } else {
+      autoApprovalReason = "No reviewers configured";
+      LOG.info(
+          "Auto-approving task in process instance {} due to no assignees/reviewers configured.",
+          execution.getProcessInstanceId());
+    }
 
     varHandler.setNodeVariable("result", true);
-    varHandler.setNodeVariable("autoApprovalReason", "No reviewers configured");
+    varHandler.setNodeVariable("autoApprovalReason", autoApprovalReason);
 
     if (inputNamespaceMapExpr != null) {
       try {

@@ -183,7 +183,7 @@ describe('FileClassBase', () => {
     it('should return correct tab configuration', () => {
       const result = fileClass.getFileDetailPageTabsIds();
 
-      expect(result).toHaveLength(5);
+      expect(result).toHaveLength(6);
       expect(result[0]).toEqual({
         id: EntityTabs.OVERVIEW,
         name: EntityTabs.OVERVIEW,
@@ -192,27 +192,34 @@ describe('FileClassBase', () => {
         editable: true,
       });
       expect(result[1]).toEqual({
+        id: EntityTabs.SCHEMA,
+        name: EntityTabs.SCHEMA,
+        displayName: 'schema',
+        layout: [],
+        editable: false,
+      });
+      expect(result[2]).toEqual({
         id: EntityTabs.ACTIVITY_FEED,
         name: EntityTabs.ACTIVITY_FEED,
         displayName: 'Activity Feed',
         layout: [],
         editable: false,
       });
-      expect(result[2]).toEqual({
+      expect(result[3]).toEqual({
         id: EntityTabs.LINEAGE,
         name: EntityTabs.LINEAGE,
         displayName: 'Lineage',
         layout: [],
         editable: false,
       });
-      expect(result[3]).toEqual({
+      expect(result[4]).toEqual({
         id: EntityTabs.CONTRACT,
         name: EntityTabs.CONTRACT,
         displayName: 'Contract',
         layout: [],
         editable: false,
       });
-      expect(result[4]).toEqual({
+      expect(result[5]).toEqual({
         id: EntityTabs.CUSTOM_PROPERTIES,
         name: EntityTabs.CUSTOM_PROPERTIES,
         displayName: 'Custom Properties',
