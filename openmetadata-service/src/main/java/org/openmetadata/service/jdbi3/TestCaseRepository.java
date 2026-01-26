@@ -1783,7 +1783,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       if (nullOrEmpty(parameterValues)) {
         return "";
       }
-      return parameterValues.stream().map(JsonUtils::pojoToJson).collect(Collectors.joining(","));
+      return parameterValues.stream().map(JsonUtils::pojoToJson).collect(Collectors.joining(";"));
     }
 
     private List<TestCaseParameterValue> parseParameterValues(String parameterValuesStr) {
