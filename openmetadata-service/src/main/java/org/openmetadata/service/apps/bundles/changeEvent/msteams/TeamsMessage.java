@@ -255,4 +255,42 @@ public class TeamsMessage implements NotificationMessage {
 
   // Interface for Body Items
   public interface BodyItem {}
+
+  // Interface for Actions
+  public interface Action {}
+
+  @Getter
+  @Setter
+  @AllArgsConstructor
+  @NoArgsConstructor
+  @Builder
+  public static class ActionSet implements TeamsMessage.BodyItem {
+    @JsonProperty("type")
+    private String type;
+
+    @JsonProperty("actions")
+    private List<TeamsMessage.Action> actions;
+
+    @JsonProperty("spacing")
+    private String spacing;
+  }
+
+  @Getter
+  @Setter
+  @AllArgsConstructor
+  @NoArgsConstructor
+  @Builder
+  public static class ActionOpenUrl implements TeamsMessage.Action {
+    @JsonProperty("type")
+    private String type;
+
+    @JsonProperty("title")
+    private String title;
+
+    @JsonProperty("url")
+    private String url;
+
+    @JsonProperty("style")
+    private String style;
+  }
 }

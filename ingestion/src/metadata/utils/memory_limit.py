@@ -18,12 +18,12 @@ import threading
 import tracemalloc
 from typing import Callable, Optional
 
+from metadata.utils.constants import BYTES_PER_MB
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
 DEFAULT_MEMORY_LIMIT_MB = 100
-BYTES_PER_MB = 1024 * 1024
 MEMORY_CHECK_INTERVAL_SECONDS = 0.1
 
 

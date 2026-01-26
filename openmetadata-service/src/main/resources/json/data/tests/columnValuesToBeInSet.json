@@ -24,5 +24,7 @@
   ],
   "supportsRowLevelPassedFailed": true,
   "provider": "system",
-  "dataQualityDimension": "Validity"
+  "enabled": true,
+  "dataQualityDimension": "Validity",
+  "validatorClass": "ColumnValuesToBeInSetValidator"
 }

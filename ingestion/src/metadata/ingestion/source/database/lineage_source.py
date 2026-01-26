@@ -400,6 +400,7 @@ class LineageSource(QueryParserSource, ABC):
             self.source_config.crossDatabaseServiceNames,
             self.source_config.parsingTimeoutLimit,
             self.config.serviceName,
+            self.get_query_parser_type(),
         )
         yield from self.generate_lineage_with_processes(
             producer_fn,
@@ -449,6 +450,7 @@ class LineageSource(QueryParserSource, ABC):
             self.source_config.crossDatabaseServiceNames,
             self.source_config.parsingTimeoutLimit,
             self.source_config.overrideViewLineage,
+            self.get_query_parser_type(),
         )
         yield from self.generate_lineage_with_processes(
             producer_fn,

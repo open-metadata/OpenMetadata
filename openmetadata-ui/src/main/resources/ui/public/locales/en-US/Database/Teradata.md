@@ -74,3 +74,9 @@ $$section
 Additional connection options to build the URL that can be sent to service during the connection.
 You can find further information about Connection Options <a href="https://pypi.org/project/teradatasql/" target="_blank">here</a>.
 $$
+
+
+$$section
+### Default Stored Procedure Filter Pattern $(id="storedProcedureFilterPattern")
+Regex to only include/exclude stored procedures that matches the pattern.
+$$

@@ -59,7 +59,9 @@ const PipelineDetailsPage = () => {
   const USERId = currentUser?.id ?? '';
   const navigate = useNavigate();
 
-  const { fqn: decodedPipelineFQN } = useFqn();
+  const { entityFqn: decodedPipelineFQN } = useFqn({
+    type: EntityType.PIPELINE,
+  });
   const [pipelineDetails, setPipelineDetails] = useState<Pipeline>(
     {} as Pipeline
   );

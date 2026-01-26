@@ -331,13 +331,7 @@ public class RBACConditionEvaluator {
 
   public void hasAnyRole(List<String> roles, ConditionCollector collector) {
     User user = (User) spelContext.lookupVariable("user");
-    if (user.getRoles() == null || user.getRoles().isEmpty()) {
-      collector.setMatchNothing(true);
-      return;
-    }
-
-    List<String> userRoleNames = user.getRoles().stream().map(EntityReference::getName).toList();
-    boolean hasRole = userRoleNames.stream().anyMatch(roles::contains);
+    boolean hasRole = roles.stream().anyMatch(role -> SubjectContext.hasRole(user, role));
 
     if (hasRole) {
       collector.addMust(queryBuilderFactory.matchAllQuery());
@@ -366,8 +360,15 @@ public class RBACConditionEvaluator {
       collector.setMatchNothing(true);
       return;
     }
-    List<String> userTeamNames = user.getTeams().stream().map(EntityReference::getName).toList();
-    boolean inTeam = userTeamNames.stream().anyMatch(teamNames::contains);
+    boolean inTeam =
+        teamNames.stream()
+            .anyMatch(
+                teamName ->
+                    user.getTeams().stream()
+                        .anyMatch(
+                            userTeam ->
+                                userTeam.getName().equals(teamName)
+                                    || SubjectContext.isInTeam(teamName, userTeam)));
     if (inTeam) {
       collector.addMust(queryBuilderFactory.matchAllQuery());
     } else {

@@ -156,6 +156,7 @@ export interface EntityReference {
  */
 export enum TaskType {
     Generic = "Generic",
+    RecognizerFeedbackApproval = "RecognizerFeedbackApproval",
     RequestApproval = "RequestApproval",
     RequestDescription = "RequestDescription",
     RequestTag = "RequestTag",

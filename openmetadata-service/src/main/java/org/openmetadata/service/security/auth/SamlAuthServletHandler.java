@@ -12,6 +12,8 @@ import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -139,8 +141,27 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
         email = String.format("%s@%s", username, SamlSettingsHolder.getInstance().getDomain());
       }
 
+      // Extract team/group attributes from SAML response (supports multi-valued attributes)
+      List<String> teamsFromClaim = new ArrayList<>();
+      String teamClaimMapping = authConfig.getJwtTeamClaimMapping();
+      if (!nullOrEmpty(teamClaimMapping)) {
+        try {
+          Collection<String> attributeValues = auth.getAttribute(teamClaimMapping);
+          if (attributeValues != null && !attributeValues.isEmpty()) {
+            teamsFromClaim.addAll(attributeValues);
+            LOG.debug(
+                "[SAML] Found team attribute '{}' with values '{}'",
+                teamClaimMapping,
+                teamsFromClaim);
+          }
+        } catch (Exception e) {
+          LOG.debug(
+              "[SAML] Could not extract team attribute '{}': {}", teamClaimMapping, e.getMessage());
+        }
+      }
+
       // Get or create user
-      User user = getOrCreateUser(username, email);
+      User user = getOrCreateUser(username, email, teamsFromClaim);
 
       // Generate JWT tokens
       JWTAuthMechanism jwtAuthMechanism =
@@ -289,13 +310,16 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
     }
   }
 
-  private User getOrCreateUser(String username, String email) {
+  private User getOrCreateUser(String username, String email, List<String> teamsFromClaim) {
     try {
+      // Fetch user with teams relationship loaded to preserve existing team memberships
       User existingUser =
           Entity.getEntityByName(
-              Entity.USER, username, "id,roles,isAdmin,email", Include.NON_DELETED);
+              Entity.USER, username, "id,roles,teams,isAdmin,email", Include.NON_DELETED);
 
       boolean shouldBeAdmin = getAdminPrincipals().contains(username);
+      boolean needsUpdate = false;
+
       LOG.info(
           "SAML login - Username: {}, Email: {}, Should be admin: {}, Current admin status: {}",
           username,
@@ -307,6 +331,14 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       if (shouldBeAdmin && !Boolean.TRUE.equals(existingUser.getIsAdmin())) {
         LOG.info("Updating user {} to admin based on adminPrincipals", username);
         existingUser.setIsAdmin(true);
+        needsUpdate = true;
+      }
+
+      // Assign teams from claims if provided (this only adds, doesn't remove existing teams)
+      boolean teamsAssigned = UserUtil.assignTeamsFromClaim(existingUser, teamsFromClaim);
+      needsUpdate = needsUpdate || teamsAssigned;
+
+      if (needsUpdate) {
         return UserUtil.addOrUpdateUser(existingUser);
       }
 
@@ -321,6 +353,10 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
             UserUtil.user(username, email.split("@")[1], username)
                 .withIsAdmin(isAdmin)
                 .withIsEmailVerified(true);
+
+        // Assign teams from claims if provided
+        UserUtil.assignTeamsFromClaim(newUser, teamsFromClaim);
+
         return UserUtil.addOrUpdateUser(newUser);
       }
       throw new AuthenticationException("User not found and self-signup is disabled");

@@ -22,20 +22,14 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import {
-  redirectToHomePage,
-  toastNotification,
-} from '../../utils/common';
+import { redirectToHomePage, toastNotification } from '../../utils/common';
 import {
   addAssetsToDataProduct,
   createDataProductFromListPage,
   removeAssetsFromDataProduct,
   selectDataProduct,
 } from '../../utils/domain';
-import {
-  followEntity,
-  waitForAllLoadersToDisappear,
-} from '../../utils/entity';
+import { followEntity, waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 
@@ -72,7 +66,6 @@ test.describe('Data Products', () => {
   test.describe.configure({ mode: 'serial' });
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
     await classification.create(apiContext);
@@ -95,19 +88,6 @@ test.describe('Data Products', () => {
       ],
     });
 
-    await afterAction();
-  });
-
-  test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow(true);
-
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await user.delete(apiContext);
-    await classification.delete(apiContext);
-    await tag.delete(apiContext);
-    await glossary.delete(apiContext);
-    await glossaryTerm.delete(apiContext);
-    await domain.delete(apiContext);
     await afterAction();
   });
 
@@ -183,9 +163,9 @@ test.describe('Data Products', () => {
       await page.waitForLoadState('networkidle');
 
       // Verify we're on the data product details page
-      await expect(
-        page.getByTestId('entity-header-display-name')
-      ).toHaveText(dataProduct.data.displayName);
+      await expect(page.getByTestId('entity-header-display-name')).toHaveText(
+        dataProduct.data.displayName
+      );
     });
 
     await test.step('Add assets to data product', async () => {
@@ -199,7 +179,10 @@ test.describe('Data Products', () => {
 
     await test.step('Verify asset count', async () => {
       await waitForAllLoadersToDisappear(page);
-      const assetCount = await page.getByTestId('assets').getByTestId('count').textContent();
+      const assetCount = await page
+        .getByTestId('assets')
+        .getByTestId('count')
+        .textContent();
       expect(assetCount).toBe('1');
     });
 
@@ -251,13 +234,14 @@ test.describe('Data Products', () => {
     });
 
     await test.step('Search for specific data product', async () => {
-      await page.getByRole('main').getByPlaceholder('Search').fill(dataProduct1.data.name);
+      await page
+        .getByRole('main')
+        .getByPlaceholder('Search')
+        .fill(dataProduct1.data.name);
       await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
 
-      await expect(
-        page.getByText(dataProduct1.data.displayName)
-      ).toBeVisible();
+      await expect(page.getByText(dataProduct1.data.displayName)).toBeVisible();
       await expect(
         page.getByText(dataProduct2.data.displayName)
       ).not.toBeVisible();
@@ -299,26 +283,26 @@ test.describe('Data Products', () => {
     });
 
     await test.step('Verify table view is default', async () => {
-      await expect(page.locator('table tbody tr').first()).toBeVisible();
-      const columnHeaders = page.getByRole('columnheader');
-      expect(await columnHeaders.count()).toBeGreaterThan(0);
+      // Table should be visible with rows and column headers
+      await expect(page.getByTestId('table-view-container')).toBeVisible();
     });
 
     await test.step('Switch to card view', async () => {
-      await page.locator('button[title="card"]').click();
+      await page.getByTestId('card-view-toggle').click();
       await page.waitForLoadState('networkidle');
 
-      await expect(page.locator('.MuiCard-root').first()).toBeVisible();
-      await expect(
-        page.getByText(dataProduct.data.displayName)
-      ).toBeVisible();
+      // Table should be hidden, cards should be visible
+      await expect(page.getByTestId('table-view-container')).not.toBeVisible();
+      await expect(page.getByTestId('card-view-container')).toBeVisible();
+      await expect(page.getByTestId('entity-card').first()).toBeVisible();
     });
 
     await test.step('Switch back to table view', async () => {
-      await page.locator('button[title="table"]').click();
+      await page.getByTestId('table-view-toggle').click();
       await page.waitForLoadState('networkidle');
 
-      await expect(page.locator('table tbody tr').first()).toBeVisible();
+      await expect(page.getByTestId('card-view-container')).not.toBeVisible();
+      await expect(page.getByTestId('table-view-container')).toBeVisible();
     });
 
     await test.step('Cleanup test data product', async () => {
@@ -356,7 +340,9 @@ test.describe('Data Products', () => {
     await test.step('Verify pagination controls are visible', async () => {
       const pagination = page.getByTestId('pagination');
       await expect(pagination).toBeVisible();
-      await expect(pagination.getByRole('button', { name: 'page 1', exact: true })).toBeVisible();
+      await expect(
+        pagination.getByRole('button', { name: 'page 1', exact: true })
+      ).toBeVisible();
     });
 
     await test.step('Navigate to page 2', async () => {
@@ -364,7 +350,11 @@ test.describe('Data Products', () => {
       await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
 
-      await expect(page.getByTestId('pagination').getByRole('button', { name: 'page 2', exact: true })).toBeVisible();
+      await expect(
+        page
+          .getByTestId('pagination')
+          .getByRole('button', { name: 'page 2', exact: true })
+      ).toBeVisible();
     });
 
     await test.step('Navigate back to page 1', async () => {
@@ -372,7 +362,11 @@ test.describe('Data Products', () => {
       await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
 
-      await expect(page.getByTestId('pagination').getByRole('button', { name: 'page 1', exact: true })).toBeVisible();
+      await expect(
+        page
+          .getByTestId('pagination')
+          .getByRole('button', { name: 'page 1', exact: true })
+      ).toBeVisible();
     });
 
     await test.step('Cleanup test data products', async () => {
@@ -422,9 +416,7 @@ test.describe('Data Products', () => {
 
     await test.step('Verify empty state is shown', async () => {
       await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
-      await expect(
-        page.getByTestId('data-product-add-button')
-      ).toBeVisible();
+      await expect(page.getByTestId('data-product-add-button')).toBeVisible();
     });
 
     await test.step('Click add button from empty state', async () => {
@@ -461,8 +453,7 @@ test.describe('Data Products', () => {
     });
 
     await test.step('Verify follow button is changed to unfollow', async () => {
-      const followButton = await page
-        .getByTestId('entity-follow-button');
+      const followButton = await page.getByTestId('entity-follow-button');
       await expect(followButton).toContainText('Unfollow');
     });
 

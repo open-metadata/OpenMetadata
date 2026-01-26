@@ -30,6 +30,10 @@
       "description": "Set to true to remove the existing column constraint. Only applicable to table columns, ignored for dashboard data model columns. If both 'constraint' and 'removeConstraint' are provided, 'removeConstraint' takes precedence.",
       "type": "boolean",
       "default": false
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the column.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
     }
   },
   "additionalProperties": false

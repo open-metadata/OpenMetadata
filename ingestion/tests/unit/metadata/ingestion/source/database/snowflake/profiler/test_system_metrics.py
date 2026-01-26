@@ -1,9 +1,22 @@
-from unittest.mock import MagicMock, Mock
+from datetime import datetime
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
+from metadata.generated.schema.entity.data.table import (
+    DmlOperationType,
+    Table,
+    TableType,
+)
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
+)
+from metadata.ingestion.source.database.snowflake.models import (
+    SnowflakeDynamicTableRefreshEntry,
+)
 from metadata.profiler.metrics.system.snowflake.system import (
     PUBLIC_SCHEMA,
+    SnowflakeSystemMetricsComputer,
     SnowflakeTableResovler,
 )
 from metadata.utils.profiler_utils import get_identifiers_from_string
@@ -112,3 +125,250 @@ def test_get_identifiers(
         assert expected_value == resolver.resolve_snowflake_fqn(
             context_database, context_schema, identifier
         )
+
+
+class TestSnowflakeSystemMetricsComputerDynamicTable:
+    """Test class for dynamic table system metrics"""
+
+    @pytest.fixture
+    def mock_runner(self):
+        runner = Mock()
+        runner.table_name = "test_dynamic_table"
+        runner.schema_name = "test_schema"
+        mock_bind = Mock()
+        mock_bind.url.database = "test_db"
+        runner.session.get_bind.return_value = mock_bind
+        return runner
+
+    @pytest.fixture
+    def mock_session(self):
+        return Mock()
+
+    @pytest.fixture
+    def mock_service_connection_config(self):
+        config = Mock(spec=SnowflakeConnection)
+        config.accountUsageSchema = "SNOWFLAKE.ACCOUNT_USAGE"
+        return config
+
+    @pytest.fixture
+    def dynamic_table_entity(self):
+        entity = Mock(spec=Table)
+        entity.tableType = TableType.Dynamic
+        return entity
+
+    @pytest.fixture
+    def regular_table_entity(self):
+        entity = Mock(spec=Table)
+        entity.tableType = TableType.Regular
+        return entity
+
+    def test_is_dynamic_table_true(
+        self,
+        mock_session,
+        mock_runner,
+        mock_service_connection_config,
+        dynamic_table_entity,
+    ):
+        computer = SnowflakeSystemMetricsComputer(
+            session=mock_session,
+            runner=mock_runner,
+            service_connection_config=mock_service_connection_config,
+            table_entity=dynamic_table_entity,
+        )
+        assert computer.is_dynamic_table is True
+
+    def test_is_dynamic_table_false(
+        self,
+        mock_session,
+        mock_runner,
+        mock_service_connection_config,
+        regular_table_entity,
+    ):
+        computer = SnowflakeSystemMetricsComputer(
+            session=mock_session,
+            runner=mock_runner,
+            service_connection_config=mock_service_connection_config,
+            table_entity=regular_table_entity,
+        )
+        assert computer.is_dynamic_table is False
+
+    def test_get_dynamic_table_system_profile_inserts(
+        self,
+        mock_session,
+        mock_runner,
+        mock_service_connection_config,
+        dynamic_table_entity,
+    ):
+        computer = SnowflakeSystemMetricsComputer(
+            session=mock_session,
+            runner=mock_runner,
+            service_connection_config=mock_service_connection_config,
+            table_entity=dynamic_table_entity,
+        )
+
+        mock_entries = [
+            SnowflakeDynamicTableRefreshEntry(
+                table_name="test_dynamic_table",
+                start_time=datetime(2024, 1, 1, 12, 0, 0),
+                rows_inserted=100,
+                rows_updated=0,
+                rows_deleted=0,
+            ),
+            SnowflakeDynamicTableRefreshEntry(
+                table_name="test_dynamic_table",
+                start_time=datetime(2024, 1, 1, 13, 0, 0),
+                rows_inserted=50,
+                rows_updated=10,
+                rows_deleted=5,
+            ),
+        ]
+
+        with patch.object(
+            computer, "_get_dynamic_table_refresh_entries", return_value=mock_entries
+        ):
+            result = computer.get_inserts()
+
+        assert len(result) == 2
+        assert result[0].operation == DmlOperationType.INSERT
+        assert result[0].rowsAffected == 100
+        assert result[1].rowsAffected == 50
+
+    def test_get_dynamic_table_system_profile_updates(
+        self,
+        mock_session,
+        mock_runner,
+        mock_service_connection_config,
+        dynamic_table_entity,
+    ):
+        computer = SnowflakeSystemMetricsComputer(
+            session=mock_session,
+            runner=mock_runner,
+            service_connection_config=mock_service_connection_config,
+            table_entity=dynamic_table_entity,
+        )
+
+        mock_entries = [
+            SnowflakeDynamicTableRefreshEntry(
+                table_name="test_dynamic_table",
+                start_time=datetime(2024, 1, 1, 12, 0, 0),
+                rows_inserted=100,
+                rows_updated=25,
+                rows_deleted=0,
+            ),
+        ]
+
+        with patch.object(
+            computer, "_get_dynamic_table_refresh_entries", return_value=mock_entries
+        ):
+            result = computer.get_updates()
+
+        assert len(result) == 1
+        assert result[0].operation == DmlOperationType.UPDATE
+        assert result[0].rowsAffected == 25
+
+    def test_get_dynamic_table_system_profile_deletes(
+        self,
+        mock_session,
+        mock_runner,
+        mock_service_connection_config,
+        dynamic_table_entity,
+    ):
+        computer = SnowflakeSystemMetricsComputer(
+            session=mock_session,
+            runner=mock_runner,
+            service_connection_config=mock_service_connection_config,
+            table_entity=dynamic_table_entity,
+        )
+
+        mock_entries = [
+            SnowflakeDynamicTableRefreshEntry(
+                table_name="test_dynamic_table",
+                start_time=datetime(2024, 1, 1, 12, 0, 0),
+                rows_inserted=0,
+                rows_updated=0,
+                rows_deleted=15,
+            ),
+        ]
+
+        with patch.object(
+            computer, "_get_dynamic_table_refresh_entries", return_value=mock_entries
+        ):
+            result = computer.get_deletes()
+
+        assert len(result) == 1
+        assert result[0].operation == DmlOperationType.DELETE
+        assert result[0].rowsAffected == 15
+
+    def test_get_dynamic_table_filters_zero_rows(
+        self,
+        mock_session,
+        mock_runner,
+        mock_service_connection_config,
+        dynamic_table_entity,
+    ):
+        computer = SnowflakeSystemMetricsComputer(
+            session=mock_session,
+            runner=mock_runner,
+            service_connection_config=mock_service_connection_config,
+            table_entity=dynamic_table_entity,
+        )
+
+        mock_entries = [
+            SnowflakeDynamicTableRefreshEntry(
+                table_name="test_dynamic_table",
+                start_time=datetime(2024, 1, 1, 12, 0, 0),
+                rows_inserted=0,
+                rows_updated=0,
+                rows_deleted=0,
+            ),
+        ]
+
+        with patch.object(
+            computer, "_get_dynamic_table_refresh_entries", return_value=mock_entries
+        ):
+            inserts = computer.get_inserts()
+            updates = computer.get_updates()
+            deletes = computer.get_deletes()
+
+        assert len(inserts) == 0
+        assert len(updates) == 0
+        assert len(deletes) == 0
+
+    def test_get_dynamic_table_filters_by_table_name(
+        self,
+        mock_session,
+        mock_runner,
+        mock_service_connection_config,
+        dynamic_table_entity,
+    ):
+        computer = SnowflakeSystemMetricsComputer(
+            session=mock_session,
+            runner=mock_runner,
+            service_connection_config=mock_service_connection_config,
+            table_entity=dynamic_table_entity,
+        )
+
+        mock_entries = [
+            SnowflakeDynamicTableRefreshEntry(
+                table_name="other_table",
+                start_time=datetime(2024, 1, 1, 12, 0, 0),
+                rows_inserted=100,
+                rows_updated=50,
+                rows_deleted=25,
+            ),
+            SnowflakeDynamicTableRefreshEntry(
+                table_name="test_dynamic_table",
+                start_time=datetime(2024, 1, 1, 13, 0, 0),
+                rows_inserted=10,
+                rows_updated=5,
+                rows_deleted=2,
+            ),
+        ]
+
+        with patch.object(
+            computer, "_get_dynamic_table_refresh_entries", return_value=mock_entries
+        ):
+            inserts = computer.get_inserts()
+
+        assert len(inserts) == 1
+        assert inserts[0].rowsAffected == 10

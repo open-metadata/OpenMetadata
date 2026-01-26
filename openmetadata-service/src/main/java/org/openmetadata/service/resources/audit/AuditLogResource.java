@@ -17,13 +17,18 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.ExecutorService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.audit.AuditLogEntry;
@@ -33,6 +38,9 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.CSVExportResponse;
+import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Path("/v1/audit/logs")
 @Tag(
@@ -41,6 +49,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "auditLogs")
 @RequiredArgsConstructor
+@Slf4j
 public class AuditLogResource {
 
   private final Authorizer authorizer;
@@ -110,7 +119,14 @@ public class AuditLogResource {
               description = "Filter events before this timestamp (ms)",
               schema = @Schema(type = "integer"))
           @QueryParam("endTs")
-          Long endTs) {
+          Long endTs,
+      @Parameter(
+              description =
+                  "Search term to filter audit logs (searches across user_name, entity_fqn, "
+                      + "service_name, entity_type)",
+              schema = @Schema(type = "string"))
+          @QueryParam("q")
+          String searchTerm) {
 
     // Authorization: service-level, entity-level, or global based on filters provided
     authorizeAuditLogAccess(securityContext, serviceName, entityType, entityFqn);
@@ -124,9 +140,140 @@ public class AuditLogResource {
         eventType,
         startTs,
         endTs,
+        searchTerm,
         limit,
         before,
         after);
+  }
+
+  private static final int EXPORT_MAX_LIMIT = 100000;
+  private static final int EXPORT_DEFAULT_LIMIT = 10000;
+
+  @GET
+  @Path("/export")
+  @Operation(
+      operationId = "exportAuditLogs",
+      summary = "Export audit log events as JSON (async)",
+      description =
+          "Initiates an asynchronous export of audit log events. "
+              + "Returns a job ID immediately. When the export is complete, "
+              + "the data will be sent via WebSocket on the csvExportChannel.",
+      responses = {
+        @ApiResponse(
+            responseCode = "202",
+            description = "Export job initiated",
+            content =
+                @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = @Schema(implementation = CSVExportResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid parameters")
+      })
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response exportAuditLogs(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Start timestamp in milliseconds (required)",
+              schema = @Schema(type = "integer"),
+              required = true)
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description = "End timestamp in milliseconds (required)",
+              schema = @Schema(type = "integer"),
+              required = true)
+          @QueryParam("endTs")
+          Long endTs,
+      @Parameter(
+              description = "Maximum number of records to export (default 10000, max 100000)",
+              schema = @Schema(type = "integer"))
+          @QueryParam("limit")
+          @DefaultValue("10000")
+          @Min(1)
+          @Max(100000)
+          int limit,
+      @Parameter(description = "Filter by username", schema = @Schema(type = "string"))
+          @QueryParam("userName")
+          String userName,
+      @Parameter(
+              description = "Filter by actor type (USER, BOT, AGENT)",
+              schema = @Schema(type = "string"))
+          @QueryParam("actorType")
+          String actorType,
+      @Parameter(description = "Filter by service name", schema = @Schema(type = "string"))
+          @QueryParam("serviceName")
+          String serviceName,
+      @Parameter(description = "Filter by entity type", schema = @Schema(type = "string"))
+          @QueryParam("entityType")
+          String entityType,
+      @Parameter(description = "Filter by event type", schema = @Schema(type = "string"))
+          @QueryParam("eventType")
+          String eventType,
+      @Parameter(
+              description =
+                  "Search term to filter audit logs (searches across user_name, entity_fqn, "
+                      + "service_name, entity_type)",
+              schema = @Schema(type = "string"))
+          @QueryParam("q")
+          String searchTerm) {
+
+    // Require global audit log permission for export (admin-only)
+    OperationContext operationContext =
+        new OperationContext(Entity.AUDIT_LOG, MetadataOperation.AUDIT_LOGS);
+    authorizer.authorize(securityContext, operationContext, AuditLogResourceContext.INSTANCE);
+
+    // Validate required parameters
+    if (startTs == null || endTs == null) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity("Both startTs and endTs are required for export")
+          .build();
+    }
+
+    if (startTs > endTs) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity("startTs must be less than or equal to endTs")
+          .build();
+    }
+
+    // Apply limit constraints
+    int effectiveLimit = Math.min(Math.max(limit, 1), EXPORT_MAX_LIMIT);
+
+    // Generate job ID and start async export
+    String jobId = UUID.randomUUID().toString();
+    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+
+    executorService.submit(
+        () -> {
+          try {
+            // Use batched export to avoid long-running queries that could cause
+            // resource contention with concurrent writes to the audit_log table.
+            // Progress updates are sent via websocket for long-running exports.
+            List<AuditLogEntry> results =
+                repository.exportInBatches(
+                    userName,
+                    actorType,
+                    serviceName,
+                    entityType,
+                    eventType,
+                    startTs,
+                    endTs,
+                    searchTerm,
+                    effectiveLimit,
+                    (fetched, total, message) ->
+                        WebsocketNotificationHandler.sendCsvExportProgressNotification(
+                            jobId, securityContext, fetched, total, message));
+
+            String json = JsonUtils.pojoToJson(results);
+            WebsocketNotificationHandler.sendCsvExportCompleteNotification(
+                jobId, securityContext, json);
+          } catch (Exception e) {
+            LOG.error("Encountered exception while exporting audit logs.", e);
+            WebsocketNotificationHandler.sendCsvExportFailedNotification(
+                jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
+          }
+        });
+
+    CSVExportResponse response = new CSVExportResponse(jobId, "Export initiated successfully.");
+    return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
   }
 
   /**

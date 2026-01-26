@@ -257,6 +257,10 @@ export const SAML_UI_SCHEMA = {
       'ui:title': 'Identity Provider (IdP)',
       entityId: { 'ui:title': 'IdP Entity ID' },
       ssoLoginUrl: { 'ui:title': 'IdP SSO Login URL' },
+      authorityUrl: {
+        'ui:widget': 'hidden',
+        'ui:hideError': true,
+      },
       idpX509Certificate: {
         'ui:title': 'IdP X.509 Certificate',
         'ui:widget': 'textarea',
@@ -474,7 +478,7 @@ export const COMMON_FIELD_TITLES = {
   jwtPrincipalClaimsMapping: {
     'ui:title': 'JWT Principal Claims Mapping',
     'ui:placeholder':
-      'Enter username:claim_name (e.g. username:preferred_username,email:email) and press ENTER.',
+      'Enter mappings (e.g. username:preferred_username, email:email). Both username and email are required.',
   },
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
   enableAutoRedirect: { 'ui:title': 'Enable Auto Redirect' },

@@ -89,7 +89,7 @@ class ColumnValuesMissingCountValidator(
         dimension_results = []
 
         try:
-            dfs = self.runner if isinstance(self.runner, list) else [self.runner]
+            dfs = self.runner
 
             metric_expressions = {
                 Metrics.NULL_MISSING_COUNT.name: Metrics.NULL_MISSING_COUNT(

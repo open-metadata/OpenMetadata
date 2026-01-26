@@ -15,6 +15,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -26,7 +27,7 @@ public class PatchEntityTool implements McpTool {
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params) {
     String entityType = (String) params.get("entityType");
-    String entityFqn = (String) params.get("entityFqn");
+    String fqn = (String) params.get("fqn");
     String jsonPatchString = (String) params.get("patch");
     if (nullOrEmpty(jsonPatchString)) {
       throw new IllegalArgumentException("Patch cannot be null or empty");
@@ -38,16 +39,21 @@ public class PatchEntityTool implements McpTool {
     // Validate If the User Can Perform the Patch Operation
     OperationContext operationContext = new OperationContext(entityType, jsonPatch);
     authorizer.authorize(
-        securityContext, operationContext, new ResourceContext<>(entityType, null, entityFqn));
+        securityContext, operationContext, new ResourceContext<>(entityType, null, fqn));
 
     EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+
+    // Get impersonatedBy from thread-local context set by McpAuthFilter
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+
     RestUtil.PatchResponse<? extends EntityInterface> response =
         repository.patch(
             null,
-            entityFqn,
+            fqn,
             securityContext.getUserPrincipal().getName(),
             jsonPatch,
-            ChangeSource.MANUAL);
+            ChangeSource.MANUAL,
+            impersonatedBy);
     return JsonUtils.convertValue(response, Map.class);
   }
 

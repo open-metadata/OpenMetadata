@@ -28,6 +28,7 @@ import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.resources.searchindex.SearchIndexResource;
 
 /**
  * Integration tests for SearchIndex entity operations.
@@ -41,13 +42,20 @@ import org.openmetadata.sdk.models.ListResponse;
 public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearchIndex> {
 
   {
-    supportsSearchIndex = false; // SearchIndex entity doesn't have its own search index
-    supportsDomains = false; // SearchIndex doesn't support domains field
+    supportsSearchIndex = false;
+    supportsDomains = false;
+    supportsLifeCycle = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   // ===================================================================
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
   // ===================================================================
+
+  @Override
+  protected String getResourcePath() {
+    return SearchIndexResource.COLLECTION_PATH;
+  }
 
   @Override
   protected CreateSearchIndex createMinimalRequest(TestNamespace ns) {

@@ -36,6 +36,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_COMMENTS,
     SNOWFLAKE_GET_MVIEW_NAMES,
     SNOWFLAKE_GET_SCHEMA_COLUMNS,
+    SNOWFLAKE_GET_STAGES,
     SNOWFLAKE_GET_STREAM_DEFINITION,
     SNOWFLAKE_GET_STREAM_NAMES,
     SNOWFLAKE_GET_TABLE_DDL,
@@ -168,6 +169,20 @@ def get_stream_names_reflection(self, schema=None, **kw):
         )
 
 
+def get_stage_names_reflection(self, schema=None, **kw):
+    """Return all stage names in `schema`.
+
+    :param schema: Optional, retrieve names from a non-default schema.
+        For special quoting, use :class:`.quoted_name`.
+
+    """
+
+    with self._operation_context() as conn:  # pylint: disable=protected-access
+        return self.dialect.get_stage_names(
+            conn, schema, info_cache=self.info_cache, **kw
+        )
+
+
 def _get_query_map(
     incremental: Optional[IncrementalConfig], query_maps: Dict[str, QueryMap]
 ):
@@ -296,6 +311,23 @@ def get_stream_names(self, connection, schema, **kw):
     return result
 
 
+def get_stage_names(self, connection, schema, **kw):
+    """Return all stage names in schema."""
+    parameters = {"schema": fqn.unquote_name(schema)}
+    cursor = connection.execute(SNOWFLAKE_GET_STAGES.format(**parameters))
+    result = SnowflakeTableList(
+        tables=[
+            SnowflakeTable(
+                name=self.normalize_name(row[1]),
+                deleted=None,
+                type_=TableType.Stage,
+            )
+            for row in cursor
+        ]
+    )
+    return result
+
+
 @reflection.cache
 def get_view_definition(
     self, connection, table_name, schema=None, **kw
@@ -400,6 +432,7 @@ def get_schema_columns(self, connection, schema, **kw):
         comment,
         identity_start,
         identity_increment,
+        ordinal_position,
     ) in result:
         table_name = self.normalize_name(fqn.quote_name(table_name))
         column_name = self.normalize_name(column_name)
@@ -450,6 +483,7 @@ def get_schema_columns(self, connection, schema, **kw):
                     if current_table_pks
                     else False
                 ),
+                "ordinal_position": ordinal_position,
             }
         )
         if is_identity == "YES":

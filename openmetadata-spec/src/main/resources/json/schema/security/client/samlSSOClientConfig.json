@@ -19,6 +19,11 @@
           "description": "SSO Login URL.",
           "type": "string"
         },
+        "authorityUrl": {
+          "description": "Authority URL (deprecated, use entityId instead).",
+          "type": "string",
+          "deprecated": true
+        },
         "idpX509Certificate": {
           "description": "X509 Certificate ",
           "type": "string",

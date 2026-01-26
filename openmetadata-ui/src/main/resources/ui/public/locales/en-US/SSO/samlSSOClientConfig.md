@@ -229,6 +229,29 @@ SAML (Security Assertion Markup Language) SSO enables users to log in using SAML
 - **Example:** ["email:email", "username:preferred_username"]
 - **Why it matters:** Controls how SAML user information maps to OpenMetadata user profiles.
 - **Note:** Format: "openmetadata_field:saml_claim" or "openmetadata_field:jwt_claim"
+- **Validation Requirements:**
+  - Both `username` and `email` mappings must be present when this field is used
+  - Only `username` and `email` keys are allowed; no other keys are permitted
+  - If validation fails, errors will be displayed on this specific field
+
+## <span data-id="jwtTeamClaimMapping">JWT Team Claim Mapping</span>
+
+- **Definition:** SAML attribute or JWT claim name containing team/department information for automatic team assignment.
+- **Example:** "department" (for Azure AD department attribute) or "groups" (for group membership)
+- **Why it matters:** Automatically assigns users to existing OpenMetadata teams based on their SAML/JWT attributes during login.
+- **How it works:**
+  - For SAML: Extracts the value(s) from the specified SAML attribute (e.g., if set to "department", reads the "department" attribute from SAML assertion)
+  - For JWT/OIDC: Extracts the value(s) from the specified JWT claim (e.g., if set to "department", reads the "department" claim from JWT token)
+  - For array attributes/claims (like "groups"), processes all values in the array
+  - Matches the extracted value(s) against existing team names in OpenMetadata
+  - Assigns the user to all matching teams that are of type "Group"
+  - If a team doesn't exist or is not of type "Group", a warning is logged but authentication continues
+- **Note:** 
+  - The team must already exist in OpenMetadata for assignment to work
+  - Only teams of type "Group" can be auto-assigned (not "Organization" or "BusinessUnit" teams)
+  - Team names are case-sensitive and must match exactly
+  - This is useful for Azure AD "department" attribute or similar organizational attributes
+  - Multiple team assignments are supported for array attributes/claims (e.g., "groups")
 
 ## <span data-id="tokenValidationAlgorithm">Token Validation Algorithm</span>
 

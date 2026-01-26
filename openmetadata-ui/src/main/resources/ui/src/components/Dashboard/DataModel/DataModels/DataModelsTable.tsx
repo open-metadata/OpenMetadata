@@ -21,7 +21,6 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
   PAGE_SIZE_BASE,
   pagingObject,
 } from '../../../../constants/constants';
@@ -85,6 +84,13 @@ const DataModelTable = ({
   const [isLoading, setIsLoading] = useState(true);
   const { setFilters } = useTableFilters({});
 
+  useEffect(() => {
+    const urlPage = Number(pagingCursor.currentPage) || INITIAL_PAGING_VALUE;
+    if (currentPage !== urlPage) {
+      handlePageChange(urlPage);
+    }
+  }, [pagingCursor.currentPage, currentPage, handlePageChange]);
+
   const searchValue = useMemo(() => {
     const param = location.search;
     const searchData = QueryString.parse(
@@ -97,15 +103,11 @@ const DataModelTable = ({
   const searchDataModels = useCallback(
     async (searchValue: string, pageNumber = INITIAL_PAGING_VALUE) => {
       setIsLoading(true);
-      handlePageChange(pageNumber, {
-        cursorType: null,
-        cursorValue: undefined,
-      });
       try {
         const response = await searchQuery({
           query: '',
           pageNumber,
-          pageSize: PAGE_SIZE,
+          pageSize: pageSize,
           queryFilter: buildSchemaQueryFilter(
             'service.fullyQualifiedName.keyword',
             fqn,
@@ -195,34 +197,32 @@ const DataModelTable = ({
     [fqn, pageSize, showDeleted]
   );
 
-  const handleDataModelPageChange: NextPreviousProps['pagingHandler'] = ({
-    cursorType,
-    currentPage,
-  }) => {
-    if (searchValue) {
-      searchDataModels(searchValue, currentPage);
-      handlePageChange(currentPage);
-    } else if (cursorType) {
-      fetchDashboardsDataModel({ [cursorType]: paging[cursorType] });
-      handlePageChange(
-        currentPage,
-        { cursorType, cursorValue: paging[cursorType] },
-        pageSize
-      );
-    }
-  };
+  const handleDataModelPageChange = useCallback<
+    NextPreviousProps['pagingHandler']
+  >(
+    ({ cursorType, currentPage }) => {
+      if (searchValue) {
+        handlePageChange(currentPage);
+      } else if (cursorType) {
+        handlePageChange(
+          currentPage,
+          { cursorType, cursorValue: paging[cursorType] },
+          pageSize
+        );
+      }
+    },
+    [searchValue, handlePageChange, paging, pageSize]
+  );
 
   const onDataModelSearch = useCallback(
     (value: string) => {
       setFilters({ dataModel: isEmpty(value) ? undefined : value });
-      if (value) {
-        searchDataModels(value);
-      } else {
-        fetchDashboardsDataModel();
-        handlePageChange(INITIAL_PAGING_VALUE);
-      }
+      handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
     },
-    [searchDataModels, fetchDashboardsDataModel]
+    [setFilters, handlePageChange]
   );
 
   const handleShowDeletedChange = (checked: boolean) => {
@@ -235,6 +235,15 @@ const DataModelTable = ({
   };
 
   useEffect(() => {
+    if (searchValue) {
+      searchDataModels(searchValue, currentPage);
+    }
+  }, [searchValue, currentPage, showDeleted]);
+
+  useEffect(() => {
+    if (searchValue) {
+      return;
+    }
     const { cursorType, cursorValue } = pagingCursor ?? {};
 
     if (cursorType && cursorValue) {
@@ -242,7 +251,7 @@ const DataModelTable = ({
     } else {
       fetchDashboardsDataModel();
     }
-  }, [pageSize, showDeleted, pagingCursor]);
+  }, [pageSize, showDeleted, pagingCursor, searchValue]);
 
   const searchProps = useMemo(
     () => ({

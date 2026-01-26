@@ -225,4 +225,64 @@ describe('EntityUtilClassBase', () => {
       undefined
     );
   });
+
+  describe('getFqnParts', () => {
+    it('should return undefined columnFqn if type is NOT provided', () => {
+      const fqn = 'service.database.schema.table';
+      const result = entityUtil.getFqnParts(fqn);
+
+      expect(result).toEqual({ entityFqn: fqn, columnFqn: undefined });
+    });
+
+    it('should split TABLE FQN correctly (4 parts)', () => {
+      const fqn = 'service.database.schema.table.column.nested';
+      const result = entityUtil.getFqnParts(fqn, EntityType.TABLE);
+
+      expect(result).toEqual({
+        entityFqn: 'service.database.schema.table',
+        columnFqn: 'column.nested',
+      });
+    });
+
+    it('should split API_ENDPOINT FQN correctly (3 parts)', () => {
+      const fqn = 'service.collection.endpoint.field';
+      const result = entityUtil.getFqnParts(fqn, EntityType.API_ENDPOINT);
+
+      expect(result).toEqual({
+        entityFqn: 'service.collection.endpoint',
+        columnFqn: 'field',
+      });
+    });
+
+    it('should split TOPIC FQN correctly (2 parts)', () => {
+      const fqn = 'service.topic.field.nested';
+      const result = entityUtil.getFqnParts(fqn, EntityType.TOPIC);
+
+      expect(result).toEqual({
+        entityFqn: 'service.topic',
+        columnFqn: 'field.nested',
+      });
+    });
+
+    it('should split DASHBOARD_DATA_MODEL FQN correctly (3 parts)', () => {
+      const fqn = 'service.dashboard.datamodel.column';
+      const result = entityUtil.getFqnParts(
+        fqn,
+        EntityType.DASHBOARD_DATA_MODEL
+      );
+
+      expect(result).toEqual({
+        entityFqn: 'service.dashboard.datamodel',
+        columnFqn: 'column',
+      });
+    });
+
+    it('should return original FQN if parts are insufficient for TABLE', () => {
+      const fqn = 'service.database.schema';
+      const result = entityUtil.getFqnParts(fqn, EntityType.TABLE);
+
+      // Implementation detail: it initializes entityFqn = fqn, and only changes if length > 4
+      expect(result).toEqual({ entityFqn: fqn, columnFqn: undefined });
+    });
+  });
 });

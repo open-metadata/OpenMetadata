@@ -6,10 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * Represents the persisted audit log entry as stored in the database. UUIDs are stored as Strings
- * to ensure proper JDBI binding with @BindBean (JDBI's @BindUUID is not used with @BindBean).
- */
+/** Represents the persisted audit log entry as stored in the database. */
 @Getter
 @Setter
 @Builder

@@ -11,13 +11,19 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
+import {
+  EntityReference,
+  TestCase,
+  TestCaseStatus,
+} from '../../../../generated/tests/testCase';
 import {
   Severities,
   TestCaseResolutionStatus,
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseResolutionStatus';
+import { DataQualityTest } from '../../../common/DataQualitySection/DataQualitySection.interface';
 import DataQualityTab from './DataQualityTab';
+import { MockTabItem, TranslationOptions } from './DataQualityTab.interface';
 
 // Mock react-router-dom
 jest.mock('react-router-dom', () => ({
@@ -32,7 +38,7 @@ jest.mock('react-router-dom', () => ({
 // Mock react-i18next
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
-    t: (key: string, options?: any) => {
+    t: (key: string, options?: TranslationOptions) => {
       if (options) {
         return `${key} - ${JSON.stringify(options)}`;
       }
@@ -77,11 +83,6 @@ jest.mock('antd', () => {
 
   return {
     ...actual,
-    Avatar: jest.fn().mockImplementation(({ children, ...props }) => (
-      <div data-testid="avatar" {...props}>
-        {children}
-      </div>
-    )),
     Card: jest.fn().mockImplementation(({ children, className, ...props }) => (
       <div className={className} data-testid="card" {...props}>
         {children}
@@ -114,40 +115,27 @@ jest.mock('antd', () => {
       .mockImplementation(({ items, activeKey, onChange, ...props }) => (
         <div data-active-key={activeKey} data-testid="tabs" {...props}>
           <div data-testid="tab-headers">
-            {items.map((item: any) => (
+            {items.map((item: MockTabItem) => (
               <div data-testid={`tab-${item.key}`} key={item.key}>
                 {item.label}
                 <button onClick={() => onChange?.(item.key)}>change</button>
               </div>
             ))}
           </div>
-          {items.find((item: any) => item.key === activeKey)?.children}
+          {items.find((item: MockTabItem) => item.key === activeKey)?.children}
         </div>
       )),
     Typography: {
       Text: jest
         .fn()
-        .mockImplementation(
-          ({ children, className, ellipsis, strong: _strong, ...props }) => (
-            <span
-              className={className}
-              data-ellipsis={ellipsis}
-              data-testid="typography-text"
-              {...props}>
-              {children}
-            </span>
-          )
-        ),
-      Title: jest
-        .fn()
-        .mockImplementation(({ children, level, className, ...props }) => (
-          <h1
+        .mockImplementation(({ children, className, ellipsis, ...props }) => (
+          <span
             className={className}
-            data-level={level}
-            data-testid="typography-title"
+            data-ellipsis={ellipsis}
+            data-testid="typography-text"
             {...props}>
             {children}
-          </h1>
+          </span>
         )),
       Paragraph: jest
         .fn()
@@ -170,7 +158,7 @@ jest.mock('../../../common/DataQualitySection', () => {
     .mockImplementation(({ tests, totalTests, onEdit, onFilterChange }) => (
       <div data-testid="data-quality-section">
         <div data-testid="total-tests">{totalTests}</div>
-        {tests.map((test: any, index: number) => (
+        {tests.map((test: DataQualityTest, index: number) => (
           <div
             data-testid={`test-${test.type}`}
             key={index}
@@ -292,8 +280,8 @@ const mockTestCases: TestCase[] = [
       testCaseStatus: TestCaseStatus.Success,
       timestamp: 1234567890,
     },
-    testDefinition: {} as any,
-    testSuite: {} as any,
+    testDefinition: { id: 'test-definition-1' } as EntityReference,
+    testSuite: { id: 'test-suite-1' } as EntityReference,
   },
   {
     id: 'test-case-2',
@@ -305,8 +293,8 @@ const mockTestCases: TestCase[] = [
       timestamp: 1234567890,
     },
     incidentId: 'incident-1',
-    testDefinition: {} as any,
-    testSuite: {} as any,
+    testDefinition: { id: 'test-definition-1' } as EntityReference,
+    testSuite: { id: 'test-suite-1' } as EntityReference,
   },
   {
     id: 'test-case-3',
@@ -317,8 +305,8 @@ const mockTestCases: TestCase[] = [
       testCaseStatus: TestCaseStatus.Aborted,
       timestamp: 1234567890,
     },
-    testDefinition: {} as any,
-    testSuite: {} as any,
+    testDefinition: { id: 'test-definition-1' } as EntityReference,
+    testSuite: { id: 'test-suite-1' } as EntityReference,
   },
 ];
 
@@ -622,8 +610,8 @@ describe('DataQualityTab', () => {
             testCaseStatus: TestCaseStatus.Success,
             timestamp: 1234567890,
           },
-          testDefinition: {} as any,
-          testSuite: {} as any,
+          testDefinition: { id: 'test-definition-1' } as EntityReference,
+          testSuite: { id: 'test-suite-1' } as EntityReference,
         },
       ];
 
@@ -744,11 +732,53 @@ describe('DataQualityTab', () => {
     });
 
     it('should render incident status counts', () => {
-      const incidentCounts = screen.getAllByText('01');
-      const resolvedIncidentCount = screen.getAllByText('00');
+      // Check for new count (should be 1 based on mock data)
+      const newCount = screen.getByText((content, element) => {
+        const className = element?.getAttribute('class') || '';
 
-      expect(incidentCounts.length).toBeGreaterThan(0);
-      expect(resolvedIncidentCount.length).toBeGreaterThan(0);
+        return (
+          content === '1' &&
+          className.includes('stat-count') &&
+          className.includes('new')
+        );
+      });
+
+      expect(newCount).toBeInTheDocument();
+
+      // Check for assigned count (should be 1 based on mock data)
+      const assignedCount = screen.getByText((content, element) => {
+        const className = element?.getAttribute('class') || '';
+
+        return (
+          content === '1' &&
+          className.includes('stat-count') &&
+          className.includes('assigned')
+        );
+      });
+
+      expect(assignedCount).toBeInTheDocument();
+
+      // Check for acknowledged count (should be 0 based on mock data)
+      const ackCount = screen.getByText((content, element) => {
+        const className = element?.getAttribute('class') || '';
+
+        return (
+          content === '0' &&
+          className.includes('stat-count') &&
+          className.includes('ack')
+        );
+      });
+
+      expect(ackCount).toBeInTheDocument();
+
+      // Check for resolved count (should be 0 based on mock data)
+      const resolvedCount = screen.getByText((content, element) => {
+        const className = element?.getAttribute('class') || '';
+
+        return content === '0' && className.includes('resolved-value');
+      });
+
+      expect(resolvedCount).toBeInTheDocument();
     });
 
     it('should render incident filter buttons', () => {
@@ -867,8 +897,8 @@ describe('DataQualityTab', () => {
             testCaseStatus: TestCaseStatus.Success,
             timestamp: 1234567890,
           },
-          testDefinition: {} as any,
-          testSuite: {} as any,
+          testDefinition: { id: 'test-definition-1' } as EntityReference,
+          testSuite: { id: 'test-suite-1' } as EntityReference,
         },
       ];
 

@@ -82,6 +82,32 @@ Auth0 Active Directory (Auth0) SSO enables users to log in with their Auth0 acco
 - **Example:** ["email:email", "username:preferred_username"]
 - **Why it matters:** Controls how user information from Auth0 maps to OpenMetadata user profiles.
 - **Note:** Format: "openmetadata_field:jwt_claim"
+- **Validation Requirements:**
+  - Both `username` and `email` mappings must be present when this field is used
+  - Only `username` and `email` keys are allowed; no other keys are permitted
+  - If validation fails, errors will be displayed on this specific field
+
+### <span data-id="jwtTeamClaimMapping">JWT Team Claim Mapping</span>
+
+- **Definition:** Auth0 claim or attribute containing team/department information for automatic team assignment.
+- **Example:** "department", "groups", "organization", or custom user metadata fields
+- **Why it matters:** Automatically assigns users to existing OpenMetadata teams based on their Auth0 user profile during login.
+- **How it works:**
+  - Extracts the value(s) from the specified Auth0 claim (e.g., if set to "department", reads user's department from Auth0)
+  - For array claims (like "groups"), processes all values in the array
+  - Matches the extracted value(s) against existing team names in OpenMetadata
+  - Assigns the user to all matching teams that are of type "Group"
+  - If a team doesn't exist or is not of type "Group", a warning is logged but authentication continues
+- **Auth0 Configuration:**
+  - Standard user profile fields: "department", "organization"
+  - Custom user metadata can be configured in Auth0 → User Management → Users → User Details
+  - For group/role-based teams, use "groups" or "roles" claims
+  - Add custom claims via Auth0 Rules or Actions to include in JWT tokens
+- **Note:** 
+  - The team must already exist in OpenMetadata for assignment to work
+  - Only teams of type "Group" can be auto-assigned (not "Organization" or "BusinessUnit" teams)
+  - Team names are case-sensitive and must match exactly
+  - Multiple team assignments are supported for array claims (e.g., "groups" or "roles")
 
 ### <span data-id="tokenValidation">Token Validation Algorithm</span>
 

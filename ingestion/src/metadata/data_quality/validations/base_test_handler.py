@@ -43,12 +43,11 @@ from metadata.generated.schema.tests.basic import (
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.type.basic import Timestamp
-from metadata.profiler.processor.runner import QueryRunner
+from metadata.profiler.processor.runner import PandasRunner, QueryRunner
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
 
 if TYPE_CHECKING:
-    from pandas import DataFrame
     from sqlalchemy import Column
 
 logger = test_suite_logger()
@@ -105,7 +104,7 @@ class BaseTestValidator(ABC):
 
     def __init__(
         self,
-        runner: Union[QueryRunner, List["DataFrame"]],
+        runner: Union[QueryRunner, PandasRunner],
         test_case: TestCase,
         execution_date: Timestamp,
     ) -> None:
@@ -148,10 +147,7 @@ class BaseTestValidator(ABC):
             )
             logger.debug(f"Dimension columns: {self.test_case.dimensionColumns}")
 
-            # Validate dimension columns exist in the target table
             if not self.are_dimension_columns_valid():
-                # Don't abort the main test, just skip dimensional validation
-                # The main test result is still valid
                 return test_result
 
             try:

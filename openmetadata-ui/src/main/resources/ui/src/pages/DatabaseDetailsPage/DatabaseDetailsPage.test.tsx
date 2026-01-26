@@ -13,7 +13,7 @@
 
 import { findByTestId, findByText, render } from '@testing-library/react';
 import React from 'react';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   getDatabaseDetailsByFQN,
@@ -143,6 +143,7 @@ jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
   Link: jest
     .fn()
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
@@ -152,6 +153,7 @@ jest.mock('react-router-dom', () => ({
     fqn: 'bigquery.shopify',
   }),
   useNavigate: jest.fn(),
+  useLocation: jest.fn().mockImplementation(() => ({ pathname: 'mockPath' })),
 }));
 
 jest.mock(
@@ -192,6 +194,7 @@ jest.mock('../../utils/TableUtils', () => ({
   getTierTags: jest.fn().mockImplementation(() => ({})),
   getTagsWithoutTier: jest.fn().mockImplementation(() => []),
   getTableExpandableConfig: jest.fn().mockReturnValue({}),
+  extractColumnsFromData: jest.fn().mockReturnValue([]),
 }));
 
 jest.mock('../../components/common/NextPrevious/NextPrevious', () => {

@@ -67,7 +67,7 @@ const DataModelDetails = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedDataModelFQN } = useFqn();
+
   const { customizedPage, isLoading } = useCustomPages(
     PageType.DashboardDataModel
   );
@@ -75,6 +75,10 @@ const DataModelDetails = ({
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
+
+  const { entityFqn: decodedDataModelFQN } = useFqn({
+    type: EntityType.DASHBOARD_DATA_MODEL,
+  });
 
   const { deleted, version } = useMemo(() => {
     return {

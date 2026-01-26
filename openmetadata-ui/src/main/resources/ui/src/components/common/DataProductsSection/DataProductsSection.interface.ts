@@ -19,7 +19,7 @@ export interface DataProductsSectionProps {
   showEditButton?: boolean;
   hasPermission?: boolean;
   entityId?: string;
-  entityType?: EntityType;
+  entityType: EntityType;
   onDataProductsUpdate?: (updatedDataProducts: EntityReference[]) => void;
   maxVisibleDataProducts?: number;
 }

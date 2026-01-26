@@ -13,6 +13,7 @@
 
 import i18next, { InitOptions } from 'i18next';
 import { map, upperCase } from 'lodash';
+import arSA from '../../locale/languages/ar-sa.json';
 import deDe from '../../locale/languages/de-de.json';
 import enUS from '../../locale/languages/en-us.json';
 import esES from '../../locale/languages/es-es.json';
@@ -31,7 +32,6 @@ import thTH from '../../locale/languages/th-th.json';
 import trTR from '../../locale/languages/tr-tr.json';
 import zhCN from '../../locale/languages/zh-cn.json';
 import zhTW from '../../locale/languages/zh-tw.json';
-import arSA from '../../locale/languages/ar-sa.json';
 import { SupportedLocales } from './LocalUtil.interface';
 
 export const languageSelectOptions = map(SupportedLocales, (value, key) => ({

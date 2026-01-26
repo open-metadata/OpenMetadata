@@ -117,6 +117,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
@@ -215,7 +216,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
-  public void setFields(GlossaryTerm entity, Fields fields) {
+  public void setFields(GlossaryTerm entity, Fields fields, RelationIncludes relationIncludes) {
     entity.withParent(getParent(entity)).withGlossary(getGlossary(entity));
     entity.setRelatedTerms(
         fields.contains("relatedTerms") ? getRelatedTerms(entity) : entity.getRelatedTerms());
@@ -430,7 +431,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // displayName change
     if (!Objects.equals(original.getFullyQualifiedName(), updated.getFullyQualifiedName())
         || !Objects.equals(original.getDisplayName(), updated.getDisplayName())) {
-      updateAssetIndexes(original, updated);
+      updateAssetIndexes(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
     }
   }
 
@@ -973,23 +974,18 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
   }
 
-  private void updateAssetIndexes(GlossaryTerm original, GlossaryTerm updated) {
-    String oldParentFqn = original.getFullyQualifiedName();
-    String newParentFqn = updated.getFullyQualifiedName();
+  private void updateAssetIndexes(String oldFqn, String newFqn) {
     searchRepository
         .getSearchClient()
-        .updateGlossaryTermByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldParentFqn, newParentFqn, TAGS_FQN);
+        .updateGlossaryTermByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, TAGS_FQN);
   }
 
-  private void updateEntityLinks(GlossaryTerm original, GlossaryTerm updated) {
-    daoCollection
-        .fieldRelationshipDAO()
-        .renameByToFQN(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
-    EntityLink about = new EntityLink(GLOSSARY_TERM, original.getFullyQualifiedName());
+  private void updateEntityLinks(String oldFqn, String newFqn, GlossaryTerm updated) {
+    daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
 
-    EntityLink newAbout = new EntityLink(GLOSSARY_TERM, updated.getFullyQualifiedName());
+    EntityLink newAbout = new EntityLink(GLOSSARY_TERM, newFqn);
+    daoCollection.feedDAO().updateByEntityId(newAbout.getLinkString(), updated.getId().toString());
 
-    daoCollection.feedDAO().updateByEntityId(newAbout.getLinkString(), original.getId().toString());
     List<EntityReference> childTerms =
         findTo(updated.getId(), GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
 
@@ -1192,11 +1188,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     int count =
         daoCollection
             .glossaryTermDAO()
-            .getGlossaryTermCountIgnoreCase(entity.getGlossary().getName(), entity.getName());
+            .getGlossaryTermCountIgnoreCase(
+                entity.getGlossary().getFullyQualifiedName(), entity.getName());
     if (count > 0) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.duplicateGlossaryTerm(
-              entity.getName(), entity.getGlossary().getName()));
+              entity.getName(), entity.getGlossary().getFullyQualifiedName()));
     }
   }
 
@@ -1206,17 +1203,21 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           daoCollection
               .glossaryTermDAO()
               .getGlossaryTermCountIgnoreCaseExcludingId(
-                  updated.getGlossary().getName(), updated.getName(), original.getId().toString());
+                  updated.getGlossary().getFullyQualifiedName(),
+                  updated.getName(),
+                  original.getId().toString());
       if (count > 0) {
         throw new IllegalArgumentException(
             CatalogExceptionMessage.duplicateGlossaryTerm(
-                updated.getName(), updated.getGlossary().getName()));
+                updated.getName(), updated.getGlossary().getFullyQualifiedName()));
       }
     }
   }
 
   /** Handles entity updated from PUT and POST operation. */
   public class GlossaryTermUpdater extends EntityUpdater {
+    private boolean renameProcessed = false;
+
     public GlossaryTermUpdater(GlossaryTerm original, GlossaryTerm updated, Operation operation) {
       super(original, updated, operation);
     }
@@ -1245,8 +1246,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       updateSynonyms(original, updated);
       updateReferences(original, updated);
       updateRelatedTerms(original, updated);
-      updateName(original, updated);
-      updateParent(original, updated);
+      updateNameAndParent(updated);
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
     }
@@ -1351,44 +1351,86 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           true);
     }
 
-    public void updateName(GlossaryTerm original, GlossaryTerm updated) {
-      if (!original.getName().equals(updated.getName())) {
-        if (ProviderType.SYSTEM.equals(original.getProvider())) {
-          throw new IllegalArgumentException(
-              CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
-        }
+    /**
+     * Handle name and parent changes together using getOriginalFqn() for correct FQN tracking.
+     * This ensures that during change consolidation, we use the correct original FQN.
+     */
+    public void updateNameAndParent(GlossaryTerm updated) {
+      UUID oldParentId = getId(original.getParent());
+      UUID newParentId = getId(updated.getParent());
+      final boolean parentChanged = !Objects.equals(oldParentId, newParentId);
+
+      UUID oldGlossaryId = getId(original.getGlossary());
+      UUID newGlossaryId = getId(updated.getGlossary());
+      final boolean glossaryChanged = !Objects.equals(oldGlossaryId, newGlossaryId);
+
+      String oldFqn = getOriginalFqn();
+      setFullyQualifiedName(updated);
+      String newFqn = updated.getFullyQualifiedName();
+
+      if (oldFqn.equals(newFqn)) {
+        return;
+      }
+
+      if (renameProcessed) {
+        return;
+      }
+      renameProcessed = true;
+
+      if (ProviderType.SYSTEM.equals(original.getProvider())) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
+      }
+
+      String[] oldParts = FullyQualifiedName.split(oldFqn);
+      String oldTermName = oldParts.length > 0 ? oldParts[oldParts.length - 1] : oldFqn;
+      boolean nameChanged = !oldTermName.equals(updated.getName());
+
+      if (nameChanged) {
         checkDuplicateTermsForUpdate(original, updated);
-        // Glossary term name changed - update the FQNs of the children terms to reflect this
-        setFullyQualifiedName(updated);
-        LOG.info("Glossary term name changed from {} to {}", original.getName(), updated.getName());
-        daoCollection
-            .glossaryTermDAO()
-            .updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
-        daoCollection
-            .tagUsageDAO()
-            .rename(
-                TagSource.GLOSSARY.ordinal(),
-                original.getFullyQualifiedName(),
-                updated.getFullyQualifiedName());
-        recordChange("name", original.getName(), updated.getName());
-        invalidateTerm(original.getId());
+      }
 
-        // update tags
-        daoCollection.tagUsageDAO().deleteTagsByTarget(original.getFullyQualifiedName());
-        List<TagLabel> updatedTags = updated.getTags();
-        updatedTags.sort(compareTagLabel);
-        applyTags(updatedTags, updated.getFullyQualifiedName());
-        daoCollection
-            .tagUsageDAO()
-            .renameByTargetFQNHash(
-                TagSource.CLASSIFICATION.ordinal(),
-                original.getFullyQualifiedName(),
-                updated.getFullyQualifiedName());
+      LOG.info("Glossary term FQN changed from {} to {}", oldFqn, newFqn);
+      daoCollection.glossaryTermDAO().updateFqn(oldFqn, newFqn);
+      daoCollection.tagUsageDAO().rename(TagSource.GLOSSARY.ordinal(), oldFqn, newFqn);
 
-        updateEntityLinks(original, updated);
+      daoCollection.tagUsageDAO().deleteTagsByTarget(oldFqn);
+      List<TagLabel> updatedTags = updated.getTags();
+      updatedTags.sort(compareTagLabel);
+      applyTags(updatedTags, newFqn);
+      daoCollection
+          .tagUsageDAO()
+          .renameByTargetFQNHash(TagSource.CLASSIFICATION.ordinal(), oldFqn, newFqn);
+
+      updateEntityLinks(oldFqn, newFqn, updated);
+
+      if (nameChanged) {
+        recordChange("name", oldTermName, updated.getName());
+      }
+
+      if (glossaryChanged) {
+        updateGlossaryRelationship(original, updated);
+        updateChildrenGlossaryRelationships(original, updated);
+        recordChange(
+            "glossary", original.getGlossary(), updated.getGlossary(), true, entityReferenceMatch);
+      }
+
+      if (parentChanged) {
+        updateGlossaryRelationship(original, updated);
+        updateParentRelationship(original, updated);
+        recordChange(
+            "parent", original.getParent(), updated.getParent(), true, entityReferenceMatch);
+      }
+
+      if (parentChanged || glossaryChanged || nameChanged) {
+        invalidateTerm(updated.getId());
+        updateAssetIndexes(oldFqn, newFqn);
       }
     }
 
+    /**
+     * Update parent/glossary relationships. Used by moveAndStore() for move operations.
+     */
     private void updateParent(GlossaryTerm original, GlossaryTerm updated) {
       // Can't change parent and glossary both at the same time
       UUID oldParentId = getId(original.getParent());
@@ -1398,54 +1440,46 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       UUID oldGlossaryId = getId(original.getGlossary());
       UUID newGlossaryId = getId(updated.getGlossary());
       final boolean glossaryChanged = !Objects.equals(oldGlossaryId, newGlossaryId);
+
       if (!parentChanged && !glossaryChanged) {
         return;
       }
 
-      setFullyQualifiedName(updated); // Update the FQN since the parent has changed
-      daoCollection
-          .glossaryTermDAO()
-          .updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
-      daoCollection
-          .tagUsageDAO()
-          .rename(
-              TagSource.GLOSSARY.ordinal(),
-              original.getFullyQualifiedName(),
-              updated.getFullyQualifiedName());
+      // Use getOriginalFqn() for correct FQN tracking during change consolidation
+      String oldFqn = getOriginalFqn();
+      setFullyQualifiedName(updated);
+      String newFqn = updated.getFullyQualifiedName();
+
+      daoCollection.glossaryTermDAO().updateFqn(oldFqn, newFqn);
+      daoCollection.tagUsageDAO().rename(TagSource.GLOSSARY.ordinal(), oldFqn, newFqn);
 
       // update tags
-      daoCollection.tagUsageDAO().deleteTagsByTarget(original.getFullyQualifiedName());
+      daoCollection.tagUsageDAO().deleteTagsByTarget(oldFqn);
       List<TagLabel> updatedTags = updated.getTags();
       updatedTags.sort(compareTagLabel);
-      applyTags(updatedTags, updated.getFullyQualifiedName());
+      applyTags(updatedTags, newFqn);
 
-      // do same for children terms
-      // update Tags Of Glossary On Rename
       daoCollection
           .tagUsageDAO()
-          .renameByTargetFQNHash(
-              TagSource.CLASSIFICATION.ordinal(),
-              original.getFullyQualifiedName(),
-              updated.getFullyQualifiedName());
+          .renameByTargetFQNHash(TagSource.CLASSIFICATION.ordinal(), oldFqn, newFqn);
 
-      updateEntityLinks(original, updated);
+      updateEntityLinks(oldFqn, newFqn, updated);
 
       if (glossaryChanged) {
         updateGlossaryRelationship(original, updated);
-        // Update glossary relationships for all nested children terms
         updateChildrenGlossaryRelationships(original, updated);
         recordChange(
             "glossary", original.getGlossary(), updated.getGlossary(), true, entityReferenceMatch);
-        invalidateTerm(original.getId());
+        invalidateTerm(updated.getId());
       }
       if (parentChanged) {
         updateGlossaryRelationship(original, updated);
         updateParentRelationship(original, updated);
         recordChange(
             "parent", original.getParent(), updated.getParent(), true, entityReferenceMatch);
-        invalidateTerm(original.getId());
+        invalidateTerm(updated.getId());
       }
-      updateAssetIndexes(original, updated);
+      updateAssetIndexes(oldFqn, newFqn);
     }
 
     private void validateParent() {

@@ -218,7 +218,6 @@ describe('Test UserListPage component', () => {
 
     expect(mockSetFilters).toHaveBeenCalledWith({
       isDeleted: true,
-      user: null,
     });
     expect(deletedSwitch).toHaveAttribute('aria-checked', 'true');
   });
@@ -553,7 +552,6 @@ describe('Test UserListPage component', () => {
     await waitFor(() => {
       expect(mockSetFilters).toHaveBeenCalledWith({
         isDeleted: true,
-        user: null,
       });
     });
 

@@ -21,7 +21,19 @@ import static org.openmetadata.schema.type.MetadataOperation.VIEW_BASIC;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 import static org.openmetadata.service.util.EntityUtil.createOrUpdateOperation;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.json.JsonPatch;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -79,6 +91,7 @@ import org.openmetadata.service.util.CSVImportResponse;
 import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
@@ -249,14 +262,25 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       UUID id,
       String fieldsParam,
       Include include) {
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include, null);
+  }
+
+  public T getInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      String fieldsParam,
+      Include include,
+      String includeRelations) {
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
+    RelationIncludes relationIncludes = new RelationIncludes(include, includeRelations);
     return getInternal(
         uriInfo,
         securityContext,
         id,
         fields,
-        include,
+        relationIncludes,
         operationContext,
         getResourceContextById(id));
   }
@@ -269,8 +293,26 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       Include include,
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
+    return getInternal(
+        uriInfo,
+        securityContext,
+        id,
+        fields,
+        RelationIncludes.fromInclude(include),
+        operationContext,
+        resourceContext);
+  }
+
+  public T getInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      Fields fields,
+      RelationIncludes relationIncludes,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return addHref(uriInfo, repository.get(uriInfo, id, fields, include, false));
+    return addHref(uriInfo, repository.get(uriInfo, id, fields, relationIncludes, false));
   }
 
   public T getVersionInternal(SecurityContext securityContext, UUID id, String version) {
@@ -303,20 +345,45 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return repository.listVersions(id);
   }
 
+  protected ResultList<T> listEntityHistoryByTimestampInternal(
+      SecurityContext securityContext,
+      long startTs,
+      long endTs,
+      String before,
+      String after,
+      int limit) {
+
+    ResourceContext resourceContext = getResourceContext();
+    OperationContext operationContext = new OperationContext(entityType, VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    return repository.listEntityHistoryByTimestamp(startTs, endTs, after, before, limit);
+  }
+
   public T getByNameInternal(
       UriInfo uriInfo,
       SecurityContext securityContext,
       String name,
       String fieldsParam,
       Include include) {
+    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include, null);
+  }
+
+  public T getByNameInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      String fieldsParam,
+      Include include,
+      String includeRelations) {
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
+    RelationIncludes relationIncludes = new RelationIncludes(include, includeRelations);
     return getByNameInternal(
         uriInfo,
         securityContext,
         name,
         fields,
-        include,
+        relationIncludes,
         operationContext,
         getResourceContextByName(name));
   }
@@ -329,8 +396,26 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       Include include,
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
+    return getByNameInternal(
+        uriInfo,
+        securityContext,
+        name,
+        fields,
+        RelationIncludes.fromInclude(include),
+        operationContext,
+        resourceContext);
+  }
+
+  public T getByNameInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      Fields fields,
+      RelationIncludes relationIncludes,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return addHref(uriInfo, repository.getByName(uriInfo, name, fields, include, false));
+    return addHref(uriInfo, repository.getByName(uriInfo, name, fields, relationIncludes, false));
   }
 
   public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity) {
@@ -760,7 +845,23 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public Response importCsvInternalAsync(
-      SecurityContext securityContext, String name, String csv, boolean dryRun, boolean recursive) {
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      String csv,
+      boolean dryRun,
+      boolean recursive) {
+    return importCsvInternalAsync(uriInfo, securityContext, name, csv, dryRun, recursive, null);
+  }
+
+  public Response importCsvInternalAsync(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      String csv,
+      boolean dryRun,
+      boolean recursive,
+      String versioningEntityType) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
@@ -774,7 +875,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
           try {
             WebsocketNotificationHandler.sendCsvImportStartedNotification(jobId, securityContext);
             CsvImportResult result =
-                importCsvInternal(securityContext, name, csv, dryRun, recursive);
+                importCsvInternal(
+                    uriInfo, securityContext, name, csv, dryRun, recursive, versioningEntityType);
             WebsocketNotificationHandler.sendCsvImportCompleteNotification(
                 jobId, securityContext, result);
           } catch (Exception e) {
@@ -796,13 +898,64 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected CsvImportResult importCsvInternal(
-      SecurityContext securityContext, String name, String csv, boolean dryRun, boolean recursive)
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      String csv,
+      boolean dryRun,
+      boolean recursive)
+      throws IOException {
+    return importCsvInternal(uriInfo, securityContext, name, csv, dryRun, recursive, null);
+  }
+
+  protected CsvImportResult importCsvInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      String csv,
+      boolean dryRun,
+      boolean recursive,
+      String versioningEntityType)
       throws IOException {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return repository.importFromCsv(
-        name, csv, dryRun, securityContext.getUserPrincipal().getName(), recursive);
+    CsvImportResult result =
+        nullOrEmpty(versioningEntityType)
+            ? repository.importFromCsv(
+                name, csv, dryRun, securityContext.getUserPrincipal().getName(), recursive)
+            : repository.importFromCsv(
+                name,
+                csv,
+                dryRun,
+                securityContext.getUserPrincipal().getName(),
+                recursive,
+                versioningEntityType);
+
+    // Create version history for bulk import (same logic as async import)
+    String effectiveVersioningEntityType =
+        nullOrEmpty(versioningEntityType) ? entityType : versioningEntityType;
+    if (result.getStatus() != ApiStatus.ABORTED
+        && result.getNumberOfRowsProcessed() > 1
+        && !dryRun) {
+      EntityRepository<EntityInterface> versioningRepo =
+          (EntityRepository<EntityInterface>)
+              Entity.getEntityRepository(effectiveVersioningEntityType);
+
+      // Only repositories that support versioning (indicated by flag) will execute this
+      if (versioningRepo.supportsBulkImportVersioning()) {
+        versioningRepo.createChangeEventForBulkOperation(
+            versioningRepo.getByName(
+                uriInfo,
+                name,
+                new Fields(versioningRepo.getAllowedFields(), ""),
+                Include.NON_DELETED,
+                false),
+            result,
+            securityContext.getUserPrincipal().getName());
+      }
+    }
+    return result;
   }
 
   protected ResourceContext<T> getResourceContext() {
@@ -954,5 +1107,47 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
       }
     }
+  }
+
+  @GET
+  @Path("/history")
+  @Operation(
+      operationId = "listAllEntityVersionsByTimestamp",
+      summary = "List all entity versions within a time range",
+      description =
+          "Get a paginated list of all entity versions within a given time range "
+              + "specified by `startTs` and `endTs` in milliseconds since epoch. ",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of all versions",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ResultList.class)))
+      })
+  public ResultList<T> listEntityHistoryByTimestamp(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Start timestamp in milliseconds since epoch", required = true)
+          @QueryParam("startTs")
+          long startTs,
+      @Parameter(description = "End timestamp in milliseconds since epoch", required = true)
+          @QueryParam("endTs")
+          long endTs,
+      @Parameter(description = "Limit the number of entity returned (1 to 1000000, default = 10)")
+          @DefaultValue("10")
+          @Min(value = 1, message = "must be greater than or equal to 1")
+          @Max(value = 500, message = "must be less than or equal to 500")
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(description = "Returns list of entity versions before this cursor")
+          @QueryParam("before")
+          String before,
+      @Parameter(description = "Returns list of entity versions after this cursor")
+          @QueryParam("after")
+          String after) {
+    return listEntityHistoryByTimestampInternal(
+        securityContext, startTs, endTs, before, after, limitParam);
   }
 }

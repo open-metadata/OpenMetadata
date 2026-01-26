@@ -28,7 +28,7 @@ class WebSocketMock {
    * @param page - Playwright page
    * @param urlPattern - WebSocket URL pattern to intercept (default: /push\/feed/)
    */
-  async setup(page: Page, urlPattern: RegExp = /push\/feed/) {
+  async setup(page: Page, urlPattern = /push\/feed/) {
     await page.routeWebSocket(urlPattern, (ws) => {
       this.wsRoute = ws;
 

@@ -300,12 +300,13 @@ describe('withDomainFilter', () => {
     method: string = 'get',
     url?: string,
     params?: Record<string, unknown>
-  ): InternalAxiosRequestConfig => ({
-    method,
-    url,
-    params,
-    headers: {},
-  }) as InternalAxiosRequestConfig;
+  ): InternalAxiosRequestConfig =>
+    ({
+      method,
+      url,
+      params,
+      headers: {},
+    } as InternalAxiosRequestConfig);
 
   describe('should not intercept requests', () => {
     it('should return config unchanged when path starts with /domain', () => {
@@ -458,7 +459,7 @@ describe('withDomainFilter', () => {
             must: [
               {
                 term: {
-                  'entityType': 'table',
+                  entityType: 'table',
                 },
               },
             ],
@@ -477,7 +478,7 @@ describe('withDomainFilter', () => {
       expect(filter.query.bool.must).toHaveLength(2);
       expect(filter.query.bool.must[0]).toEqual({
         term: {
-          'entityType': 'table',
+          entityType: 'table',
         },
       });
       expect(filter.query.bool.must[1]).toEqual({

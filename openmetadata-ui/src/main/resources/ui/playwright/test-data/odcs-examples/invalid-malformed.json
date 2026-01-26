@@ -1,0 +1,6 @@
+{
+  "apiVersion": "v3.1.0",
+  "kind": "DataContract",
+  "id": "malformed-json"
+  "name": "Missing comma"
+}

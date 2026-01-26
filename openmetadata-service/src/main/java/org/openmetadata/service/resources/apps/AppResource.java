@@ -104,7 +104,7 @@ import org.quartz.SchedulerException;
 @Collection(name = "apps", order = 8)
 @Slf4j
 public class AppResource extends EntityResource<App, AppRepository> {
-  public static final String COLLECTION_PATH = "v1/apps/";
+  public static final String COLLECTION_PATH = "/v1/apps/";
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   private PipelineServiceClientInterface pipelineServiceClient;
   static final String FIELDS = "owners";

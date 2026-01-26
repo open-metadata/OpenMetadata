@@ -84,6 +84,10 @@ export interface DataContract {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * Indicates whether this data contract is inherited from a parent entity.
+     */
+    inherited?: boolean;
+    /**
      * Latest validation result for this data contract.
      */
     latestResult?: LatestResult;
@@ -91,6 +95,10 @@ export interface DataContract {
      * Name of the data contract.
      */
     name: string;
+    /**
+     * ODCS quality rules stored during import for round-trip compatibility with ODCS export.
+     */
+    odcsQualityRules?: OdcsQualityRule[];
     /**
      * Owners of this data contract.
      */
@@ -126,7 +134,7 @@ export interface DataContract {
     /**
      * Terms of use for the data contract for both human and AI agents consumption.
      */
-    termsOfUse?: string;
+    termsOfUse?: TermsOfUse;
     /**
      * Reference to the test suite that contains tests related to this data contract.
      */
@@ -337,6 +345,187 @@ export enum ContractExecutionStatus {
 }
 
 /**
+ * Data quality rule definition.
+ */
+export interface OdcsQualityRule {
+    /**
+     * External rule documentation.
+     */
+    authoritativeDefinitions?: OdcsAuthoritativeDefinition[];
+    /**
+     * Failure consequences.
+     */
+    businessImpact?: string;
+    /**
+     * Column to apply the rule to.
+     */
+    column?: string;
+    /**
+     * Additional execution properties.
+     */
+    customProperties?: { [key: string]: any };
+    /**
+     * Rule documentation.
+     */
+    description?: string;
+    /**
+     * KPI classification.
+     */
+    dimension?: Dimension;
+    /**
+     * Vendor name (soda, greatExpectations, etc.).
+     */
+    engine?: string;
+    /**
+     * Vendor-specific configuration.
+     */
+    implementation?: string;
+    /**
+     * Standard quality metric from library (ODCS 3.1.0).
+     */
+    metric?: OdcsQualityMetric;
+    /**
+     * Value must equal.
+     */
+    mustBe?: number;
+    /**
+     * Value must be between [min, max].
+     */
+    mustBeBetween?: number[];
+    /**
+     * Value must be greater than or equal to.
+     */
+    mustBeGreaterOrEqualTo?: number;
+    /**
+     * Value must be greater than.
+     */
+    mustBeGreaterThan?: number;
+    /**
+     * Value must be less than or equal to.
+     */
+    mustBeLessOrEqualTo?: number;
+    /**
+     * Value must be less than.
+     */
+    mustBeLessThan?: number;
+    /**
+     * Value must not equal.
+     */
+    mustNotBe?: number;
+    /**
+     * Value must not be between [min, max].
+     */
+    mustNotBeBetween?: number[];
+    /**
+     * Rule identifier.
+     */
+    name?: string;
+    /**
+     * SQL for type=sql.
+     */
+    query?: string;
+    /**
+     * Library rule name. For type=library, can be one of the standard quality metrics.
+     */
+    rule?: string;
+    /**
+     * Schedule expression.
+     */
+    schedule?: string;
+    /**
+     * Cron or tool name.
+     */
+    scheduler?: string;
+    /**
+     * Impact level designation.
+     */
+    severity?: string;
+    /**
+     * Rule categorization.
+     */
+    tags?: string[];
+    /**
+     * Quality rule type.
+     */
+    type?: Type;
+    /**
+     * Measurement unit (rows, percent).
+     */
+    unit?: string;
+    /**
+     * Static value list.
+     */
+    validValues?: string[];
+    [property: string]: any;
+}
+
+/**
+ * External reference link.
+ */
+export interface OdcsAuthoritativeDefinition {
+    /**
+     * Name of the authoritative definition.
+     */
+    name?: string;
+    /**
+     * Type of the reference (e.g., documentation, specification).
+     */
+    type?: string;
+    /**
+     * URL to the authoritative definition.
+     */
+    url?: string;
+    [property: string]: any;
+}
+
+/**
+ * KPI classification.
+ */
+export enum Dimension {
+    AC = "ac",
+    Accuracy = "accuracy",
+    CF = "cf",
+    CS = "cs",
+    Completeness = "completeness",
+    Conformity = "conformity",
+    Consistency = "consistency",
+    Coverage = "coverage",
+    Cp = "cp",
+    Cv = "cv",
+    Timeliness = "timeliness",
+    Tm = "tm",
+    Uniqueness = "uniqueness",
+    Uq = "uq",
+}
+
+/**
+ * Standard quality metric from library (ODCS 3.1.0).
+ *
+ * Standard quality metrics library supported by ODCS 3.1.0.
+ */
+export enum OdcsQualityMetric {
+    Completeness = "completeness",
+    DistinctValues = "distinctValues",
+    DuplicateValues = "duplicateValues",
+    Freshness = "freshness",
+    InvalidValues = "invalidValues",
+    MissingValues = "missingValues",
+    NullValues = "nullValues",
+    RowCount = "rowCount",
+    UniqueValues = "uniqueValues",
+}
+
+/**
+ * Quality rule type.
+ */
+export enum Type {
+    Custom = "custom",
+    Library = "library",
+    SQL = "sql",
+    Text = "text",
+}
+
+/**
  * This schema defines the type for a column in a table.
  */
 export interface Column {
@@ -378,7 +567,11 @@ export interface Column {
     /**
      * Display Name that identifies this column name.
      */
-    displayName?:        string;
+    displayName?: string;
+    /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?:          any;
     fullyQualifiedName?: string;
     /**
      * Json schema only if the dataType is JSON else null.
@@ -741,6 +934,14 @@ export interface HistogramClass {
  */
 export interface TagLabel {
     /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
+    /**
      * Description for the tag label.
      */
     description?: string;
@@ -760,6 +961,11 @@ export interface TagLabel {
      * used to determine the tag label.
      */
     labelType: LabelType;
+    /**
+     * Additional metadata associated with this tag label, such as recognizer information for
+     * automatically applied tags.
+     */
+    metadata?: TagLabelMetadata;
     /**
      * Name of the tag or glossary term.
      */
@@ -794,6 +1000,75 @@ export enum LabelType {
     Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
+}
+
+/**
+ * Additional metadata associated with this tag label, such as recognizer information for
+ * automatically applied tags.
+ *
+ * Additional metadata associated with a tag label, including information about how the tag
+ * was applied.
+ */
+export interface TagLabelMetadata {
+    /**
+     * Metadata about the recognizer that automatically applied this tag
+     */
+    recognizer?: TagLabelRecognizerMetadata;
+}
+
+/**
+ * Metadata about the recognizer that automatically applied this tag
+ *
+ * Metadata about the recognizer that applied a tag, including scoring and pattern
+ * information.
+ */
+export interface TagLabelRecognizerMetadata {
+    /**
+     * Details of patterns that matched during recognition
+     */
+    patterns?: PatternMatch[];
+    /**
+     * Unique identifier of the recognizer that applied this tag
+     */
+    recognizerId: string;
+    /**
+     * Human-readable name of the recognizer
+     */
+    recognizerName: string;
+    /**
+     * Confidence score assigned by the recognizer (0.0 to 1.0)
+     */
+    score: number;
+    /**
+     * What the recognizer analyzed to apply this tag
+     */
+    target?: Target;
+}
+
+/**
+ * Information about a pattern that matched during recognition
+ */
+export interface PatternMatch {
+    /**
+     * Name of the pattern that matched
+     */
+    name: string;
+    /**
+     * Regular expression or pattern definition
+     */
+    regex?: string;
+    /**
+     * Confidence score for this specific pattern match
+     */
+    score: number;
+}
+
+/**
+ * What the recognizer analyzed to apply this tag
+ */
+export enum Target {
+    ColumnName = "column_name",
+    Content = "content",
 }
 
 /**
@@ -861,6 +1136,10 @@ export interface ContractSecurity {
      */
     dataClassification?: string;
     /**
+     * If the property is inherited from the Data Product
+     */
+    inherited?: boolean;
+    /**
      * Intended consumers of the data (e.g. internal teams, external partners, etc.)
      */
     policies?: Policy[];
@@ -922,6 +1201,10 @@ export interface SemanticsRule {
      */
     ignoredEntities?: string[];
     /**
+     * Whether this rule was inherited from a Data Product.
+     */
+    inherited?: boolean;
+    /**
      * JSON Tree to represents rule in UI.
      */
     jsonTree?: string;
@@ -962,6 +1245,10 @@ export interface ContractSLA {
      * Column that represents the refresh time of the data (if applicable)
      */
     columnName?: string;
+    /**
+     * If the property is inherited from the Data Product
+     */
+    inherited?: boolean;
     /**
      * Maximum acceptable latency between data generation and availability (e.g. 4 hours)
      */
@@ -1069,4 +1356,16 @@ export enum Timezone {
     GMT1200PacificAuckland = "GMT+12:00 (Pacific/Auckland)",
     GMT1300PacificTongatapu = "GMT+13:00 (Pacific/Tongatapu)",
     GMT1400PacificKiritimati = "GMT+14:00 (Pacific/Kiritimati)",
+}
+
+/**
+ * Terms of use for the data contract for both human and AI agents consumption.
+ */
+export interface TermsOfUse {
+    content?: string;
+    /**
+     * If the property is inherited from the Data Product
+     */
+    inherited?: boolean;
+    [property: string]: any;
 }

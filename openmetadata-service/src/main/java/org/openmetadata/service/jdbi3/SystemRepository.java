@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
@@ -17,10 +18,12 @@ import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -74,6 +77,7 @@ import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.LoginAttemptCache;
 import org.openmetadata.service.security.auth.validator.Auth0Validator;
 import org.openmetadata.service.security.auth.validator.AzureAuthValidator;
@@ -880,6 +884,20 @@ public class SystemRepository {
           || authConfig.getJwtPrincipalClaims().isEmpty()) {
         return ValidationErrorBuilder.createFieldError(
             FieldPaths.AUTH_JWT_PRINCIPAL_CLAIMS, "JWT principal claims are required");
+      }
+
+      if (authConfig.getJwtPrincipalClaimsMapping() != null
+          && !authConfig.getJwtPrincipalClaimsMapping().isEmpty()) {
+        try {
+          Map<String, String> claimsMapping =
+              listOrEmpty(authConfig.getJwtPrincipalClaimsMapping()).stream()
+                  .map(s -> s.split(":"))
+                  .collect(Collectors.toMap(s -> s[0], s -> s[1]));
+          SecurityUtil.validatePrincipalClaimsMapping(claimsMapping);
+        } catch (Exception e) {
+          return ValidationErrorBuilder.createFieldError(
+              FieldPaths.AUTH_JWT_PRINCIPAL_CLAIMS_MAPPING, e.getMessage());
+        }
       }
 
       return null; // No errors - validation passed

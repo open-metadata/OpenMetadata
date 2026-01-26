@@ -39,6 +39,8 @@
     ],
     "supportsRowLevelPassedFailed": false,
     "provider": "system",
-    "dataQualityDimension": "Accuracy"
+  "enabled": true,
+    "dataQualityDimension": "Accuracy",
+    "validatorClass": "ColumnValuesToBeAtExpectedLocationValidator"
   }
   

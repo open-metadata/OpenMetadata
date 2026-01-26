@@ -63,22 +63,31 @@ public class JettyMetricsIntegration {
   }
 
   private static void registerStatisticsHandlerMetrics(StatisticsHandler handler) {
-    // Request statistics
+    // Request statistics - Jetty 12 uses getRequestTotal() instead of deprecated getRequests()
     Metrics.gauge("jetty.requests.current", handler, StatisticsHandler::getRequestsActive);
-    Metrics.gauge("jetty.requests.total", handler, StatisticsHandler::getRequests);
+    Metrics.gauge("jetty.requests.total", handler, StatisticsHandler::getRequestTotal);
     Metrics.gauge("jetty.requests.failed", handler, h -> h.getResponses5xx());
+    Metrics.gauge("jetty.requests.active.max", handler, StatisticsHandler::getRequestsActiveMax);
 
-    // Response time statistics
+    // Response time statistics (values are in nanoseconds in Jetty 12)
     Metrics.gauge("jetty.response.time.mean", handler, StatisticsHandler::getRequestTimeMean);
     Metrics.gauge("jetty.response.time.max", handler, StatisticsHandler::getRequestTimeMax);
     Metrics.gauge("jetty.response.time.stddev", handler, StatisticsHandler::getRequestTimeStdDev);
 
-    // Bytes statistics
-    Metrics.gauge("jetty.bytes.sent.total", handler, StatisticsHandler::getResponsesBytesTotal);
+    // Bytes statistics - Jetty 12 uses getBytesWritten() instead of getResponsesBytesTotal()
+    Metrics.gauge("jetty.bytes.sent.total", handler, StatisticsHandler::getBytesWritten);
+    Metrics.gauge("jetty.bytes.received.total", handler, StatisticsHandler::getBytesRead);
 
-    // Connection statistics
-    Metrics.gauge("jetty.connections.duration.mean", handler, h -> h.getRequestTimeMean());
-    Metrics.gauge("jetty.connections.duration.max", handler, h -> h.getRequestTimeMax());
+    // Response status code statistics
+    Metrics.gauge("jetty.responses.1xx", handler, StatisticsHandler::getResponses1xx);
+    Metrics.gauge("jetty.responses.2xx", handler, StatisticsHandler::getResponses2xx);
+    Metrics.gauge("jetty.responses.3xx", handler, StatisticsHandler::getResponses3xx);
+    Metrics.gauge("jetty.responses.4xx", handler, StatisticsHandler::getResponses4xx);
+    Metrics.gauge("jetty.responses.5xx", handler, StatisticsHandler::getResponses5xx);
+
+    // Failure statistics
+    Metrics.gauge("jetty.failures.total", handler, StatisticsHandler::getFailures);
+    Metrics.gauge("jetty.failures.handling", handler, StatisticsHandler::getHandlingFailures);
 
     LOG.info("Jetty StatisticsHandler metrics registered");
   }

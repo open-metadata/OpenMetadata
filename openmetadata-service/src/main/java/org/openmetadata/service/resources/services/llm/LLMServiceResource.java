@@ -66,7 +66,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 public class LLMServiceResource
     extends ServiceEntityResource<LLMService, LLMServiceRepository, LLMConnection> {
   private final LLMServiceMapper mapper = new LLMServiceMapper();
-  public static final String COLLECTION_PATH = "v1/services/llmServices/";
+  public static final String COLLECTION_PATH = "/v1/services/llmServices/";
   public static final String FIELDS = "pipelines,owners,tags,domains,followers";
 
   @Override
@@ -176,8 +176,18 @@ public class LLMServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    LLMService llmService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    LLMService llmService =
+        getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
     return decryptOrNullify(securityContext, llmService);
   }
 
@@ -215,8 +225,18 @@ public class LLMServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    LLMService llmService = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    LLMService llmService =
+        getByNameInternal(uriInfo, securityContext, name, fieldsParam, include, includeRelations);
     return decryptOrNullify(securityContext, llmService);
   }
 

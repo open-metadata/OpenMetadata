@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { ReactNode } from 'react';
+import { EntityType } from '../../../enums/entity.enum';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 
 export interface DisplayNameProps {
@@ -27,4 +28,8 @@ export interface DisplayNameProps {
    * To allow renaming the `displayName` field of the entity
    */
   hasEditPermission?: boolean;
+  /**
+   * Entity type for copy link functionality. If provided, shows copy link button.
+   */
+  entityType?: EntityType;
 }

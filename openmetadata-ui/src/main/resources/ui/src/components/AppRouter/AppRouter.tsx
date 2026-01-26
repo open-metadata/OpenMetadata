@@ -15,6 +15,7 @@ import { isEmpty, isNil } from 'lodash';
 import { useCallback, useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
+import { useShallow } from 'zustand/react/shallow';
 import { ROUTES } from '../../constants/constants';
 import { CustomEventTypes } from '../../generated/analytics/webAnalyticEventData';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -35,14 +36,20 @@ const AppRouter = () => {
   const UnAuthenticatedAppRouter =
     applicationRoutesClass.getUnAuthenticatedRouteElements();
 
-  // web analytics instance
   const analytics = useAnalytics();
   const {
     currentUser,
     isAuthenticated,
     isApplicationLoading,
     isAuthenticating,
-  } = useApplicationStore();
+  } = useApplicationStore(
+    useShallow((state) => ({
+      currentUser: state.currentUser,
+      isAuthenticated: state.isAuthenticated,
+      isApplicationLoading: state.isApplicationLoading,
+      isAuthenticating: state.isAuthenticating,
+    }))
+  );
   const { plugins = [] } = useApplicationsProvider();
 
   useEffect(() => {

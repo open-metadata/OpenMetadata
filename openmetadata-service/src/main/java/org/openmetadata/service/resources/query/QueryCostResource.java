@@ -44,7 +44,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 public class QueryCostResource
     extends EntityTimeSeriesResource<QueryCostRecord, QueryCostRepository> {
 
-  public static final String COLLECTION_PATH = "v1/queryCostRecord";
+  public static final String COLLECTION_PATH = "/v1/queryCostRecord";
 
   private final QueryCostRecordMapper mapper = new QueryCostRecordMapper();
 

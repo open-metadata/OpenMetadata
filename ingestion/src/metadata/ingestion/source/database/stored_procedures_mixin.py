@@ -206,6 +206,7 @@ class StoredProcedureLineageMixin(ABC):
             self.source_config.parsingTimeoutLimit,
             self.procedure_graph_map,
             self.source_config.enableTempTableLineage,
+            self.get_query_parser_type(),
         )
         yield from self.generate_lineage_with_processes(
             producer_fn,

@@ -45,6 +45,11 @@
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
       "title": "Default API Collection Filter Pattern"
     },
+    "apiEndpointFilterPattern": {
+      "description": "Regex to only fetch api endpoints with names matching the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default API Endpoint Filter Pattern"
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "description": "Supports Metadata Extraction.",

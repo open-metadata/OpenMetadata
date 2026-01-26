@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { MOCK_SEARCH_INDEX_FIELDS } from '../../../mocks/SearchIndex.mock';
 import SearchIndexFieldsTable from './SearchIndexFieldsTable';
 
@@ -79,27 +80,69 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <div>SearchBar</div>)
 );
 
-jest.mock('../../../utils/TableUtils', () => ({
-  searchInFields: jest.fn().mockReturnValue(MOCK_SEARCH_INDEX_FIELDS),
-  updateFieldDescription: jest.fn(),
-  updateFieldTags: jest.fn(),
-  getTableExpandableConfig: jest.fn().mockReturnValue({}),
-  getTableColumnConfigSelections: jest
+jest.mock(
+  '../../../components/Database/ColumnDetailPanel/ColumnDetailPanel.component',
+  () => ({
+    ColumnDetailPanel: jest
+      .fn()
+      .mockImplementation(() => <div data-testid="column-detail-panel" />),
+  })
+);
+
+jest.mock(
+  '../../../components/Database/ColumnFilter/ColumnFilter.component',
+  () => ({
+    ColumnFilter: jest
+      .fn()
+      .mockImplementation(() => <div data-testid="column-filter" />),
+  })
+);
+
+jest.mock(
+  '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider',
+  () => ({
+    EntityAttachmentProvider: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+  })
+);
+
+jest.mock('../../../utils/TableUtils', () => {
+  const actual = jest.requireActual('../../../utils/TableUtils');
+
+  return {
+    ...actual,
+    searchInFields: jest.fn().mockReturnValue(MOCK_SEARCH_INDEX_FIELDS),
+    updateFieldDescription: jest.fn(),
+    updateFieldTags: jest.fn(),
+    getTableExpandableConfig: jest.fn().mockReturnValue({}),
+    getTableColumnConfigSelections: jest
+      .fn()
+      .mockReturnValue([
+        'name',
+        'description',
+        'dataTypeDisplay',
+        'tags',
+        'glossary',
+      ]),
+    handleUpdateTableColumnSelections: jest.fn(),
+  };
+});
+
+jest.mock('../../../utils/RouterUtils', () => ({
+  getEntityDetailsPath: jest
     .fn()
-    .mockReturnValue([
-      'name',
-      'description',
-      'dataTypeDisplay',
-      'tags',
-      'glossary',
-    ]),
-  handleUpdateTableColumnSelections: jest.fn(),
+    .mockImplementation((_entityType, fqn) => `/searchIndex/${fqn}`),
 }));
 
 describe('SearchIndexFieldsTable component', () => {
   it('SearchIndexFieldsTable should render a table with proper data', async () => {
     await act(async () => {
-      render(<SearchIndexFieldsTable {...mockProps} />);
+      render(
+        <MemoryRouter>
+          <SearchIndexFieldsTable {...mockProps} />
+        </MemoryRouter>
+      );
     });
 
     expect(screen.getByText('testToggleExpandButton')).toBeInTheDocument();
@@ -111,11 +154,13 @@ describe('SearchIndexFieldsTable component', () => {
   it('SearchIndexFieldsTable should not display data if fields data is empty', async () => {
     await act(async () => {
       render(
-        <SearchIndexFieldsTable
-          {...mockProps}
-          isReadOnly={false}
-          searchIndexFields={[]}
-        />
+        <MemoryRouter>
+          <SearchIndexFieldsTable
+            {...mockProps}
+            isReadOnly={false}
+            searchIndexFields={[]}
+          />
+        </MemoryRouter>
       );
     });
 
@@ -127,10 +172,12 @@ describe('SearchIndexFieldsTable component', () => {
   it('SearchIndexFieldsTable should only show relevant field rows according to the searchedFields data', async () => {
     await act(async () => {
       render(
-        <SearchIndexFieldsTable
-          {...mockProps}
-          searchIndexFields={mockSearchedFields}
-        />
+        <MemoryRouter>
+          <SearchIndexFieldsTable
+            {...mockProps}
+            searchIndexFields={mockSearchedFields}
+          />
+        </MemoryRouter>
       );
     });
 
@@ -143,15 +190,60 @@ describe('SearchIndexFieldsTable component', () => {
   it('SearchIndexFieldsTable should show value from dataType field when there is no dataTypeDisplay is present', async () => {
     await act(async () => {
       render(
-        <SearchIndexFieldsTable
-          {...mockProps}
-          searchIndexFields={mockSearchedFields}
-        />
+        <MemoryRouter>
+          <SearchIndexFieldsTable
+            {...mockProps}
+            searchIndexFields={mockSearchedFields}
+          />
+        </MemoryRouter>
       );
     });
 
     const dataTypeFieldForColumnName = screen.getByTestId('name-data-type');
 
     expect(dataTypeFieldForColumnName).toHaveTextContent('text');
+  });
+
+  it('Should render copy field link button for each field', async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <SearchIndexFieldsTable {...mockProps} />
+        </MemoryRouter>
+      );
+    });
+
+    const copyButtons = await screen.findAllByTestId('copy-field-link-button');
+
+    expect(copyButtons.length).toBeGreaterThan(0);
+  });
+
+  it('Should copy field link to clipboard when copy button is clicked', async () => {
+    const mockWriteText = jest.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: mockWriteText,
+      },
+    });
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      writable: true,
+    });
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <SearchIndexFieldsTable {...mockProps} />
+        </MemoryRouter>
+      );
+    });
+
+    const copyButtons = await screen.findAllByTestId('copy-field-link-button');
+
+    await act(async () => {
+      fireEvent.click(copyButtons[0]);
+    });
+
+    expect(mockWriteText).toHaveBeenCalled();
   });
 });

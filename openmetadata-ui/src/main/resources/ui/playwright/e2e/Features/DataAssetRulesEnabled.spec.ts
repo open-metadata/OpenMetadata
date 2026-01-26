@@ -49,10 +49,15 @@ import { performAdminLogin } from '../../utils/admin';
 import {
   assignDataProduct,
   assignSingleSelectDomain,
+  clickOutside,
   redirectToHomePage,
 } from '../../utils/common';
 import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
-import { addOwner, assignGlossaryTerm } from '../../utils/entity';
+import {
+  addOwner,
+  assignGlossaryTerm,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { test } from '../fixtures/pages';
 
 const entities = [
@@ -210,5 +215,93 @@ test.describe(
         }
       });
     }
+  }
+);
+
+test.describe(
+  `GlossaryTerm Domain Entity Rules Enabled`,
+  {
+    tag: '@dataAssetRules',
+  },
+  () => {
+    // Verify entity rules restrict to single domain selection for glossary term
+    test('should enforce single domain selection for glossary term when entity rules are enabled', async ({
+      page,
+      browser,
+    }) => {
+      test.slow(true);
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      const testDomain1 = new Domain();
+      const testDomain2 = new Domain();
+      const testGlossary = new Glossary();
+      const testGlossaryTerm = new GlossaryTerm(testGlossary);
+
+      try {
+        await testDomain1.create(apiContext);
+        await testDomain2.create(apiContext);
+        await testGlossary.create(apiContext);
+        await testGlossaryTerm.create(apiContext);
+
+        // Navigate to glossary term page with full page load
+        await page.goto(
+          `/glossary/${encodeURIComponent(testGlossaryTerm.responseData.fullyQualifiedName)}`
+        );
+
+        await page.waitForLoadState('domcontentloaded');
+        await waitForAllLoadersToDisappear(page);
+
+        // Open domain selector to verify single-select mode (no checkboxes)
+        await page.getByTestId('add-domain').click();
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        // Verify checkboxes are NOT visible (single-select mode)
+        await expect(
+          page.locator('.domain-selectable-tree .ant-tree-checkbox')
+        ).toHaveCount(0);
+
+        // Close the selector by clicking outside
+        await clickOutside(page);
+
+        // Wait for domain selector to be fully closed
+        await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
+          state: 'detached',
+        });
+
+        // Assign first domain (single-select mode)
+        await assignSingleSelectDomain(page, testDomain1.responseData);
+
+        // Verify first domain is visible
+        await expect(page.getByTestId('domain-link')).toContainText(
+          testDomain1.data.displayName
+        );
+
+        // Assign second domain (should REPLACE first, not add to it)
+        await assignSingleSelectDomain(page, testDomain2.responseData);
+
+        // Verify second domain is visible
+        await expect(page.getByTestId('domain-link')).toContainText(
+          testDomain2.data.displayName
+        );
+
+        // Verify first domain is NOT visible (replaced, not added)
+        // This confirms single-select mode is enforced by entity rules
+        await expect(page.getByTestId('domain-link')).not.toContainText(
+          testDomain1.data.displayName
+        );
+
+        // Verify no domain count button (only single domain, not multiple)
+        await expect(
+          page.getByTestId('domain-count-button')
+        ).not.toBeVisible();
+      } finally {
+        await testGlossaryTerm.delete(apiContext);
+        await testGlossary.delete(apiContext);
+        await testDomain1.delete(apiContext);
+        await testDomain2.delete(apiContext);
+        await afterAction();
+      }
+    });
   }
 );

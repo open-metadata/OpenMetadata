@@ -53,6 +53,7 @@ import org.openmetadata.service.resources.apis.APIEndpointResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
@@ -157,7 +158,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
   }
 
   @Override
-  public void setFields(APIEndpoint apiEndpoint, Fields fields) {
+  public void setFields(APIEndpoint apiEndpoint, Fields fields, RelationIncludes relationIncludes) {
     setDefaultFields(apiEndpoint);
     if (apiEndpoint.getRequestSchema() != null) {
       populateEntityFieldTags(

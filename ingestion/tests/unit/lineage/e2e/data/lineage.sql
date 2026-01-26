@@ -483,6 +483,53 @@ LEFT JOIN source_table_6 s6 ON combined.col2 = s6.col2
 LEFT JOIN VIEW_4 v4 ON s6.col3 = v4.col3;
 /
 
+-- ============================================================================
+-- TEMP TABLE LINEAGE TEST
+-- Test the temp table lineage feature where an intermediate table is created
+-- from a source, used to create target table and view, then deleted.
+-- With enableTempTableLineage=true, lineage should still be captured end-to-end
+-- from source_table_1 -> interim_target_table_1 and interim_target_view_1
+-- even though interim_temp_table_1 won't exist in metadata.
+-- ============================================================================
+
+-- Step 1: Create intermediate table from source
+CREATE TABLE interim_temp_table_1 AS
+SELECT col1, col2, col3, col4, col5, col6
+FROM source_table_1
+WHERE col1 IS NOT NULL;
+/
+
+-- Step 2: Create target table from intermediate table
+CREATE TABLE interim_target_table_1 AS
+SELECT col1, col2, col3, col4
+FROM interim_temp_table_1
+WHERE col2 IS NOT NULL;
+/
+
+-- Step 3: Create target view from intermediate table
+CREATE VIEW interim_target_view_1 AS
+SELECT col1, col2, col5, col6
+FROM interim_temp_table_1
+WHERE col1 > 0;
+-- /
+
+
+-- Deleting the intermediate table results in gv$sql.object_status = 'INVALID_UNAUTH'
+-- since the base object for the target table and view is dropped. To avoid this, we
+-- will use tableFilterPattern to exclude interim_temp_table_1 from ingestion instead of
+-- dropping it.
+
+-- Step 4: Delete the intermediate table (it won't be ingested into metadata)
+-- DROP TABLE interim_temp_table_1;
+
+-- ============================================================================
+-- END TEMP TABLE LINEAGE TEST
+-- Expected lineage with enableTempTableLineage=true:
+--   source_table_1 -> interim_target_table_1
+--   source_table_1 -> interim_target_view_1
+-- ============================================================================
+/
+
 -- Replicate gv$sql with "TEST" schema queries into permanent table for debugging
 CREATE TABLE gv_sql_cache AS
 SELECT

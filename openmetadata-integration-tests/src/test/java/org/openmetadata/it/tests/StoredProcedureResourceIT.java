@@ -37,7 +37,9 @@ public class StoredProcedureResourceIT
     extends BaseEntityIT<StoredProcedure, CreateStoredProcedure> {
 
   {
-    supportsSearchIndex = false; // StoredProcedure doesn't have search index
+    supportsSearchIndex = false;
+    supportsLifeCycle = true;
+    supportsListHistoryByTimestamp = true;
   }
 
   // ===================================================================

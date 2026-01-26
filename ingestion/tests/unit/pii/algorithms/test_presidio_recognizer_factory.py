@@ -18,6 +18,9 @@ import pytest
 from presidio_analyzer import EntityRecognizer, PatternRecognizer
 
 from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.generated.schema.type.classificationLanguages import (
+    ClassificationLanguage,
+)
 from metadata.generated.schema.type.contextRecognizer import ContextRecognizer
 from metadata.generated.schema.type.customRecognizer import CustomRecognizer
 from metadata.generated.schema.type.denyListRecognizer import DenyListRecognizer
@@ -77,7 +80,7 @@ class TestPresidioRecognizerFactory:
                     type="pattern",
                     supportedEntity=PIIEntity.EMAIL_ADDRESS,
                     patterns=patterns,
-                    supportedLanguage="en",
+                    supportedLanguage=ClassificationLanguage.en,
                     regexFlags=RegexFlags(),
                     context=[],
                 )
@@ -88,7 +91,7 @@ class TestPresidioRecognizerFactory:
 
         assert isinstance(result, PatternRecognizer)
         assert result.supported_entities == ["EMAIL_ADDRESS"]
-        assert result.supported_language == "en"
+        assert result.supported_language == ClassificationLanguage.en.value
         assert result.name == "email_recognizer"
         assert len(result.patterns) == 1
         assert result.patterns[0].name == "email_pattern"
@@ -107,7 +110,7 @@ class TestPresidioRecognizerFactory:
                     type="deny_list",
                     supportedEntity=PIIEntity.US_SSN,
                     denyList=deny_list,
-                    supportedLanguage="en",
+                    supportedLanguage=ClassificationLanguage.en,
                     regexFlags=RegexFlags(),
                 )
             ),
@@ -136,7 +139,7 @@ class TestPresidioRecognizerFactory:
                     type="context",
                     supportedEntity=PIIEntity.US_SSN,
                     contextWords=context_words,
-                    supportedLanguage="en",
+                    supportedLanguage=ClassificationLanguage.en,
                     minScore=0.4,
                     maxScore=0.8,
                 )
@@ -163,7 +166,7 @@ class TestPresidioRecognizerFactory:
                     type="custom",
                     validatorFunction="def validate(text): return True",
                     supportedEntity=PIIEntity.PERSON,
-                    supportedLanguage="en",
+                    supportedLanguage=ClassificationLanguage.en,
                 )
             ),
         )
@@ -180,7 +183,7 @@ class TestPresidioRecognizerFactory:
                 root=PredefinedRecognizer(
                     type="predefined",
                     name=PredefinedRecognizerName.EmailRecognizer,
-                    supportedLanguage="en",
+                    supportedLanguage=ClassificationLanguage.en,
                     context=["email", "mail"],
                 )
             ),
@@ -327,7 +330,7 @@ class TestPresidioRecognizerFactory:
                     ],
                     regexFlags=RegexFlags(),
                     context=[],
-                    supportedLanguage="en",
+                    supportedLanguage=ClassificationLanguage.en,
                 )
             ),
         )
@@ -340,7 +343,7 @@ class TestPresidioRecognizerFactory:
                     type="deny_list",
                     supportedEntity=PIIEntity.US_SSN,
                     denyList=["secret"],
-                    supportedLanguage="en",
+                    supportedLanguage=ClassificationLanguage.en,
                     regexFlags=RegexFlags(),
                 )
             ),
@@ -356,7 +359,7 @@ class TestPresidioRecognizerFactory:
                     patterns=[],
                     regexFlags=RegexFlags(),
                     context=[],
-                    supportedLanguage="en",
+                    supportedLanguage=ClassificationLanguage.en,
                 )
             ),
         )
@@ -411,7 +414,7 @@ class TestRecognizerRegistry:
                     ],
                     regexFlags=RegexFlags(),
                     context=[],
-                    supportedLanguage="en",
+                    supportedLanguage=ClassificationLanguage.en,
                 )
             ),
         )
@@ -447,7 +450,7 @@ class TestRecognizerRegistry:
                     patterns=[Pattern(name="test", regex=r"test", score=0.8)],
                     regexFlags=RegexFlags(),
                     context=[],
-                    supportedLanguage="en",
+                    supportedLanguage=ClassificationLanguage.en,
                 )
             ),
         )
@@ -491,7 +494,7 @@ class TestRecognizerRegistry:
                             patterns=[Pattern(name="test1", regex=r"test1", score=0.8)],
                             regexFlags=RegexFlags(),
                             context=[],
-                            supportedLanguage="en",
+                            supportedLanguage=ClassificationLanguage.en,
                         )
                     ),
                 )
@@ -515,7 +518,7 @@ class TestRecognizerRegistry:
                             patterns=[Pattern(name="test2", regex=r"test2", score=0.8)],
                             regexFlags=RegexFlags(),
                             context=[],
-                            supportedLanguage="en",
+                            supportedLanguage=ClassificationLanguage.en,
                         )
                     ),
                 )
@@ -566,7 +569,7 @@ class TestRecognizerRegistry:
                     patterns=[Pattern(name="test", regex=r"test", score=0.8)],
                     regexFlags=RegexFlags(),
                     context=[],
-                    supportedLanguage="en",
+                    supportedLanguage=ClassificationLanguage.en,
                 )
             ),
         )
@@ -582,7 +585,7 @@ class TestRecognizerRegistry:
                     patterns=[Pattern(name="test", regex=r"test", score=0.8)],
                     regexFlags=RegexFlags(),
                     context=[],
-                    supportedLanguage="en",
+                    supportedLanguage=ClassificationLanguage.en,
                 )
             ),
         )

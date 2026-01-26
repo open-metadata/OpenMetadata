@@ -37,7 +37,10 @@ import {
   getToken,
   redirectToHomePage,
 } from '../../utils/common';
-import { CustomPropertyTypeByName } from '../../utils/customProperty';
+import {
+  CustomPropertyTypeByName,
+  updateCustomPropertyInRightPanel,
+} from '../../utils/customProperty';
 
 const entities = {
   'Api Service': ApiServiceClass,
@@ -194,6 +197,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
      * @description Creates an inactive announcement and then deletes it
      */
     test(`Inactive Announcement create & delete`, async ({ page }) => {
+      // used slow as test contain page reload which might lead to timeout
+      test.slow(true);
       await entity.inactiveAnnouncement(page);
     });
 
@@ -232,6 +237,25 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             );
           }
         });
+
+        await test.step(
+          `Update ${titleText} Custom Property in Right Panel`,
+          async () => {
+            test.slow();
+            for (const [index, type] of properties.entries()) {
+              await updateCustomPropertyInRightPanel({
+                page,
+                entityName:
+                  entity.entityResponseData['displayName'] ??
+                  entity.entityResponseData['name'],
+                propertyDetails: entity.customPropertyValue[type].property,
+                value: entity.customPropertyValue[type].value,
+                endpoint: entity.endpoint,
+                skipNavigation: index > 0,
+              });
+            }
+          }
+        );
 
         await entity.cleanupCustomProperty(apiContext);
         await afterAction();

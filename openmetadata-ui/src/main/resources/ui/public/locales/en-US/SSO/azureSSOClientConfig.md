@@ -80,6 +80,35 @@ Azure Active Directory (Azure AD) SSO enables users to log in with their Microso
 - **Example:** ["email:email", "username:preferred_username"]
 - **Why it matters:** Controls how user information from Azure AD maps to OpenMetadata user profiles.
 - **Note:** Format: "openmetadata_field:jwt_claim"
+- **Validation Requirements:**
+  - Both `username` and `email` mappings must be present when this field is used
+  - Only `username` and `email` keys are allowed; no other keys are permitted
+  - If validation fails, errors will be displayed on this specific field
+
+### <span data-id="jwtTeamClaimMapping">JWT Team Claim Mapping</span>
+
+- **Definition:** Azure AD claim or attribute containing team/department information for automatic team assignment.
+- **Example:** "department" or "jobTitle" or "companyName" or "groups"
+- **Why it matters:** Automatically assigns users to existing OpenMetadata teams based on their Azure AD attributes during login.
+- **How it works:**
+  - Extracts the value(s) from the specified Azure AD claim (e.g., if set to "department", reads user's department from Azure AD)
+  - For array claims (like "groups"), processes all values in the array
+  - Matches the extracted value(s) against existing team names in OpenMetadata
+  - Assigns the user to all matching teams that are of type "Group"
+  - If a team doesn't exist or is not of type "Group", a warning is logged but authentication continues
+- **Azure AD Configuration:**
+  - Common attributes: "department", "jobTitle", "companyName", "officeLocation"
+  - To use custom attributes, ensure they're included in the token:
+    1. Go to Azure AD → App registrations → Your app → Token configuration
+    2. Add optional claims → Select ID token → Add the desired attribute (e.g., "department")
+    3. Check "Turn on the Microsoft Graph profile permission"
+  - For group-based teams, use "groups" claim (requires group membership configuration)
+- **Note:** 
+  - The team must already exist in OpenMetadata for assignment to work
+  - Only teams of type "Group" can be auto-assigned (not "Organization" or "BusinessUnit" teams)
+  - Team names are case-sensitive and must match exactly
+  - Azure AD's "department" attribute is the most common use case (e.g., "Engineering", "Sales", "Marketing")
+  - Multiple team assignments are supported for array claims (e.g., "groups")
 
 ### <span data-id="tokenValidation">Token Validation Algorithm</span>
 

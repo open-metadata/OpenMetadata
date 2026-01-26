@@ -23,12 +23,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.azure.core.exception.HttpResponseException;
 import java.net.URI;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -86,6 +88,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     supportsSoftDelete = true;
     supportsPatch = true;
     supportsOwners = false;
+    supportsListHistoryByTimestamp = true;
   }
 
   // ===================================================================
@@ -1614,18 +1617,36 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
     Personas.delete(persona.getId().toString());
 
-    User afterDelete1 = Users.get(user1.getId().toString(), "personas,defaultPersona");
-    assertTrue(
-        afterDelete1.getPersonas() == null || afterDelete1.getPersonas().isEmpty(),
-        "Personas should be cleaned up after persona deletion");
-    assertTrue(
-        afterDelete1.getDefaultPersona() == null,
-        "Default persona should be cleaned up after persona deletion");
+    // Poll until persona relationships are cleaned up (may be async)
+    String user1Id = user1.getId().toString();
+    String user2Id = user2.getId().toString();
 
-    User afterDelete2 = Users.get(user2.getId().toString(), "personas");
-    assertTrue(
-        afterDelete2.getPersonas() == null || afterDelete2.getPersonas().isEmpty(),
-        "Personas should be cleaned up after persona deletion");
+    Awaitility.await("Wait for persona cleanup on user1")
+        .pollDelay(Duration.ofMillis(100))
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              User afterDelete1 = Users.get(user1Id, "personas,defaultPersona");
+              assertTrue(
+                  afterDelete1.getPersonas() == null || afterDelete1.getPersonas().isEmpty(),
+                  "Personas should be cleaned up after persona deletion");
+              assertTrue(
+                  afterDelete1.getDefaultPersona() == null,
+                  "Default persona should be cleaned up after persona deletion");
+            });
+
+    Awaitility.await("Wait for persona cleanup on user2")
+        .pollDelay(Duration.ofMillis(100))
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              User afterDelete2 = Users.get(user2Id, "personas");
+              assertTrue(
+                  afterDelete2.getPersonas() == null || afterDelete2.getPersonas().isEmpty(),
+                  "Personas should be cleaned up after persona deletion");
+            });
   }
 
   @Test
