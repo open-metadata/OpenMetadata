@@ -170,8 +170,7 @@ class UserUtilTest {
 
   @Test
   void testCreateBotEmail_emptyBotName() {
-    assertThrows(
-        IllegalArgumentException.class, () -> UserUtil.createBotEmail("", "domain.com"));
+    assertThrows(IllegalArgumentException.class, () -> UserUtil.createBotEmail("", "domain.com"));
   }
 
   @Test

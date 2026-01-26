@@ -148,6 +148,130 @@ public final class UserUtil {
     }
   }
 
+  /**
+   * Create or update admin users based on email addresses from configuration. Processes adminEmails
+   * (new config) first, then falls back to adminPrincipals (legacy) for backward compatibility.
+   *
+   * @param authProvider authentication provider
+   * @param authConfig authorizer configuration containing adminEmails and adminPrincipals
+   */
+  public static void createOrUpdateAdminUsers(
+      AuthProvider authProvider, AuthorizerConfiguration authConfig) {
+    if (authConfig == null) {
+      LOG.warn("[BootstrapUser] AuthorizerConfiguration is null, skipping admin user creation");
+      return;
+    }
+
+    Set<String> processedEmails = new HashSet<>();
+
+    Set<String> adminEmails = authConfig.getAdminEmails();
+    if (adminEmails != null && !adminEmails.isEmpty()) {
+      for (String email : adminEmails) {
+        if (nullOrEmpty(email)) {
+          continue;
+        }
+        String normalizedEmail = email.toLowerCase();
+        if (processedEmails.contains(normalizedEmail)) {
+          continue;
+        }
+        processedEmails.add(normalizedEmail);
+        try {
+          createOrUpdateAdminByEmail(authProvider, normalizedEmail);
+        } catch (Exception ex) {
+          LOG.error("[BootstrapUser] Failed to create/update admin user for email: {}", email, ex);
+        }
+      }
+    }
+
+    Set<String> adminPrincipals = authConfig.getAdminPrincipals();
+    if (adminPrincipals != null && !adminPrincipals.isEmpty()) {
+      String domain = authConfig.getPrincipalDomain();
+      if (nullOrEmpty(domain)) {
+        domain = "openmetadata.org";
+      }
+      for (String principal : adminPrincipals) {
+        if (nullOrEmpty(principal)) {
+          continue;
+        }
+        String email = (principal + "@" + domain).toLowerCase();
+        if (processedEmails.contains(email)) {
+          LOG.debug(
+              "[BootstrapUser] Skipping adminPrincipal '{}' - already processed via adminEmails",
+              principal);
+          continue;
+        }
+        processedEmails.add(email);
+        try {
+          createOrUpdateAdminByEmail(authProvider, email);
+        } catch (Exception ex) {
+          LOG.error(
+              "[BootstrapUser] Failed to create/update admin user for principal: {}",
+              principal,
+              ex);
+        }
+      }
+    }
+  }
+
+  private static void createOrUpdateAdminByEmail(AuthProvider authProvider, String email) {
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+
+    User existingUser = null;
+    try {
+      Set<String> fieldList = new HashSet<>(userRepository.getPatchFields().getFieldList());
+      fieldList.add(AUTH_MECHANISM_FIELD);
+      existingUser = userRepository.getByEmail(null, email, new Fields(fieldList));
+    } catch (EntityNotFoundException e) {
+      LOG.debug("[BootstrapUser] No existing user found for email: {}", email);
+    }
+
+    if (existingUser != null) {
+      if (Boolean.TRUE.equals(existingUser.getIsBot())) {
+        LOG.error(
+            "[BootstrapUser] Cannot promote bot user '{}' to admin. "
+                + "Bot users cannot be configured as admins.",
+            existingUser.getName());
+        return;
+      }
+
+      if (!Boolean.TRUE.equals(existingUser.getIsAdmin())) {
+        existingUser.setIsAdmin(true);
+        addOrUpdateUser(existingUser);
+        LOG.info("[BootstrapUser] Updated existing user '{}' to admin", existingUser.getName());
+      } else {
+        LOG.debug(
+            "[BootstrapUser] User '{}' is already an admin, no update needed",
+            existingUser.getName());
+      }
+    } else {
+      Predicate<String> existsChecker = name -> userRepository.checkUserNameExists(name);
+      String username = generateUsernameFromEmail(email, existsChecker);
+      String displayName = email.split("@")[0];
+      String password = getPassword(username);
+
+      User newUser =
+          new User()
+              .withId(UUID.randomUUID())
+              .withName(username)
+              .withFullyQualifiedName(EntityInterfaceUtil.quoteName(username))
+              .withEmail(email)
+              .withDisplayName(displayName)
+              .withIsAdmin(true)
+              .withIsBot(false)
+              .withIsEmailVerified(true)
+              .withUpdatedBy(username)
+              .withUpdatedAt(System.currentTimeMillis());
+
+      if (authProvider.equals(AuthProvider.BASIC)) {
+        updateUserWithHashedPwd(newUser, password);
+        EmailUtil.sendInviteMailToAdmin(newUser, password);
+      }
+
+      addOrUpdateUser(newUser);
+      LOG.info("[BootstrapUser] Created new admin user '{}' with email '{}'", username, email);
+    }
+  }
+
   public static void createOrUpdateUser(
       AuthProvider authProvider, String username, String password, String domain, Boolean isAdmin) {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
