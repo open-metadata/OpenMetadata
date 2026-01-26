@@ -51,7 +51,11 @@ export interface CreateTestDefinition {
      */
     supportedServices?: string[];
     testPlatforms:      TestPlatform[];
-    validatorClass?:  string;
+    /**
+     * Class name of the validator to use for this test definition. If not provided for custom
+     * SQL-based tests, defaults to 'ruleLibrarySqlExpressionValidator'.
+     */
+    validatorClass?: string;
 }
 
 /**
