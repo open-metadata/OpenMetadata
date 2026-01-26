@@ -132,6 +132,23 @@ public class JwtFilter implements ContainerRequestFilter {
     this.enforcePrincipalDomain = authorizerConfiguration.getEnforcePrincipalDomain();
     this.useRolesFromProvider = authorizerConfiguration.getUseRolesFromProvider();
     this.tokenValidationAlgorithm = authenticationConfiguration.getTokenValidationAlgorithm();
+
+    logDeprecationWarnings(authenticationConfiguration);
+  }
+
+  private void logDeprecationWarnings(AuthenticationConfiguration config) {
+    if (config.getJwtPrincipalClaims() != null && !config.getJwtPrincipalClaims().isEmpty()) {
+      LOG.warn(
+          "DEPRECATED: 'jwtPrincipalClaims' configuration is deprecated. "
+              + "Use 'emailClaim' instead. This will be removed in a future version.");
+    }
+
+    if (config.getJwtPrincipalClaimsMapping() != null
+        && !config.getJwtPrincipalClaimsMapping().isEmpty()) {
+      LOG.warn(
+          "DEPRECATED: 'jwtPrincipalClaimsMapping' configuration is deprecated. "
+              + "Use 'emailClaim' and 'displayNameClaim' instead. This will be removed in a future version.");
+    }
   }
 
   @VisibleForTesting

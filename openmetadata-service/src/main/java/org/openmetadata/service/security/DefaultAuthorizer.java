@@ -42,6 +42,23 @@ public class DefaultAuthorizer implements Authorizer {
   @Override
   public void init(OpenMetadataApplicationConfig config) {
     LOG.info("Initializing DefaultAuthorizer with config {}", config.getAuthorizerConfiguration());
+    logDeprecationWarnings(config.getAuthorizerConfiguration());
+  }
+
+  private void logDeprecationWarnings(
+      org.openmetadata.schema.api.security.AuthorizerConfiguration config) {
+    if (config.getAdminPrincipals() != null && !config.getAdminPrincipals().isEmpty()) {
+      LOG.warn(
+          "DEPRECATED: 'adminPrincipals' configuration is deprecated. "
+              + "Use 'adminEmails' instead. This will be removed in a future version.");
+    }
+
+    if (config.getPrincipalDomain() != null && !config.getPrincipalDomain().isEmpty()) {
+      LOG.warn(
+          "DEPRECATED: 'principalDomain' configuration is deprecated. "
+              + "Use 'botDomain' for bots and 'allowedEmailDomains' for domain restrictions. "
+              + "This will be removed in a future version.");
+    }
   }
 
   @Override
